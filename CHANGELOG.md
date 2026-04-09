@@ -5,6 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Container publication verification now accepts the formatted JSON emitted by the `version`
+  command, preventing false release-workflow failures after the GHCR images themselves were
+  already published correctly.
+
 ## [0.1.0] - 2026-04-09
 
 ### Added
