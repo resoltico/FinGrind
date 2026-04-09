@@ -48,7 +48,7 @@ Then verify every item in this checklist. All must be true before any commit or 
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
   - `main` is protected with admin enforcement
-  - required status checks are exactly `Check`, `Jazzer Regression`, and `Docker smoke`
+  - required status checks are exactly `Check` and `Docker smoke`
 
 ### Step 2
 
@@ -106,7 +106,7 @@ Treat the PR itself as a second scope-verification checkpoint:
   this PR diff checkpoint. Re-verify both after each fix commit.
 
 Do not proceed until **every** required job in workflow `CI` has `"conclusion": "SUCCESS"`.
-At the time of writing that means `Check`, `Jazzer Regression`, and `Docker smoke`.
+At the time of writing that means `Check` and `Docker smoke`.
 If any required job fails, fix the failure, push to the release branch, and wait again — do not
 merge a red PR.
 

@@ -92,7 +92,6 @@ gh api \
 Enable branch protection on `main` only after the required CI status-check names exist.
 For FinGrind, the required checks are:
 - `Check`
-- `Jazzer Regression`
 - `Docker smoke`
 
 Apply protection:
@@ -105,7 +104,7 @@ gh api \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Check", "Jazzer Regression", "Docker smoke"]
+    "contexts": ["Check", "Docker smoke"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": null,
@@ -123,7 +122,7 @@ Recommended repository settings alignment:
 - branch auto-delete on merge is enabled
 - Actions workflow permissions default to write
 - `main` protection enforces admins
-- required checks remain exactly `Check`, `Jazzer Regression`, and `Docker smoke`
+- required checks remain exactly `Check` and `Docker smoke`
 
 ## Step 7
 
@@ -144,3 +143,5 @@ FinGrind already carries the matching workflow surfaces locally:
 - Local package inspection via `gh api /user/packages` may additionally require `write:packages`.
 - For a public repository, GHCR packages are expected to be public automatically.
 - Do not publish a release tag during bootstrap. Use [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md) later.
+- Jazzer remains part of the local `./check.sh` gate only. GitHub CI mirrors the lighter
+  GridGrind stance and does not run standalone Jazzer replay.
