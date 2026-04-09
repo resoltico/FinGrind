@@ -1,0 +1,22 @@
+[versions]
+junit-jupiter = "6.0.3"
+junit-platform-launcher = "6.0.3"
+jackson-databind = "3.1.1"
+errorprone = "2.49.0"
+errorprone-plugin = "5.1.0"
+google-java-format = "1.35.0"
+jacoco = "0.8.14"
+pmd = "7.23.0"
+shadow = "9.4.1"
+spotless = "8.4.0"
+
+[libraries]
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson-databind" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform-launcher" }
+
+[plugins]
+errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-plugin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

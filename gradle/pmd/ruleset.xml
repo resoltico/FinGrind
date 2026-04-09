@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset
+    name="FinGrind Java Quality"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/pmd-7.0.0/ruleset_xml_schema.xsd">
+    <description>
+        High-signal PMD rules for FinGrind Java code. Formatting is enforced by Spotless,
+        compiler-grade correctness by Error Prone, and PMD covers structural, best-practice,
+        design, performance, security, and concurrency issues.
+    </description>
+
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="AvoidCatchingGenericException"/>
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <exclude name="AvoidLiteralsInIfCondition"/>
+        <exclude name="NullAssignment"/>
+    </rule>
+
+    <rule ref="category/java/bestpractices.xml"/>
+
+    <rule ref="category/java/design.xml">
+        <!-- Demeter violations are too noisy for a layered facade API -->
+        <exclude name="LawOfDemeter"/>
+        <!-- Requires explicit package configurations to be useful -->
+        <exclude name="LoosePackageCoupling"/>
+        <!-- Produces false positives on well-structured value/command objects -->
+        <exclude name="DataClass"/>
+        <!-- FinGrind intentionally uses layered transport and persistence facades.
+             Some adapters legitimately centralize translation logic at layer boundaries,
+             so strict structural-metric rules here would create noise rather than signal. -->
+        <exclude name="GodClass"/>
+        <exclude name="TooManyMethods"/>
+        <exclude name="CyclomaticComplexity"/>
+        <exclude name="CognitiveComplexity"/>
+        <!-- Boundary services legitimately reference multiple request/response and domain types
+             when translating between the CLI contract and the application layer. -->
+        <exclude name="CouplingBetweenObjects"/>
+        <!-- withExceptionData() takes 3-4 nullable Strings representing distinct exception
+             location fields. A wrapper record would add ceremony for no semantic gain. -->
+        <exclude name="UseObjectForClearerAPI"/>
+    </rule>
+
+    <rule ref="category/java/multithreading.xml"/>
+
+    <rule ref="category/java/performance.xml"/>
+
+    <rule ref="category/java/security.xml"/>
+
+    <rule ref="category/java/documentation.xml/CommentRequired">
+        <properties>
+            <property name="classCommentRequirement" value="required"/>
+            <property name="enumCommentRequirement" value="required"/>
+            <property name="publicMethodCommentRequirement" value="required"/>
+            <property name="methodWithOverrideCommentRequirement" value="ignored"/>
+            <property name="accessorCommentRequirement" value="ignored"/>
+            <property name="fieldCommentRequirement" value="ignored"/>
+            <property name="protectedMethodCommentRequirement" value="ignored"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/documentation.xml/UncommentedEmptyMethodBody"/>
+
+</ruleset>

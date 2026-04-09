@@ -1,0 +1,57 @@
+FinGrind
+Copyright (c) 2026 Ervins Strauhmanis
+
+Licensed under the MIT License. See LICENSE file for details.
+
+================================================================================
+
+The Apache License, Version 2.0 full text is included in this distribution as
+LICENSE-APACHE-2.0 and is also available at:
+  https://www.apache.org/licenses/LICENSE-2.0
+
+================================================================================
+Apache 2.0 Components
+================================================================================
+
+--------------------------------------------------------------------------------
+Jackson Databind / Jackson Core / Jackson Annotations
+  Copyright 2007- Tatu Saloranta, tatu.saloranta@iki.fi
+  https://github.com/FasterXML/jackson
+
+  Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE-2.0).
+
+  Jackson JSON processor
+  Copyright (c) 2007- Tatu Saloranta, tatu.saloranta@iki.fi
+
+================================================================================
+Public Domain Components
+================================================================================
+
+--------------------------------------------------------------------------------
+SQLite
+  https://www.sqlite.org/
+
+  SQLite is in the public domain. The author disclaims copyright to the SQLite
+  source code. In place of a legal notice:
+
+    May you do good and not evil.
+    May you find forgiveness for yourself and forgive others.
+    May you share freely, never taking more than you give.
+
+  FinGrind provisions SQLite as a native binary compiled from the official
+  sqlite.org autoconf source archive. The SQLite binary is not bundled in the
+  FinGrind JAR; it is built and managed separately on the host system.
+
+================================================================================
+Trademark Notice
+================================================================================
+
+"Apache" and the Apache feather logo are trademarks of The Apache Software
+Foundation. Use of these marks in this document is descriptive only and does
+not imply affiliation with or endorsement by The Apache Software Foundation.
+
+"SQLite" is used descriptively. SQLite is in the public domain and has no
+trademark owner.
+
+FinGrind is not affiliated with, endorsed by, or sponsored by The Apache
+Software Foundation or the SQLite authors.

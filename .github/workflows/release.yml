@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to build, publish, and verify (for example v0.25.0)
+        required: true
+        type: string
+
+concurrency:
+  group: publication-${{ github.workflow }}-${{ inputs.release_tag || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '26'
+          distribution: 'zulu'
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Determine target release tag
+        id: target-tag
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.release_tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [ -z "${TAG}" ]; then
+            echo "::error::target release tag is required"
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate tag matches project version
+        run: |
+          TAG_VERSION="${{ steps.target-tag.outputs.version }}"
+          GRADLE_VERSION=$(grep '^version=' gradle.properties | cut -d= -f2)
+          if [ "$TAG_VERSION" != "$GRADLE_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match gradle.properties version ($GRADLE_VERSION)"
+            exit 1
+          fi
+
+      - name: Build fat JAR
+        run: ./gradlew :cli:shadowJar --no-daemon
+
+      - name: Publish GitHub release idempotently
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
+        run: ./scripts/publish-github-release.sh
+
+      - name: Verify GitHub release handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
+        run: ./scripts/verify-github-release.sh

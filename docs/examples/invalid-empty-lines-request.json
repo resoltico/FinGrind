@@ -1,0 +1,12 @@
+{
+  "effectiveDate": "2026-04-08",
+  "lines": [],
+  "provenance": {
+    "actorId": "operator-3",
+    "actorType": "USER",
+    "commandId": "command-invalid-1",
+    "idempotencyKey": "idem-invalid-1",
+    "causationId": "cause-invalid-1",
+    "sourceChannel": "CLI"
+  }
+}

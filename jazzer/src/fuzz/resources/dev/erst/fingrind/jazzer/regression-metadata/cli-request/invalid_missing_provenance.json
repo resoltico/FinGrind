@@ -1,0 +1,18 @@
+{
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_missing_provenance.json",
+  "expectation" : {
+    "outcomeKind" : "EXPECTED_INVALID",
+    "details" : {
+      "type" : "CLI_REQUEST",
+      "requestStatus" : "INVALID_REQUEST",
+      "effectiveDate" : "NOT_PARSED",
+      "idempotencyKey" : "NOT_PARSED",
+      "lineCount" : 0,
+      "correctionPresent" : false,
+      "actorType" : "NOT_PARSED",
+      "sourceChannel" : "NOT_PARSED",
+      "failureMessage" : "Missing required field: provenance"
+    }
+  }
+}

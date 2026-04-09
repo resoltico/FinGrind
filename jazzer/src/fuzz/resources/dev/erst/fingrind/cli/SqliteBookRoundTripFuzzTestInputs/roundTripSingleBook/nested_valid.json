@@ -1,0 +1,26 @@
+{
+  "effectiveDate": "2026-04-09",
+  "lines": [
+    {
+      "accountCode": "7000",
+      "side": "DEBIT",
+      "currencyCode": "USD",
+      "amount": "75.00"
+    },
+    {
+      "accountCode": "8000",
+      "side": "CREDIT",
+      "currencyCode": "USD",
+      "amount": "75.00"
+    }
+  ],
+  "provenance": {
+    "actorId": "actor-2",
+    "actorType": "SYSTEM",
+    "commandId": "command-2",
+    "idempotencyKey": "idem-2",
+    "causationId": "cause-2",
+    "correlationId": "corr-2",
+    "sourceChannel": "TEST"
+  }
+}

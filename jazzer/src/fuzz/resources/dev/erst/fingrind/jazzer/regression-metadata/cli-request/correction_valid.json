@@ -1,0 +1,18 @@
+{
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/correction_valid.json",
+  "expectation" : {
+    "outcomeKind" : "SUCCESS",
+    "details" : {
+      "type" : "CLI_REQUEST",
+      "requestStatus" : "PARSED",
+      "effectiveDate" : "2026-04-08",
+      "idempotencyKey" : "idem-2",
+      "lineCount" : 2,
+      "correctionPresent" : true,
+      "actorType" : "SYSTEM",
+      "sourceChannel" : "API",
+      "failureMessage" : "NONE"
+    }
+  }
+}

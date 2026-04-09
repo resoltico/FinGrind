@@ -1,0 +1,25 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+
+# Normalize all text files to LF on commit.
+* text=auto eol=lf
+
+# Gradle wrapper scripts
+/gradlew    text eol=lf
+*.bat        text eol=crlf
+*.cmd        text eol=crlf
+
+# Binary files — never touch line endings or diff as text
+*.jar        binary
+*.xlsx       binary
+*.xls        binary
+*.png        binary
+*.jpg        binary
+*.jpeg       binary
+*.gif        binary
+*.ico        binary
+*.pdf        binary
+*.zip        binary
+*.gz         binary
+*.tar        binary

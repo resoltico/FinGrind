@@ -1,0 +1,32 @@
+{
+  "effectiveDate": "2026-04-09",
+  "lines": [
+    {
+      "accountCode": "1000",
+      "side": "DEBIT",
+      "currencyCode": "EUR",
+      "amount": "15.00"
+    },
+    {
+      "accountCode": "2000",
+      "side": "CREDIT",
+      "currencyCode": "EUR",
+      "amount": "15.00"
+    }
+  ],
+  "provenance": {
+    "actorId": "operator-2",
+    "actorType": "USER",
+    "commandId": "command-correction-1",
+    "idempotencyKey": "idem-correction-1",
+    "causationId": "cause-correction-1",
+    "correlationId": "corr-correction-1",
+    "recordedAt": "2026-04-09T09:30:00Z",
+    "reason": "Invoice amendment",
+    "sourceChannel": "CLI"
+  },
+  "correction": {
+    "kind": "AMENDMENT",
+    "priorPostingId": "posting-previous-1"
+  }
+}

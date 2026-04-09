@@ -1,0 +1,11 @@
+# Exclude everything — the Docker image only needs the pre-built fat JAR.
+# Build the JAR first: ./gradlew :cli:shadowJar
+**
+
+# Allow only the fat JAR produced by the Shadow plugin.
+!gradle.properties
+!scripts/
+!scripts/sqlite-tooling.sh
+!scripts/ensure-sqlite.sh
+!cli/build/libs/
+!cli/build/libs/*.jar

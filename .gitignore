@@ -1,0 +1,46 @@
+# Gradle caches and build outputs
+.gradle/
+build/
+**/build/
+out/
+target/
+
+# IDE compiler output (VSCode Java extension, Eclipse)
+bin/
+**/bin/
+
+# Kotlin daemon sessions (buildSrc)
+.kotlin/
+
+# JVM and compiler artifacts
+*.class
+hs_err_pid*
+replay_pid*
+
+# Editor and IDE metadata
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+*.iml
+*.ipr
+*.iws
+
+# Temporary and scratch directories
+.tmp-*/
+/.local/
+/jazzer/.local/
+
+# OS and local scratch files
+.claude/
+.codex/
+.gemini/
+.DS_Store
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

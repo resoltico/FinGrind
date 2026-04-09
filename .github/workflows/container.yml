@@ -1,0 +1,235 @@
+name: Container
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to build, publish, and verify (for example v0.25.0)
+        required: true
+        type: string
+
+concurrency:
+  group: publication-${{ github.workflow }}-${{ inputs.release_tag || github.ref_name }}
+  cancel-in-progress: true
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/fingrind
+
+jobs:
+  container:
+    name: Build and push container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '26'
+          distribution: 'zulu'
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Determine target release tag
+        id: target-tag
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.release_tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [ -z "${TAG}" ]; then
+            echo "::error::target release tag is required"
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate tag matches project version
+        run: |
+          TAG_VERSION="${{ steps.target-tag.outputs.version }}"
+          GRADLE_VERSION=$(grep '^version=' gradle.properties | cut -d= -f2)
+          if [ "$TAG_VERSION" != "$GRADLE_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match gradle.properties version ($GRADLE_VERSION)"
+            exit 1
+          fi
+
+      - name: Build fat JAR
+        run: ./gradlew :cli:shadowJar --no-daemon
+
+      - name: Smoke test the Docker image before publishing
+        run: ./scripts/docker-smoke.sh
+
+      - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.target-tag.outputs.version }}
+            type=raw,value=latest
+
+      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify published version and latest container tags
+        run: ./scripts/verify-container-publication.sh "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" "${{ steps.target-tag.outputs.version }}"
+
+  cleanup:
+    name: Prune old container versions
+    runs-on: ubuntu-latest
+    needs: container
+    timeout-minutes: 5
+
+    permissions:
+      packages: write
+
+    steps:
+      # GitHub's delete-package-versions action still runs on Node20. Replace that stale wrapper
+      # with first-party GitHub Packages API calls via gh so the workflow remains aligned with
+      # GitHub's Node24 migration guidance.
+      #
+      # A GHCR multi-arch release is not a single package-version record. The tagged OCI index is
+      # accompanied by multiple untagged records, including platform manifests and provenance or
+      # attestation manifests. Raw count-based pruning therefore keeps the wrong number of releases
+      # and can split a release across the retention boundary.
+      #
+      # The safe rule is to anchor retention on the five newest tagged releases (tags matching
+      # X.Y.Z), then keep every package-version record created at or after the 5th newest anchor.
+      # That preserves complete release groups even if GitHub changes how many untagged records a
+      # release produces in the future.
+      - name: Prune package versions older than the five newest tagged releases
+        shell: bash
+        env:
+          API_VERSION: 2022-11-28
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE_NAME: fingrind
+          PACKAGE_TYPE: container
+          RELEASES_TO_KEEP: "5"
+        run: |
+          set -euo pipefail
+
+          owner_type="$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: ${API_VERSION}" \
+            "/users/${OWNER}" \
+            --jq '.type')"
+
+          case "${owner_type}" in
+            Organization)
+              versions_endpoint="/orgs/${OWNER}/packages/${PACKAGE_TYPE}/${PACKAGE_NAME}/versions"
+              ;;
+            User)
+              versions_endpoint="/users/${OWNER}/packages/${PACKAGE_TYPE}/${PACKAGE_NAME}/versions"
+              ;;
+            *)
+              echo "Unsupported package owner type: ${owner_type}" >&2
+              exit 1
+              ;;
+          esac
+
+          versions_json="$(gh api \
+            --paginate \
+            --slurp \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: ${API_VERSION}" \
+            "${versions_endpoint}?per_page=100")"
+
+          release_anchors_json="$(printf '%s' "${versions_json}" | jq \
+            --argjson releasesToKeep "${RELEASES_TO_KEEP}" '
+              map(.[]) |
+              [
+                .[]
+                | {
+                    id,
+                    createdAt: .created_at,
+                    tags: (.metadata.container.tags // []),
+                    releaseTag: (
+                      (.metadata.container.tags // [])
+                      | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$")))
+                      | first
+                    )
+                  }
+                | select(.releaseTag != null)
+              ]
+              | sort_by(.createdAt)
+              | reverse
+              | .[:$releasesToKeep]
+            ')"
+
+          release_anchor_count="$(printf '%s' "${release_anchors_json}" | jq 'length')"
+          if [ "${release_anchor_count}" -lt "${RELEASES_TO_KEEP}" ]; then
+            echo "Found ${release_anchor_count} tagged releases; fewer than ${RELEASES_TO_KEEP} exist, so nothing is pruned."
+            exit 0
+          fi
+
+          cutoff_created_at="$(printf '%s' "${release_anchors_json}" | jq -r 'last.createdAt')"
+          echo "Keeping complete package-version groups for these tagged releases:"
+          printf '%s' "${release_anchors_json}" | jq -r '.[] | "  - \(.releaseTag) anchored at \(.createdAt) (package version id \(.id))"'
+
+          deletion_candidates_json="$(printf '%s' "${versions_json}" | jq \
+            --arg cutoffCreatedAt "${cutoff_created_at}" '
+              map(.[]) |
+              [
+                .[]
+                | select(.created_at < $cutoffCreatedAt)
+                | {
+                    id,
+                    createdAt: .created_at,
+                    tags: (
+                      if (.metadata.container.tags // []) | length == 0
+                      then ["<untagged>"]
+                      else (.metadata.container.tags // [])
+                      end
+                    )
+                  }
+              ]
+            ')"
+
+          deletion_count="$(printf '%s' "${deletion_candidates_json}" | jq 'length')"
+          if [ "${deletion_count}" -eq 0 ]; then
+            echo "No package versions are older than the retained release cutoff."
+            exit 0
+          fi
+
+          echo "Deleting ${deletion_count} package versions older than ${cutoff_created_at}:"
+          printf '%s' "${deletion_candidates_json}" | jq -r '.[] | "  - id \(.id) created \(.createdAt) tags=\(.tags | join(","))"'
+
+          printf '%s' "${deletion_candidates_json}" | jq -r '.[].id' | while IFS= read -r version_id; do
+            gh api \
+              -X DELETE \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: ${API_VERSION}" \
+              "${versions_endpoint}/${version_id}"
+          done
