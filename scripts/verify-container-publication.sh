@@ -9,6 +9,13 @@ die() {
     exit 1
 }
 
+require_match() {
+    local text=$1
+    local pattern=$2
+
+    printf '%s\n' "${text}" | grep -Eq "${pattern}"
+}
+
 readonly image_name="${1:-}"
 readonly expected_version="${2:-}"
 readonly retry_count="${FINGRIND_PUBLICATION_VERIFY_RETRIES:-12}"
@@ -39,8 +46,9 @@ verify_ref() {
     for ((attempt = 1; attempt <= retry_count; attempt++)); do
         if anonymous_docker pull "${image_ref}" >/dev/null 2>&1; then
             version_output="$(anonymous_docker run --rm "${image_ref}" version 2>/dev/null | tr -d '\r')"
-            if [[ "${version_output}" == *"\"application\":\"FinGrind\""* ]] \
-                && [[ "${version_output}" == *"\"version\":\"${expected_version}\""* ]]; then
+            if require_match "${version_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
+                && require_match "${version_output}" '"application"[[:space:]]*:[[:space:]]*"FinGrind"' \
+                && require_match "${version_output}" "\"version\"[[:space:]]*:[[:space:]]*\"${expected_version}\""; then
                 printf 'Verified published container: %s\n' "${image_ref}"
                 return
             fi

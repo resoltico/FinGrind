@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.1.0-SNAPSHOT"
+version: "0.1.0"
 domain: DEVELOPER
 updated: "2026-04-09"
 route:
@@ -129,7 +129,7 @@ During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression r
 ## GitHub Workflows
 
 The repository currently ships three workflow surfaces:
-- `CI` runs on pushes and pull requests to `main`, and includes `Check`, `Jazzer Regression`, and `Docker smoke`.
+- `CI` runs on pushes and pull requests to `main`, and includes `Check` and `Docker smoke`.
 - `Release` runs for `v*` tags or manual dispatch, builds the fat JAR, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 
@@ -137,7 +137,8 @@ Operational protocols for those surfaces live in:
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
 
-The Jazzer job in CI is regression-only. Active fuzzing remains local-only by design.
+Jazzer verification remains local-only by design through `./check.sh`. GitHub CI stays lighter and
+does not run standalone Jazzer support tests or regression replay.
 
 ## Build Stance
 

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.1.0-SNAPSHOT"
+version: "0.1.0"
 domain: DEVELOPER_JAZZER
 updated: "2026-04-09"
 route:
@@ -28,7 +28,6 @@ Implemented now:
 - committed seed floor under `jazzer/src/fuzz/resources/`
 - committed regression metadata under `jazzer/src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata/`
 - local corpora and finding artifacts under `jazzer/.local/runs/`
-- GitHub CI regression replay through the dedicated `Jazzer Regression` job
 
 Deliberately not implemented:
 - root-project dependency on active fuzzing
@@ -37,6 +36,7 @@ Deliberately not implemented:
 - promotion, replay-report, or corpus-summary tooling
 - committed local corpus files
 - committed dictionary files
+- GitHub CI Jazzer replay
 - CI active fuzzing
 
 If implementation and this document diverge, fix one or the other immediately.
@@ -46,11 +46,10 @@ If implementation and this document diverge, fix one or the other immediately.
 FinGrind uses Jazzer as a separate nested build, not as a root subproject.
 
 The non-negotiable decisions are:
-- `jazzer/` remains a nested local-and-CI verification build.
+- `jazzer/` remains a nested local verification build.
 - Root `./gradlew check` stays independent of active fuzzing.
 - Root `./check.sh` runs nested `jazzer check` sequentially after the root build gates.
-- The nested Jazzer build follows the same Java 26 shell contract as the root project, while its
-  `buildSrc` still emits Java 25-compatible bytecode.
+- The nested Jazzer build follows the same Java 26 shell contract as the root project.
 - The standalone harness runner selects concrete harness classes directly, so the production fuzz
   harness classes are part of the public JVM surface inside the nested build.
 - Generated state stays under `jazzer/.local/`.
