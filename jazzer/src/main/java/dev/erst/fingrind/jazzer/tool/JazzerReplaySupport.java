@@ -6,7 +6,7 @@ import dev.erst.fingrind.application.PostEntryResult.Committed;
 import dev.erst.fingrind.application.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.application.PostEntryResult.Rejected;
 import dev.erst.fingrind.application.PostingApplicationService;
-import dev.erst.fingrind.application.PostingRejectionCode;
+import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.cli.CliFuzzSupport;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import dev.erst.fingrind.runtime.InMemoryPostingFactStore;
@@ -84,51 +84,74 @@ public final class JazzerReplaySupport {
       command = CliFuzzSupport.readPostEntryCommand(input);
       InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
       PostingApplicationService applicationService =
-          new PostingApplicationService(postingFactStore, CliFuzzSupport.postingIdSupplier(input));
+          new PostingApplicationService(
+              postingFactStore,
+              CliFuzzSupport.postingIdGenerator(input),
+              CliFuzzSupport.fixedClock());
 
       PostEntryResult preflight = applicationService.preflight(command);
-      if (!(preflight instanceof PreflightAccepted accepted)) {
-        throw new IllegalStateException("Expected a preflight acceptance for a fresh valid book.");
-      }
-      if (!accepted.idempotencyKey().equals(command.provenance().idempotencyKey())) {
-        throw new IllegalStateException("Preflight changed the idempotency key.");
-      }
-      if (!accepted.effectiveDate().equals(command.journalEntry().effectiveDate())) {
-        throw new IllegalStateException("Preflight changed the effective date.");
-      }
-      preflightStatus = "PREFLIGHT_ACCEPTED";
-
       PostEntryResult committedResult = applicationService.commit(command);
-      if (!(committedResult instanceof Committed committed)) {
-        throw new IllegalStateException("Expected a committed result for a fresh valid book.");
-      }
-      firstCommitStatus = "COMMITTED";
+      if (preflight instanceof PreflightAccepted accepted) {
+        if (!accepted.idempotencyKey().equals(command.requestProvenance().idempotencyKey())) {
+          throw new IllegalStateException("Preflight changed the idempotency key.");
+        }
+        if (!accepted.effectiveDate().equals(command.journalEntry().effectiveDate())) {
+          throw new IllegalStateException("Preflight changed the effective date.");
+        }
+        preflightStatus = "PREFLIGHT_ACCEPTED";
+        if (!(committedResult instanceof Committed committed)) {
+          throw new IllegalStateException("Accepted preflight should commit on a fresh valid book.");
+        }
+        firstCommitStatus = "COMMITTED";
 
-      Optional<PostingFact> storedPosting =
-          postingFactStore.findByIdempotency(command.provenance().idempotencyKey());
-      if (storedPosting.isEmpty()) {
-        throw new IllegalStateException("Committed posting fact was not persisted.");
-      }
-      PostingFact postingFact = storedPosting.orElseThrow();
-      if (!postingFact.postingId().equals(committed.postingId())) {
-        throw new IllegalStateException("Stored posting id differs from the commit result.");
-      }
-      if (!postingFact.journalEntry().equals(command.journalEntry())) {
-        throw new IllegalStateException("Stored journal entry differs from the parsed command.");
-      }
-      if (!postingFact.provenance().equals(command.provenance())) {
-        throw new IllegalStateException("Stored provenance differs from the parsed command.");
-      }
-      storedFactPresent = true;
+        Optional<PostingFact> storedPosting =
+            postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+        if (storedPosting.isEmpty()) {
+          throw new IllegalStateException("Committed posting fact was not persisted.");
+        }
+        PostingFact postingFact = storedPosting.orElseThrow();
+        if (!postingFact.postingId().equals(committed.postingId())) {
+          throw new IllegalStateException("Stored posting id differs from the commit result.");
+        }
+        if (!postingFact.journalEntry().equals(command.journalEntry())) {
+          throw new IllegalStateException("Stored journal entry differs from the parsed command.");
+        }
+        if (!postingFact.correctionReference().equals(command.correctionReference())) {
+          throw new IllegalStateException("Stored correction differs from the parsed command.");
+        }
+        if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
+          throw new IllegalStateException(
+              "Stored request provenance differs from the parsed command.");
+        }
+        if (!postingFact.provenance().recordedAt().equals(CliFuzzSupport.fixedClock().instant())) {
+          throw new IllegalStateException(
+              "Stored recorded-at differs from the deterministic clock.");
+        }
+        if (postingFact.provenance().sourceChannel() != command.sourceChannel()) {
+          throw new IllegalStateException("Stored source channel differs from the parsed command.");
+        }
+        storedFactPresent = true;
 
-      PostEntryResult duplicateResult = applicationService.commit(command);
-      if (!(duplicateResult instanceof Rejected rejected)) {
-        throw new IllegalStateException("Duplicate commit should be rejected.");
+        PostEntryResult duplicateResult = applicationService.commit(command);
+        if (!(duplicateResult instanceof Rejected rejected)) {
+          throw new IllegalStateException("Duplicate commit should be rejected.");
+        }
+        if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
+          throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
+        }
+        duplicateStatus = rejectionStatus(rejected.rejection());
+      } else if (preflight instanceof Rejected preflightRejected) {
+        preflightStatus = rejectionStatus(preflightRejected.rejection());
+        if (!(committedResult instanceof Rejected commitRejected)) {
+          throw new IllegalStateException("Rejected preflight should remain rejected on commit.");
+        }
+        if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
+          throw new IllegalStateException("Commit changed the deterministic rejection.");
+        }
+        firstCommitStatus = rejectionStatus(commitRejected.rejection());
+      } else {
+        throw new IllegalStateException("Unexpected preflight result type.");
       }
-      if (rejected.code() != PostingRejectionCode.DUPLICATE_IDEMPOTENCY_KEY) {
-        throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
-      }
-      duplicateStatus = "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
 
       return new ReplayOutcome.Success(
           JazzerHarness.POSTING_WORKFLOW.key(),
@@ -180,47 +203,79 @@ public final class JazzerReplaySupport {
       bookDirectory = Files.createTempDirectory("fingrind-jazzer-replay-");
       Path bookPath = bookDirectory.resolve("nested").resolve("entity-book.sqlite");
 
-      Committed committed;
       try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookPath)) {
         PostingApplicationService applicationService =
-            new PostingApplicationService(postingFactStore, CliFuzzSupport.postingIdSupplier(input));
+            new PostingApplicationService(
+                postingFactStore,
+                CliFuzzSupport.postingIdGenerator(input),
+                CliFuzzSupport.fixedClock());
         PostEntryResult committedResult = applicationService.commit(command);
-        if (!(committedResult instanceof Committed committedValue)) {
-          throw new IllegalStateException("Expected a committed result for a fresh valid SQLite book.");
-        }
-        committed = committedValue;
-        firstCommitStatus = "COMMITTED";
-      }
+        if (committedResult instanceof Committed committed) {
+          firstCommitStatus = "COMMITTED";
+          try (SqlitePostingFactStore reloadedStore = new SqlitePostingFactStore(bookPath)) {
+            Optional<PostingFact> storedPosting =
+                reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+            if (storedPosting.isEmpty()) {
+              throw new IllegalStateException("Committed posting fact was not persisted to SQLite.");
+            }
+            PostingFact postingFact = storedPosting.orElseThrow();
+            if (!postingFact.postingId().equals(committed.postingId())) {
+              throw new IllegalStateException("Reloaded posting id differs from the commit result.");
+            }
+            if (!postingFact.journalEntry().equals(command.journalEntry())) {
+              throw new IllegalStateException(
+                  "Reloaded journal entry differs from the parsed command.");
+            }
+            if (!postingFact.correctionReference().equals(command.correctionReference())) {
+              throw new IllegalStateException(
+                  "Reloaded correction differs from the parsed command.");
+            }
+            if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
+              throw new IllegalStateException(
+                  "Reloaded request provenance differs from the parsed command.");
+            }
+            if (!postingFact
+                .provenance()
+                .recordedAt()
+                .equals(CliFuzzSupport.fixedClock().instant())) {
+              throw new IllegalStateException(
+                  "Reloaded recorded-at differs from the deterministic clock.");
+            }
+            if (postingFact.provenance().sourceChannel() != command.sourceChannel()) {
+              throw new IllegalStateException(
+                  "Reloaded source channel differs from the parsed command.");
+            }
+            storedFactPresent = true;
+            reloadStatus = "RELOADED";
 
-      try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookPath)) {
-        Optional<PostingFact> storedPosting =
-            postingFactStore.findByIdempotency(command.provenance().idempotencyKey());
-        if (storedPosting.isEmpty()) {
-          throw new IllegalStateException("Committed posting fact was not persisted to SQLite.");
+            PostingApplicationService duplicateService =
+                new PostingApplicationService(
+                    reloadedStore,
+                    CliFuzzSupport.postingIdGenerator(input),
+                    CliFuzzSupport.fixedClock());
+            PostEntryResult duplicateResult = duplicateService.commit(command);
+            if (!(duplicateResult instanceof Rejected rejected)) {
+              throw new IllegalStateException("Duplicate SQLite commit should be rejected.");
+            }
+            if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
+              throw new IllegalStateException(
+                  "Duplicate SQLite commit returned the wrong rejection code.");
+            }
+            duplicateStatus = rejectionStatus(rejected.rejection());
+          }
+        } else if (committedResult instanceof Rejected rejected) {
+          firstCommitStatus = rejectionStatus(rejected.rejection());
+          PostEntryResult repeatedResult = applicationService.commit(command);
+          if (!(repeatedResult instanceof Rejected repeatedRejected)) {
+            throw new IllegalStateException("Rejected SQLite command should remain rejected.");
+          }
+          if (!repeatedRejected.rejection().equals(rejected.rejection())) {
+            throw new IllegalStateException("Repeated SQLite rejection changed unexpectedly.");
+          }
+          duplicateStatus = rejectionStatus(repeatedRejected.rejection());
+        } else {
+          throw new IllegalStateException("Unexpected SQLite commit result type.");
         }
-        PostingFact postingFact = storedPosting.orElseThrow();
-        if (!postingFact.postingId().equals(committed.postingId())) {
-          throw new IllegalStateException("Reloaded posting id differs from the commit result.");
-        }
-        if (!postingFact.journalEntry().equals(command.journalEntry())) {
-          throw new IllegalStateException("Reloaded journal entry differs from the parsed command.");
-        }
-        if (!postingFact.provenance().equals(command.provenance())) {
-          throw new IllegalStateException("Reloaded provenance differs from the parsed command.");
-        }
-        storedFactPresent = true;
-        reloadStatus = "RELOADED";
-
-        PostingApplicationService applicationService =
-            new PostingApplicationService(postingFactStore, CliFuzzSupport.postingIdSupplier(input));
-        PostEntryResult duplicateResult = applicationService.commit(command);
-        if (!(duplicateResult instanceof Rejected rejected)) {
-          throw new IllegalStateException("Duplicate SQLite commit should be rejected.");
-        }
-        if (rejected.code() != PostingRejectionCode.DUPLICATE_IDEMPOTENCY_KEY) {
-          throw new IllegalStateException("Duplicate SQLite commit returned the wrong rejection code.");
-        }
-        duplicateStatus = "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
       }
 
       return new ReplayOutcome.Success(
@@ -374,7 +429,7 @@ public final class JazzerReplaySupport {
   }
 
   private static String idempotencyKey(PostEntryCommand command) {
-    return command == null ? NOT_PARSED : command.provenance().idempotencyKey().value();
+    return command == null ? NOT_PARSED : command.requestProvenance().idempotencyKey().value();
   }
 
   private static int lineCount(PostEntryCommand command) {
@@ -382,15 +437,27 @@ public final class JazzerReplaySupport {
   }
 
   private static boolean correctionPresent(PostEntryCommand command) {
-    return command != null && command.journalEntry().correctionReference().isPresent();
+    return command != null && command.correctionReference().isPresent();
   }
 
   private static String actorType(PostEntryCommand command) {
-    return command == null ? NOT_PARSED : command.provenance().actorType().name();
+    return command == null ? NOT_PARSED : command.requestProvenance().actorType().name();
   }
 
   private static String sourceChannel(PostEntryCommand command) {
-    return command == null ? NOT_PARSED : command.provenance().sourceChannel().name();
+    return command == null ? NOT_PARSED : command.sourceChannel().name();
+  }
+
+  private static String rejectionStatus(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.DuplicateIdempotencyKey _ -> "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
+      case PostingRejection.CorrectionReasonRequired _ -> "REJECTED_CORRECTION_REASON_REQUIRED";
+      case PostingRejection.CorrectionReasonForbidden _ -> "REJECTED_CORRECTION_REASON_FORBIDDEN";
+      case PostingRejection.CorrectionTargetNotFound _ -> "REJECTED_CORRECTION_TARGET_NOT_FOUND";
+      case PostingRejection.ReversalAlreadyExists _ -> "REJECTED_REVERSAL_ALREADY_EXISTS";
+      case PostingRejection.ReversalDoesNotNegateTarget _ ->
+          "REJECTED_REVERSAL_DOES_NOT_NEGATE_TARGET";
+    };
   }
 
   private static String normalizedMessage(Throwable error) {

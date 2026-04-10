@@ -19,7 +19,6 @@
     "actorType": "AGENT",
     "commandId": "command-3",
     "idempotencyKey": "idem-3",
-    "causationId": "cause-3",
-    "sourceChannel": "CLI"
+    "causationId": "cause-3"
   }
 }

@@ -7,52 +7,32 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link JournalEntry}. */
 class JournalEntryTest {
   @Test
-  void constructor_defensivelyCopiesLinesAndKeepsCorrectionReference() {
+  void constructor_defensivelyCopiesLines() {
     List<JournalLine> lines = new ArrayList<>(balancedLines());
-    JournalEntry journalEntry =
-        new JournalEntry(
-            LocalDate.parse("2026-04-07"),
-            lines,
-            Optional.of(
-                new CorrectionReference(
-                    CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))));
+    JournalEntry journalEntry = new JournalEntry(LocalDate.parse("2026-04-07"), lines);
 
     lines.clear();
 
     assertEquals(2, journalEntry.lines().size());
-    assertEquals(
-        Optional.of(
-            new CorrectionReference(
-                CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))),
-        journalEntry.correctionReference());
   }
 
   @Test
   void constructor_rejectsEmptyLines() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new JournalEntry(LocalDate.parse("2026-04-07"), List.of(), Optional.empty()));
+        () -> new JournalEntry(LocalDate.parse("2026-04-07"), List.of()));
   }
 
   @Test
   void constructor_rejectsNullLinesAfterNormalizingThemToEmpty() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new JournalEntry(LocalDate.parse("2026-04-07"), null, Optional.empty()));
-  }
-
-  @Test
-  void constructor_defaultsNullCorrectionReferenceToEmpty() {
-    JournalEntry journalEntry =
-        new JournalEntry(LocalDate.parse("2026-04-07"), balancedLines(), null);
-
-    assertEquals(Optional.empty(), journalEntry.correctionReference());
+        () -> new JournalEntry(LocalDate.parse("2026-04-07"), null));
   }
 
   @Test
@@ -70,7 +50,7 @@ class JournalEntryTest {
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines, Optional.empty()));
+        () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
   }
 
   @Test
@@ -88,7 +68,7 @@ class JournalEntryTest {
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines, Optional.empty()));
+        () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
   }
 
   private static List<JournalLine> balancedLines() {

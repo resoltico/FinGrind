@@ -19,8 +19,6 @@
     "actorType": "AGENT",
     "commandId": "command-1",
     "idempotencyKey": "idem-1",
-    "causationId": "cause-1",
-    "recordedAt": "2026-04-07T10:15:30Z",
-    "sourceChannel": "CLI"
+    "causationId": "cause-1"
   }
 }

@@ -20,9 +20,6 @@
     "commandId": "command-1",
     "idempotencyKey": "idem-1",
     "causationId": "cause-1",
-    "correlationId": "corr-1",
-    "recordedAt": "2026-04-07T10:15:30Z",
-    "reason": "opening entry",
-    "sourceChannel": "CLI"
+    "correlationId": "corr-1"
   }
 }

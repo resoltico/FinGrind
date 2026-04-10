@@ -4,13 +4,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.CausationId;
+import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CorrectionReason;
+import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ProvenanceEnvelope;
+import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,7 +31,8 @@ class PostingFactTest {
   @Test
   void constructor_acceptsValidFact() {
     PostingFact postingFact =
-        new PostingFact(new PostingId("posting-1"), journalEntry(), provenance("idem-1"));
+        new PostingFact(
+            new PostingId("posting-1"), journalEntry(), Optional.empty(), provenance("idem-1"));
 
     assertEquals("posting-1", postingFact.postingId().value());
   }
@@ -32,7 +41,15 @@ class PostingFactTest {
   void constructor_rejectsNullPostingId() {
     assertThrows(
         NullPointerException.class,
-        () -> new PostingFact(null, journalEntry(), provenance("idem-1")));
+        () -> new PostingFact(null, journalEntry(), Optional.empty(), provenance("idem-1")));
+  }
+
+  @Test
+  void constructor_normalizesNullCorrectionReferenceToEmpty() {
+    PostingFact postingFact =
+        new PostingFact(new PostingId("posting-1"), journalEntry(), null, provenance("idem-1"));
+
+    assertEquals(Optional.empty(), postingFact.correctionReference());
   }
 
   private static JournalEntry journalEntry() {
@@ -46,20 +63,20 @@ class PostingFactTest {
             new JournalLine(
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")))),
-        Optional.empty());
+                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")))));
   }
 
-  private static ProvenanceEnvelope provenance(String idempotencyKey) {
-    return new ProvenanceEnvelope(
-        "actor-1",
-        ProvenanceEnvelope.ActorType.AGENT,
-        "command-1",
-        new IdempotencyKey(idempotencyKey),
-        "cause-1",
-        Optional.empty(),
+  private static CommittedProvenance provenance(String idempotencyKey) {
+    return new CommittedProvenance(
+        new RequestProvenance(
+            new ActorId("actor-1"),
+            ActorType.AGENT,
+            new CommandId("command-1"),
+            new IdempotencyKey(idempotencyKey),
+            new CausationId("cause-1"),
+            Optional.of(new CorrelationId("corr-1")),
+            Optional.of(new CorrectionReason("operator correction"))),
         Instant.parse("2026-04-07T10:15:30Z"),
-        Optional.empty(),
-        ProvenanceEnvelope.SourceChannel.TEST);
+        SourceChannel.CLI);
   }
 }

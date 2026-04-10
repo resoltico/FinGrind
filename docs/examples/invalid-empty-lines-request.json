@@ -6,7 +6,6 @@
     "actorType": "USER",
     "commandId": "command-invalid-1",
     "idempotencyKey": "idem-invalid-1",
-    "causationId": "cause-invalid-1",
-    "sourceChannel": "CLI"
+    "causationId": "cause-invalid-1"
   }
 }

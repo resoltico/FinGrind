@@ -1,295 +1,41 @@
 ---
 afad: "3.5"
-version: "0.1.0"
+version: "0.2.0"
 domain: CORE
-updated: "2026-04-08"
+updated: "2026-04-09"
 route:
   keywords: [fingrind, core, journal, money, provenance, correction, account-code, currency-code, idempotency]
-  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "what provenance fields are durable in fingrind"]
+  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind"]
 ---
 
 # Core API Reference
 
 ## `AccountCode`
 
-Record representing a jurisdiction-agnostic account identifier.
+`AccountCode` is the jurisdiction-agnostic account identifier carried by one journal line.
 
-### Signature
 ```java
 public record AccountCode(String value)
 ```
 
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `value` | Y | account code text |
+- Purpose: name the account on one line without imposing a country-specific chart shape
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
 
-### Constraints
-- Purpose: Identifies one account on one journal line
-- Normalization: Strips surrounding whitespace
-- Rejects: `null` and blank text
-- State: Immutable value object
+## `ActorId`
 
----
+`ActorId` is the stable identifier for the actor that submitted one posting request.
 
-## `CurrencyCode`
-
-Record representing a canonical three-letter currency code.
-
-### Signature
 ```java
-public record CurrencyCode(String value)
+public record ActorId(String value)
 ```
 
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `value` | Y | ISO-style currency code |
+- Purpose: keep actor identity explicit in request provenance
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
 
-### Constraints
-- Purpose: Carries the declared currency for `Money`
-- Normalization: Strips whitespace and uppercases with `Locale.ROOT`
-- Rejects: any value outside `[A-Z]{3}`
-- State: Immutable value object
+## `ActorType`
 
----
+`ActorType` classifies the actor that initiated one posting request.
 
-## `IdempotencyKey`
-
-Record representing the caller-supplied duplicate-submission identity.
-
-### Signature
-```java
-public record IdempotencyKey(String value)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `value` | Y | duplicate-submission key |
-
-### Constraints
-- Purpose: Scopes duplicate rejection inside one selected book
-- Normalization: Strips surrounding whitespace
-- Rejects: `null` and blank text
-- State: Immutable value object
-
----
-
-## `PostingId`
-
-Record representing the durable identity of one committed posting fact.
-
-### Signature
-```java
-public record PostingId(String value)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `value` | Y | committed posting identifier |
-
-### Constraints
-- Purpose: Names one committed posting fact
-- Normalization: Strips surrounding whitespace
-- Rejects: `null` and blank text
-- State: Immutable value object
-
----
-
-## `CorrectionReference`
-
-Record representing additive linkage from a new posting to an earlier one.
-
-### Signature
-```java
-public record CorrectionReference(
-    CorrectionReference.CorrectionKind kind,
-    PostingId priorPostingId)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `kind` | Y | correction form |
-| `priorPostingId` | Y | corrected posting identity |
-
-### Constraints
-- Purpose: Links one new posting fact to one earlier posting
-- Rejects: `null` kind and `null` prior posting id
-- State: Immutable value object
-
----
-
-## `CorrectionReference.CorrectionKind`
-
-Enumeration of additive correction forms.
-
-### Signature
-```java
-public enum CorrectionKind {
-  REVERSAL,
-  AMENDMENT
-}
-```
-
-### Members
-| Member | Value | Semantics |
-|:-------|:------|:----------|
-| `REVERSAL` | `REVERSAL` | negate earlier posting effect |
-| `AMENDMENT` | `AMENDMENT` | replace earlier posting additively |
-
-### Constraints
-- Purpose: Distinguishes full reversal from amendment linkage
-- Type: `enum`
-
----
-
-## `Money`
-
-Record representing an exact amount in one declared currency.
-
-### Signature
-```java
-public record Money(CurrencyCode currencyCode, BigDecimal amount)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `currencyCode` | Y | declared currency |
-| `amount` | Y | exact decimal amount |
-
-### Constraints
-- Purpose: Carries monetary value without floating-point semantics
-- Normalization: strips trailing zeroes and normalizes negative scale to zero
-- Rejects: `null` fields and negative amounts
-- State: Immutable value object
-
----
-
-## `JournalLine`
-
-Record representing one debit or credit line inside a journal entry.
-
-### Signature
-```java
-public record JournalLine(
-    AccountCode accountCode,
-    JournalLine.EntrySide side,
-    Money amount)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `accountCode` | Y | line account identifier |
-| `side` | Y | debit or credit side |
-| `amount` | Y | positive monetary amount |
-
-### Constraints
-- Purpose: Carries one side of the journal equation
-- Rejects: `null` fields and zero amounts
-- State: Immutable record
-
----
-
-## `JournalLine.EntrySide`
-
-Enumeration of the journal equation sides.
-
-### Signature
-```java
-public enum EntrySide {
-  DEBIT,
-  CREDIT
-}
-```
-
-### Members
-| Member | Value | Semantics |
-|:-------|:------|:----------|
-| `DEBIT` | `DEBIT` | debit side |
-| `CREDIT` | `CREDIT` | credit side |
-
-### Constraints
-- Purpose: Makes line polarity explicit in the type system
-- Type: `enum`
-
----
-
-## `JournalEntry`
-
-Record representing a balanced journal entry ready for the write boundary.
-
-### Signature
-```java
-public record JournalEntry(
-    LocalDate effectiveDate,
-    List<JournalLine> lines,
-    Optional<CorrectionReference> correctionReference)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `effectiveDate` | Y | economic posting date |
-| `lines` | Y | ordered journal lines |
-| `correctionReference` | N | additive correction linkage |
-
-### Constraints
-- Purpose: Carries one balanced posting request body
-- Normalization: copies `lines`; `null` correction becomes `Optional.empty()`
-- Rejects: empty lines, mixed currencies, unbalanced totals, `null` effective date
-- State: Immutable record
-
----
-
-## `ProvenanceEnvelope`
-
-Record representing the durable audit provenance attached to one posting attempt.
-
-### Signature
-```java
-public record ProvenanceEnvelope(
-    String actorId,
-    ProvenanceEnvelope.ActorType actorType,
-    String commandId,
-    IdempotencyKey idempotencyKey,
-    String causationId,
-    Optional<String> correlationId,
-    Instant recordedAt,
-    Optional<String> reason,
-    ProvenanceEnvelope.SourceChannel sourceChannel)
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `actorId` | Y | acting identity |
-| `actorType` | Y | actor classification |
-| `commandId` | Y | request command identity |
-| `idempotencyKey` | Y | duplicate-submission identity |
-| `causationId` | Y | causal chain identifier |
-| `correlationId` | N | wider correlation identifier |
-| `recordedAt` | Y | durable commit instant |
-| `reason` | N | human correction reason |
-| `sourceChannel` | Y | ingress surface |
-
-### Constraints
-- Purpose: Preserves durable audit context for one posting attempt
-- Normalization: trims required strings and strips optional strings to empty-option
-- Rejects: blank required strings and `null` required fields
-- State: Immutable record
-
----
-
-## `ProvenanceEnvelope.ActorType`
-
-Enumeration of durable actor classifications.
-
-### Signature
 ```java
 public enum ActorType {
   USER,
@@ -298,39 +44,202 @@ public enum ActorType {
 }
 ```
 
-### Members
-| Member | Value | Semantics |
-|:-------|:------|:----------|
-| `USER` | `USER` | human operator |
-| `SYSTEM` | `SYSTEM` | automated system actor |
-| `AGENT` | `AGENT` | AI or agent surface |
+- Purpose: distinguish user, system, and agent callers without magic strings
 
-### Constraints
-- Purpose: Distinguishes audit actor origin
-- Type: `enum`
+## `CausationId`
 
----
+`CausationId` is the stable identifier linking one posting request to its immediate cause.
 
-## `ProvenanceEnvelope.SourceChannel`
-
-Enumeration of supported request ingress surfaces.
-
-### Signature
 ```java
-public enum SourceChannel {
-  CLI,
-  API,
-  TEST
+public record CausationId(String value)
+```
+
+- Purpose: preserve immediate cause lineage in request provenance
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `CommandId`
+
+`CommandId` is the stable caller-visible identifier for one posting command.
+
+```java
+public record CommandId(String value)
+```
+
+- Purpose: identify one logical command at the request boundary
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `CommittedProvenance`
+
+`CommittedProvenance` is the durable audit metadata created when a posting is committed.
+
+```java
+public record CommittedProvenance(
+    RequestProvenance requestProvenance,
+    Instant recordedAt,
+    SourceChannel sourceChannel)
+```
+
+- Purpose: carry the accepted request provenance plus commit-time audit fields
+- Validation: rejects `null` request provenance, `recordedAt`, and `sourceChannel`
+
+## `CorrectionReason`
+
+`CorrectionReason` is the human-readable reason recorded for a corrective posting.
+
+```java
+public record CorrectionReason(String value)
+```
+
+- Purpose: preserve the operator-supplied reason for an amendment or reversal
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `CorrectionReference`
+
+`CorrectionReference` is the additive link from a new posting fact to an earlier committed posting.
+
+```java
+public record CorrectionReference(
+    CorrectionReference.CorrectionKind kind,
+    PostingId priorPostingId)
+```
+
+- Purpose: model correction lineage outside the journal-entry grammar
+- Validation: rejects `null` kind and `null` prior posting id
+
+## `CorrectionReference.CorrectionKind`
+
+`CorrectionKind` is the closed set of additive correction forms.
+
+```java
+public enum CorrectionKind {
+  REVERSAL,
+  AMENDMENT
 }
 ```
 
-### Members
-| Member | Value | Semantics |
-|:-------|:------|:----------|
-| `CLI` | `CLI` | command-line ingress |
-| `API` | `API` | service/API ingress |
-| `TEST` | `TEST` | test-only ingress |
+- Purpose: distinguish full reversal from amendment linkage
 
-### Constraints
-- Purpose: Preserves where a request entered the system
-- Type: `enum`
+## `CorrelationId`
+
+`CorrelationId` is the stable identifier linking one posting request to a broader operation.
+
+```java
+public record CorrelationId(String value)
+```
+
+- Purpose: correlate multiple commands inside one larger workflow
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `CurrencyCode`
+
+`CurrencyCode` is the ISO-style currency identifier used by `Money`.
+
+```java
+public record CurrencyCode(String value)
+```
+
+- Purpose: make currency explicit and canonical
+- Normalization: strips whitespace and uppercases with `Locale.ROOT`
+- Validation: accepts exactly three uppercase ASCII letters
+
+## `IdempotencyKey`
+
+`IdempotencyKey` is the caller-supplied duplicate-submission identity.
+
+```java
+public record IdempotencyKey(String value)
+```
+
+- Purpose: scope duplicate rejection inside one selected book
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `JournalEntry`
+
+`JournalEntry` is the balanced journal grammar that crosses the application write boundary.
+
+```java
+public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
+```
+
+- Purpose: carry the accounting body of one posting request
+- Normalization: defensively copies `lines`
+- Validation: rejects `null` effective date, empty lines, mixed currencies, and unbalanced totals
+
+## `JournalLine`
+
+`JournalLine` is one debit or credit line inside a journal entry.
+
+```java
+public record JournalLine(AccountCode accountCode, EntrySide side, Money amount)
+```
+
+- Purpose: keep account, side, and amount explicit on every line
+- Validation: rejects `null` fields and zero monetary amount
+
+## `JournalLine.EntrySide`
+
+`EntrySide` is the closed set of journal equation sides.
+
+```java
+public enum EntrySide {
+  DEBIT,
+  CREDIT
+}
+```
+
+- Purpose: make line polarity explicit in the type system
+
+## `Money`
+
+`Money` is an exact decimal amount in one declared currency.
+
+```java
+public record Money(CurrencyCode currencyCode, BigDecimal amount)
+```
+
+- Purpose: preserve exact decimal semantics without floating-point behavior
+- Normalization: strips trailing zeroes and normalizes negative scale to zero
+- Validation: rejects `null` fields and negative amounts
+
+## `PostingId`
+
+`PostingId` is the stable identifier for one committed posting fact.
+
+```java
+public record PostingId(String value)
+```
+
+- Purpose: name one durable posting independently of request idempotency
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `RequestProvenance`
+
+`RequestProvenance` is the caller-supplied provenance accepted at the posting request boundary.
+
+```java
+public record RequestProvenance(
+    ActorId actorId,
+    ActorType actorType,
+    CommandId commandId,
+    IdempotencyKey idempotencyKey,
+    CausationId causationId,
+    Optional<CorrelationId> correlationId,
+    Optional<CorrectionReason> reason)
+```
+
+- Purpose: carry the accepted request identity and correction reason without commit-time audit fields
+- Normalization: `null` optional fields become `Optional.empty()`
+- Validation: rejects `null` required fields
+
+## `SourceChannel`
+
+`SourceChannel` is the operating surface through which one posting request entered FinGrind.
+
+```java
+public enum SourceChannel {
+  CLI
+}
+```
+
+- Purpose: record the committed ingress channel explicitly
+- Current scope: only `CLI` is supported in the current hard-break phase

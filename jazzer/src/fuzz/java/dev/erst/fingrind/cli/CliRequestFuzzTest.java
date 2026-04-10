@@ -16,6 +16,12 @@ public class CliRequestFuzzTest {
       if (command == null) {
         throw new IllegalStateException("readPostEntryCommand returned null");
       }
+      if (command.sourceChannel() != dev.erst.fingrind.core.SourceChannel.CLI) {
+        throw new IllegalStateException("CLI request parsing must stamp the CLI source channel.");
+      }
+      if (command.requestProvenance().idempotencyKey().value().isBlank()) {
+        throw new IllegalStateException("Parsed request must retain a non-blank idempotency key.");
+      }
     } catch (IllegalArgumentException expected) {
       // Malformed JSON and invalid request/domain shapes are expected for many fuzz inputs.
     }

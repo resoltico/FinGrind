@@ -1,0 +1,29 @@
+{
+  "effectiveDate": "2026-04-08",
+  "lines": [
+    {
+      "accountCode": "5000",
+      "side": "DEBIT",
+      "currencyCode": "GBP",
+      "amount": "123.45"
+    },
+    {
+      "accountCode": "6000",
+      "side": "CREDIT",
+      "currencyCode": "GBP",
+      "amount": "123.45"
+    }
+  ],
+  "correction": {
+    "kind": "AMENDMENT",
+    "priorPostingId": "posting-missing"
+  },
+  "provenance": {
+    "actorId": "actor-5",
+    "actorType": "USER",
+    "commandId": "command-5",
+    "idempotencyKey": "idem-5",
+    "causationId": "cause-5",
+    "reason": "operator correction"
+  }
+}

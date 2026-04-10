@@ -1,0 +1,20 @@
+{
+  "targetKey" : "posting-workflow",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/correction_target_missing.json",
+  "expectation" : {
+    "outcomeKind" : "SUCCESS",
+    "details" : {
+      "type" : "POSTING_WORKFLOW",
+      "requestStatus" : "PARSED",
+      "effectiveDate" : "2026-04-08",
+      "idempotencyKey" : "idem-5",
+      "lineCount" : 2,
+      "correctionPresent" : true,
+      "preflightStatus" : "REJECTED_CORRECTION_TARGET_NOT_FOUND",
+      "firstCommitStatus" : "REJECTED_CORRECTION_TARGET_NOT_FOUND",
+      "duplicateStatus" : "NOT_RUN",
+      "storedFactPresent" : false,
+      "failureMessage" : "NONE"
+    }
+  }
+}

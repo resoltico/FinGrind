@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.1.0"
+version: "0.2.0"
 domain: RUNTIME
-updated: "2026-04-08"
+updated: "2026-04-09"
 route:
   keywords: [fingrind, runtime, sqlite, adapter, posting-fact, store, in-memory, cli, sqlite3]
   questions: ["how is a posting fact stored in fingrind", "what runtime stores does fingrind expose", "what does the sqlite adapter do in fingrind"]
@@ -12,95 +12,113 @@ route:
 
 ## `PostingFact`
 
-Record representing one committed posting fact across runtime persistence seams.
+`PostingFact` is the canonical committed fact carried across runtime persistence seams.
 
-### Signature
 ```java
 public record PostingFact(
     PostingId postingId,
     JournalEntry journalEntry,
-    ProvenanceEnvelope provenance)
+    Optional<CorrectionReference> correctionReference,
+    CommittedProvenance provenance)
 ```
 
-### Parameters
-| Name | Req | Semantics |
-|:-----|:----|:----------|
-| `postingId` | Y | committed posting identity |
-| `journalEntry` | Y | committed journal body |
-| `provenance` | Y | committed audit envelope |
-
-### Constraints
-- Purpose: Canonical durable fact shape carried between application and persistence
-- Rejects: `null` fields
-- State: Immutable record
-
----
+- Purpose: represent one committed posting independently of any concrete storage adapter
+- Normalization: `null` correction becomes `Optional.empty()`
+- Validation: rejects `null` posting id, journal entry, and provenance
 
 ## `PostingFactStore`
 
-Interface representing the narrow persistence seam for one book's posting facts.
+`PostingFactStore` is the narrow runtime persistence seam for committed posting facts.
 
-### Signature
 ```java
 public interface PostingFactStore
 ```
 
-### Constraints
-- Surface: `findByIdempotency(...)` and `commit(...)`
-- Purpose: Keeps the application layer honest about lookup and commit operations
-- Book scope: duplicate detection is book-local, not global
-- State: Runtime port, not a generic repository abstraction
+- Surface: `findByIdempotency(...)`, `findByPostingId(...)`, `findReversalFor(...)`, `commit(...)`
+- Purpose: keep the application boundary honest about the exact state and commit operations it needs
 
----
+## `PostingCommitResult`
+
+`PostingCommitResult` is the closed family of ordinary runtime commit outcomes.
+
+```java
+public sealed interface PostingCommitResult
+```
+
+- Variants: `Committed`, `DuplicateIdempotency`, `DuplicateReversalTarget`
+- Purpose: distinguish expected duplicate outcomes from exceptional runtime failure
+
+## `PostingCommitResult.Committed`
+
+`PostingCommitResult.Committed` is the runtime success variant carrying the stored fact.
+
+```java
+public record Committed(PostingFact postingFact)
+    implements PostingCommitResult
+```
+
+- Purpose: return the committed fact explicitly from the runtime seam
+- Validation: rejects `null` `postingFact`
+
+## `PostingCommitResult.DuplicateIdempotency`
+
+`PostingCommitResult.DuplicateIdempotency` reports that the book already contains the submitted idempotency key.
+
+```java
+public record DuplicateIdempotency(IdempotencyKey idempotencyKey)
+    implements PostingCommitResult
+```
+
+- Purpose: keep duplicate idempotency as an ordinary runtime outcome
+- Validation: rejects `null` `idempotencyKey`
+
+## `PostingCommitResult.DuplicateReversalTarget`
+
+`PostingCommitResult.DuplicateReversalTarget` reports that the target posting already has a full reversal.
+
+```java
+public record DuplicateReversalTarget(PostingId priorPostingId)
+    implements PostingCommitResult
+```
+
+- Purpose: keep duplicate reversal targeting as an ordinary runtime outcome
+- Validation: rejects `null` `priorPostingId`
 
 ## `InMemoryPostingFactStore`
 
-Class representing the non-durable runtime store used for tests and simple composition.
+`InMemoryPostingFactStore` is the non-durable runtime implementation used by tests and fuzz harnesses.
 
-### Signature
 ```java
 public final class InMemoryPostingFactStore implements PostingFactStore
 ```
 
-### Constraints
-- Purpose: Provides a fast non-durable store for tests and fuzz harnesses
-- Storage: Backed by `ConcurrentHashMap<IdempotencyKey, PostingFact>`
-- Duplicate policy: rejects duplicate idempotency by throwing `IllegalStateException`
-- Durability: None
-
----
+- Purpose: provide a fast in-memory store for application-layer verification
+- Storage: maps by idempotency key, posting id, and reversal target
+- Duplicate behavior: returns typed `PostingCommitResult` variants instead of throwing for ordinary duplicates
 
 ## `SqlitePostingFactStore`
 
-Class representing the durable SQLite-backed store for one explicit book file.
+`SqlitePostingFactStore` is the durable SQLite-backed store for one explicit book file.
 
-### Signature
 ```java
 public final class SqlitePostingFactStore
     implements PostingFactStore, AutoCloseable
 ```
 
-### Constraints
-- Purpose: Persists one book into one selected SQLite file
+- Purpose: persist one book into one selected SQLite file
 - Book identity: constructor path is the durable book boundary
-- Filesystem: creates parent directories for nested paths when needed
-- Implementation: shells out to the pinned `sqlite3` CLI surface and bootstraps the embedded schema
+- Reads: return empty for a missing file and do not initialize storage eagerly
+- Commit: creates parent directories, initializes the canonical schema, and maps SQLite uniqueness failures into typed commit outcomes
 - Process model: opens a fresh `sqlite3` process per call; `close()` is effectively a no-op
-- Duplicate policy: relies on durable unique idempotency inside the selected book
-
----
 
 ## `App`
 
-Class representing the public CLI process entrypoint for FinGrind.
+`App` is the public process entrypoint for the FinGrind CLI adapter.
 
-### Signature
 ```java
 public final class App
 ```
 
-### Constraints
 - Surface: exposes `main(String[] args)`
-- Purpose: runs the JSON CLI and exits with the resulting process status
-- Commands: fronts `help`, `version`, `capabilities`, `preflight-entry`, and `post-entry`
-- Boundary: delegates to package-private CLI machinery rather than owning business rules
+- Purpose: run the JSON CLI and exit with its process status code
+- Commands: fronts `help`, `version`, `capabilities`, `print-request-template`, `preflight-entry`, and `post-entry`

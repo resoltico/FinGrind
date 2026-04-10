@@ -1,64 +1,84 @@
 package dev.erst.fingrind.application;
 
-import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.runtime.PostingCommitResult;
 import dev.erst.fingrind.runtime.PostingFact;
 import dev.erst.fingrind.runtime.PostingFactStore;
+import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 /** Application service that owns preflight and commit behavior for posting entries. */
 public final class PostingApplicationService {
   private final PostingFactStore postingFactStore;
-  private final Supplier<PostingId> postingIdSupplier;
+  private final PostingIdGenerator postingIdGenerator;
+  private final Clock clock;
 
   /** Creates the posting application service with its runtime seams. */
   public PostingApplicationService(
-      PostingFactStore postingFactStore, Supplier<PostingId> postingIdSupplier) {
+      PostingFactStore postingFactStore, PostingIdGenerator postingIdGenerator, Clock clock) {
     this.postingFactStore = Objects.requireNonNull(postingFactStore, "postingFactStore");
-    this.postingIdSupplier = Objects.requireNonNull(postingIdSupplier, "postingIdSupplier");
+    this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    this.clock = Objects.requireNonNull(clock, "clock");
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
   public PostEntryResult preflight(PostEntryCommand command) {
-    Optional<PostingFact> existingPosting = existingPosting(command);
-    if (existingPosting.isPresent()) {
-      return duplicateRejection(command);
+    Optional<PostingRejection> rejection = rejectionFor(command);
+    if (rejection.isPresent()) {
+      return rejected(command, rejection.orElseThrow());
     }
     return new PostEntryResult.PreflightAccepted(
-        command.provenance().idempotencyKey(), command.journalEntry().effectiveDate());
+        command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
   public PostEntryResult commit(PostEntryCommand command) {
-    Optional<PostingFact> existingPosting = existingPosting(command);
-    if (existingPosting.isPresent()) {
-      return duplicateRejection(command);
+    Optional<PostingRejection> rejection = rejectionFor(command);
+    if (rejection.isPresent()) {
+      return rejected(command, rejection.orElseThrow());
     }
 
     PostingFact postingFact =
-        new PostingFact(postingIdSupplier.get(), command.journalEntry(), command.provenance());
+        new PostingFact(
+            postingIdGenerator.nextPostingId(),
+            command.journalEntry(),
+            command.correctionReference(),
+            new CommittedProvenance(
+                command.requestProvenance(), clock.instant(), command.sourceChannel()));
 
-    try {
-      PostingFact committedPosting = postingFactStore.commit(postingFact);
-      return new PostEntryResult.Committed(
-          committedPosting.postingId(),
-          committedPosting.provenance().idempotencyKey(),
-          committedPosting.journalEntry().effectiveDate(),
-          committedPosting.provenance().recordedAt());
-    } catch (IllegalStateException exception) {
-      return duplicateRejection(command);
-    }
+    return switch (postingFactStore.commit(postingFact)) {
+      case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
+      case PostingCommitResult.DuplicateIdempotency _ ->
+          rejected(command, new PostingRejection.DuplicateIdempotencyKey());
+      case PostingCommitResult.DuplicateReversalTarget duplicateReversalTarget ->
+          rejected(
+              command,
+              new PostingRejection.ReversalAlreadyExists(duplicateReversalTarget.priorPostingId()));
+    };
   }
 
   private Optional<PostingFact> existingPosting(PostEntryCommand command) {
-    return postingFactStore.findByIdempotency(command.provenance().idempotencyKey());
+    return postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey());
   }
 
-  private static PostEntryResult.Rejected duplicateRejection(PostEntryCommand command) {
-    return new PostEntryResult.Rejected(
-        PostingRejectionCode.DUPLICATE_IDEMPOTENCY_KEY,
-        "A posting with the same idempotency key already exists in this book.",
-        command.provenance().idempotencyKey());
+  private Optional<PostingRejection> rejectionFor(PostEntryCommand command) {
+    if (existingPosting(command).isPresent()) {
+      return Optional.of(new PostingRejection.DuplicateIdempotencyKey());
+    }
+    return CorrectionPolicy.rejectionFor(command, postingFactStore);
+  }
+
+  private static PostEntryResult.Committed committedResult(PostingFact committedPosting) {
+    return new PostEntryResult.Committed(
+        committedPosting.postingId(),
+        committedPosting.provenance().requestProvenance().idempotencyKey(),
+        committedPosting.journalEntry().effectiveDate(),
+        committedPosting.provenance().recordedAt());
+  }
+
+  private static PostEntryResult.Rejected rejected(
+      PostEntryCommand command, PostingRejection rejection) {
+    return new PostEntryResult.Rejected(command.requestProvenance().idempotencyKey(), rejection);
   }
 }

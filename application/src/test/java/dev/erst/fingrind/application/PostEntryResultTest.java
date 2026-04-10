@@ -33,13 +33,18 @@ class PostEntryResultTest {
   }
 
   @Test
-  void rejected_rejectsBlankMessage() {
+  void rejected_holdsTypedRejection() {
+    PostEntryResult.Rejected result =
+        new PostEntryResult.Rejected(
+            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey());
+
+    assertEquals(new PostingRejection.DuplicateIdempotencyKey(), result.rejection());
+  }
+
+  @Test
+  void rejected_rejectsNullRejection() {
     assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new PostEntryResult.Rejected(
-                PostingRejectionCode.DUPLICATE_IDEMPOTENCY_KEY,
-                "   ",
-                new IdempotencyKey("idem-1")));
+        NullPointerException.class,
+        () -> new PostEntryResult.Rejected(new IdempotencyKey("idem-1"), null));
   }
 }

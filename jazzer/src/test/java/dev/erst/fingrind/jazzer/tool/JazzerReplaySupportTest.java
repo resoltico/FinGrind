@@ -22,6 +22,48 @@ class JazzerReplaySupportTest {
   }
 
   @Test
+  void replay_returnsExpectedInvalidForForbiddenRecordedAtCliRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.CLI_REQUEST, invalidForbiddenRecordedAtRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new CliRequestReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            "Field is no longer accepted: recordedAt"),
+        invalid.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForForbiddenSourceChannelCliRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.CLI_REQUEST, invalidForbiddenSourceChannelRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new CliRequestReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            "Field is no longer accepted: sourceChannel"),
+        invalid.details());
+  }
+
+  @Test
   void replay_returnsExpectedInvalidForInvalidCliRequestSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
@@ -59,6 +101,29 @@ class JazzerReplaySupportTest {
             "COMMITTED",
             "REJECTED_DUPLICATE_IDEMPOTENCY_KEY",
             true,
+            "NONE"),
+        success.details());
+  }
+
+  @Test
+  void replay_returnsSuccessForCorrectionTargetMissingPostingWorkflowSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.POSTING_WORKFLOW,
+            correctionTargetMissingRequest().getBytes(UTF_8));
+
+    ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
+    assertEquals(
+        new PostingWorkflowReplayDetails(
+            "PARSED",
+            "2026-04-08",
+            "idem-5",
+            2,
+            true,
+            "REJECTED_CORRECTION_TARGET_NOT_FOUND",
+            "REJECTED_CORRECTION_TARGET_NOT_FOUND",
+            "NOT_RUN",
+            false,
             "NONE"),
         success.details());
   }
@@ -109,6 +174,29 @@ class JazzerReplaySupportTest {
   }
 
   @Test
+  void replay_returnsSuccessForCorrectionReasonRequiredSqliteRoundTripSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.SQLITE_BOOK_ROUND_TRIP,
+            correctionReasonRequiredRequest().getBytes(UTF_8));
+
+    ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
+    assertEquals(
+        new SqliteBookRoundTripReplayDetails(
+            "PARSED",
+            "2026-04-08",
+            "idem-6",
+            2,
+            true,
+            "REJECTED_CORRECTION_REASON_REQUIRED",
+            "NOT_RUN",
+            "REJECTED_CORRECTION_REASON_REQUIRED",
+            false,
+            "NONE"),
+        success.details());
+  }
+
+  @Test
   void replay_returnsExpectedInvalidForInvalidSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
@@ -154,9 +242,37 @@ class JazzerReplaySupportTest {
             "actorType": "AGENT",
             "commandId": "command-1",
             "idempotencyKey": "idem-1",
-            "causationId": "cause-1",
-            "recordedAt": "2026-04-07T10:15:30Z",
-            "sourceChannel": "CLI"
+            "causationId": "cause-1"
+          }
+        }
+        """;
+  }
+
+  private static String invalidForbiddenRecordedAtRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "1000",
+              "side": "DEBIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            },
+            {
+              "accountCode": "2000",
+              "side": "CREDIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-4",
+            "actorType": "AGENT",
+            "commandId": "command-4",
+            "idempotencyKey": "idem-4",
+            "causationId": "cause-4",
+            "recordedAt": "2026-04-07T10:15:30Z"
           }
         }
         """;
@@ -184,6 +300,36 @@ class JazzerReplaySupportTest {
         """;
   }
 
+  private static String invalidForbiddenSourceChannelRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "1000",
+              "side": "DEBIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            },
+            {
+              "accountCode": "2000",
+              "side": "CREDIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-7",
+            "actorType": "AGENT",
+            "commandId": "command-7",
+            "idempotencyKey": "idem-7",
+            "causationId": "cause-7",
+            "sourceChannel": null
+          }
+        }
+        """;
+  }
+
   private static String invalidBlankActorRequest() {
     return """
         {
@@ -207,8 +353,74 @@ class JazzerReplaySupportTest {
             "actorType": "AGENT",
             "commandId": "command-3",
             "idempotencyKey": "idem-3",
-            "causationId": "cause-3",
-            "sourceChannel": "CLI"
+            "causationId": "cause-3"
+          }
+        }
+        """;
+  }
+
+  private static String correctionTargetMissingRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-08",
+          "lines": [
+            {
+              "accountCode": "5000",
+              "side": "DEBIT",
+              "currencyCode": "GBP",
+              "amount": "123.45"
+            },
+            {
+              "accountCode": "6000",
+              "side": "CREDIT",
+              "currencyCode": "GBP",
+              "amount": "123.45"
+            }
+          ],
+          "correction": {
+            "kind": "AMENDMENT",
+            "priorPostingId": "posting-missing"
+          },
+          "provenance": {
+            "actorId": "actor-5",
+            "actorType": "USER",
+            "commandId": "command-5",
+            "idempotencyKey": "idem-5",
+            "causationId": "cause-5",
+            "reason": "operator correction"
+          }
+        }
+        """;
+  }
+
+  private static String correctionReasonRequiredRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-08",
+          "lines": [
+            {
+              "accountCode": "3000",
+              "side": "DEBIT",
+              "currencyCode": "USD",
+              "amount": "99.95"
+            },
+            {
+              "accountCode": "4000",
+              "side": "CREDIT",
+              "currencyCode": "USD",
+              "amount": "99.95"
+            }
+          ],
+          "correction": {
+            "kind": "AMENDMENT",
+            "priorPostingId": "posting-missing"
+          },
+          "provenance": {
+            "actorId": "actor-6",
+            "actorType": "SYSTEM",
+            "commandId": "command-6",
+            "idempotencyKey": "idem-6",
+            "causationId": "cause-6"
           }
         }
         """;

@@ -24,6 +24,6 @@
     "commandId": "command-2",
     "idempotencyKey": "idem-2",
     "causationId": "cause-2",
-    "sourceChannel": "API"
+    "reason": "operator correction"
   }
 }
