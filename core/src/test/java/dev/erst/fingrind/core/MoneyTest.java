@@ -21,4 +21,14 @@ class MoneyTest {
         IllegalArgumentException.class,
         () -> new Money(new CurrencyCode("EUR"), new BigDecimal("-1.00")));
   }
+
+  @Test
+  void constructor_rejectsAmountsOutsideSupportedExactRange() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new Money(new CurrencyCode("EUR"), new BigDecimal("1e1000000100")));
+
+    assertEquals("Money amount is outside the supported exact range.", exception.getMessage());
+  }
 }

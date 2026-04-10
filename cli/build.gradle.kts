@@ -9,7 +9,6 @@ description = "CLI transport adapter for the FinGrind application boundary"
 dependencies {
     implementation(project(":application"))
     implementation(project(":core"))
-    implementation(project(":runtime"))
     implementation(project(":sqlite"))
     implementation(libs.jackson.databind)
     testImplementation(libs.junit.jupiter)
@@ -22,7 +21,6 @@ application {
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
-    environment("FINGRIND_SQLITE3_BINARY", rootProject.file("scripts/sqlite3.sh").absolutePath)
 }
 
 tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
@@ -35,15 +33,15 @@ tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJ
 
     // Exclude per-dependency META-INF license and notice files to prevent conflicts
     // and silent overwrites. FinGrind bundles its own curated NOTICE, MIT LICENSE,
-    // and the Apache License 2.0 text that covers the bundled Jackson components.
+    // and the Apache License 2.0 text that covers bundled Apache-licensed components.
     exclude("META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/LICENSE.md")
     exclude("META-INF/NOTICE", "META-INF/NOTICE.txt", "META-INF/NOTICE.md")
     exclude("META-INF/DEPENDENCIES")
 
-    // Bundle the curated attribution notice and both license texts into META-INF/.
+    // Bundle the curated attribution notice and license texts into META-INF/.
     // NOTICE covers bundled dependency attribution for the CLI distribution.
     // LICENSE is the MIT license for FinGrind's own code.
-    // LICENSE-APACHE-2.0 satisfies Apache License 2.0 Section 4(a) for bundled Jackson artifacts.
+    // LICENSE-APACHE-2.0 satisfies Apache License 2.0 Section 4(a) for bundled dependencies.
     from(rootProject.file("NOTICE")) { into("META-INF") }
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("LICENSE-APACHE-2.0")) { into("META-INF") }
@@ -60,16 +58,13 @@ tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJ
 
 tasks.named<ProcessResources>("processResources") {
     val description: String = providers.gradleProperty("fingrindDescription").get()
-    val sqliteVersion: String = providers.gradleProperty("fingrindSqliteVersion").get()
     val version: String = project.version.toString()
     inputs.property("fingrindDescription", description)
-    inputs.property("fingrindSqliteVersion", sqliteVersion)
     inputs.property("fingrindVersion", version)
     filesMatching("fingrind.properties") {
         expand(
             mapOf(
                 "fingrindDescription" to description,
-                "fingrindSqliteVersion" to sqliteVersion,
                 "version" to version
             )
         )

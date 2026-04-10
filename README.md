@@ -39,32 +39,43 @@ initializes the canonical schema.
 Build the standalone CLI JAR:
 
 ```bash
-./scripts/ensure-sqlite.sh
 ./gradlew :cli:shadowJar
 ```
 
-The packaged JAR requires Java 26 or newer.
+Controlled FinGrind surfaces now pin a managed SQLite 3.53.0 runtime:
+- `./gradlew test`, `./gradlew check`, and `./gradlew :cli:run`
+- `./gradlew -p jazzer check` and local Jazzer fuzzing commands
+- GitHub Actions verification and release workflows
+- the published container image
 
-Inspect the command surface:
+The standalone JAR still requires Java 26 or newer, but it does not embed a native SQLite library.
+Use it with either:
+- `FINGRIND_SQLITE_LIBRARY` pointing at a SQLite 3.53.0 shared library
+- a host `libsqlite3` that is already 3.53.0 or newer
+
+For local work from the repository, the easiest path is:
 
 ```bash
-FINGRIND_SQLITE3_BINARY="$(./scripts/ensure-sqlite.sh)" \
-  java -jar cli/build/libs/fingrind.jar help
+./gradlew :cli:run --args="help"
+```
+
+Inspect the standalone command surface:
+
+```bash
+java -jar cli/build/libs/fingrind.jar help
 ```
 
 Generate a minimal valid request file:
 
 ```bash
-FINGRIND_SQLITE3_BINARY="$(./scripts/ensure-sqlite.sh)" \
-  java -jar cli/build/libs/fingrind.jar \
+java -jar cli/build/libs/fingrind.jar \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 Run preflight against a book file at any path:
 
 ```bash
-FINGRIND_SQLITE3_BINARY="$(./scripts/ensure-sqlite.sh)" \
-  java -jar cli/build/libs/fingrind.jar \
+java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
   --book-file /tmp/acme-book.sqlite \
   --request-file /tmp/fingrind-request.json
@@ -73,8 +84,7 @@ FINGRIND_SQLITE3_BINARY="$(./scripts/ensure-sqlite.sh)" \
 Commit the same request:
 
 ```bash
-FINGRIND_SQLITE3_BINARY="$(./scripts/ensure-sqlite.sh)" \
-  java -jar cli/build/libs/fingrind.jar \
+java -jar cli/build/libs/fingrind.jar \
   post-entry \
   --book-file /tmp/acme-book.sqlite \
   --request-file /tmp/fingrind-request.json
@@ -103,6 +113,9 @@ Optional correction links go in:
 `provenance.recordedAt` and `provenance.sourceChannel` are not accepted. FinGrind stamps committed
 audit metadata itself when `post-entry` succeeds.
 
+`lines[].amount` must be a plain decimal string such as `10.00`. Exponent notation such as
+`1e6` is rejected.
+
 If `correction` is present:
 - `provenance.reason` is required
 - `priorPostingId` must already exist in the selected book
@@ -120,12 +133,16 @@ Current deterministic rejection codes are:
 ## Notes
 
 - `java -jar cli/build/libs/fingrind.jar ...` assumes `java` is version 26 or newer.
+- The packaged JAR does not require an external `sqlite3` binary and does not shell out to
+  `sqlite3`.
+- `./gradlew :cli:run ...` automatically injects the managed SQLite 3.53.0 runtime.
+- `./gradlew -p jazzer ...` uses the same managed SQLite 3.53.0 contract for local regression and fuzzing.
+- Standalone `java -jar ...` execution requires either `FINGRIND_SQLITE_LIBRARY` or a host
+  `libsqlite3` at version 3.53.0 or newer.
 - `help`, `version`, and `capabilities` return JSON envelopes for discovery.
 - `print-request-template` returns raw JSON so it can be piped straight into a file.
 - `--book-file` is required for both preflight and commit.
 - FinGrind does not assume a default database location.
-- For repo-local development, provision the pinned SQLite 3.51.3 toolchain with `./scripts/ensure-sqlite.sh`.
-- FinGrind accepts `FINGRIND_SQLITE3_BINARY` to point at the exact SQLite binary to use.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
 - `capabilities` is the best machine-readable contract surface for request fields, correction rules,
   and rejection codes.
@@ -139,9 +156,9 @@ Current deterministic rejection codes are:
 
 ## Legal
 
-FinGrind is MIT-licensed. Its executable JAR bundles Jackson (Apache 2.0). FinGrind
-provisions SQLite as a native binary at runtime; SQLite is in the public domain. See
-[NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
-patent considerations.
+FinGrind is MIT-licensed. Its executable JAR bundles Jackson; see [NOTICE](NOTICE) for the
+complete attribution list and [PATENTS.md](PATENTS.md) for patent considerations. FinGrind vendors
+the official SQLite 3.53.0 amalgamation to build managed native libraries for Gradle, CI, and
+container surfaces. The executable JAR itself does not bundle a native SQLite library.
 
 [LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md)

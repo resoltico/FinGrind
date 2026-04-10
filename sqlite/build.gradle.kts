@@ -6,9 +6,7 @@ plugins {
 description = "SQLite-backed FinGrind persistence adapter"
 
 dependencies {
-    implementation(project(":core"))
-    implementation(project(":runtime"))
-    implementation(libs.jackson.databind)
+    api(project(":runtime"))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

@@ -32,14 +32,18 @@ jobs:
           # On PRs, only read from the cache to avoid cache poisoning from untrusted code.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Provision pinned SQLite toolchain
-        run: ./scripts/ensure-sqlite.sh >/dev/null
-
-      - name: Verify pinned SQLite version
-        run: test "$(./scripts/sqlite3.sh --version | awk '{print $1}')" = "$(sed -n 's/^fingrindSqliteVersion=//p' gradle.properties | head -1)"
-
       - name: Check and enforce coverage
         run: ./gradlew check --no-daemon
+
+      - name: Verify managed SQLite CLI runtime
+        run: |
+          set -euo pipefail
+          output="$(./gradlew :cli:run --args='capabilities' --no-daemon --console=plain)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep -Eq '"sqliteLibrarySource"[[:space:]]*:[[:space:]]*"managed"'
+          printf '%s\n' "$output" | grep -Eq '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
+          printf '%s\n' "$output" | grep -Eq '"sqliteRuntimeStatus"[[:space:]]*:[[:space:]]*"ready"'
+          printf '%s\n' "$output" | grep -Eq '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
 
   docker-smoke:
     name: Docker smoke

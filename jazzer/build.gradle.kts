@@ -1,15 +1,28 @@
 import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
+import java.security.MessageDigest
 import java.util.Comparator
+import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.testing.Test
@@ -19,6 +32,8 @@ import org.gradle.api.tasks.testing.TestResult
 import org.gradle.kotlin.dsl.get
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
 
 plugins {
     java
@@ -85,6 +100,109 @@ abstract class CleanLocalFindingsTask : DefaultTask() {
         }
     }
 }
+
+@CacheableTask
+abstract class VerifyManagedSqliteSourceTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFile: RegularFileProperty
+
+    @get:Input
+    abstract val expectedSha3: Property<String>
+
+    @TaskAction
+    fun verify() {
+        val sqliteSource = sourceFile.get().asFile
+        if (!sqliteSource.isFile) {
+            throw GradleException("Missing vendored SQLite source at ${sqliteSource.absolutePath}")
+        }
+        val actualSourceSha3 =
+            MessageDigest.getInstance("SHA3-256")
+                .digest(sqliteSource.readBytes())
+                .joinToString(separator = "") { byte -> "%02x".format(byte) }
+        if (actualSourceSha3 != expectedSha3.get()) {
+            throw GradleException(
+                "Vendored SQLite source hash mismatch. Expected ${expectedSha3.get()} but found $actualSourceSha3 for ${sqliteSource.absolutePath}.",
+            )
+        }
+    }
+}
+
+@CacheableTask
+abstract class PrepareManagedSqliteTask
+    @Inject
+    constructor(
+        private val execOperations: ExecOperations,
+    ) : DefaultTask() {
+        @get:InputFile
+        @get:PathSensitive(PathSensitivity.RELATIVE)
+        abstract val sourceFile: RegularFileProperty
+
+        @get:InputFiles
+        @get:PathSensitive(PathSensitivity.RELATIVE)
+        abstract val supportFiles: ConfigurableFileCollection
+
+        @get:Input
+        abstract val compiler: Property<String>
+
+        @get:Input
+        abstract val operatingSystemId: Property<String>
+
+        @get:Input
+        abstract val sqliteVersion: Property<String>
+
+        @get:OutputFile
+        abstract val outputFile: RegularFileProperty
+
+        @TaskAction
+        fun compile() {
+            val outputLibraryFile = outputFile.get().asFile
+            outputLibraryFile.parentFile.mkdirs()
+            execOperations.exec {
+                commandLine(
+                    buildCommandLine(
+                        compiler = compiler.get(),
+                        operatingSystemId = operatingSystemId.get(),
+                        sqliteVersion = sqliteVersion.get(),
+                        sourceFilePath = sourceFile.get().asFile.absolutePath,
+                        outputFilePath = outputLibraryFile.absolutePath,
+                    ),
+                )
+            }
+        }
+
+        private fun buildCommandLine(
+            compiler: String,
+            operatingSystemId: String,
+            sqliteVersion: String,
+            sourceFilePath: String,
+            outputFilePath: String,
+        ): List<String> =
+            buildList {
+                add(compiler)
+                add("-O2")
+                add("-fPIC")
+                add("-DSQLITE_THREADSAFE=1")
+                add("-DSQLITE_OMIT_LOAD_EXTENSION=1")
+                if (operatingSystemId == "macos") {
+                    add("-dynamiclib")
+                    add("-current_version")
+                    add(sqliteVersion)
+                    add("-compatibility_version")
+                    add(sqliteVersion)
+                } else {
+                    add("-shared")
+                    add("-Wl,-soname,libsqlite3.so.0")
+                }
+                add("-o")
+                add(outputFilePath)
+                add(sourceFilePath)
+                if (operatingSystemId == "linux") {
+                    add("-ldl")
+                    add("-lpthread")
+                }
+            }
+    }
 
 class JazzerSupportTestPulseListener(
     private val totalClasses: Int,
@@ -238,9 +356,81 @@ class JazzerSupportTestPulseListener(
 
 val fingrindJavaVersion: Int =
     providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
-val fingrindSqliteWrapper: String = file("../scripts/sqlite3.sh").absolutePath
+val repoRootDirectory = layout.projectDirectory.dir("..")
+val sharedGradleProperties =
+    Properties().apply {
+        repoRootDirectory.file("gradle.properties").asFile.inputStream().use(::load)
+    }
 val jazzerMaxDuration = providers.gradleProperty("jazzerMaxDuration").orNull
 val jazzerMaxExecutions = providers.gradleProperty("jazzerMaxExecutions").orNull
+
+fun sharedFingrindProperty(name: String): String =
+    sharedGradleProperties.getProperty(name)
+        ?: throw GradleException("Missing shared FinGrind property '$name' in ../gradle.properties.")
+
+fun managedSqliteOperatingSystemId(): String {
+    val operatingSystem = System.getProperty("os.name", "").lowercase()
+    if (operatingSystem.contains("mac")) {
+        return "macos"
+    }
+    if (operatingSystem.contains("linux")) {
+        return "linux"
+    }
+    throw GradleException(
+        "FinGrind's managed SQLite build currently supports macOS and Linux only. Detected: ${System.getProperty("os.name")}",
+    )
+}
+
+fun managedSqliteLibraryFileName(operatingSystemId: String): String =
+    when (operatingSystemId) {
+        "macos" -> "libsqlite3.dylib"
+        "linux" -> "libsqlite3.so.0"
+        else -> throw GradleException("Unsupported managed SQLite operating system id: $operatingSystemId")
+    }
+
+val fingrindManagedSqliteVersion = sharedFingrindProperty("fingrindManagedSqliteVersion")
+val fingrindManagedSqliteAmalgamationId = sharedFingrindProperty("fingrindManagedSqliteAmalgamationId")
+val fingrindManagedSqliteSourceSha3 = sharedFingrindProperty("fingrindManagedSqliteSourceSha3")
+val managedSqliteOperatingSystemId = managedSqliteOperatingSystemId()
+val managedSqliteArchitectureId =
+    System.getProperty("os.arch", "unknown").lowercase().replace(Regex("[^a-z0-9]+"), "-")
+val managedSqliteClassifier = "$managedSqliteOperatingSystemId-$managedSqliteArchitectureId"
+val managedSqliteLibraryFileName = managedSqliteLibraryFileName(managedSqliteOperatingSystemId)
+val managedSqliteSourceDirectory =
+    repoRootDirectory.dir("third_party/sqlite/sqlite-amalgamation-$fingrindManagedSqliteAmalgamationId")
+val managedSqliteSourceFile = managedSqliteSourceDirectory.file("sqlite3.c").asFile
+val managedSqliteHeaderFile = managedSqliteSourceDirectory.file("sqlite3.h").asFile
+val managedSqliteExtensionHeaderFile = managedSqliteSourceDirectory.file("sqlite3ext.h").asFile
+val managedSqliteCompiler =
+    providers.environmentVariable("CC").orNull
+        ?.takeIf { candidate -> !candidate.contains("/") || file(candidate).isFile }
+        ?: "cc"
+val managedSqliteLibraryPath =
+    layout.buildDirectory.file("managed-sqlite/$managedSqliteClassifier/$managedSqliteLibraryFileName")
+val managedSqliteLibraryAbsolutePath = managedSqliteLibraryPath.get().asFile.absolutePath
+
+val verifyManagedSqliteSource =
+    tasks.register<VerifyManagedSqliteSourceTask>("verifyManagedSqliteSource") {
+        group = "build setup"
+        description =
+            "Verifies the vendored SQLite amalgamation matches the pinned upstream source hash."
+        sourceFile.set(managedSqliteSourceFile)
+        expectedSha3.set(fingrindManagedSqliteSourceSha3)
+    }
+
+val prepareManagedSqlite =
+    tasks.register<PrepareManagedSqliteTask>("prepareManagedSqlite") {
+        group = "build setup"
+        description =
+            "Builds the managed SQLite $fingrindManagedSqliteVersion shared library for the current host."
+        dependsOn(verifyManagedSqliteSource)
+        sourceFile.set(managedSqliteSourceFile)
+        supportFiles.from(managedSqliteHeaderFile, managedSqliteExtensionHeaderFile)
+        compiler.set(managedSqliteCompiler)
+        operatingSystemId.set(managedSqliteOperatingSystemId)
+        sqliteVersion.set(fingrindManagedSqliteVersion)
+        outputFile.set(managedSqliteLibraryPath)
+    }
 
 data class HarnessDefinition(
     val key: String,
@@ -313,7 +503,6 @@ fun JavaExec.configureHarnessRuntime() {
     mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerHarnessRunner")
     outputs.upToDateWhen { false }
     workingDir = layout.projectDirectory.asFile
-    environment("FINGRIND_SQLITE3_BINARY", fingrindSqliteWrapper)
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-Djdk.attach.allowAttachSelf=true")
     if (jazzerMaxDuration != null) {
         systemProperty("jazzer.max_duration", jazzerMaxDuration)
@@ -327,7 +516,7 @@ fun JavaExec.configureMainSourceSet() {
     classpath = mainSourceSet.runtimeClasspath
     outputs.upToDateWhen { false }
     workingDir = layout.projectDirectory.asFile
-    environment("FINGRIND_SQLITE3_BINARY", fingrindSqliteWrapper)
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 fun registerHarnessTask(
@@ -429,12 +618,21 @@ tasks.named<Test>("test") {
     description = "Runs deterministic Jazzer support tests."
     group = "verification"
     useJUnitPlatform()
-    environment("FINGRIND_SQLITE3_BINARY", fingrindSqliteWrapper)
     maxParallelForks = 1
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     doFirst {
         addTestListener(JazzerSupportTestPulseListener(supportTestClassCount))
     }
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn(prepareManagedSqlite)
+    environment("FINGRIND_SQLITE_LIBRARY", managedSqliteLibraryAbsolutePath)
+}
+
+tasks.withType<JavaExec>().configureEach {
+    dependsOn(prepareManagedSqlite)
+    environment("FINGRIND_SQLITE_LIBRARY", managedSqliteLibraryAbsolutePath)
 }
 
 tasks.named("check") {

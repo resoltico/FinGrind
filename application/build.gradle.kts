@@ -6,8 +6,8 @@ plugins {
 description = "FinGrind application boundary and write workflows"
 
 dependencies {
-    implementation(project(":core"))
-    implementation(project(":runtime"))
+    api(project(":core"))
+    api(project(":runtime"))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

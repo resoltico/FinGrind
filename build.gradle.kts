@@ -1,10 +1,16 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
+import dev.erst.fingrind.build.PrepareManagedSqliteTask
+import dev.erst.fingrind.build.VerifyManagedSqliteSourceTask
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.JavaExec
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.plugins.quality.PmdExtension
 import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import java.io.File
 
 plugins {
     base
@@ -15,6 +21,77 @@ plugins {
 }
 
 description = providers.gradleProperty("fingrindDescription").get()
+
+val fingrindManagedSqliteVersion = providers.gradleProperty("fingrindManagedSqliteVersion").get()
+val fingrindManagedSqliteAmalgamationId =
+    providers.gradleProperty("fingrindManagedSqliteAmalgamationId").get()
+val fingrindManagedSqliteSourceSha3 =
+    providers.gradleProperty("fingrindManagedSqliteSourceSha3").get()
+
+fun managedSqliteOperatingSystemId(): String {
+    val operatingSystem = System.getProperty("os.name", "").lowercase()
+    if (operatingSystem.contains("mac")) {
+        return "macos"
+    }
+    if (operatingSystem.contains("linux")) {
+        return "linux"
+    }
+    throw GradleException(
+        "FinGrind's managed SQLite build currently supports macOS and Linux only. Detected: ${System.getProperty("os.name")}",
+    )
+}
+
+fun managedSqliteLibraryFileName(operatingSystemId: String): String =
+    when (operatingSystemId) {
+        "macos" -> "libsqlite3.dylib"
+        "linux" -> "libsqlite3.so.0"
+        else -> throw GradleException("Unsupported managed SQLite operating system id: $operatingSystemId")
+    }
+
+val managedSqliteOperatingSystemId = managedSqliteOperatingSystemId()
+val managedSqliteArchitectureId =
+    System.getProperty("os.arch", "unknown").lowercase().replace(Regex("[^a-z0-9]+"), "-")
+val managedSqliteClassifier = "$managedSqliteOperatingSystemId-$managedSqliteArchitectureId"
+val managedSqliteLibraryFileName = managedSqliteLibraryFileName(managedSqliteOperatingSystemId)
+val managedSqliteSourceDirectory =
+    layout.projectDirectory.dir("third_party/sqlite/sqlite-amalgamation-$fingrindManagedSqliteAmalgamationId")
+val managedSqliteSourceFile = managedSqliteSourceDirectory.file("sqlite3.c")
+val managedSqliteHeaderFile = managedSqliteSourceDirectory.file("sqlite3.h")
+val managedSqliteExtensionHeaderFile = managedSqliteSourceDirectory.file("sqlite3ext.h")
+val managedSqliteCompiler =
+    providers.environmentVariable("CC").orNull
+        ?.takeIf { candidate -> !candidate.contains("/") || File(candidate).isFile }
+        ?: "cc"
+val managedSqliteLibraryPath =
+    layout.buildDirectory.file("managed-sqlite/$managedSqliteClassifier/$managedSqliteLibraryFileName")
+val managedSqliteSourceFileValue = managedSqliteSourceFile.asFile
+val managedSqliteHeaderFileValue = managedSqliteHeaderFile.asFile
+val managedSqliteExtensionHeaderFileValue = managedSqliteExtensionHeaderFile.asFile
+val managedSqliteLibraryFileValue = managedSqliteLibraryPath.get().asFile
+
+val verifyManagedSqliteSource =
+    tasks.register<VerifyManagedSqliteSourceTask>("verifyManagedSqliteSource") {
+        group = "build setup"
+        description =
+            "Verifies the vendored SQLite amalgamation matches the pinned upstream 3.53.0 source hash."
+        sourceFile.set(managedSqliteSourceFileValue)
+        expectedSha3.set(fingrindManagedSqliteSourceSha3)
+    }
+
+val prepareManagedSqlite =
+    tasks.register<PrepareManagedSqliteTask>("prepareManagedSqlite") {
+        group = "build setup"
+        description =
+            "Builds the managed SQLite ${fingrindManagedSqliteVersion} shared library for the current host."
+
+        dependsOn(verifyManagedSqliteSource)
+        sourceFile.set(managedSqliteSourceFileValue)
+        supportFiles.from(managedSqliteHeaderFileValue, managedSqliteExtensionHeaderFileValue)
+        compiler.set(managedSqliteCompiler)
+        operatingSystemId.set(managedSqliteOperatingSystemId)
+        sqliteVersion.set(fingrindManagedSqliteVersion)
+        outputFile.set(managedSqliteLibraryFileValue)
+    }
 
 // Root-level JaCoCo configuration for the aggregated report task.
 repositories {
@@ -91,6 +168,16 @@ subprojects {
 
         tasks.named("check") {
             dependsOn("spotlessCheck")
+        }
+
+        tasks.withType<Test>().configureEach {
+            dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
+            environment("FINGRIND_SQLITE_LIBRARY", rootProject.layout.buildDirectory.file("managed-sqlite/$managedSqliteClassifier/$managedSqliteLibraryFileName").get().asFile.absolutePath)
+        }
+
+        tasks.withType<JavaExec>().configureEach {
+            dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
+            environment("FINGRIND_SQLITE_LIBRARY", rootProject.layout.buildDirectory.file("managed-sqlite/$managedSqliteClassifier/$managedSqliteLibraryFileName").get().asFile.absolutePath)
         }
     }
 

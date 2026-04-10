@@ -14,7 +14,7 @@ class CliMetadataTest {
     CliMetadata metadata = new CliMetadata();
 
     assertEquals("FinGrind", metadata.applicationName());
-    assertEquals("0.2.0", metadata.version());
+    assertEquals("0.3.0", metadata.version());
     assertEquals(
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence",
         metadata.description());
@@ -22,17 +22,17 @@ class CliMetadataTest {
 
   @Test
   void versionFrom_returnsImplementationVersion_whenPresent() {
-    assertEquals("1.2.3", CliMetadata.versionFrom("1.2.3", "0.2.0"));
+    assertEquals("1.2.3", CliMetadata.versionFrom("1.2.3", "0.3.0"));
   }
 
   @Test
   void versionFrom_returnsFallbackVersion_whenImplementationVersionIsAbsent() {
-    assertEquals("0.2.0", CliMetadata.versionFrom(null, "0.2.0"));
+    assertEquals("0.3.0", CliMetadata.versionFrom(null, "0.3.0"));
   }
 
   @Test
   void versionFrom_returnsFallbackVersion_whenImplementationVersionIsBlank() {
-    assertEquals("0.2.0", CliMetadata.versionFrom("   ", "0.2.0"));
+    assertEquals("0.3.0", CliMetadata.versionFrom("   ", "0.3.0"));
   }
 
   @Test

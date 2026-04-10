@@ -68,7 +68,7 @@ final class CliRequestReader {
           "Request contains an invalid date/time value.",
           "Use ISO-8601 values such as 2026-04-08 and 2026-04-08T12:00:00Z.",
           exception);
-    } catch (IllegalArgumentException exception) {
+    } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
           "invalid-request", normalizedMessage(exception), invalidRequestHint(), exception);
     }
@@ -91,7 +91,7 @@ final class CliRequestReader {
     }
   }
 
-  private static String normalizedMessage(IllegalArgumentException exception) {
+  private static String normalizedMessage(RuntimeException exception) {
     return Objects.requireNonNullElse(exception.getMessage(), "Request is invalid.");
   }
 
@@ -109,7 +109,7 @@ final class CliRequestReader {
               JournalLine.EntrySide.valueOf(requiredText(lineNode, "side")),
               new Money(
                   new CurrencyCode(requiredText(lineNode, "currencyCode")),
-                  new BigDecimal(requiredText(lineNode, "amount")))));
+                  parseAmount(requiredText(lineNode, "amount")))));
     }
     return lines;
   }
@@ -173,5 +173,17 @@ final class CliRequestReader {
       throw new IllegalArgumentException("Field must be a string when present: " + fieldName);
     }
     return Optional.of(fieldNode.textValue());
+  }
+
+  private static BigDecimal parseAmount(String amountText) {
+    if (amountText.indexOf('e') >= 0 || amountText.indexOf('E') >= 0) {
+      throw new IllegalArgumentException(
+          "Money amount must be a plain decimal string without exponent notation.");
+    }
+    try {
+      return new BigDecimal(amountText);
+    } catch (NumberFormatException exception) {
+      throw new IllegalArgumentException("Money amount must be a valid decimal string.", exception);
+    }
   }
 }

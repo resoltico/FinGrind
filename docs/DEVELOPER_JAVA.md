@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.2.0"
+version: "0.3.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-08"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, java, java26, jdk, jdk.java.net, local-dev, zsh, java-home, brew]
   questions: ["how is java 26 set up for fingrind", "why does fingrind use jdk.java.net instead of brew java", "how do i configure local java 26 for fingrind"]
@@ -31,6 +31,8 @@ The current local setup intentionally uses:
 Reasons:
 - Java 26 reached GA, but Homebrew lagged behind the release for local runtime availability.
 - FinGrind's packaged CLI uses the ambient `java` process, not only Gradle toolchains.
+- FinGrind's SQLite adapter uses Java 26 FFM, so the packaged CLI and local Gradle runs must both
+  run on a JDK that supports stable native access.
 - CI already uses Java 26 explicitly, so local shells should match that contract.
 - `jdk.java.net` gives a clear, upstream, version-specific source instead of waiting on a package
   manager mirror cadence.
@@ -131,6 +133,10 @@ Known pitfalls:
 - `java -jar` does not use Gradle toolchains.
   That is why shell-level Java 26 setup matters even though Gradle can provision toolchains for
   compilation.
+- FinGrind enables native access explicitly for Gradle `Test` and `JavaExec` tasks, and the
+  packaged CLI JAR declares `Enable-Native-Access: ALL-UNNAMED`.
+  A stale or incompatible JDK is more likely to surface as a runtime storage failure now than in
+  the old shell-out design.
 - Kotlin build logic still emits JVM 25 bytecode for compatibility, but it now does so using the
   Java 26 toolchain.
   That applies to both the root `buildSrc` logic and the nested `jazzer/buildSrc` logic, so a
@@ -171,7 +177,6 @@ After Java 26 is active in the shell, the canonical FinGrind verification sequen
 
 ```bash
 java --version
-./scripts/sqlite3.sh --version
 ./gradlew --version --console=plain
 ./gradlew check --no-daemon --console=plain
 ./gradlew -p jazzer test jazzerRegression --no-daemon --console=plain

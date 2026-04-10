@@ -85,6 +85,27 @@ class JazzerReplaySupportTest {
   }
 
   @Test
+  void replay_returnsExpectedInvalidForExponentAmountCliRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.CLI_REQUEST, invalidExponentAmountRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new CliRequestReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            "Money amount must be a plain decimal string without exponent notation."),
+        invalid.details());
+  }
+
+  @Test
   void replay_returnsSuccessForValidPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(JazzerHarness.POSTING_WORKFLOW, basicValidRequest().getBytes(UTF_8));
@@ -148,6 +169,29 @@ class JazzerReplaySupportTest {
             "NOT_RUN",
             false,
             "Actor id must not be blank."),
+        invalid.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForExponentAmountPostingWorkflowSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.POSTING_WORKFLOW, invalidExponentAmountRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new PostingWorkflowReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            false,
+            "Money amount must be a plain decimal string without exponent notation."),
         invalid.details());
   }
 
@@ -216,6 +260,29 @@ class JazzerReplaySupportTest {
             "NOT_RUN",
             false,
             "Field must be a string: effectiveDate"),
+        invalid.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForExponentAmountSqliteRoundTripSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.SQLITE_BOOK_ROUND_TRIP, invalidExponentAmountRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new SqliteBookRoundTripReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            false,
+            "Money amount must be a plain decimal string without exponent notation."),
         invalid.details());
   }
 
@@ -296,6 +363,35 @@ class JazzerReplaySupportTest {
               "amount": "10.00"
             }
           ]
+        }
+        """;
+  }
+
+  private static String invalidExponentAmountRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "1000",
+              "side": "DEBIT",
+              "currencyCode": "EUR",
+              "amount": "1e1000000100"
+            },
+            {
+              "accountCode": "2000",
+              "side": "CREDIT",
+              "currencyCode": "EUR",
+              "amount": "1.00"
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-1",
+            "actorType": "AGENT",
+            "commandId": "command-1",
+            "idempotencyKey": "idem-1",
+            "causationId": "cause-1"
+          }
         }
         """;
   }

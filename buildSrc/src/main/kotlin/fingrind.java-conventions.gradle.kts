@@ -9,6 +9,7 @@
  */
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.TestDescriptor
 import org.gradle.api.tasks.testing.TestListener
@@ -161,8 +162,6 @@ class GradleTestPulseListener(
 
 val fingrindJavaVersion: Int =
     providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
-val fingrindSqliteWrapper: String =
-    rootProject.layout.projectDirectory.file("scripts/sqlite3.sh").asFile.absolutePath
 
 extensions.configure<JavaPluginExtension> {
     toolchain {
@@ -178,13 +177,14 @@ tasks.withType<Jar>().configureEach {
             "Implementation-Version" to project.version,
             "Implementation-Vendor" to "Ervins Strauhmanis",
             "Implementation-License" to "MIT",
+            "Enable-Native-Access" to "ALL-UNNAMED",
         )
     }
 }
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
-    environment("FINGRIND_SQLITE3_BINARY", fingrindSqliteWrapper)
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 
     val progressPulseEnabled =
         providers.environmentVariable("FINGRIND_TEST_PULSE").map { it == "1" }.orElse(false).get()
@@ -207,6 +207,10 @@ tasks.withType<Test>().configureEach {
             )
         }
     }
+}
+
+tasks.withType<JavaExec>().configureEach {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.named<JacocoReport>("jacocoTestReport") {

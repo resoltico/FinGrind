@@ -9,9 +9,14 @@ public record Money(CurrencyCode currencyCode, BigDecimal amount) {
   public Money {
     Objects.requireNonNull(currencyCode, "currencyCode");
     Objects.requireNonNull(amount, "amount");
-    amount = amount.stripTrailingZeros();
-    if (amount.scale() < 0) {
-      amount = amount.setScale(0);
+    try {
+      amount = amount.stripTrailingZeros();
+      if (amount.scale() < 0) {
+        amount = amount.setScale(0);
+      }
+    } catch (ArithmeticException exception) {
+      throw new IllegalArgumentException(
+          "Money amount is outside the supported exact range.", exception);
     }
     if (amount.signum() < 0) {
       throw new IllegalArgumentException("Money amount must not be negative.");

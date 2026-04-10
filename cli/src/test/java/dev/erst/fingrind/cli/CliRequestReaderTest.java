@@ -558,6 +558,130 @@ class CliRequestReaderTest {
   }
 
   @Test
+  void readPostEntryCommand_rejectsExponentNotationAmounts() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "1e1000000100"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "1.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Money amount must be a plain decimal string without exponent notation.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsUppercaseExponentNotationAmounts() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "1E6"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "1.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Money amount must be a plain decimal string without exponent notation.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsNonDecimalAmounts() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "abc"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "1.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Money amount must be a valid decimal string.", exception.getMessage());
+  }
+
+  @Test
   void readPostEntryCommand_rejectsWrongOptionalTextType() {
     CliRequestReader requestReader =
         new CliRequestReader(

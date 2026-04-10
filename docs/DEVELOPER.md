@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.2.0"
+version: "0.3.0"
 domain: DEVELOPER
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce"]
@@ -42,7 +42,8 @@ application/  Explicit write boundary:
               PostingIdGenerator, PostingApplicationService.
 
 sqlite/       Durable single-book adapter:
-              one SQLite file per entity book, persisted through the pinned sqlite3 CLI surface
+              one SQLite file per entity book, persisted through an in-process SQLite adapter
+              backed by Java 26 FFM and a managed SQLite 3.53.0 runtime on controlled surfaces
               and the canonical `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
@@ -56,7 +57,6 @@ cli -> sqlite -> runtime -> core
 cli -> application -> runtime -> core
 cli -> core
 application -> core
-sqlite -> core
 ```
 
 FinGrind is intentionally hard-break oriented right now:
@@ -72,7 +72,7 @@ FinGrind is intentionally hard-break oriented right now:
 |:----------|:--------|
 | Java | 26 |
 | Gradle Wrapper | 9.4.1 |
-| SQLite | 3.51.3 |
+| SQLite runtime | managed SQLite 3.53.0 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires a managed path or compatible system library |
 | Jackson Databind | 3.1.1 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
@@ -84,7 +84,7 @@ Root verification and packaging:
 
 ```bash
 java --version
-./scripts/ensure-sqlite.sh
+./gradlew verifyManagedSqliteSource
 ./gradlew check
 ./gradlew coverage
 ./gradlew :cli:shadowJar
@@ -95,6 +95,7 @@ Nested Jazzer verification:
 
 ```bash
 ./gradlew -p jazzer test jazzerRegression
+./gradlew -p jazzer cleanLocalFindings cleanLocalCorpus fuzzAllLocal -PjazzerMaxDuration=30s
 ```
 
 Local CLI usage from source:
@@ -114,7 +115,10 @@ Local CLI usage from source:
 - unit tests
 - JaCoCo coverage verification at 100% line and 100% branch coverage
 
-Root Gradle tests and `:cli:run` use the repo-pinned SQLite toolchain through `FINGRIND_SQLITE3_BINARY`, backed by `scripts/sqlite3.sh`.
+Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a managed SQLite
+3.53.0 shared library from `third_party/sqlite/sqlite-amalgamation-3530000/`, inject that library
+through `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
+`Enable-Native-Access: ALL-UNNAMED` runtime contract.
 
 `./check.sh` is the local full-stack gate. It runs:
 - root `check`
@@ -128,6 +132,11 @@ During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `
 
 During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression replay through `[JAZZER-PULSE]` lines, including support-test heartbeats plus regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
+The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite source,
+compiles its own managed SQLite 3.53.0 shared library from `../third_party/sqlite/`, and injects
+that path through `FINGRIND_SQLITE_LIBRARY` for its support tests, regression replay, and local
+active fuzzing commands.
+
 ## GitHub Workflows
 
 The repository currently ships three workflow surfaces:
@@ -135,11 +144,17 @@ The repository currently ships three workflow surfaces:
 - `Release` runs for `v*` tags or manual dispatch, builds the fat JAR, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 
+Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
+the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0 from the managed
+library path.
+
+GitHub workflows do not run active fuzzing, standalone Jazzer support tests, or regression replay.
+Jazzer remains a local-only verification surface through `./check.sh` and the nested `jazzer/`
+build.
+
 Operational protocols for those surfaces live in:
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
-
-Jazzer verification remains local-only by design through `./check.sh`. GitHub CI stays lighter and does not run standalone Jazzer support tests or regression replay.
 
 ## Build Stance
 

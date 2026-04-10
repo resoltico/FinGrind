@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrectionReason;
+import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -47,7 +48,11 @@ class PostingFactTest {
   @Test
   void constructor_normalizesNullCorrectionReferenceToEmpty() {
     PostingFact postingFact =
-        new PostingFact(new PostingId("posting-1"), journalEntry(), null, provenance("idem-1"));
+        new PostingFact(
+            new PostingId("posting-1"),
+            journalEntry(),
+            nullCorrectionReference(),
+            provenance("idem-1"));
 
     assertEquals(Optional.empty(), postingFact.correctionReference());
   }
@@ -78,5 +83,9 @@ class PostingFactTest {
             Optional.of(new CorrectionReason("operator correction"))),
         Instant.parse("2026-04-07T10:15:30Z"),
         SourceChannel.CLI);
+  }
+
+  private static Optional<CorrectionReference> nullCorrectionReference() {
+    return null;
   }
 }
