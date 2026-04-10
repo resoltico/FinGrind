@@ -64,13 +64,31 @@ class FinGrindCliTest {
     assertTrue(json.contains("\"committedFields\""));
     assertTrue(json.contains("\"reversal-must-negate-target\""));
     assertTrue(json.contains("\"rejectionCodes\""));
-    assertEquals("sqlite-ffm", payload.path("environment").path("storageDriver").asText());
-    assertEquals("sqlite", payload.path("environment").path("storageEngine").asText());
-    assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asText());
     assertEquals(
-        "3.53.0", payload.path("environment").path("requiredMinimumSqliteVersion").asText());
-    assertEquals("ready", payload.path("environment").path("sqliteRuntimeStatus").asText());
-    assertEquals("3.53.0", payload.path("environment").path("loadedSqliteVersion").asText());
+        "[\"reversal\"]", payload.path("requestShape").path("optionalTopLevelFields").toString());
+    assertEquals(
+        "[\"correction\"]",
+        payload.path("requestShape").path("forbiddenTopLevelFields").toString());
+    assertEquals(
+        "[\"priorPostingId\"]",
+        payload.path("requestShape").path("requiredReversalFields").toString());
+    assertEquals(
+        "[\"kind\"]", payload.path("requestShape").path("forbiddenReversalFields").toString());
+    assertTrue(
+        payload
+            .path("responseModel")
+            .path("rejectionCodes")
+            .toString()
+            .contains("reversal-reason-required"));
+    assertFalse(
+        payload.path("responseModel").path("rejectionCodes").toString().contains("amendment"));
+    assertEquals("sqlite-ffm", payload.path("environment").path("storageDriver").asString());
+    assertEquals("sqlite", payload.path("environment").path("storageEngine").asString());
+    assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asString());
+    assertEquals(
+        "3.53.0", payload.path("environment").path("requiredMinimumSqliteVersion").asString());
+    assertEquals("ready", payload.path("environment").path("sqliteRuntimeStatus").asString());
+    assertEquals("3.53.0", payload.path("environment").path("loadedSqliteVersion").asString());
     assertFalse(json.contains("FINGRIND_SQLITE3_BINARY"));
   }
 

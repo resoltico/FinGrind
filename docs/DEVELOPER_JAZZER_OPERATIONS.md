@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, jazzer, operations, gradle-tasks, corpus, findings, regression, fuzzing, cleanup]
   questions: ["how do I run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do I clean local jazzer state in fingrind"]
@@ -102,16 +102,17 @@ The nested build emits `[JAZZER-PULSE]` lines during support tests, regression r
 fuzzing. Treat them as the canonical semantic progress markers.
 
 Interpretation:
-- `phase=plan total-tests=0` is normal for active fuzzing, because the standalone harness runner is
-  still launching a Jazzer-backed JUnit test before the fuzz session body starts
+- active fuzzing now emits `phase=plan total-tests=1 fuzz-test=...` and
+  `phase=finish status=... fuzz-test=... exit-code=...`, because the standalone harness runner
+  resolves one concrete `@FuzzTest` method before delegating to Jazzer's official JUnit runner
 - support tests now emit `class-start`, `test-complete`, `class-complete`, and throttled
   `test-progress` heartbeats so `./check.sh` can observe long-running support tests without false
   stalls
 - regression replay now emits `regression-target phase=plan total-inputs=...`, one
   `regression-input ... completed=...` pulse per committed seed, and a final
   `regression-target phase=finish ...` pulse per harness
-- later `phase=test-complete` lines confirm actual support-test or fuzz-session execution
-- libFuzzer coverage and corpus-growth lines after the pulses are the active fuzzing body
+- active fuzzing does not need per-seed launcher pulses anymore; libFuzzer coverage and
+  corpus-growth lines remain the fuzz-session body
 
 ## Operational Rules
 

@@ -1,6 +1,6 @@
 <!--
 RETRIEVAL_HINTS:
-  keywords: [fingrind, bookkeeping, sqlite, book file, cli, journal entry, preflight, post-entry, correction, provenance]
+  keywords: [fingrind, bookkeeping, sqlite, book file, cli, journal entry, preflight, post-entry, reversal, provenance]
   answers: [what is fingrind, how do I post an entry, how does the sqlite book file work, what request shape does fingrind accept]
   related: [docs/DEVELOPER.md, docs/DEVELOPER_SQLITE.md, docs/DOC_00_Index.md]
 -->
@@ -17,7 +17,7 @@ The current model is intentionally strict:
 - there is no migration or backward-compatibility layer
 - journal entries must balance before they can cross the write boundary
 - caller-supplied request provenance is separate from committed audit metadata
-- corrections are additive links to earlier postings, not in-place mutation
+- reversals are additive links to earlier postings, not in-place mutation
 
 ## What You Can Do Today
 
@@ -97,11 +97,10 @@ A posting request has three main parts:
 - `lines`
 - `provenance`
 
-Optional correction links go in:
+Optional reversal links go in:
 
 ```json
-"correction": {
-  "kind": "AMENDMENT",
+"reversal": {
   "priorPostingId": "posting-previous"
 }
 ```
@@ -116,17 +115,18 @@ audit metadata itself when `post-entry` succeeds.
 `lines[].amount` must be a plain decimal string such as `10.00`. Exponent notation such as
 `1e6` is rejected.
 
-If `correction` is present:
+If `reversal` is present:
 - `provenance.reason` is required
 - `priorPostingId` must already exist in the selected book
-- `REVERSAL` must negate the target posting exactly
+- the reversal must negate the target posting exactly
 - only one reversal is allowed per target posting
+- legacy `correction` and `reversal.kind` fields are rejected
 
 Current deterministic rejection codes are:
 - `duplicate-idempotency-key`
-- `correction-reason-required`
-- `correction-reason-forbidden`
-- `correction-target-not-found`
+- `reversal-reason-required`
+- `reversal-reason-forbidden`
+- `reversal-target-not-found`
 - `reversal-already-exists`
 - `reversal-does-not-negate-target`
 
@@ -144,7 +144,7 @@ Current deterministic rejection codes are:
 - `--book-file` is required for both preflight and commit.
 - FinGrind does not assume a default database location.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
-- `capabilities` is the best machine-readable contract surface for request fields, correction rules,
+- `capabilities` is the best machine-readable contract surface for request fields, reversal rules,
   and rejection codes.
 
 ## More User Docs
@@ -160,6 +160,7 @@ Current deterministic rejection codes are:
 - [docs/DEVELOPER_GRADLE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_GRADLE.md)
 - [docs/DEVELOPER_SQLITE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_SQLITE.md)
 - [docs/DEVELOPER_JAZZER.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER.md)
+- [docs/DEVELOPER_JAZZER_OPERATIONS.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER_OPERATIONS.md)
 
 ## Legal
 

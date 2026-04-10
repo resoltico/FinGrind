@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DEVELOPER_JAZZER_COVERAGE
 updated: "2026-04-10"
 route:
@@ -16,21 +16,22 @@ route:
 
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
-| `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, and forbidden committed-audit-field rejection | `6` |
-| `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | application write contract, deterministic correction rejections, and duplicate-idempotency behavior | `4` |
-| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | durable round-trip in one real SQLite book file and no-persist deterministic rejections | `5` |
+| `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, and legacy-field hard breaks | `8` |
+| `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
+| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | durable round-trip in one real SQLite book file and no-persist deterministic rejections | `6` |
 
 ## `cli-request`
 
 Surface:
 - raw JSON bytes
 - request decoding through the real CLI reader
-- domain-model construction for journal lines, entries, correction linkage, and request provenance
+- domain-model construction for journal lines, entries, reversal linkage, and request provenance
 
 What it asserts:
 - fresh valid requests parse successfully
 - malformed JSON is normalized into `invalid-request`
 - invalid domain shapes fail deterministically
+- legacy `correction` request shapes are rejected deterministically
 - caller-supplied `sourceChannel` is not trusted; parsed commands always carry `CLI`
 - caller-supplied `recordedAt` and `sourceChannel` are rejected because they are committed fields, not request fields
 
@@ -39,14 +40,14 @@ What it asserts:
 Surface:
 - `PostingApplicationService.preflight(...)`
 - `PostingApplicationService.commit(...)`
-- correction admission policy
+- reversal admission policy
 - commit through the in-memory runtime seam
 
 What it asserts:
 - fresh valid requests preflight successfully
 - a first commit persists one `PostingFact`
 - a duplicate commit returns `duplicate-idempotency-key`
-- missing correction reason and missing correction target reject deterministically on both preflight and commit
+- missing reversal reason and missing reversal target reject deterministically on both preflight and commit
 - stored fact shape matches the parsed command when commit succeeds
 
 ## `sqlite-book-roundtrip`
@@ -62,25 +63,29 @@ What it asserts:
 - reloading by idempotency returns the same fact shape
 - duplicate commit attempts are rejected in the same book
 - parent-directory creation works for nested arbitrary paths
-- deterministic correction rejections do not create or mutate durable book state
+- deterministic reversal rejections do not create or mutate durable book state
 
 ## Committed Seed Inventory
 
 | Harness | Input | Meaning |
 |:--------|:------|:--------|
 | `cli-request` | `basic_valid.json` | minimal valid posting request |
-| `cli-request` | `correction_valid.json` | valid request carrying correction linkage |
+| `cli-request` | `reversal_valid.json` | valid request carrying reversal linkage |
+| `cli-request` | `invalid_legacy_correction.json` | rejected legacy correction request shape |
 | `cli-request` | `invalid_forbidden_recorded_at.json` | rejected committed-audit request field |
 | `cli-request` | `invalid_forbidden_source_channel.json` | rejected committed-audit request field, even as `null` |
+| `cli-request` | `invalid_amount_exponent.json` | exponent notation rejection |
 | `cli-request` | `invalid_missing_provenance.json` | missing provenance object |
 | `cli-request` | `invalid_unbalanced.json` | unbalanced journal entry |
 | `posting-workflow` | `basic_valid.json` | successful preflight then commit |
-| `posting-workflow` | `correction_reason_required.json` | deterministic rejection for missing correction reason |
-| `posting-workflow` | `correction_target_missing.json` | deterministic rejection for missing correction target |
+| `posting-workflow` | `reversal_reason_required.json` | deterministic rejection for missing reversal reason |
+| `posting-workflow` | `reversal_target_missing.json` | deterministic rejection for missing reversal target |
+| `posting-workflow` | `invalid_amount_exponent.json` | exponent notation rejection |
 | `posting-workflow` | `invalid_blank_actor.json` | invalid provenance normalization case |
 | `sqlite-book-roundtrip` | `basic_valid.json` | minimal durable round-trip |
-| `sqlite-book-roundtrip` | `correction_reason_required.json` | deterministic rejection does not persist |
-| `sqlite-book-roundtrip` | `correction_target_missing.json` | deterministic rejection does not persist |
+| `sqlite-book-roundtrip` | `reversal_reason_required.json` | deterministic rejection does not persist |
+| `sqlite-book-roundtrip` | `reversal_target_missing.json` | deterministic rejection does not persist |
+| `sqlite-book-roundtrip` | `invalid_amount_exponent.json` | exponent notation rejection |
 | `sqlite-book-roundtrip` | `nested_valid.json` | nested-path round-trip with optional provenance fields |
 | `sqlite-book-roundtrip` | `invalid_wrong_type.json` | malformed field-type rejection case |
 
@@ -90,4 +95,4 @@ Not yet fuzzed:
 - concurrent access between multiple writers
 - CLI response rendering and envelope serialization
 - corrupt or directory-backed pre-existing book paths before any valid schema exists
-- large-scale corpus growth around correction policy edge cases such as reversal-shape near misses
+- large-scale corpus growth around reversal policy edge cases such as reversal-shape near misses

@@ -11,7 +11,7 @@ public record RequestProvenance(
     IdempotencyKey idempotencyKey,
     CausationId causationId,
     Optional<CorrelationId> correlationId,
-    Optional<CorrectionReason> reason) {
+    Optional<ReversalReason> reason) {
   /** Validates and normalizes request provenance before it reaches the commit path. */
   public RequestProvenance {
     Objects.requireNonNull(actorId, "actorId");

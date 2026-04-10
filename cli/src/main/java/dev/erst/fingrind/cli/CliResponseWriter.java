@@ -106,9 +106,9 @@ final class CliResponseWriter {
   private static String rejectionCode(PostingRejection rejection) {
     return switch (rejection) {
       case PostingRejection.DuplicateIdempotencyKey _ -> "duplicate-idempotency-key";
-      case PostingRejection.CorrectionReasonRequired _ -> "correction-reason-required";
-      case PostingRejection.CorrectionReasonForbidden _ -> "correction-reason-forbidden";
-      case PostingRejection.CorrectionTargetNotFound _ -> "correction-target-not-found";
+      case PostingRejection.ReversalReasonRequired _ -> "reversal-reason-required";
+      case PostingRejection.ReversalReasonForbidden _ -> "reversal-reason-forbidden";
+      case PostingRejection.ReversalTargetNotFound _ -> "reversal-target-not-found";
       case PostingRejection.ReversalAlreadyExists _ -> "reversal-already-exists";
       case PostingRejection.ReversalDoesNotNegateTarget _ -> "reversal-does-not-negate-target";
     };
@@ -118,13 +118,13 @@ final class CliResponseWriter {
     return switch (rejection) {
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "A posting with the same idempotency key already exists in this book.";
-      case PostingRejection.CorrectionReasonRequired _ ->
-          "Corrective postings must include a human-readable reason.";
-      case PostingRejection.CorrectionReasonForbidden _ ->
-          "A corrective reason is only permitted when a correction target is present.";
-      case PostingRejection.CorrectionTargetNotFound correctionTargetNotFound ->
-          "No committed posting exists for correction target '%s'."
-              .formatted(correctionTargetNotFound.priorPostingId().value());
+      case PostingRejection.ReversalReasonRequired _ ->
+          "Reversal postings must include a human-readable reason.";
+      case PostingRejection.ReversalReasonForbidden _ ->
+          "A reversal reason is only permitted when a reversal target is present.";
+      case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
+          "No committed posting exists for reversal target '%s'."
+              .formatted(reversalTargetNotFound.priorPostingId().value());
       case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
           "Posting '%s' already has a full reversal."
               .formatted(reversalAlreadyExists.priorPostingId().value());
@@ -135,8 +135,8 @@ final class CliResponseWriter {
   }
 
   private static Map<String, Object> rejectionDetails(PostingRejection rejection) {
-    if (rejection instanceof PostingRejection.CorrectionTargetNotFound correctionTargetNotFound) {
-      return Map.of("priorPostingId", correctionTargetNotFound.priorPostingId().value());
+    if (rejection instanceof PostingRejection.ReversalTargetNotFound reversalTargetNotFound) {
+      return Map.of("priorPostingId", reversalTargetNotFound.priorPostingId().value());
     }
     if (rejection instanceof PostingRejection.ReversalAlreadyExists reversalAlreadyExists) {
       return Map.of("priorPostingId", reversalAlreadyExists.priorPostingId().value());

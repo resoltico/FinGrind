@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -21,10 +21,10 @@ Then choose one of the user, developer, or reference tracks below.
 ## User Guides
 
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, exit codes, and runtime requirements
-- [USER_REQUESTS.md](./USER_REQUESTS.md): request JSON shape, correction rules, rejection codes, and response envelopes
-- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for preflight, commit, duplicates, stdin, and correction templates
+- [USER_REQUESTS.md](./USER_REQUESTS.md): request JSON shape, reversal rules, rejection codes, and response envelopes
+- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for preflight, commit, duplicates, stdin, and reversal templates
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
-- [examples/correction-request.json](./examples/correction-request.json): correction request template that needs a real prior posting id
+- [examples/reversal-request.json](./examples/reversal-request.json): reversal request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 
 ## Developer Guides

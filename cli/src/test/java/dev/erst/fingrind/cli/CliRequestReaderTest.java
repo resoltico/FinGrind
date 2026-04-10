@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.application.PostEntryCommand;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -29,32 +29,109 @@ class CliRequestReaderTest {
 
     assertEquals("idem-1", command.requestProvenance().idempotencyKey().value());
     assertEquals(
-        Optional.of(
-            new CorrectionReference(
-                CorrectionReference.CorrectionKind.AMENDMENT,
-                new dev.erst.fingrind.core.PostingId("posting-0"))),
-        command.correctionReference());
+        Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-0"))),
+        command.reversalReference());
     assertEquals(
-        Optional.of(new CorrectionReason("operator correction")),
-        command.requestProvenance().reason());
+        Optional.of(new ReversalReason("operator reversal")), command.requestProvenance().reason());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
   @Test
-  void readPostEntryCommand_readsFromStandardInputWithoutCorrection() {
+  void readPostEntryCommand_readsFromStandardInputWithoutReversal() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
-    assertEquals(Optional.empty(), command.correctionReference());
+    assertEquals(Optional.empty(), command.reversalReference());
     assertEquals(Optional.empty(), command.requestProvenance().reason());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
   @Test
-  void readPostEntryCommand_treatsExplicitNullCorrectionAsEmpty() {
+  void readPostEntryCommand_treatsExplicitNullReversalAsEmpty() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  },
+                  "reversal": null
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
+
+    assertEquals(Optional.empty(), command.reversalReference());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsNonObjectReversalField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "reason": "operator reversal"
+                  },
+                  "reversal": "posting-0"
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field must be an object: reversal", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsLegacyCorrectionFieldEvenWhenNull() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -87,9 +164,70 @@ class CliRequestReaderTest {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals(Optional.empty(), command.correctionReference());
+    assertEquals("Field is no longer accepted: correction", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsLegacyCorrectionFieldWhenPresent() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validLegacyCorrectionRequestJson().getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field is no longer accepted: correction", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsLegacyReversalKindFieldWhenPresent() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "reversal": {
+                    "kind": "REVERSAL",
+                    "priorPostingId": "posting-0"
+                  },
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "reason": "operator reversal"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field is no longer accepted: kind", exception.getMessage());
   }
 
   @Test
@@ -789,21 +927,20 @@ class CliRequestReaderTest {
     return requestFile;
   }
 
-  private static String validRequestJson(boolean includeCorrection) {
-    String correctionBlock =
-        includeCorrection
+  private static String validRequestJson(boolean includeReversal) {
+    String reversalBlock =
+        includeReversal
             ? """
               ,
-              "correction": {
-                "kind": "AMENDMENT",
+              "reversal": {
                 "priorPostingId": "posting-0"
               }
               """
             : "";
     String reasonField =
-        includeCorrection
+        includeReversal
             ? """
-                "reason": "operator correction",
+                "reason": "operator reversal",
               """
             : "";
     return """
@@ -834,6 +971,40 @@ class CliRequestReaderTest {
             %s
             }
             """
-        .formatted(reasonField, correctionBlock);
+        .formatted(reasonField, reversalBlock);
+  }
+
+  private static String validLegacyCorrectionRequestJson() {
+    return """
+        {
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "1000",
+              "side": "DEBIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            },
+            {
+              "accountCode": "2000",
+              "side": "CREDIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            }
+          ],
+          "correction": {
+            "kind": "AMENDMENT",
+            "priorPostingId": "posting-0"
+          },
+          "provenance": {
+            "actorId": "actor-1",
+            "actorType": "AGENT",
+            "commandId": "command-1",
+            "idempotencyKey": "idem-1",
+            "causationId": "cause-1",
+            "reason": "operator correction"
+          }
+        }
+        """;
   }
 }

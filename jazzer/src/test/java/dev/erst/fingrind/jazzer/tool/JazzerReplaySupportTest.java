@@ -128,11 +128,11 @@ class JazzerReplaySupportTest {
   }
 
   @Test
-  void replay_returnsSuccessForCorrectionTargetMissingPostingWorkflowSeedShape() {
+  void replay_returnsSuccessForReversalTargetMissingPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
             JazzerHarness.postingWorkflow(),
-            correctionTargetMissingRequest().getBytes(UTF_8));
+            reversalTargetMissingRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -142,8 +142,8 @@ class JazzerReplaySupportTest {
             "idem-5",
             2,
             true,
-            "REJECTED_CORRECTION_TARGET_NOT_FOUND",
-            "REJECTED_CORRECTION_TARGET_NOT_FOUND",
+            "REJECTED_REVERSAL_TARGET_NOT_FOUND",
+            "REJECTED_REVERSAL_TARGET_NOT_FOUND",
             "NOT_RUN",
             false,
             "NONE"),
@@ -219,11 +219,11 @@ class JazzerReplaySupportTest {
   }
 
   @Test
-  void replay_returnsSuccessForCorrectionReasonRequiredSqliteRoundTripSeedShape() {
+  void replay_returnsSuccessForReversalReasonRequiredSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
             JazzerHarness.sqliteBookRoundTrip(),
-            correctionReasonRequiredRequest().getBytes(UTF_8));
+            reversalReasonRequiredRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -233,9 +233,9 @@ class JazzerReplaySupportTest {
             "idem-6",
             2,
             true,
-            "REJECTED_CORRECTION_REASON_REQUIRED",
+            "REJECTED_REVERSAL_REASON_REQUIRED",
             "NOT_RUN",
-            "REJECTED_CORRECTION_REASON_REQUIRED",
+            "REJECTED_REVERSAL_REASON_REQUIRED",
             false,
             "NONE"),
         success.details());
@@ -456,26 +456,25 @@ class JazzerReplaySupportTest {
         """;
   }
 
-  private static String correctionTargetMissingRequest() {
+  private static String reversalTargetMissingRequest() {
     return """
         {
           "effectiveDate": "2026-04-08",
           "lines": [
             {
               "accountCode": "5000",
-              "side": "DEBIT",
+              "side": "CREDIT",
               "currencyCode": "GBP",
               "amount": "123.45"
             },
             {
               "accountCode": "6000",
-              "side": "CREDIT",
+              "side": "DEBIT",
               "currencyCode": "GBP",
               "amount": "123.45"
             }
           ],
-          "correction": {
-            "kind": "AMENDMENT",
+          "reversal": {
             "priorPostingId": "posting-missing"
           },
           "provenance": {
@@ -484,32 +483,31 @@ class JazzerReplaySupportTest {
             "commandId": "command-5",
             "idempotencyKey": "idem-5",
             "causationId": "cause-5",
-            "reason": "operator correction"
+            "reason": "operator reversal"
           }
         }
         """;
   }
 
-  private static String correctionReasonRequiredRequest() {
+  private static String reversalReasonRequiredRequest() {
     return """
         {
           "effectiveDate": "2026-04-08",
           "lines": [
             {
               "accountCode": "3000",
-              "side": "DEBIT",
+              "side": "CREDIT",
               "currencyCode": "USD",
               "amount": "99.95"
             },
             {
               "accountCode": "4000",
-              "side": "CREDIT",
+              "side": "DEBIT",
               "currencyCode": "USD",
               "amount": "99.95"
             }
           ],
-          "correction": {
-            "kind": "AMENDMENT",
+          "reversal": {
             "priorPostingId": "posting-missing"
           },
           "provenance": {

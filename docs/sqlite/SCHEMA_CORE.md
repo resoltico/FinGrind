@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.3.0"
+version: "0.4.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
-  keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, canonical-schema, book-file, correction]
+  keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book"]
 ---
 
@@ -28,14 +28,13 @@ create table if not exists posting_fact (
     correlation_id text,
     reason text,
     source_channel text not null check (source_channel in ('CLI')),
-    correction_kind text,
     prior_posting_id text,
     unique (idempotency_key),
     foreign key (prior_posting_id) references posting_fact(posting_id),
     check (
-        (correction_kind is null and prior_posting_id is null)
+        (prior_posting_id is null and reason is null)
         or
-        (correction_kind in ('REVERSAL', 'AMENDMENT') and prior_posting_id is not null)
+        (prior_posting_id is not null and reason is not null)
     )
 );
 
@@ -55,7 +54,7 @@ create index if not exists posting_fact_by_prior_posting_id
 
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
-    where correction_kind = 'REVERSAL';
+    where prior_posting_id is not null;
 ```
 
 ## Table Responsibilities
@@ -70,13 +69,13 @@ Field groups:
 - audit time: `recorded_at`
 - request provenance: `actor_*`, `command_id`, `idempotency_key`, `causation_id`, `correlation_id`, `reason`
 - committed audit channel: `source_channel`
-- correction linkage: `correction_kind`, `prior_posting_id`
+- reversal linkage: `prior_posting_id` plus the coupled `reason`
 
 Important rules:
 - `idempotency_key` is unique inside one selected book file
-- `prior_posting_id` must reference another committed posting when correction linkage is present
-- `correction_kind` and `prior_posting_id` must appear together or not at all
-- only one `REVERSAL` row may point at the same `prior_posting_id`
+- `prior_posting_id` must reference another committed posting when reversal linkage is present
+- `prior_posting_id` and `reason` must appear together or not at all
+- only one reversal row may point at the same `prior_posting_id`
 
 ### `journal_line`
 
@@ -95,7 +94,7 @@ Important rules:
 - One SQLite file is one book.
 - One `posting_fact` row is one committed posting fact.
 - Request provenance and committed audit metadata are both durable.
-- Correction linkage is additive and optional.
+- Reversal linkage is additive and optional.
 - Journal lines are children of one committed posting fact.
 - Book-local idempotency is durable through the unique constraint on `idempotency_key`.
 - Reversal uniqueness is durable through a partial unique index on `prior_posting_id`.

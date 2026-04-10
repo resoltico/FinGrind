@@ -127,14 +127,14 @@ class SqliteNativeInteropTest {
           assertThrows(IllegalStateException.class, () -> database.executeStatement("select 1"));
 
       assertEquals(
-          "SQLite control statement unexpectedly returned result rows.", exception.getMessage());
+          "SQLite control statement must not produce rows: select 1", exception.getMessage());
     } finally {
       database.close();
     }
   }
 
   @Test
-  void mapper_requiresBothCorrectionColumns() throws Exception {
+  void mapper_readsReversalReferenceOnlyFromPriorPostingIdColumn() throws Exception {
     SqliteNativeDatabase database =
         SqliteNativeLibrary.open(tempDirectory.resolve("mapper.sqlite"));
     try {
@@ -143,27 +143,26 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, null, null,
-                  'REVERSAL',
-                  null
+                  null, null, null, null, null, null, null, null, null, null, null, null
               """)) {
         assertEquals(SqliteNativeLibrary.SQLITE_ROW, missingPrior.step());
         assertEquals(
-            java.util.Optional.empty(), SqlitePostingMapper.readCorrectionReference(missingPrior));
+            java.util.Optional.empty(), SqlitePostingMapper.readReversalReference(missingPrior));
       }
 
-      try (SqliteNativeStatement missingKind =
+      try (SqliteNativeStatement presentPriorPostingId =
           SqliteNativeLibrary.prepare(
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, null, null,
-                  null,
-                  'posting-1'
+                  null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
               """)) {
-        assertEquals(SqliteNativeLibrary.SQLITE_ROW, missingKind.step());
+        assertEquals(SqliteNativeLibrary.SQLITE_ROW, presentPriorPostingId.step());
         assertEquals(
-            java.util.Optional.empty(), SqlitePostingMapper.readCorrectionReference(missingKind));
+            java.util.Optional.of(
+                new dev.erst.fingrind.core.ReversalReference(
+                    new dev.erst.fingrind.core.PostingId("posting-1"))),
+            SqlitePostingMapper.readReversalReference(presentPriorPostingId));
       }
     } finally {
       database.close();
@@ -185,7 +184,7 @@ class SqliteNativeInteropTest {
   }
 
   @Test
-  void helperOverloads_coverBridgeAndOpenConfigurationFailures() throws Throwable {
+  void helperOverloads_coverBridgeFailures() throws Throwable {
     MethodHandle throwingVersionHandle =
         MethodHandles.throwException(MemorySegment.class, IllegalStateException.class)
             .bindTo(new IllegalStateException("boom"));
@@ -223,9 +222,6 @@ class SqliteNativeInteropTest {
       assertThrows(
           IllegalStateException.class,
           () -> SqliteNativeLibrary.errorMessage(fakeHandle, messageHandle, throwingStrlenHandle));
-      assertThrows(
-          SqliteNativeException.class,
-          () -> SqliteNativeLibrary.requireOpenConfigurationSuccess(null, 1));
     }
   }
 

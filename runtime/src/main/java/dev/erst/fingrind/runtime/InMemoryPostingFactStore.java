@@ -1,8 +1,8 @@
 package dev.erst.fingrind.runtime;
 
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReversalReference;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,11 +38,10 @@ public final class InMemoryPostingFactStore implements PostingFactStore {
     }
     postingsByPostingId.put(postingFact.postingId(), postingFact);
 
-    Optional<CorrectionReference> correctionReference = postingFact.correctionReference();
-    if (correctionReference.isPresent()
-        && correctionReference.orElseThrow().kind()
-            == CorrectionReference.CorrectionKind.REVERSAL) {
-      PostingId priorPostingId = correctionReference.orElseThrow().priorPostingId();
+    Optional<ReversalReference> reversalReference = postingFact.reversalReference();
+    if (reversalReference.isPresent()) {
+      ReversalReference postedReversal = reversalReference.orElseThrow();
+      PostingId priorPostingId = postedReversal.priorPostingId();
       PostingFact existingReversal =
           reversalsByPriorPostingId.putIfAbsent(priorPostingId, postingFact);
       if (existingReversal != null) {

@@ -3,13 +3,13 @@
   "lines": [
     {
       "accountCode": "1000",
-      "side": "DEBIT",
+      "side": "CREDIT",
       "currencyCode": "EUR",
       "amount": "15.00"
     },
     {
       "accountCode": "2000",
-      "side": "CREDIT",
+      "side": "DEBIT",
       "currencyCode": "EUR",
       "amount": "15.00"
     }
@@ -17,14 +17,13 @@
   "provenance": {
     "actorId": "operator-2",
     "actorType": "USER",
-    "commandId": "command-correction-1",
-    "idempotencyKey": "idem-correction-1",
-    "causationId": "cause-correction-1",
-    "correlationId": "corr-correction-1",
-    "reason": "Invoice amendment"
+    "commandId": "command-reversal-1",
+    "idempotencyKey": "idem-reversal-1",
+    "causationId": "cause-reversal-1",
+    "correlationId": "corr-reversal-1",
+    "reason": "Invoice reversal"
   },
-  "correction": {
-    "kind": "AMENDMENT",
+  "reversal": {
     "priorPostingId": "replace-with-posting-id-from-same-book"
   }
 }

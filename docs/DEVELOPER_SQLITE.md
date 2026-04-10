@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-10"
 route:
@@ -74,7 +74,7 @@ The SQLite adapter is split into focused collaborators:
 - [`SqlitePostingFactStore`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java): owns one thread-confined book session, lookup paths, transaction-scoped duplicate checks, and durable commit outcomes
 - [`SqliteNativeLibrary`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java): minimal FFM binding surface to the SQLite C API, including configured-library selection, version enforcement, and `sqlite3_exec` for canonical schema application
 - [`SqliteNativeDatabase`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java): one open native SQLite database handle with distinct control-statement and script helpers
-- [`SqliteNativeStatement`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java): single-use prepared statement wrapper with statement-scoped native memory
+- [`SqliteNativeStatement`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java): single-use prepared statement wrapper with statement-scoped native memory; bound text length is derived from the native UTF-8 segment size instead of re-encoding Java strings on every bind
 - [`SqliteSchemaManager`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSchemaManager.java): lazily loads and caches the canonical schema resource, then applies it on the writable connection
 - [`SqlitePostingSql`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSql.java): holds canonical lookup and insert SQL strings
 - [`SqlitePostingMapper`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingMapper.java): reconstructs domain facts from native SQLite result rows
@@ -88,7 +88,7 @@ The SQLite adapter is split into focused collaborators:
   book initialization, not one accounting fact commit.
 - Book-local uniqueness enforces duplicate idempotency durably.
 - SQLite also enforces one reversal per target through a partial unique index.
-- Correction linkage is durable and references `posting_fact(posting_id)` through a foreign key.
+- Reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key.
 - Runtime probes distinguish `managed` versus `system` library source and report
   `requiredMinimumSqliteVersion`, `sqliteRuntimeStatus`, and `loadedSqliteVersion` through
   `capabilities`.

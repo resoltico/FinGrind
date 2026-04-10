@@ -74,6 +74,9 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             dependencies.apply {
                 add("implementation", platform(libs.library("junit-bom")))
                 add("implementation", libs.library("junit-platform-launcher"))
+                add("implementation", libs.library("jazzer-api"))
+                add("implementation", libs.library("jazzer"))
+                add("implementation", libs.library("jazzer-junit"))
                 add("implementation", libs.library("jackson-databind"))
                 add("implementation", "dev.erst.fingrind:core")
                 add("implementation", "dev.erst.fingrind:runtime")
@@ -83,6 +86,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
                 add("testImplementation", platform(libs.library("junit-bom")))
                 add("testImplementation", libs.library("jackson-databind"))
+                add("testImplementation", libs.library("jazzer-junit"))
                 add("testImplementation", libs.library("junit-jupiter"))
                 add("testRuntimeOnly", libs.library("junit-platform-launcher"))
 

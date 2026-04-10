@@ -9,8 +9,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -19,6 +17,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -46,15 +46,15 @@ class PostingFactTest {
   }
 
   @Test
-  void constructor_normalizesNullCorrectionReferenceToEmpty() {
+  void constructor_normalizesNullReversalReferenceToEmpty() {
     PostingFact postingFact =
         new PostingFact(
             new PostingId("posting-1"),
             journalEntry(),
-            nullCorrectionReference(),
+            nullReversalReference(),
             provenance("idem-1"));
 
-    assertEquals(Optional.empty(), postingFact.correctionReference());
+    assertEquals(Optional.empty(), postingFact.reversalReference());
   }
 
   private static JournalEntry journalEntry() {
@@ -80,12 +80,12 @@ class PostingFactTest {
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1")),
-            Optional.of(new CorrectionReason("operator correction"))),
+            Optional.of(new ReversalReason("operator reversal"))),
         Instant.parse("2026-04-07T10:15:30Z"),
         SourceChannel.CLI);
   }
 
-  private static Optional<CorrectionReference> nullCorrectionReference() {
+  private static Optional<ReversalReference> nullReversalReference() {
     return null;
   }
 }

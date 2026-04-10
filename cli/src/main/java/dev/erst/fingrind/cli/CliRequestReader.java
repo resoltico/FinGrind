@@ -6,8 +6,6 @@ import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -16,6 +14,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,6 +43,7 @@ final class CliRequestReader {
   PostEntryCommand readPostEntryCommand(Path requestFile) {
     try {
       JsonNode rootNode = readRootNode(requestFile);
+      rejectForbiddenField(rootNode, "correction");
       JsonNode provenanceNode = requiredObject(rootNode, "provenance");
       rejectForbiddenField(provenanceNode, "recordedAt");
       rejectForbiddenField(provenanceNode, "sourceChannel");
@@ -50,7 +51,7 @@ final class CliRequestReader {
           new JournalEntry(
               LocalDate.parse(requiredText(rootNode, "effectiveDate")),
               readLines(requiredArray(rootNode, "lines"))),
-          readCorrection(rootNode.get("correction")),
+          readReversal(rootNode.get("reversal")),
           new RequestProvenance(
               new ActorId(requiredText(provenanceNode, "actorId")),
               ActorType.valueOf(requiredText(provenanceNode, "actorType")),
@@ -58,7 +59,7 @@ final class CliRequestReader {
               new IdempotencyKey(requiredText(provenanceNode, "idempotencyKey")),
               new CausationId(requiredText(provenanceNode, "causationId")),
               optionalText(provenanceNode, "correlationId").map(CorrelationId::new),
-              optionalText(provenanceNode, "reason").map(CorrectionReason::new)),
+              optionalText(provenanceNode, "reason").map(ReversalReason::new)),
           SourceChannel.CLI);
     } catch (CliRequestException exception) {
       throw exception;
@@ -114,14 +115,16 @@ final class CliRequestReader {
     return lines;
   }
 
-  private Optional<CorrectionReference> readCorrection(JsonNode correctionNode) {
-    if (correctionNode == null || correctionNode.isNull()) {
+  private Optional<ReversalReference> readReversal(JsonNode reversalNode) {
+    if (reversalNode == null || reversalNode.isNull()) {
       return Optional.empty();
     }
+    if (!reversalNode.isObject()) {
+      throw new IllegalArgumentException("Field must be an object: reversal");
+    }
+    rejectForbiddenField(reversalNode, "kind");
     return Optional.of(
-        new CorrectionReference(
-            CorrectionReference.CorrectionKind.valueOf(requiredText(correctionNode, "kind")),
-            new PostingId(requiredText(correctionNode, "priorPostingId"))));
+        new ReversalReference(new PostingId(requiredText(reversalNode, "priorPostingId"))));
   }
 
   private static void rejectForbiddenField(JsonNode rootNode, String fieldName) {
@@ -158,10 +161,10 @@ final class CliRequestReader {
     if (fieldNode == null || fieldNode.isNull()) {
       throw new IllegalArgumentException("Missing required field: " + fieldName);
     }
-    if (!fieldNode.isTextual()) {
+    if (!fieldNode.isString()) {
       throw new IllegalArgumentException("Field must be a string: " + fieldName);
     }
-    return fieldNode.textValue();
+    return fieldNode.stringValue();
   }
 
   private static Optional<String> optionalText(JsonNode rootNode, String fieldName) {
@@ -169,10 +172,10 @@ final class CliRequestReader {
     if (fieldNode == null || fieldNode.isNull()) {
       return Optional.empty();
     }
-    if (!fieldNode.isTextual()) {
+    if (!fieldNode.isString()) {
       throw new IllegalArgumentException("Field must be a string when present: " + fieldName);
     }
-    return Optional.of(fieldNode.textValue());
+    return Optional.of(fieldNode.stringValue());
   }
 
   private static BigDecimal parseAmount(String amountText) {

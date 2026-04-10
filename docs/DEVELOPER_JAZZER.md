@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DEVELOPER_JAZZER
 updated: "2026-04-10"
 route:
-  keywords: [fingrind, jazzer, fuzzing, regression, replay, coverage, sqlite, cli, correction]
+  keywords: [fingrind, jazzer, fuzzing, regression, replay, coverage, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run the fingrind jazzer checks"]
 ---
 
@@ -26,6 +26,10 @@ That separation is deliberate:
   vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
+Active harness launching now goes through Jazzer's official command-line JUnit runner instead of a
+local reimplementation of class discovery. That keeps the operator path aligned with Jazzer's real
+`@FuzzTest` semantics.
+
 ## Topology Contract
 
 Harness metadata and runnable target ownership live in
@@ -37,6 +41,10 @@ That file is consumed by:
 
 When adding, renaming, or removing a harness, update the topology file and the matching fuzz/test
 sources together.
+
+Each active harness class must declare exactly one `@FuzzTest` method. The standalone harness
+runner enforces that contract before it hands control to Jazzer, so do not add extra JUnit tests
+or tag-based launcher hints to fuzz classes.
 
 ## Main Commands
 
@@ -63,6 +71,7 @@ sources together.
 
 The nested Jazzer build also includes normal JUnit support tests that cover:
 - harness runner argument parsing and progress pulses
+- explicit single-`@FuzzTest` harness discovery and failure shaping
 - regression runner replay semantics
 - direct replay classification for accepted and rejected seeds
 - shared topology ordering and task-resolution contract
@@ -72,9 +81,9 @@ The nested Jazzer build also includes normal JUnit support tests that cover:
 
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
-| `cli-request` | `7` | valid parse, correction parse, exponent rejection, missing provenance, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `posting-workflow` | `5` | success, invalid actor, exponent rejection, missing correction reason, missing correction target |
-| `sqlite-book-roundtrip` | `6` | success, nested path, exponent rejection, invalid type, missing correction reason, missing correction target |
+| `cli-request` | `8` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, missing provenance, forbidden recorded-at, forbidden source-channel, unbalanced entry |
+| `posting-workflow` | `5` | success, invalid actor, exponent rejection, missing reversal reason, missing reversal target |
+| `sqlite-book-roundtrip` | `6` | success, nested path, exponent rejection, invalid type, missing reversal reason, missing reversal target |
 
 ## Regression Philosophy
 

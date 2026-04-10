@@ -17,6 +17,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -201,6 +202,7 @@ class SqliteNativeLibraryTest {
   void requireSupportedVersion_rejectsOlderRuntimeAndCompareVersionsOrdersDottedNumbers() {
     assertTrue(SqliteNativeLibrary.compareVersions("3.53.0", "3.52.9") > 0);
     assertEquals(0, SqliteNativeLibrary.compareVersions("3.53", "3.53.0"));
+    assertEquals(0, SqliteNativeLibrary.compareVersions("3.53.0", "3.53"));
     assertThrows(
         IllegalStateException.class,
         () -> SqliteNativeLibrary.compareVersions("3.bad.0", "3.53.0"));
@@ -224,6 +226,7 @@ class SqliteNativeLibraryTest {
               0,
               MemorySegment.class);
 
+      assertEquals("SQLite native failure.", SqliteNativeLibrary.errorMessage(null, errorHandle));
       assertEquals(
           "SQLite native failure.",
           SqliteNativeLibrary.errorMessage(MemorySegment.NULL, errorHandle));
@@ -233,6 +236,20 @@ class SqliteNativeLibraryTest {
     assertEquals(
         "SQLite native failure.",
         SqliteNativeLibrary.scriptErrorMessage(MemorySegment.NULL, MemorySegment.NULL));
+  }
+
+  @Test
+  void errorMessage_readsMessageForNonNullHandle() {
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment fakeHandle = arena.allocate(1);
+      MethodHandle errorHandle =
+          MethodHandles.dropArguments(
+              MethodHandles.constant(MemorySegment.class, arena.allocateFrom("boom")),
+              0,
+              MemorySegment.class);
+
+      assertEquals("boom", SqliteNativeLibrary.errorMessage(fakeHandle, errorHandle));
+    }
   }
 
   @Test
@@ -246,10 +263,6 @@ class SqliteNativeLibraryTest {
 
       assertFalse(SqliteNativeLibrary.errorMessage(database.handle()).isBlank());
       assertEquals("3.53.0", SqliteNativeLibrary.sqliteVersion(versionHandle));
-      assertDoesNotThrow(
-          () ->
-              SqliteNativeLibrary.requireOpenConfigurationSuccess(
-                  MemorySegment.NULL, SqliteNativeLibrary.SQLITE_OK));
       assertDoesNotThrow(
           () ->
               SqliteNativeLibrary.freeSqliteBuffer(
@@ -304,6 +317,20 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
+  void utf8ByteLength_usesNativeSegmentSizeWithoutNullTerminator() {
+    String value = "Riga € 漢字";
+
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment valuePointer = arena.allocateFrom(value);
+
+      assertEquals(
+          value.getBytes(StandardCharsets.UTF_8).length,
+          SqliteNativeStatement.utf8ByteLength(valuePointer));
+      assertEquals(value.getBytes(StandardCharsets.UTF_8).length + 1L, valuePointer.byteSize());
+    }
+  }
+
+  @Test
   void open_throwsForDirectoryTarget() throws Exception {
     Path directoryPath = tempDirectory.resolve("not-a-book");
     java.nio.file.Files.createDirectories(directoryPath);
@@ -354,5 +381,145 @@ class SqliteNativeLibraryTest {
                         "managed", tempDirectory.resolve("missing/libsqlite3.dylib").toString())));
 
     assertTrue(exception.getCause() instanceof RuntimeException);
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void requireOpenConfigurationSuccess_throwsSqliteFailureForNonOkResult() throws Exception {
+    Class<?> sqliteApiClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "requireOpenConfigurationSuccess", MemorySegment.class, int.class, sqliteApiClass);
+    method.setAccessible(true);
+
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment databaseHandle = arena.allocate(1);
+      Object sqliteApi =
+          sqliteApi(
+              constantMethodHandle(0, MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
+              constantMethodHandle(14, MemorySegment.class));
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () -> method.invoke(null, databaseHandle, 14, sqliteApi));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      SqliteNativeException sqliteException = (SqliteNativeException) exception.getCause();
+      assertEquals(14, sqliteException.resultCode());
+      assertEquals("SQLITE_CANTOPEN", sqliteException.resultName());
+      assertEquals("boom", sqliteException.getMessage());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void requireOpenConfigurationSuccess_preservesFailureWhenCloseAlsoThrows() throws Exception {
+    Class<?> sqliteApiClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "requireOpenConfigurationSuccess", MemorySegment.class, int.class, sqliteApiClass);
+    method.setAccessible(true);
+
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment databaseHandle = arena.allocate(1);
+      MethodHandle throwingCloseHandle =
+          MethodHandles.throwException(int.class, IllegalStateException.class)
+              .bindTo(new IllegalStateException("close boom"));
+      Object sqliteApi =
+          sqliteApi(
+              MethodHandles.dropArguments(throwingCloseHandle, 0, MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
+              constantMethodHandle(14, MemorySegment.class));
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () -> method.invoke(null, databaseHandle, 14, sqliteApi));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      assertEquals("boom", exception.getCause().getMessage());
+    }
+  }
+
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  private static Object sqliteApi(
+      MethodHandle closeHandle, MethodHandle errorMessageHandle, MethodHandle extendedErrcodeHandle)
+      throws ReflectiveOperationException {
+    Class<?> sqliteApiClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
+    var constructor =
+        sqliteApiClass.getDeclaredConstructor(
+            Arena.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            MethodHandle.class,
+            String.class);
+    constructor.setAccessible(true);
+
+    return constructor.newInstance(
+        Arena.ofShared(),
+        constantMethodHandle(
+            0, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class),
+        closeHandle,
+        constantMethodHandle(0, MemorySegment.class, int.class),
+        constantMethodHandle(0, MemorySegment.class, int.class),
+        constantMethodHandle(
+            0,
+            MemorySegment.class,
+            MemorySegment.class,
+            MemorySegment.class,
+            MemorySegment.class,
+            MemorySegment.class),
+        voidMethodHandle(MemorySegment.class),
+        constantMethodHandle(
+            0, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class),
+        constantMethodHandle(0, MemorySegment.class, int.class),
+        constantMethodHandle(0, MemorySegment.class, int.class, int.class),
+        constantMethodHandle(
+            0, MemorySegment.class, int.class, MemorySegment.class, int.class, MemorySegment.class),
+        constantMethodHandle(0, MemorySegment.class),
+        constantMethodHandle(0, MemorySegment.class),
+        constantMethodHandle(MemorySegment.NULL, MemorySegment.class, int.class),
+        constantMethodHandle(0, MemorySegment.class, int.class),
+        constantMethodHandle(0, MemorySegment.class, int.class),
+        errorMessageHandle,
+        extendedErrcodeHandle,
+        "3.53.0");
+  }
+
+  private static MethodHandle constantMethodHandle(Object value, Class<?>... parameterTypes) {
+    MethodHandle constantHandle = MethodHandles.constant(constantType(value), value);
+    return MethodHandles.dropArguments(constantHandle, 0, parameterTypes);
+  }
+
+  private static MethodHandle voidMethodHandle(Class<?>... parameterTypes) {
+    return MethodHandles.dropArguments(
+        MethodHandles.empty(java.lang.invoke.MethodType.methodType(void.class)), 0, parameterTypes);
+  }
+
+  private static Class<?> constantType(Object value) {
+    return switch (value) {
+      case Integer _ -> int.class;
+      case MemorySegment _ -> MemorySegment.class;
+      default -> value.getClass();
+    };
   }
 }

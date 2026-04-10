@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: CORE
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
-  keywords: [fingrind, core, journal, money, provenance, correction, account-code, currency-code, idempotency]
+  keywords: [fingrind, core, journal, money, provenance, reversal, account-code, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind"]
 ---
 
@@ -82,42 +82,27 @@ public record CommittedProvenance(
 - Purpose: carry the accepted request provenance plus commit-time audit fields
 - Validation: rejects `null` request provenance, `recordedAt`, and `sourceChannel`
 
-## `CorrectionReason`
+## `ReversalReason`
 
-`CorrectionReason` is the human-readable reason recorded for a corrective posting.
+`ReversalReason` is the human-readable reason recorded for a reversal posting.
 
 ```java
-public record CorrectionReason(String value)
+public record ReversalReason(String value)
 ```
 
-- Purpose: preserve the operator-supplied reason for an amendment or reversal
+- Purpose: preserve the operator-supplied reason for a reversal
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
-## `CorrectionReference`
+## `ReversalReference`
 
-`CorrectionReference` is the additive link from a new posting fact to an earlier committed posting.
-
-```java
-public record CorrectionReference(
-    CorrectionReference.CorrectionKind kind,
-    PostingId priorPostingId)
-```
-
-- Purpose: model correction lineage outside the journal-entry grammar
-- Validation: rejects `null` kind and `null` prior posting id
-
-## `CorrectionReference.CorrectionKind`
-
-`CorrectionKind` is the closed set of additive correction forms.
+`ReversalReference` is the additive link from a new posting fact to an earlier committed posting.
 
 ```java
-public enum CorrectionKind {
-  REVERSAL,
-  AMENDMENT
-}
+public record ReversalReference(PostingId priorPostingId)
 ```
 
-- Purpose: distinguish full reversal from amendment linkage
+- Purpose: model reversal lineage outside the journal-entry grammar
+- Validation: rejects `null` prior posting id
 
 ## `CorrelationId`
 
@@ -224,10 +209,10 @@ public record RequestProvenance(
     IdempotencyKey idempotencyKey,
     CausationId causationId,
     Optional<CorrelationId> correlationId,
-    Optional<CorrectionReason> reason)
+    Optional<ReversalReason> reason)
 ```
 
-- Purpose: carry the accepted request identity and correction reason without commit-time audit fields
+- Purpose: carry the accepted request identity and reversal reason without commit-time audit fields
 - Normalization: `null` optional fields become `Optional.empty()`
 - Validation: rejects `null` required fields
 

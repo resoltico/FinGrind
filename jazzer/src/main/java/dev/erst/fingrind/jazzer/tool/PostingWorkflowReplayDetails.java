@@ -6,7 +6,7 @@ public record PostingWorkflowReplayDetails(
     String effectiveDate,
     String idempotencyKey,
     int lineCount,
-    boolean correctionPresent,
+    boolean reversalPresent,
     String preflightStatus,
     String firstCommitStatus,
     String duplicateStatus,

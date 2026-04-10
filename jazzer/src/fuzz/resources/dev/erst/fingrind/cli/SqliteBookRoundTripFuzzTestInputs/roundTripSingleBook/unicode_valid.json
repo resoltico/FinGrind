@@ -1,0 +1,24 @@
+{
+  "effectiveDate": "2026-04-07",
+  "lines": [
+    {
+      "accountCode": "1000-kase",
+      "side": "DEBIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    },
+    {
+      "accountCode": "2000-ieņēmumi",
+      "side": "CREDIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    }
+  ],
+  "provenance": {
+    "actorId": "aktieris-ā",
+    "actorType": "AGENT",
+    "commandId": "komanda-漢字",
+    "idempotencyKey": "idem-unicode-1",
+    "causationId": "cause-€-1"
+  }
+}

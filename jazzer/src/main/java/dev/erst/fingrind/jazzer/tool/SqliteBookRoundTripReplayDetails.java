@@ -6,7 +6,7 @@ public record SqliteBookRoundTripReplayDetails(
     String effectiveDate,
     String idempotencyKey,
     int lineCount,
-    boolean correctionPresent,
+    boolean reversalPresent,
     String firstCommitStatus,
     String reloadStatus,
     String duplicateStatus,

@@ -3,19 +3,18 @@
   "lines": [
     {
       "accountCode": "5000",
-      "side": "DEBIT",
+      "side": "CREDIT",
       "currencyCode": "GBP",
       "amount": "123.45"
     },
     {
       "accountCode": "6000",
-      "side": "CREDIT",
+      "side": "DEBIT",
       "currencyCode": "GBP",
       "amount": "123.45"
     }
   ],
-  "correction": {
-    "kind": "AMENDMENT",
+  "reversal": {
     "priorPostingId": "posting-missing"
   },
   "provenance": {
@@ -24,6 +23,6 @@
     "commandId": "command-5",
     "idempotencyKey": "idem-5",
     "causationId": "cause-5",
-    "reason": "operator correction"
+    "reason": "operator reversal"
   }
 }

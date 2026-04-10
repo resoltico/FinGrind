@@ -12,10 +12,8 @@ import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.runtime.InMemoryPostingFactStore;
 import dev.erst.fingrind.runtime.PostingFact;
 import java.util.Optional;
-import org.junit.jupiter.api.Tag;
 
 /** Fuzzes posting workflow invariants above the runtime seam using an in-memory book. */
-@Tag("jazzer")
 public class PostingWorkflowFuzzTest {
   @FuzzTest
   void exercisePostingWorkflow(FuzzedDataProvider data) {
@@ -54,8 +52,8 @@ public class PostingWorkflowFuzzTest {
         if (!postingFact.journalEntry().equals(command.journalEntry())) {
           throw new IllegalStateException("Stored journal entry differs from the parsed command.");
         }
-        if (!postingFact.correctionReference().equals(command.correctionReference())) {
-          throw new IllegalStateException("Stored correction differs from the parsed command.");
+        if (!postingFact.reversalReference().equals(command.reversalReference())) {
+          throw new IllegalStateException("Stored reversal differs from the parsed command.");
         }
         if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
           throw new IllegalStateException(

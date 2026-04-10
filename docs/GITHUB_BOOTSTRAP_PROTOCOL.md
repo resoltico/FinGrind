@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-04-08"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]

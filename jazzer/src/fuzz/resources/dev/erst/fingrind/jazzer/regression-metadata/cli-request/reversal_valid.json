@@ -1,6 +1,6 @@
 {
   "targetKey" : "cli-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/correction_valid.json",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/reversal_valid.json",
   "expectation" : {
     "outcomeKind" : "SUCCESS",
     "details" : {
@@ -9,7 +9,7 @@
       "effectiveDate" : "2026-04-08",
       "idempotencyKey" : "idem-2",
       "lineCount" : 2,
-      "correctionPresent" : true,
+      "reversalPresent" : true,
       "actorType" : "SYSTEM",
       "sourceChannel" : "CLI",
       "failureMessage" : "NONE"

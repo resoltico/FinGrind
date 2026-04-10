@@ -151,16 +151,15 @@ final class FinGrindCli {
             "committedFields",
             List.of("recordedAt", "sourceChannel")));
     payload.put(
-        "corrections",
+        "reversals",
         Map.of(
-            "kinds", List.of("reversal", "amendment"),
             "requirements",
-                List.of(
-                    "target-must-exist-in-book",
-                    "reason-required",
-                    "reason-forbidden-without-correction",
-                    "one-reversal-per-target",
-                    "reversal-must-negate-target")));
+            List.of(
+                "target-must-exist-in-book",
+                "reason-required",
+                "reason-forbidden-without-reversal",
+                "one-reversal-per-target",
+                "reversal-must-negate-target")));
     payload.put("environment", environmentPayload());
     payload.put("timestamp", Instant.now(clock).toString());
     return payload;
@@ -321,14 +320,16 @@ final class FinGrindCli {
   private static Map<String, Object> requestShapePayload() {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("requiredTopLevelFields", List.of("effectiveDate", "lines", "provenance"));
-    payload.put("optionalTopLevelFields", List.of("correction"));
+    payload.put("optionalTopLevelFields", List.of("reversal"));
+    payload.put("forbiddenTopLevelFields", List.of("correction"));
     payload.put("requiredLineFields", List.of("accountCode", "side", "currencyCode", "amount"));
     payload.put(
         "requiredProvenanceFields",
         List.of("actorId", "actorType", "commandId", "idempotencyKey", "causationId"));
     payload.put("optionalProvenanceFields", List.of("correlationId", "reason"));
     payload.put("forbiddenProvenanceFields", List.of("recordedAt", "sourceChannel"));
-    payload.put("requiredCorrectionFields", List.of("kind", "priorPostingId"));
+    payload.put("requiredReversalFields", List.of("priorPostingId"));
+    payload.put("forbiddenReversalFields", List.of("kind"));
     payload.put("enums", enumPayload());
     return payload;
   }
@@ -338,7 +339,6 @@ final class FinGrindCli {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("lineSide", List.of("DEBIT", "CREDIT"));
     payload.put("actorType", List.of("USER", "SYSTEM", "AGENT"));
-    payload.put("correctionKind", List.of("REVERSAL", "AMENDMENT"));
     return payload;
   }
 
@@ -352,9 +352,9 @@ final class FinGrindCli {
         "rejectionCodes",
         List.of(
             "duplicate-idempotency-key",
-            "correction-reason-required",
-            "correction-reason-forbidden",
-            "correction-target-not-found",
+            "reversal-reason-required",
+            "reversal-reason-forbidden",
+            "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"));
     payload.put(

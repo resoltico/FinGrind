@@ -1,10 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.runtime.PostingCommitResult;
 import dev.erst.fingrind.runtime.PostingFact;
 import dev.erst.fingrind.runtime.PostingFactStore;
@@ -118,10 +118,9 @@ public final class SqlitePostingFactStore implements PostingFactStore, AutoClose
               postingFact.provenance().requestProvenance().idempotencyKey()));
     }
 
-    CorrectionReference correctionReference = postingFact.correctionReference().orElse(null);
-    if (correctionReference != null
-        && correctionReference.kind() == CorrectionReference.CorrectionKind.REVERSAL) {
-      PostingId priorPostingId = correctionReference.priorPostingId();
+    ReversalReference reversalReference = postingFact.reversalReference().orElse(null);
+    if (reversalReference != null) {
+      PostingId priorPostingId = reversalReference.priorPostingId();
       if (existsRow(
           activeDatabase,
           SqlitePostingSql.EXISTS_REVERSAL_FOR,
@@ -145,22 +144,26 @@ public final class SqlitePostingFactStore implements PostingFactStore, AutoClose
     }
   }
 
+  @SuppressWarnings("PMD.UseTryWithResources")
   private Optional<PostingFact> executeFindOnePosting(
       SqliteNativeDatabase activeDatabase, String sql, SqliteBinder binder)
       throws SqliteNativeException {
-    SqliteNativeStatement statement = null;
+    // This path closes a single-use statement deterministically without try-with-resources so the
+    // helper stays free of compiler-generated close branches under the module's 100% coverage gate.
+    SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
     try {
-      statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
       binder.bind(statement);
       int resultCode = statement.step();
       if (resultCode == SqliteNativeLibrary.SQLITE_DONE) {
         return Optional.empty();
       }
-      PostingId postingId = new PostingId(SqlitePostingMapper.requiredText(statement, 0));
+      PostingId postingId =
+          new PostingId(
+              SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
       return Optional.of(
           SqlitePostingMapper.postingFact(statement, loadLines(activeDatabase, postingId)));
     } finally {
-      closeStatement(statement);
+      statement.close();
     }
   }
 
@@ -200,11 +203,8 @@ public final class SqlitePostingFactStore implements PostingFactStore, AutoClose
       statement.bindText(11, postingFact.provenance().sourceChannel().name());
       statement.bindText(
           12,
-          postingFact.correctionReference().map(reference -> reference.kind().name()).orElse(null));
-      statement.bindText(
-          13,
           postingFact
-              .correctionReference()
+              .reversalReference()
               .map(reference -> reference.priorPostingId().value())
               .orElse(null));
       statement.step();
@@ -272,12 +272,6 @@ public final class SqlitePostingFactStore implements PostingFactStore, AutoClose
       activeDatabase.executeStatement("rollback");
     } catch (SqliteNativeException ignored) {
       // Preserve the original failure or ordinary duplicate outcome.
-    }
-  }
-
-  private static void closeStatement(SqliteNativeStatement statement) {
-    if (statement != null) {
-      statement.close();
     }
   }
 

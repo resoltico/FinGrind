@@ -1,6 +1,6 @@
 {
   "targetKey" : "cli-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_amount_exponent.json",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_legacy_correction.json",
   "expectation" : {
     "outcomeKind" : "EXPECTED_INVALID",
     "details" : {
@@ -12,7 +12,7 @@
       "reversalPresent" : false,
       "actorType" : "NOT_PARSED",
       "sourceChannel" : "NOT_PARSED",
-      "failureMessage" : "Money amount must be a plain decimal string without exponent notation."
+      "failureMessage" : "Field is no longer accepted: correction"
     }
   }
 }

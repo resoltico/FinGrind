@@ -27,8 +27,7 @@ final class SqliteNativeDatabase {
     try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(this, sql)) {
       int resultCode = statement.step();
       if (resultCode != SqliteNativeLibrary.SQLITE_DONE) {
-        throw new IllegalStateException(
-            "SQLite control statement unexpectedly returned result rows.");
+        throw new IllegalStateException("SQLite control statement must not produce rows: " + sql);
       }
     }
   }

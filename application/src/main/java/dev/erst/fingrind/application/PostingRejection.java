@@ -5,26 +5,26 @@ import java.util.Objects;
 
 /** Closed family of domain rejections that can refuse a posting request deterministically. */
 public sealed interface PostingRejection
-    permits PostingRejection.CorrectionReasonForbidden,
-        PostingRejection.CorrectionReasonRequired,
-        PostingRejection.CorrectionTargetNotFound,
-        PostingRejection.DuplicateIdempotencyKey,
+    permits PostingRejection.DuplicateIdempotencyKey,
+        PostingRejection.ReversalReasonForbidden,
+        PostingRejection.ReversalReasonRequired,
+        PostingRejection.ReversalTargetNotFound,
         PostingRejection.ReversalAlreadyExists,
         PostingRejection.ReversalDoesNotNegateTarget {
 
   /** Duplicate idempotency rejection for a book-local request identity that already exists. */
   record DuplicateIdempotencyKey() implements PostingRejection {}
 
-  /** Rejection for a corrective posting that omitted the required human-readable reason. */
-  record CorrectionReasonRequired() implements PostingRejection {}
+  /** Rejection for a reversal posting that omitted the required human-readable reason. */
+  record ReversalReasonRequired() implements PostingRejection {}
 
-  /** Rejection for a non-corrective posting that supplied a corrective reason anyway. */
-  record CorrectionReasonForbidden() implements PostingRejection {}
+  /** Rejection for a non-reversal posting that supplied a reversal reason anyway. */
+  record ReversalReasonForbidden() implements PostingRejection {}
 
-  /** Rejection for a correction whose referenced prior posting does not exist in this book. */
-  record CorrectionTargetNotFound(PostingId priorPostingId) implements PostingRejection {
-    /** Validates the missing correction target descriptor. */
-    public CorrectionTargetNotFound {
+  /** Rejection for a reversal whose referenced prior posting does not exist in this book. */
+  record ReversalTargetNotFound(PostingId priorPostingId) implements PostingRejection {
+    /** Validates the missing reversal target descriptor. */
+    public ReversalTargetNotFound {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
   }

@@ -6,7 +6,7 @@ public record CliRequestReplayDetails(
     String effectiveDate,
     String idempotencyKey,
     int lineCount,
-    boolean correctionPresent,
+    boolean reversalPresent,
     String actorType,
     String sourceChannel,
     String failureMessage)

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: APPLICATION
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, application, post-entry, preflight, rejection, committed, write-boundary, sealed-result]
   questions: ["how does the post-entry application boundary work", "what results can posting return in fingrind", "what deterministic rejections does fingrind expose"]
@@ -17,13 +17,13 @@ route:
 ```java
 public record PostEntryCommand(
     JournalEntry journalEntry,
-    Optional<CorrectionReference> correctionReference,
+    Optional<ReversalReference> reversalReference,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel)
 ```
 
-- Purpose: carry the balanced journal body, correction linkage, accepted request provenance, and ingress channel into the write boundary
-- Normalization: `null` correction becomes `Optional.empty()`
+- Purpose: carry the balanced journal body, reversal linkage, accepted request provenance, and ingress channel into the write boundary
+- Normalization: `null` reversal becomes `Optional.empty()`
 - Validation: rejects `null` journal entry, request provenance, and source channel
 
 ## `PostEntryResult`
@@ -91,7 +91,7 @@ public final class PostingApplicationService
 
 - Constructor: requires `PostingFactStore`, `PostingIdGenerator`, and `Clock`
 - Surface: exposes `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
-- Policy: enforces duplicate idempotency, correction-target existence, correction-reason rules, one-reversal-per-target, and reversal negation
+- Policy: enforces duplicate idempotency, reversal-target existence, reversal-reason rules, one-reversal-per-target, and reversal negation
 - Commit path: creates `CommittedProvenance`, generates a fresh `PostingId`, and maps runtime commit outcomes into `PostEntryResult`
 
 ## `PostingIdGenerator`
@@ -114,39 +114,39 @@ public interface PostingIdGenerator {
 public sealed interface PostingRejection
 ```
 
-- Variants: duplicate idempotency, correction reason required or forbidden, missing correction target, duplicate reversal, reversal mismatch
+- Variants: duplicate idempotency, reversal reason required or forbidden, missing reversal target, duplicate reversal, reversal mismatch
 - Purpose: keep validly parsed but inadmissible requests machine-distinguishable
 
-## `PostingRejection.CorrectionReasonForbidden`
+## `PostingRejection.ReversalReasonForbidden`
 
-`CorrectionReasonForbidden` rejects a non-corrective request that still supplied `provenance.reason`.
+`ReversalReasonForbidden` rejects a non-reversal request that still supplied `provenance.reason`.
 
 ```java
-public record CorrectionReasonForbidden() implements PostingRejection
+public record ReversalReasonForbidden() implements PostingRejection
 ```
 
-- Purpose: keep correction reason scoped to actual corrective postings
+- Purpose: keep reversal reason scoped to actual reversal postings
 
-## `PostingRejection.CorrectionReasonRequired`
+## `PostingRejection.ReversalReasonRequired`
 
-`CorrectionReasonRequired` rejects a corrective posting that omitted `provenance.reason`.
+`ReversalReasonRequired` rejects a reversal posting that omitted `provenance.reason`.
 
 ```java
-public record CorrectionReasonRequired() implements PostingRejection
+public record ReversalReasonRequired() implements PostingRejection
 ```
 
-- Purpose: require a human-readable reason for every amendment or reversal
+- Purpose: require a human-readable reason for every reversal
 
-## `PostingRejection.CorrectionTargetNotFound`
+## `PostingRejection.ReversalTargetNotFound`
 
-`CorrectionTargetNotFound` rejects a correction whose `priorPostingId` does not exist in the selected book.
+`ReversalTargetNotFound` rejects a reversal whose `priorPostingId` does not exist in the selected book.
 
 ```java
-public record CorrectionTargetNotFound(PostingId priorPostingId)
+public record ReversalTargetNotFound(PostingId priorPostingId)
     implements PostingRejection
 ```
 
-- Purpose: keep correction lineage anchored to an existing committed posting
+- Purpose: keep reversal lineage anchored to an existing committed posting
 - Validation: rejects `null` `priorPostingId`
 
 ## `PostingRejection.DuplicateIdempotencyKey`
@@ -180,5 +180,5 @@ public record ReversalDoesNotNegateTarget(PostingId priorPostingId)
     implements PostingRejection
 ```
 
-- Purpose: keep `REVERSAL` semantically stronger than a generic amendment
+- Purpose: keep reversal linkage semantically exact instead of a generic lineage marker
 - Validation: rejects `null` `priorPostingId`
