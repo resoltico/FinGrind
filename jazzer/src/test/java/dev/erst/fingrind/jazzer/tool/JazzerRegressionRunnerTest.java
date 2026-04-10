@@ -21,7 +21,7 @@ class JazzerRegressionRunnerTest {
     @Test
     void parseHarness_returnsHarnessWhenArgumentsAreValid() {
       assertEquals(
-          JazzerHarness.CLI_REQUEST,
+          JazzerHarness.cliRequest(),
           JazzerRegressionRunner.parseHarness(new String[] {"--target", "cli-request"}));
     }
 
@@ -47,7 +47,7 @@ class JazzerRegressionRunnerTest {
       StringWriter output = new StringWriter();
       StringWriter errors = new StringWriter();
       writeSeedMetadata(
-          JazzerHarness.CLI_REQUEST,
+          JazzerHarness.cliRequest(),
           "basic_valid.json",
           """
           {
@@ -81,7 +81,7 @@ class JazzerRegressionRunnerTest {
       int exitCode =
           JazzerRegressionRunner.run(
               projectDirectory,
-              JazzerHarness.CLI_REQUEST,
+              JazzerHarness.cliRequest(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 
@@ -103,7 +103,7 @@ class JazzerRegressionRunnerTest {
       StringWriter output = new StringWriter();
       StringWriter errors = new StringWriter();
       writeSeedMetadata(
-          JazzerHarness.CLI_REQUEST,
+          JazzerHarness.cliRequest(),
           "invalid_missing_provenance.json",
           """
           {
@@ -126,7 +126,7 @@ class JazzerRegressionRunnerTest {
           """);
 
       Path metadataPath =
-          RegressionSeedSupport.metadataDirectory(projectDirectory, JazzerHarness.CLI_REQUEST)
+          RegressionSeedSupport.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("invalid_missing_provenance.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
       JazzerJson.write(
@@ -139,7 +139,7 @@ class JazzerRegressionRunnerTest {
       int exitCode =
           JazzerRegressionRunner.run(
               projectDirectory,
-              JazzerHarness.CLI_REQUEST,
+              JazzerHarness.cliRequest(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 

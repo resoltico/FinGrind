@@ -12,7 +12,7 @@ class JazzerReplaySupportTest {
   @Test
   void replay_returnsSuccessForValidCliRequestSeedShape() {
     ReplayOutcome outcome =
-        JazzerReplaySupport.replay(JazzerHarness.CLI_REQUEST, basicValidRequest().getBytes(UTF_8));
+        JazzerReplaySupport.replay(JazzerHarness.cliRequest(), basicValidRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -25,7 +25,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForForbiddenRecordedAtCliRequestSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.CLI_REQUEST, invalidForbiddenRecordedAtRequest().getBytes(UTF_8));
+            JazzerHarness.cliRequest(), invalidForbiddenRecordedAtRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -46,7 +46,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForForbiddenSourceChannelCliRequestSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.CLI_REQUEST, invalidForbiddenSourceChannelRequest().getBytes(UTF_8));
+            JazzerHarness.cliRequest(), invalidForbiddenSourceChannelRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -67,7 +67,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForInvalidCliRequestSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.CLI_REQUEST, invalidMissingProvenanceRequest().getBytes(UTF_8));
+            JazzerHarness.cliRequest(), invalidMissingProvenanceRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -88,7 +88,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForExponentAmountCliRequestSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.CLI_REQUEST, invalidExponentAmountRequest().getBytes(UTF_8));
+            JazzerHarness.cliRequest(), invalidExponentAmountRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -108,7 +108,8 @@ class JazzerReplaySupportTest {
   @Test
   void replay_returnsSuccessForValidPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
-        JazzerReplaySupport.replay(JazzerHarness.POSTING_WORKFLOW, basicValidRequest().getBytes(UTF_8));
+        JazzerReplaySupport.replay(
+            JazzerHarness.postingWorkflow(), basicValidRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -130,7 +131,7 @@ class JazzerReplaySupportTest {
   void replay_returnsSuccessForCorrectionTargetMissingPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.POSTING_WORKFLOW,
+            JazzerHarness.postingWorkflow(),
             correctionTargetMissingRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
@@ -153,7 +154,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForInvalidPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.POSTING_WORKFLOW, invalidBlankActorRequest().getBytes(UTF_8));
+            JazzerHarness.postingWorkflow(), invalidBlankActorRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -176,7 +177,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForExponentAmountPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.POSTING_WORKFLOW, invalidExponentAmountRequest().getBytes(UTF_8));
+            JazzerHarness.postingWorkflow(), invalidExponentAmountRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -199,7 +200,7 @@ class JazzerReplaySupportTest {
   void replay_returnsSuccessForValidSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.SQLITE_BOOK_ROUND_TRIP, basicValidRequest().getBytes(UTF_8));
+            JazzerHarness.sqliteBookRoundTrip(), basicValidRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
@@ -221,7 +222,7 @@ class JazzerReplaySupportTest {
   void replay_returnsSuccessForCorrectionReasonRequiredSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.SQLITE_BOOK_ROUND_TRIP,
+            JazzerHarness.sqliteBookRoundTrip(),
             correctionReasonRequiredRequest().getBytes(UTF_8));
 
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
@@ -244,7 +245,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForInvalidSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.SQLITE_BOOK_ROUND_TRIP, invalidWrongTypeRequest().getBytes(UTF_8));
+            JazzerHarness.sqliteBookRoundTrip(), invalidWrongTypeRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
@@ -267,7 +268,7 @@ class JazzerReplaySupportTest {
   void replay_returnsExpectedInvalidForExponentAmountSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.SQLITE_BOOK_ROUND_TRIP, invalidExponentAmountRequest().getBytes(UTF_8));
+            JazzerHarness.sqliteBookRoundTrip(), invalidExponentAmountRequest().getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);

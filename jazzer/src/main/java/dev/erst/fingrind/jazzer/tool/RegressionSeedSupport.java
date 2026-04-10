@@ -18,11 +18,7 @@ public final class RegressionSeedSupport {
   public static Path metadataDirectory(Path projectDirectory, JazzerHarness harness) {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     Objects.requireNonNull(harness, "harness must not be null");
-    return projectDirectory
-        .toAbsolutePath()
-        .normalize()
-        .resolve("src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata")
-        .resolve(harness.key());
+    return harness.regressionMetadataDirectory(projectDirectory.toAbsolutePath().normalize());
   }
 
   /** Returns the committed metadata paths for one harness. */

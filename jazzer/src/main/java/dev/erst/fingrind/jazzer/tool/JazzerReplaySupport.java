@@ -37,10 +37,11 @@ public final class JazzerReplaySupport {
   public static ReplayOutcome replay(JazzerHarness harness, byte[] input) {
     Objects.requireNonNull(harness, "harness must not be null");
     Objects.requireNonNull(input, "input must not be null");
-    return switch (harness) {
-      case CLI_REQUEST -> replayCliRequest(input);
-      case POSTING_WORKFLOW -> replayPostingWorkflow(input);
-      case SQLITE_BOOK_ROUND_TRIP -> replaySqliteBookRoundTrip(input);
+    return switch (harness.key()) {
+      case "cli-request" -> replayCliRequest(input);
+      case "posting-workflow" -> replayPostingWorkflow(input);
+      case "sqlite-book-roundtrip" -> replaySqliteBookRoundTrip(input);
+      default -> throw new IllegalArgumentException("Unknown Jazzer harness: " + harness.key());
     };
   }
 
@@ -58,17 +59,17 @@ public final class JazzerReplaySupport {
     try {
       PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
       return new ReplayOutcome.Success(
-          JazzerHarness.CLI_REQUEST.key(),
+          JazzerHarness.cliRequest().key(),
           cliRequestDetails(command, "PARSED", normalizedMessage(null)));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
-          JazzerHarness.CLI_REQUEST.key(),
+          JazzerHarness.cliRequest().key(),
           expected.getClass().getSimpleName(),
           normalizedMessage(expected),
           cliRequestFailureDetails("INVALID_REQUEST", expected));
     } catch (RuntimeException unexpected) {
       return unexpectedFailure(
-          JazzerHarness.CLI_REQUEST,
+          JazzerHarness.cliRequest(),
           unexpected,
           cliRequestFailureDetails("UNEXPECTED_FAILURE", unexpected));
     }
@@ -154,7 +155,7 @@ public final class JazzerReplaySupport {
       }
 
       return new ReplayOutcome.Success(
-          JazzerHarness.POSTING_WORKFLOW.key(),
+          JazzerHarness.postingWorkflow().key(),
           postingWorkflowDetails(
               command,
               "PARSED",
@@ -165,7 +166,7 @@ public final class JazzerReplaySupport {
               NONE));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
-          JazzerHarness.POSTING_WORKFLOW.key(),
+          JazzerHarness.postingWorkflow().key(),
           expected.getClass().getSimpleName(),
           normalizedMessage(expected),
           postingWorkflowDetails(
@@ -178,7 +179,7 @@ public final class JazzerReplaySupport {
               normalizedMessage(expected)));
     } catch (RuntimeException unexpected) {
       return unexpectedFailure(
-          JazzerHarness.POSTING_WORKFLOW,
+          JazzerHarness.postingWorkflow(),
           unexpected,
           postingWorkflowDetails(
               command,
@@ -279,7 +280,7 @@ public final class JazzerReplaySupport {
       }
 
       return new ReplayOutcome.Success(
-          JazzerHarness.SQLITE_BOOK_ROUND_TRIP.key(),
+          JazzerHarness.sqliteBookRoundTrip().key(),
           sqliteBookRoundTripDetails(
               command,
               "PARSED",
@@ -290,7 +291,7 @@ public final class JazzerReplaySupport {
               NONE));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
-          JazzerHarness.SQLITE_BOOK_ROUND_TRIP.key(),
+          JazzerHarness.sqliteBookRoundTrip().key(),
           expected.getClass().getSimpleName(),
           normalizedMessage(expected),
           sqliteBookRoundTripDetails(
@@ -303,7 +304,7 @@ public final class JazzerReplaySupport {
               normalizedMessage(expected)));
     } catch (IOException unexpected) {
       return unexpectedFailure(
-          JazzerHarness.SQLITE_BOOK_ROUND_TRIP,
+          JazzerHarness.sqliteBookRoundTrip(),
           unexpected,
           sqliteBookRoundTripDetails(
               command,
@@ -315,7 +316,7 @@ public final class JazzerReplaySupport {
               normalizedMessage(unexpected)));
     } catch (RuntimeException unexpected) {
       return unexpectedFailure(
-          JazzerHarness.SQLITE_BOOK_ROUND_TRIP,
+          JazzerHarness.sqliteBookRoundTrip(),
           unexpected,
           sqliteBookRoundTripDetails(
               command,

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Objects;
 import tools.jackson.databind.SerializationFeature;
@@ -25,6 +26,18 @@ public final class JazzerJson {
     Objects.requireNonNull(path, "path must not be null");
     Objects.requireNonNull(type, "type must not be null");
     return JSON_MAPPER.readValue(path.toFile(), type);
+  }
+
+  /** Reads one JSON resource from the classpath into the requested type. */
+  public static <T> T readResource(String resourcePath, Class<T> type) throws IOException {
+    Objects.requireNonNull(resourcePath, "resourcePath must not be null");
+    Objects.requireNonNull(type, "type must not be null");
+    try (InputStream resourceStream = JazzerJson.class.getResourceAsStream(resourcePath)) {
+      if (resourceStream == null) {
+        throw new IOException("Missing classpath resource: " + resourcePath);
+      }
+      return JSON_MAPPER.readValue(resourceStream, type);
+    }
   }
 
   /** Returns one value as pretty-printed JSON text. */

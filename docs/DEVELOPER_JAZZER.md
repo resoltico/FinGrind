@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.0"
+version: "0.3.1"
 domain: DEVELOPER_JAZZER
 updated: "2026-04-10"
 route:
@@ -20,9 +20,23 @@ That separation is deliberate:
 - root `./gradlew check` stays CI-friendly
 - fuzzing support dependencies stay isolated
 - committed regression replay remains explicit
+- the nested build imports the root version catalog and shared build logic instead of carrying its
+  own parallel dependency authority
 - the nested build compiles and injects its own managed SQLite 3.53.0 runtime from the same
   vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
+
+## Topology Contract
+
+Harness metadata and runnable target ownership live in
+`jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json`.
+That file is consumed by:
+- shared Gradle build logic for task registration
+- runtime support classes `JazzerHarness` and `JazzerRunTarget`
+- topology tests that assert stable ordering, task-name lookup, and one-harness-per-active-target invariants
+
+When adding, renaming, or removing a harness, update the topology file and the matching fuzz/test
+sources together.
 
 ## Main Commands
 
@@ -51,6 +65,7 @@ The nested Jazzer build also includes normal JUnit support tests that cover:
 - harness runner argument parsing and progress pulses
 - regression runner replay semantics
 - direct replay classification for accepted and rejected seeds
+- shared topology ordering and task-resolution contract
 - committed-seed metadata completeness and path hygiene
 
 ## Committed Seed Inventory

@@ -1,0 +1,66 @@
+{
+  "harnesses": [
+    {
+      "key": "cli-request",
+      "displayName": "CLI Request",
+      "className": "dev.erst.fingrind.cli.CliRequestFuzzTest",
+      "methodName": "readPostEntryCommand"
+    },
+    {
+      "key": "posting-workflow",
+      "displayName": "Posting Workflow",
+      "className": "dev.erst.fingrind.cli.PostingWorkflowFuzzTest",
+      "methodName": "exercisePostingWorkflow"
+    },
+    {
+      "key": "sqlite-book-roundtrip",
+      "displayName": "SQLite Book Round Trip",
+      "className": "dev.erst.fingrind.cli.SqliteBookRoundTripFuzzTest",
+      "methodName": "roundTripSingleBook"
+    }
+  ],
+  "runTargets": [
+    {
+      "key": "regression",
+      "displayName": "Regression",
+      "taskName": "jazzerRegression",
+      "workingDirectory": ".",
+      "activeFuzzing": false,
+      "harnessKeys": [
+        "cli-request",
+        "posting-workflow",
+        "sqlite-book-roundtrip"
+      ]
+    },
+    {
+      "key": "cli-request",
+      "displayName": "CLI Request",
+      "taskName": "fuzzCliRequest",
+      "workingDirectory": ".local/runs/cli-request",
+      "activeFuzzing": true,
+      "harnessKeys": [
+        "cli-request"
+      ]
+    },
+    {
+      "key": "posting-workflow",
+      "displayName": "Posting Workflow",
+      "taskName": "fuzzPostingWorkflow",
+      "workingDirectory": ".local/runs/posting-workflow",
+      "activeFuzzing": true,
+      "harnessKeys": [
+        "posting-workflow"
+      ]
+    },
+    {
+      "key": "sqlite-book-roundtrip",
+      "displayName": "SQLite Book Round Trip",
+      "taskName": "fuzzSqliteBookRoundTrip",
+      "workingDirectory": ".local/runs/sqlite-book-roundtrip",
+      "activeFuzzing": true,
+      "harnessKeys": [
+        "sqlite-book-roundtrip"
+      ]
+    }
+  ]
+}

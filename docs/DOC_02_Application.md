@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.0"
+version: "0.3.1"
 domain: APPLICATION
 updated: "2026-04-09"
 route:
