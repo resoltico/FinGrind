@@ -1,79 +1,80 @@
 package dev.erst.fingrind.jazzer.support;
 
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
-/** Enumerates the FinGrind Jazzer harnesses exposed for local fuzzing and regression replay. */
-public enum JazzerHarness {
-  CLI_REQUEST(
-      "cli-request",
-      "CLI Request",
-      "dev.erst.fingrind.cli.CliRequestFuzzTest",
-      "readPostEntryCommand"),
-  POSTING_WORKFLOW(
-      "posting-workflow",
-      "Posting Workflow",
-      "dev.erst.fingrind.cli.PostingWorkflowFuzzTest",
-      "exercisePostingWorkflow"),
-  SQLITE_BOOK_ROUND_TRIP(
-      "sqlite-book-roundtrip",
-      "SQLite Book Round Trip",
-      "dev.erst.fingrind.cli.SqliteBookRoundTripFuzzTest",
-      "roundTripSingleBook");
-
-  private final String key;
-  private final String displayName;
-  private final String className;
-  private final String methodName;
-
-  JazzerHarness(String key, String displayName, String className, String methodName) {
-    this.key = Objects.requireNonNull(key, "key must not be null");
-    this.displayName = Objects.requireNonNull(displayName, "displayName must not be null");
-    this.className = Objects.requireNonNull(className, "className must not be null");
-    this.methodName = Objects.requireNonNull(methodName, "methodName must not be null");
+/** Describes one individual Jazzer harness that FinGrind exposes for local fuzzing. */
+public record JazzerHarness(String key, String displayName, String className, String methodName) {
+  public JazzerHarness {
+    key = requireNonBlank(key, "key");
+    displayName = requireNonBlank(displayName, "displayName");
+    className = requireNonBlank(className, "className");
+    methodName = requireNonBlank(methodName, "methodName");
   }
 
-  /** Returns the stable external key used in tasks, run directories, and local corpora. */
-  public String key() {
-    return key;
-  }
-
-  /** Returns the human-readable harness name for operator output. */
-  public String displayName() {
-    return displayName;
-  }
-
-  /** Returns the fully qualified fuzz test class name. */
-  public String className() {
-    return className;
-  }
-
-  /** Returns the fuzz test method that owns this harness's input directory. */
-  public String methodName() {
-    return methodName;
-  }
-
-  /** Returns the committed regression-input directory for this harness. */
+  /** Returns the resource directory where committed regression inputs for this harness live. */
   public Path inputDirectory(Path projectDirectory) {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     return projectDirectory.resolve("src/fuzz/resources").resolve(inputResourceDirectory());
   }
 
+  /** Returns the directory where committed regression metadata entries for this harness live. */
+  public Path regressionMetadataDirectory(Path projectDirectory) {
+    Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
+    return regressionMetadataRoot(projectDirectory).resolve(key);
+  }
+
   /** Returns the classpath resource suffix used by Jazzer regression-input discovery. */
   public String inputResourceDirectory() {
-    String packagePath =
-        className.substring(0, className.lastIndexOf('.')).replace('.', '/');
+    String packagePath = className.substring(0, className.lastIndexOf('.')).replace('.', '/');
     String simpleName = className.substring(className.lastIndexOf('.') + 1);
     return packagePath + "/" + simpleName + "Inputs/" + methodName;
+  }
+
+  /** Returns all committed Jazzer harnesses in stable encounter order. */
+  public static JazzerHarness[] values() {
+    return JazzerTopology.registry().harnesses().toArray(JazzerHarness[]::new);
   }
 
   /** Resolves a harness from its stable external key. */
   public static JazzerHarness fromKey(String key) {
     Objects.requireNonNull(key, "key must not be null");
-    return Arrays.stream(values())
-        .filter(harness -> harness.key.equals(key))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unknown Jazzer harness: " + key));
+    Map<String, JazzerHarness> harnessesByKey = JazzerTopology.registry().harnessesByKey();
+    JazzerHarness harness = harnessesByKey.get(key);
+    if (harness == null) {
+      throw new IllegalArgumentException("Unknown Jazzer harness: " + key);
+    }
+    return harness;
+  }
+
+  /** Returns the project-relative root directory that owns all committed regression metadata. */
+  public static Path regressionMetadataRoot(Path projectDirectory) {
+    Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
+    return projectDirectory.resolve("src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata");
+  }
+
+  /** Returns the canonical CLI request harness. */
+  public static JazzerHarness cliRequest() {
+    return fromKey("cli-request");
+  }
+
+  /** Returns the canonical posting workflow harness. */
+  public static JazzerHarness postingWorkflow() {
+    return fromKey("posting-workflow");
+  }
+
+  /** Returns the canonical SQLite book round-trip harness. */
+  public static JazzerHarness sqliteBookRoundTrip() {
+    return fromKey("sqlite-book-roundtrip");
+  }
+
+  private static String requireNonBlank(String value, String fieldName) {
+    Objects.requireNonNull(value, fieldName + " must not be null");
+    String trimmed = value.trim();
+    if (trimmed.isEmpty()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank");
+    }
+    return trimmed;
   }
 }

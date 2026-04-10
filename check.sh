@@ -31,9 +31,11 @@
 # automatically to match the GitHub workflows. Non-interactive runs use --console=plain unless
 # the caller already selected a console mode.
 #
-# Local shell resolution must already point at Java 26. FinGrind's product modules, CLI fat JAR,
-# and release flow all rely on the ambient `java` command, not only Gradle toolchains. The macOS
-# `/usr/bin/java` launcher stub is therefore an invalid local runtime for this script.
+# Local shell resolution must already provide Java 26. FinGrind's product modules, CLI fat JAR,
+# and release flow all rely on the ambient `java` and `javac` commands, not only Gradle
+# toolchains. On macOS those commands may resolve either directly into a JDK bin directory or
+# through `/usr/bin/*` launcher stubs, so this script validates version output instead of path
+# shape alone.
 #
 # Exit status: 0 on success. Any failing Gradle stage or script precondition returns a non-zero
 # exit status. The script emits per-stage finish lines with durations plus one final human-readable
@@ -50,15 +52,13 @@ die() {
 }
 
 require_shell_java_26() {
-    local resolved_java resolved_javac java_version_line java_version_token
+    local resolved_java resolved_javac java_version_line java_version_token javac_version_line javac_version_token
 
     resolved_java="$(command -v java || true)"
     [[ -n "${resolved_java}" ]] || die "no 'java' command found in PATH; FinGrind requires Java 26 in the active shell. See docs/DEVELOPER_JAVA.md."
-    [[ "${resolved_java}" != '/usr/bin/java' ]] || die "java resolves to the macOS /usr/bin/java stub. Activate Java 26 in your shell before running ./check.sh. See docs/DEVELOPER_JAVA.md."
 
     resolved_javac="$(command -v javac || true)"
     [[ -n "${resolved_javac}" ]] || die "no 'javac' command found in PATH; FinGrind requires a full Java 26 JDK in the active shell. See docs/DEVELOPER_JAVA.md."
-    [[ "${resolved_javac}" != '/usr/bin/javac' ]] || die "javac resolves to the macOS /usr/bin/javac stub. Activate Java 26 in your shell before running ./check.sh. See docs/DEVELOPER_JAVA.md."
 
     java_version_line="$("${resolved_java}" --version 2>/dev/null | head -1 || true)"
     java_version_token="$(printf '%s\n' "${java_version_line}" | awk 'NR == 1 { print $2 }')"
@@ -66,6 +66,15 @@ require_shell_java_26() {
         26|26.*) ;;
         *)
             die "java resolves to ${resolved_java} but reports '${java_version_line:-unknown version}'. FinGrind requires Java 26 in the active shell. See docs/DEVELOPER_JAVA.md."
+            ;;
+    esac
+
+    javac_version_line="$("${resolved_javac}" --version 2>/dev/null | head -1 || true)"
+    javac_version_token="$(printf '%s\n' "${javac_version_line}" | awk 'NR == 1 { print $2 }')"
+    case "${javac_version_token}" in
+        26|26.*) ;;
+        *)
+            die "javac resolves to ${resolved_javac} but reports '${javac_version_line:-unknown version}'. FinGrind requires a full Java 26 JDK in the active shell. See docs/DEVELOPER_JAVA.md."
             ;;
     esac
 }
@@ -561,8 +570,8 @@ run_monitored_command() {
     stage_temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-check-${stage_id}.XXXXXX")"
     local log_path="${stage_temp_dir}/${stage_id}.log"
     local diagnostics_root="${stage_temp_dir}/diagnostics"
-    local pipe_path="${stage_temp_dir}/${stage_id}.pipe"
     mkdir -p "${diagnostics_root}"
+    : >"${log_path}"
     current_stage_log_path="${log_path}"
     current_stage_diagnostics_directory="${diagnostics_root}"
 
@@ -571,15 +580,11 @@ run_monitored_command() {
         "${log_path}" \
         "${diagnostics_root}"
 
-    mkfifo "${pipe_path}"
-    tee -a "${log_path}" <"${pipe_path}" &
-    local tee_pid=$!
     (
         cd "${project_dir}"
-        "$@"
-    ) >"${pipe_path}" 2>&1 &
+        "$@" > >(tee -a "${log_path}") 2>&1
+    ) &
     local child_pid=$!
-    rm -f "${pipe_path}"
 
     local monitor_exit_code=0
     if monitor_stage_process "${stage_id}" "${project_dir}" "${log_path}" "${diagnostics_root}" "${child_pid}"; then
@@ -594,7 +599,6 @@ run_monitored_command() {
     else
         child_exit_code=$?
     fi
-    wait "${tee_pid}" 2>/dev/null || true
 
     if (( monitor_exit_code != 0 )); then
         child_exit_code="${monitor_exit_code}"

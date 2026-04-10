@@ -2,9 +2,11 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliMetadata}. */
@@ -12,9 +14,13 @@ class CliMetadataTest {
   @Test
   void constructor_loadsPackagedMetadata() {
     CliMetadata metadata = new CliMetadata();
+    Properties packagedProperties = loadPackagedProperties();
 
     assertEquals("FinGrind", metadata.applicationName());
-    assertEquals("0.3.0", metadata.version());
+    assertEquals(packagedProperties.getProperty("version"), metadata.version());
+    assertTrue(
+        metadata.version().matches("\\d+\\.\\d+\\.\\d+"),
+        "packaged metadata version should be a concrete semantic version");
     assertEquals(
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence",
         metadata.description());
@@ -61,6 +67,17 @@ class CliMetadataTest {
         }) {
 
       assertThrows(IllegalStateException.class, () -> new CliMetadata(brokenStream));
+    } catch (IOException exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
+
+  private static Properties loadPackagedProperties() {
+    try (InputStream metadataStream =
+        CliMetadata.class.getResourceAsStream("/fingrind.properties")) {
+      Properties properties = new Properties();
+      properties.load(metadataStream);
+      return properties;
     } catch (IOException exception) {
       throw new IllegalStateException(exception);
     }

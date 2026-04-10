@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.0"
+version: "0.3.1"
 domain: DEVELOPER
 updated: "2026-04-10"
 route:
@@ -18,6 +18,7 @@ Companion documents:
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md)
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
+- [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
@@ -136,6 +137,11 @@ The nested Jazzer build is intentionally self-sufficient: it verifies the vendor
 compiles its own managed SQLite 3.53.0 shared library from `../third_party/sqlite/`, and injects
 that path through `FINGRIND_SQLITE_LIBRARY` for its support tests, regression replay, and local
 active fuzzing commands.
+
+Shared Gradle plugins, managed-SQLite task types, and pulse listeners now live under
+`gradle/build-logic`, and the nested Jazzer build imports both that included build and the root
+version catalog. See [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the ownership map and
+architecture rationale.
 
 ## GitHub Workflows
 

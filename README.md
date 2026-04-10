@@ -154,6 +154,13 @@ Current deterministic rejection codes are:
 - [docs/USER_REQUESTS.md](/Users/erst/Tools/FinGrind/docs/USER_REQUESTS.md)
 - [docs/USER_EXAMPLES.md](/Users/erst/Tools/FinGrind/docs/USER_EXAMPLES.md)
 
+## More Developer Docs
+
+- [docs/DEVELOPER.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER.md)
+- [docs/DEVELOPER_GRADLE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_GRADLE.md)
+- [docs/DEVELOPER_SQLITE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_SQLITE.md)
+- [docs/DEVELOPER_JAZZER.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER.md)
+
 ## Legal
 
 FinGrind is MIT-licensed. Its executable JAR bundles Jackson; see [NOTICE](NOTICE) for the

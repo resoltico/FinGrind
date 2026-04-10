@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.0"
+version: "0.3.1"
 domain: DEVELOPER_JAVA
 updated: "2026-04-10"
 route:
@@ -139,8 +139,8 @@ Known pitfalls:
   the old shell-out design.
 - Kotlin build logic still emits JVM 25 bytecode for compatibility, but it now does so using the
   Java 26 toolchain.
-  That applies to both the root `buildSrc` logic and the nested `jazzer/buildSrc` logic, so a
-  separate local Java 25 installation is not part of the supported setup.
+  That applies to the shared included build under `gradle/build-logic`, so a separate local Java
+  25 installation is not part of the supported setup.
 - `~/.zprofile` alone is not enough.
   Some terminal launches use interactive non-login shells and would otherwise miss the Java 26
   override.
@@ -167,8 +167,9 @@ sed -n '1,20p' "$(/usr/libexec/java_home -v 26)/release"
 
 Expected outcomes:
 - Java 26 appears in `/usr/libexec/java_home -V`
-- `command -v java` does not point at `/usr/bin/java`
-- both zsh modes resolve `java` and `javac` inside `openjdk-26.jdk`
+- both zsh modes resolve `java` and `javac`, and both commands report version 26
+- shell resolution may point either directly into `openjdk-26.jdk` or through the macOS
+  `/usr/bin/java` and `/usr/bin/javac` launcher stubs, as long as the launched runtime is 26
 - the `release` file reports `JAVA_VERSION="26"`
 
 ## Full Toolchain Verification
@@ -189,7 +190,8 @@ Run those commands from a real terminal session.
 Why:
 - local shell startup files are what make Java 26 the default `java`
 - non-interactive wrappers may skip `~/.zprofile` and `~/.zshrc`
-- macOS still ships the legacy `/usr/bin/java` stub, which is the wrong runtime for FinGrind
+- macOS still ships legacy `/usr/bin/java` and `/usr/bin/javac` launcher stubs, so version output
+  is more trustworthy than path shape alone
 
 ## Maintenance Guidance
 

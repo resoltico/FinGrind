@@ -5,6 +5,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-10
+
+### Added
+- Added `docs/DEVELOPER_GRADLE.md` as the canonical contributor reference for FinGrind's root
+  build, shared build logic, nested Jazzer build, and the invariants that should be reviewed
+  before changing Gradle architecture.
+
+### Changed
+- Replaced repository-local `buildSrc` usage with one shared `gradle/build-logic` included build
+  consumed by both the root product build and the nested Jazzer build, and moved shared pulse,
+  managed-SQLite, and Jazzer task logic into typed convention plugins there.
+- Moved FinGrind's Jazzer harness and run-target inventory into one committed
+  `jazzer-topology.json` contract consumed by both Gradle build logic and Jazzer runtime support
+  code, and wired the nested Jazzer build to import the root version catalog instead of hardcoding
+  overlapping dependency coordinates.
+- Updated developer-facing documentation and README routing so contributors can review the current
+  Gradle system with one maintained system map instead of reconstructing it from scripts.
+
+### Fixed
+- Removed duplicated managed-SQLite and pulse-listener implementations that had diverged between
+  the root and nested Jazzer builds.
+- Fixed `./check.sh` stage logging so long-running stages no longer rely on a racy FIFO-based tee
+  pipeline that could fail independently of the monitored command.
+- Fixed `./check.sh` Java 26 shell validation so valid macOS launcher-stub environments are
+  accepted when both `java` and `javac` actually resolve to Java 26.
+
 ## [0.3.0] - 2026-04-10
 
 ### Changed
@@ -68,7 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.1
 [0.3.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.0
 [0.2.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.2.0
 [0.1.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.1.0
