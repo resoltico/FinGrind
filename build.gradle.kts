@@ -1,16 +1,29 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
-import dev.erst.fingrind.build.PrepareManagedSqliteTask
-import dev.erst.fingrind.build.VerifyManagedSqliteSourceTask
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
-import org.gradle.api.tasks.JavaExec
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.plugins.quality.PmdExtension
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.process.ExecOperations
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import java.io.File
+import java.security.MessageDigest
+import javax.inject.Inject
 
 plugins {
     base
@@ -19,6 +32,109 @@ plugins {
     alias(libs.plugins.errorprone) apply false
     alias(libs.plugins.shadow) apply false
 }
+
+@CacheableTask
+abstract class VerifyManagedSqliteSourceTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sourceFile: RegularFileProperty
+
+    @get:Input
+    abstract val expectedSha3: Property<String>
+
+    @TaskAction
+    fun verify() {
+        val sqliteSource = sourceFile.get().asFile
+        if (!sqliteSource.isFile) {
+            throw GradleException("Missing vendored SQLite source at ${sqliteSource.absolutePath}")
+        }
+        val actualSourceSha3 =
+            MessageDigest.getInstance("SHA3-256")
+                .digest(sqliteSource.readBytes())
+                .joinToString(separator = "") { byte -> "%02x".format(byte) }
+        if (actualSourceSha3 != expectedSha3.get()) {
+            throw GradleException(
+                "Vendored SQLite source hash mismatch. Expected ${expectedSha3.get()} but found $actualSourceSha3 for ${sqliteSource.absolutePath}.",
+            )
+        }
+    }
+}
+
+@CacheableTask
+abstract class PrepareManagedSqliteTask
+    @Inject
+    constructor(
+        private val execOperations: ExecOperations,
+    ) : DefaultTask() {
+        @get:InputFile
+        @get:PathSensitive(PathSensitivity.RELATIVE)
+        abstract val sourceFile: RegularFileProperty
+
+        @get:InputFiles
+        @get:PathSensitive(PathSensitivity.RELATIVE)
+        abstract val supportFiles: ConfigurableFileCollection
+
+        @get:Input
+        abstract val compiler: Property<String>
+
+        @get:Input
+        abstract val operatingSystemId: Property<String>
+
+        @get:Input
+        abstract val sqliteVersion: Property<String>
+
+        @get:OutputFile
+        abstract val outputFile: RegularFileProperty
+
+        @TaskAction
+        fun compile() {
+            val outputLibraryFile = outputFile.get().asFile
+            outputLibraryFile.parentFile.mkdirs()
+            execOperations.exec {
+                commandLine(
+                    buildCommandLine(
+                        compiler = compiler.get(),
+                        operatingSystemId = operatingSystemId.get(),
+                        sqliteVersion = sqliteVersion.get(),
+                        sourceFilePath = sourceFile.get().asFile.absolutePath,
+                        outputFilePath = outputLibraryFile.absolutePath,
+                    ),
+                )
+            }
+        }
+
+        private fun buildCommandLine(
+            compiler: String,
+            operatingSystemId: String,
+            sqliteVersion: String,
+            sourceFilePath: String,
+            outputFilePath: String,
+        ): List<String> =
+            buildList {
+                add(compiler)
+                add("-O2")
+                add("-fPIC")
+                add("-DSQLITE_THREADSAFE=1")
+                add("-DSQLITE_OMIT_LOAD_EXTENSION=1")
+                if (operatingSystemId == "macos") {
+                    add("-dynamiclib")
+                    add("-current_version")
+                    add(sqliteVersion)
+                    add("-compatibility_version")
+                    add(sqliteVersion)
+                } else {
+                    add("-shared")
+                    add("-Wl,-soname,libsqlite3.so.0")
+                }
+                add("-o")
+                add(outputFilePath)
+                add(sourceFilePath)
+                if (operatingSystemId == "linux") {
+                    add("-ldl")
+                    add("-lpthread")
+                }
+            }
+    }
 
 description = providers.gradleProperty("fingrindDescription").get()
 
