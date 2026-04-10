@@ -1,17 +1,19 @@
 ---
 afad: "3.5"
-version: "0.2.0"
+version: "0.3.0"
 domain: USER_CLI
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite3, request-file, book-file, stdin, preflight]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, ffm, request-file, book-file, stdin, preflight]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "what exit codes does the fingrind cli use"]
 ---
 
 # CLI Guide
 
 **Purpose**: Run the packaged FinGrind CLI and understand its command, file, and exit behavior.
-**Prerequisites**: Java 26 or newer, a built CLI JAR from `./gradlew :cli:shadowJar`, and a SQLite 3.51.3 binary. The recommended path is the repo-managed sqlite.org bootstrap plus `FINGRIND_SQLITE3_BINARY`.
+**Prerequisites**: Java 26 or newer. For source-driven local runs, `./gradlew :cli:run` manages
+SQLite 3.53.0 automatically. For standalone `java -jar`, provide `FINGRIND_SQLITE_LIBRARY` or a
+host `libsqlite3` at version 3.53.0 or newer.
 
 ## Overview
 
@@ -37,17 +39,25 @@ Both `preflight-entry` and `post-entry` require `--book-file` and `--request-fil
 
 ## Packaged CLI
 
+For source-driven local use, prefer:
+
 ```bash
-./scripts/ensure-sqlite.sh
+./gradlew :cli:run --args="help"
+```
+
+For standalone JAR execution:
+
+```bash
 ./gradlew :cli:shadowJar
-FINGRIND_SQLITE3_BINARY="$(./scripts/ensure-sqlite.sh)" \
-  java -jar cli/build/libs/fingrind.jar help
+java -jar cli/build/libs/fingrind.jar help
 java -jar cli/build/libs/fingrind.jar \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 `--request-file -` means read the request JSON from standard input.
 Use `java -jar` for real process exit codes; `./gradlew :cli:run` wraps non-zero application exits as a Gradle task failure.
+`./gradlew :cli:run` is the easiest local route because Gradle automatically compiles and injects
+the managed SQLite 3.53.0 runtime.
 
 ## Exit Codes
 
@@ -68,15 +78,22 @@ Use `java -jar` for real process exit codes; `./gradlew :cli:run` wraps non-zero
 | same path used for both files | `2` | `invalid-request` | `--book-file and --request-file must not point to the same path.` |
 | malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
 | deterministic business rejection | `2` | `duplicate-idempotency-key`, `correction-target-not-found`, and similar | request was understood but refused by book state or correction policy |
-| runtime environment failure | `1` | `runtime-failure` | `Failed to start sqlite3.` and similar runtime errors |
+| runtime environment failure | `1` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
 ## Notes
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the call without consulting docs.
 - `help`, `version`, `capabilities`, and `print-request-template` reject extra arguments.
 - FinGrind creates missing parent directories for nested `--book-file` paths.
-- Repo-local development should use `./scripts/ensure-sqlite.sh`, which provisions the pinned SQLite 3.51.3 toolchain from `sqlite.org`.
-- `FINGRIND_SQLITE3_BINARY` is the intended pinning hook for local packaged-JAR runs and any controlled runtime that should not depend on ambient `PATH`.
+- The packaged CLI does not require an external `sqlite3` binary and does not shell out to
+  `sqlite3`.
+- The packaged CLI enforces SQLite 3.53.0 or newer.
+- `capabilities` reports `sqliteLibrarySource`, `requiredMinimumSqliteVersion`,
+  `sqliteRuntimeStatus`, and `loadedSqliteVersion` so agents can verify the runtime contract
+  directly.
+- Gradle-driven local runs and the container image use a managed SQLite 3.53.0 shared library.
+- Standalone `java -jar` execution still relies on `FINGRIND_SQLITE_LIBRARY` or a compatible host
+  `libsqlite3`.
 - `capabilities` is the best machine-readable contract surface.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send `provenance.recordedAt` or `provenance.sourceChannel`.
 - Example payloads live under [examples/](./examples/).

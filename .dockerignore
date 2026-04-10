@@ -5,7 +5,11 @@
 # Allow only the fat JAR produced by the Shadow plugin.
 !gradle.properties
 !scripts/
-!scripts/sqlite-tooling.sh
-!scripts/ensure-sqlite.sh
 !cli/build/libs/
 !cli/build/libs/*.jar
+!third_party/
+!third_party/sqlite/
+!third_party/sqlite/sqlite-amalgamation-3530000/
+!third_party/sqlite/sqlite-amalgamation-3530000/sqlite3.c
+!third_party/sqlite/sqlite-amalgamation-3530000/sqlite3.h
+!third_party/sqlite/sqlite-amalgamation-3530000/sqlite3ext.h

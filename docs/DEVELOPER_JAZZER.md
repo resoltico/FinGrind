@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.2.0"
+version: "0.3.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, jazzer, fuzzing, regression, replay, coverage, sqlite, cli, correction]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run the fingrind jazzer checks"]
@@ -20,6 +20,9 @@ That separation is deliberate:
 - root `./gradlew check` stays CI-friendly
 - fuzzing support dependencies stay isolated
 - committed regression replay remains explicit
+- the nested build compiles and injects its own managed SQLite 3.53.0 runtime from the same
+  vendored source used by the root build
+- GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 ## Main Commands
 
@@ -27,6 +30,7 @@ That separation is deliberate:
 ./gradlew -p jazzer test
 ./gradlew -p jazzer jazzerRegression
 ./gradlew -p jazzer check
+./gradlew -p jazzer cleanLocalFindings cleanLocalCorpus fuzzAllLocal -PjazzerMaxDuration=30s
 ./gradlew -p jazzer fuzzCliRequest -PjazzerMaxDuration=30s
 ./gradlew -p jazzer fuzzPostingWorkflow -PjazzerMaxDuration=30s
 ./gradlew -p jazzer fuzzSqliteBookRoundTrip -PjazzerMaxDuration=30s
@@ -53,9 +57,9 @@ The nested Jazzer build also includes normal JUnit support tests that cover:
 
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
-| `cli-request` | `6` | valid parse, correction parse, missing provenance, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `posting-workflow` | `4` | success, invalid actor, missing correction reason, missing correction target |
-| `sqlite-book-roundtrip` | `5` | success, nested path, invalid type, missing correction reason, missing correction target |
+| `cli-request` | `7` | valid parse, correction parse, exponent rejection, missing provenance, forbidden recorded-at, forbidden source-channel, unbalanced entry |
+| `posting-workflow` | `5` | success, invalid actor, exponent rejection, missing correction reason, missing correction target |
+| `sqlite-book-roundtrip` | `6` | success, nested path, exponent rejection, invalid type, missing correction reason, missing correction target |
 
 ## Regression Philosophy
 
@@ -71,5 +75,5 @@ It makes the currently expected replay result explicit and reviewable:
 Not yet fuzzed:
 - multi-command batch surfaces beyond one request at a time
 - concurrent access between multiple writers
-- absence or corruption of the external `sqlite3` binary itself
+- corrupt or directory-backed pre-existing book paths before any valid schema exists
 - CLI JSON response rendering

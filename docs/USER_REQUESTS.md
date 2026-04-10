@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.2.0"
+version: "0.3.0"
 domain: USER_REQUESTS
 updated: "2026-04-09"
 route:
@@ -29,6 +29,8 @@ cat docs/examples/basic-posting-request.json
 
 Current request rules:
 - all scalar fields are JSON strings, including dates, enums, and `amount`
+- `lines[].amount` must be a plain decimal string such as `10.00`; exponent notation such as
+  `1e6` is rejected
 - `effectiveDate`, `lines`, and `provenance` are required
 - `lines` must contain at least one line
 - `correction` is optional

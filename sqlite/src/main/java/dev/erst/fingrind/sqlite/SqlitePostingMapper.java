@@ -25,51 +25,51 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import tools.jackson.databind.JsonNode;
 
-/** Maps SQLite JSON row payloads into FinGrind posting domain objects. */
+/** Maps SQLite native statement rows into FinGrind posting domain objects. */
 final class SqlitePostingMapper {
   private SqlitePostingMapper() {}
 
-  static PostingFact postingFact(JsonNode postingRow, List<JournalLine> lines) {
-    PostingId postingId = new PostingId(requiredText(postingRow, "posting_id"));
+  static PostingFact postingFact(SqliteNativeStatement postingRow, List<JournalLine> lines) {
+    PostingId postingId = new PostingId(requiredText(postingRow, 0));
     JournalEntry journalEntry =
-        new JournalEntry(LocalDate.parse(requiredText(postingRow, "effective_date")), lines);
+        new JournalEntry(LocalDate.parse(requiredText(postingRow, 1)), lines);
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId(requiredText(postingRow, "actor_id")),
-            ActorType.valueOf(requiredText(postingRow, "actor_type")),
-            new CommandId(requiredText(postingRow, "command_id")),
-            new IdempotencyKey(requiredText(postingRow, "idempotency_key")),
-            new CausationId(requiredText(postingRow, "causation_id")),
-            optionalText(postingRow, "correlation_id").map(CorrelationId::new),
-            optionalText(postingRow, "reason").map(CorrectionReason::new));
+            new ActorId(requiredText(postingRow, 3)),
+            ActorType.valueOf(requiredText(postingRow, 4)),
+            new CommandId(requiredText(postingRow, 5)),
+            new IdempotencyKey(requiredText(postingRow, 6)),
+            new CausationId(requiredText(postingRow, 7)),
+            optionalText(postingRow, 8).map(CorrelationId::new),
+            optionalText(postingRow, 9).map(CorrectionReason::new));
     CommittedProvenance provenance =
         new CommittedProvenance(
             requestProvenance,
-            Instant.parse(requiredText(postingRow, "recorded_at")),
-            SourceChannel.valueOf(requiredText(postingRow, "source_channel")));
+            Instant.parse(requiredText(postingRow, 2)),
+            SourceChannel.valueOf(requiredText(postingRow, 10)));
     return new PostingFact(
         postingId, journalEntry, readCorrectionReference(postingRow), provenance);
   }
 
-  static List<JournalLine> journalLines(JsonNode lineRows) {
+  static List<JournalLine> journalLines(SqliteNativeStatement lineRows)
+      throws SqliteNativeException {
     List<JournalLine> lines = new ArrayList<>();
-    for (JsonNode lineRow : lineRows) {
+    while (lineRows.step() == SqliteNativeLibrary.SQLITE_ROW) {
       lines.add(
           new JournalLine(
-              new AccountCode(requiredText(lineRow, "account_code")),
-              JournalLine.EntrySide.valueOf(requiredText(lineRow, "entry_side")),
+              new AccountCode(requiredText(lineRows, 0)),
+              JournalLine.EntrySide.valueOf(requiredText(lineRows, 1)),
               new Money(
-                  new CurrencyCode(requiredText(lineRow, "currency_code")),
-                  new BigDecimal(requiredText(lineRow, "amount")))));
+                  new CurrencyCode(requiredText(lineRows, 2)),
+                  new BigDecimal(requiredText(lineRows, 3)))));
     }
     return lines;
   }
 
-  static Optional<CorrectionReference> readCorrectionReference(JsonNode postingRow) {
-    Optional<String> correctionKind = optionalText(postingRow, "correction_kind");
-    Optional<String> priorPostingId = optionalText(postingRow, "prior_posting_id");
+  static Optional<CorrectionReference> readCorrectionReference(SqliteNativeStatement postingRow) {
+    Optional<String> correctionKind = optionalText(postingRow, 11);
+    Optional<String> priorPostingId = optionalText(postingRow, 12);
     if (correctionKind.isEmpty() || priorPostingId.isEmpty()) {
       return Optional.empty();
     }
@@ -79,17 +79,16 @@ final class SqlitePostingMapper {
             new PostingId(priorPostingId.orElseThrow())));
   }
 
-  static String requiredText(JsonNode node, String fieldName) {
-    JsonNode fieldNode =
-        Objects.requireNonNull(node.get(fieldName), "Missing sqlite3 field: " + fieldName);
-    return Objects.requireNonNull(fieldNode.textValue(), "Null sqlite3 field: " + fieldName);
+  static String requiredText(SqliteNativeStatement row, int columnIndex) {
+    String value = row.columnText(columnIndex);
+    return Objects.requireNonNull(value, "Null SQLite column index: " + columnIndex);
   }
 
-  static Optional<String> optionalText(JsonNode node, String fieldName) {
-    JsonNode fieldNode = node.get(fieldName);
-    if (fieldNode == null || fieldNode.isNull()) {
+  static Optional<String> optionalText(SqliteNativeStatement row, int columnIndex) {
+    String value = row.columnText(columnIndex);
+    if (value == null) {
       return Optional.empty();
     }
-    return Optional.of(fieldNode.textValue());
+    return Optional.of(value);
   }
 }

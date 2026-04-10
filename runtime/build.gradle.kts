@@ -6,7 +6,7 @@ plugins {
 description = "FinGrind runtime ports and in-memory adapters"
 
 dependencies {
-    implementation(project(":core"))
+    api(project(":core"))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

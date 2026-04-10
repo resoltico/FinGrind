@@ -24,7 +24,7 @@ Jackson Databind / Jackson Core / Jackson Annotations
   Copyright (c) 2007- Tatu Saloranta, tatu.saloranta@iki.fi
 
 ================================================================================
-Public Domain Components
+Runtime Notes
 ================================================================================
 
 --------------------------------------------------------------------------------
@@ -38,9 +38,13 @@ SQLite
     May you find forgiveness for yourself and forgive others.
     May you share freely, never taking more than you give.
 
-  FinGrind provisions SQLite as a native binary compiled from the official
-  sqlite.org autoconf source archive. The SQLite binary is not bundled in the
-  FinGrind JAR; it is built and managed separately on the host system.
+  FinGrind vendors the official SQLite 3.53.0 amalgamation in the repository
+  and builds managed native SQLite libraries from that source for Gradle, CI,
+  and container runtime surfaces.
+
+  FinGrind does not bundle a native SQLite library inside the CLI JAR itself.
+  Standalone JAR execution uses Java 26 FFM with either
+  `FINGRIND_SQLITE_LIBRARY` or a compatible host `libsqlite3`.
 
 ================================================================================
 Trademark Notice

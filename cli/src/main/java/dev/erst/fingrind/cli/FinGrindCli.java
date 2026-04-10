@@ -5,6 +5,7 @@ import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingApplicationService;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
+import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -118,7 +119,7 @@ final class FinGrindCli {
             "fingrind preflight-entry --book-file ./books/acme.sqlite --request-file request.json",
             "fingrind post-entry --book-file ./books/acme.sqlite --request-file request.json"));
     payload.put("exitCodes", exitCodePayload());
-    payload.put("environment", environmentPayload(metadata.sqliteVersion()));
+    payload.put("environment", environmentPayload());
     return payload;
   }
 
@@ -160,7 +161,7 @@ final class FinGrindCli {
                     "reason-forbidden-without-correction",
                     "one-reversal-per-target",
                     "reversal-must-negate-target")));
-    payload.put("environment", environmentPayload(metadata.sqliteVersion()));
+    payload.put("environment", environmentPayload());
     payload.put("timestamp", Instant.now(clock).toString());
     return payload;
   }
@@ -284,13 +285,25 @@ final class FinGrindCli {
     return payload;
   }
 
+  private static Map<String, Object> environmentPayload() {
+    return environmentPayload(SqliteRuntime.probe());
+  }
+
   @SuppressWarnings("PMD.UseConcurrentHashMap")
-  private static Map<String, Object> environmentPayload(String sqliteVersion) {
+  static Map<String, Object> environmentPayload(SqliteRuntime.Probe runtimeProbe) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("packagedJarJava", "26+");
-    payload.put("externalBinaries", List.of("sqlite3"));
-    payload.put("sqlitePinnedVersion", sqliteVersion);
-    payload.put("sqliteBinaryOverrideEnv", "FINGRIND_SQLITE3_BINARY");
+    payload.put("storageDriver", SqliteRuntime.STORAGE_DRIVER);
+    payload.put("storageEngine", SqliteRuntime.STORAGE_ENGINE);
+    payload.put("sqliteLibrarySource", runtimeProbe.librarySource());
+    payload.put("requiredMinimumSqliteVersion", runtimeProbe.requiredMinimumSqliteVersion());
+    payload.put("sqliteRuntimeStatus", runtimeProbe.status().wireValue());
+    if (runtimeProbe.loadedSqliteVersion() != null) {
+      payload.put("loadedSqliteVersion", runtimeProbe.loadedSqliteVersion());
+    }
+    if (runtimeProbe.issue() != null) {
+      payload.put("sqliteRuntimeIssue", runtimeProbe.issue());
+    }
     return payload;
   }
 
@@ -353,11 +366,9 @@ final class FinGrindCli {
   private CliFailure runtimeFailure(IllegalStateException exception) {
     String message = message(exception);
     String hint =
-        message.contains("sqlite3")
-            ? "Use the repo-local bootstrap './scripts/ensure-sqlite.sh' when running from a"
-                + " FinGrind checkout, or set FINGRIND_SQLITE3_BINARY to a SQLite "
-                + metadata.sqliteVersion()
-                + " binary."
+        message.contains("SQLite")
+            ? "Inspect the selected book file path, filesystem permissions, and the SQLite runtime"
+                + " message, then rerun after fixing the underlying storage problem."
             : "Inspect the message and rerun after fixing the underlying runtime problem.";
     return new CliFailure("runtime-failure", message, hint, null);
   }

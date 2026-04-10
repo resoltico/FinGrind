@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.2.0"
+version: "0.3.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -89,5 +89,5 @@ What it asserts:
 Not yet fuzzed:
 - concurrent access between multiple writers
 - CLI response rendering and envelope serialization
-- failure of the `sqlite3` binary before any SQL is executed
+- corrupt or directory-backed pre-existing book paths before any valid schema exists
 - large-scale corpus growth around correction policy edge cases such as reversal-shape near misses

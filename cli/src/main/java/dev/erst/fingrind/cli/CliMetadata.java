@@ -37,10 +37,6 @@ final class CliMetadata {
     return requiredProperty("description");
   }
 
-  String sqliteVersion() {
-    return requiredProperty("sqliteVersion");
-  }
-
   private String requiredProperty(String propertyName) {
     return Objects.requireNonNull(
         properties.getProperty(propertyName), "Missing CLI metadata property: " + propertyName);

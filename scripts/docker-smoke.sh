@@ -36,7 +36,6 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly image_tag="fingrind-docker-smoke:$$"
 readonly smoke_root="${repo_root}/tmp/docker smoke.$$"
-readonly sqlite_version="$(sed -n 's/^fingrindSqliteVersion=//p' "${repo_root}/gradle.properties" | head -1)"
 
 cleanup() {
     local exit_code=$?
@@ -102,13 +101,20 @@ require_match "${version_output}" '"application"[[:space:]]*:[[:space:]]*"FinGri
 require_match "${version_output}" '"version"[[:space:]]*:[[:space:]]*"' \
     "version output did not include version"
 
-printf 'Docker smoke: verifying pinned SQLite inside the image\n'
-sqlite_version_output="$(docker run --rm \
-    --entrypoint /usr/local/bin/sqlite3 \
+printf 'Docker smoke: verifying managed SQLite runtime contract\n'
+capabilities_output="$(docker run --rm \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
     "${image_tag}" \
-    --version | tr -d '\r')"
-[[ "${sqlite_version_output}" == "${sqlite_version}"* ]] || die \
-    "docker image sqlite3 did not report pinned version ${sqlite_version}: ${sqlite_version_output}"
+    capabilities | tr -d '\r')"
+require_match "${capabilities_output}" '"sqliteLibrarySource"[[:space:]]*:[[:space:]]*"managed"' \
+    "capabilities output did not report the managed SQLite library source"
+require_match "${capabilities_output}" '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"' \
+    "capabilities output did not report the required SQLite 3.53.0 minimum"
+require_match "${capabilities_output}" '"sqliteRuntimeStatus"[[:space:]]*:[[:space:]]*"ready"' \
+    "capabilities output did not report a ready SQLite runtime"
+require_match "${capabilities_output}" '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"' \
+    "capabilities output did not report SQLite 3.53.0"
 
 printf 'Docker smoke: verifying book write through mounted path\n'
 commit_output="$(docker run --rm \

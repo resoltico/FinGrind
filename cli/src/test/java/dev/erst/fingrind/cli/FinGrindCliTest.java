@@ -9,6 +9,7 @@ import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,8 +23,11 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
 class FinGrindCliTest {
@@ -45,7 +49,7 @@ class FinGrindCliTest {
   }
 
   @Test
-  void run_returnsCapabilities() {
+  void run_returnsCapabilities() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         new FinGrindCli(
@@ -54,12 +58,20 @@ class FinGrindCliTest {
     int exitCode = cli.run(new String[] {"capabilities"});
 
     assertEquals(0, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"requestProvenanceFields\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"committedFields\""));
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"reversal-must-negate-target\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"rejectionCodes\""));
+    String json = outputStream.toString(StandardCharsets.UTF_8);
+    JsonNode payload = new ObjectMapper().readTree(json).path("payload");
+    assertTrue(json.contains("\"requestProvenanceFields\""));
+    assertTrue(json.contains("\"committedFields\""));
+    assertTrue(json.contains("\"reversal-must-negate-target\""));
+    assertTrue(json.contains("\"rejectionCodes\""));
+    assertEquals("sqlite-ffm", payload.path("environment").path("storageDriver").asText());
+    assertEquals("sqlite", payload.path("environment").path("storageEngine").asText());
+    assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asText());
+    assertEquals(
+        "3.53.0", payload.path("environment").path("requiredMinimumSqliteVersion").asText());
+    assertEquals("ready", payload.path("environment").path("sqliteRuntimeStatus").asText());
+    assertEquals("3.53.0", payload.path("environment").path("loadedSqliteVersion").asText());
+    assertFalse(json.contains("FINGRIND_SQLITE3_BINARY"));
   }
 
   @Test
@@ -74,6 +86,26 @@ class FinGrindCliTest {
     assertEquals(0, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"application\""));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"version\""));
+  }
+
+  @Test
+  void environmentPayload_reportsUnavailableRuntimeWhenSqliteProbeFails() {
+    Map<String, Object> environmentPayload =
+        FinGrindCli.environmentPayload(
+            new SqliteRuntime.Probe(
+                "system",
+                "3.53.0",
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                "system sqlite unavailable"));
+
+    assertEquals("sqlite-ffm", environmentPayload.get("storageDriver"));
+    assertEquals("sqlite", environmentPayload.get("storageEngine"));
+    assertEquals("system", environmentPayload.get("sqliteLibrarySource"));
+    assertEquals("3.53.0", environmentPayload.get("requiredMinimumSqliteVersion"));
+    assertEquals("unavailable", environmentPayload.get("sqliteRuntimeStatus"));
+    assertEquals("system sqlite unavailable", environmentPayload.get("sqliteRuntimeIssue"));
+    assertFalse(environmentPayload.containsKey("loadedSqliteVersion"));
   }
 
   @Test
@@ -271,12 +303,12 @@ class FinGrindCliTest {
             new FinGrindCli.EntryWorkflow() {
               @Override
               public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
-                throw new IllegalStateException("Failed to start sqlite3.");
+                throw new IllegalStateException("Failed to open SQLite book connection.");
               }
 
               @Override
               public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
-                throw new IllegalStateException("Failed to start sqlite3.");
+                throw new IllegalStateException("Failed to open SQLite book connection.");
               }
             });
 
@@ -293,7 +325,7 @@ class FinGrindCliTest {
     assertEquals(1, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("FINGRIND_SQLITE3_BINARY"));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("filesystem permissions"));
   }
 
   @Test

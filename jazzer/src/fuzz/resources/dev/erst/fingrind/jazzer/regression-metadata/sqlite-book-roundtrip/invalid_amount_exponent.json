@@ -1,0 +1,20 @@
+{
+  "targetKey" : "sqlite-book-roundtrip",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_amount_exponent.json",
+  "expectation" : {
+    "outcomeKind" : "EXPECTED_INVALID",
+    "details" : {
+      "type" : "SQLITE_BOOK_ROUND_TRIP",
+      "requestStatus" : "INVALID_REQUEST",
+      "effectiveDate" : "NOT_PARSED",
+      "idempotencyKey" : "NOT_PARSED",
+      "lineCount" : 0,
+      "correctionPresent" : false,
+      "firstCommitStatus" : "NOT_RUN",
+      "reloadStatus" : "NOT_RUN",
+      "duplicateStatus" : "NOT_RUN",
+      "storedFactPresent" : false,
+      "failureMessage" : "Money amount must be a plain decimal string without exponent notation."
+    }
+  }
+}
