@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.1.0"
+version: "0.2.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-08"
+updated: "2026-04-09"
 route:
-  keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples]
+  keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
 ---
 
@@ -21,10 +21,10 @@ Then choose one of the user, developer, or reference tracks below.
 ## User Guides
 
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, exit codes, and runtime requirements
-- [USER_REQUESTS.md](./USER_REQUESTS.md): request JSON shape, response envelopes, and accepted enum values
-- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for preflight, commit, duplicates, and stdin
+- [USER_REQUESTS.md](./USER_REQUESTS.md): request JSON shape, correction rules, rejection codes, and response envelopes
+- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for preflight, commit, duplicates, stdin, and correction templates
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
-- [examples/correction-request.json](./examples/correction-request.json): valid request carrying correction linkage
+- [examples/correction-request.json](./examples/correction-request.json): correction request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 
 ## Developer Guides
@@ -46,4 +46,3 @@ Then choose one of the user, developer, or reference tracks below.
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_03_RuntimeAndAdapters.md](./DOC_03_RuntimeAndAdapters.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
-- [sqlite/SCHEMA_COUNTRY_PACKS.md](./sqlite/SCHEMA_COUNTRY_PACKS.md)

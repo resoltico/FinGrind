@@ -2,24 +2,27 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.CausationId;
+import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.CorrectionReason;
 import dev.erst.fingrind.core.CorrectionReference;
+import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ProvenanceEnvelope;
+import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceChannel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
-import java.time.DateTimeException;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,30 +40,29 @@ final class CliRequestReader {
   }
 
   /** Reads one posting request from a JSON file or standard input. */
-  PostEntryCommand readPostEntryCommand(Path requestFile, Clock clock) {
+  PostEntryCommand readPostEntryCommand(Path requestFile) {
     try {
       JsonNode rootNode = readRootNode(requestFile);
+      JsonNode provenanceNode = requiredObject(rootNode, "provenance");
+      rejectForbiddenField(provenanceNode, "recordedAt");
+      rejectForbiddenField(provenanceNode, "sourceChannel");
       return new PostEntryCommand(
           new JournalEntry(
               LocalDate.parse(requiredText(rootNode, "effectiveDate")),
-              readLines(requiredArray(rootNode, "lines")),
-              readCorrection(rootNode.get("correction"))),
-          new ProvenanceEnvelope(
-              requiredText(requiredObject(rootNode, "provenance"), "actorId"),
-              ProvenanceEnvelope.ActorType.valueOf(
-                  requiredText(requiredObject(rootNode, "provenance"), "actorType")),
-              requiredText(requiredObject(rootNode, "provenance"), "commandId"),
-              new IdempotencyKey(
-                  requiredText(requiredObject(rootNode, "provenance"), "idempotencyKey")),
-              requiredText(requiredObject(rootNode, "provenance"), "causationId"),
-              optionalText(requiredObject(rootNode, "provenance"), "correlationId"),
-              readRecordedAt(requiredObject(rootNode, "provenance"), clock),
-              optionalText(requiredObject(rootNode, "provenance"), "reason"),
-              ProvenanceEnvelope.SourceChannel.valueOf(
-                  requiredText(requiredObject(rootNode, "provenance"), "sourceChannel"))));
+              readLines(requiredArray(rootNode, "lines"))),
+          readCorrection(rootNode.get("correction")),
+          new RequestProvenance(
+              new ActorId(requiredText(provenanceNode, "actorId")),
+              ActorType.valueOf(requiredText(provenanceNode, "actorType")),
+              new CommandId(requiredText(provenanceNode, "commandId")),
+              new IdempotencyKey(requiredText(provenanceNode, "idempotencyKey")),
+              new CausationId(requiredText(provenanceNode, "causationId")),
+              optionalText(provenanceNode, "correlationId").map(CorrelationId::new),
+              optionalText(provenanceNode, "reason").map(CorrectionReason::new)),
+          SourceChannel.CLI);
     } catch (CliRequestException exception) {
       throw exception;
-    } catch (DateTimeException exception) {
+    } catch (java.time.DateTimeException exception) {
       throw new CliRequestException(
           "invalid-request",
           "Request contains an invalid date/time value.",
@@ -99,7 +101,7 @@ final class CliRequestReader {
   }
 
   private List<JournalLine> readLines(JsonNode linesNode) {
-    List<JournalLine> lines = new ArrayList<>();
+    List<JournalLine> lines = new java.util.ArrayList<>();
     for (JsonNode lineNode : linesNode) {
       lines.add(
           new JournalLine(
@@ -122,9 +124,11 @@ final class CliRequestReader {
             new PostingId(requiredText(correctionNode, "priorPostingId"))));
   }
 
-  private Instant readRecordedAt(JsonNode provenanceNode, Clock clock) {
-    Optional<String> recordedAt = optionalText(provenanceNode, "recordedAt");
-    return recordedAt.map(Instant::parse).orElseGet(clock::instant);
+  private static void rejectForbiddenField(JsonNode rootNode, String fieldName) {
+    JsonNode fieldNode = rootNode.get(fieldName);
+    if (fieldNode != null) {
+      throw new IllegalArgumentException("Field is no longer accepted: " + fieldName);
+    }
   }
 
   private static JsonNode requiredObject(JsonNode rootNode, String fieldName) {

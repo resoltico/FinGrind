@@ -4,15 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.application.PostEntryCommand;
+import dev.erst.fingrind.core.CorrectionReason;
 import dev.erst.fingrind.core.CorrectionReference;
+import dev.erst.fingrind.core.SourceChannel;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,258 +22,35 @@ class CliRequestReaderTest {
 
   @Test
   void readPostEntryCommand_readsFromFile() throws IOException {
-    Path requestFile = tempDirectory.resolve("request.json");
-    Files.writeString(requestFile, validRequestJson(true, true), StandardCharsets.UTF_8);
+    Path requestFile = writeRequest(validRequestJson(true));
     CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
 
-    PostEntryCommand command =
-        requestReader.readPostEntryCommand(
-            requestFile, Clock.fixed(Instant.parse("2026-04-07T11:00:00Z"), ZoneOffset.UTC));
+    PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
 
-    assertEquals("idem-1", command.provenance().idempotencyKey().value());
+    assertEquals("idem-1", command.requestProvenance().idempotencyKey().value());
     assertEquals(
         Optional.of(
             new CorrectionReference(
                 CorrectionReference.CorrectionKind.AMENDMENT,
-                command.journalEntry().correctionReference().orElseThrow().priorPostingId())),
-        command.journalEntry().correctionReference());
-    assertEquals(Instant.parse("2026-04-07T10:15:30Z"), command.provenance().recordedAt());
+                new dev.erst.fingrind.core.PostingId("posting-0"))),
+        command.correctionReference());
+    assertEquals(
+        Optional.of(new CorrectionReason("operator correction")),
+        command.requestProvenance().reason());
+    assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
   @Test
-  void readPostEntryCommand_readsFromStandardInputAndDefaultsRecordedAt() {
+  void readPostEntryCommand_readsFromStandardInputWithoutCorrection() {
     CliRequestReader requestReader =
         new CliRequestReader(
-            new ByteArrayInputStream(
-                validRequestJson(false, false).getBytes(StandardCharsets.UTF_8)));
-    Clock fixedClock = Clock.fixed(Instant.parse("2026-04-07T12:00:00Z"), ZoneOffset.UTC);
+            new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
 
-    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"), fixedClock);
+    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
-    assertEquals(Optional.empty(), command.journalEntry().correctionReference());
-    assertEquals(Instant.parse("2026-04-07T12:00:00Z"), command.provenance().recordedAt());
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsMissingRequiredTextField() {
-    CliRequestReader requestReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
-                {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                }
-              ],
-              "provenance": {
-                "actorType": "AGENT",
-                "commandId": "command-1",
-                "idempotencyKey": "idem-1",
-                "causationId": "cause-1",
-                "sourceChannel": "CLI"
-              }
-            }
-            """
-                    .getBytes(StandardCharsets.UTF_8)));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsWrongObjectFieldType() {
-    Path requestFile =
-        writeRequest(
-            """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
-                {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                }
-              ],
-              "provenance": "bad"
-            }
-            """);
-    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(requestFile, Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsWrongArrayFieldType() {
-    Path requestFile =
-        writeRequest(
-            """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": "bad",
-              "provenance": {}
-            }
-            """);
-    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(requestFile, Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsWrongRequiredTextType() {
-    Path requestFile =
-        writeRequest(
-            """
-            {
-              "effectiveDate": 1,
-              "lines": [],
-              "provenance": {}
-            }
-            """);
-    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(requestFile, Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsWrongOptionalTextType() {
-    Path requestFile =
-        writeRequest(
-            """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
-                {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                }
-              ],
-              "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
-                "idempotencyKey": "idem-1",
-                "causationId": "cause-1",
-                "reason": 1,
-                "sourceChannel": "CLI"
-              }
-            }
-            """);
-    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(requestFile, Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsUnreadableRequestFile() {
-    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            requestReader.readPostEntryCommand(
-                tempDirectory.resolve("missing-request.json"), Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsMalformedJsonSyntax() {
-    CliRequestReader requestReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines", []
-            }
-            """
-                    .getBytes(StandardCharsets.UTF_8)));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsInvalidEffectiveDate() {
-    CliRequestReader requestReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-            {
-              "effectiveDate": "2026-04w-07",
-              "lines": [
-                {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                }
-              ],
-              "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
-                "idempotencyKey": "idem-1",
-                "causationId": "cause-1",
-                "sourceChannel": "CLI"
-              }
-            }
-            """
-                    .getBytes(StandardCharsets.UTF_8)));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
-  }
-
-  @Test
-  void readPostEntryCommand_rejectsInvalidBinaryPayload() {
-    CliRequestReader requestReader =
-        new CliRequestReader(new ByteArrayInputStream(new byte[] {0x00, 0x00, 0x00, '{', 0x00}));
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
+    assertEquals(Optional.empty(), command.correctionReference());
+    assertEquals(Optional.empty(), command.requestProvenance().reason());
+    assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
   @Test
@@ -283,38 +59,201 @@ class CliRequestReaderTest {
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
                 {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  },
+                  "correction": null
                 }
-              ],
-              "correction": null,
-              "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
-                "idempotencyKey": "idem-1",
-                "causationId": "cause-1",
-                "sourceChannel": "CLI"
-              }
-            }
-            """
+                """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC());
+    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
-    assertEquals(Optional.empty(), command.journalEntry().correctionReference());
+    assertEquals(Optional.empty(), command.correctionReference());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsForbiddenRecordedAtField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "recordedAt": "2026-04-07T10:15:30Z"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field is no longer accepted: recordedAt", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsForbiddenRecordedAtFieldEvenWhenNull() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "recordedAt": null
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field is no longer accepted: recordedAt", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsForbiddenSourceChannelField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "sourceChannel": "CLI"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field is no longer accepted: sourceChannel", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsForbiddenSourceChannelFieldEvenWhenNull() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "sourceChannel": null
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field is no longer accepted: sourceChannel", exception.getMessage());
   }
 
   @Test
@@ -323,117 +262,360 @@ class CliRequestReaderTest {
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
                 {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
+                  "effectiveDate": "2026-04-07",
+                  "lines": []
                 }
-              ]
-            }
-            """
+                """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Missing required field: provenance", exception.getMessage());
   }
 
   @Test
-  void readPostEntryCommand_rejectsNullProvenanceObject() {
+  void readPostEntryCommand_rejectsNonObjectProvenanceField() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
                 {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
+                  "effectiveDate": "2026-04-07",
+                  "lines": [],
+                  "provenance": "not-an-object"
                 }
-              ],
-              "provenance": null
-            }
-            """
+                """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field must be an object: provenance", exception.getMessage());
   }
 
   @Test
-  void readPostEntryCommand_rejectsMissingLinesArray() {
+  void readPostEntryCommand_rejectsExplicitNullProvenanceField() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": "2026-04-07",
-              "provenance": {}
-            }
-            """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [],
+                  "provenance": null
+                }
+                """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Missing required field: provenance", exception.getMessage());
   }
 
   @Test
-  void readPostEntryCommand_rejectsNullLinesArray() {
+  void readPostEntryCommand_rejectsMissingLinesField() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": null,
-              "provenance": {}
-            }
-            """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Missing required field: lines", exception.getMessage());
   }
 
   @Test
-  void readPostEntryCommand_rejectsNullRequiredTextField() {
+  void readPostEntryCommand_rejectsNonArrayLinesField() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": null,
-              "lines": [],
-              "provenance": {}
-            }
-            """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": "not-an-array",
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> requestReader.readPostEntryCommand(Path.of("-"), Clock.systemUTC()));
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field must be an array: lines", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsExplicitNullLinesField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": null,
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Missing required field: lines", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsMissingRequiredTextField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Missing required field: actorId", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsExplicitNullRequiredTextField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": null,
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Missing required field: actorId", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsNonStringRequiredTextField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": 20260407,
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field must be a string: effectiveDate", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsInvalidDateValue() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-02-30",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Request contains an invalid date/time value.", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsWrongOptionalTextType() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "reason": 1
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field must be a string when present: reason", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsMalformedJsonSyntax() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines", []
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Failed to read request JSON.", exception.getMessage());
   }
 
   @Test
@@ -442,56 +624,48 @@ class CliRequestReaderTest {
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
-            {
-              "effectiveDate": "2026-04-07",
-              "lines": [
                 {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "correlationId": null,
+                    "reason": null
+                  }
                 }
-              ],
-              "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
-                "idempotencyKey": "idem-1",
-                "causationId": "cause-1",
-                "correlationId": null,
-                "recordedAt": null,
-                "reason": null,
-                "sourceChannel": "CLI"
-              }
-            }
-            """
+                """
                     .getBytes(StandardCharsets.UTF_8)));
-    Clock fixedClock = Clock.fixed(Instant.parse("2026-04-07T13:00:00Z"), ZoneOffset.UTC);
 
-    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"), fixedClock);
+    PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
-    assertEquals(Optional.empty(), command.provenance().correlationId());
-    assertEquals(Optional.empty(), command.provenance().reason());
-    assertEquals(Instant.parse("2026-04-07T13:00:00Z"), command.provenance().recordedAt());
+    assertEquals(Optional.empty(), command.requestProvenance().correlationId());
+    assertEquals(Optional.empty(), command.requestProvenance().reason());
   }
 
-  private Path writeRequest(String payload) {
-    try {
-      Path requestFile = tempDirectory.resolve("request-" + System.nanoTime() + ".json");
-      Files.writeString(requestFile, payload, StandardCharsets.UTF_8);
-      return requestFile;
-    } catch (IOException exception) {
-      throw new IllegalStateException(exception);
-    }
+  private Path writeRequest(String payload) throws IOException {
+    Path requestFile = tempDirectory.resolve("request.json");
+    Files.writeString(requestFile, payload, StandardCharsets.UTF_8);
+    return requestFile;
   }
 
-  private static String validRequestJson(boolean includeCorrection, boolean includeRecordedAt) {
+  private static String validRequestJson(boolean includeCorrection) {
     String correctionBlock =
         includeCorrection
             ? """
@@ -502,10 +676,10 @@ class CliRequestReaderTest {
               }
               """
             : "";
-    String recordedAtField =
-        includeRecordedAt
+    String reasonField =
+        includeCorrection
             ? """
-                "recordedAt": "2026-04-07T10:15:30Z",
+                "reason": "operator correction",
               """
             : "";
     return """
@@ -531,11 +705,11 @@ class CliRequestReaderTest {
                 "commandId": "command-1",
                 "idempotencyKey": "idem-1",
                 "causationId": "cause-1",
-            %s    "sourceChannel": "CLI"
+            %s    "correlationId": "corr-1"
               }
             %s
             }
             """
-        .formatted(recordedAtField, correctionBlock);
+        .formatted(reasonField, correctionBlock);
   }
 }

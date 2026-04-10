@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.application.PostEntryCommand;
+import dev.erst.fingrind.application.PostingIdGenerator;
 import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
@@ -9,7 +10,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 /** Shared helpers for FinGrind Jazzer harnesses that start from CLI request JSON. */
 public final class CliFuzzSupport {
@@ -21,14 +21,18 @@ public final class CliFuzzSupport {
   /** Parses one CLI request payload from bytes using the same reader used by the production CLI. */
   public static PostEntryCommand readPostEntryCommand(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
-    return new CliRequestReader(new ByteArrayInputStream(input))
-        .readPostEntryCommand(Path.of("-"), FIXED_CLOCK);
+    return new CliRequestReader(new ByteArrayInputStream(input)).readPostEntryCommand(Path.of("-"));
   }
 
-  /** Returns a deterministic posting-id supplier for one fuzz iteration. */
-  public static Supplier<PostingId> postingIdSupplier(byte[] input) {
+  /** Returns a deterministic posting-id generator for one fuzz iteration. */
+  public static PostingIdGenerator postingIdGenerator(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
     String postingId = UUID.nameUUIDFromBytes(input).toString();
     return () -> new PostingId(postingId);
+  }
+
+  /** Returns the deterministic clock shared by Jazzer harnesses and regression replay. */
+  public static Clock fixedClock() {
+    return FIXED_CLOCK;
   }
 }

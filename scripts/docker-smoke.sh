@@ -81,8 +81,7 @@ cat > "${request_path}" <<JSON
     "actorType": "AGENT",
     "commandId": "docker-smoke-command",
     "idempotencyKey": "docker-smoke-idem",
-    "causationId": "docker-smoke-cause",
-    "sourceChannel": "CLI"
+    "causationId": "docker-smoke-cause"
   }
 }
 JSON

@@ -1,0 +1,29 @@
+{
+  "effectiveDate": "2026-04-08",
+  "lines": [
+    {
+      "accountCode": "3000",
+      "side": "DEBIT",
+      "currencyCode": "USD",
+      "amount": "99.95"
+    },
+    {
+      "accountCode": "4000",
+      "side": "CREDIT",
+      "currencyCode": "USD",
+      "amount": "99.95"
+    }
+  ],
+  "correction": {
+    "kind": "AMENDMENT",
+    "priorPostingId": "posting-missing"
+  },
+  "provenance": {
+    "actorId": "actor-7",
+    "actorType": "SYSTEM",
+    "commandId": "command-7",
+    "idempotencyKey": "idem-7",
+    "causationId": "cause-7",
+    "reason": "operator correction"
+  }
+}

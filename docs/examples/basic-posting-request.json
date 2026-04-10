@@ -19,7 +19,6 @@
     "actorType": "USER",
     "commandId": "command-basic-1",
     "idempotencyKey": "idem-basic-1",
-    "causationId": "cause-basic-1",
-    "sourceChannel": "CLI"
+    "causationId": "cause-basic-1"
   }
 }

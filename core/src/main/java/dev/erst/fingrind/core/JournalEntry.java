@@ -4,18 +4,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /** Balanced journal entry ready to cross the application write boundary. */
-public record JournalEntry(
-    LocalDate effectiveDate,
-    List<JournalLine> lines,
-    Optional<CorrectionReference> correctionReference) {
+public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
   /** Validates the journal grammar and enforces balanced entry discipline. */
   public JournalEntry {
     Objects.requireNonNull(effectiveDate, "effectiveDate");
     lines = List.copyOf(lines == null ? List.of() : lines);
-    correctionReference = correctionReference == null ? Optional.empty() : correctionReference;
     if (lines.isEmpty()) {
       throw new IllegalArgumentException("Journal entry must contain at least one line.");
     }

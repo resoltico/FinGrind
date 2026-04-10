@@ -5,14 +5,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.CausationId;
+import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CorrectionReason;
 import dev.erst.fingrind.core.CorrectionReference;
+import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ProvenanceEnvelope;
+import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.runtime.PostingCommitResult;
 import dev.erst.fingrind.runtime.PostingFact;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,54 +53,152 @@ class SqlitePostingFactStoreTest {
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
       assertEquals(
           Optional.empty(), postingFactStore.findByIdempotency(new IdempotencyKey("missing-idem")));
+      assertTrue(Files.notExists(databasePath));
     }
   }
 
   @Test
   void commitAndFindByIdempotency_returnsStoredFactWithoutCorrection() {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
-    PostingFact postingFact = postingFact("posting-1", "idem-1", Optional.empty());
+    PostingFact postingFact =
+        postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
+      assertEquals(
+          new PostingCommitResult.Committed(postingFact), postingFactStore.commit(postingFact));
+      assertEquals(
+          Optional.of(postingFact),
+          postingFactStore.findByIdempotency(new IdempotencyKey("idem-1")));
+      assertEquals(
+          Optional.of(postingFact), postingFactStore.findByPostingId(new PostingId("posting-1")));
+    }
+  }
+
+  @Test
+  void findByPostingId_returnsEmptyWhenExistingBookHasNoMatchingPosting() {
+    Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
+    PostingFact postingFact =
+        postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
 
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
       postingFactStore.commit(postingFact);
 
       assertEquals(
-          Optional.of(postingFact),
-          postingFactStore.findByIdempotency(new IdempotencyKey("idem-1")));
+          Optional.empty(), postingFactStore.findByPostingId(new PostingId("posting-missing")));
     }
   }
 
   @Test
   void commitAndFindByIdempotency_preservesCorrectionReference() {
     Path databasePath = tempDirectory.resolve("nested").resolve("entity-b.sqlite");
-    PostingFact postingFact =
+    PostingFact originalFact =
+        postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+    PostingFact amendmentFact =
         postingFact(
             "posting-2",
             "idem-2",
             Optional.of(
                 new CorrectionReference(
-                    CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))));
+                    CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))),
+            Optional.of(new CorrectionReason("operator correction")));
 
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
-      postingFactStore.commit(postingFact);
+      postingFactStore.commit(originalFact);
+      postingFactStore.commit(amendmentFact);
 
       assertEquals(
-          Optional.of(postingFact),
+          Optional.of(amendmentFact),
           postingFactStore.findByIdempotency(new IdempotencyKey("idem-2")));
     }
   }
 
   @Test
-  void commit_rejectsDuplicateIdempotencyKey() {
+  void commit_returnsDuplicateIdempotencyOutcome() {
     Path databasePath = tempDirectory.resolve("fingrind.sqlite");
-    PostingFact postingFact = postingFact("posting-1", "idem-1", Optional.empty());
+    PostingFact postingFact =
+        postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
 
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
       postingFactStore.commit(postingFact);
 
-      assertThrows(
-          IllegalStateException.class,
-          () -> postingFactStore.commit(postingFact("posting-2", "idem-1", Optional.empty())));
+      assertEquals(
+          new PostingCommitResult.DuplicateIdempotency(new IdempotencyKey("idem-1")),
+          postingFactStore.commit(
+              postingFact("posting-2", "idem-1", Optional.empty(), Optional.empty())));
+    }
+  }
+
+  @Test
+  void commit_returnsDuplicateReversalTargetOutcome() {
+    Path databasePath = tempDirectory.resolve("reversal.sqlite");
+    PostingFact originalFact =
+        postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+    PostingFact firstReversal =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            Optional.of(
+                new CorrectionReference(
+                    CorrectionReference.CorrectionKind.REVERSAL, new PostingId("posting-1"))),
+            Optional.of(new CorrectionReason("full reversal")));
+    PostingFact secondReversal =
+        postingFact(
+            "posting-3",
+            "idem-3",
+            Optional.of(
+                new CorrectionReference(
+                    CorrectionReference.CorrectionKind.REVERSAL, new PostingId("posting-1"))),
+            Optional.of(new CorrectionReason("another full reversal")));
+
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
+      postingFactStore.commit(originalFact);
+      postingFactStore.commit(firstReversal);
+
+      assertEquals(
+          new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-1")),
+          postingFactStore.commit(secondReversal));
+      assertEquals(
+          Optional.of(firstReversal), postingFactStore.findReversalFor(new PostingId("posting-1")));
+    }
+  }
+
+  @Test
+  void commit_throwsWhenSqliteFailureIsNotMappedToAnOrdinaryOutcome() {
+    Path databasePath = tempDirectory.resolve("unexpected.sqlite");
+    PostingFact invalidCorrectionFact =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            Optional.of(
+                new CorrectionReference(
+                    CorrectionReference.CorrectionKind.AMENDMENT,
+                    new PostingId("posting-missing"))),
+            Optional.of(new CorrectionReason("operator correction")));
+
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class, () -> postingFactStore.commit(invalidCorrectionFact));
+
+      assertTrue(exception.getMessage().contains("sqlite3 failed:"));
+    }
+  }
+
+  @Test
+  void commit_rejectsBookPathWhoseParentIsAFile() throws IOException {
+    Path fileParent = tempDirectory.resolve("not-a-directory");
+    Files.writeString(fileParent, "nope", StandardCharsets.UTF_8);
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(fileParent.resolve("entity.sqlite"))) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  postingFactStore.commit(
+                      postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
+
+      assertTrue(exception.getMessage().contains("Failed to create SQLite book directory."));
     }
   }
 
@@ -105,17 +212,22 @@ class SqlitePostingFactStoreTest {
             }
             """);
 
-    assertEquals(Optional.empty(), SqlitePostingFactStore.readCorrectionReference(postingRow));
+    assertEquals(Optional.empty(), SqlitePostingMapper.readCorrectionReference(postingRow));
   }
 
   @Test
-  void constructor_rejectsBookPathWhoseParentIsAFile() throws IOException {
-    Path fileParent = tempDirectory.resolve("not-a-directory");
-    Files.writeString(fileParent, "nope", StandardCharsets.UTF_8);
+  void findByIdempotency_throwsWhenExistingBookFileIsNotSqlite() throws IOException {
+    Path databasePath = tempDirectory.resolve("not-a-database.sqlite");
+    Files.writeString(databasePath, "not sqlite", StandardCharsets.UTF_8);
 
-    assertThrows(
-        IllegalStateException.class,
-        () -> new SqlitePostingFactStore(fileParent.resolve("entity.sqlite")));
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findByIdempotency(new IdempotencyKey("missing-idem")));
+
+      assertTrue(exception.getMessage().contains("sqlite3 failed:"));
+    }
   }
 
   @Test
@@ -129,7 +241,7 @@ class SqlitePostingFactStoreTest {
             0,
             null);
 
-    SqlitePostingFactStore.runSqlite3(List.of(":memory:"), "select 1;", command -> process);
+    SqliteCommandExecutor.runSqlite3(List.of(":memory:"), "select 1;", command -> process);
 
     String writtenSql = stdinCapture.toString(StandardCharsets.UTF_8);
     assertTrue(writtenSql.contains("pragma foreign_keys = on;"));
@@ -141,7 +253,7 @@ class SqlitePostingFactStoreTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqlitePostingFactStore.runSqlite3(
+            SqliteCommandExecutor.runSqlite3(
                 List.of(":memory:"),
                 "select 1;\n",
                 command -> {
@@ -151,32 +263,31 @@ class SqlitePostingFactStoreTest {
 
   @Test
   void sqlite3Binary_prefersConfiguredOverrideWhenPresent() {
-    assertEquals(
-        "/tmp/pinned-sqlite3", SqlitePostingFactStore.sqlite3Binary("/tmp/pinned-sqlite3"));
+    assertEquals("/tmp/pinned-sqlite3", SqliteCommandExecutor.sqlite3Binary("/tmp/pinned-sqlite3"));
   }
 
   @Test
   void sqlite3Binary_fallsBackToDefaultWhenOverrideIsBlank() {
-    assertEquals("sqlite3", SqlitePostingFactStore.sqlite3Binary("  "));
+    assertEquals("sqlite3", SqliteCommandExecutor.sqlite3Binary("  "));
   }
 
   @Test
   void sqlite3Binary_fallsBackToDefaultWhenOverrideIsNull() {
-    assertEquals("sqlite3", SqlitePostingFactStore.sqlite3Binary(null));
+    assertEquals("sqlite3", SqliteCommandExecutor.sqlite3Binary(null));
   }
 
   @Test
   void sqlite3Command_wrapsShellScriptOverridesThroughBash() {
     assertEquals(
         List.of("bash", "/tmp/sqlite3.sh"),
-        SqlitePostingFactStore.sqlite3Command("/tmp/sqlite3.sh"));
+        SqliteCommandExecutor.sqlite3Command("/tmp/sqlite3.sh"));
   }
 
   @Test
   void sqlite3Command_usesConfiguredBinaryDirectlyWhenOverrideIsNotAScript() {
     assertEquals(
         List.of("/tmp/pinned-sqlite3"),
-        SqlitePostingFactStore.sqlite3Command("/tmp/pinned-sqlite3"));
+        SqliteCommandExecutor.sqlite3Command("/tmp/pinned-sqlite3"));
   }
 
   @Test
@@ -197,7 +308,7 @@ class SqlitePostingFactStoreTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqlitePostingFactStore.runSqlite3(
+            SqliteCommandExecutor.runSqlite3(
                 List.of(":memory:"), "select 1;\n", command -> process));
   }
 
@@ -215,7 +326,7 @@ class SqlitePostingFactStoreTest {
       assertThrows(
           IllegalStateException.class,
           () ->
-              SqlitePostingFactStore.runSqlite3(
+              SqliteCommandExecutor.runSqlite3(
                   List.of(":memory:"), "select 1;\n", command -> process));
       assertTrue(Thread.interrupted());
     } finally {
@@ -236,7 +347,7 @@ class SqlitePostingFactStoreTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqlitePostingFactStore.runSqlite3(
+            SqliteCommandExecutor.runSqlite3(
                 List.of(":memory:"), "select 1;\n", command -> process));
   }
 
@@ -244,7 +355,21 @@ class SqlitePostingFactStoreTest {
   void readSchema_mapsIoFailure() {
     assertThrows(
         IllegalStateException.class,
-        () -> SqlitePostingFactStore.readSchema(SqlitePostingFactStoreTest::failingInputStream));
+        () -> SqliteSchemaManager.readSchema(SqlitePostingFactStoreTest::failingInputStream));
+  }
+
+  @Test
+  void initializeBook_throwsWhenBookPathIsADirectory() throws IOException {
+    Path bookPath = tempDirectory.resolve("book-directory");
+    Files.createDirectories(bookPath);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteSchemaManager.initializeBook(bookPath, new SqliteCommandExecutor(bookPath)));
+
+    assertTrue(exception.getMessage().contains("sqlite3 failed:"));
   }
 
   private static InputStream failingInputStream() {
@@ -262,31 +387,49 @@ class SqlitePostingFactStoreTest {
   }
 
   private static PostingFact postingFact(
-      String postingId, String idempotencyKey, Optional<CorrectionReference> correctionReference) {
+      String postingId,
+      String idempotencyKey,
+      Optional<CorrectionReference> correctionReference,
+      Optional<CorrectionReason> reason) {
     return new PostingFact(
         new PostingId(postingId),
-        new JournalEntry(
-            LocalDate.parse("2026-04-07"),
-            List.of(
-                new JournalLine(
-                    new AccountCode("1000"),
-                    JournalLine.EntrySide.DEBIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
-                new JournalLine(
-                    new AccountCode("2000"),
-                    JournalLine.EntrySide.CREDIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")))),
-            correctionReference),
-        new ProvenanceEnvelope(
-            "actor-1",
-            ProvenanceEnvelope.ActorType.AGENT,
-            "command-" + postingId,
-            new IdempotencyKey(idempotencyKey),
-            "cause-1",
-            Optional.of("corr-1"),
+        journalEntry(correctionReference),
+        correctionReference,
+        new CommittedProvenance(
+            new RequestProvenance(
+                new ActorId("actor-1"),
+                ActorType.AGENT,
+                new CommandId("command-" + postingId),
+                new IdempotencyKey(idempotencyKey),
+                new CausationId("cause-1"),
+                Optional.of(new CorrelationId("corr-1")),
+                reason),
             Instant.parse("2026-04-07T10:15:30Z"),
-            Optional.of("reason-1"),
-            ProvenanceEnvelope.SourceChannel.CLI));
+            SourceChannel.CLI));
+  }
+
+  private static JournalEntry journalEntry(Optional<CorrectionReference> correctionReference) {
+    if (correctionReference.isPresent()
+        && correctionReference.orElseThrow().kind()
+            == CorrectionReference.CorrectionKind.REVERSAL) {
+      return new JournalEntry(
+          LocalDate.parse("2026-04-07"),
+          List.of(
+              line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
+              line("2000", JournalLine.EntrySide.DEBIT, "10.00")));
+    }
+    return new JournalEntry(
+        LocalDate.parse("2026-04-07"),
+        List.of(
+            line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+            line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
+  }
+
+  private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
+    return new JournalLine(
+        new AccountCode(accountCode),
+        side,
+        new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
   }
 
   /** Stub process used to exercise sqlite3 process failure handling deterministically. */

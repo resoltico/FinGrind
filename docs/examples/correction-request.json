@@ -21,12 +21,10 @@
     "idempotencyKey": "idem-correction-1",
     "causationId": "cause-correction-1",
     "correlationId": "corr-correction-1",
-    "recordedAt": "2026-04-09T09:30:00Z",
-    "reason": "Invoice amendment",
-    "sourceChannel": "CLI"
+    "reason": "Invoice amendment"
   },
   "correction": {
     "kind": "AMENDMENT",
-    "priorPostingId": "posting-previous-1"
+    "priorPostingId": "replace-with-posting-id-from-same-book"
   }
 }

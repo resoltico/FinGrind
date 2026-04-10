@@ -15,7 +15,7 @@
     }
   ],
   "correction": {
-    "kind": "REVERSAL",
+    "kind": "AMENDMENT",
     "priorPostingId": "posting-old"
   },
   "provenance": {
@@ -23,8 +23,6 @@
     "actorType": "USER",
     "commandId": "command-2",
     "idempotencyKey": "idem-2",
-    "causationId": "cause-2",
-    "reason": "reverse mistaken entry",
-    "sourceChannel": "API"
+    "causationId": "cause-2"
   }
 }

@@ -27,7 +27,7 @@ final class FinGrindCli {
   private final EntryWorkflow entryWorkflow;
 
   FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
-    this(inputStream, outputStream, clock, new SqliteEntryWorkflow());
+    this(inputStream, outputStream, clock, new SqliteEntryWorkflow(clock));
   }
 
   FinGrindCli(
@@ -80,7 +80,7 @@ final class FinGrindCli {
   }
 
   private int runEntryCommand(Path bookFilePath, Path requestFile, EntryOperation entryOperation) {
-    PostEntryCommand command = requestReader.readPostEntryCommand(requestFile, clock);
+    PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     PostEntryResult result = entryOperation.execute(bookFilePath, command);
     responseWriter.writePostEntryResult(result);
     return exitCodeFor(result);
@@ -135,8 +135,31 @@ final class FinGrindCli {
     payload.put("requestInput", requestInputPayload());
     payload.put("requestShape", requestShapePayload());
     payload.put("responseModel", responseModelPayload());
-    payload.put("audit", List.of("recorded-at", "idempotency", "causation", "correlation"));
-    payload.put("corrections", List.of("reversal", "amendment"));
+    payload.put(
+        "audit",
+        Map.of(
+            "requestProvenanceFields",
+            List.of(
+                "actorId",
+                "actorType",
+                "commandId",
+                "idempotencyKey",
+                "causationId",
+                "correlationId",
+                "reason"),
+            "committedFields",
+            List.of("recordedAt", "sourceChannel")));
+    payload.put(
+        "corrections",
+        Map.of(
+            "kinds", List.of("reversal", "amendment"),
+            "requirements",
+                List.of(
+                    "target-must-exist-in-book",
+                    "reason-required",
+                    "reason-forbidden-without-correction",
+                    "one-reversal-per-target",
+                    "reversal-must-negate-target")));
     payload.put("environment", environmentPayload(metadata.sqliteVersion()));
     payload.put("timestamp", Instant.now(clock).toString());
     return payload;
@@ -178,7 +201,6 @@ final class FinGrindCli {
     provenance.put("commandId", "command-1");
     provenance.put("idempotencyKey", "idem-1");
     provenance.put("causationId", "cause-1");
-    provenance.put("sourceChannel", "CLI");
     return provenance;
   }
 
@@ -290,10 +312,10 @@ final class FinGrindCli {
     payload.put("requiredLineFields", List.of("accountCode", "side", "currencyCode", "amount"));
     payload.put(
         "requiredProvenanceFields",
-        List.of(
-            "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "sourceChannel"));
-    payload.put("optionalProvenanceFields", List.of("correlationId", "recordedAt", "reason"));
-    payload.put("optionalCorrectionFields", List.of("kind", "priorPostingId"));
+        List.of("actorId", "actorType", "commandId", "idempotencyKey", "causationId"));
+    payload.put("optionalProvenanceFields", List.of("correlationId", "reason"));
+    payload.put("forbiddenProvenanceFields", List.of("recordedAt", "sourceChannel"));
+    payload.put("requiredCorrectionFields", List.of("kind", "priorPostingId"));
     payload.put("enums", enumPayload());
     return payload;
   }
@@ -303,7 +325,6 @@ final class FinGrindCli {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("lineSide", List.of("DEBIT", "CREDIT"));
     payload.put("actorType", List.of("USER", "SYSTEM", "AGENT"));
-    payload.put("sourceChannel", List.of("CLI", "API", "TEST"));
     payload.put("correctionKind", List.of("REVERSAL", "AMENDMENT"));
     return payload;
   }
@@ -314,6 +335,17 @@ final class FinGrindCli {
     payload.put("successStatuses", List.of("ok", "preflight-accepted", "committed"));
     payload.put("rejectionStatus", "rejected");
     payload.put("errorStatus", "error");
+    payload.put(
+        "rejectionCodes",
+        List.of(
+            "duplicate-idempotency-key",
+            "correction-reason-required",
+            "correction-reason-forbidden",
+            "correction-target-not-found",
+            "reversal-already-exists",
+            "reversal-does-not-negate-target"));
+    payload.put(
+        "rejectionFields", List.of("status", "code", "message", "idempotencyKey", "details"));
     payload.put("errorFields", List.of("status", "code", "message", "hint", "argument"));
     return payload;
   }
@@ -345,24 +377,30 @@ final class FinGrindCli {
 
   /** Default workflow that opens one SQLite-backed book file per command. */
   private static final class SqliteEntryWorkflow implements EntryWorkflow {
+    private final Clock clock;
+
+    private SqliteEntryWorkflow(Clock clock) {
+      this.clock = Objects.requireNonNull(clock, "clock");
+    }
+
     @Override
     public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
       try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookFilePath)) {
-        return applicationService(postingFactStore).preflight(command);
+        return applicationService(postingFactStore, clock).preflight(command);
       }
     }
 
     @Override
     public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
       try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookFilePath)) {
-        return applicationService(postingFactStore).commit(command);
+        return applicationService(postingFactStore, clock).commit(command);
       }
     }
 
     private static PostingApplicationService applicationService(
-        SqlitePostingFactStore postingFactStore) {
+        SqlitePostingFactStore postingFactStore, Clock clock) {
       return new PostingApplicationService(
-          postingFactStore, () -> new PostingId(UUID.randomUUID().toString()));
+          postingFactStore, () -> new PostingId(UUID.randomUUID().toString()), clock);
     }
   }
 

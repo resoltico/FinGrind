@@ -1,7 +1,7 @@
 <!--
 RETRIEVAL_HINTS:
-  keywords: [fingrind, bookkeeping, sqlite, book file, cli, journal entry, preflight, post-entry]
-  answers: [what is fingrind, how do I post an entry, how does the sqlite book file work]
+  keywords: [fingrind, bookkeeping, sqlite, book file, cli, journal entry, preflight, post-entry, correction, provenance]
+  answers: [what is fingrind, how do I post an entry, how does the sqlite book file work, what request shape does fingrind accept]
   related: [docs/DEVELOPER.md, docs/DEVELOPER_SQLITE.md, docs/DOC_00_Index.md]
 -->
 
@@ -13,7 +13,10 @@ The current model is intentionally strict:
 - one SQLite file equals one book
 - one book belongs to one entity
 - the book file can live anywhere on the OS filesystem
+- one canonical current schema defines new books
+- there is no migration or backward-compatibility layer
 - journal entries must balance before they can cross the write boundary
+- caller-supplied request provenance is separate from committed audit metadata
 - corrections are additive links to earlier postings, not in-place mutation
 
 ## What You Can Do Today
@@ -28,6 +31,8 @@ FinGrind currently exposes six CLI commands:
 
 `preflight-entry` validates a request without committing it.
 `post-entry` commits one posting fact into the selected SQLite book.
+Preflight against a missing book is side-effect free; the first commit creates parent directories and
+initializes the canonical schema.
 
 ## Quick Start
 
@@ -91,6 +96,27 @@ Optional correction links go in:
 }
 ```
 
+`provenance` accepts:
+- required: `actorId`, `actorType`, `commandId`, `idempotencyKey`, `causationId`
+- optional: `correlationId`, `reason`
+
+`provenance.recordedAt` and `provenance.sourceChannel` are not accepted. FinGrind stamps committed
+audit metadata itself when `post-entry` succeeds.
+
+If `correction` is present:
+- `provenance.reason` is required
+- `priorPostingId` must already exist in the selected book
+- `REVERSAL` must negate the target posting exactly
+- only one reversal is allowed per target posting
+
+Current deterministic rejection codes are:
+- `duplicate-idempotency-key`
+- `correction-reason-required`
+- `correction-reason-forbidden`
+- `correction-target-not-found`
+- `reversal-already-exists`
+- `reversal-does-not-negate-target`
+
 ## Notes
 
 - `java -jar cli/build/libs/fingrind.jar ...` assumes `java` is version 26 or newer.
@@ -101,6 +127,8 @@ Optional correction links go in:
 - For repo-local development, provision the pinned SQLite 3.51.3 toolchain with `./scripts/ensure-sqlite.sh`.
 - FinGrind accepts `FINGRIND_SQLITE3_BINARY` to point at the exact SQLite binary to use.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
+- `capabilities` is the best machine-readable contract surface for request fields, correction rules,
+  and rejection codes.
 
 ## More User Docs
 

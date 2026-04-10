@@ -1,19 +1,19 @@
 ---
 afad: "3.5"
-version: "0.1.0"
+version: "0.2.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-08"
+updated: "2026-04-09"
 route:
-  keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, bootstrap, book-file]
+  keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, canonical-schema, book-file, correction]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book"]
 ---
 
 # SQLite Core Schema
 
 **Purpose**: Current durable schema for one FinGrind book file.
-**Source of truth**: [`V1__bootstrap.sql`](/Users/erst/Tools/FinGrind/sqlite/src/main/resources/dev/erst/fingrind/sqlite/V1__bootstrap.sql)
+**Source of truth**: [`book_schema.sql`](/Users/erst/Tools/FinGrind/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
 
-## Current Bootstrap SQL
+## Canonical SQL
 
 ```sql
 create table if not exists posting_fact (
@@ -21,28 +21,41 @@ create table if not exists posting_fact (
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null,
-    actor_type text not null,
+    actor_type text not null check (actor_type in ('USER', 'SYSTEM', 'AGENT')),
     command_id text not null,
     idempotency_key text not null,
     causation_id text not null,
     correlation_id text,
     reason text,
-    source_channel text not null,
+    source_channel text not null check (source_channel in ('CLI')),
     correction_kind text,
     prior_posting_id text,
-    unique (idempotency_key)
+    unique (idempotency_key),
+    foreign key (prior_posting_id) references posting_fact(posting_id),
+    check (
+        (correction_kind is null and prior_posting_id is null)
+        or
+        (correction_kind in ('REVERSAL', 'AMENDMENT') and prior_posting_id is not null)
+    )
 );
 
 create table if not exists journal_line (
     posting_id text not null,
-    line_order integer not null,
+    line_order integer not null check (line_order >= 0),
     account_code text not null,
-    entry_side text not null,
+    entry_side text not null check (entry_side in ('DEBIT', 'CREDIT')),
     currency_code text not null,
     amount text not null,
     primary key (posting_id, line_order),
     foreign key (posting_id) references posting_fact(posting_id)
 );
+
+create index if not exists posting_fact_by_prior_posting_id
+    on posting_fact (prior_posting_id);
+
+create unique index if not exists posting_fact_one_reversal_per_target
+    on posting_fact (prior_posting_id)
+    where correction_kind = 'REVERSAL';
 ```
 
 ## Table Responsibilities
@@ -55,12 +68,15 @@ Field groups:
 - posting identity: `posting_id`
 - financial date: `effective_date`
 - audit time: `recorded_at`
-- provenance: `actor_*`, `command_id`, `idempotency_key`, `causation_id`, `correlation_id`,
-  `reason`, `source_channel`
+- request provenance: `actor_*`, `command_id`, `idempotency_key`, `causation_id`, `correlation_id`, `reason`
+- committed audit channel: `source_channel`
 - correction linkage: `correction_kind`, `prior_posting_id`
 
-Important rule:
+Important rules:
 - `idempotency_key` is unique inside one selected book file
+- `prior_posting_id` must reference another committed posting when correction linkage is present
+- `correction_kind` and `prior_posting_id` must appear together or not at all
+- only one `REVERSAL` row may point at the same `prior_posting_id`
 
 ### `journal_line`
 
@@ -70,25 +86,23 @@ Important rules:
 - rows are ordered by `line_order`
 - the composite primary key is `(posting_id, line_order)`
 - `posting_id` must exist in `posting_fact`
+- `entry_side` is constrained to `DEBIT` or `CREDIT`
+- `line_order` must be zero or greater
 - balancing is enforced in the domain model before persistence, not by SQL triggers
 
 ## Schema Invariants
 
 - One SQLite file is one book.
 - One `posting_fact` row is one committed posting fact.
-- Provenance is durable, not transient.
+- Request provenance and committed audit metadata are both durable.
 - Correction linkage is additive and optional.
 - Journal lines are children of one committed posting fact.
 - Book-local idempotency is durable through the unique constraint on `idempotency_key`.
+- Reversal uniqueness is durable through a partial unique index on `prior_posting_id`.
 
-## Extension Rules
+## Schema Posture
 
-The core schema is jurisdiction-agnostic.
-
-That means:
-- do not redefine debit, credit, journal-entry grammar, or provenance in country-pack tables
-- do not split the current core tables by country
-- do not replace `posting_fact` with a generic mutable ledger row
-- add future jurisdiction-specific tables as explicit extensions around this core, not instead of it
-
-Country-pack documentation policy lives in [SCHEMA_COUNTRY_PACKS.md](./SCHEMA_COUNTRY_PACKS.md).
+- This is the only current schema file for new books.
+- There is no schema version table.
+- There are no migration files.
+- There is no backward-compatibility layer for older book shapes during the current hard-break phase.

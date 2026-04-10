@@ -39,18 +39,13 @@ public sealed interface PostEntryResult
   }
 
   /** Rejection variant for a request that does not cross the durable write boundary. */
-  record Rejected(PostingRejectionCode code, String message, IdempotencyKey idempotencyKey)
+  record Rejected(IdempotencyKey idempotencyKey, PostingRejection rejection)
       implements PostEntryResult {
 
     /** Validates the rejection payload returned to operating surfaces. */
     public Rejected {
-      Objects.requireNonNull(code, "code");
-      Objects.requireNonNull(message, "message");
-      message = message.strip();
-      if (message.isEmpty()) {
-        throw new IllegalArgumentException("Rejection message must not be blank.");
-      }
       Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+      Objects.requireNonNull(rejection, "rejection");
     }
   }
 }

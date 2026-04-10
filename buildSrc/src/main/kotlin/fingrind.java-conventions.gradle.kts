@@ -168,7 +168,6 @@ extensions.configure<JavaPluginExtension> {
     toolchain {
         languageVersion = JavaLanguageVersion.of(fingrindJavaVersion)
     }
-    modularity.inferModulePath = true
     withSourcesJar()
 }
 

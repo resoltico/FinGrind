@@ -1,6 +1,8 @@
 package dev.erst.fingrind.runtime;
 
+import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.PostingId;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class InMemoryPostingFactStore implements PostingFactStore {
   private final Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey =
       new ConcurrentHashMap<>();
+  private final Map<PostingId, PostingFact> postingsByPostingId = new ConcurrentHashMap<>();
+  private final Map<PostingId, PostingFact> reversalsByPriorPostingId = new ConcurrentHashMap<>();
 
   @Override
   public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
@@ -16,12 +20,37 @@ public final class InMemoryPostingFactStore implements PostingFactStore {
   }
 
   @Override
-  public PostingFact commit(PostingFact postingFact) {
-    IdempotencyKey idempotencyKey = postingFact.provenance().idempotencyKey();
+  public Optional<PostingFact> findByPostingId(PostingId postingId) {
+    return Optional.ofNullable(postingsByPostingId.get(postingId));
+  }
+
+  @Override
+  public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+    return Optional.ofNullable(reversalsByPriorPostingId.get(priorPostingId));
+  }
+
+  @Override
+  public PostingCommitResult commit(PostingFact postingFact) {
+    IdempotencyKey idempotencyKey = postingFact.provenance().requestProvenance().idempotencyKey();
     PostingFact existingPosting = postingsByIdempotencyKey.putIfAbsent(idempotencyKey, postingFact);
     if (existingPosting != null) {
-      throw new IllegalStateException("Duplicate idempotency key for book.");
+      return new PostingCommitResult.DuplicateIdempotency(idempotencyKey);
     }
-    return postingFact;
+    postingsByPostingId.put(postingFact.postingId(), postingFact);
+
+    Optional<CorrectionReference> correctionReference = postingFact.correctionReference();
+    if (correctionReference.isPresent()
+        && correctionReference.orElseThrow().kind()
+            == CorrectionReference.CorrectionKind.REVERSAL) {
+      PostingId priorPostingId = correctionReference.orElseThrow().priorPostingId();
+      PostingFact existingReversal =
+          reversalsByPriorPostingId.putIfAbsent(priorPostingId, postingFact);
+      if (existingReversal != null) {
+        postingsByIdempotencyKey.remove(idempotencyKey, postingFact);
+        postingsByPostingId.remove(postingFact.postingId(), postingFact);
+        return new PostingCommitResult.DuplicateReversalTarget(priorPostingId);
+      }
+    }
+    return new PostingCommitResult.Committed(postingFact);
   }
 }

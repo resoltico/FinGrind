@@ -38,6 +38,18 @@ class CliArgumentsTest {
   }
 
   @Test
+  void parse_rejectsAdditionalArgumentForSingleTokenCommand() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"capabilities", "--extra"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--extra", exception.argument());
+    assertEquals("This command does not accept additional arguments.", exception.getMessage());
+  }
+
+  @Test
   void parse_returnsPreflightEntryForValidEntryCommand() {
     CliCommand.PreflightEntry command =
         assertInstanceOf(
@@ -108,6 +120,51 @@ class CliArgumentsTest {
     assertEquals("invalid-request", exception.code());
     assertEquals("--request-file", exception.argument());
     assertEquals("Duplicate argument: --request-file", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedEntryArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry",
+                      "--book-file",
+                      "book.sqlite",
+                      "--request-file",
+                      "request.json",
+                      "--wat"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--wat", exception.argument());
+    assertEquals("Unsupported argument: --wat", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsMissingBookFileValue() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"post-entry", "--book-file"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-file", exception.argument());
+    assertEquals("Missing value for --book-file.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsMissingRequestFileArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"post-entry", "--book-file", "book.sqlite"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--request-file", exception.argument());
+    assertEquals("A --request-file argument is required.", exception.getMessage());
   }
 
   @Test

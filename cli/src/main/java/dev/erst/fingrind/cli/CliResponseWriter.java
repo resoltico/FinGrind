@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.application.PostEntryResult;
+import dev.erst.fingrind.application.PostingRejection;
 import java.io.PrintStream;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -92,10 +93,59 @@ final class CliResponseWriter {
   private Map<String, Object> rejectedEnvelope(PostEntryResult.Rejected rejected) {
     Map<String, Object> envelope = newEnvelope();
     envelope.put("status", "rejected");
-    envelope.put("code", rejected.code().name());
-    envelope.put("message", rejected.message());
+    envelope.put("code", rejectionCode(rejected.rejection()));
+    envelope.put("message", rejectionMessage(rejected.rejection()));
     envelope.put("idempotencyKey", rejected.idempotencyKey().value());
+    Map<String, Object> details = rejectionDetails(rejected.rejection());
+    if (!details.isEmpty()) {
+      envelope.put("details", details);
+    }
     return envelope;
+  }
+
+  private static String rejectionCode(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.DuplicateIdempotencyKey _ -> "duplicate-idempotency-key";
+      case PostingRejection.CorrectionReasonRequired _ -> "correction-reason-required";
+      case PostingRejection.CorrectionReasonForbidden _ -> "correction-reason-forbidden";
+      case PostingRejection.CorrectionTargetNotFound _ -> "correction-target-not-found";
+      case PostingRejection.ReversalAlreadyExists _ -> "reversal-already-exists";
+      case PostingRejection.ReversalDoesNotNegateTarget _ -> "reversal-does-not-negate-target";
+    };
+  }
+
+  private static String rejectionMessage(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.DuplicateIdempotencyKey _ ->
+          "A posting with the same idempotency key already exists in this book.";
+      case PostingRejection.CorrectionReasonRequired _ ->
+          "Corrective postings must include a human-readable reason.";
+      case PostingRejection.CorrectionReasonForbidden _ ->
+          "A corrective reason is only permitted when a correction target is present.";
+      case PostingRejection.CorrectionTargetNotFound correctionTargetNotFound ->
+          "No committed posting exists for correction target '%s'."
+              .formatted(correctionTargetNotFound.priorPostingId().value());
+      case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
+          "Posting '%s' already has a full reversal."
+              .formatted(reversalAlreadyExists.priorPostingId().value());
+      case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
+          "Reversal candidate does not negate posting '%s'."
+              .formatted(reversalDoesNotNegateTarget.priorPostingId().value());
+    };
+  }
+
+  private static Map<String, Object> rejectionDetails(PostingRejection rejection) {
+    if (rejection instanceof PostingRejection.CorrectionTargetNotFound correctionTargetNotFound) {
+      return Map.of("priorPostingId", correctionTargetNotFound.priorPostingId().value());
+    }
+    if (rejection instanceof PostingRejection.ReversalAlreadyExists reversalAlreadyExists) {
+      return Map.of("priorPostingId", reversalAlreadyExists.priorPostingId().value());
+    }
+    if (rejection
+        instanceof PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget) {
+      return Map.of("priorPostingId", reversalDoesNotNegateTarget.priorPostingId().value());
+    }
+    return Map.of();
   }
 
   private static Map<String, Object> newEnvelope() {

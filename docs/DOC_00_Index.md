@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.1.0"
+version: "0.2.0"
 domain: INDEX
-updated: "2026-04-08"
+updated: "2026-04-09"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, application, runtime, adapters]
-  questions: ["where is the fingrind api documented", "which doc file covers SqlitePostingFactStore", "which doc file covers JournalEntry"]
+  questions: ["where is the fingrind api documented", "which doc file covers SqlitePostingFactStore", "which doc file covers RequestProvenance"]
 ---
 
 # API Index
@@ -16,8 +16,8 @@ route:
 
 | File | Scope |
 |:-----|:------|
-| `DOC_01_Core.md` | accounting value objects, journal grammar, provenance enums |
-| `DOC_02_Application.md` | write-boundary commands, results, service, rejection taxonomy |
+| `DOC_01_Core.md` | accounting value objects, journal grammar, correction linkage, request and committed provenance |
+| `DOC_02_Application.md` | write-boundary commands, results, rejection taxonomy, posting service |
 | `DOC_03_RuntimeAndAdapters.md` | runtime facts and stores, SQLite adapter, CLI entrypoint |
 
 ## Symbol Routing
@@ -25,27 +25,44 @@ route:
 | Symbol | File | Section |
 |:-------|:-----|:--------|
 | `AccountCode` | `DOC_01_Core.md` | `AccountCode` |
-| `CurrencyCode` | `DOC_01_Core.md` | `CurrencyCode` |
-| `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
-| `PostingId` | `DOC_01_Core.md` | `PostingId` |
+| `ActorId` | `DOC_01_Core.md` | `ActorId` |
+| `ActorType` | `DOC_01_Core.md` | `ActorType` |
+| `CausationId` | `DOC_01_Core.md` | `CausationId` |
+| `CommandId` | `DOC_01_Core.md` | `CommandId` |
+| `CommittedProvenance` | `DOC_01_Core.md` | `CommittedProvenance` |
+| `CorrectionReason` | `DOC_01_Core.md` | `CorrectionReason` |
 | `CorrectionReference` | `DOC_01_Core.md` | `CorrectionReference` |
 | `CorrectionReference.CorrectionKind` | `DOC_01_Core.md` | `CorrectionReference.CorrectionKind` |
-| `Money` | `DOC_01_Core.md` | `Money` |
+| `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
+| `CurrencyCode` | `DOC_01_Core.md` | `CurrencyCode` |
+| `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
+| `JournalEntry` | `DOC_01_Core.md` | `JournalEntry` |
 | `JournalLine` | `DOC_01_Core.md` | `JournalLine` |
 | `JournalLine.EntrySide` | `DOC_01_Core.md` | `JournalLine.EntrySide` |
-| `JournalEntry` | `DOC_01_Core.md` | `JournalEntry` |
-| `ProvenanceEnvelope` | `DOC_01_Core.md` | `ProvenanceEnvelope` |
-| `ProvenanceEnvelope.ActorType` | `DOC_01_Core.md` | `ProvenanceEnvelope.ActorType` |
-| `ProvenanceEnvelope.SourceChannel` | `DOC_01_Core.md` | `ProvenanceEnvelope.SourceChannel` |
+| `Money` | `DOC_01_Core.md` | `Money` |
+| `PostingId` | `DOC_01_Core.md` | `PostingId` |
+| `RequestProvenance` | `DOC_01_Core.md` | `RequestProvenance` |
+| `SourceChannel` | `DOC_01_Core.md` | `SourceChannel` |
 | `PostEntryCommand` | `DOC_02_Application.md` | `PostEntryCommand` |
 | `PostEntryResult` | `DOC_02_Application.md` | `PostEntryResult` |
 | `PostEntryResult.PreflightAccepted` | `DOC_02_Application.md` | `PostEntryResult.PreflightAccepted` |
 | `PostEntryResult.Committed` | `DOC_02_Application.md` | `PostEntryResult.Committed` |
 | `PostEntryResult.Rejected` | `DOC_02_Application.md` | `PostEntryResult.Rejected` |
-| `PostingRejectionCode` | `DOC_02_Application.md` | `PostingRejectionCode` |
 | `PostingApplicationService` | `DOC_02_Application.md` | `PostingApplicationService` |
+| `PostingIdGenerator` | `DOC_02_Application.md` | `PostingIdGenerator` |
+| `PostingRejection` | `DOC_02_Application.md` | `PostingRejection` |
+| `PostingRejection.CorrectionReasonForbidden` | `DOC_02_Application.md` | `PostingRejection.CorrectionReasonForbidden` |
+| `PostingRejection.CorrectionReasonRequired` | `DOC_02_Application.md` | `PostingRejection.CorrectionReasonRequired` |
+| `PostingRejection.CorrectionTargetNotFound` | `DOC_02_Application.md` | `PostingRejection.CorrectionTargetNotFound` |
+| `PostingRejection.DuplicateIdempotencyKey` | `DOC_02_Application.md` | `PostingRejection.DuplicateIdempotencyKey` |
+| `PostingRejection.ReversalAlreadyExists` | `DOC_02_Application.md` | `PostingRejection.ReversalAlreadyExists` |
+| `PostingRejection.ReversalDoesNotNegateTarget` | `DOC_02_Application.md` | `PostingRejection.ReversalDoesNotNegateTarget` |
+| `App` | `DOC_03_RuntimeAndAdapters.md` | `App` |
+| `InMemoryPostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `InMemoryPostingFactStore` |
+| `PostingCommitResult` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult` |
+| `PostingCommitResult.Committed` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult.Committed` |
+| `PostingCommitResult.DuplicateIdempotency` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult.DuplicateIdempotency` |
+| `PostingCommitResult.DuplicateReversalTarget` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult.DuplicateReversalTarget` |
 | `PostingFact` | `DOC_03_RuntimeAndAdapters.md` | `PostingFact` |
 | `PostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `PostingFactStore` |
-| `InMemoryPostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `InMemoryPostingFactStore` |
 | `SqlitePostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `SqlitePostingFactStore` |
-| `App` | `DOC_03_RuntimeAndAdapters.md` | `App` |

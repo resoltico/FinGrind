@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostingRejectionCode;
+import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayInputStream;
@@ -45,23 +45,6 @@ class FinGrindCliTest {
   }
 
   @Test
-  void run_returnsHelpWhenCommandIsHelp() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode = cli.run(new String[] {"help"});
-
-    assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"application\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("FinGrind"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"description\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("0.1.0"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"quickStart\""));
-  }
-
-  @Test
   void run_returnsCapabilities() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
@@ -71,11 +54,12 @@ class FinGrindCliTest {
     int exitCode = cli.run(new String[] {"capabilities"});
 
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"discoveryCommands\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"storage\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("sqlite"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("single-sqlite-file"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"sqlitePinnedVersion\""));
+    assertTrue(
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"requestProvenanceFields\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"committedFields\""));
+    assertTrue(
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"reversal-must-negate-target\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"rejectionCodes\""));
   }
 
   @Test
@@ -89,13 +73,11 @@ class FinGrindCliTest {
 
     assertEquals(0, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"application\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("FinGrind"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"version\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"description\""));
   }
 
   @Test
-  void run_printsRequestTemplate() {
+  void run_printsRequestTemplateWithoutCallerSuppliedCommitFields() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         new FinGrindCli(
@@ -104,42 +86,15 @@ class FinGrindCliTest {
     int exitCode = cli.run(new String[] {"print-request-template"});
 
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"effectiveDate\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"provenance\""));
+    String json = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(json.contains("\"effectiveDate\""));
+    assertTrue(json.contains("\"provenance\""));
+    assertFalse(json.contains("recordedAt"));
+    assertFalse(json.contains("sourceChannel"));
   }
 
   @Test
-  void run_rejectsExtraArgumentsForCapabilities() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode = cli.run(new String[] {"capabilities", "extra"});
-
-    assertEquals(2, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"error\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"hint\":"));
-  }
-
-  @Test
-  void run_rejectsUnknownCommand() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode = cli.run(new String[] {"wat"});
-
-    assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"unknown-command\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"hint\":"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"argument\":\"wat\""));
-  }
-
-  @Test
-  void run_preflightsEntryThroughDefaultSqliteWorkflow() throws IOException {
+  void run_preflightsEntryThroughDefaultSqliteWorkflowWithoutCreatingBook() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("live-books").resolve("entity.sqlite");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -162,7 +117,7 @@ class FinGrindCliTest {
         outputStream
             .toString(StandardCharsets.UTF_8)
             .contains("\"status\":\"preflight-accepted\""));
-    assertTrue(Files.exists(bookFilePath));
+    assertFalse(Files.exists(bookFilePath));
   }
 
   @Test
@@ -209,6 +164,7 @@ class FinGrindCliTest {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
+
     int exitCode =
         cli.run(
             new String[] {
@@ -241,9 +197,7 @@ class FinGrindCliTest {
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z")),
             new PostEntryResult.Rejected(
-                PostingRejectionCode.DUPLICATE_IDEMPOTENCY_KEY,
-                "duplicate",
-                new IdempotencyKey("idem-1")));
+                new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()));
     ByteArrayOutputStream firstOutput = new ByteArrayOutputStream();
     FinGrindCli firstCli =
         new FinGrindCli(
@@ -282,6 +236,10 @@ class FinGrindCliTest {
     assertEquals(2, secondExitCode);
     assertTrue(firstOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"committed\""));
     assertTrue(secondOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"rejected\""));
+    assertTrue(
+        secondOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"code\":\"duplicate-idempotency-key\""));
     assertEquals(List.of(bookFilePath, bookFilePath), workflow.commitPaths());
   }
 
@@ -299,156 +257,6 @@ class FinGrindCliTest {
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"argument\":\"--book-file\""));
-  }
-
-  @Test
-  void run_rejectsMissingRequestFile() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode =
-        cli.run(
-            new String[] {
-              "preflight-entry", "--book-file", tempDirectory.resolve("book.sqlite").toString()
-            });
-
-    assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"hint\":"));
-  }
-
-  @Test
-  void run_rejectsMissingOptionValue() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode = cli.run(new String[] {"preflight-entry", "--book-file"});
-
-    assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"hint\":"));
-  }
-
-  @Test
-  void run_rejectsUnsupportedOption() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode =
-        cli.run(
-            new String[] {
-              "preflight-entry",
-              "--book-file",
-              tempDirectory.resolve("book.sqlite").toString(),
-              "--request-file",
-              tempDirectory.resolve("request.json").toString(),
-              "--wat"
-            });
-
-    assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"hint\":"));
-  }
-
-  @Test
-  void run_rejectsDuplicateBookFileOption() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode =
-        cli.run(
-            new String[] {
-              "post-entry",
-              "--book-file",
-              tempDirectory.resolve("book-a.sqlite").toString(),
-              "--book-file",
-              tempDirectory.resolve("book-b.sqlite").toString(),
-              "--request-file",
-              tempDirectory.resolve("request.json").toString()
-            });
-
-    assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("Duplicate argument: --book-file"));
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"argument\":\"--book-file\""));
-  }
-
-  @Test
-  void run_rejectsSameBookAndRequestPath() {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    Path sharedPath = tempDirectory.resolve("shared-path");
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
-    int exitCode =
-        cli.run(
-            new String[] {
-              "post-entry",
-              "--book-file",
-              sharedPath.toString(),
-              "--request-file",
-              sharedPath.toString()
-            });
-
-    assertEquals(2, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("--book-file and --request-file must not point to the same path."));
-  }
-
-  @Test
-  void run_mapsWorkflowFailureToRuntimeFailure() throws IOException {
-    Path requestFile = writeRequest(validRequestJson());
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]),
-            utf8PrintStream(outputStream),
-            fixedClock(),
-            new FinGrindCli.EntryWorkflow() {
-              @Override
-              public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
-                throw new IllegalStateException("boom");
-              }
-
-              @Override
-              public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
-                throw new IllegalStateException("boom");
-              }
-            });
-
-    int exitCode =
-        cli.run(
-            new String[] {
-              "preflight-entry",
-              "--book-file",
-              tempDirectory.resolve("book.sqlite").toString(),
-              "--request-file",
-              requestFile.toString()
-            });
-
-    assertEquals(1, exitCode);
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"hint\":"));
   }
 
   @Test
@@ -489,7 +297,7 @@ class FinGrindCliTest {
   }
 
   @Test
-  void run_mapsWorkflowIllegalArgumentExceptionToInvalidRequest() throws IOException {
+  void run_mapsGenericRuntimeFailureToRuntimeFailureWithGenericHint() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
@@ -500,12 +308,53 @@ class FinGrindCliTest {
             new FinGrindCli.EntryWorkflow() {
               @Override
               public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
-                throw new IllegalArgumentException("bad request");
+                throw new IllegalStateException("boom");
               }
 
               @Override
               public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
-                throw new IllegalArgumentException("bad request");
+                throw new IllegalStateException("boom");
+              }
+            });
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "preflight-entry",
+              "--book-file",
+              tempDirectory.resolve("book.sqlite").toString(),
+              "--request-file",
+              requestFile.toString()
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains(
+                "Inspect the message and rerun after fixing the underlying runtime problem."));
+  }
+
+  @Test
+  void run_mapsGenericIllegalArgumentExceptionToInvalidRequest() throws IOException {
+    Path requestFile = writeRequest(validRequestJson());
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            new FinGrindCli.EntryWorkflow() {
+              @Override
+              public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
+                throw new IllegalArgumentException("workflow boom");
+              }
+
+              @Override
+              public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
+                throw new IllegalArgumentException("workflow boom");
               }
             });
 
@@ -522,6 +371,7 @@ class FinGrindCliTest {
     assertEquals(2, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Run 'fingrind help'"));
   }
 
@@ -556,8 +406,7 @@ class FinGrindCliTest {
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("Journal entry must contain at least one line."));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("print-request-template"));
+            .contains("Missing required field: provenance"));
   }
 
   @Test
@@ -621,8 +470,7 @@ class FinGrindCliTest {
                 "actorType": "AGENT",
                 "commandId": "command-1",
                 "idempotencyKey": "idem-1",
-                "causationId": "cause-1",
-                "sourceChannel": "CLI"
+                "causationId": "cause-1"
               }
             }
             """;

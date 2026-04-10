@@ -1,6 +1,6 @@
 {
   "targetKey" : "posting-workflow",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/correction_valid.json",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/correction_reason_required.json",
   "expectation" : {
     "outcomeKind" : "SUCCESS",
     "details" : {
@@ -10,10 +10,10 @@
       "idempotencyKey" : "idem-2",
       "lineCount" : 2,
       "correctionPresent" : true,
-      "preflightStatus" : "PREFLIGHT_ACCEPTED",
-      "firstCommitStatus" : "COMMITTED",
-      "duplicateStatus" : "REJECTED_DUPLICATE_IDEMPOTENCY_KEY",
-      "storedFactPresent" : true,
+      "preflightStatus" : "REJECTED_CORRECTION_REASON_REQUIRED",
+      "firstCommitStatus" : "REJECTED_CORRECTION_REASON_REQUIRED",
+      "duplicateStatus" : "NOT_RUN",
+      "storedFactPresent" : false,
       "failureMessage" : "NONE"
     }
   }

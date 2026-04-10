@@ -11,7 +11,7 @@
       "lineCount" : 2,
       "correctionPresent" : true,
       "actorType" : "SYSTEM",
-      "sourceChannel" : "API",
+      "sourceChannel" : "CLI",
       "failureMessage" : "NONE"
     }
   }

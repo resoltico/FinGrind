@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.1.0"
+version: "0.2.0"
 domain: DEVELOPER
 updated: "2026-04-09"
 route:
-  keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, workflows, coverage]
+  keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce"]
 ---
 
@@ -26,21 +26,24 @@ Companion documents:
 
 ## Architecture
 
-FinGrind is a five-module Gradle project with a narrow accounting center and downstream adapters:
+FinGrind is a five-module Gradle project with a narrow accounting center and explicit write boundaries:
 
 ```text
 core/         Accounting vocabulary and invariants:
               money, journal lines, journal entries, correction linkage,
-              provenance, posting identity.
+              request provenance, committed provenance, posting identity.
 
-runtime/      Runtime persistence seam and simple in-memory implementation:
-              PostingFact, PostingFactStore, InMemoryPostingFactStore.
+runtime/      Runtime persistence seam and in-memory implementation:
+              PostingFact, PostingFactStore, PostingCommitResult,
+              InMemoryPostingFactStore.
 
 application/  Explicit write boundary:
-              PostEntryCommand, PostEntryResult, PostingApplicationService.
+              PostEntryCommand, PostEntryResult, PostingRejection,
+              PostingIdGenerator, PostingApplicationService.
 
 sqlite/       Durable single-book adapter:
-              one SQLite file per entity book, persisted through the pinned sqlite3 CLI surface.
+              one SQLite file per entity book, persisted through the pinned sqlite3 CLI surface
+              and the canonical `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus preflight-entry and post-entry.
@@ -49,15 +52,19 @@ cli/          Agent-first JSON CLI:
 The dependency graph is deliberately one-way:
 
 ```text
-cli -> sqlite -> runtime
-cli -> application -> runtime
+cli -> sqlite -> runtime -> core
+cli -> application -> runtime -> core
+cli -> core
 application -> core
-runtime -> core
 sqlite -> core
 ```
 
-The CLI is an adapter, not the core. The application boundary owns write semantics, and the
-SQLite adapter owns the durable edge.
+FinGrind is intentionally hard-break oriented right now:
+- one SQLite file is one book for one entity
+- one canonical current schema defines new books
+- no migration framework or backward-compatibility layer exists yet
+- preflight is side-effect free against a missing book
+- commit is append-only and corrections are additive links, not in-place mutation
 
 ## Foundations
 
@@ -107,8 +114,7 @@ Local CLI usage from source:
 - unit tests
 - JaCoCo coverage verification at 100% line and 100% branch coverage
 
-Root Gradle tests and `:cli:run` use the repo-pinned SQLite toolchain through
-`FINGRIND_SQLITE3_BINARY`, backed by `scripts/sqlite3.sh`.
+Root Gradle tests and `:cli:run` use the repo-pinned SQLite toolchain through `FINGRIND_SQLITE3_BINARY`, backed by `scripts/sqlite3.sh`.
 
 `./check.sh` is the local full-stack gate. It runs:
 - root `check`
@@ -118,13 +124,9 @@ Root Gradle tests and `:cli:run` use the repo-pinned SQLite toolchain through
 - shell syntax checks for release-surface scripts
 - Docker smoke verification, including semantic JSON assertions for discovery and write responses
 
-During Stage 1, `./check.sh` now tracks root `Test` task progress through semantic
-`[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight
-test-progress heartbeats instead of relying only on stale Gradle task banners.
+During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight test-progress heartbeats instead of relying only on stale Gradle task banners.
 
-During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression replay through
-`[JAZZER-PULSE]` lines, including support-test heartbeats plus regression-target `phase=plan`,
-`regression-input`, and `phase=finish` markers.
+During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression replay through `[JAZZER-PULSE]` lines, including support-test heartbeats plus regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
 ## GitHub Workflows
 
@@ -137,8 +139,7 @@ Operational protocols for those surfaces live in:
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
 
-Jazzer verification remains local-only by design through `./check.sh`. GitHub CI stays lighter and
-does not run standalone Jazzer support tests or regression replay.
+Jazzer verification remains local-only by design through `./check.sh`. GitHub CI stays lighter and does not run standalone Jazzer support tests or regression replay.
 
 ## Build Stance
 
@@ -146,7 +147,10 @@ FinGrind deliberately keeps several boundaries sharp:
 - SQLite is the only durable backend currently planned.
 - One SQLite file is one book for one entity.
 - There is no generic database-independence layer.
+- There is one canonical current SQLite schema and no migration layer.
 - The CLI never bypasses the application boundary.
+- Caller-supplied request provenance is distinct from committed audit metadata.
+- Deterministic rejections stay separate from malformed requests and runtime failures.
 - Root verification and nested Jazzer verification stay separate builds.
 
 ## Reference Spine
