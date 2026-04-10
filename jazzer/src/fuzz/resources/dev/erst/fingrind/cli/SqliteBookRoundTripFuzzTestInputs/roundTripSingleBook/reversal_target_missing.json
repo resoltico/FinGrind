@@ -3,26 +3,26 @@
   "lines": [
     {
       "accountCode": "3000",
-      "side": "DEBIT",
+      "side": "CREDIT",
       "currencyCode": "USD",
       "amount": "99.95"
     },
     {
       "accountCode": "4000",
-      "side": "CREDIT",
+      "side": "DEBIT",
       "currencyCode": "USD",
       "amount": "99.95"
     }
   ],
-  "correction": {
-    "kind": "AMENDMENT",
+  "reversal": {
     "priorPostingId": "posting-missing"
   },
   "provenance": {
-    "actorId": "actor-6",
+    "actorId": "actor-7",
     "actorType": "SYSTEM",
-    "commandId": "command-6",
-    "idempotencyKey": "idem-6",
-    "causationId": "cause-6"
+    "commandId": "command-7",
+    "idempotencyKey": "idem-7",
+    "causationId": "cause-7",
+    "reason": "operator reversal"
   }
 }

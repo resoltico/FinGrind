@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: INDEX
-updated: "2026-04-09"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, application, runtime, adapters]
   questions: ["where is the fingrind api documented", "which doc file covers SqlitePostingFactStore", "which doc file covers RequestProvenance"]
@@ -16,7 +16,7 @@ route:
 
 | File | Scope |
 |:-----|:------|
-| `DOC_01_Core.md` | accounting value objects, journal grammar, correction linkage, request and committed provenance |
+| `DOC_01_Core.md` | accounting value objects, journal grammar, reversal linkage, request and committed provenance |
 | `DOC_02_Application.md` | write-boundary commands, results, rejection taxonomy, posting service |
 | `DOC_03_RuntimeAndAdapters.md` | runtime facts and stores, SQLite adapter, CLI entrypoint |
 
@@ -30,9 +30,8 @@ route:
 | `CausationId` | `DOC_01_Core.md` | `CausationId` |
 | `CommandId` | `DOC_01_Core.md` | `CommandId` |
 | `CommittedProvenance` | `DOC_01_Core.md` | `CommittedProvenance` |
-| `CorrectionReason` | `DOC_01_Core.md` | `CorrectionReason` |
-| `CorrectionReference` | `DOC_01_Core.md` | `CorrectionReference` |
-| `CorrectionReference.CorrectionKind` | `DOC_01_Core.md` | `CorrectionReference.CorrectionKind` |
+| `ReversalReason` | `DOC_01_Core.md` | `ReversalReason` |
+| `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
 | `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
 | `CurrencyCode` | `DOC_01_Core.md` | `CurrencyCode` |
 | `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
@@ -51,9 +50,9 @@ route:
 | `PostingApplicationService` | `DOC_02_Application.md` | `PostingApplicationService` |
 | `PostingIdGenerator` | `DOC_02_Application.md` | `PostingIdGenerator` |
 | `PostingRejection` | `DOC_02_Application.md` | `PostingRejection` |
-| `PostingRejection.CorrectionReasonForbidden` | `DOC_02_Application.md` | `PostingRejection.CorrectionReasonForbidden` |
-| `PostingRejection.CorrectionReasonRequired` | `DOC_02_Application.md` | `PostingRejection.CorrectionReasonRequired` |
-| `PostingRejection.CorrectionTargetNotFound` | `DOC_02_Application.md` | `PostingRejection.CorrectionTargetNotFound` |
+| `PostingRejection.ReversalReasonForbidden` | `DOC_02_Application.md` | `PostingRejection.ReversalReasonForbidden` |
+| `PostingRejection.ReversalReasonRequired` | `DOC_02_Application.md` | `PostingRejection.ReversalReasonRequired` |
+| `PostingRejection.ReversalTargetNotFound` | `DOC_02_Application.md` | `PostingRejection.ReversalTargetNotFound` |
 | `PostingRejection.DuplicateIdempotencyKey` | `DOC_02_Application.md` | `PostingRejection.DuplicateIdempotencyKey` |
 | `PostingRejection.ReversalAlreadyExists` | `DOC_02_Application.md` | `PostingRejection.ReversalAlreadyExists` |
 | `PostingRejection.ReversalDoesNotNegateTarget` | `DOC_02_Application.md` | `PostingRejection.ReversalDoesNotNegateTarget` |

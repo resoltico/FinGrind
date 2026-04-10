@@ -12,8 +12,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -22,6 +20,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.runtime.PostingCommitResult;
 import dev.erst.fingrind.runtime.PostingFact;
@@ -30,6 +30,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -78,7 +81,7 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
-  void commitAndFinders_roundTripPostingWithoutCorrection() {
+  void commitAndFinders_roundTripPostingWithoutReversal() {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
     PostingFact postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
@@ -110,25 +113,23 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
-  void commitAndFindByIdempotency_preservesCorrectionReference() {
+  void commitAndFindByIdempotency_preservesReversalReference() {
     Path databasePath = tempDirectory.resolve("nested").resolve("entity-b.sqlite");
     PostingFact originalFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-    PostingFact amendmentFact =
+    PostingFact reversalFact =
         postingFact(
             "posting-2",
             "idem-2",
-            Optional.of(
-                new CorrectionReference(
-                    CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))),
-            Optional.of(new CorrectionReason("operator correction")));
+            Optional.of(new ReversalReference(new PostingId("posting-1"))),
+            Optional.of(new ReversalReason("full reversal")));
 
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
       postingFactStore.commit(originalFact);
-      postingFactStore.commit(amendmentFact);
+      postingFactStore.commit(reversalFact);
 
       assertEquals(
-          Optional.of(amendmentFact),
+          Optional.of(reversalFact),
           postingFactStore.findByIdempotency(new IdempotencyKey("idem-2")));
     }
   }
@@ -158,18 +159,14 @@ class SqlitePostingFactStoreTest {
         postingFact(
             "posting-2",
             "idem-2",
-            Optional.of(
-                new CorrectionReference(
-                    CorrectionReference.CorrectionKind.REVERSAL, new PostingId("posting-1"))),
-            Optional.of(new CorrectionReason("full reversal")));
+            Optional.of(new ReversalReference(new PostingId("posting-1"))),
+            Optional.of(new ReversalReason("full reversal")));
     PostingFact secondReversal =
         postingFact(
             "posting-3",
             "idem-3",
-            Optional.of(
-                new CorrectionReference(
-                    CorrectionReference.CorrectionKind.REVERSAL, new PostingId("posting-1"))),
-            Optional.of(new CorrectionReason("another full reversal")));
+            Optional.of(new ReversalReference(new PostingId("posting-1"))),
+            Optional.of(new ReversalReason("another full reversal")));
 
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
       postingFactStore.commit(originalFact);
@@ -206,20 +203,17 @@ class SqlitePostingFactStoreTest {
   @Test
   void commit_throwsWhenSqliteFailureIsNotMappedToAnOrdinaryOutcome() {
     Path databasePath = tempDirectory.resolve("unexpected.sqlite");
-    PostingFact invalidCorrectionFact =
+    PostingFact invalidReversalFact =
         postingFact(
             "posting-2",
             "idem-2",
-            Optional.of(
-                new CorrectionReference(
-                    CorrectionReference.CorrectionKind.AMENDMENT,
-                    new PostingId("posting-missing"))),
-            Optional.of(new CorrectionReason("operator correction")));
+            Optional.of(new ReversalReference(new PostingId("posting-missing"))),
+            Optional.of(new ReversalReason("operator reversal")));
 
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
       IllegalStateException exception =
           assertThrows(
-              IllegalStateException.class, () -> postingFactStore.commit(invalidCorrectionFact));
+              IllegalStateException.class, () -> postingFactStore.commit(invalidReversalFact));
 
       assertTrue(exception.getMessage().contains("Failed to commit SQLite posting fact."));
       assertTrue(exception.getMessage().contains("FOREIGN KEY"));
@@ -431,32 +425,6 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
-  void commit_primaryKeyConflictWithAmendmentLeavesConstraintAsPrimaryFailure() {
-    Path databasePath = tempDirectory.resolve("duplicate-posting-id-amendment.sqlite");
-
-    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
-      postingFactStore.commit(
-          postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
-
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  postingFactStore.commit(
-                      postingFact(
-                          "posting-1",
-                          "idem-2",
-                          Optional.of(
-                              new CorrectionReference(
-                                  CorrectionReference.CorrectionKind.AMENDMENT,
-                                  new PostingId("posting-1"))),
-                          Optional.of(new CorrectionReason("operator correction")))));
-
-      assertTrue(exception.getMessage().contains("PRIMARYKEY"));
-    }
-  }
-
-  @Test
   void commit_primaryKeyConflictWithFirstReversalLeavesConstraintAsPrimaryFailure() {
     Path databasePath = tempDirectory.resolve("duplicate-posting-id-reversal.sqlite");
 
@@ -472,11 +440,8 @@ class SqlitePostingFactStoreTest {
                       postingFact(
                           "posting-1",
                           "idem-2",
-                          Optional.of(
-                              new CorrectionReference(
-                                  CorrectionReference.CorrectionKind.REVERSAL,
-                                  new PostingId("posting-1"))),
-                          Optional.of(new CorrectionReason("full reversal")))));
+                          Optional.of(new ReversalReference(new PostingId("posting-1"))),
+                          Optional.of(new ReversalReason("full reversal")))));
 
       assertTrue(exception.getMessage().contains("PRIMARYKEY"));
     }
@@ -513,6 +478,38 @@ class SqlitePostingFactStoreTest {
     }
   }
 
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void executeFindOnePosting_closesStatementWhenRowMappingFails() throws Exception {
+    Path bookPath = tempDirectory.resolve("row-mapping-failure.sqlite");
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookPath)) {
+      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath);
+      setStoreDatabase(postingFactStore, database);
+
+      Class<?> binderType =
+          Class.forName("dev.erst.fingrind.sqlite.SqlitePostingFactStore$SqliteBinder");
+      Method method =
+          SqlitePostingFactStore.class.getDeclaredMethod(
+              "executeFindOnePosting", SqliteNativeDatabase.class, String.class, binderType);
+      method.setAccessible(true);
+      ClassLoader proxyClassLoader =
+          Optional.ofNullable(Thread.currentThread().getContextClassLoader())
+              .orElseGet(SqlitePostingFactStoreTest.class::getClassLoader);
+      Object binder =
+          Proxy.newProxyInstance(
+              proxyClassLoader,
+              new Class<?>[] {binderType},
+              (proxy, invokedMethod, arguments) -> null);
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () -> method.invoke(postingFactStore, database, "select null as posting_id", binder));
+
+      assertTrue(exception.getCause() instanceof NullPointerException);
+    }
+  }
+
   private static InputStream failingInputStream() {
     return new InputStream() {
       @Override
@@ -530,12 +527,12 @@ class SqlitePostingFactStoreTest {
   private static PostingFact postingFact(
       String postingId,
       String idempotencyKey,
-      Optional<CorrectionReference> correctionReference,
-      Optional<CorrectionReason> reason) {
+      Optional<ReversalReference> reversalReference,
+      Optional<ReversalReason> reason) {
     return new PostingFact(
         new PostingId(postingId),
-        journalEntry(correctionReference),
-        correctionReference,
+        journalEntry(reversalReference),
+        reversalReference,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -549,10 +546,8 @@ class SqlitePostingFactStoreTest {
             SourceChannel.CLI));
   }
 
-  private static JournalEntry journalEntry(Optional<CorrectionReference> correctionReference) {
-    if (correctionReference.isPresent()
-        && correctionReference.orElseThrow().kind()
-            == CorrectionReference.CorrectionKind.REVERSAL) {
+  private static JournalEntry journalEntry(Optional<ReversalReference> reversalReference) {
+    if (reversalReference.isPresent()) {
       return new JournalEntry(
           LocalDate.parse("2026-04-07"),
           List.of(
@@ -598,7 +593,6 @@ class SqlitePostingFactStoreTest {
               correlation_id text null,
               reason text null,
               source_channel text not null,
-              correction_kind text null,
               prior_posting_id text null
           )
           """);
@@ -616,7 +610,6 @@ class SqlitePostingFactStoreTest {
               correlation_id,
               reason,
               source_channel,
-              correction_kind,
               prior_posting_id
           ) values (
               'posting-partial',
@@ -630,7 +623,6 @@ class SqlitePostingFactStoreTest {
               null,
               null,
               'CLI',
-              null,
               null
           )
           """);

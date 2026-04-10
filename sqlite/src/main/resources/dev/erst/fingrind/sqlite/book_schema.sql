@@ -10,14 +10,13 @@ create table if not exists posting_fact (
     correlation_id text,
     reason text,
     source_channel text not null check (source_channel in ('CLI')),
-    correction_kind text,
     prior_posting_id text,
     unique (idempotency_key),
     foreign key (prior_posting_id) references posting_fact(posting_id),
     check (
-        (correction_kind is null and prior_posting_id is null)
+        (prior_posting_id is null and reason is null)
         or
-        (correction_kind in ('REVERSAL', 'AMENDMENT') and prior_posting_id is not null)
+        (prior_posting_id is not null and reason is not null)
     )
 );
 
@@ -37,4 +36,4 @@ create index if not exists posting_fact_by_prior_posting_id
 
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
-    where correction_kind = 'REVERSAL';
+    where prior_posting_id is not null;

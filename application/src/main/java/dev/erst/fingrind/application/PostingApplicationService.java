@@ -43,7 +43,7 @@ public final class PostingApplicationService {
         new PostingFact(
             postingIdGenerator.nextPostingId(),
             command.journalEntry(),
-            command.correctionReference(),
+            command.reversalReference(),
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));
 
@@ -66,7 +66,7 @@ public final class PostingApplicationService {
     if (existingPosting(command).isPresent()) {
       return Optional.of(new PostingRejection.DuplicateIdempotencyKey());
     }
-    return CorrectionPolicy.rejectionFor(command, postingFactStore);
+    return ReversalPolicy.rejectionFor(command, postingFactStore);
   }
 
   private static PostEntryResult.Committed committedResult(PostingFact committedPosting) {

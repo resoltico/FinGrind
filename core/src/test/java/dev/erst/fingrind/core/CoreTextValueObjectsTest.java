@@ -32,8 +32,8 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void correctionReason_stripsWhitespaceAndRejectsBlank() {
-    assertEquals("operator correction", new CorrectionReason("  operator correction  ").value());
-    assertThrows(IllegalArgumentException.class, () -> new CorrectionReason("   "));
+  void reversalReason_stripsWhitespaceAndRejectsBlank() {
+    assertEquals("operator reversal", new ReversalReason("  operator reversal  ").value());
+    assertThrows(IllegalArgumentException.class, () -> new ReversalReason("   "));
   }
 }

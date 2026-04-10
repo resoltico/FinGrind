@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DEVELOPER
 updated: "2026-04-10"
 route:
@@ -31,7 +31,7 @@ FinGrind is a five-module Gradle project with a narrow accounting center and exp
 
 ```text
 core/         Accounting vocabulary and invariants:
-              money, journal lines, journal entries, correction linkage,
+              money, journal lines, journal entries, reversal linkage,
               request provenance, committed provenance, posting identity.
 
 runtime/      Runtime persistence seam and in-memory implementation:
@@ -65,7 +65,7 @@ FinGrind is intentionally hard-break oriented right now:
 - one canonical current schema defines new books
 - no migration framework or backward-compatibility layer exists yet
 - preflight is side-effect free against a missing book
-- commit is append-only and corrections are additive links, not in-place mutation
+- commit is append-only and reversals are additive links, not in-place mutation
 
 ## Foundations
 
@@ -142,6 +142,10 @@ Shared Gradle plugins, managed-SQLite task types, and pulse listeners now live u
 `gradle/build-logic`, and the nested Jazzer build imports both that included build and the root
 version catalog. See [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the ownership map and
 architecture rationale.
+
+The root `build.gradle.kts` is intentionally thin. Repository-wide formatting, coverage
+aggregation, and root managed-SQLite wiring now live in convention plugins rather than in
+root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 

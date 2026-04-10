@@ -3,10 +3,8 @@ package dev.erst.fingrind.cli;
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
 import dev.erst.fingrind.application.PostEntryCommand;
-import org.junit.jupiter.api.Tag;
 
 /** Fuzzes FinGrind CLI request decoding from raw JSON payloads. */
-@Tag("jazzer")
 public class CliRequestFuzzTest {
   @FuzzTest
   void readPostEntryCommand(FuzzedDataProvider data) {

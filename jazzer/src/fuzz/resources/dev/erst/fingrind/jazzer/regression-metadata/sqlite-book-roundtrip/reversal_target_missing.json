@@ -1,18 +1,18 @@
 {
   "targetKey" : "sqlite-book-roundtrip",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/correction_reason_required.json",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/reversal_target_missing.json",
   "expectation" : {
     "outcomeKind" : "SUCCESS",
     "details" : {
       "type" : "SQLITE_BOOK_ROUND_TRIP",
       "requestStatus" : "PARSED",
       "effectiveDate" : "2026-04-08",
-      "idempotencyKey" : "idem-6",
+      "idempotencyKey" : "idem-7",
       "lineCount" : 2,
-      "correctionPresent" : true,
-      "firstCommitStatus" : "REJECTED_CORRECTION_REASON_REQUIRED",
+      "reversalPresent" : true,
+      "firstCommitStatus" : "REJECTED_REVERSAL_TARGET_NOT_FOUND",
       "reloadStatus" : "NOT_RUN",
-      "duplicateStatus" : "REJECTED_CORRECTION_REASON_REQUIRED",
+      "duplicateStatus" : "REJECTED_REVERSAL_TARGET_NOT_FOUND",
       "storedFactPresent" : false,
       "failureMessage" : "NONE"
     }

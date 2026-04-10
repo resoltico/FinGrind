@@ -8,8 +8,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -18,6 +16,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -100,14 +100,13 @@ class InMemoryPostingFactStoreTest {
   }
 
   @Test
-  void commit_storesAmendmentWithoutRegisteringItAsAReversal() {
+  void commit_doesNotRegisterOrdinaryPostingAsReversal() {
     InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(postingFact("idem-original"));
-    PostingFact amendmentFact = amendmentFact("idem-amendment", "posting-idem-original");
+    PostingFact postingFact = postingFact("idem-original");
 
-    PostingCommitResult result = postingFactStore.commit(amendmentFact);
+    PostingCommitResult result = postingFactStore.commit(postingFact);
 
-    assertEquals(new PostingCommitResult.Committed(amendmentFact), result);
+    assertEquals(new PostingCommitResult.Committed(postingFact), result);
     assertEquals(
         Optional.empty(), postingFactStore.findReversalFor(new PostingId("posting-idem-original")));
   }
@@ -124,26 +123,13 @@ class InMemoryPostingFactStoreTest {
     return new PostingFact(
         new PostingId("posting-" + idempotencyKey),
         reversalJournalEntry(),
-        Optional.of(
-            new CorrectionReference(
-                CorrectionReference.CorrectionKind.REVERSAL, new PostingId(priorPostingId))),
+        Optional.of(new ReversalReference(new PostingId(priorPostingId))),
         committedProvenance(
-            idempotencyKey, Optional.of(new CorrectionReason("historical full reversal"))));
-  }
-
-  private static PostingFact amendmentFact(String idempotencyKey, String priorPostingId) {
-    return new PostingFact(
-        new PostingId("posting-" + idempotencyKey),
-        journalEntry(),
-        Optional.of(
-            new CorrectionReference(
-                CorrectionReference.CorrectionKind.AMENDMENT, new PostingId(priorPostingId))),
-        committedProvenance(
-            idempotencyKey, Optional.of(new CorrectionReason("historical amendment"))));
+            idempotencyKey, Optional.of(new ReversalReason("historical full reversal"))));
   }
 
   private static CommittedProvenance committedProvenance(
-      String idempotencyKey, Optional<CorrectionReason> reason) {
+      String idempotencyKey, Optional<ReversalReason> reason) {
     return new CommittedProvenance(
         new RequestProvenance(
             new ActorId("actor-1"),

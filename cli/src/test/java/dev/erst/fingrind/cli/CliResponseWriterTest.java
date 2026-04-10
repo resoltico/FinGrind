@@ -75,11 +75,11 @@ class CliResponseWriterTest {
     responseWriter.writePostEntryResult(
         new PostEntryResult.Rejected(
             new IdempotencyKey("idem-1"),
-            new PostingRejection.CorrectionTargetNotFound(new PostingId("posting-1"))));
+            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
 
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"status\":\"rejected\""));
-    assertTrue(json.contains("\"code\":\"correction-target-not-found\""));
+    assertTrue(json.contains("\"code\":\"reversal-target-not-found\""));
     assertTrue(json.contains("\"priorPostingId\":\"posting-1\""));
   }
 
@@ -93,19 +93,19 @@ class CliResponseWriterTest {
   }
 
   @Test
-  void writePostEntryResult_writesCorrectionReasonRequiredRejection() {
-    String json = rejectedJson(new PostingRejection.CorrectionReasonRequired());
+  void writePostEntryResult_writesReversalReasonRequiredRejection() {
+    String json = rejectedJson(new PostingRejection.ReversalReasonRequired());
 
-    assertTrue(json.contains("\"code\":\"correction-reason-required\""));
+    assertTrue(json.contains("\"code\":\"reversal-reason-required\""));
     assertTrue(json.contains("must include a human-readable reason"));
   }
 
   @Test
-  void writePostEntryResult_writesCorrectionReasonForbiddenRejection() {
-    String json = rejectedJson(new PostingRejection.CorrectionReasonForbidden());
+  void writePostEntryResult_writesReversalReasonForbiddenRejection() {
+    String json = rejectedJson(new PostingRejection.ReversalReasonForbidden());
 
-    assertTrue(json.contains("\"code\":\"correction-reason-forbidden\""));
-    assertTrue(json.contains("only permitted when a correction target is present"));
+    assertTrue(json.contains("\"code\":\"reversal-reason-forbidden\""));
+    assertTrue(json.contains("only permitted when a reversal target is present"));
   }
 
   @Test

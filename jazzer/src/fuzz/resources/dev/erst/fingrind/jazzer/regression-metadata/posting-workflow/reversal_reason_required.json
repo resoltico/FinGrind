@@ -1,6 +1,6 @@
 {
   "targetKey" : "posting-workflow",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/correction_reason_required.json",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/reversal_reason_required.json",
   "expectation" : {
     "outcomeKind" : "SUCCESS",
     "details" : {
@@ -9,9 +9,9 @@
       "effectiveDate" : "2026-04-08",
       "idempotencyKey" : "idem-2",
       "lineCount" : 2,
-      "correctionPresent" : true,
-      "preflightStatus" : "REJECTED_CORRECTION_REASON_REQUIRED",
-      "firstCommitStatus" : "REJECTED_CORRECTION_REASON_REQUIRED",
+      "reversalPresent" : true,
+      "preflightStatus" : "REJECTED_REVERSAL_REASON_REQUIRED",
+      "firstCommitStatus" : "REJECTED_REVERSAL_REASON_REQUIRED",
       "duplicateStatus" : "NOT_RUN",
       "storedFactPresent" : false,
       "failureMessage" : "NONE"

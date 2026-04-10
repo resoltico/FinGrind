@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-10"
 route:
@@ -81,6 +81,12 @@ one place to fix infrastructure concerns such as test pulses or managed-SQLite p
 The included build also clears its compile output directories before recompiling. That is a
 deliberate defense against stale hidden classes surviving after source deletion.
 
+The consumer scripts are intentionally thin now:
+- root `build.gradle.kts` is a single root-conventions plugin application
+- Java module policy lives in `FinGrindJavaConventionsPlugin`
+- repository-wide formatting, aggregated coverage, and managed-SQLite root wiring live in
+  `FinGrindRootConventionsPlugin`
+
 ### Composite build for Jazzer
 
 `jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can consume the live
@@ -125,7 +131,8 @@ Use this routing table before changing the build:
 | If you are changing... | Change here first |
 |:-----------------------|:------------------|
 | root project membership, plugin resolution | `settings.gradle.kts` |
-| repository-wide quality gates, Spotless, PMD, aggregated coverage | `build.gradle.kts` |
+| root build wiring only | `build.gradle.kts` |
+| repository-wide quality gates, root Spotless, aggregated coverage | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` |
 | shared Java subproject conventions | `gradle/build-logic/.../FinGrindJavaConventionsPlugin.kt` |
 | managed-SQLite Gradle provisioning for root modules | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` |
 | managed-SQLite task types and shared helpers | `gradle/build-logic/.../ManagedSqliteSupport.kt` and task classes nearby |
@@ -152,6 +159,7 @@ These are the Gradle-level invariants worth preserving:
 - `core`, `runtime`, `application`, `sqlite`, and `cli` remain ordinary root subprojects
 - `jazzer/` remains a nested build, not a root subproject
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
+- the repository contains no active `buildSrc` tree
 - the nested Jazzer build imports `../gradle/libs.versions.toml`
 - root and nested Gradle surfaces use the same vendored SQLite source and managed runtime contract
 - shared pulse scheduling lives in one base implementation, with build-specific listeners layered on

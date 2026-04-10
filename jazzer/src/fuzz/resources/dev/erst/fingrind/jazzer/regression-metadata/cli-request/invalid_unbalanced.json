@@ -9,7 +9,7 @@
       "effectiveDate" : "NOT_PARSED",
       "idempotencyKey" : "NOT_PARSED",
       "lineCount" : 0,
-      "correctionPresent" : false,
+      "reversalPresent" : false,
       "actorType" : "NOT_PARSED",
       "sourceChannel" : "NOT_PARSED",
       "failureMessage" : "Journal entry must balance debits and credits."

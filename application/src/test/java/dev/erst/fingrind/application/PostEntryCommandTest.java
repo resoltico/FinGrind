@@ -8,8 +8,6 @@ import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -18,6 +16,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,10 +32,8 @@ class PostEntryCommandTest {
     PostEntryCommand command =
         new PostEntryCommand(
             journalEntry(),
-            Optional.of(
-                new CorrectionReference(
-                    CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))),
-            requestProvenance("idem-1", Optional.of(new CorrectionReason("operator correction"))),
+            Optional.of(new ReversalReference(new PostingId("posting-1"))),
+            requestProvenance("idem-1", Optional.of(new ReversalReason("operator reversal"))),
             SourceChannel.CLI);
 
     assertEquals(LocalDate.parse("2026-04-07"), command.journalEntry().effectiveDate());
@@ -52,15 +50,15 @@ class PostEntryCommandTest {
   }
 
   @Test
-  void constructor_defaultsNullCorrectionReferenceToEmpty() {
+  void constructor_defaultsNullReversalReferenceToEmpty() {
     PostEntryCommand command =
         new PostEntryCommand(
             journalEntry(),
-            nullCorrectionReference(),
+            nullReversalReference(),
             requestProvenance("idem-1"),
             SourceChannel.CLI);
 
-    assertEquals(Optional.empty(), command.correctionReference());
+    assertEquals(Optional.empty(), command.reversalReference());
   }
 
   private static JournalEntry journalEntry() {
@@ -82,7 +80,7 @@ class PostEntryCommandTest {
   }
 
   private static RequestProvenance requestProvenance(
-      String idempotencyKey, Optional<CorrectionReason> reason) {
+      String idempotencyKey, Optional<ReversalReason> reason) {
     return new RequestProvenance(
         new ActorId("actor-1"),
         ActorType.AGENT,
@@ -94,7 +92,7 @@ class PostEntryCommandTest {
   }
 
   @SuppressWarnings("NullOptional")
-  private static Optional<CorrectionReference> nullCorrectionReference() {
+  private static Optional<ReversalReference> nullReversalReference() {
     return null;
   }
 }

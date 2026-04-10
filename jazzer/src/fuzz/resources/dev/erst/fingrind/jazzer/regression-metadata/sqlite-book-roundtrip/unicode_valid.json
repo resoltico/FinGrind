@@ -1,13 +1,13 @@
 {
   "targetKey" : "sqlite-book-roundtrip",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/basic_valid.json",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/unicode_valid.json",
   "expectation" : {
     "outcomeKind" : "SUCCESS",
     "details" : {
       "type" : "SQLITE_BOOK_ROUND_TRIP",
       "requestStatus" : "PARSED",
       "effectiveDate" : "2026-04-07",
-      "idempotencyKey" : "idem-1",
+      "idempotencyKey" : "idem-unicode-1",
       "lineCount" : 2,
       "reversalPresent" : false,
       "firstCommitStatus" : "COMMITTED",

@@ -9,7 +9,7 @@
       "effectiveDate" : "2026-04-09",
       "idempotencyKey" : "idem-2",
       "lineCount" : 2,
-      "correctionPresent" : false,
+      "reversalPresent" : false,
       "firstCommitStatus" : "COMMITTED",
       "reloadStatus" : "RELOADED",
       "duplicateStatus" : "REJECTED_DUPLICATE_IDEMPOTENCY_KEY",

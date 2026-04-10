@@ -14,10 +14,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import org.junit.jupiter.api.Tag;
 
 /** Fuzzes single-book SQLite commit and reload invariants using arbitrary filesystem paths. */
-@Tag("jazzer")
 public class SqliteBookRoundTripFuzzTest {
   @FuzzTest
   void roundTripSingleBook(FuzzedDataProvider data) throws IOException {
@@ -51,9 +49,9 @@ public class SqliteBookRoundTripFuzzTest {
               throw new IllegalStateException(
                   "Reloaded journal entry differs from the parsed command.");
             }
-            if (!postingFact.correctionReference().equals(command.correctionReference())) {
+            if (!postingFact.reversalReference().equals(command.reversalReference())) {
               throw new IllegalStateException(
-                  "Reloaded correction differs from the parsed command.");
+                  "Reloaded reversal differs from the parsed command.");
             }
             if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
               throw new IllegalStateException(

@@ -6,8 +6,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -16,6 +14,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.runtime.PostingFact;
 import java.math.BigDecimal;
@@ -31,25 +31,25 @@ final class SqlitePostingMapper {
   private SqlitePostingMapper() {}
 
   static PostingFact postingFact(SqliteNativeStatement postingRow, List<JournalLine> lines) {
-    PostingId postingId = new PostingId(requiredText(postingRow, 0));
+    PostingId postingId = new PostingId(requiredText(postingRow, SqlitePostingSql.COL_POSTING_ID));
     JournalEntry journalEntry =
-        new JournalEntry(LocalDate.parse(requiredText(postingRow, 1)), lines);
+        new JournalEntry(
+            LocalDate.parse(requiredText(postingRow, SqlitePostingSql.COL_EFFECTIVE_DATE)), lines);
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId(requiredText(postingRow, 3)),
-            ActorType.valueOf(requiredText(postingRow, 4)),
-            new CommandId(requiredText(postingRow, 5)),
-            new IdempotencyKey(requiredText(postingRow, 6)),
-            new CausationId(requiredText(postingRow, 7)),
-            optionalText(postingRow, 8).map(CorrelationId::new),
-            optionalText(postingRow, 9).map(CorrectionReason::new));
+            new ActorId(requiredText(postingRow, SqlitePostingSql.COL_ACTOR_ID)),
+            ActorType.valueOf(requiredText(postingRow, SqlitePostingSql.COL_ACTOR_TYPE)),
+            new CommandId(requiredText(postingRow, SqlitePostingSql.COL_COMMAND_ID)),
+            new IdempotencyKey(requiredText(postingRow, SqlitePostingSql.COL_IDEMPOTENCY_KEY)),
+            new CausationId(requiredText(postingRow, SqlitePostingSql.COL_CAUSATION_ID)),
+            optionalText(postingRow, SqlitePostingSql.COL_CORRELATION_ID).map(CorrelationId::new),
+            optionalText(postingRow, SqlitePostingSql.COL_REASON).map(ReversalReason::new));
     CommittedProvenance provenance =
         new CommittedProvenance(
             requestProvenance,
-            Instant.parse(requiredText(postingRow, 2)),
-            SourceChannel.valueOf(requiredText(postingRow, 10)));
-    return new PostingFact(
-        postingId, journalEntry, readCorrectionReference(postingRow), provenance);
+            Instant.parse(requiredText(postingRow, SqlitePostingSql.COL_RECORDED_AT)),
+            SourceChannel.valueOf(requiredText(postingRow, SqlitePostingSql.COL_SOURCE_CHANNEL)));
+    return new PostingFact(postingId, journalEntry, readReversalReference(postingRow), provenance);
   }
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows)
@@ -58,25 +58,23 @@ final class SqlitePostingMapper {
     while (lineRows.step() == SqliteNativeLibrary.SQLITE_ROW) {
       lines.add(
           new JournalLine(
-              new AccountCode(requiredText(lineRows, 0)),
-              JournalLine.EntrySide.valueOf(requiredText(lineRows, 1)),
+              new AccountCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_ACCOUNT_CODE)),
+              JournalLine.EntrySide.valueOf(
+                  requiredText(lineRows, SqlitePostingSql.COL_LINE_ENTRY_SIDE)),
               new Money(
-                  new CurrencyCode(requiredText(lineRows, 2)),
-                  new BigDecimal(requiredText(lineRows, 3)))));
+                  new CurrencyCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_CURRENCY_CODE)),
+                  new BigDecimal(requiredText(lineRows, SqlitePostingSql.COL_LINE_AMOUNT)))));
     }
     return lines;
   }
 
-  static Optional<CorrectionReference> readCorrectionReference(SqliteNativeStatement postingRow) {
-    Optional<String> correctionKind = optionalText(postingRow, 11);
-    Optional<String> priorPostingId = optionalText(postingRow, 12);
-    if (correctionKind.isEmpty() || priorPostingId.isEmpty()) {
+  static Optional<ReversalReference> readReversalReference(SqliteNativeStatement postingRow) {
+    Optional<String> priorPostingId =
+        optionalText(postingRow, SqlitePostingSql.COL_PRIOR_POSTING_ID);
+    if (priorPostingId.isEmpty()) {
       return Optional.empty();
     }
-    return Optional.of(
-        new CorrectionReference(
-            CorrectionReference.CorrectionKind.valueOf(correctionKind.orElseThrow()),
-            new PostingId(priorPostingId.orElseThrow())));
+    return Optional.of(new ReversalReference(new PostingId(priorPostingId.orElseThrow())));
   }
 
   static String requiredText(SqliteNativeStatement row, int columnIndex) {

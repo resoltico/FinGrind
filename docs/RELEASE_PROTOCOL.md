@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-08"
+updated: "2026-04-10"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -40,7 +40,7 @@ Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceedin
 
 Then verify every item in this checklist. All must be true before any commit or tag:
 
-- `gradle.properties` `version=` equals the target release version exactly (for example `0.3.0`).
+- `gradle.properties` `version=` equals the target release version exactly (for example `0.4.0`).
 - All `docs/*.md` frontmatter `version:` fields equal the target version.
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.

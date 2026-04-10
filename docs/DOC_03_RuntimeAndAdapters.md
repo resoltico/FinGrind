@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: RUNTIME
 updated: "2026-04-10"
 route:
@@ -18,12 +18,12 @@ route:
 public record PostingFact(
     PostingId postingId,
     JournalEntry journalEntry,
-    Optional<CorrectionReference> correctionReference,
+    Optional<ReversalReference> reversalReference,
     CommittedProvenance provenance)
 ```
 
 - Purpose: represent one committed posting independently of any concrete storage adapter
-- Normalization: `null` correction becomes `Optional.empty()`
+- Normalization: `null` reversal becomes `Optional.empty()`
 - Validation: rejects `null` posting id, journal entry, and provenance
 
 ## `PostingFactStore`

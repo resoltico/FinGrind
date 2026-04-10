@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: USER_CLI
 updated: "2026-04-10"
 route:
@@ -77,7 +77,7 @@ the managed SQLite 3.53.0 runtime.
 | duplicate option | `2` | `invalid-request` | `Duplicate argument: --book-file` and similar |
 | same path used for both files | `2` | `invalid-request` | `--book-file and --request-file must not point to the same path.` |
 | malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
-| deterministic business rejection | `2` | `duplicate-idempotency-key`, `correction-target-not-found`, and similar | request was understood but refused by book state or correction policy |
+| deterministic business rejection | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by book state or reversal policy |
 | runtime environment failure | `1` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
 ## Notes

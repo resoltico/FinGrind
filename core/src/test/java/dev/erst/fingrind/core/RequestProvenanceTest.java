@@ -19,15 +19,14 @@ class RequestProvenanceTest {
             new IdempotencyKey(" idem-1 "),
             new CausationId(" cause-1 "),
             Optional.of(new CorrelationId(" corr-1 ")),
-            Optional.of(new CorrectionReason("  operator correction  ")));
+            Optional.of(new ReversalReason("  operator reversal  ")));
 
     assertEquals("actor-1", requestProvenance.actorId().value());
     assertEquals("command-1", requestProvenance.commandId().value());
     assertEquals("idem-1", requestProvenance.idempotencyKey().value());
     assertEquals("cause-1", requestProvenance.causationId().value());
     assertEquals(Optional.of(new CorrelationId("corr-1")), requestProvenance.correlationId());
-    assertEquals(
-        Optional.of(new CorrectionReason("operator correction")), requestProvenance.reason());
+    assertEquals(Optional.of(new ReversalReason("operator reversal")), requestProvenance.reason());
   }
 
   @Test

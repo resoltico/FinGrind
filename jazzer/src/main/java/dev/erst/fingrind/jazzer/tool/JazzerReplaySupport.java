@@ -117,8 +117,8 @@ public final class JazzerReplaySupport {
         if (!postingFact.journalEntry().equals(command.journalEntry())) {
           throw new IllegalStateException("Stored journal entry differs from the parsed command.");
         }
-        if (!postingFact.correctionReference().equals(command.correctionReference())) {
-          throw new IllegalStateException("Stored correction differs from the parsed command.");
+        if (!postingFact.reversalReference().equals(command.reversalReference())) {
+          throw new IllegalStateException("Stored reversal differs from the parsed command.");
         }
         if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
           throw new IllegalStateException(
@@ -227,9 +227,9 @@ public final class JazzerReplaySupport {
               throw new IllegalStateException(
                   "Reloaded journal entry differs from the parsed command.");
             }
-            if (!postingFact.correctionReference().equals(command.correctionReference())) {
+            if (!postingFact.reversalReference().equals(command.reversalReference())) {
               throw new IllegalStateException(
-                  "Reloaded correction differs from the parsed command.");
+                  "Reloaded reversal differs from the parsed command.");
             }
             if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
               throw new IllegalStateException(
@@ -338,7 +338,7 @@ public final class JazzerReplaySupport {
         effectiveDate(command),
         idempotencyKey(command),
         lineCount(command),
-        correctionPresent(command),
+        reversalPresent(command),
         actorType(command),
         sourceChannel(command),
         failureMessage);
@@ -363,7 +363,7 @@ public final class JazzerReplaySupport {
         effectiveDate(command),
         idempotencyKey(command),
         lineCount(command),
-        correctionPresent(command),
+        reversalPresent(command),
         preflightStatus,
         firstCommitStatus,
         duplicateStatus,
@@ -384,7 +384,7 @@ public final class JazzerReplaySupport {
         effectiveDate(command),
         idempotencyKey(command),
         lineCount(command),
-        correctionPresent(command),
+        reversalPresent(command),
         firstCommitStatus,
         reloadStatus,
         duplicateStatus,
@@ -437,8 +437,8 @@ public final class JazzerReplaySupport {
     return command == null ? 0 : command.journalEntry().lines().size();
   }
 
-  private static boolean correctionPresent(PostEntryCommand command) {
-    return command != null && command.correctionReference().isPresent();
+  private static boolean reversalPresent(PostEntryCommand command) {
+    return command != null && command.reversalReference().isPresent();
   }
 
   private static String actorType(PostEntryCommand command) {
@@ -452,9 +452,9 @@ public final class JazzerReplaySupport {
   private static String rejectionStatus(PostingRejection rejection) {
     return switch (rejection) {
       case PostingRejection.DuplicateIdempotencyKey _ -> "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
-      case PostingRejection.CorrectionReasonRequired _ -> "REJECTED_CORRECTION_REASON_REQUIRED";
-      case PostingRejection.CorrectionReasonForbidden _ -> "REJECTED_CORRECTION_REASON_FORBIDDEN";
-      case PostingRejection.CorrectionTargetNotFound _ -> "REJECTED_CORRECTION_TARGET_NOT_FOUND";
+      case PostingRejection.ReversalReasonRequired _ -> "REJECTED_REVERSAL_REASON_REQUIRED";
+      case PostingRejection.ReversalReasonForbidden _ -> "REJECTED_REVERSAL_REASON_FORBIDDEN";
+      case PostingRejection.ReversalTargetNotFound _ -> "REJECTED_REVERSAL_TARGET_NOT_FOUND";
       case PostingRejection.ReversalAlreadyExists _ -> "REJECTED_REVERSAL_ALREADY_EXISTS";
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
           "REJECTED_REVERSAL_DOES_NOT_NEGATE_TARGET";

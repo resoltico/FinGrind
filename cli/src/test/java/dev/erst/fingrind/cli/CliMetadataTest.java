@@ -28,17 +28,17 @@ class CliMetadataTest {
 
   @Test
   void versionFrom_returnsImplementationVersion_whenPresent() {
-    assertEquals("1.2.3", CliMetadata.versionFrom("1.2.3", "0.3.0"));
+    assertEquals("1.2.3", CliMetadata.versionFrom("1.2.3", "0.4.0"));
   }
 
   @Test
   void versionFrom_returnsFallbackVersion_whenImplementationVersionIsAbsent() {
-    assertEquals("0.3.0", CliMetadata.versionFrom(null, "0.3.0"));
+    assertEquals("0.4.0", CliMetadata.versionFrom(null, "0.4.0"));
   }
 
   @Test
   void versionFrom_returnsFallbackVersion_whenImplementationVersionIsBlank() {
-    assertEquals("0.3.0", CliMetadata.versionFrom("   ", "0.3.0"));
+    assertEquals("0.4.0", CliMetadata.versionFrom("   ", "0.4.0"));
   }
 
   @Test

@@ -1,44 +1,41 @@
 package dev.erst.fingrind.application;
 
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.runtime.PostingFact;
 import dev.erst.fingrind.runtime.PostingFactStore;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/** Validates correction lineage rules before a posting reaches the durable store. */
-final class CorrectionPolicy {
-  private CorrectionPolicy() {}
+/** Validates reversal lineage rules before a posting reaches the durable store. */
+final class ReversalPolicy {
+  private ReversalPolicy() {}
 
-  /** Returns the first deterministic correction rejection for the supplied command, if any. */
+  /** Returns the first deterministic reversal rejection for the supplied command, if any. */
   static Optional<PostingRejection> rejectionFor(
       PostEntryCommand command, PostingFactStore postingFactStore) {
-    Optional<CorrectionReference> correctionReference = command.correctionReference();
-    boolean reasonPresent = command.requestProvenance().reason().isPresent();
-    if (correctionReference.isEmpty()) {
-      return reasonPresent
-          ? Optional.of(new PostingRejection.CorrectionReasonForbidden())
+    Optional<ReversalReference> reversalReference = command.reversalReference();
+    boolean reversalReasonPresent = command.requestProvenance().reason().isPresent();
+    if (reversalReference.isEmpty()) {
+      return reversalReasonPresent
+          ? Optional.of(new PostingRejection.ReversalReasonForbidden())
           : Optional.empty();
     }
-    if (!reasonPresent) {
-      return Optional.of(new PostingRejection.CorrectionReasonRequired());
+    if (!reversalReasonPresent) {
+      return Optional.of(new PostingRejection.ReversalReasonRequired());
     }
 
-    PostingId priorPostingId = correctionReference.orElseThrow().priorPostingId();
+    ReversalReference requestedReversal = reversalReference.orElseThrow();
+    PostingId priorPostingId = requestedReversal.priorPostingId();
     Optional<PostingFact> priorPosting = postingFactStore.findByPostingId(priorPostingId);
     if (priorPosting.isEmpty()) {
-      return Optional.of(new PostingRejection.CorrectionTargetNotFound(priorPostingId));
+      return Optional.of(new PostingRejection.ReversalTargetNotFound(priorPostingId));
     }
 
-    return switch (correctionReference.orElseThrow().kind()) {
-      case AMENDMENT -> Optional.empty();
-      case REVERSAL ->
-          reversalRejection(command.journalEntry(), priorPosting.orElseThrow(), postingFactStore);
-    };
+    return reversalRejection(command.journalEntry(), priorPosting.orElseThrow(), postingFactStore);
   }
 
   private static Optional<PostingRejection> reversalRejection(

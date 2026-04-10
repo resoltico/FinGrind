@@ -5,6 +5,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-10
+
+### Changed
+- Hard-broke the posting contract to a reversal-only linkage model by replacing `correction` with
+  `reversal`, removing correction kinds, and making reversal semantics explicit across the CLI,
+  runtime store, SQLite schema, and reference documentation.
+- Rebuilt the committed Jazzer corpus, replay details, and regression metadata around reversal
+  terminology, added one explicit legacy-correction rejection seed plus one Unicode SQLite
+  round-trip seed, and kept GitHub-side Jazzer verification limited to deterministic support and
+  regression replay without active fuzzing.
+- Moved remaining repository-wide Gradle policy out of the root `subprojects {}` block and into
+  shared convention plugins, leaving the root build script as thin wiring over one `build-logic`
+  control plane.
+- Switched active Jazzer harness launching onto Jazzer's official JUnit runner and made the local
+  harness contract explicit: each active harness class now owns exactly one `@FuzzTest` method.
+
+### Fixed
+- Removed remaining native SQLite adapter design debt around hot-path singleton loading,
+  statement/mapper contract clarity, and reversal persistence mapping so the FFM-based store now
+  matches the stricter reversal-only architecture cleanly.
+- Removed redundant UTF-8 re-encoding from the native SQLite text-bind hot path by deriving SQLite
+  byte counts from the already-encoded native statement buffer.
+- Removed stale root and nested `buildSrc` residues so the repository has one actual shared
+  Gradle logic home instead of a live included build plus leftover magic-directory state.
+- Replaced deprecated Jackson 3 tree-string APIs in the CLI reader and CLI capability tests so
+  local verification stays warning-clean under explicit `-Xlint:deprecation`.
+
 ## [0.3.1] - 2026-04-10
 
 ### Added
@@ -94,7 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.4.0
 [0.3.1]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.1
 [0.3.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.0
 [0.2.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.2.0

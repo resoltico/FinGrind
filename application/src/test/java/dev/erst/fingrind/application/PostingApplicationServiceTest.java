@@ -9,8 +9,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CorrectionReason;
-import dev.erst.fingrind.core.CorrectionReference;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -19,6 +17,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.runtime.InMemoryPostingFactStore;
 import dev.erst.fingrind.runtime.PostingCommitResult;
@@ -66,7 +66,7 @@ class PostingApplicationServiceTest {
   }
 
   @Test
-  void preflight_rejectsCorrectionWithoutReason() {
+  void preflight_rejectsReversalWithoutReason() {
     PostingApplicationService applicationService =
         applicationService(new InMemoryPostingFactStore());
 
@@ -74,37 +74,33 @@ class PostingApplicationServiceTest {
         applicationService.preflight(
             command(
                 "idem-1",
-                Optional.of(
-                    new CorrectionReference(
-                        CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))),
+                Optional.of(new ReversalReference(new PostingId("posting-1"))),
                 Optional.empty()));
 
     assertEquals(
         new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.CorrectionReasonRequired()),
+            new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonRequired()),
         result);
   }
 
   @Test
-  void preflight_rejectsReasonWithoutCorrection() {
+  void preflight_rejectsReasonWithoutReversal() {
     PostingApplicationService applicationService =
         applicationService(new InMemoryPostingFactStore());
 
     PostEntryResult result =
         applicationService.preflight(
             command(
-                "idem-1",
-                Optional.empty(),
-                Optional.of(new CorrectionReason("operator correction"))));
+                "idem-1", Optional.empty(), Optional.of(new ReversalReason("operator reversal"))));
 
     assertEquals(
         new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.CorrectionReasonForbidden()),
+            new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonForbidden()),
         result);
   }
 
   @Test
-  void preflight_rejectsMissingCorrectionTarget() {
+  void preflight_rejectsMissingReversalTarget() {
     PostingApplicationService applicationService =
         applicationService(new InMemoryPostingFactStore());
 
@@ -112,21 +108,18 @@ class PostingApplicationServiceTest {
         applicationService.preflight(
             command(
                 "idem-1",
-                Optional.of(
-                    new CorrectionReference(
-                        CorrectionReference.CorrectionKind.AMENDMENT,
-                        new PostingId("posting-missing"))),
-                Optional.of(new CorrectionReason("operator correction"))));
+                Optional.of(new ReversalReference(new PostingId("posting-missing"))),
+                Optional.of(new ReversalReason("operator reversal"))));
 
     assertEquals(
         new PostEntryResult.Rejected(
             new IdempotencyKey("idem-1"),
-            new PostingRejection.CorrectionTargetNotFound(new PostingId("posting-missing"))),
+            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
         result);
   }
 
   @Test
-  void preflight_acceptsAmendmentWhenTargetExistsAndReasonIsPresent() {
+  void preflight_acceptsReversalWhenTargetExistsAndReasonIsPresent() {
     InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
     postingFactStore.commit(existingPosting("posting-1", "idem-existing"));
     PostingApplicationService applicationService = applicationService(postingFactStore);
@@ -135,10 +128,9 @@ class PostingApplicationServiceTest {
         applicationService.preflight(
             command(
                 "idem-1",
-                Optional.of(
-                    new CorrectionReference(
-                        CorrectionReference.CorrectionKind.AMENDMENT, new PostingId("posting-1"))),
-                Optional.of(new CorrectionReason("operator correction"))));
+                reversalReference("posting-1"),
+                Optional.of(new ReversalReason("full reversal")),
+                reversalJournalEntry()));
 
     assertEquals(
         new PostEntryResult.PreflightAccepted(
@@ -157,7 +149,7 @@ class PostingApplicationServiceTest {
             command(
                 "idem-1",
                 reversalReference("posting-1"),
-                Optional.of(new CorrectionReason("full reversal")),
+                Optional.of(new ReversalReason("full reversal")),
                 mismatchedReversalJournalEntry()));
 
     assertEquals(
@@ -178,7 +170,7 @@ class PostingApplicationServiceTest {
             command(
                 "idem-1",
                 reversalReference("posting-1"),
-                Optional.of(new CorrectionReason("full reversal")),
+                Optional.of(new ReversalReason("full reversal")),
                 reversalJournalEntry()));
 
     assertEquals(
@@ -267,7 +259,7 @@ class PostingApplicationServiceTest {
             command(
                 "idem-1",
                 reversalReference("posting-1"),
-                Optional.of(new CorrectionReason("full reversal")),
+                Optional.of(new ReversalReason("full reversal")),
                 reversalJournalEntry()));
 
     assertEquals(
@@ -309,7 +301,7 @@ class PostingApplicationServiceTest {
             command(
                 "idem-1",
                 reversalReference("posting-1"),
-                Optional.of(new CorrectionReason("full reversal")),
+                Optional.of(new ReversalReason("full reversal")),
                 reversalJournalEntry()));
 
     assertEquals(
@@ -363,19 +355,19 @@ class PostingApplicationServiceTest {
 
   private static PostEntryCommand command(
       String idempotencyKey,
-      Optional<CorrectionReference> correctionReference,
-      Optional<CorrectionReason> reason) {
-    return command(idempotencyKey, correctionReference, reason, journalEntry());
+      Optional<ReversalReference> reversalReference,
+      Optional<ReversalReason> reason) {
+    return command(idempotencyKey, reversalReference, reason, journalEntry());
   }
 
   private static PostEntryCommand command(
       String idempotencyKey,
-      Optional<CorrectionReference> correctionReference,
-      Optional<CorrectionReason> reason,
+      Optional<ReversalReference> reversalReference,
+      Optional<ReversalReason> reason,
       JournalEntry journalEntry) {
     return new PostEntryCommand(
         journalEntry,
-        correctionReference,
+        reversalReference,
         requestProvenance(idempotencyKey, reason),
         SourceChannel.CLI);
   }
@@ -395,17 +387,17 @@ class PostingApplicationServiceTest {
         reversalJournalEntry(),
         reversalReference(priorPostingId),
         committedProvenance(
-            idempotencyKey, Optional.of(new CorrectionReason("historical full reversal"))));
+            idempotencyKey, Optional.of(new ReversalReason("historical full reversal"))));
   }
 
   private static CommittedProvenance committedProvenance(
-      String idempotencyKey, Optional<CorrectionReason> reason) {
+      String idempotencyKey, Optional<ReversalReason> reason) {
     return new CommittedProvenance(
         requestProvenance(idempotencyKey, reason), FIXED_CLOCK.instant(), SourceChannel.CLI);
   }
 
   private static RequestProvenance requestProvenance(
-      String idempotencyKey, Optional<CorrectionReason> reason) {
+      String idempotencyKey, Optional<ReversalReason> reason) {
     return new RequestProvenance(
         new ActorId("actor-1"),
         ActorType.AGENT,
@@ -416,10 +408,8 @@ class PostingApplicationServiceTest {
         reason);
   }
 
-  private static Optional<CorrectionReference> reversalReference(String priorPostingId) {
-    return Optional.of(
-        new CorrectionReference(
-            CorrectionReference.CorrectionKind.REVERSAL, new PostingId(priorPostingId)));
+  private static Optional<ReversalReference> reversalReference(String priorPostingId) {
+    return Optional.of(new ReversalReference(new PostingId(priorPostingId)));
   }
 
   private static JournalEntry journalEntry() {

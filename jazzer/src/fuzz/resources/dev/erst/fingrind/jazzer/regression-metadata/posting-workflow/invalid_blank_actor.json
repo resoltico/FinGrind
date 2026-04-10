@@ -9,7 +9,7 @@
       "effectiveDate" : "NOT_PARSED",
       "idempotencyKey" : "NOT_PARSED",
       "lineCount" : 0,
-      "correctionPresent" : false,
+      "reversalPresent" : false,
       "preflightStatus" : "NOT_RUN",
       "firstCommitStatus" : "NOT_RUN",
       "duplicateStatus" : "NOT_RUN",

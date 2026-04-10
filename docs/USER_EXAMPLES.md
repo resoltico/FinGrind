@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.3.1"
+version: "0.4.0"
 domain: USER_EXAMPLES
 updated: "2026-04-10"
 route:
-  keywords: [fingrind, examples, preflight, commit, duplicate, stdin, correction, book-file, request-template]
+  keywords: [fingrind, examples, preflight, commit, duplicate, stdin, reversal, book-file, request-template]
   questions: ["show me a working fingrind example", "how do I preflight and commit in fingrind", "how do I send a fingrind request on stdin"]
 ---
 
@@ -75,19 +75,19 @@ cat docs/examples/basic-posting-request.json | \
     --request-file -
 ```
 
-## Correction Request Template
+## Reversal Request Template
 
 ```bash
-cat docs/examples/correction-request.json
+cat docs/examples/reversal-request.json
 ```
 
-That file is a template. Replace `correction.priorPostingId` with a real `postingId` returned by an earlier commit in the same book, then preflight or commit it:
+That file is a template. Replace `reversal.priorPostingId` with a real `postingId` returned by an earlier commit in the same book, then preflight or commit it:
 
 ```bash
 java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
-  --book-file /tmp/fingrind/books/corrections/corrections.sqlite \
-  --request-file docs/examples/correction-request.json
+  --book-file /tmp/fingrind/books/reversals/reversals.sqlite \
+  --request-file docs/examples/reversal-request.json
 ```
 
 ## Trigger A Deterministic Invalid Request

@@ -19,7 +19,7 @@ class CommittedProvenanceTest {
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1")),
-            Optional.of(new CorrectionReason("operator correction")));
+            Optional.of(new ReversalReason("operator reversal")));
     CommittedProvenance committedProvenance =
         new CommittedProvenance(
             requestProvenance, Instant.parse("2026-04-07T10:15:30Z"), SourceChannel.CLI);

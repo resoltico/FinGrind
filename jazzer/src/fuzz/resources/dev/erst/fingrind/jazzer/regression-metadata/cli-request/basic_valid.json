@@ -9,7 +9,7 @@
       "effectiveDate" : "2026-04-07",
       "idempotencyKey" : "idem-1",
       "lineCount" : 2,
-      "correctionPresent" : false,
+      "reversalPresent" : false,
       "actorType" : "AGENT",
       "sourceChannel" : "CLI",
       "failureMessage" : "NONE"
