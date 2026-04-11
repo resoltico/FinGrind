@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -143,5 +143,8 @@ FinGrind already carries the matching workflow surfaces locally:
 - Local package inspection via `gh api /user/packages` may additionally require `write:packages`.
 - For a public repository, GHCR packages are expected to be public automatically.
 - Do not publish a release tag during bootstrap. Use [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md) later.
-- Jazzer remains part of the local `./check.sh` gate only. GitHub CI mirrors the lighter
-  GridGrind stance and does not run standalone Jazzer replay.
+- Jazzer active fuzzing remains local-only.
+  GitHub must never invoke `jazzer/bin/*`, and active harness execution hard-fails when
+  `GITHUB_ACTIONS=true` as a defense-in-depth backstop.
+- GitHub CI currently keeps Jazzer on the deterministic side only by running the root build and
+  CLI runtime checks, not standalone Jazzer support tests, regression replay, or active fuzzing.

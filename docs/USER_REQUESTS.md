@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: USER_REQUESTS
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, enums, payload, rejection]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "which enum values are valid in a fingrind request"]

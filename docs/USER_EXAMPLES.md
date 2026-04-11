@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: USER_EXAMPLES
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, examples, preflight, commit, duplicate, stdin, reversal, book-file, request-template]
   questions: ["show me a working fingrind example", "how do I preflight and commit in fingrind", "how do I send a fingrind request on stdin"]

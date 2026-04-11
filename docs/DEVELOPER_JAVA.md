@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, java, java26, jdk, jdk.java.net, local-dev, zsh, java-home, brew]
   questions: ["how is java 26 set up for fingrind", "why does fingrind use jdk.java.net instead of brew java", "how do i configure local java 26 for fingrind"]

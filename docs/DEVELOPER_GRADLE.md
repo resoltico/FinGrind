@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, jazzer, buildsrc, managed-sqlite, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "what should we review in the gradle setup"]
@@ -167,6 +167,7 @@ These are the Gradle-level invariants worth preserving:
 - the Jazzer topology file remains the single source of truth for harness keys, task names, and
   working-directory ownership
 - root `./gradlew check` stays focused on the product modules
+- active Jazzer fuzzing remains a wrapper-owned local operator flow through `jazzer/bin/*`
 - root `./check.sh` remains the supported whole-repo gate that sequences root verification, Jazzer
   verification, packaging, and Docker smoke checks
 
@@ -212,5 +213,5 @@ For structural Gradle changes, the normal bar is:
 ./check.sh
 ```
 
-If Jazzer topology changed, also run at least one live `./gradlew -p jazzer fuzz...` command so
-the operator path is exercised in the same shape contributors will actually use.
+If Jazzer topology changed, also run at least one live `jazzer/bin/fuzz-*` command so the
+operator path is exercised in the same shape contributors will actually use.

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: RUNTIME
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, runtime, sqlite, adapter, posting-fact, store, in-memory, cli, ffm]
   questions: ["how is a posting fact stored in fingrind", "what runtime stores does fingrind expose", "what does the sqlite adapter do in fingrind"]
@@ -109,8 +109,9 @@ public final class SqlitePostingFactStore
 - Book identity: constructor path is the durable book boundary
 - Concurrency: thread-confined to one owning CLI command
 - Reads: return empty for a missing file and do not initialize storage eagerly
-- Commit: creates parent directories, applies the canonical schema bootstrap once per opened
-  handle through `sqlite3_exec`, then maps ordinary duplicate conditions into typed commit
+- Open configuration: enables `foreign_keys` and disables `trusted_schema` on the opened handle
+- Commit: creates parent directories, applies the canonical strict-table schema bootstrap once per
+  opened handle through `sqlite3_exec`, then maps ordinary duplicate conditions into typed commit
   outcomes before insert
 - Process model: opens one in-process SQLite handle per store instance and closes it through `AutoCloseable`
 
