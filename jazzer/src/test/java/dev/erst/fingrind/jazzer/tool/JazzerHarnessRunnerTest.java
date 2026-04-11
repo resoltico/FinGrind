@@ -112,6 +112,27 @@ class JazzerHarnessRunnerTest {
       assertTrue(output.toString().contains("phase=finish status=FAILURE fuzz-test=fuzz exit-code=77"));
       assertTrue(errors.toString().contains("exit code 77"));
     }
+
+    @Test
+    void run_returnsFailureWhenGitHubActionsIsDetected() {
+      StringWriter output = new StringWriter();
+      StringWriter errors = new StringWriter();
+
+      int exitCode =
+          JazzerHarnessRunner.run(
+              SuccessfulFuzzHarnessFixture.class.getName(),
+              new PrintWriter(output, true),
+              new PrintWriter(errors, true),
+              harness -> {
+                throw new AssertionError("executor must not run on GitHub Actions");
+              },
+              () -> true);
+
+      assertEquals(1, exitCode);
+      assertTrue(output.toString().isBlank());
+      assertTrue(errors.toString().contains("must not run on GitHub Actions"));
+      assertTrue(errors.toString().contains("'jazzer/bin/*'"));
+    }
   }
 
   @Nested

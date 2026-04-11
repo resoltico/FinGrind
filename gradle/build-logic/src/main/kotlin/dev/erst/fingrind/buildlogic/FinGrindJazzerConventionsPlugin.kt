@@ -7,6 +7,7 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.configure
@@ -61,6 +62,18 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 java.setSrcDirs(listOf("src/fuzz/java"))
                 resources.setSrcDirs(listOf("src/fuzz/resources"))
             }
+            val jazzerAgentJar =
+                tasks.named<Jar>("jar") {
+                    manifest.attributes(
+                        mapOf(
+                            "Premain-Class" to JAZZER_PREMAIN_CLASS,
+                            "Agent-Class" to JAZZER_PREMAIN_CLASS,
+                            "Can-Redefine-Classes" to "true",
+                            "Can-Retransform-Classes" to "true",
+                            "Can-Set-Native-Method-Prefix" to "true",
+                        ),
+                    )
+                }
             fuzzSourceSet.compileClasspath += mainSourceSet.output
             fuzzSourceSet.runtimeClasspath += mainSourceSet.output
 
@@ -103,8 +116,9 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerHarnessRunner")
                 outputs.upToDateWhen { false }
                 workingDir = layout.projectDirectory.asFile
+                dependsOn(jazzerAgentJar)
                 enableNativeAccess()
-                jvmArgs("-Djdk.attach.allowAttachSelf=true")
+                jvmArgs("-javaagent:${jazzerAgentJar.flatMap { it.archiveFile }.get().asFile.absolutePath}")
                 if (jazzerMaxDuration != null) {
                     systemProperty("jazzer.max_duration", jazzerMaxDuration)
                 }
@@ -218,3 +232,5 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
         }
     }
 }
+
+private const val JAZZER_PREMAIN_CLASS = "dev.erst.fingrind.jazzer.tool.JazzerPremainAgent"

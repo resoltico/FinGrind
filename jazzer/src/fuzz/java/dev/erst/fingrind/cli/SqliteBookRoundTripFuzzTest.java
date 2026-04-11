@@ -9,6 +9,7 @@ import dev.erst.fingrind.application.PostEntryResult.Rejected;
 import dev.erst.fingrind.application.PostingApplicationService;
 import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.runtime.PostingFact;
+import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,9 +36,11 @@ public class SqliteBookRoundTripFuzzTest {
                 CliFuzzSupport.fixedClock());
         PostEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
+          SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
           try (SqlitePostingFactStore reloadedStore = new SqlitePostingFactStore(bookPath)) {
             Optional<PostingFact> storedPosting =
                 reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+            SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);
             if (storedPosting.isEmpty()) {
               throw new IllegalStateException("Committed posting fact was not persisted to SQLite.");
             }

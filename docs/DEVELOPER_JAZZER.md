@@ -1,17 +1,21 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
-  keywords: [fingrind, jazzer, fuzzing, regression, replay, coverage, sqlite, cli, reversal]
-  questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run the fingrind jazzer checks"]
+  keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
+  questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
 ---
 
 # Jazzer Developer Reference
 
-**Purpose**: Explain the nested Jazzer build, supported harnesses, and committed regression workflow.
-**Prerequisites**: Read [DEVELOPER.md](./DEVELOPER.md) for the root build, and use the nested `jazzer/` build only for fuzzing and regression replay.
+**Purpose**: Explain FinGrind's nested Jazzer build, the supported operator surface, and the local-only fuzzing policy.
+**Companion references**:
+- [DEVELOPER.md](./DEVELOPER.md) for the root build, quality gates, and GitHub workflow stance.
+- [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the root-versus-nested build split and shared build logic.
+- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md) for command usage, local state, and cleanup.
+- [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md) for the harness matrix and committed seed floor.
 
 ## Build Boundary
 
@@ -26,9 +30,53 @@ That separation is deliberate:
   vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
+FinGrind now has two distinct Jazzer entrypoint classes of its own:
+- deterministic nested-build verification through `./gradlew -p jazzer ...`
+- active local fuzzing through `jazzer/bin/*`
+
 Active harness launching now goes through Jazzer's official command-line JUnit runner instead of a
 local reimplementation of class discovery. That keeps the operator path aligned with Jazzer's real
 `@FuzzTest` semantics.
+
+## Supported Operator Surface
+
+Use these surfaces intentionally:
+
+- `./gradlew -p jazzer test`
+- `./gradlew -p jazzer jazzerRegression`
+- `./gradlew -p jazzer check`
+
+Those Gradle commands are the deterministic nested-build surface. They are the supported way to
+run Jazzer support tests and committed-seed replay locally, and they are the only Jazzer-shaped
+surface that GitHub should ever exercise.
+
+For active fuzzing, use only:
+
+- `jazzer/bin/fuzz-cli-request`
+- `jazzer/bin/fuzz-posting-workflow`
+- `jazzer/bin/fuzz-sqlite-book-roundtrip`
+- `jazzer/bin/fuzz-all`
+
+Do not run active fuzzing through raw `./gradlew -p jazzer fuzz...` task invocations. Those tasks
+exist as build internals under the wrapper scripts, but they are not the supported fuzz operator
+surface.
+
+## Safety Model
+
+The supported local wrapper surface under `jazzer/bin/*` exists to own the operational details
+that raw Gradle does not communicate clearly enough on its own:
+
+- active fuzzing is forced onto `--no-daemon`
+- only one Jazzer command runs at a time through `jazzer/.local/run-lock`
+- active runs write per-target `latest.log` plus timestamped history logs
+- wrapper-owned interrupt handling tears down the launched Gradle client tree
+- wrapper-owned duration watchdogs enforce the requested max duration plus a fixed grace window
+- active fuzzing preloads a tiny project-owned premain agent so Java 26 does not depend on late
+  self-attach behavior
+
+Active harness execution also hard-fails when `GITHUB_ACTIONS=true`.
+That hard block is deliberate defense in depth: GitHub workflows already avoid active fuzzing, and
+the harness runner rejects it again if a future workflow accidentally wires in a live fuzz task.
 
 ## Topology Contract
 
@@ -52,11 +100,13 @@ or tag-based launcher hints to fuzz classes.
 ./gradlew -p jazzer test
 ./gradlew -p jazzer jazzerRegression
 ./gradlew -p jazzer check
-./gradlew -p jazzer cleanLocalFindings cleanLocalCorpus fuzzAllLocal -PjazzerMaxDuration=30s
-./gradlew -p jazzer fuzzCliRequest -PjazzerMaxDuration=30s
-./gradlew -p jazzer fuzzPostingWorkflow -PjazzerMaxDuration=30s
-./gradlew -p jazzer fuzzSqliteBookRoundTrip -PjazzerMaxDuration=30s
-./gradlew -p jazzer cleanLocalFindings cleanLocalCorpus
+jazzer/bin/regression --console=plain
+jazzer/bin/fuzz-cli-request -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-all -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/clean-local-findings
+jazzer/bin/clean-local-corpus
 ```
 
 ## Harness Inventory
@@ -65,7 +115,7 @@ or tag-based launcher hints to fuzz classes.
 |:--------|:------|:-------------------|
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
 | `posting-workflow` | application preflight and commit behavior | accepted requests commit once, deterministic rejections repeat consistently, duplicates reject deterministically |
-| `sqlite-book-roundtrip` | real filesystem persistence | committed facts reload durably from one selected book, deterministic rejections do not persist state |
+| `sqlite-book-roundtrip` | real filesystem persistence | committed facts reload durably from one selected book, canonical tables stay `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
 ## Deterministic Support Tests
 
@@ -83,7 +133,7 @@ The nested Jazzer build also includes normal JUnit support tests that cover:
 |:--------|:------|:---------------|
 | `cli-request` | `8` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, missing provenance, forbidden recorded-at, forbidden source-channel, unbalanced entry |
 | `posting-workflow` | `5` | success, invalid actor, exponent rejection, missing reversal reason, missing reversal target |
-| `sqlite-book-roundtrip` | `6` | success, nested path, exponent rejection, invalid type, missing reversal reason, missing reversal target |
+| `sqlite-book-roundtrip` | `7` | success, nested path, Unicode round-trip, exponent rejection, invalid type, missing reversal reason, missing reversal target |
 
 ## Regression Philosophy
 

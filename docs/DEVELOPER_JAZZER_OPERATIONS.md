@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
-  keywords: [fingrind, jazzer, operations, gradle-tasks, corpus, findings, regression, fuzzing, cleanup]
+  keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, run-lock]
   questions: ["how do I run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do I clean local jazzer state in fingrind"]
 ---
 
@@ -20,13 +20,18 @@ route:
 |:-----|:--------|
 | `./gradlew -p jazzer test` | run deterministic Jazzer support tests |
 | `./gradlew -p jazzer jazzerRegression` | replay the committed seed floor |
-| `./gradlew -p jazzer fuzzCliRequest` | fuzz raw request parsing |
-| `./gradlew -p jazzer fuzzPostingWorkflow` | fuzz application write workflow |
-| `./gradlew -p jazzer fuzzSqliteBookRoundTrip` | fuzz durable SQLite single-book round-trips |
-| `./gradlew -p jazzer fuzzAllLocal` | run all three active fuzz tasks sequentially |
-| `./gradlew -p jazzer cleanLocalFindings` | delete crash files and non-corpus run state |
-| `./gradlew -p jazzer cleanLocalCorpus` | delete generated local corpora |
 | `./gradlew -p jazzer check` | run support tests plus regression replay |
+| `jazzer/bin/regression` | replay the committed seed floor through the supported wrapper surface |
+| `jazzer/bin/fuzz-cli-request` | fuzz raw request parsing |
+| `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
+| `jazzer/bin/fuzz-sqlite-book-roundtrip` | fuzz durable SQLite single-book round-trips |
+| `jazzer/bin/fuzz-all` | run all three active fuzz tasks sequentially |
+| `jazzer/bin/clean-local-findings` | delete crash files and non-corpus run state |
+| `jazzer/bin/clean-local-corpus` | delete generated local corpora |
+
+Use the Gradle entries above only for deterministic nested-build verification.
+Use `jazzer/bin/*` for active fuzzing and local Jazzer operations.
+Do not run active fuzzing through raw `./gradlew -p jazzer fuzz...` tasks.
 
 ## Common Workflows
 
@@ -41,40 +46,58 @@ This runs root verification first and then nested `jazzer check`.
 ### Run the CI-equivalent Jazzer gate only
 
 ```bash
-./gradlew -p jazzer test jazzerRegression --no-daemon
+./gradlew -p jazzer check --no-daemon --console=plain
 ```
 
 ### Run one active harness
 
 ```bash
-./gradlew -p jazzer fuzzSqliteBookRoundTrip -PjazzerMaxDuration=10s --no-daemon
+jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=10s --console=plain
 ```
 
-Accepted throttles come directly from the nested build:
+Accepted throttles still come directly from the nested build:
 - `-PjazzerMaxDuration=<duration>`
 - `-PjazzerMaxExecutions=<count>`
+
+The wrapper adds the operator safety contract:
+- forces `--no-daemon` for active fuzzing
+- serializes all Jazzer commands through `jazzer/.local/run-lock`
+- writes `latest.log` and `history/<timestamp>/run.log`
+- owns `INT` and `TERM` cleanup for the launched Gradle client tree
 
 ### Run all active harnesses sequentially
 
 ```bash
-./gradlew -p jazzer fuzzAllLocal -PjazzerMaxDuration=10s --no-daemon
+jazzer/bin/fuzz-all -PjazzerMaxDuration=10s --console=plain
+```
+
+### Replay the committed regression floor
+
+```bash
+jazzer/bin/regression --console=plain
 ```
 
 ### Clean local state before a fresh fuzz pass
 
 ```bash
-./gradlew -p jazzer cleanLocalFindings cleanLocalCorpus --no-daemon
+jazzer/bin/clean-local-findings
+jazzer/bin/clean-local-corpus
 ```
 
 ## Output Model
 
-FinGrind intentionally keeps the current local output model simple.
+FinGrind intentionally keeps the current local output model simple and file-based.
 
 Each active harness uses:
 
 ```text
 jazzer/.local/runs/<target>/
 ├── .cifuzz-corpus/
+├── latest.log
+├── history/
+│   └── <timestamp>/
+│       ├── run.log
+│       └── timed-out
 ├── crash-*
 ├── leak-*
 ├── oom-*
@@ -84,16 +107,21 @@ jazzer/.local/runs/<target>/
 
 What these artifacts mean:
 - `.cifuzz-corpus/`: generated local corpus for that harness
+- `latest.log`: log of the most recent run for that harness
+- `history/<timestamp>/run.log`: immutable log for one completed or interrupted run
+- `history/<timestamp>/timed-out`: wrapper-written marker when the requested duration plus grace was exceeded
 - `crash-*`: replayable failing input captured by libFuzzer
 - `timeout-*`: timeout-class finding captured by libFuzzer
 - `oom-*`: out-of-memory finding captured by libFuzzer
 - `leak-*`: leak-class finding captured by libFuzzer
 - `slow-unit-*`: unusually slow input worth manual inspection even when the run succeeds
 
+The shared wrapper lock lives at `jazzer/.local/run-lock/`.
+
 There is still no promotion or corpus-summary CLI. Today the primary operator surface is:
 - committed seeds in source control
 - committed regression metadata in source control
-- the Gradle tasks above
+- the supported commands above
 - direct inspection of `.local/runs/`
 
 ## Progress Pulses
@@ -116,7 +144,9 @@ Interpretation:
 
 ## Operational Rules
 
-- Keep active fuzzing local. CI runs regression only.
+- Keep active fuzzing local. GitHub CI does not run nested Jazzer tasks today.
+- GitHub Actions must never run `jazzer/bin/*`; active harness execution hard-fails when `GITHUB_ACTIONS=true`.
+- Treat raw `./gradlew -p jazzer fuzz...` task names as implementation details under the wrapper scripts.
 - Keep local corpora uncommitted.
 - Treat any new `crash-*` file as a bug until replay or root-cause analysis proves otherwise.
 - Clean findings after intentional fixes so the local run directory reflects the current state.

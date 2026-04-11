@@ -255,6 +255,7 @@ public final class SqlitePostingFactStore implements PostingFactStore, AutoClose
     try {
       database = SqliteNativeLibrary.open(bookPath);
       database.executeStatement("pragma foreign_keys = on");
+      database.executeStatement("pragma trusted_schema = off");
       return database;
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to open SQLite book connection.", exception);

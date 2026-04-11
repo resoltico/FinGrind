@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: APPLICATION
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, application, post-entry, preflight, rejection, committed, write-boundary, sealed-result]
   questions: ["how does the post-entry application boundary work", "what results can posting return in fingrind", "what deterministic rejections does fingrind expose"]

@@ -19,7 +19,7 @@
 #   :cli:shadowJar -> build the distributable fat JAR
 #
 # Stage 4 syntax-checks the release-surface shell scripts:
-#   bash -n check.sh scripts/*.sh
+#   bash -n check.sh scripts/*.sh jazzer/bin/*
 #
 # Stage 5 exercises the Docker release surface from a non-default working directory:
 #   scripts/docker-smoke.sh -> build the image and verify help/request/response/save behavior
@@ -104,6 +104,7 @@ readonly stall_threshold_seconds=90
 readonly gradle_test_pulse_interval_millis=$((pulse_interval_seconds * 1000))
 readonly jazzer_regression_target_count=3
 readonly diagnostics_command_timeout_seconds=5
+readonly diagnostics_process_capture_limit=6
 readonly stall_exit_code=124
 
 format_duration() {
@@ -131,7 +132,7 @@ print_usage() {
         '  1. check coverage' \
         '  2. jazzer check' \
         '  3. :cli:shadowJar' \
-        '  4. bash -n check.sh scripts/*.sh' \
+        '  4. bash -n check.sh scripts/*.sh jazzer/bin/*' \
         '  5. scripts/docker-smoke.sh' \
         '' \
         'Supported options:' \
@@ -420,11 +421,21 @@ capture_stage_diagnostics() {
         } | awk '!seen[$0]++'
     )
 
+    {
+        printf 'process_count=%s\n' "${#process_ids[@]}"
+        printf 'diagnostics_process_capture_limit=%s\n' "${diagnostics_process_capture_limit}"
+    } >>"${snapshot_dir}/metadata.txt"
+
     if ((${#process_ids[@]} > 0)); then
         ps -o pid=,ppid=,etime=,%cpu=,%mem=,command= -p "${process_ids[@]}" \
             >"${snapshot_dir}/process-tree.txt" 2>&1 || true
+        local captured_process_ids=("${process_ids[@]}")
+        if ((${#captured_process_ids[@]} > diagnostics_process_capture_limit)); then
+            captured_process_ids=("${captured_process_ids[@]:0:${diagnostics_process_capture_limit}}")
+            printf 'process_capture_truncated=true\n' >>"${snapshot_dir}/metadata.txt"
+        fi
         if command -v lsof >/dev/null 2>&1; then
-            for process_id in "${process_ids[@]}"; do
+            for process_id in "${captured_process_ids[@]}"; do
                 capture_with_timeout \
                     "${snapshot_dir}/lsof-${process_id}.txt" \
                     "${diagnostics_command_timeout_seconds}" \
@@ -432,7 +443,7 @@ capture_stage_diagnostics() {
             done
         fi
         if command -v jcmd >/dev/null 2>&1; then
-            for process_id in "${process_ids[@]}"; do
+            for process_id in "${captured_process_ids[@]}"; do
                 if ps -o command= -p "${process_id}" 2>/dev/null | grep -q '[j]ava'; then
                     capture_with_timeout \
                         "${snapshot_dir}/jcmd-${process_id}-thread-print.txt" \
@@ -773,6 +784,11 @@ if [[ -d "${repo_root}/scripts" ]]; then
     while IFS= read -r shell_script_path; do
         shell_syntax_targets+=("${shell_script_path}")
     done < <(find "${repo_root}/scripts" -maxdepth 1 -type f -name '*.sh' | sort)
+fi
+if [[ -d "${repo_root}/jazzer/bin" ]]; then
+    while IFS= read -r shell_script_path; do
+        shell_syntax_targets+=("${shell_script_path}")
+    done < <(find "${repo_root}/jazzer/bin" -maxdepth 1 -type f | sort)
 fi
 
 run_shell_stage 'shell-syntax' 'Stage 4/5: syntax-checking release-surface shell scripts' \

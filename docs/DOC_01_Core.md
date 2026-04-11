@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: CORE
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, core, journal, money, provenance, reversal, account-code, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind"]

@@ -14,6 +14,7 @@ The current model is intentionally strict:
 - one book belongs to one entity
 - the book file can live anywhere on the OS filesystem
 - one canonical current schema defines new books
+- new books use SQLite `STRICT` tables
 - there is no migration or backward-compatibility layer
 - journal entries must balance before they can cross the write boundary
 - caller-supplied request provenance is separate from committed audit metadata
@@ -44,7 +45,7 @@ Build the standalone CLI JAR:
 
 Controlled FinGrind surfaces now pin a managed SQLite 3.53.0 runtime:
 - `./gradlew test`, `./gradlew check`, and `./gradlew :cli:run`
-- `./gradlew -p jazzer check` and local Jazzer fuzzing commands
+- `./gradlew -p jazzer check` and local `jazzer/bin/*` fuzzing commands
 - GitHub Actions verification and release workflows
 - the published container image
 
@@ -136,7 +137,13 @@ Current deterministic rejection codes are:
 - The packaged JAR does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - `./gradlew :cli:run ...` automatically injects the managed SQLite 3.53.0 runtime.
-- `./gradlew -p jazzer ...` uses the same managed SQLite 3.53.0 contract for local regression and fuzzing.
+- `./gradlew -p jazzer check` uses the same managed SQLite 3.53.0 contract for deterministic
+  nested Jazzer verification.
+- `jazzer/bin/*` uses that same managed SQLite 3.53.0 contract for supported local active fuzzing,
+  regression replay, and cleanup.
+- Active fuzzing is local-only. GitHub Actions intentionally never runs `jazzer/bin/*`, and active
+  harness execution hard-fails when `GITHUB_ACTIONS=true`.
+- Opened book connections keep `foreign_keys` enabled and `trusted_schema` disabled.
 - Standalone `java -jar ...` execution requires either `FINGRIND_SQLITE_LIBRARY` or a host
   `libsqlite3` at version 3.53.0 or newer.
 - `help`, `version`, and `capabilities` return JSON envelopes for discovery.

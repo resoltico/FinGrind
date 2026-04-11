@@ -22,6 +22,7 @@ final class SqliteNativeLibrary {
 
   static final int SQLITE_CONSTRAINT_UNIQUE = 2067;
   static final int SQLITE_CONSTRAINT_PRIMARYKEY = 1555;
+  static final int SQLITE_CONSTRAINT_DATATYPE = 3091;
 
   private static final int SQLITE_BUSY_TIMEOUT_MILLIS = 5_000;
 
@@ -351,6 +352,7 @@ final class SqliteNativeLibrary {
       case SQLITE_DONE -> "SQLITE_DONE";
       case SQLITE_CONSTRAINT_UNIQUE -> "SQLITE_CONSTRAINT_UNIQUE";
       case SQLITE_CONSTRAINT_PRIMARYKEY -> "SQLITE_CONSTRAINT_PRIMARYKEY";
+      case SQLITE_CONSTRAINT_DATATYPE -> "SQLITE_CONSTRAINT_DATATYPE";
       case 787 -> "SQLITE_CONSTRAINT_FOREIGNKEY";
       case 14 -> "SQLITE_CANTOPEN";
       case 526 -> "SQLITE_CANTOPEN_ISDIR";

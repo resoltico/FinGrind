@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce"]
@@ -45,7 +45,7 @@ application/  Explicit write boundary:
 sqlite/       Durable single-book adapter:
               one SQLite file per entity book, persisted through an in-process SQLite adapter
               backed by Java 26 FFM and a managed SQLite 3.53.0 runtime on controlled surfaces
-              and the canonical `book_schema.sql`.
+              and the canonical strict-table `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus preflight-entry and post-entry.
@@ -63,6 +63,7 @@ application -> core
 FinGrind is intentionally hard-break oriented right now:
 - one SQLite file is one book for one entity
 - one canonical current schema defines new books
+- the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
 - no migration framework or backward-compatibility layer exists yet
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
@@ -95,8 +96,13 @@ java --version
 Nested Jazzer verification:
 
 ```bash
-./gradlew -p jazzer test jazzerRegression
-./gradlew -p jazzer cleanLocalFindings cleanLocalCorpus fuzzAllLocal -PjazzerMaxDuration=30s
+./gradlew -p jazzer test
+./gradlew -p jazzer jazzerRegression
+./gradlew -p jazzer check
+jazzer/bin/fuzz-cli-request -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-all -PjazzerMaxDuration=30s --console=plain
 ```
 
 Local CLI usage from source:
@@ -138,6 +144,11 @@ compiles its own managed SQLite 3.53.0 shared library from `../third_party/sqlit
 that path through `FINGRIND_SQLITE_LIBRARY` for its support tests, regression replay, and local
 active fuzzing commands.
 
+For active fuzzing, the supported operator surface is now `jazzer/bin/*`.
+Those wrappers force active fuzz runs onto `--no-daemon`, serialize Jazzer commands through one
+run lock, and own interrupt cleanup. Raw `./gradlew -p jazzer fuzz...` task names remain build
+internals and are not the supported live-fuzz entrypoint.
+
 Shared Gradle plugins, managed-SQLite task types, and pulse listeners now live under
 `gradle/build-logic`, and the nested Jazzer build imports both that included build and the root
 version catalog. See [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the ownership map and
@@ -160,7 +171,8 @@ library path.
 
 GitHub workflows do not run active fuzzing, standalone Jazzer support tests, or regression replay.
 Jazzer remains a local-only verification surface through `./check.sh` and the nested `jazzer/`
-build.
+build. Active harness execution also hard-fails when `GITHUB_ACTIONS=true`, so a future workflow
+cannot silently become a live-fuzz surface by mistake.
 
 Operational protocols for those surfaces live in:
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)

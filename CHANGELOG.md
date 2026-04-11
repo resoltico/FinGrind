@@ -5,6 +5,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-11
+
+### Changed
+- Hardened newly initialized SQLite books by making the canonical `posting_fact` and
+  `journal_line` tables `STRICT`, so durable storage now rejects non-lossless type mismatches at
+  the SQLite layer instead of relying only on the Java model.
+- Standardized the supported Jazzer operator surface around `jazzer/bin/*`, rewrote the
+  developer-facing fuzzing and workflow docs to make active fuzzing explicitly local-only, and
+  clarified that raw `./gradlew -p jazzer fuzz...` task names are build internals rather than the
+  supported live-fuzz interface.
+
+### Fixed
+- Opened SQLite book connections now disable `trusted_schema` while keeping `foreign_keys`
+  enabled, tightening the runtime trust boundary for agent-facing CLI usage.
+- Extended SQLite verification and local Jazzer round-trip assertions so the current hardening
+  contract explicitly checks strict-table persistence, pragma configuration, and the committed
+  Unicode round-trip seed inventory.
+- Active Jazzer harness execution now hard-blocks when `GITHUB_ACTIONS=true`, preloads a
+  project-owned premain agent to avoid late Java 26 self-attach behavior, and runs local active
+  fuzzing through wrapper-owned `--no-daemon`, run-lock, timeout, and interrupt-cleanup paths.
+- Capped `./check.sh` stall diagnostics process capture so a genuinely stuck local stage does not
+  fan out into unbounded `jcmd` and `lsof` collection across every descendant process.
+
 ## [0.4.0] - 2026-04-10
 
 ### Changed
@@ -121,7 +144,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.5.0
 [0.4.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.4.0
 [0.3.1]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.1
 [0.3.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.0

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book"]
@@ -36,7 +36,7 @@ create table if not exists posting_fact (
         or
         (prior_posting_id is not null and reason is not null)
     )
-);
+) strict;
 
 create table if not exists journal_line (
     posting_id text not null,
@@ -47,7 +47,7 @@ create table if not exists journal_line (
     amount text not null,
     primary key (posting_id, line_order),
     foreign key (posting_id) references posting_fact(posting_id)
-);
+) strict;
 
 create index if not exists posting_fact_by_prior_posting_id
     on posting_fact (prior_posting_id);
@@ -76,6 +76,7 @@ Important rules:
 - `prior_posting_id` must reference another committed posting when reversal linkage is present
 - `prior_posting_id` and `reason` must appear together or not at all
 - only one reversal row may point at the same `prior_posting_id`
+- the table is `STRICT`, so SQLite rejects non-lossless type mismatches at the storage layer
 
 ### `journal_line`
 
@@ -88,6 +89,7 @@ Important rules:
 - `entry_side` is constrained to `DEBIT` or `CREDIT`
 - `line_order` must be zero or greater
 - balancing is enforced in the domain model before persistence, not by SQL triggers
+- the table is `STRICT`, so SQLite rejects non-lossless type mismatches at the storage layer
 
 ## Schema Invariants
 
@@ -98,6 +100,12 @@ Important rules:
 - Journal lines are children of one committed posting fact.
 - Book-local idempotency is durable through the unique constraint on `idempotency_key`.
 - Reversal uniqueness is durable through a partial unique index on `prior_posting_id`.
+- Both durable tables are SQLite `STRICT` tables.
+
+## Connection Hardening
+
+- FinGrind opens book connections with `pragma foreign_keys = on`.
+- FinGrind opens book connections with `pragma trusted_schema = off`.
 
 ## Schema Posture
 

@@ -99,6 +99,86 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  void commit_initializesCanonicalTablesAsStrict() throws SqliteNativeException {
+    Path databasePath = tempDirectory.resolve("strict-schema.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
+      postingFactStore.commit(
+          postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
+    }
+
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(databasePath);
+    try {
+      assertEquals(
+          1,
+          queryInt(
+              database,
+              "select strict from pragma_table_list('posting_fact') where name = 'posting_fact'"));
+      assertEquals(
+          1,
+          queryInt(
+              database,
+              "select strict from pragma_table_list('journal_line') where name = 'journal_line'"));
+    } finally {
+      database.close();
+    }
+  }
+
+  @Test
+  void commit_configuresOpenConnectionForForeignKeysAndUntrustedSchema() throws Exception {
+    Path databasePath = tempDirectory.resolve("connection-pragmas.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(databasePath)) {
+      postingFactStore.commit(
+          postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
+
+      SqliteNativeDatabase activeDatabase = storeDatabase(postingFactStore);
+      assertEquals(1, queryInt(activeDatabase, "pragma foreign_keys"));
+      assertEquals(0, queryInt(activeDatabase, "pragma trusted_schema"));
+    }
+  }
+
+  @Test
+  void canonicalStrictSchema_rejectsNonLosslessTypeMismatches() throws SqliteNativeException {
+    Path bookPath = tempDirectory.resolve("strict-datatype.sqlite");
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath);
+
+    try {
+      SqliteSchemaManager.initializeBook(database);
+      insertPostingFactRow(database, "posting-1", "idem-1");
+
+      SqliteNativeException exception =
+          assertThrows(
+              SqliteNativeException.class,
+              () ->
+                  database.executeStatement(
+                      """
+                      insert into journal_line (
+                          posting_id,
+                          line_order,
+                          account_code,
+                          entry_side,
+                          currency_code,
+                          amount
+                      ) values (
+                          'posting-1',
+                          'not-an-integer',
+                          '1000',
+                          'DEBIT',
+                          'EUR',
+                          '10.00'
+                      )
+                      """));
+
+      assertEquals(SqliteNativeLibrary.SQLITE_CONSTRAINT_DATATYPE, exception.resultCode());
+      assertEquals("SQLITE_CONSTRAINT_DATATYPE", exception.resultName());
+      assertEquals(0, queryInt(database, "select count(*) from journal_line"));
+    } finally {
+      database.close();
+    }
+  }
+
+  @Test
   void findByPostingId_returnsEmptyWhenExistingBookHasNoMatchingPosting() {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
     PostingFact postingFact =
@@ -524,6 +604,16 @@ class SqlitePostingFactStoreTest {
     };
   }
 
+  private static int queryInt(SqliteNativeDatabase database, String sql)
+      throws SqliteNativeException {
+    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
+      assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+      int value = statement.columnInt(0);
+      assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
+      return value;
+    }
+  }
+
   private static PostingFact postingFact(
       String postingId,
       String idempotencyKey,
@@ -566,6 +656,42 @@ class SqlitePostingFactStoreTest {
         new AccountCode(accountCode),
         side,
         new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+  }
+
+  private static void insertPostingFactRow(
+      SqliteNativeDatabase database, String postingId, String idempotencyKey)
+      throws SqliteNativeException {
+    database.executeStatement(
+        """
+        insert into posting_fact (
+            posting_id,
+            effective_date,
+            recorded_at,
+            actor_id,
+            actor_type,
+            command_id,
+            idempotency_key,
+            causation_id,
+            correlation_id,
+            reason,
+            source_channel,
+            prior_posting_id
+        ) values (
+            '%s',
+            '2026-04-07',
+            '2026-04-07T10:15:30Z',
+            'actor-1',
+            'AGENT',
+            'command-%s',
+            '%s',
+            'cause-1',
+            null,
+            null,
+            'CLI',
+            null
+        )
+        """
+            .formatted(postingId, postingId, idempotencyKey));
   }
 
   @SuppressWarnings("PMD.SignatureDeclareThrowsException")
@@ -637,6 +763,14 @@ class SqlitePostingFactStoreTest {
     Field field = SqlitePostingFactStore.class.getDeclaredField("database");
     field.setAccessible(true);
     field.set(postingFactStore, database);
+  }
+
+  @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.SignatureDeclareThrowsException"})
+  private static SqliteNativeDatabase storeDatabase(SqlitePostingFactStore postingFactStore)
+      throws Exception {
+    Field field = SqlitePostingFactStore.class.getDeclaredField("database");
+    field.setAccessible(true);
+    return (SqliteNativeDatabase) field.get(postingFactStore);
   }
 
   @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.SignatureDeclareThrowsException"})

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -18,7 +18,7 @@ route:
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, and legacy-field hard breaks | `8` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
-| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | durable round-trip in one real SQLite book file and no-persist deterministic rejections | `6` |
+| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | durable round-trip in one real SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
 ## `cli-request`
 
@@ -63,6 +63,8 @@ What it asserts:
 - reloading by idempotency returns the same fact shape
 - duplicate commit attempts are rejected in the same book
 - parent-directory creation works for nested arbitrary paths
+- committed books keep both canonical tables in SQLite `STRICT` mode
+- reloaded store connections keep `foreign_keys = on` and `trusted_schema = off`
 - deterministic reversal rejections do not create or mutate durable book state
 
 ## Committed Seed Inventory
@@ -87,6 +89,7 @@ What it asserts:
 | `sqlite-book-roundtrip` | `reversal_target_missing.json` | deterministic rejection does not persist |
 | `sqlite-book-roundtrip` | `invalid_amount_exponent.json` | exponent notation rejection |
 | `sqlite-book-roundtrip` | `nested_valid.json` | nested-path round-trip with optional provenance fields |
+| `sqlite-book-roundtrip` | `unicode_valid.json` | Unicode round-trip through strict SQLite storage |
 | `sqlite-book-roundtrip` | `invalid_wrong_type.json` | malformed field-type rejection case |
 
 ## Current Gaps

@@ -33,6 +33,7 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Check and enforce coverage
+        # Active Jazzer fuzzing is intentionally local-only and hard-fails under GITHUB_ACTIONS.
         run: ./gradlew check --no-daemon
 
       - name: Verify managed SQLite CLI runtime

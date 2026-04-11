@@ -18,7 +18,7 @@ create table if not exists posting_fact (
         or
         (prior_posting_id is not null and reason is not null)
     )
-);
+) strict;
 
 create table if not exists journal_line (
     posting_id text not null,
@@ -29,7 +29,7 @@ create table if not exists journal_line (
     amount text not null,
     primary key (posting_id, line_order),
     foreign key (posting_id) references posting_fact(posting_id)
-);
+) strict;
 
 create index if not exists posting_fact_by_prior_posting_id
     on posting_fact (prior_posting_id);

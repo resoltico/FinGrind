@@ -149,6 +149,7 @@ class SqliteNativeLibraryTest {
     assertEquals("SQLITE_DONE", SqliteNativeLibrary.resultName(101));
     assertEquals("SQLITE_CONSTRAINT_UNIQUE", SqliteNativeLibrary.resultName(2067));
     assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", SqliteNativeLibrary.resultName(1555));
+    assertEquals("SQLITE_CONSTRAINT_DATATYPE", SqliteNativeLibrary.resultName(3091));
     assertEquals("SQLITE_CONSTRAINT_FOREIGNKEY", SqliteNativeLibrary.resultName(787));
     assertEquals("SQLITE_CANTOPEN", SqliteNativeLibrary.resultName(14));
     assertEquals("SQLITE_CANTOPEN_ISDIR", SqliteNativeLibrary.resultName(526));

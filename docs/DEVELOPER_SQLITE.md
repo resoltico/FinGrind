@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
-  keywords: [fingrind, sqlite, ffm, java26, storage, single-book, filesystem-path, schema, canonical-schema, no-migrations]
+  keywords: [fingrind, sqlite, ffm, java26, storage, single-book, filesystem-path, schema, canonical-schema, strict, trusted-schema, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new book"]
 ---
 
@@ -37,6 +37,7 @@ Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
 - keep one open native SQLite handle per opened book store
 - initialize the schema from the canonical embedded SQL resource through `sqlite3_exec`
+- create canonical book tables as SQLite `STRICT` tables
 - use prepared statements through the native SQLite C API
 - rely on the chosen book path as the durable boundary
 
@@ -84,6 +85,7 @@ The SQLite adapter is split into focused collaborators:
 
 - Reads and preflight against a missing book return empty state and do not create a file.
 - The first commit creates parent directories if needed and initializes the canonical schema on the opened writable connection.
+- Opened book handles keep `foreign_keys = on` and `trusted_schema = off`.
 - Schema bootstrap is intentionally separate from the posting transaction because it is idempotent
   book initialization, not one accounting fact commit.
 - Book-local uniqueness enforces duplicate idempotency durably.
@@ -115,6 +117,7 @@ text or re-querying after rollback.
 ## Canonical Schema Policy
 
 - The canonical schema resource is [`book_schema.sql`](/Users/erst/Tools/FinGrind/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql).
+- The canonical schema uses SQLite `STRICT` tables for both durable tables.
 - There are no versioned migration file names such as `V1__...`.
 - There is no migration step between old and new book shapes.
 - If the schema changes again during this hard-break phase, new books are created from the new canonical file.

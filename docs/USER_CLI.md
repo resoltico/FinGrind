@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.4.0"
+version: "0.5.0"
 domain: USER_CLI
-updated: "2026-04-10"
+updated: "2026-04-11"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, ffm, request-file, book-file, stdin, preflight]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "what exit codes does the fingrind cli use"]
