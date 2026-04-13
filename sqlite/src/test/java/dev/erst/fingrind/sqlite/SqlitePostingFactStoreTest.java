@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.application.PostingCommitResult;
+import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -23,8 +25,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.runtime.PostingCommitResult;
-import dev.erst.fingrind.runtime.PostingFact;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -296,7 +296,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class, () -> postingFactStore.commit(invalidReversalFact));
 
       assertTrue(exception.getMessage().contains("Failed to commit SQLite posting fact."));
-      assertTrue(exception.getMessage().contains("FOREIGN KEY"));
+      assertTrue(exception.getMessage().contains("SQLITE_CONSTRAINT_FOREIGNKEY"));
     }
   }
 

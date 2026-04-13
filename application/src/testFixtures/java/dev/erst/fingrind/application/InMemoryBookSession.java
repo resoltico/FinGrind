@@ -1,4 +1,4 @@
-package dev.erst.fingrind.runtime;
+package dev.erst.fingrind.application;
 
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** In-memory posting store for tests and non-durable runtime composition. */
-public final class InMemoryPostingFactStore implements PostingFactStore {
+/** In-memory book session for tests and non-durable harness composition. */
+public final class InMemoryBookSession implements BookSession {
   private final Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey =
       new ConcurrentHashMap<>();
   private final Map<PostingId, PostingFact> postingsByPostingId = new ConcurrentHashMap<>();
@@ -51,5 +51,10 @@ public final class InMemoryPostingFactStore implements PostingFactStore {
       }
     }
     return new PostingCommitResult.Committed(postingFact);
+  }
+
+  @Override
+  public void close() {
+    // No resources to release for the in-memory test fixture.
   }
 }

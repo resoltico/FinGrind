@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, sqlite, ffm, java26, storage, single-book, filesystem-path, schema, canonical-schema, strict, trusted-schema, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new book"]
@@ -31,11 +31,11 @@ Older book shapes are out of scope for the current foundation.
 
 ## Current Adapter Choice
 
-FinGrind's durable adapter is [`SqlitePostingFactStore`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
+FinGrind's durable adapter is [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
 
 Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
-- keep one open native SQLite handle per opened book store
+- keep one open native SQLite handle per opened book session
 - initialize the schema from the canonical embedded SQL resource through `sqlite3_exec`
 - create canonical book tables as SQLite `STRICT` tables
 - use prepared statements through the native SQLite C API
@@ -58,28 +58,28 @@ Observed implementation note:
 Current runtime policy:
 - root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
   image all build from the vendored official SQLite 3.53.0 amalgamation under
-  [`third_party/sqlite/sqlite-amalgamation-3530000/`](/Users/erst/Tools/FinGrind/third_party/sqlite/sqlite-amalgamation-3530000)
-- [`verifyManagedSqliteSource`](/Users/erst/Tools/FinGrind/build.gradle.kts) asserts the pinned
+- [`third_party/sqlite/sqlite-amalgamation-3530000/`](../third_party/sqlite/sqlite-amalgamation-3530000)
+- [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned
   `sqlite3.c` SHA3-256 before the managed native library is used
-- [`prepareManagedSqlite`](/Users/erst/Tools/FinGrind/build.gradle.kts) compiles the host-native
+- [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native
   shared library and injects it through `FINGRIND_SQLITE_LIBRARY`
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not fall back to an older host library
 - standalone `java -jar` execution still allows a compatible external library, but
-  [`SqliteNativeLibrary`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
+  [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
   rejects anything older than SQLite 3.53.0
 
 ## Adapter Composition
 
 The SQLite adapter is split into focused collaborators:
-- [`SqlitePostingFactStore`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java): owns one thread-confined book session, lookup paths, transaction-scoped duplicate checks, and durable commit outcomes
-- [`SqliteNativeLibrary`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java): minimal FFM binding surface to the SQLite C API, including configured-library selection, version enforcement, and `sqlite3_exec` for canonical schema application
-- [`SqliteNativeDatabase`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java): one open native SQLite database handle with distinct control-statement and script helpers
-- [`SqliteNativeStatement`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java): single-use prepared statement wrapper with statement-scoped native memory; bound text length is derived from the native UTF-8 segment size instead of re-encoding Java strings on every bind
-- [`SqliteSchemaManager`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSchemaManager.java): lazily loads and caches the canonical schema resource, then applies it on the writable connection
-- [`SqlitePostingSql`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSql.java): holds canonical lookup and insert SQL strings
-- [`SqlitePostingMapper`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingMapper.java): reconstructs domain facts from native SQLite result rows
-- [`SqliteRuntime`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRuntime.java): exposes machine-readable runtime probe metadata to the CLI surface
+- [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java): owns one thread-confined book session, lookup paths, transaction-scoped duplicate checks, and durable commit outcomes
+- [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java): minimal FFM binding surface to the SQLite C API, including configured-library selection, version enforcement, and `sqlite3_exec` for canonical schema application
+- [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java): one open native SQLite database handle with distinct control-statement and script helpers
+- [`SqliteNativeStatement`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java): single-use prepared statement wrapper with statement-scoped native memory; bound text length is derived from the native UTF-8 segment size instead of re-encoding Java strings on every bind
+- [`SqliteSchemaManager`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSchemaManager.java): lazily loads and caches the canonical schema resource, then applies it on the writable connection
+- [`SqlitePostingSql`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSql.java): holds canonical lookup and insert SQL strings
+- [`SqlitePostingMapper`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingMapper.java): reconstructs domain facts from native SQLite result rows
+- [`SqliteRuntime`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRuntime.java): exposes machine-readable runtime probe metadata to the CLI surface
 
 ## Runtime Behavior
 
@@ -95,7 +95,7 @@ The SQLite adapter is split into focused collaborators:
   `requiredMinimumSqliteVersion`, `sqliteRuntimeStatus`, and `loadedSqliteVersion` through
   `capabilities`.
 
-The runtime seam distinguishes ordinary duplicate outcomes from true runtime failures:
+The book-session seam distinguishes ordinary duplicate outcomes from true runtime failures:
 - duplicate idempotency returns `PostingCommitResult.DuplicateIdempotency`
 - duplicate reversal target returns `PostingCommitResult.DuplicateReversalTarget`
 - other SQLite-native, bridge, or filesystem failures stay `IllegalStateException` and become CLI
@@ -109,14 +109,14 @@ The runtime seam distinguishes ordinary duplicate outcomes from true runtime fai
   before insert on the same native handle
 - ordinary duplicate outcomes are decided before `insert into posting_fact`, not inferred after a
   rolled-back write failure
-- commit rolls back on failure and closes the handle when the store closes
+- commit rolls back on failure and closes the handle when the session closes
 
 This keeps ordinary duplicate outcomes deterministic without parsing human-readable SQLite error
 text or re-querying after rollback.
 
 ## Canonical Schema Policy
 
-- The canonical schema resource is [`book_schema.sql`](/Users/erst/Tools/FinGrind/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql).
+- The canonical schema resource is [`book_schema.sql`](../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql).
 - The canonical schema uses SQLite `STRICT` tables for both durable tables.
 - There are no versioned migration file names such as `V1__...`.
 - There is no migration step between old and new book shapes.
@@ -140,7 +140,7 @@ managed library through `FINGRIND_SQLITE_LIBRARY`. Standalone execution may stil
 library, but only if it satisfies the same 3.53.0 minimum.
 
 Native bridge notes:
-- the SQLite symbol arena in [`SqliteNativeLibrary`](/Users/erst/Tools/FinGrind/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java) intentionally lives for the JVM lifetime because the downcall handles outlive any individual book session
+- the SQLite symbol arena in [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java) intentionally lives for the JVM lifetime because the downcall handles outlive any individual book session
 - native library lookup prefers `FINGRIND_SQLITE_LIBRARY`, then falls back to the platform default
   `libsqlite3`
 - runtime initialization validates the loaded SQLite version before any book operation is allowed
@@ -148,8 +148,10 @@ Native bridge notes:
   arena lifetime conventions
 - error messages and SQLite version strings read exact C-string lengths rather than a guessed fixed
   byte cap
+- close-failure and stale-handle failure shaping fall back to `sqlite3_errstr(resultCode)` so
+  diagnostics do not dereference invalid database handles just to render an exception message
 - `sqlite3_exec` failure reporting prefers the exec-owned error buffer when SQLite provides one,
-  then falls back to `sqlite3_errmsg(db)`
+  then falls back to `sqlite3_errstr(resultCode)`
 
 This is a deliberate hard-break correction to the earlier shell-out design, not an accidental
 runtime experiment.

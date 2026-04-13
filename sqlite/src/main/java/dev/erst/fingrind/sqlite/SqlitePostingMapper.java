@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -17,7 +18,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.runtime.PostingFact;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;

@@ -5,6 +5,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-13
+
+### Changed
+- Hard-broke the module graph to `core -> application -> sqlite -> cli` by deleting the
+  `runtime` module, moving committed posting facts and ordinary commit outcomes into
+  `application`, renaming the persistence seam to `BookSession`, and moving the in-memory session
+  fixture onto the application test-fixture classpath.
+- Switched the default production posting identity from UUID v4 to project-owned UUID v7
+  generation, so CLI commits now return time-ordered `postingId` values by default.
+- Updated public and developer documentation to describe the new book-session architecture and to
+  codify the supported Gradle setup as wrapper-only, local-filesystem-first development.
+
+### Fixed
+- Hardened SQLite native failure shaping so stale-handle and close-failure paths use
+  handle-independent SQLite error strings instead of dereferencing invalid database handles while
+  formatting exceptions.
+- Hardened Docker smoke verification on fresh Docker Desktop workstations by running the public
+  image flow through an anonymous `DOCKER_CONFIG` while still targeting the active local Docker
+  engine, avoiding credential-helper stalls during public base-image resolution.
+- Documented the verified workstation constraint that full Gradle and JaCoCo verification belongs
+  on the local filesystem; external mounted volumes can fail file-locking requirements during
+  project cache or coverage execution.
+
 ## [0.5.0] - 2026-04-11
 
 ### Changed
@@ -144,7 +167,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.6.0
 [0.5.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.5.0
 [0.4.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.4.0
 [0.3.1]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.1

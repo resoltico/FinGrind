@@ -7,4 +7,4 @@ plugins {
 }
 
 rootProject.name = "FinGrind"
-include("core", "runtime", "application", "sqlite", "cli")
+include("core", "application", "sqlite", "cli")

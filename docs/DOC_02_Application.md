@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: APPLICATION
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
-  keywords: [fingrind, application, post-entry, preflight, rejection, committed, write-boundary, sealed-result]
-  questions: ["how does the post-entry application boundary work", "what results can posting return in fingrind", "what deterministic rejections does fingrind expose"]
+  keywords: [fingrind, application, post-entry, preflight, rejection, committed, write-boundary, uuid-v7]
+  questions: ["how does the post-entry application boundary work", "what results can posting return in fingrind", "how are posting ids generated in fingrind"]
 ---
 
 # Application API Reference
@@ -89,10 +89,10 @@ public record Rejected(
 public final class PostingApplicationService
 ```
 
-- Constructor: requires `PostingFactStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `BookSession`, `PostingIdGenerator`, and `Clock`
 - Surface: exposes `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
 - Policy: enforces duplicate idempotency, reversal-target existence, reversal-reason rules, one-reversal-per-target, and reversal negation
-- Commit path: creates `CommittedProvenance`, generates a fresh `PostingId`, and maps runtime commit outcomes into `PostEntryResult`
+- Commit path: creates one committed `PostingFact`, stamps `CommittedProvenance`, generates a fresh `PostingId`, and maps `BookSession` commit outcomes into `PostEntryResult`
 
 ## `PostingIdGenerator`
 
@@ -105,6 +105,19 @@ public interface PostingIdGenerator {
 ```
 
 - Purpose: keep posting-id generation explicit and injectable at the application boundary
+
+## `UuidV7PostingIdGenerator`
+
+`UuidV7PostingIdGenerator` is FinGrind's project-owned production posting-id generator.
+
+```java
+public final class UuidV7PostingIdGenerator implements PostingIdGenerator
+```
+
+- Purpose: generate time-ordered UUID v7 posting identities without adding an external dependency
+- Timestamp source: uses millisecond wall-clock time for the 48-bit UUID v7 timestamp prefix
+- Randomness: fills the remaining UUID bits from a cryptographically secure random source in production
+- Production default: the CLI's default SQLite workflow uses this generator for committed `postingId` values
 
 ## `PostingRejection`
 

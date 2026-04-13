@@ -1,23 +1,20 @@
 package dev.erst.fingrind.application;
 
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.runtime.PostingCommitResult;
-import dev.erst.fingrind.runtime.PostingFact;
-import dev.erst.fingrind.runtime.PostingFactStore;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
 
 /** Application service that owns preflight and commit behavior for posting entries. */
 public final class PostingApplicationService {
-  private final PostingFactStore postingFactStore;
+  private final BookSession bookSession;
   private final PostingIdGenerator postingIdGenerator;
   private final Clock clock;
 
-  /** Creates the posting application service with its runtime seams. */
+  /** Creates the posting application service with its application-owned seams. */
   public PostingApplicationService(
-      PostingFactStore postingFactStore, PostingIdGenerator postingIdGenerator, Clock clock) {
-    this.postingFactStore = Objects.requireNonNull(postingFactStore, "postingFactStore");
+      BookSession bookSession, PostingIdGenerator postingIdGenerator, Clock clock) {
+    this.bookSession = Objects.requireNonNull(bookSession, "bookSession");
     this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
   }
@@ -47,7 +44,7 @@ public final class PostingApplicationService {
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));
 
-    return switch (postingFactStore.commit(postingFact)) {
+    return switch (bookSession.commit(postingFact)) {
       case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
       case PostingCommitResult.DuplicateIdempotency _ ->
           rejected(command, new PostingRejection.DuplicateIdempotencyKey());
@@ -59,14 +56,14 @@ public final class PostingApplicationService {
   }
 
   private Optional<PostingFact> existingPosting(PostEntryCommand command) {
-    return postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+    return bookSession.findByIdempotency(command.requestProvenance().idempotencyKey());
   }
 
   private Optional<PostingRejection> rejectionFor(PostEntryCommand command) {
     if (existingPosting(command).isPresent()) {
       return Optional.of(new PostingRejection.DuplicateIdempotencyKey());
     }
-    return ReversalPolicy.rejectionFor(command, postingFactStore);
+    return ReversalPolicy.rejectionFor(command, bookSession);
   }
 
   private static PostEntryResult.Committed committedResult(PostingFact committedPosting) {

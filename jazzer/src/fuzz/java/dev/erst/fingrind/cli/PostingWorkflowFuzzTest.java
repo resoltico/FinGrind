@@ -7,23 +7,23 @@ import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostEntryResult.Committed;
 import dev.erst.fingrind.application.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.application.PostEntryResult.Rejected;
+import dev.erst.fingrind.application.InMemoryBookSession;
 import dev.erst.fingrind.application.PostingApplicationService;
+import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.application.PostingRejection;
-import dev.erst.fingrind.runtime.InMemoryPostingFactStore;
-import dev.erst.fingrind.runtime.PostingFact;
 import java.util.Optional;
 
-/** Fuzzes posting workflow invariants above the runtime seam using an in-memory book. */
+/** Fuzzes posting workflow invariants above the book-session seam using an in-memory book. */
 public class PostingWorkflowFuzzTest {
   @FuzzTest
   void exercisePostingWorkflow(FuzzedDataProvider data) {
     byte[] input = data.consumeRemainingAsBytes();
     try {
       PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
-      InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
+      InMemoryBookSession bookSession = new InMemoryBookSession();
       PostingApplicationService applicationService =
           new PostingApplicationService(
-              postingFactStore,
+              bookSession,
               CliFuzzSupport.postingIdGenerator(input),
               CliFuzzSupport.fixedClock());
 
@@ -41,7 +41,7 @@ public class PostingWorkflowFuzzTest {
         }
 
         Optional<PostingFact> storedPosting =
-            postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+            bookSession.findByIdempotency(command.requestProvenance().idempotencyKey());
         if (storedPosting.isEmpty()) {
           throw new IllegalStateException("Committed posting fact was not persisted.");
         }
@@ -81,7 +81,7 @@ public class PostingWorkflowFuzzTest {
         if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
           throw new IllegalStateException("Commit changed the deterministic rejection.");
         }
-        if (postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey()).isPresent()) {
+        if (bookSession.findByIdempotency(command.requestProvenance().idempotencyKey()).isPresent()) {
           throw new IllegalStateException("Rejected command must not persist a posting fact.");
         }
       } else {

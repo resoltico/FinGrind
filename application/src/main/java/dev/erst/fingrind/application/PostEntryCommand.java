@@ -13,7 +13,7 @@ public record PostEntryCommand(
     Optional<ReversalReference> reversalReference,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel) {
-  /** Validates the application command before it reaches runtime ports. */
+  /** Validates the application command before it reaches book-session adapters. */
   public PostEntryCommand {
     Objects.requireNonNull(journalEntry, "journalEntry");
     reversalReference = reversalReference == null ? Optional.empty() : reversalReference;

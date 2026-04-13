@@ -1,4 +1,4 @@
-package dev.erst.fingrind.runtime;
+package dev.erst.fingrind.application;
 
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalEntry;
@@ -7,13 +7,13 @@ import dev.erst.fingrind.core.ReversalReference;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Committed posting fact carried across runtime persistence seams. */
+/** Committed posting fact carried across application-owned book sessions. */
 public record PostingFact(
     PostingId postingId,
     JournalEntry journalEntry,
     Optional<ReversalReference> reversalReference,
     CommittedProvenance provenance) {
-  /** Validates the canonical fact shape stored by runtime adapters. */
+  /** Validates the canonical fact shape stored by book-session adapters. */
   public PostingFact {
     Objects.requireNonNull(postingId, "postingId");
     Objects.requireNonNull(journalEntry, "journalEntry");

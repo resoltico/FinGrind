@@ -1,9 +1,10 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.application.BookSession;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingApplicationService;
-import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.application.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
@@ -15,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
@@ -396,22 +396,21 @@ final class FinGrindCli {
 
     @Override
     public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
-      try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookFilePath)) {
-        return applicationService(postingFactStore, clock).preflight(command);
+      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+        return applicationService(bookSession, clock).preflight(command);
       }
     }
 
     @Override
     public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
-      try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookFilePath)) {
-        return applicationService(postingFactStore, clock).commit(command);
+      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+        return applicationService(bookSession, clock).commit(command);
       }
     }
 
     private static PostingApplicationService applicationService(
-        SqlitePostingFactStore postingFactStore, Clock clock) {
-      return new PostingApplicationService(
-          postingFactStore, () -> new PostingId(UUID.randomUUID().toString()), clock);
+        BookSession bookSession, Clock clock) {
+      return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
     }
   }
 

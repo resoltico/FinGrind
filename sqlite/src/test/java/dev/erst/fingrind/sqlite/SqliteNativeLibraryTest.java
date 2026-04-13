@@ -286,6 +286,86 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
+  void errorString_convenienceOverload_readsConfiguredApi() {
+    assertFalse(SqliteNativeLibrary.errorString(14).isBlank());
+  }
+
+  @Test
+  void errorString_returnsResultNameWhenPointerIsJavaNull() {
+    MethodHandle nullErrorStringHandle =
+        MethodHandles.dropArguments(
+            MethodHandles.constant(MemorySegment.class, null), 0, int.class);
+
+    assertEquals(
+        "SQLITE_CANTOPEN",
+        SqliteNativeLibrary.errorString(
+            14, nullErrorStringHandle, constantMethodHandle(0L, MemorySegment.class)));
+  }
+
+  @Test
+  void errorString_returnsResultNameWhenPointerIsNullSegment() {
+    assertEquals(
+        "SQLITE_CANTOPEN",
+        SqliteNativeLibrary.errorString(
+            14,
+            constantMethodHandle(MemorySegment.NULL, int.class),
+            constantMethodHandle(0L, MemorySegment.class)));
+  }
+
+  @Test
+  void errorString_returnsResultNameWhenPointerIsBlank() {
+    try (Arena arena = Arena.ofConfined()) {
+      assertEquals(
+          "SQLITE_CANTOPEN",
+          SqliteNativeLibrary.errorString(
+              14,
+              constantMethodHandle(arena.allocateFrom(""), int.class),
+              constantMethodHandle(0L, MemorySegment.class)));
+    }
+  }
+
+  @Test
+  void errorString_wrapsThrowableFromErrorStringHandle() {
+    MethodHandle throwingErrorStringHandle =
+        MethodHandles.dropArguments(
+            MethodHandles.throwException(MemorySegment.class, IllegalStateException.class)
+                .bindTo(new IllegalStateException("boom")),
+            0,
+            int.class);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeLibrary.errorString(
+                    14, throwingErrorStringHandle, constantMethodHandle(0L, MemorySegment.class)));
+
+    assertEquals("Failed to read the SQLite error string.", exception.getMessage());
+    assertTrue(exception.getCause() instanceof IllegalStateException);
+    assertEquals("boom", exception.getCause().getMessage());
+  }
+
+  @Test
+  void scriptErrorMessage_resultCodeOverload_prefersExecBufferAndFallsBackToErrorString() {
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment boom = arena.allocateFrom("boom");
+      MethodHandle errorStringHandle = constantMethodHandle(boom, int.class);
+      MethodHandle strlenHandle = constantMethodHandle(4L, MemorySegment.class);
+
+      assertEquals(
+          "boom",
+          SqliteNativeLibrary.scriptErrorMessage(14, boom, errorStringHandle, strlenHandle));
+      assertEquals(
+          "boom",
+          SqliteNativeLibrary.scriptErrorMessage(
+              14, MemorySegment.NULL, errorStringHandle, strlenHandle));
+      assertEquals(
+          "boom",
+          SqliteNativeLibrary.scriptErrorMessage(14, null, errorStringHandle, strlenHandle));
+    }
+  }
+
+  @Test
   void open_nullPathMapsToBridgeFailure() {
     assertThrows(IllegalStateException.class, () -> SqliteNativeLibrary.open(null));
   }
@@ -400,6 +480,7 @@ class SqliteNativeLibraryTest {
           sqliteApi(
               constantMethodHandle(0, MemorySegment.class),
               constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("boom"), int.class),
               constantMethodHandle(14, MemorySegment.class));
 
       InvocationTargetException exception =
@@ -411,7 +492,7 @@ class SqliteNativeLibraryTest {
       SqliteNativeException sqliteException = (SqliteNativeException) exception.getCause();
       assertEquals(14, sqliteException.resultCode());
       assertEquals("SQLITE_CANTOPEN", sqliteException.resultName());
-      assertEquals("boom", sqliteException.getMessage());
+      assertEquals("SQLITE_CANTOPEN: boom", sqliteException.getMessage());
     }
   }
 
@@ -434,6 +515,7 @@ class SqliteNativeLibraryTest {
           sqliteApi(
               MethodHandles.dropArguments(throwingCloseHandle, 0, MemorySegment.class),
               constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("boom"), int.class),
               constantMethodHandle(14, MemorySegment.class));
 
       InvocationTargetException exception =
@@ -442,19 +524,52 @@ class SqliteNativeLibraryTest {
               () -> method.invoke(null, databaseHandle, 14, sqliteApi));
 
       assertTrue(exception.getCause() instanceof SqliteNativeException);
-      assertEquals("boom", exception.getCause().getMessage());
+      assertEquals("SQLITE_CANTOPEN: boom", exception.getCause().getMessage());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void requireOpenConfigurationSuccess_usesResultNameWhenErrorStringIsBlank() throws Exception {
+    Class<?> sqliteApiClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "requireOpenConfigurationSuccess", MemorySegment.class, int.class, sqliteApiClass);
+    method.setAccessible(true);
+
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment databaseHandle = arena.allocate(1);
+      Object sqliteApi =
+          sqliteApi(
+              constantMethodHandle(0, MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("unused"), MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom(""), int.class),
+              constantMethodHandle(14, MemorySegment.class));
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () -> method.invoke(null, databaseHandle, 14, sqliteApi));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      assertEquals("SQLITE_CANTOPEN", exception.getCause().getMessage());
     }
   }
 
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
   private static Object sqliteApi(
-      MethodHandle closeHandle, MethodHandle errorMessageHandle, MethodHandle extendedErrcodeHandle)
+      MethodHandle closeHandle,
+      MethodHandle errorMessageHandle,
+      MethodHandle errorStringHandle,
+      MethodHandle extendedErrcodeHandle)
       throws ReflectiveOperationException {
     Class<?> sqliteApiClass =
         Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
     var constructor =
         sqliteApiClass.getDeclaredConstructor(
             Arena.class,
+            MethodHandle.class,
             MethodHandle.class,
             MethodHandle.class,
             MethodHandle.class,
@@ -502,6 +617,7 @@ class SqliteNativeLibraryTest {
         constantMethodHandle(0, MemorySegment.class, int.class),
         constantMethodHandle(0, MemorySegment.class, int.class),
         errorMessageHandle,
+        errorStringHandle,
         extendedErrcodeHandle,
         "3.53.0");
   }
@@ -519,6 +635,7 @@ class SqliteNativeLibraryTest {
   private static Class<?> constantType(Object value) {
     return switch (value) {
       case Integer _ -> int.class;
+      case Long _ -> long.class;
       case MemorySegment _ -> MemorySegment.class;
       default -> value.getClass();
     };

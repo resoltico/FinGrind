@@ -1,10 +1,10 @@
-package dev.erst.fingrind.runtime;
+package dev.erst.fingrind.application;
 
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
 
-/** Closed family of ordinary commit outcomes returned by the runtime persistence seam. */
+/** Closed family of ordinary commit outcomes returned by the book-session seam. */
 public sealed interface PostingCommitResult
     permits PostingCommitResult.Committed,
         PostingCommitResult.DuplicateIdempotency,

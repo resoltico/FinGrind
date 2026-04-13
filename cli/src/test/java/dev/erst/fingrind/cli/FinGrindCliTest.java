@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -190,7 +191,11 @@ class FinGrindCliTest {
             });
 
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"committed\""));
+    JsonNode envelope = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+    assertEquals("committed", envelope.path("status").asText());
+    UUID postingId = UUID.fromString(envelope.path("postingId").asText());
+    assertEquals(7, postingId.version());
+    assertEquals(2, postingId.variant());
     assertTrue(Files.exists(bookFilePath));
   }
 

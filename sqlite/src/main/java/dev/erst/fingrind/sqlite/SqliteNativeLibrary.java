@@ -51,7 +51,7 @@ final class SqliteNativeLibrary {
                   MemorySegment.NULL);
       MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
       if (resultCode != SQLITE_OK) {
-        SqliteNativeException exception = failure(databaseHandle, resultCode, sqliteApi);
+        SqliteNativeException exception = failure(resultCode, sqliteApi);
         closeQuietly(databaseHandle, sqliteApi);
         throw exception;
       }
@@ -76,7 +76,7 @@ final class SqliteNativeLibrary {
     try {
       int resultCode = (int) sqliteApi.sqlite3CloseV2.invokeExact(databaseHandle);
       if (resultCode != SQLITE_OK) {
-        throw failure(databaseHandle, resultCode, sqliteApi);
+        throw failure(resultCode, sqliteApi);
       }
     } catch (SqliteNativeException exception) {
       throw exception;
@@ -105,8 +105,7 @@ final class SqliteNativeLibrary {
         if (resultCode != SQLITE_OK) {
           throw new SqliteNativeException(
               resultCode,
-              scriptErrorMessage(
-                  databaseHandle, execErrorPointer, sqliteApi.sqlite3Errmsg, STRLEN));
+              scriptErrorMessage(resultCode, execErrorPointer, sqliteApi.sqlite3Errstr, STRLEN));
         }
       } finally {
         freeSqliteBuffer(execErrorPointer, sqliteApi.sqlite3Free);
@@ -129,7 +128,7 @@ final class SqliteNativeLibrary {
               sqliteApi.sqlite3PrepareV2.invokeExact(
                   databaseHandle, sql, -1, statementPointer, tailPointer);
       if (resultCode != SQLITE_OK) {
-        throw failure(databaseHandle, resultCode, sqliteApi);
+        throw failure(resultCode, sqliteApi);
       }
       return resultCode;
     } catch (SqliteNativeException exception) {
@@ -197,7 +196,7 @@ final class SqliteNativeLibrary {
       if (resultCode == SQLITE_ROW || resultCode == SQLITE_DONE) {
         return resultCode;
       }
-      throw failure(databaseHandle, resultCode, sqliteApi);
+      throw failure(resultCode, sqliteApi);
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
@@ -282,6 +281,36 @@ final class SqliteNativeLibrary {
   static String scriptErrorMessage(MemorySegment databaseHandle, MemorySegment execErrorPointer) {
     SqliteApi sqliteApi = api();
     return scriptErrorMessage(databaseHandle, execErrorPointer, sqliteApi.sqlite3Errmsg, STRLEN);
+  }
+
+  static String errorString(int resultCode) {
+    SqliteApi sqliteApi = api();
+    return errorString(resultCode, sqliteApi.sqlite3Errstr, STRLEN);
+  }
+
+  static String errorString(
+      int resultCode, MethodHandle errorStringHandle, MethodHandle strlenHandle) {
+    try {
+      MemorySegment errorStringPointer = (MemorySegment) errorStringHandle.invokeExact(resultCode);
+      if (errorStringPointer == null || errorStringPointer.equals(MemorySegment.NULL)) {
+        return resultName(resultCode);
+      }
+      String errorString = cString(errorStringPointer, strlenHandle);
+      return errorString.isBlank() ? resultName(resultCode) : errorString;
+    } catch (Throwable throwable) {
+      throw new IllegalStateException("Failed to read the SQLite error string.", throwable);
+    }
+  }
+
+  static String scriptErrorMessage(
+      int resultCode,
+      MemorySegment execErrorPointer,
+      MethodHandle errorStringHandle,
+      MethodHandle strlenHandle) {
+    if (execErrorPointer != null && !execErrorPointer.equals(MemorySegment.NULL)) {
+      return cString(execErrorPointer, strlenHandle);
+    }
+    return errorString(resultCode, errorStringHandle, strlenHandle);
   }
 
   static String scriptErrorMessage(
@@ -480,6 +509,10 @@ final class SqliteNativeLibrary {
               FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)),
           downcall(
               lookup,
+              "sqlite3_errstr",
+              FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
               "sqlite3_extended_errcode",
               FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)),
           loadedVersion);
@@ -529,10 +562,11 @@ final class SqliteNativeLibrary {
         "Unsupported operating system for the FinGrind SQLite runtime: " + operatingSystem);
   }
 
-  private static SqliteNativeException failure(
-      MemorySegment databaseHandle, int resultCode, SqliteApi sqliteApi) {
-    return new SqliteNativeException(
-        resultCode, errorMessage(databaseHandle, sqliteApi.sqlite3Errmsg, STRLEN));
+  private static SqliteNativeException failure(int resultCode, SqliteApi sqliteApi) {
+    String resultName = resultName(resultCode);
+    String errorString = errorString(resultCode, sqliteApi.sqlite3Errstr, STRLEN);
+    String message = errorString.equals(resultName) ? resultName : resultName + ": " + errorString;
+    return new SqliteNativeException(resultCode, message);
   }
 
   private static String cString(MemorySegment cStringPointer, MethodHandle strlenHandle) {
@@ -562,7 +596,7 @@ final class SqliteNativeLibrary {
       throws SqliteNativeException {
     if (resultCode != SQLITE_OK) {
       closeQuietly(databaseHandle, sqliteApi);
-      throw failure(databaseHandle, resultCode, sqliteApi);
+      throw failure(resultCode, sqliteApi);
     }
   }
 
@@ -631,6 +665,7 @@ final class SqliteNativeLibrary {
     private final MethodHandle sqlite3ColumnBytes;
     private final MethodHandle sqlite3ColumnInt;
     private final MethodHandle sqlite3Errmsg;
+    private final MethodHandle sqlite3Errstr;
     private final MethodHandle sqlite3ExtendedErrcode;
     private final String loadedVersion;
 
@@ -652,6 +687,7 @@ final class SqliteNativeLibrary {
         MethodHandle sqlite3ColumnBytes,
         MethodHandle sqlite3ColumnInt,
         MethodHandle sqlite3Errmsg,
+        MethodHandle sqlite3Errstr,
         MethodHandle sqlite3ExtendedErrcode,
         String loadedVersion) {
       this.libraryArena = Objects.requireNonNull(libraryArena, "libraryArena");
@@ -672,6 +708,7 @@ final class SqliteNativeLibrary {
       this.sqlite3ColumnBytes = Objects.requireNonNull(sqlite3ColumnBytes, "sqlite3ColumnBytes");
       this.sqlite3ColumnInt = Objects.requireNonNull(sqlite3ColumnInt, "sqlite3ColumnInt");
       this.sqlite3Errmsg = Objects.requireNonNull(sqlite3Errmsg, "sqlite3Errmsg");
+      this.sqlite3Errstr = Objects.requireNonNull(sqlite3Errstr, "sqlite3Errstr");
       this.sqlite3ExtendedErrcode =
           Objects.requireNonNull(sqlite3ExtendedErrcode, "sqlite3ExtendedErrcode");
       this.loadedVersion = Objects.requireNonNull(loadedVersion, "loadedVersion");

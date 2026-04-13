@@ -20,10 +20,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.runtime.InMemoryPostingFactStore;
-import dev.erst.fingrind.runtime.PostingCommitResult;
-import dev.erst.fingrind.runtime.PostingFact;
-import dev.erst.fingrind.runtime.PostingFactStore;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -40,182 +36,194 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_returnsAcceptedWhenRequestIsAdmissible() {
-    PostingApplicationService applicationService =
-        applicationService(new InMemoryPostingFactStore());
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result = applicationService.preflight(command("idem-1"));
+      PostEntryResult result = applicationService.preflight(command("idem-1"));
 
-    assertEquals(
-        new PostEntryResult.PreflightAccepted(
-            new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-        result);
+      assertEquals(
+          new PostEntryResult.PreflightAccepted(
+              new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+          result);
+    }
   }
 
   @Test
   void preflight_rejectsDuplicateIdempotencyKey() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(existingPosting("posting-existing", "idem-1"));
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(existingPosting("posting-existing", "idem-1"));
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result = applicationService.preflight(command("idem-1"));
+      PostEntryResult result = applicationService.preflight(command("idem-1"));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
+          result);
+    }
   }
 
   @Test
   void preflight_rejectsReversalWithoutReason() {
-    PostingApplicationService applicationService =
-        applicationService(new InMemoryPostingFactStore());
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.preflight(
-            command(
-                "idem-1",
-                Optional.of(new ReversalReference(new PostingId("posting-1"))),
-                Optional.empty()));
+      PostEntryResult result =
+          applicationService.preflight(
+              command(
+                  "idem-1",
+                  Optional.of(new ReversalReference(new PostingId("posting-1"))),
+                  Optional.empty()));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonRequired()),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonRequired()),
+          result);
+    }
   }
 
   @Test
   void preflight_rejectsReasonWithoutReversal() {
-    PostingApplicationService applicationService =
-        applicationService(new InMemoryPostingFactStore());
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.preflight(
-            command(
-                "idem-1", Optional.empty(), Optional.of(new ReversalReason("operator reversal"))));
+      PostEntryResult result =
+          applicationService.preflight(
+              command(
+                  "idem-1",
+                  Optional.empty(),
+                  Optional.of(new ReversalReason("operator reversal"))));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonForbidden()),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonForbidden()),
+          result);
+    }
   }
 
   @Test
   void preflight_rejectsMissingReversalTarget() {
-    PostingApplicationService applicationService =
-        applicationService(new InMemoryPostingFactStore());
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.preflight(
-            command(
-                "idem-1",
-                Optional.of(new ReversalReference(new PostingId("posting-missing"))),
-                Optional.of(new ReversalReason("operator reversal"))));
+      PostEntryResult result =
+          applicationService.preflight(
+              command(
+                  "idem-1",
+                  Optional.of(new ReversalReference(new PostingId("posting-missing"))),
+                  Optional.of(new ReversalReason("operator reversal"))));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"),
-            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"),
+              new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
+          result);
+    }
   }
 
   @Test
   void preflight_acceptsReversalWhenTargetExistsAndReasonIsPresent() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(existingPosting("posting-1", "idem-existing"));
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(existingPosting("posting-1", "idem-existing"));
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.preflight(
-            command(
-                "idem-1",
-                reversalReference("posting-1"),
-                Optional.of(new ReversalReason("full reversal")),
-                reversalJournalEntry()));
+      PostEntryResult result =
+          applicationService.preflight(
+              command(
+                  "idem-1",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  reversalJournalEntry()));
 
-    assertEquals(
-        new PostEntryResult.PreflightAccepted(
-            new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-        result);
+      assertEquals(
+          new PostEntryResult.PreflightAccepted(
+              new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+          result);
+    }
   }
 
   @Test
   void preflight_rejectsReversalThatDoesNotNegateTarget() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(existingPosting("posting-1", "idem-existing"));
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(existingPosting("posting-1", "idem-existing"));
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.preflight(
-            command(
-                "idem-1",
-                reversalReference("posting-1"),
-                Optional.of(new ReversalReason("full reversal")),
-                mismatchedReversalJournalEntry()));
+      PostEntryResult result =
+          applicationService.preflight(
+              command(
+                  "idem-1",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  mismatchedReversalJournalEntry()));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"),
-            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"),
+              new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))),
+          result);
+    }
   }
 
   @Test
   void commit_returnsCommittedForValidReversal() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(existingPosting("posting-1", "idem-original"));
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(existingPosting("posting-1", "idem-original"));
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.commit(
-            command(
-                "idem-1",
-                reversalReference("posting-1"),
-                Optional.of(new ReversalReason("full reversal")),
-                reversalJournalEntry()));
+      PostEntryResult result =
+          applicationService.commit(
+              command(
+                  "idem-1",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  reversalJournalEntry()));
 
-    assertEquals(
-        new PostEntryResult.Committed(
-            new PostingId("posting-new"),
-            new IdempotencyKey("idem-1"),
-            LocalDate.parse("2026-04-07"),
-            FIXED_CLOCK.instant()),
-        result);
+      assertEquals(
+          new PostEntryResult.Committed(
+              new PostingId("posting-new"),
+              new IdempotencyKey("idem-1"),
+              LocalDate.parse("2026-04-07"),
+              FIXED_CLOCK.instant()),
+          result);
+    }
   }
 
   @Test
   void commit_returnsCommittedWhenRequestIsAdmissible() {
-    PostingApplicationService applicationService =
-        applicationService(new InMemoryPostingFactStore());
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result = applicationService.commit(command("idem-1"));
+      PostEntryResult result = applicationService.commit(command("idem-1"));
 
-    assertEquals(
-        new PostEntryResult.Committed(
-            new PostingId("posting-new"),
-            new IdempotencyKey("idem-1"),
-            LocalDate.parse("2026-04-07"),
-            FIXED_CLOCK.instant()),
-        result);
+      assertEquals(
+          new PostEntryResult.Committed(
+              new PostingId("posting-new"),
+              new IdempotencyKey("idem-1"),
+              LocalDate.parse("2026-04-07"),
+              FIXED_CLOCK.instant()),
+          result);
+    }
   }
 
   @Test
   void commit_rejectsDuplicateIdempotencyKey() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(existingPosting("posting-existing", "idem-1"));
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(existingPosting("posting-existing", "idem-1"));
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result = applicationService.commit(command("idem-1"));
+      PostEntryResult result = applicationService.commit(command("idem-1"));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
+          result);
+    }
   }
 
   @Test
-  void commit_mapsRuntimeDuplicateIdempotencyOutcome() {
-    PostingFactStore postingFactStore =
-        new PostingFactStore() {
+  void commit_mapsBookSessionDuplicateIdempotencyOutcome() {
+    BookSession bookSession =
+        new BookSession() {
           @Override
           public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
             return Optional.empty();
@@ -236,44 +244,50 @@ class PostingApplicationServiceTest {
             return new PostingCommitResult.DuplicateIdempotency(
                 postingFact.provenance().requestProvenance().idempotencyKey());
           }
+
+          @Override
+          public void close() {}
         };
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (bookSession) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result = applicationService.commit(command("idem-1"));
+      PostEntryResult result = applicationService.commit(command("idem-1"));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
+          result);
+    }
   }
 
   @Test
   void commit_rejectsSecondReversalForSameTarget() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(existingPosting("posting-1", "idem-original"));
-    postingFactStore.commit(existingReversal("posting-2", "idem-reversal", "posting-1"));
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(existingPosting("posting-1", "idem-original"));
+      bookSession.commit(existingReversal("posting-2", "idem-reversal", "posting-1"));
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.commit(
-            command(
-                "idem-1",
-                reversalReference("posting-1"),
-                Optional.of(new ReversalReason("full reversal")),
-                reversalJournalEntry()));
+      PostEntryResult result =
+          applicationService.commit(
+              command(
+                  "idem-1",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  reversalJournalEntry()));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"),
-            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"),
+              new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+          result);
+    }
   }
 
   @Test
-  void commit_mapsRuntimeDuplicateReversalTargetOutcome() {
+  void commit_mapsBookSessionDuplicateReversalTargetOutcome() {
     PostingFact priorPosting = existingPosting("posting-1", "idem-existing");
-    PostingFactStore postingFactStore =
-        new PostingFactStore() {
+    BookSession bookSession =
+        new BookSession() {
           @Override
           public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
             return Optional.empty();
@@ -293,28 +307,33 @@ class PostingApplicationServiceTest {
           public PostingCommitResult commit(PostingFact postingFact) {
             return new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-1"));
           }
+
+          @Override
+          public void close() {}
         };
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (bookSession) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result =
-        applicationService.commit(
-            command(
-                "idem-1",
-                reversalReference("posting-1"),
-                Optional.of(new ReversalReason("full reversal")),
-                reversalJournalEntry()));
+      PostEntryResult result =
+          applicationService.commit(
+              command(
+                  "idem-1",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  reversalJournalEntry()));
 
-    assertEquals(
-        new PostEntryResult.Rejected(
-            new IdempotencyKey("idem-1"),
-            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
-        result);
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"),
+              new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+          result);
+    }
   }
 
   @Test
-  void commit_propagatesUnexpectedRuntimeFailure() {
-    PostingFactStore postingFactStore =
-        new PostingFactStore() {
+  void commit_propagatesUnexpectedBookSessionFailure() {
+    BookSession bookSession =
+        new BookSession() {
           @Override
           public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
             return Optional.empty();
@@ -334,19 +353,24 @@ class PostingApplicationServiceTest {
           public PostingCommitResult commit(PostingFact postingFact) {
             throw new IllegalStateException("boom");
           }
+
+          @Override
+          public void close() {}
         };
-    PostingApplicationService applicationService = applicationService(postingFactStore);
+    try (bookSession) {
+      PostingApplicationService applicationService = applicationService(bookSession);
 
-    IllegalStateException thrown =
-        assertThrows(
-            IllegalStateException.class, () -> applicationService.commit(command("idem-1")));
+      IllegalStateException thrown =
+          assertThrows(
+              IllegalStateException.class, () -> applicationService.commit(command("idem-1")));
 
-    assertEquals("boom", thrown.getMessage());
+      assertEquals("boom", thrown.getMessage());
+    }
   }
 
-  private static PostingApplicationService applicationService(PostingFactStore postingFactStore) {
+  private static PostingApplicationService applicationService(BookSession bookSession) {
     return new PostingApplicationService(
-        postingFactStore, () -> new PostingId("posting-new"), FIXED_CLOCK);
+        bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
   }
 
   private static PostEntryCommand command(String idempotencyKey) {

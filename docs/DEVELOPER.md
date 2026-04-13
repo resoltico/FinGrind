@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: DEVELOPER
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce"]
@@ -11,13 +11,14 @@ route:
 # Developer Reference
 
 **Purpose**: Build, test, architecture, and workflow reference for FinGrind contributors.
-**Prerequisites**: Java 26 is auto-provisioned through Gradle toolchains for compilation, but local packaged-CLI and wrapper-driven runs should also resolve `java` to 26. See [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md).
+**Prerequisites**: Java 26 active in the current shell from the OpenJDK 26 bundle installed via [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md). Docker active in the current shell when running `./check.sh`, as codified in [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). No global Gradle install is required for repo work; use `./gradlew`.
 
 Companion documents:
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md)
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md)
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
+- [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
@@ -27,25 +28,25 @@ Companion documents:
 
 ## Architecture
 
-FinGrind is a five-module Gradle project with a narrow accounting center and explicit write boundaries:
+FinGrind is a four-module Gradle project with a narrow accounting center, an application-owned
+book-session seam, and explicit write boundaries:
 
 ```text
 core/         Accounting vocabulary and invariants:
               money, journal lines, journal entries, reversal linkage,
               request provenance, committed provenance, posting identity.
 
-runtime/      Runtime persistence seam and in-memory implementation:
-              PostingFact, PostingFactStore, PostingCommitResult,
-              InMemoryPostingFactStore.
-
-application/  Explicit write boundary:
+application/  Explicit write boundary plus persistence seam:
               PostEntryCommand, PostEntryResult, PostingRejection,
-              PostingIdGenerator, PostingApplicationService.
+              PostingIdGenerator, UuidV7PostingIdGenerator,
+              PostingApplicationService, BookSession, PostingFact,
+              PostingCommitResult.
 
 sqlite/       Durable single-book adapter:
               one SQLite file per entity book, persisted through an in-process SQLite adapter
-              backed by Java 26 FFM and a managed SQLite 3.53.0 runtime on controlled surfaces
-              and the canonical strict-table `book_schema.sql`.
+              backed by Java 26 FFM and a managed SQLite 3.53.0 runtime on controlled surfaces,
+              implementing the application-owned `BookSession` seam over the canonical strict-table
+              `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus preflight-entry and post-entry.
@@ -54,8 +55,8 @@ cli/          Agent-first JSON CLI:
 The dependency graph is deliberately one-way:
 
 ```text
-cli -> sqlite -> runtime -> core
-cli -> application -> runtime -> core
+cli -> sqlite -> application -> core
+cli -> application -> core
 cli -> core
 application -> core
 ```
@@ -67,6 +68,8 @@ FinGrind is intentionally hard-break oriented right now:
 - no migration framework or backward-compatibility layer exists yet
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
+- contributor verification belongs on the local filesystem; mounted external volumes are outside the
+  supported setup because Gradle project-cache and JaCoCo file locking can fail there on macOS
 
 ## Foundations
 
@@ -74,6 +77,7 @@ FinGrind is intentionally hard-break oriented right now:
 |:----------|:--------|
 | Java | 26 |
 | Gradle Wrapper | 9.4.1 |
+| Docker runtime | Docker Desktop daemon reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.0 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires a managed path or compatible system library |
 | Jackson Databind | 3.1.1 |
 | JUnit Jupiter | 6.0.3 |
@@ -135,6 +139,11 @@ through `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
 - shell syntax checks for release-surface scripts
 - Docker smoke verification, including semantic JSON assertions for discovery and write responses
 
+The Docker smoke stage now runs public-image operations through a temporary anonymous
+`DOCKER_CONFIG` while targeting the active local Docker engine derived from the current context.
+That keeps the gate aligned with the real Docker runtime without making public pulls depend on
+Docker Desktop credential-helper state or a contributor's personal login configuration.
+
 During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight test-progress heartbeats instead of relying only on stale Gradle task banners.
 
 During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression replay through `[JAZZER-PULSE]` lines, including support-test heartbeats plus regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
@@ -164,6 +173,7 @@ The repository currently ships three workflow surfaces:
 - `CI` runs on pushes and pull requests to `main`, and includes `Check` and `Docker smoke`.
 - `Release` runs for `v*` tags or manual dispatch, builds the fat JAR, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
+- `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
 the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0 from the managed
@@ -196,4 +206,4 @@ Public API reference lives in:
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
-- [DOC_03_RuntimeAndAdapters.md](./DOC_03_RuntimeAndAdapters.md)
+- [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)

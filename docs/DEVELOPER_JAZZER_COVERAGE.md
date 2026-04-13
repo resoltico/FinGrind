@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -41,7 +41,7 @@ Surface:
 - `PostingApplicationService.preflight(...)`
 - `PostingApplicationService.commit(...)`
 - reversal admission policy
-- commit through the in-memory runtime seam
+- commit through the in-memory book-session seam
 
 What it asserts:
 - fresh valid requests preflight successfully

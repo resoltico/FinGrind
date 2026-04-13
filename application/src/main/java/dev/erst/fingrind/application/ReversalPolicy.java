@@ -4,8 +4,6 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.runtime.PostingFact;
-import dev.erst.fingrind.runtime.PostingFactStore;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -16,7 +14,7 @@ final class ReversalPolicy {
 
   /** Returns the first deterministic reversal rejection for the supplied command, if any. */
   static Optional<PostingRejection> rejectionFor(
-      PostEntryCommand command, PostingFactStore postingFactStore) {
+      PostEntryCommand command, BookSession bookSession) {
     Optional<ReversalReference> reversalReference = command.reversalReference();
     boolean reversalReasonPresent = command.requestProvenance().reason().isPresent();
     if (reversalReference.isEmpty()) {
@@ -30,18 +28,18 @@ final class ReversalPolicy {
 
     ReversalReference requestedReversal = reversalReference.orElseThrow();
     PostingId priorPostingId = requestedReversal.priorPostingId();
-    Optional<PostingFact> priorPosting = postingFactStore.findByPostingId(priorPostingId);
+    Optional<PostingFact> priorPosting = bookSession.findByPostingId(priorPostingId);
     if (priorPosting.isEmpty()) {
       return Optional.of(new PostingRejection.ReversalTargetNotFound(priorPostingId));
     }
 
-    return reversalRejection(command.journalEntry(), priorPosting.orElseThrow(), postingFactStore);
+    return reversalRejection(command.journalEntry(), priorPosting.orElseThrow(), bookSession);
   }
 
   private static Optional<PostingRejection> reversalRejection(
-      JournalEntry candidateReversal, PostingFact priorPosting, PostingFactStore postingFactStore) {
+      JournalEntry candidateReversal, PostingFact priorPosting, BookSession bookSession) {
     PostingId priorPostingId = priorPosting.postingId();
-    if (postingFactStore.findReversalFor(priorPostingId).isPresent()) {
+    if (bookSession.findReversalFor(priorPostingId).isPresent()) {
       return Optional.of(new PostingRejection.ReversalAlreadyExists(priorPostingId));
     }
     if (!negates(candidateReversal, priorPosting.journalEntry())) {

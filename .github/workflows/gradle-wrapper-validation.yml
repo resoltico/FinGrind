@@ -1,0 +1,31 @@
+name: Gradle wrapper validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - gradle/wrapper/gradle-wrapper.jar
+      - gradle/wrapper/gradle-wrapper.properties
+      - gradlew
+      - gradlew.bat
+      - .github/workflows/gradle-wrapper-validation.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - gradle/wrapper/gradle-wrapper.jar
+      - gradle/wrapper/gradle-wrapper.properties
+      - gradlew
+      - gradlew.bat
+      - .github/workflows/gradle-wrapper-validation.yml
+
+jobs:
+  validate:
+    name: Validate wrapper
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: gradle/actions/wrapper-validation@f236b35da9d031e13b1005234ebe4392ed54c580 # v5.0.0
