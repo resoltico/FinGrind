@@ -5,6 +5,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-04-14
+
+### Changed
+- Hard-broke the discovery contract behind `help`, `version`, `capabilities`, and
+  `print-request-template` onto application-owned typed descriptors instead of CLI-local map
+  assembly, so the machine surface is now generated from one canonical contract source.
+- Reworked `capabilities` to publish field descriptors, live enum vocabularies, explicit
+  `preflightSemantics: advisory`, and an explicit
+  `currencyModel.scope: single-currency-per-entry` with `multiCurrencyStatus: not-supported`.
+
+### Fixed
+- Removed machine-contract drift between `CliRequestReader`, `FinGrindCli`, and the public docs by
+  sharing request-field names and live rejection catalogs instead of duplicating string lists in
+  each layer.
+
 ## [0.7.0] - 2026-04-13
 
 ### Changed
@@ -191,7 +206,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.8.0
 [0.7.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.7.0
 [0.6.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.6.0
 [0.5.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.5.0

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: APPLICATION
 updated: "2026-04-13"
 route:
@@ -95,6 +95,26 @@ public sealed interface BookAdministrationRejection
 
 - Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`, `NormalBalanceConflict`
 - Purpose: distinguish lifecycle and registry-state refusals from malformed requests or runtime failure
+
+## `MachineContract`
+
+`MachineContract` owns the canonical typed machine descriptors for the CLI discovery surface.
+
+```java
+public final class MachineContract
+```
+
+- Purpose: keep `help`, `version`, `capabilities`, and `print-request-template` sourced from one
+  application-owned contract instead of CLI-local map assembly
+- Surface: `help(...)`, `capabilities(...)`, `version(...)`, and `requestTemplate()`
+- Shared constants: exports canonical request-field names so `CliRequestReader` and the
+  `capabilities` payload stay aligned
+- Live vocabularies: derives enum vocabularies from `JournalLine.EntrySide`, `ActorType`, and
+  `NormalBalance`
+- Live rejections: derives rejection descriptors from the sealed `BookAdministrationRejection` and
+  `PostingRejection` families instead of a hand-maintained CLI list
+- Explicit policy: publishes `preflightSemantics = advisory` plus
+  `currencyModel.scope = single-currency-per-entry`
 
 ## `PostEntryCommand`
 

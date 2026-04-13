@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -7,6 +8,7 @@ import dev.erst.fingrind.application.BookAdministrationRejection;
 import dev.erst.fingrind.application.DeclareAccountResult;
 import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.ListAccountsResult;
+import dev.erst.fingrind.application.MachineContract;
 import dev.erst.fingrind.application.OpenBookResult;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingRejection;
@@ -16,24 +18,65 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Unit tests for {@link CliResponseWriter}. */
 class CliResponseWriterTest {
   @Test
-  void writeSuccess_writesOkEnvelope() {
+  void writeVersion_writesOkEnvelope() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
-    responseWriter.writeSuccess(Map.of("command", "help"));
+    responseWriter.writeVersion(
+        new MachineContract.VersionDescriptor(
+            "FinGrind",
+            "0.8.0",
+            "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"));
 
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+    JsonNode json = readJson(outputStream);
+    assertEquals("ok", json.path("status").asText());
+    assertEquals("0.8.0", json.path("payload").path("version").asText());
+  }
+
+  @Test
+  void writeCapabilities_omitsNullEnvironmentFields() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeCapabilities(
+        MachineContract.capabilities(
+            new MachineContract.ApplicationIdentity(
+                "FinGrind",
+                "0.8.0",
+                "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
+            new MachineContract.EnvironmentDescriptor(
+                "26+",
+                "sqlite-ffm",
+                "sqlite",
+                "system",
+                "3.53.0",
+                "unavailable",
+                null,
+                "system sqlite unavailable"),
+            Instant.parse("2026-04-13T12:00:00Z")));
+
+    String json = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(json.contains("\"preflightSemantics\""));
+    assertTrue(json.contains("\"currencyModel\""));
+    assertFalse(json.contains("\"loadedSqliteVersion\""));
   }
 
   @Test
@@ -220,6 +263,40 @@ class CliResponseWriterTest {
             .contains("\"code\":\"account-normal-balance-conflict\""));
   }
 
+  @Test
+  void withoutNulls_handlesJsonNullsObjectNullFieldsAndNullArrayEntries()
+      throws NoSuchMethodException, IllegalAccessException {
+    MethodHandle withoutNulls =
+        MethodHandles.privateLookupIn(CliResponseWriter.class, MethodHandles.lookup())
+            .findStatic(
+                CliResponseWriter.class,
+                "withoutNulls",
+                MethodType.methodType(JsonNode.class, JsonNode.class));
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    assertTrue(invokeWithoutNulls(withoutNulls, objectMapper.valueToTree(null)).isNull());
+
+    ObjectNode objectNode = objectMapper.createObjectNode();
+    objectNode.put("kept", "value");
+    objectNode.putNull("jsonNull");
+    ObjectNode nestedObject = objectMapper.createObjectNode();
+    nestedObject.put("nestedKept", "nested-value");
+    nestedObject.putNull("nestedNull");
+    objectNode.set("nested", nestedObject);
+    ArrayNode arrayNode = objectMapper.createArrayNode();
+    arrayNode.add("entry");
+    arrayNode.addNull();
+    objectNode.set("array", arrayNode);
+
+    JsonNode sanitized = invokeWithoutNulls(withoutNulls, objectNode);
+    assertEquals("value", sanitized.path("kept").asText());
+    assertFalse(sanitized.has("jsonNull"));
+    assertFalse(sanitized.path("nested").has("nestedNull"));
+    assertEquals("nested-value", sanitized.path("nested").path("nestedKept").asText());
+    assertEquals("entry", sanitized.path("array").get(0).asText());
+    assertTrue(sanitized.path("array").get(1).isNull());
+  }
+
   private static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {
     return new PrintStream(outputStream, false, StandardCharsets.UTF_8);
   }
@@ -242,5 +319,17 @@ class CliResponseWriterTest {
         Path.of("book.sqlite"), new OpenBookResult.Rejected(rejection));
 
     return outputStream.toString(StandardCharsets.UTF_8);
+  }
+
+  private static JsonNode readJson(ByteArrayOutputStream outputStream) throws IOException {
+    return new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+  }
+
+  private static JsonNode invokeWithoutNulls(MethodHandle withoutNulls, JsonNode node) {
+    try {
+      return (JsonNode) withoutNulls.invoke(node);
+    } catch (Throwable throwable) {
+      throw new AssertionError("withoutNulls invocation failed", throwable);
+    }
   }
 }

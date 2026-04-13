@@ -4,51 +4,57 @@ import dev.erst.fingrind.application.BookAdministrationRejection;
 import dev.erst.fingrind.application.DeclareAccountResult;
 import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.ListAccountsResult;
+import dev.erst.fingrind.application.MachineContract;
 import dev.erst.fingrind.application.OpenBookResult;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingRejection;
 import java.io.PrintStream;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Writes deterministic JSON envelopes for FinGrind CLI responses. */
 final class CliResponseWriter {
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = configuredObjectMapper();
   private final PrintStream outputStream;
 
   CliResponseWriter(PrintStream outputStream) {
     this.outputStream = Objects.requireNonNull(outputStream, "outputStream");
   }
 
-  /** Writes one generic success envelope. */
-  void writeSuccess(Map<String, ?> payload) {
-    writeSuccess(payload, false);
+  /** Writes the canonical help descriptor as a success envelope. */
+  void writeHelp(MachineContract.HelpDescriptor helpDescriptor) {
+    writeSuccess(helpDescriptor, true);
   }
 
-  /** Writes one generic success envelope, optionally pretty-printed for discovery surfaces. */
-  void writeSuccess(Map<String, ?> payload, boolean pretty) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "ok");
-    envelope.put("payload", payload);
-    writeEnvelope(envelope, pretty);
+  /** Writes the canonical capabilities descriptor as a success envelope. */
+  void writeCapabilities(MachineContract.CapabilitiesDescriptor capabilitiesDescriptor) {
+    writeSuccess(capabilitiesDescriptor, true);
+  }
+
+  /** Writes the canonical version descriptor as a success envelope. */
+  void writeVersion(MachineContract.VersionDescriptor versionDescriptor) {
+    writeSuccess(versionDescriptor, true);
+  }
+
+  /** Writes the canonical request-template descriptor as raw JSON. */
+  void writeRequestTemplate(MachineContract.PostingRequestTemplateDescriptor requestTemplate) {
+    writeJson(requestTemplate, true);
   }
 
   /** Writes one deterministic failure envelope. */
   void writeFailure(CliFailure failure) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "error");
-    envelope.put("code", failure.code());
-    envelope.put("message", failure.message());
-    if (failure.hint() != null) {
-      envelope.put("hint", failure.hint());
-    }
-    if (failure.argument() != null) {
-      envelope.put("argument", failure.argument());
-    }
-    writeEnvelope(envelope, false);
+    writeEnvelope(
+        new FailureEnvelope(
+            "error", failure.code(), failure.message(), failure.hint(), failure.argument()),
+        false);
   }
 
   /** Writes one deterministic failure envelope. */
@@ -58,7 +64,7 @@ final class CliResponseWriter {
 
   /** Writes one entry write-boundary result as a deterministic JSON envelope. */
   void writePostEntryResult(PostEntryResult result) {
-    Map<String, Object> envelope =
+    Object envelope =
         switch (result) {
           case PostEntryResult.PreflightAccepted accepted -> preflightEnvelope(accepted);
           case PostEntryResult.Committed committed -> committedEnvelope(committed);
@@ -69,14 +75,12 @@ final class CliResponseWriter {
 
   /** Writes one explicit open-book result as a deterministic JSON envelope. */
   void writeOpenBookResult(Path bookFilePath, OpenBookResult result) {
-    Map<String, Object> envelope =
+    Object envelope =
         switch (result) {
-          case OpenBookResult.Opened opened -> {
-            Map<String, Object> payload = newEnvelope();
-            payload.put("bookFile", absolutePath(bookFilePath));
-            payload.put("initializedAt", opened.initializedAt().toString());
-            yield successEnvelope(payload);
-          }
+          case OpenBookResult.Opened opened ->
+              successEnvelope(
+                  new OpenBookPayload(
+                      absolutePath(bookFilePath), opened.initializedAt().toString()));
           case OpenBookResult.Rejected rejected ->
               administrationRejectedEnvelope(rejected.rejection());
         };
@@ -85,7 +89,7 @@ final class CliResponseWriter {
 
   /** Writes one account-declaration result as a deterministic JSON envelope. */
   void writeDeclareAccountResult(DeclareAccountResult result) {
-    Map<String, Object> envelope =
+    Object envelope =
         switch (result) {
           case DeclareAccountResult.Declared declared ->
               successEnvelope(accountPayload(declared.account()));
@@ -97,7 +101,7 @@ final class CliResponseWriter {
 
   /** Writes one account-listing result as a deterministic JSON envelope. */
   void writeListAccountsResult(ListAccountsResult result) {
-    Map<String, Object> envelope =
+    Object envelope =
         switch (result) {
           case ListAccountsResult.Listed listed ->
               successEnvelope(
@@ -110,58 +114,43 @@ final class CliResponseWriter {
 
   /** Writes one raw JSON document, optionally pretty-printed. */
   void writeJson(Object value, boolean pretty) {
+    JsonNode node = withoutNulls(objectMapper.valueToTree(value));
     if (pretty) {
-      objectMapper.writerWithDefaultPrettyPrinter().writeValue(outputStream, value);
+      objectMapper.writerWithDefaultPrettyPrinter().writeValue(outputStream, node);
     } else {
-      objectMapper.writeValue(outputStream, value);
+      objectMapper.writeValue(outputStream, node);
     }
     outputStream.println();
     outputStream.flush();
   }
 
-  private Map<String, Object> preflightEnvelope(PostEntryResult.PreflightAccepted accepted) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "preflight-accepted");
-    envelope.put("idempotencyKey", accepted.idempotencyKey().value());
-    envelope.put("effectiveDate", accepted.effectiveDate().toString());
-    return envelope;
+  private void writeSuccess(Object payload, boolean pretty) {
+    writeEnvelope(successEnvelope(payload), pretty);
   }
 
-  private Map<String, Object> committedEnvelope(PostEntryResult.Committed committed) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "committed");
-    envelope.put("postingId", committed.postingId().value());
-    envelope.put("idempotencyKey", committed.idempotencyKey().value());
-    envelope.put("effectiveDate", committed.effectiveDate().toString());
-    envelope.put("recordedAt", committed.recordedAt().toString());
-    return envelope;
+  private PreflightAcceptedEnvelope preflightEnvelope(PostEntryResult.PreflightAccepted accepted) {
+    return new PreflightAcceptedEnvelope(
+        "preflight-accepted",
+        accepted.idempotencyKey().value(),
+        accepted.effectiveDate().toString());
   }
 
-  private Map<String, Object> rejectedEnvelope(PostEntryResult.Rejected rejected) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "rejected");
-    envelope.put("code", postingRejectionCode(rejected.rejection()));
-    envelope.put("message", postingRejectionMessage(rejected.rejection()));
-    envelope.put("idempotencyKey", rejected.idempotencyKey().value());
-    Map<String, Object> details = postingRejectionDetails(rejected.rejection());
-    if (!details.isEmpty()) {
-      envelope.put("details", details);
-    }
-    return envelope;
+  private CommittedEnvelope committedEnvelope(PostEntryResult.Committed committed) {
+    return new CommittedEnvelope(
+        "committed",
+        committed.postingId().value(),
+        committed.idempotencyKey().value(),
+        committed.effectiveDate().toString(),
+        committed.recordedAt().toString());
   }
 
-  private static String postingRejectionCode(PostingRejection rejection) {
-    return switch (rejection) {
-      case PostingRejection.BookNotInitialized _ -> "book-not-initialized";
-      case PostingRejection.UnknownAccount _ -> "unknown-account";
-      case PostingRejection.InactiveAccount _ -> "inactive-account";
-      case PostingRejection.DuplicateIdempotencyKey _ -> "duplicate-idempotency-key";
-      case PostingRejection.ReversalReasonRequired _ -> "reversal-reason-required";
-      case PostingRejection.ReversalReasonForbidden _ -> "reversal-reason-forbidden";
-      case PostingRejection.ReversalTargetNotFound _ -> "reversal-target-not-found";
-      case PostingRejection.ReversalAlreadyExists _ -> "reversal-already-exists";
-      case PostingRejection.ReversalDoesNotNegateTarget _ -> "reversal-does-not-negate-target";
-    };
+  private RejectedEnvelope rejectedEnvelope(PostEntryResult.Rejected rejected) {
+    return new RejectedEnvelope(
+        "rejected",
+        PostingRejection.wireCode(rejected.rejection()),
+        postingRejectionMessage(rejected.rejection()),
+        rejected.idempotencyKey().value(),
+        postingRejectionDetails(rejected.rejection()).orElse(null));
   }
 
   private static String postingRejectionMessage(PostingRejection rejection) {
@@ -191,46 +180,35 @@ final class CliResponseWriter {
     };
   }
 
-  private static Map<String, Object> postingRejectionDetails(PostingRejection rejection) {
+  private static Optional<Map<String, Object>> postingRejectionDetails(PostingRejection rejection) {
     if (rejection instanceof PostingRejection.UnknownAccount unknownAccount) {
-      return Map.of("accountCode", unknownAccount.accountCode().value());
+      return Optional.of(Map.of("accountCode", unknownAccount.accountCode().value()));
     }
     if (rejection instanceof PostingRejection.InactiveAccount inactiveAccount) {
-      return Map.of("accountCode", inactiveAccount.accountCode().value());
+      return Optional.of(Map.of("accountCode", inactiveAccount.accountCode().value()));
     }
     if (rejection instanceof PostingRejection.ReversalTargetNotFound reversalTargetNotFound) {
-      return Map.of("priorPostingId", reversalTargetNotFound.priorPostingId().value());
+      return Optional.of(Map.of("priorPostingId", reversalTargetNotFound.priorPostingId().value()));
     }
     if (rejection instanceof PostingRejection.ReversalAlreadyExists reversalAlreadyExists) {
-      return Map.of("priorPostingId", reversalAlreadyExists.priorPostingId().value());
+      return Optional.of(Map.of("priorPostingId", reversalAlreadyExists.priorPostingId().value()));
     }
     if (rejection
         instanceof PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget) {
-      return Map.of("priorPostingId", reversalDoesNotNegateTarget.priorPostingId().value());
+      return Optional.of(
+          Map.of("priorPostingId", reversalDoesNotNegateTarget.priorPostingId().value()));
     }
-    return Map.of();
+    return Optional.empty();
   }
 
-  private static Map<String, Object> administrationRejectedEnvelope(
+  private static RejectedEnvelope administrationRejectedEnvelope(
       BookAdministrationRejection rejection) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "rejected");
-    envelope.put("code", administrationRejectionCode(rejection));
-    envelope.put("message", administrationRejectionMessage(rejection));
-    Map<String, Object> details = administrationRejectionDetails(rejection);
-    if (!details.isEmpty()) {
-      envelope.put("details", details);
-    }
-    return envelope;
-  }
-
-  private static String administrationRejectionCode(BookAdministrationRejection rejection) {
-    return switch (rejection) {
-      case BookAdministrationRejection.BookAlreadyInitialized _ -> "book-already-initialized";
-      case BookAdministrationRejection.BookNotInitialized _ -> "book-not-initialized";
-      case BookAdministrationRejection.BookContainsSchema _ -> "book-contains-schema";
-      case BookAdministrationRejection.NormalBalanceConflict _ -> "account-normal-balance-conflict";
-    };
+    return new RejectedEnvelope(
+        "rejected",
+        BookAdministrationRejection.wireCode(rejection),
+        administrationRejectionMessage(rejection),
+        null,
+        administrationRejectionDetails(rejection).orElse(null));
   }
 
   private static String administrationRejectionMessage(BookAdministrationRejection rejection) {
@@ -250,46 +228,103 @@ final class CliResponseWriter {
     };
   }
 
-  private static Map<String, Object> administrationRejectionDetails(
+  private static Optional<Map<String, Object>> administrationRejectionDetails(
       BookAdministrationRejection rejection) {
     if (rejection instanceof BookAdministrationRejection.NormalBalanceConflict conflict) {
-      return Map.of(
-          "accountCode",
-          conflict.accountCode().value(),
-          "existingNormalBalance",
-          conflict.existingNormalBalance().name(),
-          "requestedNormalBalance",
-          conflict.requestedNormalBalance().name());
+      return Optional.of(
+          Map.of(
+              "accountCode",
+              conflict.accountCode().value(),
+              "existingNormalBalance",
+              conflict.existingNormalBalance().name(),
+              "requestedNormalBalance",
+              conflict.requestedNormalBalance().name()));
     }
-    return Map.of();
+    return Optional.empty();
   }
 
-  private static Map<String, Object> accountPayload(DeclaredAccount account) {
-    Map<String, Object> payload = newEnvelope();
-    payload.put("accountCode", account.accountCode().value());
-    payload.put("accountName", account.accountName().value());
-    payload.put("normalBalance", account.normalBalance().name());
-    payload.put("active", account.active());
-    payload.put("declaredAt", account.declaredAt().toString());
-    return payload;
+  private static DeclaredAccountPayload accountPayload(DeclaredAccount account) {
+    return new DeclaredAccountPayload(
+        account.accountCode().value(),
+        account.accountName().value(),
+        account.normalBalance().name(),
+        account.active(),
+        account.declaredAt().toString());
   }
 
-  private static Map<String, Object> successEnvelope(Object payload) {
-    Map<String, Object> envelope = newEnvelope();
-    envelope.put("status", "ok");
-    envelope.put("payload", payload);
-    return envelope;
+  private static SuccessEnvelope successEnvelope(Object payload) {
+    return new SuccessEnvelope("ok", payload);
   }
 
   private static String absolutePath(Path bookFilePath) {
     return bookFilePath.toAbsolutePath().normalize().toString();
   }
 
-  private static Map<String, Object> newEnvelope() {
-    return new LinkedHashMap<>();
-  }
-
-  private void writeEnvelope(Map<String, ?> envelope, boolean pretty) {
+  private void writeEnvelope(Object envelope, boolean pretty) {
     writeJson(envelope, pretty);
   }
+
+  private static ObjectMapper configuredObjectMapper() {
+    return new ObjectMapper();
+  }
+
+  private static JsonNode withoutNulls(JsonNode node) {
+    if (node.isNull()) {
+      return node;
+    }
+    if (node.isObject()) {
+      ObjectNode objectNode = (ObjectNode) node;
+      List<String> nullFields = new ArrayList<>();
+      objectNode
+          .propertyStream()
+          .forEach(
+              entry -> {
+                JsonNode value = entry.getValue();
+                if (value.isNull()) {
+                  nullFields.add(entry.getKey());
+                } else {
+                  objectNode.set(entry.getKey(), withoutNulls(value));
+                }
+              });
+      objectNode.remove(nullFields);
+      return objectNode;
+    }
+    if (node.isArray()) {
+      ArrayNode arrayNode = (ArrayNode) node;
+      for (int index = 0; index < arrayNode.size(); index++) {
+        JsonNode value = arrayNode.get(index);
+        if (!value.isNull()) {
+          arrayNode.set(index, withoutNulls(value));
+        }
+      }
+    }
+    return node;
+  }
+
+  private record SuccessEnvelope(String status, Object payload) {}
+
+  private record FailureEnvelope(
+      String status, String code, String message, String hint, String argument) {}
+
+  private record PreflightAcceptedEnvelope(
+      String status, String idempotencyKey, String effectiveDate) {}
+
+  private record CommittedEnvelope(
+      String status,
+      String postingId,
+      String idempotencyKey,
+      String effectiveDate,
+      String recordedAt) {}
+
+  private record RejectedEnvelope(
+      String status, String code, String message, String idempotencyKey, Object details) {}
+
+  private record OpenBookPayload(String bookFile, String initializedAt) {}
+
+  private record DeclaredAccountPayload(
+      String accountCode,
+      String accountName,
+      String normalBalance,
+      boolean active,
+      String declaredAt) {}
 }

@@ -18,6 +18,7 @@ The current model is intentionally strict:
 - one canonical current schema defines new books
 - new books use SQLite `STRICT` tables
 - there is no migration or backward-compatibility layer
+- every journal entry is single-currency
 - journal entries must balance before they can cross the write boundary
 - caller-supplied request provenance is separate from committed audit metadata
 - reversals are additive links to earlier postings, not in-place mutation
@@ -41,6 +42,7 @@ The book lifecycle is explicit:
 - `list-accounts` returns the current account registry
 - `preflight-entry` and `post-entry` reject a missing or unopened book with `book-not-initialized`
 - `preflight-entry` and `post-entry` reject undeclared or inactive accounts deterministically
+- `preflight-entry` is advisory and not a durable commit guarantee
 
 ## Quick Start
 
@@ -159,6 +161,7 @@ audit metadata itself when `post-entry` succeeds.
 
 `lines[].amount` must be a plain decimal string such as `10.00`. Exponent notation such as
 `1e6` is rejected.
+Every line inside one entry must share the same `currencyCode`. Mixed-currency entries are rejected.
 
 Successful commits return a FinGrind-generated `postingId`. The default production generator emits
 UUID v7 values.
@@ -207,7 +210,8 @@ Current deterministic rejection codes include:
 - `postingId` in committed responses is generated as a UUID v7 value.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
 - `capabilities` is the best machine-readable contract surface for commands, request fields,
-  account-registry rules, and rejection codes.
+  account-registry rules, rejection descriptors, advisory preflight semantics, and the
+  single-currency entry model.
 
 ## More User Docs
 
