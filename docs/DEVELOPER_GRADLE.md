@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-13"
 route:
@@ -147,6 +147,41 @@ Large `.gradle.kts` files are hard to test, hard to refactor, and easy to let dr
 configuration-plus-implementation blobs. FinGrind therefore keeps reusable typed logic in
 `gradle/build-logic` and keeps consumer scripts thin. `jazzer/build.gradle.kts` is intentionally a
 single plugin application for exactly that reason.
+
+### Coverage gate protocol
+
+FinGrind's JaCoCo wiring is intentionally stricter than JaCoCo's defaults because the defaults can
+silently under-enforce the documented coverage contract.
+
+Rules:
+- never rely on an unnamed JaCoCo `limit {}` block for coverage meaning
+- always set `counter = "LINE"` and `counter = "BRANCH"` explicitly for verification rules
+- always set `value = "COVEREDRATIO"` explicitly for those rules
+- treat omitted `counter` as invalid build logic because JaCoCo defaults that case to
+  instruction coverage, and 100% instruction coverage does not prove 100% branch coverage
+- wire both `jacocoTestReport` and `jacocoTestCoverageVerification` to the same execution-data
+  scope so reporting and verification cannot disagree
+- collect every local `build/jacoco/*.exec` file for a module instead of hardcoding only
+  `build/jacoco/test.exec`
+- make coverage verification depend on `tasks.withType<Test>()` so any added `Test` task must run
+  before the gate evaluates
+- at the root aggregated-report layer, collect every subproject `build/jacoco/*.exec` file instead
+  of assuming one `test.exec` per module
+
+Why this rule exists:
+- if a project later adds `integrationTest`, `parityTest`, or any other extra `Test` task, a
+  hardcoded `test.exec` assumption can silently exclude real execution data from the gate
+- if a project omits `limit.counter`, JaCoCo can appear green while whole conditional branches are
+  still untested
+- when previously unseen uncovered code appears after fixing JaCoCo wiring, treat that as the gate
+  becoming truthful rather than as the code suddenly regressing
+
+Repository-specific note:
+- FinGrind's product modules currently use only the default Gradle `test` task
+- even so, FinGrind now collects all local `build/jacoco/*.exec` files in both the per-module
+  and aggregated coverage surfaces so a future second `Test` task cannot bypass the quality gate
+- the nested Jazzer build remains intentionally separate from root product-module coverage; its own
+  `./gradlew -p jazzer check` is the authoritative Jazzer coverage gate
 
 ---
 

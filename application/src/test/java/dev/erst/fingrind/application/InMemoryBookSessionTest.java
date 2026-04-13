@@ -2,19 +2,22 @@ package dev.erst.fingrind.application;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -29,89 +32,166 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link InMemoryBookSession}. */
 class InMemoryBookSessionTest {
+  private static final Instant FIXED_INSTANT = Instant.parse("2026-04-07T10:15:30Z");
+
   @Test
-  void findByIdempotency_returnsEmptyWhenKeyIsUnknown() {
+  void openBook_marksSessionInitializedAndRejectsSecondOpen() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      assertEquals(Optional.empty(), bookSession.findByIdempotency(new IdempotencyKey("idem-1")));
+      assertFalse(bookSession.isInitialized());
+      assertEquals(new OpenBookResult.Opened(FIXED_INSTANT), bookSession.openBook(FIXED_INSTANT));
+      assertTrue(bookSession.isInitialized());
+      assertEquals(
+          new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
+          bookSession.openBook(FIXED_INSTANT));
     }
   }
 
   @Test
-  void commit_storesPostingFact() {
+  void declareAccount_requiresInitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      PostingFact postingFact = postingFact("idem-1");
-
-      PostingCommitResult result = bookSession.commit(postingFact);
-
-      assertEquals(new PostingCommitResult.Committed(postingFact), result);
       assertEquals(
-          Optional.of(postingFact), bookSession.findByIdempotency(new IdempotencyKey("idem-1")));
+          new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+          bookSession.declareAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              NormalBalance.DEBIT,
+              FIXED_INSTANT));
     }
   }
 
   @Test
-  void commit_returnsDuplicateIdempotencyOutcome() {
+  void declareAccount_storesAndListsAccountSnapshots() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.commit(postingFact("idem-1"));
+      bookSession.openBook(FIXED_INSTANT);
 
-      PostingCommitResult result = bookSession.commit(postingFact("idem-1"));
+      DeclareAccountResult result =
+          bookSession.declareAccount(
+              new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
 
       assertEquals(
-          new PostingCommitResult.DuplicateIdempotency(new IdempotencyKey("idem-1")), result);
-    }
-  }
-
-  @Test
-  void findByPostingId_returnsCommittedPostingWhenPresent() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      PostingFact postingFact = postingFact("idem-1");
-      bookSession.commit(postingFact);
-
-      assertEquals(
-          Optional.of(postingFact), bookSession.findByPostingId(new PostingId("posting-idem-1")));
-    }
-  }
-
-  @Test
-  void commit_rejectsSecondReversalForSameTargetWithoutStoringIt() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.commit(postingFact("idem-original"));
-      bookSession.commit(reversalFact("idem-reversal-1", "posting-idem-original"));
-
-      PostingFact duplicateReversal = reversalFact("idem-reversal-2", "posting-idem-original");
-      PostingCommitResult result = bookSession.commit(duplicateReversal);
-
-      assertEquals(
-          new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-idem-original")),
+          new DeclareAccountResult.Declared(
+              new DeclaredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  NormalBalance.DEBIT,
+                  true,
+                  FIXED_INSTANT)),
           result);
       assertEquals(
-          Optional.empty(), bookSession.findByIdempotency(new IdempotencyKey("idem-reversal-2")));
+          List.of(
+              new DeclaredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  NormalBalance.DEBIT,
+                  true,
+                  FIXED_INSTANT)),
+          bookSession.listAccounts());
     }
   }
 
   @Test
-  void findReversalFor_returnsCommittedReversalWhenPresent() {
+  void declareAccount_reactivatesExistingAccountWithoutChangingDeclaredAt() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.commit(postingFact("idem-original"));
-      PostingFact reversalFact = reversalFact("idem-reversal", "posting-idem-original");
-      bookSession.commit(reversalFact);
+      bookSession.openBook(FIXED_INSTANT);
+      bookSession.declareAccount(
+          new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+      bookSession.deactivateAccount(new AccountCode("1000"));
+
+      DeclareAccountResult result =
+          bookSession.declareAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash main"),
+              NormalBalance.DEBIT,
+              Instant.parse("2026-04-08T11:00:00Z"));
 
       assertEquals(
-          Optional.of(reversalFact),
+          new DeclareAccountResult.Declared(
+              new DeclaredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash main"),
+                  NormalBalance.DEBIT,
+                  true,
+                  FIXED_INSTANT)),
+          result);
+    }
+  }
+
+  @Test
+  void declareAccount_rejectsNormalBalanceConflict() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(FIXED_INSTANT);
+      bookSession.declareAccount(
+          new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+
+      DeclareAccountResult result =
+          bookSession.declareAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              NormalBalance.CREDIT,
+              FIXED_INSTANT);
+
+      assertEquals(
+          new DeclareAccountResult.Rejected(
+              new BookAdministrationRejection.NormalBalanceConflict(
+                  new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
+          result);
+    }
+  }
+
+  @Test
+  void commit_requiresInitializedBook() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      assertEquals(
+          new PostingCommitResult.BookNotInitialized(), bookSession.commit(postingFact("idem-1")));
+    }
+  }
+
+  @Test
+  void commit_rejectsUnknownAndInactiveAccounts() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(FIXED_INSTANT);
+      assertEquals(
+          new PostingCommitResult.UnknownAccount(new AccountCode("1000")),
+          bookSession.commit(postingFact("idem-1")));
+
+      declareDefaultAccounts(bookSession);
+      bookSession.deactivateAccount(new AccountCode("1000"));
+
+      assertEquals(
+          new PostingCommitResult.InactiveAccount(new AccountCode("1000")),
+          bookSession.commit(postingFact("idem-2")));
+    }
+  }
+
+  @Test
+  void commit_storesPostingAndDuplicateOutcomesAfterInitialization() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(FIXED_INSTANT);
+      declareDefaultAccounts(bookSession);
+      PostingFact originalPosting = postingFact("idem-original");
+      PostingFact firstReversal = reversalFact("idem-reversal-1", "posting-idem-original");
+      PostingFact secondReversal = reversalFact("idem-reversal-2", "posting-idem-original");
+
+      assertEquals(
+          new PostingCommitResult.Committed(originalPosting), bookSession.commit(originalPosting));
+      assertEquals(
+          Optional.of(originalPosting),
+          bookSession.findByIdempotency(new IdempotencyKey("idem-original")));
+      assertEquals(
+          Optional.of(originalPosting),
+          bookSession.findByPostingId(new PostingId("posting-idem-original")));
+      assertEquals(
+          new PostingCommitResult.DuplicateIdempotency(new IdempotencyKey("idem-original")),
+          bookSession.commit(postingFact("idem-original")));
+
+      assertEquals(
+          new PostingCommitResult.Committed(firstReversal), bookSession.commit(firstReversal));
+      assertEquals(
+          Optional.of(firstReversal),
           bookSession.findReversalFor(new PostingId("posting-idem-original")));
-    }
-  }
-
-  @Test
-  void commit_doesNotRegisterOrdinaryPostingAsReversal() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      PostingFact postingFact = postingFact("idem-original");
-
-      PostingCommitResult result = bookSession.commit(postingFact);
-
-      assertEquals(new PostingCommitResult.Committed(postingFact), result);
       assertEquals(
-          Optional.empty(), bookSession.findReversalFor(new PostingId("posting-idem-original")));
+          new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-idem-original")),
+          bookSession.commit(secondReversal));
     }
   }
 
@@ -120,6 +200,27 @@ class InMemoryBookSessionTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertDoesNotThrow(bookSession::close);
     }
+  }
+
+  @Test
+  void deactivateAccount_rejectsUnknownAccount() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(FIXED_INSTANT);
+
+      IllegalArgumentException thrown =
+          org.junit.jupiter.api.Assertions.assertThrows(
+              IllegalArgumentException.class,
+              () -> bookSession.deactivateAccount(new AccountCode("9999")));
+
+      assertTrue(thrown.getMessage().contains("9999"));
+    }
+  }
+
+  private static void declareDefaultAccounts(InMemoryBookSession bookSession) {
+    bookSession.declareAccount(
+        new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+    bookSession.declareAccount(
+        new AccountCode("2000"), new AccountName("Revenue"), NormalBalance.CREDIT, FIXED_INSTANT);
   }
 
   private static PostingFact postingFact(String idempotencyKey) {
@@ -148,9 +249,9 @@ class InMemoryBookSessionTest {
             new CommandId("command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
-            Optional.of(new CorrelationId("corr-1")),
+            Optional.empty(),
             reason),
-        Instant.parse("2026-04-07T10:15:30Z"),
+        FIXED_INSTANT,
         SourceChannel.CLI);
   }
 

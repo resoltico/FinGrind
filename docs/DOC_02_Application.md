@@ -1,14 +1,100 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: APPLICATION
 updated: "2026-04-13"
 route:
-  keywords: [fingrind, application, post-entry, preflight, rejection, committed, write-boundary, uuid-v7]
-  questions: ["how does the post-entry application boundary work", "what results can posting return in fingrind", "how are posting ids generated in fingrind"]
+  keywords: [fingrind, application, open-book, declare-account, list-accounts, post-entry, preflight, rejection, committed, uuid-v7]
+  questions: ["how does the application boundary work in fingrind", "what results can posting return in fingrind", "how are posting ids generated in fingrind"]
 ---
 
 # Application API Reference
+
+## `BookAdministrationService`
+
+`BookAdministrationService` owns explicit book initialization and account-registry commands.
+
+```java
+public final class BookAdministrationService
+```
+
+- Constructor: requires `BookSession` and `Clock`
+- Surface: `openBook()`, `declareAccount(DeclareAccountCommand)`, `listAccounts()`
+- Policy: stamps `initializedAt` and `declaredAt` from the application clock instead of trusting caller input
+
+## `DeclareAccountCommand`
+
+`DeclareAccountCommand` is the application-layer request to declare or reactivate one account.
+
+```java
+public record DeclareAccountCommand(
+    AccountCode accountCode,
+    AccountName accountName,
+    NormalBalance normalBalance)
+```
+
+- Purpose: keep account-registry writes typed at the application boundary
+- Validation: rejects `null` fields
+
+## `DeclaredAccount`
+
+`DeclaredAccount` is the durable account-registry projection returned by Phase 2 surfaces.
+
+```java
+public record DeclaredAccount(
+    AccountCode accountCode,
+    AccountName accountName,
+    NormalBalance normalBalance,
+    boolean active,
+    Instant declaredAt)
+```
+
+- Purpose: represent one declared account independently of CLI or SQLite concerns
+- Validation: rejects `null` value fields
+
+## `OpenBookResult`
+
+`OpenBookResult` is the closed result family for explicit book initialization.
+
+```java
+public sealed interface OpenBookResult
+```
+
+- Variants: `Opened`, `Rejected`
+- Purpose: keep book lifecycle outcomes explicit instead of throwing for ordinary rejections
+
+## `DeclareAccountResult`
+
+`DeclareAccountResult` is the closed result family for `declare-account`.
+
+```java
+public sealed interface DeclareAccountResult
+```
+
+- Variants: `Declared`, `Rejected`
+- Purpose: return the current declared-account shape or a deterministic refusal
+
+## `ListAccountsResult`
+
+`ListAccountsResult` is the closed result family for `list-accounts`.
+
+```java
+public sealed interface ListAccountsResult
+```
+
+- Variants: `Listed`, `Rejected`
+- Purpose: keep the account-registry read surface explicit at the application layer
+
+## `BookAdministrationRejection`
+
+`BookAdministrationRejection` is the closed family of deterministic book-lifecycle refusals.
+
+```java
+public sealed interface BookAdministrationRejection
+```
+
+- Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`, `NormalBalanceConflict`
+- Purpose: distinguish lifecycle and registry-state refusals from malformed requests or runtime failure
 
 ## `PostEntryCommand`
 
@@ -91,7 +177,7 @@ public final class PostingApplicationService
 
 - Constructor: requires `BookSession`, `PostingIdGenerator`, and `Clock`
 - Surface: exposes `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
-- Policy: enforces duplicate idempotency, reversal-target existence, reversal-reason rules, one-reversal-per-target, and reversal negation
+- Policy: rejects unopened books, unknown accounts, inactive accounts, duplicate idempotency, missing reversal targets, duplicate reversals, and non-negating reversals deterministically
 - Commit path: creates one committed `PostingFact`, stamps `CommittedProvenance`, generates a fresh `PostingId`, and maps `BookSession` commit outcomes into `PostEntryResult`
 
 ## `PostingIdGenerator`
@@ -127,71 +213,5 @@ public final class UuidV7PostingIdGenerator implements PostingIdGenerator
 public sealed interface PostingRejection
 ```
 
-- Variants: duplicate idempotency, reversal reason required or forbidden, missing reversal target, duplicate reversal, reversal mismatch
+- Variants: `BookNotInitialized`, `UnknownAccount`, `InactiveAccount`, `DuplicateIdempotencyKey`, `ReversalReasonRequired`, `ReversalReasonForbidden`, `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
 - Purpose: keep validly parsed but inadmissible requests machine-distinguishable
-
-## `PostingRejection.ReversalReasonForbidden`
-
-`ReversalReasonForbidden` rejects a non-reversal request that still supplied `provenance.reason`.
-
-```java
-public record ReversalReasonForbidden() implements PostingRejection
-```
-
-- Purpose: keep reversal reason scoped to actual reversal postings
-
-## `PostingRejection.ReversalReasonRequired`
-
-`ReversalReasonRequired` rejects a reversal posting that omitted `provenance.reason`.
-
-```java
-public record ReversalReasonRequired() implements PostingRejection
-```
-
-- Purpose: require a human-readable reason for every reversal
-
-## `PostingRejection.ReversalTargetNotFound`
-
-`ReversalTargetNotFound` rejects a reversal whose `priorPostingId` does not exist in the selected book.
-
-```java
-public record ReversalTargetNotFound(PostingId priorPostingId)
-    implements PostingRejection
-```
-
-- Purpose: keep reversal lineage anchored to an existing committed posting
-- Validation: rejects `null` `priorPostingId`
-
-## `PostingRejection.DuplicateIdempotencyKey`
-
-`DuplicateIdempotencyKey` rejects a request whose `idempotencyKey` already exists in the selected book.
-
-```java
-public record DuplicateIdempotencyKey() implements PostingRejection
-```
-
-- Purpose: make duplicate submission a stable deterministic outcome
-
-## `PostingRejection.ReversalAlreadyExists`
-
-`ReversalAlreadyExists` rejects a reversal attempt when the target posting already has a full reversal.
-
-```java
-public record ReversalAlreadyExists(PostingId priorPostingId)
-    implements PostingRejection
-```
-
-- Purpose: enforce one reversal per target posting
-- Validation: rejects `null` `priorPostingId`
-
-## `PostingRejection.ReversalDoesNotNegateTarget`
-
-`ReversalDoesNotNegateTarget` rejects a reversal candidate whose lines do not negate the target posting exactly.
-
-```java
-public record ReversalDoesNotNegateTarget(PostingId priorPostingId)
-    implements PostingRejection
-```
-
-- Purpose: keep reversal linkage semantically exact instead of a generic lineage marker
-- Validation: rejects `null` `priorPostingId`

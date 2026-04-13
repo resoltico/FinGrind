@@ -5,6 +5,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-13
+
+### Changed
+- Hard-broke book lifecycle and posting admission to require explicit `open-book` initialization
+  plus a declared per-book account registry before any `preflight-entry` or `post-entry` can
+  succeed, and added `declare-account` and `list-accounts` to the public CLI surface.
+- Added `AccountName` and `NormalBalance` to the core model, introduced book-administration result
+  and rejection families in `application`, extended the SQLite schema with `book_meta` and
+  `account`, and enforced `journal_line.account_code` through a real SQLite foreign key.
+- Reworked the committed Jazzer replay contract so posting and SQLite harnesses explicitly assert
+  the lifecycle order: unopened-book rejection, undeclared-account rejection,
+  inactive-account rejection, then the final success or reversal-policy outcome.
+- Updated user and developer documentation, examples, and Docker smoke verification around the
+  explicit book/account lifecycle, the managed-versus-host SQLite runtime split, and the current
+  operator flow.
+
+### Fixed
+- Stopped the packaged CLI from crashing with `ExceptionInInitializerError` when a standalone
+  `java -jar` invocation finds an unsupported host `libsqlite3`; FinGrind now returns a structured
+  `runtime-failure` surface instead.
+- Hardened the Docker smoke gate so it now exercises `open-book`, `declare-account`,
+  `list-accounts`, `preflight-entry`, and `post-entry` in the supported order instead of relying
+  on the removed implicit-book behavior.
+
 ## [0.6.0] - 2026-04-13
 
 ### Changed
@@ -167,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.7.0
 [0.6.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.6.0
 [0.5.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.5.0
 [0.4.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.4.0

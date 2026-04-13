@@ -1,6 +1,8 @@
 package dev.erst.fingrind.application;
 
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.JournalLine;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,6 +48,12 @@ public final class PostingApplicationService {
 
     return switch (bookSession.commit(postingFact)) {
       case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
+      case PostingCommitResult.BookNotInitialized _ ->
+          rejected(command, new PostingRejection.BookNotInitialized());
+      case PostingCommitResult.UnknownAccount unknownAccount ->
+          rejected(command, new PostingRejection.UnknownAccount(unknownAccount.accountCode()));
+      case PostingCommitResult.InactiveAccount inactiveAccount ->
+          rejected(command, new PostingRejection.InactiveAccount(inactiveAccount.accountCode()));
       case PostingCommitResult.DuplicateIdempotency _ ->
           rejected(command, new PostingRejection.DuplicateIdempotencyKey());
       case PostingCommitResult.DuplicateReversalTarget duplicateReversalTarget ->
@@ -60,10 +68,38 @@ public final class PostingApplicationService {
   }
 
   private Optional<PostingRejection> rejectionFor(PostEntryCommand command) {
+    if (!bookSession.isInitialized()) {
+      return Optional.of(new PostingRejection.BookNotInitialized());
+    }
+    Optional<PostingRejection> accountRejection = accountRejection(command);
+    if (accountRejection.isPresent()) {
+      return accountRejection;
+    }
     if (existingPosting(command).isPresent()) {
       return Optional.of(new PostingRejection.DuplicateIdempotencyKey());
     }
     return ReversalPolicy.rejectionFor(command, bookSession);
+  }
+
+  private Optional<PostingRejection> accountRejection(PostEntryCommand command) {
+    for (JournalLine line : command.journalEntry().lines()) {
+      Optional<DeclaredAccount> account = bookSession.findAccount(line.accountCode());
+      if (account.isEmpty()) {
+        return unknownAccount(line.accountCode());
+      }
+      if (!account.orElseThrow().active()) {
+        return inactiveAccount(line.accountCode());
+      }
+    }
+    return Optional.empty();
+  }
+
+  private static Optional<PostingRejection> unknownAccount(AccountCode accountCode) {
+    return Optional.of(new PostingRejection.UnknownAccount(accountCode));
+  }
+
+  private static Optional<PostingRejection> inactiveAccount(AccountCode accountCode) {
+    return Optional.of(new PostingRejection.InactiveAccount(accountCode));
   }
 
   private static PostEntryResult.Committed committedResult(PostingFact committedPosting) {

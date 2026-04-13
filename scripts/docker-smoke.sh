@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build the local Docker image and verify the FinGrind CLI can open a SQLite book file from an
-# unusual mounted path inside the container.
+# Build the local Docker image and verify the FinGrind CLI can initialize a book, declare
+# accounts, and commit through an unusual mounted path inside the container.
 
 set -euo pipefail
 
@@ -77,8 +77,12 @@ printf '{}\n' > "${anonymous_docker_config}/config.json"
 mkdir -p "${smoke_root}/requests odd"
 
 readonly request_rel='requests odd/request [docker #smoke].json'
+readonly declare_cash_rel='requests odd/declare account cash [docker #smoke].json'
+readonly declare_revenue_rel='requests odd/declare account revenue [docker #smoke].json'
 readonly book_rel='books odd/nested/entity [docker #smoke].sqlite'
 readonly request_path="${smoke_root}/${request_rel}"
+readonly declare_cash_path="${smoke_root}/${declare_cash_rel}"
+readonly declare_revenue_path="${smoke_root}/${declare_revenue_rel}"
 readonly book_path="${smoke_root}/${book_rel}"
 
 cat > "${request_path}" <<JSON
@@ -105,6 +109,22 @@ cat > "${request_path}" <<JSON
     "idempotencyKey": "docker-smoke-idem",
     "causationId": "docker-smoke-cause"
   }
+}
+JSON
+
+cat > "${declare_cash_path}" <<JSON
+{
+  "accountCode": "1000",
+  "accountName": "Cash",
+  "normalBalance": "DEBIT"
+}
+JSON
+
+cat > "${declare_revenue_path}" <<JSON
+{
+  "accountCode": "2000",
+  "accountName": "Revenue",
+  "normalBalance": "CREDIT"
 }
 JSON
 
@@ -139,7 +159,61 @@ require_match "${capabilities_output}" '"sqliteRuntimeStatus"[[:space:]]*:[[:spa
 require_match "${capabilities_output}" '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"' \
     "capabilities output did not report SQLite 3.53.0"
 
-printf 'Docker smoke: verifying book write through mounted path\n'
+printf 'Docker smoke: verifying explicit book initialization through mounted path\n'
+open_output="$(docker_with_repo_config run --rm \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
+    "${image_tag}" \
+    open-book \
+    --book-file "${book_rel}" | tr -d '\r')"
+
+[[ -f "${book_path}" ]] || die "docker smoke book file was not initialized: ${book_path}"
+require_match "${open_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
+    "docker smoke open-book did not report ok status"
+require_match "${open_output}" '"initializedAt"[[:space:]]*:[[:space:]]*"' \
+    "docker smoke open-book did not include initializedAt"
+
+printf 'Docker smoke: verifying account declaration and registry listing\n'
+declare_cash_output="$(docker_with_repo_config run --rm \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
+    "${image_tag}" \
+    declare-account \
+    --book-file "${book_rel}" \
+    --request-file "${declare_cash_rel}" | tr -d '\r')"
+declare_revenue_output="$(docker_with_repo_config run --rm \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
+    "${image_tag}" \
+    declare-account \
+    --book-file "${book_rel}" \
+    --request-file "${declare_revenue_rel}" | tr -d '\r')"
+list_output="$(docker_with_repo_config run --rm \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
+    "${image_tag}" \
+    list-accounts \
+    --book-file "${book_rel}" | tr -d '\r')"
+
+require_match "${declare_cash_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
+    "docker smoke cash declaration did not report ok status"
+require_match "${declare_cash_output}" '"accountCode"[[:space:]]*:[[:space:]]*"1000"' \
+    "docker smoke cash declaration did not echo the declared account"
+require_match "${declare_revenue_output}" '"accountCode"[[:space:]]*:[[:space:]]*"2000"' \
+    "docker smoke revenue declaration did not echo the declared account"
+require_match "${list_output}" '"accountCode"[[:space:]]*:[[:space:]]*"1000"' \
+    "docker smoke account listing did not include account 1000"
+require_match "${list_output}" '"accountCode"[[:space:]]*:[[:space:]]*"2000"' \
+    "docker smoke account listing did not include account 2000"
+
+printf 'Docker smoke: verifying preflight and commit through mounted path\n'
+preflight_output="$(docker_with_repo_config run --rm \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
+    "${image_tag}" \
+    preflight-entry \
+    --book-file "${book_rel}" \
+    --request-file "${request_rel}" | tr -d '\r')"
 commit_output="$(docker_with_repo_config run --rm \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -148,7 +222,8 @@ commit_output="$(docker_with_repo_config run --rm \
     --book-file "${book_rel}" \
     --request-file "${request_rel}" | tr -d '\r')"
 
-[[ -f "${book_path}" ]] || die "docker smoke book file was not written: ${book_path}"
+require_match "${preflight_output}" '"status"[[:space:]]*:[[:space:]]*"preflight-accepted"' \
+    "docker smoke preflight did not report preflight-accepted status"
 require_match "${commit_output}" '"status"[[:space:]]*:[[:space:]]*"committed"' \
     "docker smoke commit did not report committed status"
 

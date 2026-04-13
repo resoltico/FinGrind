@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.application.DeclareAccountCommand;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -19,6 +20,69 @@ import org.junit.jupiter.api.io.TempDir;
 /** Unit tests for {@link CliRequestReader}. */
 class CliRequestReaderTest {
   @TempDir Path tempDirectory;
+
+  @Test
+  void readDeclareAccountCommand_readsFromFile() throws IOException {
+    Path requestFile =
+        writeNamedRequest(
+            "declare-account.json",
+            """
+            {
+              "accountCode": "1000",
+              "accountName": "Cash",
+              "normalBalance": "DEBIT"
+            }
+            """);
+    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
+
+    DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
+
+    assertEquals("1000", command.accountCode().value());
+    assertEquals("Cash", command.accountName().value());
+    assertEquals("DEBIT", command.normalBalance().name());
+  }
+
+  @Test
+  void readDeclareAccountCommand_rejectsMissingRequiredField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "accountCode": "1000",
+                  "normalBalance": "DEBIT"
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals("Missing required field: accountName", exception.getMessage());
+  }
+
+  @Test
+  void readDeclareAccountCommand_rejectsInvalidNormalBalance() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "accountCode": "1000",
+                  "accountName": "Cash",
+                  "normalBalance": "SIDEWAYS"
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals(
+        "No enum constant dev.erst.fingrind.core.NormalBalance.SIDEWAYS", exception.getMessage());
+  }
 
   @Test
   void readPostEntryCommand_readsFromFile() throws IOException {
@@ -922,7 +986,11 @@ class CliRequestReaderTest {
   }
 
   private Path writeRequest(String payload) throws IOException {
-    Path requestFile = tempDirectory.resolve("request.json");
+    return writeNamedRequest("request.json", payload);
+  }
+
+  private Path writeNamedRequest(String fileName, String payload) throws IOException {
+    Path requestFile = tempDirectory.resolve(fileName);
     Files.writeString(requestFile, payload, StandardCharsets.UTF_8);
     return requestFile;
   }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -35,8 +37,47 @@ class PostingApplicationServiceTest {
       Clock.fixed(Instant.parse("2026-04-07T10:15:30Z"), ZoneOffset.UTC);
 
   @Test
-  void preflight_returnsAcceptedWhenRequestIsAdmissible() {
+  void preflight_rejectsBookNotInitialized() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
+
+      PostEntryResult result = applicationService.preflight(command("idem-1"));
+
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
+          result);
+    }
+  }
+
+  @Test
+  void preflight_rejectsUnknownAndInactiveAccountsBeforeOtherChecks() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      PostingApplicationService applicationService = applicationService(bookSession);
+
+      PostEntryResult unknownAccountResult = applicationService.preflight(command("idem-1"));
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-1"),
+              new PostingRejection.UnknownAccount(new AccountCode("1000"))),
+          unknownAccountResult);
+
+      declareDefaultAccounts(bookSession);
+      bookSession.deactivateAccount(new AccountCode("1000"));
+
+      PostEntryResult inactiveAccountResult = applicationService.preflight(command("idem-2"));
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-2"),
+              new PostingRejection.InactiveAccount(new AccountCode("1000"))),
+          inactiveAccountResult);
+    }
+  }
+
+  @Test
+  void preflight_returnsAcceptedWhenRequestIsAdmissible() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result = applicationService.preflight(command("idem-1"));
@@ -50,7 +91,8 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_rejectsDuplicateIdempotencyKey() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       bookSession.commit(existingPosting("posting-existing", "idem-1"));
       PostingApplicationService applicationService = applicationService(bookSession);
 
@@ -65,7 +107,8 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_rejectsReversalWithoutReason() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result =
@@ -84,7 +127,8 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_rejectsReasonWithoutReversal() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result =
@@ -103,7 +147,8 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_rejectsMissingReversalTarget() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result =
@@ -123,7 +168,8 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_acceptsReversalWhenTargetExistsAndReasonIsPresent() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       bookSession.commit(existingPosting("posting-1", "idem-existing"));
       PostingApplicationService applicationService = applicationService(bookSession);
 
@@ -144,7 +190,8 @@ class PostingApplicationServiceTest {
 
   @Test
   void preflight_rejectsReversalThatDoesNotNegateTarget() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       bookSession.commit(existingPosting("posting-1", "idem-existing"));
       PostingApplicationService applicationService = applicationService(bookSession);
 
@@ -165,32 +212,9 @@ class PostingApplicationServiceTest {
   }
 
   @Test
-  void commit_returnsCommittedForValidReversal() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.commit(existingPosting("posting-1", "idem-original"));
-      PostingApplicationService applicationService = applicationService(bookSession);
-
-      PostEntryResult result =
-          applicationService.commit(
-              command(
-                  "idem-1",
-                  reversalReference("posting-1"),
-                  Optional.of(new ReversalReason("full reversal")),
-                  reversalJournalEntry()));
-
-      assertEquals(
-          new PostEntryResult.Committed(
-              new PostingId("posting-new"),
-              new IdempotencyKey("idem-1"),
-              LocalDate.parse("2026-04-07"),
-              FIXED_CLOCK.instant()),
-          result);
-    }
-  }
-
-  @Test
   void commit_returnsCommittedWhenRequestIsAdmissible() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result = applicationService.commit(command("idem-1"));
@@ -206,69 +230,65 @@ class PostingApplicationServiceTest {
   }
 
   @Test
-  void commit_rejectsDuplicateIdempotencyKey() {
+  void commit_rejectsBookNotInitializedBeforeGeneratingPostingId() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.commit(existingPosting("posting-existing", "idem-1"));
-      PostingApplicationService applicationService = applicationService(bookSession);
+      PostingApplicationService applicationService =
+          new PostingApplicationService(
+              bookSession,
+              () -> {
+                throw new AssertionError("postingIdGenerator should not be called");
+              },
+              FIXED_CLOCK);
 
       PostEntryResult result = applicationService.commit(command("idem-1"));
 
       assertEquals(
           new PostEntryResult.Rejected(
-              new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
+              new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
           result);
     }
   }
 
   @Test
-  void commit_mapsBookSessionDuplicateIdempotencyOutcome() {
-    BookSession bookSession =
-        new BookSession() {
-          @Override
-          public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
-            return Optional.empty();
-          }
-
-          @Override
-          public Optional<PostingFact> findByPostingId(PostingId postingId) {
-            return Optional.empty();
-          }
-
-          @Override
-          public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
-            return Optional.empty();
-          }
-
-          @Override
-          public PostingCommitResult commit(PostingFact postingFact) {
-            return new PostingCommitResult.DuplicateIdempotency(
-                postingFact.provenance().requestProvenance().idempotencyKey());
-          }
-
-          @Override
-          public void close() {}
-        };
-    try (bookSession) {
-      PostingApplicationService applicationService = applicationService(bookSession);
-
-      PostEntryResult result = applicationService.commit(command("idem-1"));
-
-      assertEquals(
-          new PostEntryResult.Rejected(
-              new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
-          result);
-    }
-  }
-
-  @Test
-  void commit_rejectsSecondReversalForSameTarget() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+  void commit_returnsCommittedForValidReversal() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
       bookSession.commit(existingPosting("posting-1", "idem-original"));
-      bookSession.commit(existingReversal("posting-2", "idem-reversal", "posting-1"));
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result =
           applicationService.commit(
+              command(
+                  "idem-1",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  reversalJournalEntry()));
+
+      assertEquals(
+          new PostEntryResult.Committed(
+              new PostingId("posting-new"),
+              new IdempotencyKey("idem-1"),
+              LocalDate.parse("2026-04-07"),
+              FIXED_CLOCK.instant()),
+          result);
+    }
+  }
+
+  @Test
+  void preflight_rejectsReversalWhenTargetAlreadyHasReversal() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      bookSession.commit(existingPosting("posting-1", "idem-original"));
+      PostingApplicationService applicationService = applicationService(bookSession);
+      applicationService.commit(
+          command(
+              "idem-existing-reversal",
+              reversalReference("posting-1"),
+              Optional.of(new ReversalReason("full reversal")),
+              reversalJournalEntry()));
+
+      PostEntryResult result =
+          applicationService.preflight(
               command(
                   "idem-1",
                   reversalReference("posting-1"),
@@ -284,78 +304,67 @@ class PostingApplicationServiceTest {
   }
 
   @Test
-  void commit_mapsBookSessionDuplicateReversalTargetOutcome() {
-    PostingFact priorPosting = existingPosting("posting-1", "idem-existing");
-    BookSession bookSession =
-        new BookSession() {
-          @Override
-          public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
-            return Optional.empty();
-          }
-
-          @Override
-          public Optional<PostingFact> findByPostingId(PostingId postingId) {
-            return Optional.of(priorPosting);
-          }
-
-          @Override
-          public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
-            return Optional.empty();
-          }
-
-          @Override
-          public PostingCommitResult commit(PostingFact postingFact) {
-            return new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-1"));
-          }
-
-          @Override
-          public void close() {}
-        };
+  void commit_mapsOrdinaryBookSessionOutcomes() {
+    BookSession bookSession = mappedOutcomeBookSession();
     try (bookSession) {
       PostingApplicationService applicationService = applicationService(bookSession);
 
-      PostEntryResult result =
-          applicationService.commit(
-              command(
-                  "idem-1",
-                  reversalReference("posting-1"),
-                  Optional.of(new ReversalReason("full reversal")),
-                  reversalJournalEntry()));
-
       assertEquals(
           new PostEntryResult.Rejected(
-              new IdempotencyKey("idem-1"),
+              new IdempotencyKey("idem-book-not-initialized"),
+              new PostingRejection.BookNotInitialized()),
+          applicationService.commit(command("idem-book-not-initialized")));
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-unknown-account"),
+              new PostingRejection.UnknownAccount(new AccountCode("1000"))),
+          applicationService.commit(command("idem-unknown-account")));
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-inactive-account"),
+              new PostingRejection.InactiveAccount(new AccountCode("1000"))),
+          applicationService.commit(command("idem-inactive-account")));
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
+          applicationService.commit(command("idem-duplicate")));
+      assertEquals(
+          new PostEntryResult.Rejected(
+              new IdempotencyKey("idem-reversal-duplicate"),
               new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
-          result);
+          applicationService.commit(
+              command(
+                  "idem-reversal-duplicate",
+                  reversalReference("posting-1"),
+                  Optional.of(new ReversalReason("full reversal")),
+                  reversalJournalEntry())));
     }
   }
 
   @Test
   void commit_propagatesUnexpectedBookSessionFailure() {
     BookSession bookSession =
-        new BookSession() {
+        new DelegatingBookSession() {
           @Override
-          public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
-            return Optional.empty();
+          public boolean isInitialized() {
+            return true;
           }
 
           @Override
-          public Optional<PostingFact> findByPostingId(PostingId postingId) {
-            return Optional.empty();
-          }
-
-          @Override
-          public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
-            return Optional.empty();
+          public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+            return Optional.of(
+                new DeclaredAccount(
+                    accountCode,
+                    new AccountName("Synthetic"),
+                    "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
+                    true,
+                    FIXED_CLOCK.instant()));
           }
 
           @Override
           public PostingCommitResult commit(PostingFact postingFact) {
             throw new IllegalStateException("boom");
           }
-
-          @Override
-          public void close() {}
         };
     try (bookSession) {
       PostingApplicationService applicationService = applicationService(bookSession);
@@ -366,6 +375,25 @@ class PostingApplicationServiceTest {
 
       assertEquals("boom", thrown.getMessage());
     }
+  }
+
+  private static InMemoryBookSession initializedBook() {
+    InMemoryBookSession bookSession = new InMemoryBookSession();
+    bookSession.openBook(FIXED_CLOCK.instant());
+    return bookSession;
+  }
+
+  private static void declareDefaultAccounts(InMemoryBookSession bookSession) {
+    bookSession.declareAccount(
+        new AccountCode("1000"),
+        new AccountName("Cash"),
+        NormalBalance.DEBIT,
+        FIXED_CLOCK.instant());
+    bookSession.declareAccount(
+        new AccountCode("2000"),
+        new AccountName("Revenue"),
+        NormalBalance.CREDIT,
+        FIXED_CLOCK.instant());
   }
 
   private static PostingApplicationService applicationService(BookSession bookSession) {
@@ -396,22 +424,16 @@ class PostingApplicationServiceTest {
         SourceChannel.CLI);
   }
 
+  private static Optional<ReversalReference> reversalReference(String priorPostingId) {
+    return Optional.of(new ReversalReference(new PostingId(priorPostingId)));
+  }
+
   private static PostingFact existingPosting(String postingId, String idempotencyKey) {
     return new PostingFact(
         new PostingId(postingId),
         journalEntry(),
         Optional.empty(),
         committedProvenance(idempotencyKey, Optional.empty()));
-  }
-
-  private static PostingFact existingReversal(
-      String postingId, String idempotencyKey, String priorPostingId) {
-    return new PostingFact(
-        new PostingId(postingId),
-        reversalJournalEntry(),
-        reversalReference(priorPostingId),
-        committedProvenance(
-            idempotencyKey, Optional.of(new ReversalReason("historical full reversal"))));
   }
 
   private static CommittedProvenance committedProvenance(
@@ -430,10 +452,6 @@ class PostingApplicationServiceTest {
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")),
         reason);
-  }
-
-  private static Optional<ReversalReference> reversalReference(String priorPostingId) {
-    return Optional.of(new ReversalReference(new PostingId(priorPostingId)));
   }
 
   private static JournalEntry journalEntry() {
@@ -456,9 +474,8 @@ class PostingApplicationServiceTest {
     return new JournalEntry(
         LocalDate.parse("2026-04-07"),
         List.of(
-            line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
-            line("2000", JournalLine.EntrySide.DEBIT, "9.00"),
-            line("9999", JournalLine.EntrySide.DEBIT, "1.00")));
+            line("1000", JournalLine.EntrySide.CREDIT, "5.00"),
+            line("2000", JournalLine.EntrySide.DEBIT, "5.00")));
   }
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
@@ -466,5 +483,88 @@ class PostingApplicationServiceTest {
         new AccountCode(accountCode),
         side,
         new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+  }
+
+  private static BookSession mappedOutcomeBookSession() {
+    return new DelegatingBookSession() {
+      @Override
+      public boolean isInitialized() {
+        return true;
+      }
+
+      @Override
+      public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+        return Optional.of(
+            new DeclaredAccount(
+                accountCode,
+                new AccountName("Synthetic"),
+                "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
+                true,
+                FIXED_CLOCK.instant()));
+      }
+
+      @Override
+      public Optional<PostingFact> findByPostingId(PostingId postingId) {
+        return Optional.of(existingPosting(postingId.value(), "idem-existing"));
+      }
+
+      @Override
+      public PostingCommitResult commit(PostingFact postingFact) {
+        String idempotencyKey =
+            postingFact.provenance().requestProvenance().idempotencyKey().value();
+        return switch (idempotencyKey) {
+          case "idem-book-not-initialized" -> new PostingCommitResult.BookNotInitialized();
+          case "idem-unknown-account" ->
+              new PostingCommitResult.UnknownAccount(new AccountCode("1000"));
+          case "idem-inactive-account" ->
+              new PostingCommitResult.InactiveAccount(new AccountCode("1000"));
+          case "idem-duplicate" ->
+              new PostingCommitResult.DuplicateIdempotency(new IdempotencyKey("idem-duplicate"));
+          case "idem-reversal-duplicate" ->
+              new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-1"));
+          default -> throw new AssertionError("Unexpected test idempotency key: " + idempotencyKey);
+        };
+      }
+    };
+  }
+
+  /** Minimal book-session stub whose methods fail unless a test overrides them. */
+  private abstract static class DelegatingBookSession implements BookSession {
+    @Override
+    public OpenBookResult openBook(Instant initializedAt) {
+      throw new AssertionError("openBook should not be called in this test");
+    }
+
+    @Override
+    public DeclareAccountResult declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
+      throw new AssertionError("declareAccount should not be called in this test");
+    }
+
+    @Override
+    public List<DeclaredAccount> listAccounts() {
+      throw new AssertionError("listAccounts should not be called in this test");
+    }
+
+    @Override
+    public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<PostingFact> findByPostingId(PostingId postingId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public void close() {}
   }
 }

@@ -22,7 +22,8 @@
 #   bash -n check.sh scripts/*.sh jazzer/bin/*
 #
 # Stage 5 exercises the Docker release surface from a non-default working directory:
-#   scripts/docker-smoke.sh -> build the image and verify help/request/response/save behavior
+#   scripts/docker-smoke.sh -> build the image and verify discovery, explicit book lifecycle,
+#                              and write behavior
 #
 # The script is location-independent: it always targets the repository that contains this file,
 # even when invoked from another working directory or through a symlink.

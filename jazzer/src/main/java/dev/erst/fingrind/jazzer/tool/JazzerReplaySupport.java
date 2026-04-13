@@ -5,11 +5,14 @@ import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostEntryResult.Committed;
 import dev.erst.fingrind.application.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.application.PostEntryResult.Rejected;
+import dev.erst.fingrind.application.BookAdministrationService;
+import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.InMemoryBookSession;
 import dev.erst.fingrind.application.PostingApplicationService;
 import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.cli.CliFuzzSupport;
+import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import java.io.IOException;
@@ -17,6 +20,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -77,18 +81,52 @@ public final class JazzerReplaySupport {
 
   private static ReplayOutcome replayPostingWorkflow(byte[] input) {
     PostEntryCommand command = null;
-    String preflightStatus = "NOT_RUN";
-    String firstCommitStatus = "NOT_RUN";
+    String uninitializedPreflightStatus = "NOT_RUN";
+    String uninitializedCommitStatus = "NOT_RUN";
+    String undeclaredPreflightStatus = "NOT_RUN";
+    String undeclaredCommitStatus = "NOT_RUN";
+    String inactivePreflightStatus = "NOT_RUN";
+    String inactiveCommitStatus = "NOT_RUN";
+    String finalPreflightStatus = "NOT_RUN";
+    String finalCommitStatus = "NOT_RUN";
     String duplicateStatus = "NOT_RUN";
     boolean storedFactPresent = false;
     try {
       command = CliFuzzSupport.readPostEntryCommand(input);
       InMemoryBookSession bookSession = new InMemoryBookSession();
+      BookAdministrationService administrationService =
+          CliFuzzSupport.administrationService(bookSession);
       PostingApplicationService applicationService =
           new PostingApplicationService(
               bookSession,
               CliFuzzSupport.postingIdGenerator(input),
               CliFuzzSupport.fixedClock());
+
+      uninitializedPreflightStatus =
+          rejectionStatus(rejectedResult(applicationService.preflight(command)).rejection());
+      uninitializedCommitStatus =
+          rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+
+      CliFuzzSupport.openBook(administrationService);
+
+      undeclaredPreflightStatus =
+          rejectionStatus(rejectedResult(applicationService.preflight(command)).rejection());
+      undeclaredCommitStatus =
+          rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+
+      List<DeclaredAccount> declaredAccounts =
+          CliFuzzSupport.declarePostingAccounts(administrationService, command);
+      if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+        throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+      }
+      DeclaredAccount primaryAccount = declaredAccounts.getFirst();
+      bookSession.deactivateAccount(primaryAccount.accountCode());
+      inactivePreflightStatus =
+          rejectionStatus(rejectedResult(applicationService.preflight(command)).rejection());
+      inactiveCommitStatus =
+          rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+
+      CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
 
       PostEntryResult preflight = applicationService.preflight(command);
       PostEntryResult committedResult = applicationService.commit(command);
@@ -99,11 +137,11 @@ public final class JazzerReplaySupport {
         if (!accepted.effectiveDate().equals(command.journalEntry().effectiveDate())) {
           throw new IllegalStateException("Preflight changed the effective date.");
         }
-        preflightStatus = "PREFLIGHT_ACCEPTED";
+        finalPreflightStatus = "PREFLIGHT_ACCEPTED";
         if (!(committedResult instanceof Committed committed)) {
           throw new IllegalStateException("Accepted preflight should commit on a fresh valid book.");
         }
-        firstCommitStatus = "COMMITTED";
+        finalCommitStatus = "COMMITTED";
 
         Optional<PostingFact> storedPosting =
             bookSession.findByIdempotency(command.requestProvenance().idempotencyKey());
@@ -142,14 +180,14 @@ public final class JazzerReplaySupport {
         }
         duplicateStatus = rejectionStatus(rejected.rejection());
       } else if (preflight instanceof Rejected preflightRejected) {
-        preflightStatus = rejectionStatus(preflightRejected.rejection());
+        finalPreflightStatus = rejectionStatus(preflightRejected.rejection());
         if (!(committedResult instanceof Rejected commitRejected)) {
           throw new IllegalStateException("Rejected preflight should remain rejected on commit.");
         }
         if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
           throw new IllegalStateException("Commit changed the deterministic rejection.");
         }
-        firstCommitStatus = rejectionStatus(commitRejected.rejection());
+        finalCommitStatus = rejectionStatus(commitRejected.rejection());
       } else {
         throw new IllegalStateException("Unexpected preflight result type.");
       }
@@ -159,8 +197,14 @@ public final class JazzerReplaySupport {
           postingWorkflowDetails(
               command,
               "PARSED",
-              preflightStatus,
-              firstCommitStatus,
+              uninitializedPreflightStatus,
+              uninitializedCommitStatus,
+              undeclaredPreflightStatus,
+              undeclaredCommitStatus,
+              inactivePreflightStatus,
+              inactiveCommitStatus,
+              finalPreflightStatus,
+              finalCommitStatus,
               duplicateStatus,
               storedFactPresent,
               NONE));
@@ -172,8 +216,14 @@ public final class JazzerReplaySupport {
           postingWorkflowDetails(
               command,
               "INVALID_REQUEST",
-              preflightStatus,
-              firstCommitStatus,
+              uninitializedPreflightStatus,
+              uninitializedCommitStatus,
+              undeclaredPreflightStatus,
+              undeclaredCommitStatus,
+              inactivePreflightStatus,
+              inactiveCommitStatus,
+              finalPreflightStatus,
+              finalCommitStatus,
               duplicateStatus,
               storedFactPresent,
               normalizedMessage(expected)));
@@ -184,8 +234,14 @@ public final class JazzerReplaySupport {
           postingWorkflowDetails(
               command,
               command == null ? "UNEXPECTED_FAILURE" : "PARSED",
-              preflightStatus,
-              firstCommitStatus,
+              uninitializedPreflightStatus,
+              uninitializedCommitStatus,
+              undeclaredPreflightStatus,
+              undeclaredCommitStatus,
+              inactivePreflightStatus,
+              inactiveCommitStatus,
+              finalPreflightStatus,
+              finalCommitStatus,
               duplicateStatus,
               storedFactPresent,
               normalizedMessage(unexpected)));
@@ -194,7 +250,10 @@ public final class JazzerReplaySupport {
 
   private static ReplayOutcome replaySqliteBookRoundTrip(byte[] input) {
     PostEntryCommand command = null;
-    String firstCommitStatus = "NOT_RUN";
+    String uninitializedCommitStatus = "NOT_RUN";
+    String undeclaredCommitStatus = "NOT_RUN";
+    String inactiveCommitStatus = "NOT_RUN";
+    String finalCommitStatus = "NOT_RUN";
     String reloadStatus = "NOT_RUN";
     String duplicateStatus = "NOT_RUN";
     boolean storedFactPresent = false;
@@ -205,14 +264,37 @@ public final class JazzerReplaySupport {
       Path bookPath = bookDirectory.resolve("nested").resolve("entity-book.sqlite");
 
       try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookPath)) {
+        BookAdministrationService administrationService =
+            CliFuzzSupport.administrationService(postingFactStore);
         PostingApplicationService applicationService =
             new PostingApplicationService(
                 postingFactStore,
                 CliFuzzSupport.postingIdGenerator(input),
                 CliFuzzSupport.fixedClock());
+
+        uninitializedCommitStatus =
+            rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+
+        CliFuzzSupport.openBook(administrationService);
+
+        undeclaredCommitStatus =
+            rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+
+        List<DeclaredAccount> declaredAccounts =
+            CliFuzzSupport.declarePostingAccounts(administrationService, command);
+        if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+          throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+        }
+        DeclaredAccount primaryAccount = declaredAccounts.getFirst();
+        SqliteFuzzAssertions.updateAccountActiveFlag(bookPath, primaryAccount.accountCode().value(), false);
+        inactiveCommitStatus =
+            rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+
+        CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
+
         PostEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
-          firstCommitStatus = "COMMITTED";
+          finalCommitStatus = "COMMITTED";
           try (SqlitePostingFactStore reloadedStore = new SqlitePostingFactStore(bookPath)) {
             Optional<PostingFact> storedPosting =
                 reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
@@ -265,7 +347,7 @@ public final class JazzerReplaySupport {
             duplicateStatus = rejectionStatus(rejected.rejection());
           }
         } else if (committedResult instanceof Rejected rejected) {
-          firstCommitStatus = rejectionStatus(rejected.rejection());
+          finalCommitStatus = rejectionStatus(rejected.rejection());
           PostEntryResult repeatedResult = applicationService.commit(command);
           if (!(repeatedResult instanceof Rejected repeatedRejected)) {
             throw new IllegalStateException("Rejected SQLite command should remain rejected.");
@@ -284,7 +366,10 @@ public final class JazzerReplaySupport {
           sqliteBookRoundTripDetails(
               command,
               "PARSED",
-              firstCommitStatus,
+              uninitializedCommitStatus,
+              undeclaredCommitStatus,
+              inactiveCommitStatus,
+              finalCommitStatus,
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
@@ -297,7 +382,10 @@ public final class JazzerReplaySupport {
           sqliteBookRoundTripDetails(
               command,
               "INVALID_REQUEST",
-              firstCommitStatus,
+              uninitializedCommitStatus,
+              undeclaredCommitStatus,
+              inactiveCommitStatus,
+              finalCommitStatus,
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
@@ -309,7 +397,10 @@ public final class JazzerReplaySupport {
           sqliteBookRoundTripDetails(
               command,
               command == null ? "UNEXPECTED_FAILURE" : "PARSED",
-              firstCommitStatus,
+              uninitializedCommitStatus,
+              undeclaredCommitStatus,
+              inactiveCommitStatus,
+              finalCommitStatus,
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
@@ -321,7 +412,10 @@ public final class JazzerReplaySupport {
           sqliteBookRoundTripDetails(
               command,
               command == null ? "UNEXPECTED_FAILURE" : "PARSED",
-              firstCommitStatus,
+              uninitializedCommitStatus,
+              undeclaredCommitStatus,
+              inactiveCommitStatus,
+              finalCommitStatus,
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
@@ -353,8 +447,14 @@ public final class JazzerReplaySupport {
   private static PostingWorkflowReplayDetails postingWorkflowDetails(
       PostEntryCommand command,
       String requestStatus,
-      String preflightStatus,
-      String firstCommitStatus,
+      String uninitializedPreflightStatus,
+      String uninitializedCommitStatus,
+      String undeclaredPreflightStatus,
+      String undeclaredCommitStatus,
+      String inactivePreflightStatus,
+      String inactiveCommitStatus,
+      String finalPreflightStatus,
+      String finalCommitStatus,
       String duplicateStatus,
       boolean storedFactPresent,
       String failureMessage) {
@@ -364,8 +464,14 @@ public final class JazzerReplaySupport {
         idempotencyKey(command),
         lineCount(command),
         reversalPresent(command),
-        preflightStatus,
-        firstCommitStatus,
+        uninitializedPreflightStatus,
+        uninitializedCommitStatus,
+        undeclaredPreflightStatus,
+        undeclaredCommitStatus,
+        inactivePreflightStatus,
+        inactiveCommitStatus,
+        finalPreflightStatus,
+        finalCommitStatus,
         duplicateStatus,
         storedFactPresent,
         failureMessage);
@@ -374,7 +480,10 @@ public final class JazzerReplaySupport {
   private static SqliteBookRoundTripReplayDetails sqliteBookRoundTripDetails(
       PostEntryCommand command,
       String requestStatus,
-      String firstCommitStatus,
+      String uninitializedCommitStatus,
+      String undeclaredCommitStatus,
+      String inactiveCommitStatus,
+      String finalCommitStatus,
       String reloadStatus,
       String duplicateStatus,
       boolean storedFactPresent,
@@ -385,7 +494,10 @@ public final class JazzerReplaySupport {
         idempotencyKey(command),
         lineCount(command),
         reversalPresent(command),
-        firstCommitStatus,
+        uninitializedCommitStatus,
+        undeclaredCommitStatus,
+        inactiveCommitStatus,
+        finalCommitStatus,
         reloadStatus,
         duplicateStatus,
         storedFactPresent,
@@ -451,6 +563,9 @@ public final class JazzerReplaySupport {
 
   private static String rejectionStatus(PostingRejection rejection) {
     return switch (rejection) {
+      case PostingRejection.BookNotInitialized _ -> "REJECTED_BOOK_NOT_INITIALIZED";
+      case PostingRejection.UnknownAccount _ -> "REJECTED_UNKNOWN_ACCOUNT";
+      case PostingRejection.InactiveAccount _ -> "REJECTED_INACTIVE_ACCOUNT";
       case PostingRejection.DuplicateIdempotencyKey _ -> "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
       case PostingRejection.ReversalReasonRequired _ -> "REJECTED_REVERSAL_REASON_REQUIRED";
       case PostingRejection.ReversalReasonForbidden _ -> "REJECTED_REVERSAL_REASON_FORBIDDEN";
@@ -459,6 +574,13 @@ public final class JazzerReplaySupport {
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
           "REJECTED_REVERSAL_DOES_NOT_NEGATE_TARGET";
     };
+  }
+
+  private static Rejected rejectedResult(PostEntryResult result) {
+    if (!(result instanceof Rejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during replay lifecycle setup.");
+    }
+    return rejected;
   }
 
   private static String normalizedMessage(Throwable error) {

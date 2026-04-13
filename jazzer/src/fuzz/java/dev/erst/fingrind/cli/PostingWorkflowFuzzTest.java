@@ -2,6 +2,8 @@ package dev.erst.fingrind.cli;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
+import dev.erst.fingrind.application.BookAdministrationService;
+import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostEntryResult.Committed;
@@ -21,11 +23,42 @@ public class PostingWorkflowFuzzTest {
     try {
       PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
       InMemoryBookSession bookSession = new InMemoryBookSession();
+      BookAdministrationService administrationService =
+          CliFuzzSupport.administrationService(bookSession);
       PostingApplicationService applicationService =
           new PostingApplicationService(
               bookSession,
               CliFuzzSupport.postingIdGenerator(input),
               CliFuzzSupport.fixedClock());
+
+      assertRejected(
+          applicationService.preflight(command), PostingRejection.BookNotInitialized.class);
+      assertRejected(applicationService.commit(command), PostingRejection.BookNotInitialized.class);
+
+      CliFuzzSupport.openBook(administrationService);
+
+      assertRejected(
+          applicationService.preflight(command), PostingRejection.UnknownAccount.class);
+      assertRejected(applicationService.commit(command), PostingRejection.UnknownAccount.class);
+
+      var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
+      if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+        throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+      }
+      DeclaredAccount primaryAccount = declaredAccounts.getFirst();
+      bookSession.deactivateAccount(primaryAccount.accountCode());
+
+      assertRejected(
+          applicationService.preflight(command), PostingRejection.InactiveAccount.class);
+      assertRejected(applicationService.commit(command), PostingRejection.InactiveAccount.class);
+
+      CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
+      if (!CliFuzzSupport
+          .listAccounts(administrationService)
+          .stream()
+          .anyMatch(account -> account.accountCode().equals(primaryAccount.accountCode()) && account.active())) {
+        throw new IllegalStateException("Account reactivation did not persist in the registry.");
+      }
 
       PostEntryResult preflight = applicationService.preflight(command);
       PostEntryResult committedResult = applicationService.commit(command);
@@ -89,6 +122,17 @@ public class PostingWorkflowFuzzTest {
       }
     } catch (IllegalArgumentException expected) {
       // Malformed JSON and invalid request/domain shapes are expected for many fuzz inputs.
+    }
+  }
+
+  private static void assertRejected(
+      PostEntryResult result, Class<? extends PostingRejection> rejectionType) {
+    if (!(result instanceof Rejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during lifecycle setup.");
+    }
+    if (!rejectionType.isInstance(rejected.rejection())) {
+      throw new IllegalStateException(
+          "Lifecycle setup returned the wrong rejection type: " + rejected.rejection());
     }
   }
 }

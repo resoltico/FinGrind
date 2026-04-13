@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -114,8 +114,8 @@ jazzer/bin/clean-local-corpus
 | Harness | Focus | Current Assertions |
 |:--------|:------|:-------------------|
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
-| `posting-workflow` | application preflight and commit behavior | accepted requests commit once, deterministic rejections repeat consistently, duplicates reject deterministically |
-| `sqlite-book-roundtrip` | real filesystem persistence | committed facts reload durably from one selected book, canonical tables stay `STRICT`, and open store connections keep the SQLite hardening pragmas |
+| `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
+| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected book, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
 ## Deterministic Support Tests
 
@@ -132,8 +132,8 @@ The nested Jazzer build also includes normal JUnit support tests that cover:
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
 | `cli-request` | `8` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, missing provenance, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `posting-workflow` | `5` | success, invalid actor, exponent rejection, missing reversal reason, missing reversal target |
-| `sqlite-book-roundtrip` | `7` | success, nested path, Unicode round-trip, exponent rejection, invalid type, missing reversal reason, missing reversal target |
+| `posting-workflow` | `5` | explicit lifecycle setup plus success, invalid actor, exponent rejection, missing reversal reason, missing reversal target |
+| `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, Unicode round-trip, exponent rejection, invalid type, missing reversal reason, missing reversal target |
 
 ## Regression Philosophy
 

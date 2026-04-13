@@ -22,8 +22,11 @@ final class CliArguments {
       case "capabilities" -> parseSingleToken(arguments, new CliCommand.Capabilities());
       case "print-request-template", "--print-request-template" ->
           parseSingleToken(arguments, new CliCommand.PrintRequestTemplate());
-      case "preflight-entry" -> parseEntryCommand(arguments, true);
-      case "post-entry" -> parseEntryCommand(arguments, false);
+      case "open-book" -> parseBookOnlyCommand(arguments, CliCommand.OpenBook::new);
+      case "declare-account" -> parseRequestBoundCommand(arguments, CliCommand.DeclareAccount::new);
+      case "list-accounts" -> parseBookOnlyCommand(arguments, CliCommand.ListAccounts::new);
+      case "preflight-entry" -> parseRequestBoundCommand(arguments, CliCommand.PreflightEntry::new);
+      case "post-entry" -> parseRequestBoundCommand(arguments, CliCommand.PostEntry::new);
       default -> throw unknownCommand(arguments.getFirst());
     };
   }
@@ -35,7 +38,21 @@ final class CliArguments {
     return command;
   }
 
-  private static CliCommand parseEntryCommand(List<String> arguments, boolean preflight) {
+  private static CliCommand parseBookOnlyCommand(
+      List<String> arguments, BookOnlyCommandFactory commandFactory) {
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false);
+    return commandFactory.create(parsedArguments.bookFilePath());
+  }
+
+  private static CliCommand parseRequestBoundCommand(
+      List<String> arguments, RequestBoundCommandFactory commandFactory) {
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, true);
+    return commandFactory.create(
+        parsedArguments.bookFilePath(), parsedArguments.optionalRequestFile().orElseThrow());
+  }
+
+  private static ParsedBookArguments parseBookArguments(
+      List<String> arguments, boolean requestRequired) {
     Path bookFilePath = null;
     Path requestFile = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
@@ -49,6 +66,9 @@ final class CliArguments {
           bookFilePath = Path.of(requireValue(argumentIterator, "--book-file"));
         }
         case "--request-file" -> {
+          if (!requestRequired) {
+            throw invalid(argument, "Unsupported argument: " + argument);
+          }
           if (requestFile != null) {
             throw invalid("--request-file", "Duplicate argument: --request-file");
           }
@@ -60,16 +80,14 @@ final class CliArguments {
     if (bookFilePath == null) {
       throw invalid("--book-file", "A --book-file argument is required.");
     }
-    if (requestFile == null) {
+    if (requestRequired && requestFile == null) {
       throw invalid("--request-file", "A --request-file argument is required.");
     }
-    if (bookFilePath.toAbsolutePath().equals(requestFile.toAbsolutePath())) {
+    if (requestFile != null && bookFilePath.toAbsolutePath().equals(requestFile.toAbsolutePath())) {
       throw invalid(
           "--request-file", "--book-file and --request-file must not point to the same path.");
     }
-    return preflight
-        ? new CliCommand.PreflightEntry(bookFilePath, requestFile)
-        : new CliCommand.PostEntry(bookFilePath, requestFile);
+    return new ParsedBookArguments(bookFilePath, requestFile);
   }
 
   private static String requireValue(ListIterator<String> argumentIterator, String optionName) {
@@ -93,5 +111,31 @@ final class CliArguments {
         commandName,
         "Unsupported command: " + commandName,
         "Run 'fingrind help' to inspect the supported commands and examples.");
+  }
+
+  /** Parsed path arguments shared by commands that address one book file. */
+  private record ParsedBookArguments(Path bookFilePath, Path requestFile) {
+    private ParsedBookArguments {
+      Objects.requireNonNull(bookFilePath, "bookFilePath");
+    }
+
+    /** Returns the optional request file when the command expects one. */
+    private java.util.Optional<Path> optionalRequestFile() {
+      return java.util.Optional.ofNullable(requestFile);
+    }
+  }
+
+  /** Factory for commands that only need a selected book file. */
+  @FunctionalInterface
+  private interface BookOnlyCommandFactory {
+    /** Creates one CLI command for the provided book path. */
+    CliCommand create(Path bookFilePath);
+  }
+
+  /** Factory for commands that need both a book file and a request payload path. */
+  @FunctionalInterface
+  private interface RequestBoundCommandFactory {
+    /** Creates one CLI command for the provided book and request paths. */
+    CliCommand create(Path bookFilePath, Path requestFile);
   }
 }

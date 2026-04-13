@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: DEVELOPER
 updated: "2026-04-13"
 route:
@@ -37,6 +37,8 @@ core/         Accounting vocabulary and invariants:
               request provenance, committed provenance, posting identity.
 
 application/  Explicit write boundary plus persistence seam:
+              BookAdministrationService, DeclareAccountCommand, DeclaredAccount,
+              OpenBookResult, DeclareAccountResult, ListAccountsResult,
               PostEntryCommand, PostEntryResult, PostingRejection,
               PostingIdGenerator, UuidV7PostingIdGenerator,
               PostingApplicationService, BookSession, PostingFact,
@@ -49,7 +51,8 @@ sqlite/       Durable single-book adapter:
               `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
-              help/version/capabilities plus preflight-entry and post-entry.
+              help/version/capabilities plus open-book, declare-account,
+              list-accounts, preflight-entry, and post-entry.
 ```
 
 The dependency graph is deliberately one-way:
@@ -64,6 +67,8 @@ application -> core
 FinGrind is intentionally hard-break oriented right now:
 - one SQLite file is one book for one entity
 - one canonical current schema defines new books
+- books are initialized explicitly before any posting
+- every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
 - no migration framework or backward-compatibility layer exists yet
 - preflight is side-effect free against a missing book
@@ -126,6 +131,17 @@ Local CLI usage from source:
 - unit tests
 - JaCoCo coverage verification at 100% line and 100% branch coverage
 
+Coverage-gate protocol:
+- never rely on JaCoCo defaults for verification semantics
+- per-module verification must set both `LINE` and `BRANCH` counters explicitly
+- per-module reports and verification must read all local `build/jacoco/*.exec` files, not only
+  `test.exec`
+- aggregated root coverage must read all subproject `build/jacoco/*.exec` files as well
+
+This matters even when a repo currently has only the default Gradle `test` task: the moment a new
+`Test` task appears, hardcoded `test.exec` assumptions become a silent coverage hole. See
+[DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the canonical build-logic protocol.
+
 Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a managed SQLite
 3.53.0 shared library from `third_party/sqlite/sqlite-amalgamation-3530000/`, inject that library
 through `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
@@ -137,7 +153,7 @@ through `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
 - nested `./gradlew -p jazzer check`
 - `:cli:shadowJar`
 - shell syntax checks for release-surface scripts
-- Docker smoke verification, including semantic JSON assertions for discovery and write responses
+- Docker smoke verification, including semantic JSON assertions for discovery, explicit book lifecycle, and write responses
 
 The Docker smoke stage now runs public-image operations through a temporary anonymous
 `DOCKER_CONFIG` while targeting the active local Docker engine derived from the current context.

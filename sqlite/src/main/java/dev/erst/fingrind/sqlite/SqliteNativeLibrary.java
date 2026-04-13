@@ -10,6 +10,7 @@ import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /** Minimal Java FFM binding layer over the configured SQLite C library. */
 final class SqliteNativeLibrary {
@@ -391,7 +392,29 @@ final class SqliteNativeLibrary {
   }
 
   private static SqliteApi api() {
-    return SqliteApiHolder.INSTANCE;
+    return initialize(() -> SqliteApiHolder.INSTANCE);
+  }
+
+  static <T> T initialize(Supplier<T> initializer) {
+    Objects.requireNonNull(initializer, "initializer");
+    try {
+      return initializer.get();
+    } catch (ExceptionInInitializerError error) {
+      throw nativeInitializationFailure(error);
+    }
+  }
+
+  static IllegalStateException nativeInitializationFailure(ExceptionInInitializerError error) {
+    Objects.requireNonNull(error, "error");
+    Throwable cause = error.getCause();
+    if (cause instanceof IllegalStateException illegalStateException) {
+      return illegalStateException;
+    }
+    Throwable reportedCause = cause == null ? error : cause;
+    return new IllegalStateException(
+        Objects.requireNonNullElse(
+            reportedCause.getMessage(), "Failed to initialize SQLite native library."),
+        reportedCause);
   }
 
   private static SqliteApi loadApi() {

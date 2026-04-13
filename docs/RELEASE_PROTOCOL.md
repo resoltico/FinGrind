@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-04-11"
 route:
@@ -40,7 +40,7 @@ Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceedin
 
 Then verify every item in this checklist. All must be true before any commit or tag:
 
-- `gradle.properties` `version=` equals the target release version exactly (for example `0.6.0`).
+- `gradle.properties` `version=` equals the target release version exactly (for example `0.7.0`).
 - All `docs/*.md` frontmatter `version:` fields equal the target version.
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.

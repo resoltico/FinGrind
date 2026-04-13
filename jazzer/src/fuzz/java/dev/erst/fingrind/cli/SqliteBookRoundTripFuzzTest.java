@@ -2,6 +2,8 @@ package dev.erst.fingrind.cli;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
+import dev.erst.fingrind.application.BookAdministrationService;
+import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostEntryResult.Committed;
@@ -29,11 +31,37 @@ public class SqliteBookRoundTripFuzzTest {
               .resolve("entity-book.sqlite");
 
       try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookPath)) {
+        BookAdministrationService administrationService =
+            CliFuzzSupport.administrationService(postingFactStore);
         PostingApplicationService applicationService =
             new PostingApplicationService(
                 postingFactStore,
                 CliFuzzSupport.postingIdGenerator(input),
                 CliFuzzSupport.fixedClock());
+
+        assertRejected(applicationService.commit(command), PostingRejection.BookNotInitialized.class);
+
+        CliFuzzSupport.openBook(administrationService);
+
+        assertRejected(applicationService.commit(command), PostingRejection.UnknownAccount.class);
+
+        var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
+        if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+          throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
+        }
+        DeclaredAccount primaryAccount = declaredAccounts.getFirst();
+        if (!(postingFactStore.findAccount(primaryAccount.accountCode()).orElseThrow().active())) {
+          throw new IllegalStateException("Primary account should be active immediately after declaration.");
+        }
+        deactivateAccount(bookPath, primaryAccount.accountCode().value());
+
+        assertRejected(applicationService.commit(command), PostingRejection.InactiveAccount.class);
+
+        CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
+        if (!(postingFactStore.findAccount(primaryAccount.accountCode()).orElseThrow().active())) {
+          throw new IllegalStateException("Account reactivation did not persist to SQLite.");
+        }
+
         PostEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
           SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
@@ -103,6 +131,25 @@ public class SqliteBookRoundTripFuzzTest {
       }
     } catch (IllegalArgumentException expected) {
       // Malformed JSON and invalid request/domain shapes are expected for many fuzz inputs.
+    }
+  }
+
+  private static void assertRejected(
+      PostEntryResult result, Class<? extends PostingRejection> rejectionType) {
+    if (!(result instanceof Rejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during SQLite lifecycle setup.");
+    }
+    if (!rejectionType.isInstance(rejected.rejection())) {
+      throw new IllegalStateException(
+          "SQLite lifecycle setup returned the wrong rejection type: " + rejected.rejection());
+    }
+  }
+
+  private static void deactivateAccount(Path bookPath, String accountCode) {
+    try {
+      SqliteFuzzAssertions.updateAccountActiveFlag(bookPath, accountCode, false);
+    } catch (IOException exception) {
+      throw new IllegalStateException("Failed to deactivate SQLite account during fuzz setup.", exception);
     }
   }
 }

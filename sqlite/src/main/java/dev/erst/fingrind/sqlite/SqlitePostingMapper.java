@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -13,6 +15,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -29,6 +32,16 @@ import java.util.Optional;
 /** Maps SQLite native statement rows into FinGrind posting domain objects. */
 final class SqlitePostingMapper {
   private SqlitePostingMapper() {}
+
+  static DeclaredAccount declaredAccount(SqliteNativeStatement accountRow) {
+    return new DeclaredAccount(
+        new AccountCode(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_CODE)),
+        new AccountName(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NAME)),
+        NormalBalance.valueOf(
+            requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NORMAL_BALANCE)),
+        requiredInt(accountRow, SqlitePostingSql.COL_ACCOUNT_ACTIVE) == 1,
+        Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
+  }
 
   static PostingFact postingFact(SqliteNativeStatement postingRow, List<JournalLine> lines) {
     PostingId postingId = new PostingId(requiredText(postingRow, SqlitePostingSql.COL_POSTING_ID));
@@ -88,5 +101,9 @@ final class SqlitePostingMapper {
       return Optional.empty();
     }
     return Optional.of(value);
+  }
+
+  static int requiredInt(SqliteNativeStatement row, int columnIndex) {
+    return row.columnInt(columnIndex);
   }
 }
