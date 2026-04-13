@@ -1,6 +1,11 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.application.BookAdministrationService;
 import dev.erst.fingrind.application.BookSession;
+import dev.erst.fingrind.application.DeclareAccountCommand;
+import dev.erst.fingrind.application.DeclareAccountResult;
+import dev.erst.fingrind.application.ListAccountsResult;
+import dev.erst.fingrind.application.OpenBookResult;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingApplicationService;
@@ -25,19 +30,19 @@ final class FinGrindCli {
   private final CliResponseWriter responseWriter;
   private final CliMetadata metadata;
   private final Clock clock;
-  private final EntryWorkflow entryWorkflow;
+  private final BookWorkflow bookWorkflow;
 
   FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
-    this(inputStream, outputStream, clock, new SqliteEntryWorkflow(clock));
+    this(inputStream, outputStream, clock, new SqliteBookWorkflow(clock));
   }
 
   FinGrindCli(
-      InputStream inputStream, PrintStream outputStream, Clock clock, EntryWorkflow entryWorkflow) {
+      InputStream inputStream, PrintStream outputStream, Clock clock, BookWorkflow bookWorkflow) {
     this.requestReader = new CliRequestReader(inputStream);
     this.responseWriter = new CliResponseWriter(outputStream);
     this.metadata = new CliMetadata();
     this.clock = Objects.requireNonNull(clock, "clock");
-    this.entryWorkflow = Objects.requireNonNull(entryWorkflow, "entryWorkflow");
+    this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
   }
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */
@@ -48,11 +53,14 @@ final class FinGrindCli {
         case CliCommand.Capabilities _ -> writeDiscoverySuccess(capabilitiesPayload());
         case CliCommand.Version _ -> writeDiscoverySuccess(versionPayload());
         case CliCommand.PrintRequestTemplate _ -> writeRequestTemplate();
+        case CliCommand.OpenBook command -> runOpenBookCommand(command.bookFilePath());
+        case CliCommand.DeclareAccount command ->
+            runDeclareAccountCommand(command.bookFilePath(), command.requestFile());
+        case CliCommand.ListAccounts command -> runListAccountsCommand(command.bookFilePath());
         case CliCommand.PreflightEntry command ->
-            runEntryCommand(
-                command.bookFilePath(), command.requestFile(), entryWorkflow::preflight);
+            runEntryCommand(command.bookFilePath(), command.requestFile(), bookWorkflow::preflight);
         case CliCommand.PostEntry command ->
-            runEntryCommand(command.bookFilePath(), command.requestFile(), entryWorkflow::commit);
+            runEntryCommand(command.bookFilePath(), command.requestFile(), bookWorkflow::commit);
       };
     } catch (CliArgumentsException exception) {
       responseWriter.writeFailure(exception.failure());
@@ -80,6 +88,25 @@ final class FinGrindCli {
     return 0;
   }
 
+  private int runOpenBookCommand(Path bookFilePath) {
+    OpenBookResult result = bookWorkflow.openBook(bookFilePath);
+    responseWriter.writeOpenBookResult(bookFilePath, result);
+    return exitCodeFor(result);
+  }
+
+  private int runDeclareAccountCommand(Path bookFilePath, Path requestFile) {
+    DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
+    DeclareAccountResult result = bookWorkflow.declareAccount(bookFilePath, command);
+    responseWriter.writeDeclareAccountResult(result);
+    return exitCodeFor(result);
+  }
+
+  private int runListAccountsCommand(Path bookFilePath) {
+    ListAccountsResult result = bookWorkflow.listAccounts(bookFilePath);
+    responseWriter.writeListAccountsResult(result);
+    return exitCodeFor(result);
+  }
+
   private int runEntryCommand(Path bookFilePath, Path requestFile, EntryOperation entryOperation) {
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     PostEntryResult result = entryOperation.execute(bookFilePath, command);
@@ -92,6 +119,27 @@ final class FinGrindCli {
       case PostEntryResult.PreflightAccepted _ -> 0;
       case PostEntryResult.Committed _ -> 0;
       case PostEntryResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(OpenBookResult result) {
+    return switch (result) {
+      case OpenBookResult.Opened _ -> 0;
+      case OpenBookResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(DeclareAccountResult result) {
+    return switch (result) {
+      case DeclareAccountResult.Declared _ -> 0;
+      case DeclareAccountResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(ListAccountsResult result) {
+    return switch (result) {
+      case ListAccountsResult.Listed _ -> 0;
+      case ListAccountsResult.Rejected _ -> 2;
     };
   }
 
@@ -108,6 +156,9 @@ final class FinGrindCli {
             "fingrind version",
             "fingrind capabilities",
             "fingrind print-request-template",
+            "fingrind open-book --book-file <path>",
+            "fingrind declare-account --book-file <path> --request-file <path|->",
+            "fingrind list-accounts --book-file <path>",
             "fingrind preflight-entry --book-file <path> --request-file <path|->",
             "fingrind post-entry --book-file <path> --request-file <path|->"));
     payload.put("bookModel", bookModelPayload());
@@ -115,6 +166,10 @@ final class FinGrindCli {
     payload.put(
         "quickStart",
         List.of(
+            "fingrind open-book --book-file ./books/acme.sqlite",
+            "fingrind declare-account --book-file ./books/acme.sqlite --request-file ./docs/examples/declare-account-cash.json",
+            "fingrind declare-account --book-file ./books/acme.sqlite --request-file ./docs/examples/declare-account-revenue.json",
+            "fingrind list-accounts --book-file ./books/acme.sqlite",
             "fingrind print-request-template > request.json",
             "fingrind preflight-entry --book-file ./books/acme.sqlite --request-file request.json",
             "fingrind post-entry --book-file ./books/acme.sqlite --request-file request.json"));
@@ -132,9 +187,11 @@ final class FinGrindCli {
     payload.put("bookBoundary", "single-sqlite-file");
     payload.put(
         "discoveryCommands", List.of("help", "version", "capabilities", "print-request-template"));
+    payload.put("administrationCommands", List.of("open-book", "declare-account"));
+    payload.put("queryCommands", List.of("list-accounts"));
     payload.put("writeCommands", List.of("preflight-entry", "post-entry"));
     payload.put("requestInput", requestInputPayload());
-    payload.put("requestShape", requestShapePayload());
+    payload.put("requestShapes", requestShapesPayload());
     payload.put("responseModel", responseModelPayload());
     payload.put(
         "audit",
@@ -151,10 +208,23 @@ final class FinGrindCli {
             "committedFields",
             List.of("recordedAt", "sourceChannel")));
     payload.put(
+        "accountRegistry",
+        Map.of(
+            "requiresOpenBook",
+            true,
+            "declareAccountFields",
+            List.of("accountCode", "accountName", "normalBalance"),
+            "listFields",
+            List.of("accountCode", "accountName", "normalBalance", "active", "declaredAt"),
+            "normalBalanceValues",
+            List.of("DEBIT", "CREDIT")));
+    payload.put(
         "reversals",
         Map.of(
             "requirements",
             List.of(
+                "book-must-be-initialized",
+                "every-line-account-must-be-declared-and-active",
                 "target-must-exist-in-book",
                 "reason-required",
                 "reason-forbidden-without-reversal",
@@ -210,6 +280,12 @@ final class FinGrindCli {
     payload.put("boundary", "one SQLite file equals one book");
     payload.put("entityScope", "one book belongs to one entity");
     payload.put("filesystem", "--book-file may point anywhere on the OS filesystem");
+    payload.put(
+        "initialization",
+        "books must be opened explicitly before any posting or account declaration");
+    payload.put("accountRegistry", "every posting line must reference a declared active account");
+    payload.put(
+        "migration", "there is no migration or compatibility layer during the hard-break phase");
     return payload;
   }
 
@@ -239,6 +315,24 @@ final class FinGrindCli {
             List.of(),
             "raw-json",
             "Print a minimal valid posting request JSON document."),
+        commandPayload(
+            "open-book",
+            List.of(),
+            List.of("--book-file <path>"),
+            "json-envelope",
+            "Initialize a new book file with the canonical schema."),
+        commandPayload(
+            "declare-account",
+            List.of(),
+            List.of("--book-file <path>", "--request-file <path|->"),
+            "json-envelope",
+            "Declare or reactivate one account in the selected book."),
+        commandPayload(
+            "list-accounts",
+            List.of(),
+            List.of("--book-file <path>"),
+            "json-envelope",
+            "List every declared account in the selected book."),
         commandPayload(
             "preflight-entry",
             List.of(),
@@ -317,7 +411,15 @@ final class FinGrindCli {
   }
 
   @SuppressWarnings("PMD.UseConcurrentHashMap")
-  private static Map<String, Object> requestShapePayload() {
+  private static Map<String, Object> requestShapesPayload() {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("postEntry", postEntryRequestShapePayload());
+    payload.put("declareAccount", declareAccountRequestShapePayload());
+    return payload;
+  }
+
+  @SuppressWarnings("PMD.UseConcurrentHashMap")
+  private static Map<String, Object> postEntryRequestShapePayload() {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("requiredTopLevelFields", List.of("effectiveDate", "lines", "provenance"));
     payload.put("optionalTopLevelFields", List.of("reversal"));
@@ -330,12 +432,21 @@ final class FinGrindCli {
     payload.put("forbiddenProvenanceFields", List.of("recordedAt", "sourceChannel"));
     payload.put("requiredReversalFields", List.of("priorPostingId"));
     payload.put("forbiddenReversalFields", List.of("kind"));
-    payload.put("enums", enumPayload());
+    payload.put("enums", entryEnumPayload());
     return payload;
   }
 
   @SuppressWarnings("PMD.UseConcurrentHashMap")
-  private static Map<String, Object> enumPayload() {
+  private static Map<String, Object> declareAccountRequestShapePayload() {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("requiredTopLevelFields", List.of("accountCode", "accountName", "normalBalance"));
+    payload.put("optionalTopLevelFields", List.of());
+    payload.put("enums", Map.of("normalBalance", List.of("DEBIT", "CREDIT")));
+    return payload;
+  }
+
+  @SuppressWarnings("PMD.UseConcurrentHashMap")
+  private static Map<String, Object> entryEnumPayload() {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("lineSide", List.of("DEBIT", "CREDIT"));
     payload.put("actorType", List.of("USER", "SYSTEM", "AGENT"));
@@ -351,14 +462,22 @@ final class FinGrindCli {
     payload.put(
         "rejectionCodes",
         List.of(
+            "book-already-initialized",
+            "book-contains-schema",
+            "book-not-initialized",
+            "account-normal-balance-conflict",
+            "unknown-account",
+            "inactive-account",
             "duplicate-idempotency-key",
             "reversal-reason-required",
             "reversal-reason-forbidden",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"));
+    payload.put("rejectionFields", List.of("status", "code", "message", "details"));
     payload.put(
-        "rejectionFields", List.of("status", "code", "message", "idempotencyKey", "details"));
+        "postEntryRejectionFields",
+        List.of("status", "code", "message", "idempotencyKey", "details"));
     payload.put("errorFields", List.of("status", "code", "message", "hint", "argument"));
     return payload;
   }
@@ -367,8 +486,7 @@ final class FinGrindCli {
     String message = message(exception);
     String hint =
         message.contains("SQLite")
-            ? "Inspect the selected book file path, filesystem permissions, and the SQLite runtime"
-                + " message, then rerun after fixing the underlying storage problem."
+            ? "Inspect the selected book file path, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
             : "Inspect the message and rerun after fixing the underlying runtime problem.";
     return new CliFailure("runtime-failure", message, hint, null);
   }
@@ -378,37 +496,72 @@ final class FinGrindCli {
   }
 
   /** Execution seam for routing CLI commands through the selected book adapter. */
-  interface EntryWorkflow {
-    /** Runs the preflight path for one CLI request against the selected book file. */
+  interface BookWorkflow {
+    /** Opens the selected book and installs the canonical FinGrind schema when possible. */
+    OpenBookResult openBook(Path bookFilePath);
+
+    /** Declares or reactivates one account inside the selected book. */
+    DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command);
+
+    /** Lists the declared accounts currently stored in the selected book. */
+    ListAccountsResult listAccounts(Path bookFilePath);
+
+    /** Validates a posting request without mutating the selected book. */
     PostEntryResult preflight(Path bookFilePath, PostEntryCommand command);
 
-    /** Runs the commit path for one CLI request against the selected book file. */
+    /** Commits a posting request into the selected book. */
     PostEntryResult commit(Path bookFilePath, PostEntryCommand command);
   }
 
   /** Default workflow that opens one SQLite-backed book file per command. */
-  private static final class SqliteEntryWorkflow implements EntryWorkflow {
+  private static final class SqliteBookWorkflow implements BookWorkflow {
     private final Clock clock;
 
-    private SqliteEntryWorkflow(Clock clock) {
+    private SqliteBookWorkflow(Clock clock) {
       this.clock = Objects.requireNonNull(clock, "clock");
+    }
+
+    @Override
+    public OpenBookResult openBook(Path bookFilePath) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+        return bookAdministrationService(bookSession, clock).openBook();
+      }
+    }
+
+    @Override
+    public DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+        return bookAdministrationService(bookSession, clock).declareAccount(command);
+      }
+    }
+
+    @Override
+    public ListAccountsResult listAccounts(Path bookFilePath) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+        return bookAdministrationService(bookSession, clock).listAccounts();
+      }
     }
 
     @Override
     public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
       try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
-        return applicationService(bookSession, clock).preflight(command);
+        return postingApplicationService(bookSession, clock).preflight(command);
       }
     }
 
     @Override
     public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
       try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
-        return applicationService(bookSession, clock).commit(command);
+        return postingApplicationService(bookSession, clock).commit(command);
       }
     }
 
-    private static PostingApplicationService applicationService(
+    private static BookAdministrationService bookAdministrationService(
+        BookSession bookSession, Clock clock) {
+      return new BookAdministrationService(bookSession, clock);
+    }
+
+    private static PostingApplicationService postingApplicationService(
         BookSession bookSession, Clock clock) {
       return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
     }

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: DEVELOPER_DOCKER
 updated: "2026-04-13"
 route:
@@ -71,7 +71,9 @@ Then the supported local gates are:
 - builds the local image from the repository root
 - verifies `version`
 - verifies the managed SQLite runtime contract through `capabilities`
-- verifies `post-entry` against a mounted path with spaces and punctuation
+- verifies `open-book` against a mounted path with spaces and punctuation
+- verifies `declare-account` and `list-accounts`
+- verifies `preflight-entry` and `post-entry` after the explicit Phase 2 lifecycle setup
 
 ## Troubleshooting
 

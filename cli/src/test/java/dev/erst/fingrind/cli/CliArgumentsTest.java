@@ -38,6 +38,40 @@ class CliArgumentsTest {
   }
 
   @Test
+  void parse_returnsOpenBookForValidBookOnlyCommand() {
+    CliCommand.OpenBook command =
+        assertInstanceOf(
+            CliCommand.OpenBook.class,
+            CliArguments.parse(new String[] {"open-book", "--book-file", "book.sqlite"}));
+
+    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+  }
+
+  @Test
+  void parse_returnsDeclareAccountForValidRequestBoundCommand() {
+    CliCommand.DeclareAccount command =
+        assertInstanceOf(
+            CliCommand.DeclareAccount.class,
+            CliArguments.parse(
+                new String[] {
+                  "declare-account", "--book-file", "book.sqlite", "--request-file", "account.json"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+    assertEquals(Path.of("account.json"), command.requestFile());
+  }
+
+  @Test
+  void parse_returnsListAccountsForValidBookOnlyCommand() {
+    CliCommand.ListAccounts command =
+        assertInstanceOf(
+            CliCommand.ListAccounts.class,
+            CliArguments.parse(new String[] {"list-accounts", "--book-file", "book.sqlite"}));
+
+    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+  }
+
+  @Test
   void parse_rejectsAdditionalArgumentForSingleTokenCommand() {
     CliArgumentsException exception =
         assertThrows(
@@ -165,6 +199,22 @@ class CliArgumentsTest {
     assertEquals("invalid-request", exception.code());
     assertEquals("--request-file", exception.argument());
     assertEquals("A --request-file argument is required.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsRequestFileOnBookOnlyCommand() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book", "--book-file", "book.sqlite", "--request-file", "oops.json"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--request-file", exception.argument());
+    assertEquals("Unsupported argument: --request-file", exception.getMessage());
   }
 
   @Test

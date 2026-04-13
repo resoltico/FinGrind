@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-13"
 route:
@@ -84,11 +84,14 @@ The SQLite adapter is split into focused collaborators:
 ## Runtime Behavior
 
 - Reads and preflight against a missing book return empty state and do not create a file.
-- The first commit creates parent directories if needed and initializes the canonical schema on the opened writable connection.
+- `open-book` creates parent directories if needed, applies the canonical schema, and inserts the authoritative `book_meta.initialized_at` marker.
+- `post-entry` no longer initializes a book implicitly; a missing or unopened book returns `BookNotInitialized`.
+- Posting lines are validated against the declared-account registry before ordinary duplicate checks proceed.
 - Opened book handles keep `foreign_keys = on` and `trusted_schema = off`.
 - Schema bootstrap is intentionally separate from the posting transaction because it is idempotent
   book initialization, not one accounting fact commit.
 - Book-local uniqueness enforces duplicate idempotency durably.
+- SQLite enforces declared-account durability through the `journal_line.account_code -> account.account_code` foreign key.
 - SQLite also enforces one reversal per target through a partial unique index.
 - Reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key.
 - Runtime probes distinguish `managed` versus `system` library source and report
@@ -117,7 +120,7 @@ text or re-querying after rollback.
 ## Canonical Schema Policy
 
 - The canonical schema resource is [`book_schema.sql`](../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql).
-- The canonical schema uses SQLite `STRICT` tables for both durable tables.
+- The canonical schema uses SQLite `STRICT` tables for `book_meta`, `account`, `posting_fact`, and `journal_line`.
 - There are no versioned migration file names such as `V1__...`.
 - There is no migration step between old and new book shapes.
 - If the schema changes again during this hard-break phase, new books are created from the new canonical file.

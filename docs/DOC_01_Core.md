@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: CORE
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
-  keywords: [fingrind, core, journal, money, provenance, reversal, account-code, currency-code, idempotency]
+  keywords: [fingrind, core, journal, money, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind"]
 ---
 
@@ -19,6 +19,17 @@ public record AccountCode(String value)
 ```
 
 - Purpose: name the account on one line without imposing a country-specific chart shape
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `AccountName`
+
+`AccountName` is the non-blank display name stored in the account registry.
+
+```java
+public record AccountName(String value)
+```
+
+- Purpose: keep the account registry human-readable without leaving display names as raw strings
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `ActorId`
@@ -81,28 +92,6 @@ public record CommittedProvenance(
 
 - Purpose: carry the accepted request provenance plus commit-time audit fields
 - Validation: rejects `null` request provenance, `recordedAt`, and `sourceChannel`
-
-## `ReversalReason`
-
-`ReversalReason` is the human-readable reason recorded for a reversal posting.
-
-```java
-public record ReversalReason(String value)
-```
-
-- Purpose: preserve the operator-supplied reason for a reversal
-- Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `ReversalReference`
-
-`ReversalReference` is the additive link from a new posting fact to an earlier committed posting.
-
-```java
-public record ReversalReference(PostingId priorPostingId)
-```
-
-- Purpose: model reversal lineage outside the journal-entry grammar
-- Validation: rejects `null` prior posting id
 
 ## `CorrelationId`
 
@@ -186,6 +175,20 @@ public record Money(CurrencyCode currencyCode, BigDecimal amount)
 - Normalization: strips trailing zeroes and normalizes negative scale to zero
 - Validation: rejects `null` fields and negative amounts
 
+## `NormalBalance`
+
+`NormalBalance` is the side that increases a declared account.
+
+```java
+public enum NormalBalance {
+  DEBIT,
+  CREDIT
+}
+```
+
+- Purpose: make the account registry explicit enough for validation and future trial-balance style reads
+- Scope: bookkeeping-native and legislation-agnostic
+
 ## `PostingId`
 
 `PostingId` is the stable identifier for one committed posting fact.
@@ -215,6 +218,28 @@ public record RequestProvenance(
 - Purpose: carry the accepted request identity and reversal reason without commit-time audit fields
 - Normalization: `null` optional fields become `Optional.empty()`
 - Validation: rejects `null` required fields
+
+## `ReversalReason`
+
+`ReversalReason` is the human-readable reason recorded for a reversal posting.
+
+```java
+public record ReversalReason(String value)
+```
+
+- Purpose: preserve the operator-supplied reason for a reversal
+- Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `ReversalReference`
+
+`ReversalReference` is the additive link from a new posting fact to an earlier committed posting.
+
+```java
+public record ReversalReference(PostingId priorPostingId)
+```
+
+- Purpose: model reversal lineage outside the journal-entry grammar
+- Validation: rejects `null` prior posting id
 
 ## `SourceChannel`
 

@@ -8,6 +8,12 @@ import org.junit.jupiter.api.Test;
 /** Covers boundary validation for core text-backed semantic value objects. */
 class CoreTextValueObjectsTest {
   @Test
+  void accountName_stripsWhitespaceAndRejectsBlank() {
+    assertEquals("Cash", new AccountName("  Cash  ").value());
+    assertThrows(IllegalArgumentException.class, () -> new AccountName("   "));
+  }
+
+  @Test
   void actorId_stripsWhitespaceAndRejectsBlank() {
     assertEquals("actor-1", new ActorId("  actor-1  ").value());
     assertThrows(IllegalArgumentException.class, () -> new ActorId("   "));
@@ -35,5 +41,11 @@ class CoreTextValueObjectsTest {
   void reversalReason_stripsWhitespaceAndRejectsBlank() {
     assertEquals("operator reversal", new ReversalReason("  operator reversal  ").value());
     assertThrows(IllegalArgumentException.class, () -> new ReversalReason("   "));
+  }
+
+  @Test
+  void normalBalance_exposesDebitAndCredit() {
+    assertEquals(NormalBalance.DEBIT, NormalBalance.valueOf("DEBIT"));
+    assertEquals(NormalBalance.CREDIT, NormalBalance.valueOf("CREDIT"));
   }
 }

@@ -219,6 +219,55 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
+  void nativeInitializationFailure_unwrapsIllegalStateCause() {
+    UnsupportedSqliteVersionException cause =
+        new UnsupportedSqliteVersionException("3.51.0", "3.53.0", "system");
+
+    IllegalStateException exception =
+        SqliteNativeLibrary.nativeInitializationFailure(new ExceptionInInitializerError(cause));
+
+    assertEquals(cause, exception);
+  }
+
+  @Test
+  void nativeInitializationFailure_wrapsUnexpectedCause() {
+    RuntimeException cause = new RuntimeException("boom");
+
+    IllegalStateException exception =
+        SqliteNativeLibrary.nativeInitializationFailure(new ExceptionInInitializerError(cause));
+
+    assertEquals("boom", exception.getMessage());
+    assertEquals(cause, exception.getCause());
+  }
+
+  @Test
+  void nativeInitializationFailure_wrapsInitializerErrorWhenCauseIsMissing() {
+    ExceptionInInitializerError error = new ExceptionInInitializerError();
+
+    IllegalStateException exception = SqliteNativeLibrary.nativeInitializationFailure(error);
+
+    assertEquals("Failed to initialize SQLite native library.", exception.getMessage());
+    assertEquals(error, exception.getCause());
+  }
+
+  @Test
+  void initialize_wrapsInitializerErrorsIntoStableIllegalStateExceptions() {
+    RuntimeException cause = new RuntimeException("boom");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeLibrary.initialize(
+                    () -> {
+                      throw new ExceptionInInitializerError(cause);
+                    }));
+
+    assertEquals("boom", exception.getMessage());
+    assertEquals(cause, exception.getCause());
+  }
+
+  @Test
   void errorMessage_returnsGenericTextForNullHandle() {
     try (Arena arena = Arena.ofConfined()) {
       MethodHandle errorHandle =

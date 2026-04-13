@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: DEVELOPER_JAZZER_COVERAGE
 updated: "2026-04-13"
 route:
@@ -17,8 +17,8 @@ route:
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, and legacy-field hard breaks | `8` |
-| `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
-| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | durable round-trip in one real SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
+| `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
+| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
 ## `cli-request`
 
@@ -45,6 +45,9 @@ Surface:
 
 What it asserts:
 - fresh valid requests preflight successfully
+- fresh unopened books reject with `book-not-initialized`
+- opened books with undeclared accounts reject with `unknown-account`
+- declared accounts that are later deactivated reject with `inactive-account`
 - a first commit persists one `PostingFact`
 - a duplicate commit returns `duplicate-idempotency-key`
 - missing reversal reason and missing reversal target reject deterministically on both preflight and commit
@@ -54,16 +57,21 @@ What it asserts:
 
 Surface:
 - request parsing through the same CLI seam
-- `SqlitePostingFactStore` canonical-schema initialization on commit
+- explicit `open-book` initialization through the SQLite-backed session
+- explicit account declaration before durable posting
 - commit and reload against a real filesystem path
 - reopening the same SQLite book file in a fresh adapter instance
 
 What it asserts:
-- one valid request commits durably into one selected book file
+- unopened books reject with `book-not-initialized`
+- opened books with undeclared accounts reject with `unknown-account`
+- deactivated accounts reject with `inactive-account`
+- one valid request commits durably into one selected initialized book file
 - reloading by idempotency returns the same fact shape
 - duplicate commit attempts are rejected in the same book
 - parent-directory creation works for nested arbitrary paths
-- committed books keep both canonical tables in SQLite `STRICT` mode
+- committed books keep `book_meta`, `account`, `posting_fact`, and `journal_line` in SQLite `STRICT` mode
+- committed books keep the `journal_line.account_code -> account.account_code` foreign key
 - reloaded store connections keep `foreign_keys = on` and `trusted_schema = off`
 - deterministic reversal rejections do not create or mutate durable book state
 

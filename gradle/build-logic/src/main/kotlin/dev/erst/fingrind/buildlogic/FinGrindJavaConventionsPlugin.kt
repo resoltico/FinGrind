@@ -139,6 +139,11 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
 
             tasks.named<JacocoReport>("jacocoTestReport") {
                 dependsOn(tasks.withType<Test>())
+                executionData.from(
+                    layout.buildDirectory.dir("jacoco").map { dir ->
+                        fileTree(dir) { include("*.exec") }
+                    },
+                )
                 reports {
                     xml.required.set(true)
                     html.required.set(true)
@@ -147,6 +152,11 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
 
             tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
                 dependsOn(tasks.withType<Test>())
+                executionData.from(
+                    layout.buildDirectory.dir("jacoco").map { dir ->
+                        fileTree(dir) { include("*.exec") }
+                    },
+                )
                 violationRules {
                     rule {
                         limit {

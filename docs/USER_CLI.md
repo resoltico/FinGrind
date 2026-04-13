@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: USER_CLI
 updated: "2026-04-13"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, ffm, request-file, book-file, stdin, preflight]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, ffm, request-file, book-file, stdin, open-book, declare-account]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "what exit codes does the fingrind cli use"]
 ---
 
@@ -22,9 +22,13 @@ The `--book-file` path is the selected book identity, and there is no default da
 
 `help` is returned when no command is supplied.
 `help`, `version`, and `capabilities` return pretty JSON envelopes for discovery.
-`print-request-template` returns one raw JSON document so it can be redirected into a file or piped into another process.
-Both `preflight-entry` and `post-entry` require `--book-file` and `--request-file`, and both check duplicate idempotency inside the selected book.
-`preflight-entry` does not create a missing book file. `post-entry` creates parent directories and initializes the current canonical schema on first commit.
+`print-request-template` returns one raw JSON document so it can be redirected into a file or piped
+into another process.
+`open-book` explicitly initializes one new book.
+`declare-account` inserts or reactivates one account in the selected book.
+`list-accounts` returns the current account registry.
+`preflight-entry` and `post-entry` both require an already initialized book and declared active
+accounts for every journal line they touch.
 
 ## Commands
 
@@ -32,9 +36,12 @@ Both `preflight-entry` and `post-entry` require `--book-file` and `--request-fil
 |:--------|:--------|:----------------|:-------|
 | `help` | `--help`, `-h` | none | returns application, version, usage, quick-start, and error guidance |
 | `version` | `--version` | none | returns application name, version, and description |
-| `capabilities` | none | none | returns machine-readable storage, request, response, and command capabilities |
+| `capabilities` | none | none | returns machine-readable storage, command, request, response, and account-registry capabilities |
 | `print-request-template` | `--print-request-template` | none | returns a minimal valid posting request JSON document |
-| `preflight-entry` | none | `--book-file`, `--request-file` | validates one request without committing it |
+| `open-book` | none | `--book-file` | creates one initialized book with the canonical schema |
+| `declare-account` | none | `--book-file`, `--request-file` | declares or reactivates one account in the selected book |
+| `list-accounts` | none | `--book-file` | returns the selected book's declared account registry |
+| `preflight-entry` | none | `--book-file`, `--request-file` | validates one posting request without committing it |
 | `post-entry` | none | `--book-file`, `--request-file` | commits one posting fact into the selected book |
 
 ## Packaged CLI
@@ -55,7 +62,8 @@ java -jar cli/build/libs/fingrind.jar \
 ```
 
 `--request-file -` means read the request JSON from standard input.
-Use `java -jar` for real process exit codes; `./gradlew :cli:run` wraps non-zero application exits as a Gradle task failure.
+Use `java -jar` for real process exit codes; `./gradlew :cli:run` wraps non-zero application exits
+as a Gradle task failure.
 `./gradlew :cli:run` is the easiest local route because Gradle automatically compiles and injects
 the managed SQLite 3.53.0 runtime.
 
@@ -77,14 +85,18 @@ the managed SQLite 3.53.0 runtime.
 | duplicate option | `2` | `invalid-request` | `Duplicate argument: --book-file` and similar |
 | same path used for both files | `2` | `invalid-request` | `--book-file and --request-file must not point to the same path.` |
 | malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
-| deterministic business rejection | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by book state or reversal policy |
+| book is missing or never opened | `2` | `book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
+| posting uses an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
+| posting uses an inactive account | `2` | `inactive-account` | `Account '...' is inactive in this book.` |
+| duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
+| standalone JAR sees an old host SQLite library | `1` | `runtime-failure` | SQLite version/runtime guidance describing the unsupported native library |
 | runtime environment failure | `1` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
 ## Notes
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the call without consulting docs.
 - `help`, `version`, `capabilities`, and `print-request-template` reject extra arguments.
-- FinGrind creates missing parent directories for nested `--book-file` paths.
+- `open-book` creates missing parent directories for nested `--book-file` paths.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The packaged CLI enforces SQLite 3.53.0 or newer.
@@ -95,6 +107,7 @@ the managed SQLite 3.53.0 runtime.
 - Standalone `java -jar` execution still relies on `FINGRIND_SQLITE_LIBRARY` or a compatible host
   `libsqlite3`.
 - `capabilities` is the best machine-readable contract surface.
-- `print-request-template` intentionally omits committed audit fields. Callers must not send `provenance.recordedAt` or `provenance.sourceChannel`.
+- `print-request-template` intentionally omits committed audit fields. Callers must not send
+  `provenance.recordedAt` or `provenance.sourceChannel`.
 - successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`
 - Example payloads live under [examples/](./examples/).

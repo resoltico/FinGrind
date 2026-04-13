@@ -85,7 +85,11 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 dependsOn(coverageProjects.map { "${it.path}:test" })
 
                 executionData.from(
-                    coverageProjects.map { file("${it.projectDir}/build/jacoco/test.exec") }
+                    coverageProjects.map { subproject ->
+                        subproject.fileTree("${subproject.projectDir}/build/jacoco") {
+                            include("*.exec")
+                        }
+                    }
                 )
                 sourceDirectories.from(
                     coverageProjects.map { file("${it.projectDir}/src/main/java") }

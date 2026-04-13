@@ -1,16 +1,39 @@
 package dev.erst.fingrind.application;
 
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
 
 /** Closed family of domain rejections that can refuse a posting request deterministically. */
 public sealed interface PostingRejection
-    permits PostingRejection.DuplicateIdempotencyKey,
+    permits PostingRejection.BookNotInitialized,
+        PostingRejection.UnknownAccount,
+        PostingRejection.InactiveAccount,
+        PostingRejection.DuplicateIdempotencyKey,
         PostingRejection.ReversalReasonForbidden,
         PostingRejection.ReversalReasonRequired,
         PostingRejection.ReversalTargetNotFound,
         PostingRejection.ReversalAlreadyExists,
         PostingRejection.ReversalDoesNotNegateTarget {
+
+  /** Rejection for a posting request against a missing or uninitialized book. */
+  record BookNotInitialized() implements PostingRejection {}
+
+  /** Rejection for a posting request that references an undeclared account. */
+  record UnknownAccount(AccountCode accountCode) implements PostingRejection {
+    /** Validates the missing account descriptor. */
+    public UnknownAccount {
+      Objects.requireNonNull(accountCode, "accountCode");
+    }
+  }
+
+  /** Rejection for a posting request that references an inactive account. */
+  record InactiveAccount(AccountCode accountCode) implements PostingRejection {
+    /** Validates the inactive account descriptor. */
+    public InactiveAccount {
+      Objects.requireNonNull(accountCode, "accountCode");
+    }
+  }
 
   /** Duplicate idempotency rejection for a book-local request identity that already exists. */
   record DuplicateIdempotencyKey() implements PostingRejection {}

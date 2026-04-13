@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.6.0"
+version: "0.7.0"
 domain: ADAPTERS
 updated: "2026-04-13"
 route:
-  keywords: [fingrind, book-session, sqlite, adapter, posting-fact, in-memory, cli, ffm]
+  keywords: [fingrind, book-session, sqlite, adapter, posting-fact, in-memory, cli, ffm, account-registry]
   questions: ["how is a committed posting stored in fingrind", "what is BookSession in fingrind", "what does the sqlite adapter do in fingrind"]
 ---
 
@@ -28,14 +28,14 @@ public record PostingFact(
 
 ## `BookSession`
 
-`BookSession` is the narrow application-owned persistence session for committed posting facts.
+`BookSession` is the application-owned persistence session for one selected book.
 
 ```java
 public interface BookSession extends AutoCloseable
 ```
 
-- Surface: `findByIdempotency(...)`, `findByPostingId(...)`, `findReversalFor(...)`, `commit(...)`, `close()`
-- Purpose: keep the application boundary honest about the exact state and commit operations it needs
+- Surface: `isInitialized()`, `openBook(...)`, `findAccount(...)`, `declareAccount(...)`, `listAccounts()`, `findByIdempotency(...)`, `findByPostingId(...)`, `findReversalFor(...)`, `commit(...)`, `close()`
+- Purpose: keep both lifecycle and posting persistence explicit at the application boundary
 - Lifecycle: one opened session owns one concrete adapter lifecycle and is explicitly closeable
 
 ## `PostingCommitResult`
@@ -46,44 +46,8 @@ public interface BookSession extends AutoCloseable
 public sealed interface PostingCommitResult
 ```
 
-- Variants: `Committed`, `DuplicateIdempotency`, `DuplicateReversalTarget`
-- Purpose: distinguish expected duplicate outcomes from exceptional adapter failure
-
-## `PostingCommitResult.Committed`
-
-`PostingCommitResult.Committed` is the success variant carrying the stored fact.
-
-```java
-public record Committed(PostingFact postingFact)
-    implements PostingCommitResult
-```
-
-- Purpose: return the committed fact explicitly from the book-session seam
-- Validation: rejects `null` `postingFact`
-
-## `PostingCommitResult.DuplicateIdempotency`
-
-`PostingCommitResult.DuplicateIdempotency` reports that the book already contains the submitted idempotency key.
-
-```java
-public record DuplicateIdempotency(IdempotencyKey idempotencyKey)
-    implements PostingCommitResult
-```
-
-- Purpose: keep duplicate idempotency as an ordinary session outcome
-- Validation: rejects `null` `idempotencyKey`
-
-## `PostingCommitResult.DuplicateReversalTarget`
-
-`PostingCommitResult.DuplicateReversalTarget` reports that the target posting already has a full reversal.
-
-```java
-public record DuplicateReversalTarget(PostingId priorPostingId)
-    implements PostingCommitResult
-```
-
-- Purpose: keep duplicate reversal targeting as an ordinary session outcome
-- Validation: rejects `null` `priorPostingId`
+- Variants: `Committed`, `BookNotInitialized`, `UnknownAccount`, `InactiveAccount`, `DuplicateIdempotency`, `DuplicateReversalTarget`
+- Purpose: distinguish expected lifecycle/account/duplicate outcomes from exceptional adapter failure
 
 ## `InMemoryBookSession`
 
@@ -95,8 +59,8 @@ public final class InMemoryBookSession implements BookSession
 
 - Classpath: lives in application test fixtures rather than the production runtime surface
 - Purpose: provide a fast in-memory session for application-layer verification
-- Storage: maps by idempotency key, posting id, and reversal target
-- Duplicate behavior: returns typed `PostingCommitResult` variants instead of throwing for ordinary duplicates
+- Storage: maps by account code, idempotency key, posting id, and reversal target
+- Lifecycle: starts unopened, supports explicit account declaration, and can deactivate accounts for tests
 
 ## `SqlitePostingFactStore`
 
@@ -112,11 +76,10 @@ public final class SqlitePostingFactStore
 - Concurrency: thread-confined to one owning CLI command
 - Reads: return empty for a missing file and do not initialize storage eagerly
 - Open configuration: enables `foreign_keys` and disables `trusted_schema` on the opened handle
-- Commit: creates parent directories, applies the canonical strict-table schema bootstrap once per
-  opened handle through `sqlite3_exec`, then maps ordinary duplicate conditions into typed commit
-  outcomes before insert
-- Process model: opens one in-process SQLite handle per session instance and closes it through the
-  `BookSession` lifecycle
+- Initialization: `openBook(...)` creates parent directories when needed, applies the canonical schema, and inserts `book_meta.initialized_at`
+- Account registry: stores declared accounts in the `account` table and enforces the `journal_line.account_code -> account.account_code` foreign key
+- Commit: rejects unopened books plus unknown or inactive accounts before ordinary duplicate checks
+- Process model: opens one in-process SQLite handle per session instance and closes it through the `BookSession` lifecycle
 
 ## `App`
 
@@ -128,4 +91,4 @@ public final class App
 
 - Surface: exposes `main(String[] args)`
 - Purpose: run the JSON CLI and exit with its process status code
-- Commands: fronts `help`, `version`, `capabilities`, `print-request-template`, `preflight-entry`, and `post-entry`
+- Commands: fronts `help`, `version`, `capabilities`, `print-request-template`, `open-book`, `declare-account`, `list-accounts`, `preflight-entry`, and `post-entry`

@@ -1,0 +1,24 @@
+{
+  "effectiveDate": "2026-04-08",
+  "lines": [
+    {
+      "accountCode": "3000",
+      "side": "DEBIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    },
+    {
+      "accountCode": "2000",
+      "side": "CREDIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    }
+  ],
+  "provenance": {
+    "actorId": "operator-4",
+    "actorType": "USER",
+    "commandId": "command-unknown-1",
+    "idempotencyKey": "idem-unknown-1",
+    "causationId": "cause-unknown-1"
+  }
+}

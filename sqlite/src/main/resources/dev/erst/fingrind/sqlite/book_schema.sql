@@ -1,3 +1,16 @@
+create table if not exists book_meta (
+    key text primary key,
+    value text not null
+) strict;
+
+create table if not exists account (
+    account_code text primary key,
+    account_name text not null,
+    normal_balance text not null check (normal_balance in ('DEBIT', 'CREDIT')),
+    active integer not null check (active in (0, 1)),
+    declared_at text not null
+) strict;
+
 create table if not exists posting_fact (
     posting_id text primary key,
     effective_date text not null,
@@ -28,7 +41,8 @@ create table if not exists journal_line (
     currency_code text not null,
     amount text not null,
     primary key (posting_id, line_order),
-    foreign key (posting_id) references posting_fact(posting_id)
+    foreign key (posting_id) references posting_fact(posting_id),
+    foreign key (account_code) references account(account_code)
 ) strict;
 
 create index if not exists posting_fact_by_prior_posting_id

@@ -1,9 +1,10 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.application.DeclareAccountCommand;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -12,11 +13,9 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.core.SourceChannel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -54,13 +53,13 @@ final class CliRequestReader {
           readReversal(rootNode.get("reversal")),
           new RequestProvenance(
               new ActorId(requiredText(provenanceNode, "actorId")),
-              ActorType.valueOf(requiredText(provenanceNode, "actorType")),
+              dev.erst.fingrind.core.ActorType.valueOf(requiredText(provenanceNode, "actorType")),
               new CommandId(requiredText(provenanceNode, "commandId")),
               new IdempotencyKey(requiredText(provenanceNode, "idempotencyKey")),
               new CausationId(requiredText(provenanceNode, "causationId")),
               optionalText(provenanceNode, "correlationId").map(CorrelationId::new),
               optionalText(provenanceNode, "reason").map(ReversalReason::new)),
-          SourceChannel.CLI);
+          dev.erst.fingrind.core.SourceChannel.CLI);
     } catch (CliRequestException exception) {
       throw exception;
     } catch (java.time.DateTimeException exception) {
@@ -70,6 +69,22 @@ final class CliRequestReader {
           "Use ISO-8601 values such as 2026-04-08 and 2026-04-08T12:00:00Z.",
           exception);
     } catch (IllegalArgumentException | ArithmeticException exception) {
+      throw new CliRequestException(
+          "invalid-request", normalizedMessage(exception), invalidRequestHint(), exception);
+    }
+  }
+
+  /** Reads one account-declaration request from a JSON file or standard input. */
+  DeclareAccountCommand readDeclareAccountCommand(Path requestFile) {
+    try {
+      JsonNode rootNode = readRootNode(requestFile);
+      return new DeclareAccountCommand(
+          new AccountCode(requiredText(rootNode, "accountCode")),
+          new AccountName(requiredText(rootNode, "accountName")),
+          dev.erst.fingrind.core.NormalBalance.valueOf(requiredText(rootNode, "normalBalance")));
+    } catch (CliRequestException exception) {
+      throw exception;
+    } catch (IllegalArgumentException exception) {
       throw new CliRequestException(
           "invalid-request", normalizedMessage(exception), invalidRequestHint(), exception);
     }
@@ -124,7 +139,8 @@ final class CliRequestReader {
     }
     rejectForbiddenField(reversalNode, "kind");
     return Optional.of(
-        new ReversalReference(new PostingId(requiredText(reversalNode, "priorPostingId"))));
+        new ReversalReference(
+            new dev.erst.fingrind.core.PostingId(requiredText(reversalNode, "priorPostingId"))));
   }
 
   private static void rejectForbiddenField(JsonNode rootNode, String fieldName) {

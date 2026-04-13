@@ -2,6 +2,8 @@ package dev.erst.fingrind.sqlite;
 
 /** Canonical SQL statements for the SQLite posting adapter. */
 final class SqlitePostingSql {
+  static final String INITIALIZED_AT_META_KEY = "initialized_at";
+
   static final int COL_POSTING_ID = 0;
   static final int COL_EFFECTIVE_DATE = 1;
   static final int COL_RECORDED_AT = 2;
@@ -20,6 +22,12 @@ final class SqlitePostingSql {
   static final int COL_LINE_CURRENCY_CODE = 2;
   static final int COL_LINE_AMOUNT = 3;
 
+  static final int COL_ACCOUNT_CODE = 0;
+  static final int COL_ACCOUNT_NAME = 1;
+  static final int COL_ACCOUNT_NORMAL_BALANCE = 2;
+  static final int COL_ACCOUNT_ACTIVE = 3;
+  static final int COL_ACCOUNT_DECLARED_AT = 4;
+
   private static final String BASE_POSTING_SELECT =
       """
       select
@@ -37,6 +45,48 @@ final class SqlitePostingSql {
           prior_posting_id
       from posting_fact
       """;
+
+  private static final String BASE_ACCOUNT_SELECT =
+      """
+      select
+          account_code,
+          account_name,
+          normal_balance,
+          active,
+          declared_at
+      from account
+      """;
+
+  static final String USER_SCHEMA_EXISTS =
+      """
+      select 1
+      from sqlite_schema
+      where type in ('table', 'index', 'trigger', 'view')
+        and name not like 'sqlite_%'
+      limit 1
+      """;
+
+  static final String TABLE_EXISTS =
+      """
+      select 1
+      from sqlite_schema
+      where type = 'table'
+        and name = ?
+      limit 1
+      """;
+
+  static final String BOOK_INITIALIZED_EXISTS =
+      """
+      select 1
+      from book_meta
+      where key = ?
+      limit 1
+      """;
+
+  static final String FIND_ACCOUNT_BY_CODE =
+      BASE_ACCOUNT_SELECT + " where account_code = ? limit 1";
+
+  static final String LIST_ACCOUNTS = BASE_ACCOUNT_SELECT + " order by account_code";
 
   static final String FIND_POSTING_BY_IDEMPOTENCY =
       BASE_POSTING_SELECT + " where idempotency_key = ? limit 1";
@@ -88,6 +138,28 @@ final class SqlitePostingSql {
           currency_code,
           amount
       ) values (?, ?, ?, ?, ?, ?)
+      """;
+
+  static final String INSERT_BOOK_INITIALIZED_AT =
+      """
+      insert into book_meta (key, value)
+      values (?, ?)
+      """;
+
+  static final String UPSERT_ACCOUNT =
+      """
+      insert into account (
+          account_code,
+          account_name,
+          normal_balance,
+          active,
+          declared_at
+      ) values (?, ?, ?, ?, ?)
+      on conflict (account_code) do update set
+          account_name = excluded.account_name,
+          normal_balance = excluded.normal_balance,
+          active = excluded.active,
+          declared_at = excluded.declared_at
       """;
 
   private SqlitePostingSql() {}
