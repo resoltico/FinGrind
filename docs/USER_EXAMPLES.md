@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: USER_EXAMPLES
 updated: "2026-04-13"
 route:
@@ -85,6 +85,9 @@ One successful preflight response:
 {"status":"preflight-accepted","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08"}
 ```
 
+That response is advisory, not a durable commit guarantee. `post-entry` still re-runs its
+authoritative commit-time checks inside the write transaction.
+
 One successful commit response:
 
 ```json
@@ -95,6 +98,7 @@ One successful commit response:
 The request shape is checked in at [examples/basic-posting-request.json](./examples/basic-posting-request.json).
 One example committed response is checked in at
 [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json).
+Every line in that request uses the same `currencyCode`; mixed-currency entries are rejected.
 
 ## Book Must Exist And Be Opened
 

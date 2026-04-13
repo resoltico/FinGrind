@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: DEVELOPER
 updated: "2026-04-13"
 route:
@@ -38,6 +38,7 @@ core/         Accounting vocabulary and invariants:
 
 application/  Explicit write boundary plus persistence seam:
               BookAdministrationService, DeclareAccountCommand, DeclaredAccount,
+              MachineContract and typed discovery descriptors,
               OpenBookResult, DeclareAccountResult, ListAccountsResult,
               PostEntryCommand, PostEntryResult, PostingRejection,
               PostingIdGenerator, UuidV7PostingIdGenerator,
@@ -52,7 +53,8 @@ sqlite/       Durable single-book adapter:
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus open-book, declare-account,
-              list-accounts, preflight-entry, and post-entry.
+              list-accounts, preflight-entry, and post-entry, with discovery
+              payloads serialized from the application-owned machine contract.
 ```
 
 The dependency graph is deliberately one-way:
@@ -68,6 +70,8 @@ FinGrind is intentionally hard-break oriented right now:
 - one SQLite file is one book for one entity
 - one canonical current schema defines new books
 - books are initialized explicitly before any posting
+- preflight is advisory and not a durable commit guarantee
+- one journal entry is exactly one currency
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
 - no migration framework or backward-compatibility layer exists yet

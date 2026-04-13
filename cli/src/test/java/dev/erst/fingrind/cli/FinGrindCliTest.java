@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.application.BookAdministrationRejection;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.application.DeclareAccountCommand;
 import dev.erst.fingrind.application.DeclareAccountResult;
 import dev.erst.fingrind.application.DeclaredAccount;
 import dev.erst.fingrind.application.ListAccountsResult;
+import dev.erst.fingrind.application.MachineContract;
 import dev.erst.fingrind.application.OpenBookResult;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
@@ -32,7 +34,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -80,6 +81,32 @@ class FinGrindCliTest {
     assertEquals("[\"list-accounts\"]", payload.path("queryCommands").toString());
     assertTrue(payload.path("requestShapes").has("postEntry"));
     assertTrue(payload.path("requestShapes").has("declareAccount"));
+    assertEquals("advisory", payload.path("preflightSemantics").asText());
+    assertFalse(payload.path("preflight").path("isCommitGuarantee").asBoolean(true));
+    assertEquals("single-currency-per-entry", payload.path("currencyModel").path("scope").asText());
+    assertEquals(
+        "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").asText());
+    assertTrue(payload.path("requestShapes").path("postEntry").path("topLevelFields").isArray());
+    assertEquals(
+        "effectiveDate",
+        payload
+            .path("requestShapes")
+            .path("postEntry")
+            .path("topLevelFields")
+            .get(0)
+            .path("name")
+            .asText());
+    assertEquals(
+        "required",
+        payload
+            .path("requestShapes")
+            .path("postEntry")
+            .path("topLevelFields")
+            .get(0)
+            .path("presence")
+            .asText());
+    assertTrue(payload.path("responseModel").path("rejections").isArray());
+    assertFalse(payload.path("responseModel").has("rejectionCodes"));
     assertEquals("sqlite-ffm", payload.path("environment").path("storageDriver").asString());
     assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asString());
   }
@@ -99,9 +126,9 @@ class FinGrindCliTest {
   }
 
   @Test
-  void environmentPayload_reportsUnavailableRuntimeWhenSqliteProbeFails() {
-    Map<String, Object> environmentPayload =
-        FinGrindCli.environmentPayload(
+  void environmentDescriptor_reportsUnavailableRuntimeWhenSqliteProbeFails() {
+    MachineContract.EnvironmentDescriptor environmentDescriptor =
+        FinGrindCli.environmentDescriptor(
             new SqliteRuntime.Probe(
                 "system",
                 "3.53.0",
@@ -109,13 +136,13 @@ class FinGrindCliTest {
                 null,
                 "system sqlite unavailable"));
 
-    assertEquals("sqlite-ffm", environmentPayload.get("storageDriver"));
-    assertEquals("sqlite", environmentPayload.get("storageEngine"));
-    assertEquals("system", environmentPayload.get("sqliteLibrarySource"));
-    assertEquals("3.53.0", environmentPayload.get("requiredMinimumSqliteVersion"));
-    assertEquals("unavailable", environmentPayload.get("sqliteRuntimeStatus"));
-    assertEquals("system sqlite unavailable", environmentPayload.get("sqliteRuntimeIssue"));
-    assertFalse(environmentPayload.containsKey("loadedSqliteVersion"));
+    assertEquals("sqlite-ffm", environmentDescriptor.storageDriver());
+    assertEquals("sqlite", environmentDescriptor.storageEngine());
+    assertEquals("system", environmentDescriptor.sqliteLibrarySource());
+    assertEquals("3.53.0", environmentDescriptor.requiredMinimumSqliteVersion());
+    assertEquals("unavailable", environmentDescriptor.sqliteRuntimeStatus());
+    assertEquals("system sqlite unavailable", environmentDescriptor.sqliteRuntimeIssue());
+    assertNull(environmentDescriptor.loadedSqliteVersion());
   }
 
   @Test

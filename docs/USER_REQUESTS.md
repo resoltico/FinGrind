@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: USER_REQUESTS
 updated: "2026-04-13"
 route:
@@ -33,6 +33,7 @@ Current posting-request rules:
   `1e6` is rejected
 - `effectiveDate`, `lines`, and `provenance` are required
 - `lines` must contain at least one line
+- every line inside one entry must share the same `currencyCode`
 - `reversal` is optional
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
 - optional provenance fields are `correlationId` and `reason`
@@ -87,6 +88,25 @@ Dynamic fields:
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `committed.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
+
+`preflight-accepted` is advisory. It confirms that the current request passed validation against
+the current book state, but it is not a durable commit guarantee: `post-entry` still performs its
+authoritative transactional checks before committing.
+
+## Capabilities Discovery Shape
+
+`capabilities` is the canonical machine contract and now exposes typed descriptors instead of raw
+string lists for the drift-prone parts of the surface:
+
+- `requestShapes.postEntry.topLevelFields`, `lineFields`, `provenanceFields`, and `reversalFields`
+  are arrays of `{ "name", "presence", "description" }`
+- `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live
+  enum constants
+- `responseModel.rejections` is an array of `{ "code", "description" }`
+- `preflightSemantics` is the short machine hint and `preflight` expands it with
+  `isCommitGuarantee`
+- `currencyModel` declares the current single-currency scope and the explicit
+  `multiCurrencyStatus: "not-supported"`
 
 ## Account Registry Responses
 

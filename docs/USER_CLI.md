@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: USER_CLI
 updated: "2026-04-13"
 route:
@@ -29,6 +29,9 @@ into another process.
 `list-accounts` returns the current account registry.
 `preflight-entry` and `post-entry` both require an already initialized book and declared active
 accounts for every journal line they touch.
+`preflight-entry` is advisory only: FinGrind still re-checks commit-time durability rules inside
+the write transaction before `post-entry` succeeds.
+Every journal entry is single-currency; mixed-currency lines inside one entry are not supported.
 
 ## Commands
 
@@ -36,7 +39,7 @@ accounts for every journal line they touch.
 |:--------|:--------|:----------------|:-------|
 | `help` | `--help`, `-h` | none | returns application, version, usage, quick-start, and error guidance |
 | `version` | `--version` | none | returns application name, version, and description |
-| `capabilities` | none | none | returns machine-readable storage, command, request, response, and account-registry capabilities |
+| `capabilities` | none | none | returns machine-readable storage, command, typed request-field descriptors, response descriptors, and account-registry capabilities |
 | `print-request-template` | `--print-request-template` | none | returns a minimal valid posting request JSON document |
 | `open-book` | none | `--book-file` | creates one initialized book with the canonical schema |
 | `declare-account` | none | `--book-file`, `--request-file` | declares or reactivates one account in the selected book |
@@ -103,6 +106,9 @@ the managed SQLite 3.53.0 runtime.
 - `capabilities` reports `sqliteLibrarySource`, `requiredMinimumSqliteVersion`,
   `sqliteRuntimeStatus`, and `loadedSqliteVersion` so agents can verify the runtime contract
   directly.
+- `capabilities` also reports `preflightSemantics`, `preflight.isCommitGuarantee`, and
+  `currencyModel` so agents can discover the advisory preflight contract and single-currency scope
+  without reading source code.
 - Gradle-driven local runs and the container image use a managed SQLite 3.53.0 shared library.
 - Standalone `java -jar` execution still relies on `FINGRIND_SQLITE_LIBRARY` or a compatible host
   `libsqlite3`.

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.application.DeclareAccountCommand;
+import dev.erst.fingrind.application.MachineContract;
 import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -42,23 +43,31 @@ final class CliRequestReader {
   PostEntryCommand readPostEntryCommand(Path requestFile) {
     try {
       JsonNode rootNode = readRootNode(requestFile);
-      rejectForbiddenField(rootNode, "correction");
-      JsonNode provenanceNode = requiredObject(rootNode, "provenance");
-      rejectForbiddenField(provenanceNode, "recordedAt");
-      rejectForbiddenField(provenanceNode, "sourceChannel");
+      rejectForbiddenField(rootNode, MachineContract.PostEntryTopLevelFields.CORRECTION);
+      JsonNode provenanceNode =
+          requiredObject(rootNode, MachineContract.PostEntryTopLevelFields.PROVENANCE);
+      rejectForbiddenField(provenanceNode, MachineContract.ProvenanceFields.RECORDED_AT);
+      rejectForbiddenField(provenanceNode, MachineContract.ProvenanceFields.SOURCE_CHANNEL);
       return new PostEntryCommand(
           new JournalEntry(
-              LocalDate.parse(requiredText(rootNode, "effectiveDate")),
-              readLines(requiredArray(rootNode, "lines"))),
-          readReversal(rootNode.get("reversal")),
+              LocalDate.parse(
+                  requiredText(rootNode, MachineContract.PostEntryTopLevelFields.EFFECTIVE_DATE)),
+              readLines(requiredArray(rootNode, MachineContract.PostEntryTopLevelFields.LINES))),
+          readReversal(rootNode.get(MachineContract.PostEntryTopLevelFields.REVERSAL)),
           new RequestProvenance(
-              new ActorId(requiredText(provenanceNode, "actorId")),
-              dev.erst.fingrind.core.ActorType.valueOf(requiredText(provenanceNode, "actorType")),
-              new CommandId(requiredText(provenanceNode, "commandId")),
-              new IdempotencyKey(requiredText(provenanceNode, "idempotencyKey")),
-              new CausationId(requiredText(provenanceNode, "causationId")),
-              optionalText(provenanceNode, "correlationId").map(CorrelationId::new),
-              optionalText(provenanceNode, "reason").map(ReversalReason::new)),
+              new ActorId(requiredText(provenanceNode, MachineContract.ProvenanceFields.ACTOR_ID)),
+              dev.erst.fingrind.core.ActorType.valueOf(
+                  requiredText(provenanceNode, MachineContract.ProvenanceFields.ACTOR_TYPE)),
+              new CommandId(
+                  requiredText(provenanceNode, MachineContract.ProvenanceFields.COMMAND_ID)),
+              new IdempotencyKey(
+                  requiredText(provenanceNode, MachineContract.ProvenanceFields.IDEMPOTENCY_KEY)),
+              new CausationId(
+                  requiredText(provenanceNode, MachineContract.ProvenanceFields.CAUSATION_ID)),
+              optionalText(provenanceNode, MachineContract.ProvenanceFields.CORRELATION_ID)
+                  .map(CorrelationId::new),
+              optionalText(provenanceNode, MachineContract.ProvenanceFields.REASON)
+                  .map(ReversalReason::new)),
           dev.erst.fingrind.core.SourceChannel.CLI);
     } catch (CliRequestException exception) {
       throw exception;
@@ -79,9 +88,12 @@ final class CliRequestReader {
     try {
       JsonNode rootNode = readRootNode(requestFile);
       return new DeclareAccountCommand(
-          new AccountCode(requiredText(rootNode, "accountCode")),
-          new AccountName(requiredText(rootNode, "accountName")),
-          dev.erst.fingrind.core.NormalBalance.valueOf(requiredText(rootNode, "normalBalance")));
+          new AccountCode(
+              requiredText(rootNode, MachineContract.DeclareAccountFields.ACCOUNT_CODE)),
+          new AccountName(
+              requiredText(rootNode, MachineContract.DeclareAccountFields.ACCOUNT_NAME)),
+          dev.erst.fingrind.core.NormalBalance.valueOf(
+              requiredText(rootNode, MachineContract.DeclareAccountFields.NORMAL_BALANCE)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (IllegalArgumentException exception) {
@@ -121,11 +133,14 @@ final class CliRequestReader {
     for (JsonNode lineNode : linesNode) {
       lines.add(
           new JournalLine(
-              new AccountCode(requiredText(lineNode, "accountCode")),
-              JournalLine.EntrySide.valueOf(requiredText(lineNode, "side")),
+              new AccountCode(
+                  requiredText(lineNode, MachineContract.JournalLineFields.ACCOUNT_CODE)),
+              JournalLine.EntrySide.valueOf(
+                  requiredText(lineNode, MachineContract.JournalLineFields.SIDE)),
               new Money(
-                  new CurrencyCode(requiredText(lineNode, "currencyCode")),
-                  parseAmount(requiredText(lineNode, "amount")))));
+                  new CurrencyCode(
+                      requiredText(lineNode, MachineContract.JournalLineFields.CURRENCY_CODE)),
+                  parseAmount(requiredText(lineNode, MachineContract.JournalLineFields.AMOUNT)))));
     }
     return lines;
   }
@@ -135,12 +150,14 @@ final class CliRequestReader {
       return Optional.empty();
     }
     if (!reversalNode.isObject()) {
-      throw new IllegalArgumentException("Field must be an object: reversal");
+      throw new IllegalArgumentException(
+          "Field must be an object: " + MachineContract.PostEntryTopLevelFields.REVERSAL);
     }
-    rejectForbiddenField(reversalNode, "kind");
+    rejectForbiddenField(reversalNode, MachineContract.ReversalFields.KIND);
     return Optional.of(
         new ReversalReference(
-            new dev.erst.fingrind.core.PostingId(requiredText(reversalNode, "priorPostingId"))));
+            new dev.erst.fingrind.core.PostingId(
+                requiredText(reversalNode, MachineContract.ReversalFields.PRIOR_POSTING_ID))));
   }
 
   private static void rejectForbiddenField(JsonNode rootNode, String fieldName) {

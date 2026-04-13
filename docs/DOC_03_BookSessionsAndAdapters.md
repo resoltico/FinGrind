@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: ADAPTERS
 updated: "2026-04-13"
 route:
@@ -92,3 +92,5 @@ public final class App
 - Surface: exposes `main(String[] args)`
 - Purpose: run the JSON CLI and exit with its process status code
 - Commands: fronts `help`, `version`, `capabilities`, `print-request-template`, `open-book`, `declare-account`, `list-accounts`, `preflight-entry`, and `post-entry`
+- Discovery contract: serializes application-owned `MachineContract` descriptors instead of
+  assembling discovery payload maps inside the CLI layer

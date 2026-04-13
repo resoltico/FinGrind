@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: INDEX
 updated: "2026-04-13"
 route:
-  keywords: [fingrind, index, routing, api, symbols, core, application, book-session, adapters]
+  keywords: [fingrind, index, routing, api, symbols, core, application, machine-contract, book-session, adapters]
   questions: ["where is the fingrind api documented", "which doc file covers BookSession", "which doc file covers RequestProvenance"]
 ---
 
@@ -17,7 +17,7 @@ route:
 | File | Scope |
 |:-----|:------|
 | `DOC_01_Core.md` | accounting value objects, account-registry vocabulary, journal grammar, reversal linkage, request and committed provenance |
-| `DOC_02_Application.md` | book-lifecycle commands, write-boundary commands, results, rejection taxonomy, services |
+| `DOC_02_Application.md` | book-lifecycle commands, write-boundary commands, results, rejection taxonomy, machine contract, services |
 | `DOC_03_BookSessionsAndAdapters.md` | committed facts, book-session seam, SQLite adapter, CLI entrypoint |
 
 ## Symbol Routing
@@ -56,6 +56,7 @@ route:
 | `PostEntryResult.PreflightAccepted` | `DOC_02_Application.md` | `PostEntryResult.PreflightAccepted` |
 | `PostEntryResult.Committed` | `DOC_02_Application.md` | `PostEntryResult.Committed` |
 | `PostEntryResult.Rejected` | `DOC_02_Application.md` | `PostEntryResult.Rejected` |
+| `MachineContract` | `DOC_02_Application.md` | `MachineContract` |
 | `PostingApplicationService` | `DOC_02_Application.md` | `PostingApplicationService` |
 | `PostingIdGenerator` | `DOC_02_Application.md` | `PostingIdGenerator` |
 | `PostingRejection` | `DOC_02_Application.md` | `PostingRejection` |

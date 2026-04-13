@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.7.0"
+version: "0.8.0"
 domain: CORE
 updated: "2026-04-13"
 route:
@@ -138,6 +138,8 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
 - Purpose: carry the accounting body of one posting request
 - Normalization: defensively copies `lines`
 - Validation: rejects `null` effective date, empty lines, mixed currencies, and unbalanced totals
+- Contract impact: the CLI machine contract advertises this invariant as
+  `currencyModel.scope = single-currency-per-entry`
 
 ## `JournalLine`
 
