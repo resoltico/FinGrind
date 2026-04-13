@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: INDEX
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
-  keywords: [fingrind, index, routing, api, symbols, core, application, runtime, adapters]
-  questions: ["where is the fingrind api documented", "which doc file covers SqlitePostingFactStore", "which doc file covers RequestProvenance"]
+  keywords: [fingrind, index, routing, api, symbols, core, application, book-session, adapters]
+  questions: ["where is the fingrind api documented", "which doc file covers BookSession", "which doc file covers RequestProvenance"]
 ---
 
 # API Index
@@ -18,7 +18,7 @@ route:
 |:-----|:------|
 | `DOC_01_Core.md` | accounting value objects, journal grammar, reversal linkage, request and committed provenance |
 | `DOC_02_Application.md` | write-boundary commands, results, rejection taxonomy, posting service |
-| `DOC_03_RuntimeAndAdapters.md` | runtime facts and stores, SQLite adapter, CLI entrypoint |
+| `DOC_03_BookSessionsAndAdapters.md` | committed facts, book-session seam, SQLite adapter, CLI entrypoint |
 
 ## Symbol Routing
 
@@ -56,12 +56,13 @@ route:
 | `PostingRejection.DuplicateIdempotencyKey` | `DOC_02_Application.md` | `PostingRejection.DuplicateIdempotencyKey` |
 | `PostingRejection.ReversalAlreadyExists` | `DOC_02_Application.md` | `PostingRejection.ReversalAlreadyExists` |
 | `PostingRejection.ReversalDoesNotNegateTarget` | `DOC_02_Application.md` | `PostingRejection.ReversalDoesNotNegateTarget` |
-| `App` | `DOC_03_RuntimeAndAdapters.md` | `App` |
-| `InMemoryPostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `InMemoryPostingFactStore` |
-| `PostingCommitResult` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult` |
-| `PostingCommitResult.Committed` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult.Committed` |
-| `PostingCommitResult.DuplicateIdempotency` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult.DuplicateIdempotency` |
-| `PostingCommitResult.DuplicateReversalTarget` | `DOC_03_RuntimeAndAdapters.md` | `PostingCommitResult.DuplicateReversalTarget` |
-| `PostingFact` | `DOC_03_RuntimeAndAdapters.md` | `PostingFact` |
-| `PostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `PostingFactStore` |
-| `SqlitePostingFactStore` | `DOC_03_RuntimeAndAdapters.md` | `SqlitePostingFactStore` |
+| `UuidV7PostingIdGenerator` | `DOC_02_Application.md` | `UuidV7PostingIdGenerator` |
+| `App` | `DOC_03_BookSessionsAndAdapters.md` | `App` |
+| `BookSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookSession` |
+| `InMemoryBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `InMemoryBookSession` |
+| `PostingCommitResult` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |
+| `PostingCommitResult.Committed` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult.Committed` |
+| `PostingCommitResult.DuplicateIdempotency` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult.DuplicateIdempotency` |
+| `PostingCommitResult.DuplicateReversalTarget` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult.DuplicateReversalTarget` |
+| `PostingFact` | `DOC_03_BookSessionsAndAdapters.md` | `PostingFact` |
+| `SqlitePostingFactStore` | `DOC_03_BookSessionsAndAdapters.md` | `SqlitePostingFactStore` |

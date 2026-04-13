@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: USER_CLI
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, ffm, request-file, book-file, stdin, preflight]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "what exit codes does the fingrind cli use"]
@@ -96,4 +96,5 @@ the managed SQLite 3.53.0 runtime.
   `libsqlite3`.
 - `capabilities` is the best machine-readable contract surface.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send `provenance.recordedAt` or `provenance.sourceChannel`.
+- successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`
 - Example payloads live under [examples/](./examples/).

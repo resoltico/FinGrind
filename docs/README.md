@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -15,7 +15,7 @@ route:
 
 ## Start Here
 
-Start with the root [README.md](/Users/erst/Tools/FinGrind/README.md) for the storefront overview.
+Start with the root [README.md](../README.md) for the storefront overview.
 Then choose one of the user, developer, or reference tracks below.
 
 ## User Guides
@@ -24,6 +24,7 @@ Then choose one of the user, developer, or reference tracks below.
 - [USER_REQUESTS.md](./USER_REQUESTS.md): request JSON shape, reversal rules, rejection codes, and response envelopes
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for preflight, commit, duplicates, stdin, and reversal templates
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
+- [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId`
 - [examples/reversal-request.json](./examples/reversal-request.json): reversal request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 
@@ -31,6 +32,7 @@ Then choose one of the user, developer, or reference tracks below.
 
 - [DEVELOPER.md](./DEVELOPER.md)
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
+- [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
@@ -44,5 +46,5 @@ Then choose one of the user, developer, or reference tracks below.
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
-- [DOC_03_RuntimeAndAdapters.md](./DOC_03_RuntimeAndAdapters.md)
+- [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)

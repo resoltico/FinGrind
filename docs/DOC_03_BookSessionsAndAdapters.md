@@ -1,18 +1,18 @@
 ---
 afad: "3.5"
-version: "0.5.0"
-domain: RUNTIME
-updated: "2026-04-11"
+version: "0.6.0"
+domain: ADAPTERS
+updated: "2026-04-13"
 route:
-  keywords: [fingrind, runtime, sqlite, adapter, posting-fact, store, in-memory, cli, ffm]
-  questions: ["how is a posting fact stored in fingrind", "what runtime stores does fingrind expose", "what does the sqlite adapter do in fingrind"]
+  keywords: [fingrind, book-session, sqlite, adapter, posting-fact, in-memory, cli, ffm]
+  questions: ["how is a committed posting stored in fingrind", "what is BookSession in fingrind", "what does the sqlite adapter do in fingrind"]
 ---
 
-# Runtime And Adapter API Reference
+# Book Session And Adapter API Reference
 
 ## `PostingFact`
 
-`PostingFact` is the canonical committed fact carried across runtime persistence seams.
+`PostingFact` is the canonical committed fact carried across FinGrind's book-session seam.
 
 ```java
 public record PostingFact(
@@ -26,38 +26,39 @@ public record PostingFact(
 - Normalization: `null` reversal becomes `Optional.empty()`
 - Validation: rejects `null` posting id, journal entry, and provenance
 
-## `PostingFactStore`
+## `BookSession`
 
-`PostingFactStore` is the narrow runtime persistence seam for committed posting facts.
+`BookSession` is the narrow application-owned persistence session for committed posting facts.
 
 ```java
-public interface PostingFactStore
+public interface BookSession extends AutoCloseable
 ```
 
-- Surface: `findByIdempotency(...)`, `findByPostingId(...)`, `findReversalFor(...)`, `commit(...)`
+- Surface: `findByIdempotency(...)`, `findByPostingId(...)`, `findReversalFor(...)`, `commit(...)`, `close()`
 - Purpose: keep the application boundary honest about the exact state and commit operations it needs
+- Lifecycle: one opened session owns one concrete adapter lifecycle and is explicitly closeable
 
 ## `PostingCommitResult`
 
-`PostingCommitResult` is the closed family of ordinary runtime commit outcomes.
+`PostingCommitResult` is the closed family of ordinary book-session commit outcomes.
 
 ```java
 public sealed interface PostingCommitResult
 ```
 
 - Variants: `Committed`, `DuplicateIdempotency`, `DuplicateReversalTarget`
-- Purpose: distinguish expected duplicate outcomes from exceptional runtime failure
+- Purpose: distinguish expected duplicate outcomes from exceptional adapter failure
 
 ## `PostingCommitResult.Committed`
 
-`PostingCommitResult.Committed` is the runtime success variant carrying the stored fact.
+`PostingCommitResult.Committed` is the success variant carrying the stored fact.
 
 ```java
 public record Committed(PostingFact postingFact)
     implements PostingCommitResult
 ```
 
-- Purpose: return the committed fact explicitly from the runtime seam
+- Purpose: return the committed fact explicitly from the book-session seam
 - Validation: rejects `null` `postingFact`
 
 ## `PostingCommitResult.DuplicateIdempotency`
@@ -69,7 +70,7 @@ public record DuplicateIdempotency(IdempotencyKey idempotencyKey)
     implements PostingCommitResult
 ```
 
-- Purpose: keep duplicate idempotency as an ordinary runtime outcome
+- Purpose: keep duplicate idempotency as an ordinary session outcome
 - Validation: rejects `null` `idempotencyKey`
 
 ## `PostingCommitResult.DuplicateReversalTarget`
@@ -81,28 +82,29 @@ public record DuplicateReversalTarget(PostingId priorPostingId)
     implements PostingCommitResult
 ```
 
-- Purpose: keep duplicate reversal targeting as an ordinary runtime outcome
+- Purpose: keep duplicate reversal targeting as an ordinary session outcome
 - Validation: rejects `null` `priorPostingId`
 
-## `InMemoryPostingFactStore`
+## `InMemoryBookSession`
 
-`InMemoryPostingFactStore` is the non-durable runtime implementation used by tests and fuzz harnesses.
+`InMemoryBookSession` is the non-durable in-memory book-session implementation used by tests and fuzz harnesses.
 
 ```java
-public final class InMemoryPostingFactStore implements PostingFactStore
+public final class InMemoryBookSession implements BookSession
 ```
 
-- Purpose: provide a fast in-memory store for application-layer verification
+- Classpath: lives in application test fixtures rather than the production runtime surface
+- Purpose: provide a fast in-memory session for application-layer verification
 - Storage: maps by idempotency key, posting id, and reversal target
 - Duplicate behavior: returns typed `PostingCommitResult` variants instead of throwing for ordinary duplicates
 
 ## `SqlitePostingFactStore`
 
-`SqlitePostingFactStore` is the durable SQLite-backed store for one explicit book file.
+`SqlitePostingFactStore` is the durable SQLite-backed `BookSession` implementation for one explicit book file.
 
 ```java
 public final class SqlitePostingFactStore
-    implements PostingFactStore, AutoCloseable
+    implements BookSession
 ```
 
 - Purpose: persist one book into one selected SQLite file
@@ -113,7 +115,8 @@ public final class SqlitePostingFactStore
 - Commit: creates parent directories, applies the canonical strict-table schema bootstrap once per
   opened handle through `sqlite3_exec`, then maps ordinary duplicate conditions into typed commit
   outcomes before insert
-- Process model: opens one in-process SQLite handle per store instance and closes it through `AutoCloseable`
+- Process model: opens one in-process SQLite handle per session instance and closes it through the
+  `BookSession` lifecycle
 
 ## `App`
 

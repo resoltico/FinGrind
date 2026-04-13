@@ -5,12 +5,12 @@ import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostEntryResult.Committed;
 import dev.erst.fingrind.application.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.application.PostEntryResult.Rejected;
+import dev.erst.fingrind.application.InMemoryBookSession;
 import dev.erst.fingrind.application.PostingApplicationService;
+import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.cli.CliFuzzSupport;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
-import dev.erst.fingrind.runtime.InMemoryPostingFactStore;
-import dev.erst.fingrind.runtime.PostingFact;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -83,10 +83,10 @@ public final class JazzerReplaySupport {
     boolean storedFactPresent = false;
     try {
       command = CliFuzzSupport.readPostEntryCommand(input);
-      InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
+      InMemoryBookSession bookSession = new InMemoryBookSession();
       PostingApplicationService applicationService =
           new PostingApplicationService(
-              postingFactStore,
+              bookSession,
               CliFuzzSupport.postingIdGenerator(input),
               CliFuzzSupport.fixedClock());
 
@@ -106,7 +106,7 @@ public final class JazzerReplaySupport {
         firstCommitStatus = "COMMITTED";
 
         Optional<PostingFact> storedPosting =
-            postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+            bookSession.findByIdempotency(command.requestProvenance().idempotencyKey());
         if (storedPosting.isEmpty()) {
           throw new IllegalStateException("Committed posting fact was not persisted.");
         }

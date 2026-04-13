@@ -1,13 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.application.BookSession;
+import dev.erst.fingrind.application.PostingCommitResult;
+import dev.erst.fingrind.application.PostingFact;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.runtime.PostingCommitResult;
-import dev.erst.fingrind.runtime.PostingFact;
-import dev.erst.fingrind.runtime.PostingFactStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -15,11 +15,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * SQLite-backed runtime store that keeps one in-process database handle per opened book.
+ * SQLite-backed book session that keeps one in-process database handle per opened book.
  *
- * <p>This store is thread-confined. One CLI command owns one instance and uses it on one thread.
+ * <p>This session is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
-public final class SqlitePostingFactStore implements PostingFactStore, AutoCloseable {
+public final class SqlitePostingFactStore implements BookSession {
   private final Path bookPath;
 
   private SqliteNativeDatabase database;

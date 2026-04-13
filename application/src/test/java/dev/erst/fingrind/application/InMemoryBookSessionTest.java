@@ -1,5 +1,6 @@
-package dev.erst.fingrind.runtime;
+package dev.erst.fingrind.application;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -26,89 +27,99 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for {@link InMemoryPostingFactStore}. */
-class InMemoryPostingFactStoreTest {
+/** Unit tests for {@link InMemoryBookSession}. */
+class InMemoryBookSessionTest {
   @Test
   void findByIdempotency_returnsEmptyWhenKeyIsUnknown() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-
-    assertEquals(
-        Optional.empty(), postingFactStore.findByIdempotency(new IdempotencyKey("idem-1")));
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      assertEquals(Optional.empty(), bookSession.findByIdempotency(new IdempotencyKey("idem-1")));
+    }
   }
 
   @Test
   void commit_storesPostingFact() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    PostingFact postingFact = postingFact("idem-1");
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingFact postingFact = postingFact("idem-1");
 
-    PostingCommitResult result = postingFactStore.commit(postingFact);
+      PostingCommitResult result = bookSession.commit(postingFact);
 
-    assertEquals(new PostingCommitResult.Committed(postingFact), result);
-    assertEquals(
-        Optional.of(postingFact), postingFactStore.findByIdempotency(new IdempotencyKey("idem-1")));
+      assertEquals(new PostingCommitResult.Committed(postingFact), result);
+      assertEquals(
+          Optional.of(postingFact), bookSession.findByIdempotency(new IdempotencyKey("idem-1")));
+    }
   }
 
   @Test
   void commit_returnsDuplicateIdempotencyOutcome() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(postingFact("idem-1"));
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(postingFact("idem-1"));
 
-    PostingCommitResult result = postingFactStore.commit(postingFact("idem-1"));
+      PostingCommitResult result = bookSession.commit(postingFact("idem-1"));
 
-    assertEquals(
-        new PostingCommitResult.DuplicateIdempotency(new IdempotencyKey("idem-1")), result);
+      assertEquals(
+          new PostingCommitResult.DuplicateIdempotency(new IdempotencyKey("idem-1")), result);
+    }
   }
 
   @Test
   void findByPostingId_returnsCommittedPostingWhenPresent() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    PostingFact postingFact = postingFact("idem-1");
-    postingFactStore.commit(postingFact);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingFact postingFact = postingFact("idem-1");
+      bookSession.commit(postingFact);
 
-    assertEquals(
-        Optional.of(postingFact),
-        postingFactStore.findByPostingId(new PostingId("posting-idem-1")));
+      assertEquals(
+          Optional.of(postingFact), bookSession.findByPostingId(new PostingId("posting-idem-1")));
+    }
   }
 
   @Test
   void commit_rejectsSecondReversalForSameTargetWithoutStoringIt() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(postingFact("idem-original"));
-    postingFactStore.commit(reversalFact("idem-reversal-1", "posting-idem-original"));
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(postingFact("idem-original"));
+      bookSession.commit(reversalFact("idem-reversal-1", "posting-idem-original"));
 
-    PostingFact duplicateReversal = reversalFact("idem-reversal-2", "posting-idem-original");
-    PostingCommitResult result = postingFactStore.commit(duplicateReversal);
+      PostingFact duplicateReversal = reversalFact("idem-reversal-2", "posting-idem-original");
+      PostingCommitResult result = bookSession.commit(duplicateReversal);
 
-    assertEquals(
-        new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-idem-original")),
-        result);
-    assertEquals(
-        Optional.empty(),
-        postingFactStore.findByIdempotency(new IdempotencyKey("idem-reversal-2")));
+      assertEquals(
+          new PostingCommitResult.DuplicateReversalTarget(new PostingId("posting-idem-original")),
+          result);
+      assertEquals(
+          Optional.empty(), bookSession.findByIdempotency(new IdempotencyKey("idem-reversal-2")));
+    }
   }
 
   @Test
   void findReversalFor_returnsCommittedReversalWhenPresent() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    postingFactStore.commit(postingFact("idem-original"));
-    PostingFact reversalFact = reversalFact("idem-reversal", "posting-idem-original");
-    postingFactStore.commit(reversalFact);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.commit(postingFact("idem-original"));
+      PostingFact reversalFact = reversalFact("idem-reversal", "posting-idem-original");
+      bookSession.commit(reversalFact);
 
-    assertEquals(
-        Optional.of(reversalFact),
-        postingFactStore.findReversalFor(new PostingId("posting-idem-original")));
+      assertEquals(
+          Optional.of(reversalFact),
+          bookSession.findReversalFor(new PostingId("posting-idem-original")));
+    }
   }
 
   @Test
   void commit_doesNotRegisterOrdinaryPostingAsReversal() {
-    InMemoryPostingFactStore postingFactStore = new InMemoryPostingFactStore();
-    PostingFact postingFact = postingFact("idem-original");
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      PostingFact postingFact = postingFact("idem-original");
 
-    PostingCommitResult result = postingFactStore.commit(postingFact);
+      PostingCommitResult result = bookSession.commit(postingFact);
 
-    assertEquals(new PostingCommitResult.Committed(postingFact), result);
-    assertEquals(
-        Optional.empty(), postingFactStore.findReversalFor(new PostingId("posting-idem-original")));
+      assertEquals(new PostingCommitResult.Committed(postingFact), result);
+      assertEquals(
+          Optional.empty(), bookSession.findReversalFor(new PostingId("posting-idem-original")));
+    }
+  }
+
+  @Test
+  void close_isANoOp() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      assertDoesNotThrow(bookSession::close);
+    }
   }
 
   private static PostingFact postingFact(String idempotencyKey) {

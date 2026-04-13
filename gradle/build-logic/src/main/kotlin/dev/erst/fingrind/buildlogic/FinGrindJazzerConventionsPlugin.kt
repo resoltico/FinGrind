@@ -92,8 +92,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 add("implementation", libs.library("jazzer-junit"))
                 add("implementation", libs.library("jackson-databind"))
                 add("implementation", "dev.erst.fingrind:core")
-                add("implementation", "dev.erst.fingrind:runtime")
                 add("implementation", "dev.erst.fingrind:application")
+                add("implementation", project.dependencies.testFixtures("dev.erst.fingrind:application"))
                 add("implementation", "dev.erst.fingrind:sqlite")
                 add("implementation", "dev.erst.fingrind:cli")
 

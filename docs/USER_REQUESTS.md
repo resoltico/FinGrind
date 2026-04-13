@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: USER_REQUESTS
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, enums, payload, rejection]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "which enum values are valid in a fingrind request"]
@@ -63,7 +63,7 @@ Current request rules:
 
 Dynamic fields:
 - `capabilities.payload.timestamp` varies per invocation
-- `committed.postingId` is generated per successful commit
+- `committed.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
 
 ## Deterministic Rejections

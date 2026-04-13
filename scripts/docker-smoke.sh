@@ -36,11 +36,24 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly image_tag="fingrind-docker-smoke:$$"
 readonly smoke_root="${repo_root}/tmp/docker smoke.$$"
+anonymous_docker_config=''
+docker_endpoint=''
+
+docker_with_repo_config() {
+    if [[ -n "${docker_endpoint}" ]]; then
+        DOCKER_CONFIG="${anonymous_docker_config}" DOCKER_HOST="${docker_endpoint}" docker "$@"
+        return
+    fi
+    DOCKER_CONFIG="${anonymous_docker_config}" docker "$@"
+}
 
 cleanup() {
     local exit_code=$?
     rm -rf "${smoke_root}" || sudo rm -rf "${smoke_root}" || true
-    docker image rm -f "${image_tag}" >/dev/null 2>&1 || true
+    if command -v docker >/dev/null 2>&1 && [[ -n "${anonymous_docker_config}" ]]; then
+        docker_with_repo_config image rm -f "${image_tag}" >/dev/null 2>&1 || true
+        rm -rf "${anonymous_docker_config}" || true
+    fi
     exit "${exit_code}"
 }
 
@@ -50,6 +63,16 @@ command -v docker >/dev/null 2>&1 || die "docker is required for the Docker smok
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 [[ -f "${repo_root}/cli/build/libs/fingrind.jar" ]] || die \
     "missing CLI fat JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
+
+docker_endpoint="${DOCKER_HOST:-}"
+if [[ -z "${docker_endpoint}" ]]; then
+    docker_endpoint="$(
+        docker context inspect "$(docker context show 2>/dev/null || true)" \
+            --format '{{.Endpoints.docker.Host}}' 2>/dev/null || true
+    )"
+fi
+anonymous_docker_config="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-config.XXXXXX")"
+printf '{}\n' > "${anonymous_docker_config}/config.json"
 
 mkdir -p "${smoke_root}/requests odd"
 
@@ -86,10 +109,10 @@ cat > "${request_path}" <<JSON
 JSON
 
 printf 'Docker smoke: building local image\n'
-docker build -t "${image_tag}" "${repo_root}" >/dev/null
+docker_with_repo_config build -t "${image_tag}" "${repo_root}" >/dev/null
 
 printf 'Docker smoke: verifying version command\n'
-version_output="$(docker run --rm \
+version_output="$(docker_with_repo_config run --rm \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -102,7 +125,7 @@ require_match "${version_output}" '"version"[[:space:]]*:[[:space:]]*"' \
     "version output did not include version"
 
 printf 'Docker smoke: verifying managed SQLite runtime contract\n'
-capabilities_output="$(docker run --rm \
+capabilities_output="$(docker_with_repo_config run --rm \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -117,7 +140,7 @@ require_match "${capabilities_output}" '"loadedSqliteVersion"[[:space:]]*:[[:spa
     "capabilities output did not report SQLite 3.53.0"
 
 printf 'Docker smoke: verifying book write through mounted path\n'
-commit_output="$(docker run --rm \
+commit_output="$(docker_with_repo_config run --rm \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \

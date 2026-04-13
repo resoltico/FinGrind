@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Verifies the shared Jazzer topology contract consumed by runtime code and build logic. */
+/** Verifies the shared Jazzer topology contract consumed by support code and build logic. */
 class JazzerTopologyTest {
   @Test
   void harnessValues_followCommittedTopologyOrder() {

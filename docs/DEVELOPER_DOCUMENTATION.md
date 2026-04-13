@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: DEVELOPER_DOCUMENTATION
 updated: "2026-04-11"
 route:
@@ -16,7 +16,7 @@ route:
 ## Documentation Layout
 
 FinGrind uses a deliberately split documentation model:
-- root [README.md](/Users/erst/Tools/FinGrind/README.md): storefront, user-facing only
+- root [README.md](../README.md): storefront, user-facing only
 - [README.md](./README.md) inside `docs/`: documentation index
 - `DOC_*.md`: AFAD-style reference atoms for current public API
 - other `docs/*.md`: auxiliary guides for users and contributors
@@ -51,7 +51,7 @@ If a guide references a command or response envelope, verify it against the live
 ## Source Protocol
 
 The repository's documentation protocol lives outside `docs/` in
-[`/Users/erst/Tools/FinGrind/.codex/PROTOCOL_AFAD.md`](/Users/erst/Tools/FinGrind/.codex/PROTOCOL_AFAD.md).
+[`../.codex/PROTOCOL_AFAD.md`](../.codex/PROTOCOL_AFAD.md).
 
 That protocol governs:
 - frontmatter shape

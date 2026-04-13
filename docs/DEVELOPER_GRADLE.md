@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.5.0"
+version: "0.6.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-11"
+updated: "2026-04-13"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, jazzer, buildsrc, managed-sqlite, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "what should we review in the gradle setup"]
@@ -10,10 +10,37 @@ route:
 
 # Gradle Setup Reference
 
-**Purpose**: Explain how FinGrind's Gradle system is arranged, why it is arranged that way, and
-what contributors should review before changing it.
+**Purpose**: Explain how FinGrind's Gradle system is arranged after the workstation-level Java and wrapper setup from [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) is already in place.
 **Companion references**: [DEVELOPER.md](./DEVELOPER.md),
 [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md), [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md)
+
+---
+
+## Canonical Execution
+
+FinGrind's machine-level setup rule is simple:
+- use `./gradlew` for every repo build command
+- treat `gradle` on `PATH` as outside the supported FinGrind workflow
+- let the wrapper download the official Gradle distribution pinned by the repository
+- keep the repository checkout on the local Mac filesystem as part of the normal supported setup
+
+The wrapper version is currently `9.4.1`, as declared in
+[gradle/wrapper/gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties).
+
+This file therefore documents build architecture and ownership boundaries, not how to install a
+global Gradle command on a machine.
+
+Wrapper integrity is part of the standard setup:
+- `gradle/wrapper/gradle-wrapper.properties` pins the distribution URL and its
+  `distributionSha256Sum`
+- `.github/workflows/gradle-wrapper-validation.yml` validates wrapper changes in GitHub
+- contributors should treat wrapper-file edits as supply-chain-sensitive changes, not as routine noise
+
+Full verification is part of that local-filesystem rule:
+- Gradle project cache and JaCoCo execution data both rely on file locking
+- mounted external volumes on macOS can reject those locks with `Operation not supported`
+- if that happens, move the repository to local disk instead of standardizing a cache or build-dir
+  relocation workaround as the normal workflow
 
 ---
 
@@ -41,7 +68,6 @@ gradle/
         ├── ScheduledPulseTestListener.kt
         └── ...
 core/
-runtime/
 application/
 sqlite/
 cli/
@@ -52,7 +78,7 @@ jazzer/
 
 Each layer owns a different concern:
 
-- root product build: builds and verifies `core`, `runtime`, `application`, `sqlite`, and `cli`
+- root product build: builds and verifies `core`, `application`, `sqlite`, and `cli`
 - shared included build logic: houses reusable Gradle plugins, managed-SQLite tasks, and shared
   pulse infrastructure
 - nested Jazzer build: runs Jazzer support tests, regression replay, and local fuzzing flows
@@ -90,7 +116,7 @@ The consumer scripts are intentionally thin now:
 ### Composite build for Jazzer
 
 `jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can consume the live
-local `core`, `runtime`, `application`, `sqlite`, and `cli` modules without publishing snapshots.
+local `core`, `application`, `sqlite`, and `cli` modules without publishing snapshots.
 This keeps Jazzer iteration fast and ensures fuzzing runs against the exact working tree under
 review.
 
@@ -156,7 +182,7 @@ Rules:
 
 These are the Gradle-level invariants worth preserving:
 
-- `core`, `runtime`, `application`, `sqlite`, and `cli` remain ordinary root subprojects
+- `core`, `application`, `sqlite`, and `cli` remain ordinary root subprojects
 - `jazzer/` remains a nested build, not a root subproject
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
 - the repository contains no active `buildSrc` tree

@@ -54,11 +54,17 @@ Use it with either:
 - `FINGRIND_SQLITE_LIBRARY` pointing at a SQLite 3.53.0 shared library
 - a host `libsqlite3` that is already 3.53.0 or newer
 
-For local work from the repository, the easiest path is:
+For local work from a supported local-filesystem checkout, the easiest path is:
 
 ```bash
 ./gradlew :cli:run --args="help"
 ```
+
+For full contributor verification, keep the checkout on the Mac's local filesystem.
+Mounted external volumes are outside the supported setup because Gradle project-cache and JaCoCo
+file locking can fail there on macOS.
+Docker Desktop must also be running before `./check.sh`, because the contributor gate includes a
+real Docker smoke stage.
 
 Inspect the standalone command surface:
 
@@ -116,6 +122,9 @@ audit metadata itself when `post-entry` succeeds.
 `lines[].amount` must be a plain decimal string such as `10.00`. Exponent notation such as
 `1e6` is rejected.
 
+Successful commits return a FinGrind-generated `postingId`. The default production generator emits
+UUID v7 values.
+
 If `reversal` is present:
 - `provenance.reason` is required
 - `priorPostingId` must already exist in the selected book
@@ -150,24 +159,26 @@ Current deterministic rejection codes are:
 - `print-request-template` returns raw JSON so it can be piped straight into a file.
 - `--book-file` is required for both preflight and commit.
 - FinGrind does not assume a default database location.
+- `postingId` in committed responses is generated as a UUID v7 value.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
 - `capabilities` is the best machine-readable contract surface for request fields, reversal rules,
   and rejection codes.
 
 ## More User Docs
 
-- [docs/README.md](/Users/erst/Tools/FinGrind/docs/README.md)
-- [docs/USER_CLI.md](/Users/erst/Tools/FinGrind/docs/USER_CLI.md)
-- [docs/USER_REQUESTS.md](/Users/erst/Tools/FinGrind/docs/USER_REQUESTS.md)
-- [docs/USER_EXAMPLES.md](/Users/erst/Tools/FinGrind/docs/USER_EXAMPLES.md)
+- [docs/README.md](docs/README.md)
+- [docs/USER_CLI.md](docs/USER_CLI.md)
+- [docs/USER_REQUESTS.md](docs/USER_REQUESTS.md)
+- [docs/USER_EXAMPLES.md](docs/USER_EXAMPLES.md)
 
 ## More Developer Docs
 
-- [docs/DEVELOPER.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER.md)
-- [docs/DEVELOPER_GRADLE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_GRADLE.md)
-- [docs/DEVELOPER_SQLITE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_SQLITE.md)
-- [docs/DEVELOPER_JAZZER.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER.md)
-- [docs/DEVELOPER_JAZZER_OPERATIONS.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER_OPERATIONS.md)
+- [docs/DEVELOPER.md](docs/DEVELOPER.md)
+- [docs/DEVELOPER_DOCKER.md](docs/DEVELOPER_DOCKER.md)
+- [docs/DEVELOPER_GRADLE.md](docs/DEVELOPER_GRADLE.md)
+- [docs/DEVELOPER_SQLITE.md](docs/DEVELOPER_SQLITE.md)
+- [docs/DEVELOPER_JAZZER.md](docs/DEVELOPER_JAZZER.md)
+- [docs/DEVELOPER_JAZZER_OPERATIONS.md](docs/DEVELOPER_JAZZER_OPERATIONS.md)
 
 ## Legal
 
