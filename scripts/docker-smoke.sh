@@ -36,6 +36,7 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly image_tag="fingrind-docker-smoke:$$"
 readonly smoke_root="${repo_root}/tmp/docker smoke.$$"
+readonly docker_run_user="$(id -u):$(id -g)"
 anonymous_docker_config=''
 docker_endpoint=''
 
@@ -189,6 +190,7 @@ docker_with_repo_config buildx build --load -t "${image_tag}" "${repo_root}" >/d
 
 printf 'Docker smoke: verifying version command\n'
 version_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -202,6 +204,7 @@ require_match "${version_output}" '"version"[[:space:]]*:[[:space:]]*"' \
 
 printf 'Docker smoke: verifying managed SQLite runtime contract\n'
 capabilities_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -229,6 +232,7 @@ require_match "${capabilities_output}" '"loadedSqlite3mcVersion"[[:space:]]*:[[:
 
 printf 'Docker smoke: generating a dedicated book key file inside the mounted workspace\n'
 generate_key_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -247,6 +251,7 @@ generated_book_passphrase="$(cat "${book_key_path}")"
 
 printf 'Docker smoke: verifying explicit book initialization through mounted path\n'
 open_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -263,6 +268,7 @@ require_match "${open_output}" '"initializedAt"[[:space:]]*:[[:space:]]*"' \
 
 printf 'Docker smoke: verifying account declaration and registry listing\n'
 declare_cash_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -272,6 +278,7 @@ declare_cash_output="$(docker_with_repo_config run --rm \
     --book-passphrase-stdin \
     --request-file "${declare_cash_rel}" <<< "${generated_book_passphrase}" | tr -d '\r')"
 declare_revenue_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -280,6 +287,7 @@ declare_revenue_output="$(docker_with_repo_config run --rm \
     --book-key-file "${book_key_rel}" \
     --request-file "${declare_revenue_rel}" | tr -d '\r')"
 list_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -301,6 +309,7 @@ require_match "${list_output}" '"accountCode"[[:space:]]*:[[:space:]]*"2000"' \
 printf 'Docker smoke: verifying wrong key is rejected deterministically\n'
 set +e
 wrong_key_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -319,6 +328,7 @@ require_match "${wrong_key_output}" 'SQLITE_NOTADB' \
 
 printf 'Docker smoke: verifying preflight and commit through mounted path\n'
 preflight_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -328,6 +338,7 @@ preflight_output="$(docker_with_repo_config run --rm \
     --book-passphrase-stdin \
     --request-file "${request_rel}" <<< "${generated_book_passphrase}" | tr -d '\r')"
 commit_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \

@@ -79,6 +79,8 @@ Then the supported local gates are:
 
 `./check.sh` Stage 5 invokes `scripts/docker-smoke.sh`, which:
 - builds the local image from the repository root through `docker buildx build --load`
+- runs mounted-path container commands under the caller's UID:GID so generated key files and book
+  files stay owned by the invoking operator on both macOS Docker Desktop and Linux CI runners
 - verifies `version`
 - verifies the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime contract through
   `capabilities`
