@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: DEVELOPER
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
-  keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, coverage]
+  keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce"]
 ---
 
@@ -46,10 +46,10 @@ application/  Explicit write boundary plus persistence seam:
               PostingCommitResult.
 
 sqlite/       Durable single-book adapter:
-              one SQLite file per entity book, persisted through an in-process SQLite adapter
-              backed by Java 26 FFM and a managed SQLite 3.53.0 runtime on controlled surfaces,
-              implementing the application-owned `BookSession` seam over the canonical strict-table
-              `book_schema.sql`.
+              one protected SQLite file per entity book, persisted through an in-process SQLite
+              adapter backed by Java 26 FFM and a managed SQLite 3.53.0 / SQLite3 Multiple
+              Ciphers 2.3.3 runtime on controlled surfaces, implementing the application-owned
+              `BookSession` seam over the canonical strict-table `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus open-book, declare-account,
@@ -68,6 +68,9 @@ application -> core
 
 FinGrind is intentionally hard-break oriented right now:
 - one SQLite file is one book for one entity
+- every book-bound command requires one explicit UTF-8 key file via `--book-key-file`
+- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.3 using the upstream default
+  `chacha20` cipher
 - one canonical current schema defines new books
 - books are initialized explicitly before any posting
 - preflight is advisory and not a durable commit guarantee
@@ -87,7 +90,7 @@ FinGrind is intentionally hard-break oriented right now:
 | Java | 26 |
 | Gradle Wrapper | 9.4.1 |
 | Docker runtime | Docker Desktop daemon reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.0 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires a managed path or compatible system library |
+| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires a managed path or an exact compatible SQLite3MC system library |
 | Jackson Databind | 3.1.1 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
@@ -100,6 +103,7 @@ Root verification and packaging:
 ```bash
 java --version
 ./gradlew verifyManagedSqliteSource
+./gradlew prepareManagedSqlite
 ./gradlew check
 ./gradlew coverage
 ./gradlew :cli:shadowJar
@@ -147,9 +151,20 @@ This matters even when a repo currently has only the default Gradle `test` task:
 [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the canonical build-logic protocol.
 
 Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a managed SQLite
-3.53.0 shared library from `third_party/sqlite/sqlite-amalgamation-3530000/`, inject that library
-through `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
+3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library from
+`third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/`, inject that library through
+`FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
 `Enable-Native-Access: ALL-UNNAMED` runtime contract.
+
+For local standalone JAR verification, remember that `:cli:shadowJar` packages only the Java
+surface. If you want that JAR to run against the managed native library instead of a host
+`libsqlite3`, run `./gradlew prepareManagedSqlite` as well and point `FINGRIND_SQLITE_LIBRARY` at
+the resulting file under `build/managed-sqlite/`, for example:
+
+```bash
+export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
+java -jar cli/build/libs/fingrind.jar capabilities
+```
 
 `./check.sh` is the local full-stack gate. It runs:
 - root `check`
@@ -168,10 +183,10 @@ During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `
 
 During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression replay through `[JAZZER-PULSE]` lines, including support-test heartbeats plus regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
-The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite source,
-compiles its own managed SQLite 3.53.0 shared library from `../third_party/sqlite/`, and injects
-that path through `FINGRIND_SQLITE_LIBRARY` for its support tests, regression replay, and local
-active fuzzing commands.
+The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
+source, compiles its own managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library
+from `../third_party/sqlite/`, and injects that path through `FINGRIND_SQLITE_LIBRARY` for its
+support tests, regression replay, and local active fuzzing commands.
 
 For active fuzzing, the supported operator surface is now `jazzer/bin/*`.
 Those wrappers force active fuzz runs onto `--no-daemon`, serialize Jazzer commands through one
@@ -196,7 +211,8 @@ The repository currently ships three workflow surfaces:
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
-the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0 from the managed
+the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0, SQLite3 Multiple
+Ciphers 2.3.3, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
 GitHub workflows do not run active fuzzing, standalone Jazzer support tests, or regression replay.
@@ -213,6 +229,7 @@ Operational protocols for those surfaces live in:
 FinGrind deliberately keeps several boundaries sharp:
 - SQLite is the only durable backend currently planned.
 - One SQLite file is one book for one entity.
+- Every book is protected at rest through SQLite3 Multiple Ciphers and an explicit UTF-8 key file.
 - There is no generic database-independence layer.
 - There is one canonical current SQLite schema and no migration layer.
 - The CLI never bypasses the application boundary.

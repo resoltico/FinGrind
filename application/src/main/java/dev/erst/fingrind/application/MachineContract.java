@@ -38,21 +38,21 @@ public final class MachineContract {
             "fingrind version",
             "fingrind capabilities",
             "fingrind print-request-template",
-            "fingrind open-book --book-file <path>",
-            "fingrind declare-account --book-file <path> --request-file <path|->",
-            "fingrind list-accounts --book-file <path>",
-            "fingrind preflight-entry --book-file <path> --request-file <path|->",
-            "fingrind post-entry --book-file <path> --request-file <path|->"),
+            "fingrind open-book --book-file <path> --book-key-file <path>",
+            "fingrind declare-account --book-file <path> --book-key-file <path> --request-file <path|->",
+            "fingrind list-accounts --book-file <path> --book-key-file <path>",
+            "fingrind preflight-entry --book-file <path> --book-key-file <path> --request-file <path|->",
+            "fingrind post-entry --book-file <path> --book-key-file <path> --request-file <path|->"),
         bookModel(),
         commandDescriptors(),
         List.of(
-            "fingrind open-book --book-file ./books/acme.sqlite",
-            "fingrind declare-account --book-file ./books/acme.sqlite --request-file ./docs/examples/declare-account-cash.json",
-            "fingrind declare-account --book-file ./books/acme.sqlite --request-file ./docs/examples/declare-account-revenue.json",
-            "fingrind list-accounts --book-file ./books/acme.sqlite",
+            "fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
+            "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-cash.json",
+            "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-revenue.json",
+            "fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
             "fingrind print-request-template > request.json",
-            "fingrind preflight-entry --book-file ./books/acme.sqlite --request-file request.json",
-            "fingrind post-entry --book-file ./books/acme.sqlite --request-file request.json"),
+            "fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file request.json",
+            "fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file request.json"),
         exitCodes(),
         preflight(),
         currencyModel(),
@@ -111,6 +111,7 @@ public final class MachineContract {
         "one SQLite file equals one book",
         "one book belongs to one entity",
         "--book-file may point anywhere on the OS filesystem",
+        "every book-bound command requires one explicit UTF-8 passphrase file via --book-key-file",
         "books must be opened explicitly before any posting or account declaration",
         "every posting line must reference a declared active account",
         "there is no migration or compatibility layer during the hard-break phase",
@@ -146,31 +147,31 @@ public final class MachineContract {
         new CommandDescriptor(
             "open-book",
             List.of(),
-            List.of("--book-file <path>"),
+            List.of("--book-file <path>", "--book-key-file <path>"),
             "json-envelope",
             "Initialize a new book file with the canonical schema."),
         new CommandDescriptor(
             "declare-account",
             List.of(),
-            List.of("--book-file <path>", "--request-file <path|->"),
+            List.of("--book-file <path>", "--book-key-file <path>", "--request-file <path|->"),
             "json-envelope",
             "Declare or reactivate one account in the selected book."),
         new CommandDescriptor(
             "list-accounts",
             List.of(),
-            List.of("--book-file <path>"),
+            List.of("--book-file <path>", "--book-key-file <path>"),
             "json-envelope",
             "List every declared account in the selected book."),
         new CommandDescriptor(
             "preflight-entry",
             List.of(),
-            List.of("--book-file <path>", "--request-file <path|->"),
+            List.of("--book-file <path>", "--book-key-file <path>", "--request-file <path|->"),
             "json-envelope",
             "Validate one posting request without committing it."),
         new CommandDescriptor(
             "post-entry",
             List.of(),
-            List.of("--book-file <path>", "--request-file <path|->"),
+            List.of("--book-file <path>", "--book-key-file <path>", "--request-file <path|->"),
             "json-envelope",
             "Commit one posting request into the selected SQLite book."));
   }
@@ -184,7 +185,12 @@ public final class MachineContract {
 
   private static RequestInputDescriptor requestInput() {
     return new RequestInputDescriptor(
-        "--book-file", "--request-file", "-", "single SQLite book file for one entity");
+        "--book-file",
+        "--book-key-file",
+        "--request-file",
+        "-",
+        "single SQLite book file for one entity",
+        "UTF-8 passphrase file for the selected encrypted book");
   }
 
   private static RequestShapesDescriptor requestShapes() {
@@ -483,6 +489,7 @@ public final class MachineContract {
       String boundary,
       String entityScope,
       String filesystem,
+      String credential,
       String initialization,
       String accountRegistry,
       String migration,
@@ -498,9 +505,11 @@ public final class MachineContract {
   /** Descriptor for request-file and book-file input plumbing. */
   public record RequestInputDescriptor(
       String bookFileOption,
+      String bookKeyFileOption,
       String requestFileOption,
       String stdinToken,
-      String bookFileSemantics) {}
+      String bookFileSemantics,
+      String bookKeyFileSemantics) {}
 
   /** Descriptor grouping the current request shapes. */
   public record RequestShapesDescriptor(
@@ -569,10 +578,14 @@ public final class MachineContract {
       String packagedJarJava,
       String storageDriver,
       String storageEngine,
+      String bookProtectionMode,
+      String defaultBookCipher,
       String sqliteLibrarySource,
       String requiredMinimumSqliteVersion,
+      String requiredSqlite3mcVersion,
       String sqliteRuntimeStatus,
       String loadedSqliteVersion,
+      String loadedSqlite3mcVersion,
       String sqliteRuntimeIssue) {}
 
   /** Canonical top-level posting request fields shared by the parser and capabilities surface. */

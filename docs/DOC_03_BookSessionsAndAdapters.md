@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: ADAPTERS
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
-  keywords: [fingrind, book-session, sqlite, adapter, posting-fact, in-memory, cli, ffm, account-registry]
+  keywords: [fingrind, book-session, sqlite, sqlite3mc, adapter, posting-fact, in-memory, cli, ffm, account-registry, book-key-file]
   questions: ["how is a committed posting stored in fingrind", "what is BookSession in fingrind", "what does the sqlite adapter do in fingrind"]
 ---
 
@@ -37,6 +37,21 @@ public interface BookSession extends AutoCloseable
 - Surface: `isInitialized()`, `openBook(...)`, `findAccount(...)`, `declareAccount(...)`, `listAccounts()`, `findByIdempotency(...)`, `findByPostingId(...)`, `findReversalFor(...)`, `commit(...)`, `close()`
 - Purpose: keep both lifecycle and posting persistence explicit at the application boundary
 - Lifecycle: one opened session owns one concrete adapter lifecycle and is explicitly closeable
+
+## `BookAccess`
+
+`BookAccess` is the explicit protected-book access tuple carried across the application boundary.
+
+```java
+public record BookAccess(
+    Path bookFilePath,
+    Path bookKeyFilePath)
+```
+
+- Purpose: keep the durable book path and the required key-file path coupled as one value
+- Book identity: `bookFilePath` remains the durable book identity
+- Access contract: `bookKeyFilePath` must point at the UTF-8 passphrase file needed to open that
+  protected book
 
 ## `PostingCommitResult`
 
@@ -71,15 +86,18 @@ public final class SqlitePostingFactStore
     implements BookSession
 ```
 
-- Purpose: persist one book into one selected SQLite file
-- Book identity: constructor path is the durable book boundary
+- Purpose: persist one protected book into one selected SQLite file
+- Book identity: constructor `BookAccess.bookFilePath()` is the durable book boundary
+- Access secret: constructor `BookAccess.bookKeyFilePath()` supplies the required passphrase file
 - Concurrency: thread-confined to one owning CLI command
 - Reads: return empty for a missing file and do not initialize storage eagerly
-- Open configuration: enables `foreign_keys` and disables `trusted_schema` on the opened handle
+- Open configuration: applies `sqlite3_key()` immediately after open, validates the key, enables
+  `foreign_keys`, and disables `trusted_schema` on the opened handle
 - Initialization: `openBook(...)` creates parent directories when needed, applies the canonical schema, and inserts `book_meta.initialized_at`
 - Account registry: stores declared accounts in the `account` table and enforces the `journal_line.account_code -> account.account_code` foreign key
 - Commit: rejects unopened books plus unknown or inactive accounts before ordinary duplicate checks
-- Process model: opens one in-process SQLite handle per session instance and closes it through the `BookSession` lifecycle
+- Process model: opens one in-process SQLite3 Multiple Ciphers handle per session instance and
+  closes it through the `BookSession` lifecycle
 
 ## `App`
 

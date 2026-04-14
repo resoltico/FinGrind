@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.application.BookAccess;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -18,27 +21,36 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeLibraryTest {
+  private static final String TEST_BOOK_KEY = "native-library-test-book-key";
+
   @TempDir Path tempDirectory;
 
   @Test
   void sqliteRuntimeProbe_reportsManagedSupportedVersion() {
     SqliteRuntime.Probe runtimeProbe = SqliteRuntime.probe();
 
-    assertEquals("sqlite-ffm", SqliteRuntime.STORAGE_DRIVER);
+    assertEquals("sqlite-ffm-sqlite3mc", SqliteRuntime.STORAGE_DRIVER);
     assertEquals("sqlite", SqliteRuntime.STORAGE_ENGINE);
+    assertEquals("required", SqliteRuntime.BOOK_PROTECTION_MODE);
+    assertEquals("chacha20", SqliteRuntime.DEFAULT_BOOK_CIPHER);
     assertEquals("FINGRIND_SQLITE_LIBRARY", SqliteRuntime.LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE);
     assertEquals("3.53.0", SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION);
+    assertEquals("2.3.3", SqliteRuntime.REQUIRED_SQLITE3MC_VERSION);
     assertEquals("managed", runtimeProbe.librarySource());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
     assertFalse(SqliteRuntime.sqliteVersion().isBlank());
+    assertEquals("2.3.3", SqliteRuntime.sqlite3MultipleCiphersVersion());
   }
 
   @Test
@@ -55,12 +67,15 @@ class SqliteNativeLibraryTest {
             () -> {
               throw new UnsupportedSqliteVersionException("3.51.0", "3.53.0", "system");
             },
+            () -> "2.3.3",
             SqliteRuntime::failureDetail);
 
     assertEquals("system", runtimeProbe.librarySource());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals("3.51.0", runtimeProbe.loadedSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
     assertTrue(runtimeProbe.issue().contains("requires SQLite 3.53.0 or newer"));
   }
 
@@ -72,30 +87,56 @@ class SqliteNativeLibraryTest {
             () -> {
               throw new IllegalStateException("sqlite runtime unavailable");
             },
+            () -> "2.3.3",
             SqliteRuntime::failureDetail);
 
     assertEquals("managed", runtimeProbe.librarySource());
     assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
     assertEquals("sqlite runtime unavailable", runtimeProbe.issue());
     assertNull(runtimeProbe.loadedSqliteVersion());
+    assertNull(runtimeProbe.loadedSqlite3mcVersion());
+  }
+
+  @Test
+  void probe_reportsIncompatibleSqlite3mcRuntimeWithoutThrowing() {
+    SqliteRuntime.Probe runtimeProbe =
+        SqliteRuntime.probe(
+            () -> "system",
+            () -> "3.53.0",
+            () -> {
+              throw new UnsupportedSqliteMultipleCiphersVersionException(
+                  "2.3.2", "2.3.3", "system");
+            },
+            SqliteRuntime::failureDetail);
+
+    assertEquals("system", runtimeProbe.librarySource());
+    assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
+    assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
+    assertEquals("2.3.2", runtimeProbe.loadedSqlite3mcVersion());
+    assertTrue(runtimeProbe.issue().contains("requires SQLite3 Multiple Ciphers 2.3.3"));
   }
 
   @Test
   void runtimeProbeAndStatusExposeStableValueSemantics() {
     SqliteRuntime.Probe runtimeProbe =
-        new SqliteRuntime.Probe("managed", "3.53.0", SqliteRuntime.Status.READY, "3.53.0", null);
+        new SqliteRuntime.Probe(
+            "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null);
 
     assertEquals("managed", runtimeProbe.librarySource());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
     assertNull(runtimeProbe.issue());
     assertEquals(
         runtimeProbe,
-        new SqliteRuntime.Probe("managed", "3.53.0", SqliteRuntime.Status.READY, "3.53.0", null));
+        new SqliteRuntime.Probe(
+            "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null));
     assertEquals(
         runtimeProbe.hashCode(),
-        new SqliteRuntime.Probe("managed", "3.53.0", SqliteRuntime.Status.READY, "3.53.0", null)
+        new SqliteRuntime.Probe(
+                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null)
             .hashCode());
     assertTrue(runtimeProbe.toString().contains("managed"));
     assertEquals("ready", SqliteRuntime.Status.READY.wireValue());
@@ -107,39 +148,93 @@ class SqliteNativeLibraryTest {
   void runtimeProbe_rejectsInvalidStatusSpecificShapes() {
     assertThrows(
         NullPointerException.class,
-        () -> new SqliteRuntime.Probe("managed", "3.53.0", null, null, "boom"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new SqliteRuntime.Probe("managed", "3.53.0", SqliteRuntime.Status.READY, null, null));
+        () -> new SqliteRuntime.Probe("managed", "3.53.0", "2.3.3", null, null, null, "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", SqliteRuntime.Status.READY, "3.53.0", "boom"));
+                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, null, "2.3.3", null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", SqliteRuntime.Status.UNAVAILABLE, "3.53.0", "boom"));
+                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", null, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", SqliteRuntime.Status.UNAVAILABLE, null, null));
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.READY,
+                "3.53.0",
+                "2.3.3",
+                "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", SqliteRuntime.Status.INCOMPATIBLE, null, "boom"));
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.UNAVAILABLE,
+                "3.53.0",
+                null,
+                "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", SqliteRuntime.Status.INCOMPATIBLE, "3.51.0", null));
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                "2.3.3",
+                "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(" ", "3.53.0", SqliteRuntime.Status.UNAVAILABLE, null, "boom"));
+            new SqliteRuntime.Probe(
+                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.UNAVAILABLE, null, null, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new SqliteRuntime.Probe(
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.INCOMPATIBLE,
+                null,
+                "2.3.3",
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new SqliteRuntime.Probe(
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.INCOMPATIBLE,
+                "3.53.0",
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new SqliteRuntime.Probe(
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.INCOMPATIBLE,
+                "3.51.0",
+                "2.3.3",
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new SqliteRuntime.Probe(
+                " ", "3.53.0", "2.3.3", SqliteRuntime.Status.UNAVAILABLE, null, null, "boom"));
   }
 
   @Test
@@ -215,6 +310,18 @@ class SqliteNativeLibraryTest {
 
     assertEquals("3.51.0", exception.loadedVersion());
     assertEquals("3.53.0", exception.requiredMinimumVersion());
+    assertEquals("system", exception.librarySource());
+  }
+
+  @Test
+  void requireSupportedSqlite3mcVersion_rejectsUnexpectedRuntime() {
+    UnsupportedSqliteMultipleCiphersVersionException exception =
+        assertThrows(
+            UnsupportedSqliteMultipleCiphersVersionException.class,
+            () -> SqliteNativeLibrary.requireSupportedSqlite3mcVersion("2.3.2", "system"));
+
+    assertEquals("2.3.2", exception.loadedVersion());
+    assertEquals("2.3.3", exception.requiredVersion());
     assertEquals("system", exception.librarySource());
   }
 
@@ -306,13 +413,18 @@ class SqliteNativeLibraryTest {
   void errorMessage_andSqliteVersion_coverDefaultConvenienceOverloads() throws Exception {
     Path bookPath = tempDirectory.resolve("error-message.sqlite");
 
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath);
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
     try (Arena arena = Arena.ofConfined()) {
       MethodHandle versionHandle =
           MethodHandles.constant(MemorySegment.class, arena.allocateFrom("3.53.0"));
+      MethodHandle sqlite3mcVersionHandle =
+          MethodHandles.constant(
+              MemorySegment.class, arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.3"));
 
       assertFalse(SqliteNativeLibrary.errorMessage(database.handle()).isBlank());
       assertEquals("3.53.0", SqliteNativeLibrary.sqliteVersion(versionHandle));
+      assertEquals(
+          "2.3.3", SqliteNativeLibrary.sqlite3MultipleCiphersVersion(sqlite3mcVersionHandle));
       assertDoesNotThrow(
           () ->
               SqliteNativeLibrary.freeSqliteBuffer(
@@ -415,15 +527,15 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
-  void open_nullPathMapsToBridgeFailure() {
-    assertThrows(IllegalStateException.class, () -> SqliteNativeLibrary.open(null));
+  void open_rejectsNullBookAccess() {
+    assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.open(null));
   }
 
   @Test
   void openExecutePrepareAndClose_roundTripThroughSystemLibrary() throws Exception {
     Path bookPath = tempDirectory.resolve("native-round-trip.sqlite");
 
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath);
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
     try {
       database.executeStatement("create table sample (id integer not null, note text null)");
 
@@ -466,9 +578,146 @@ class SqliteNativeLibraryTest {
     java.nio.file.Files.createDirectories(directoryPath);
 
     SqliteNativeException exception =
-        assertThrows(SqliteNativeException.class, () -> SqliteNativeLibrary.open(directoryPath));
+        assertThrows(
+            SqliteNativeException.class, () -> SqliteNativeLibrary.open(bookAccess(directoryPath)));
 
     assertTrue(exception.resultName().contains("SQLITE_CANTOPEN"));
+  }
+
+  @Test
+  void open_rejectsWrongBookKey() throws Exception {
+    Path bookPath = tempDirectory.resolve("wrong-key.sqlite");
+
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath, TEST_BOOK_KEY));
+    try {
+      database.executeStatement("create table sample (id integer not null)");
+    } finally {
+      database.close();
+    }
+
+    SqliteNativeException exception =
+        assertThrows(
+            SqliteNativeException.class,
+            () -> SqliteNativeLibrary.open(bookAccess(bookPath, "different-book-key")));
+
+    assertTrue(exception.resultName().contains("SQLITE_NOTADB"));
+  }
+
+  @Test
+  void open_wrapsBookKeyReadFailureInStableBridgeFailure() {
+    Path bookPath = tempDirectory.resolve("missing-key.sqlite");
+    Path missingKeyPath = tempDirectory.resolve("missing.key");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeLibrary.open(new BookAccess(bookPath, missingKeyPath)));
+
+    assertTrue(exception.getMessage().contains("Failed to open the SQLite native library bridge."));
+    assertTrue(
+        exception.getCause().getMessage().contains("Failed to read the FinGrind book key file"));
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void applyKey_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "applyKey",
+            MemorySegment.class,
+            SqliteBookKeyFile.KeyMaterial.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"),
+            Arena.class);
+    method.setAccessible(true);
+
+    Path keyFile = tempDirectory.resolve("apply-key.key");
+    Files.writeString(keyFile, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+
+    try (SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(keyFile);
+        Arena arena = Arena.ofConfined()) {
+      Object sqliteApi =
+          sqliteApi(
+              throwingMethodHandle(
+                  new IllegalStateException("boom"),
+                  int.class,
+                  MemorySegment.class,
+                  MemorySegment.class,
+                  int.class),
+              constantMethodHandle(0, MemorySegment.class),
+              constantMethodHandle(MemorySegment.NULL, MemorySegment.class),
+              constantMethodHandle(MemorySegment.NULL, int.class),
+              constantMethodHandle(0, MemorySegment.class));
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () -> method.invoke(null, MemorySegment.NULL, keyMaterial, sqliteApi, arena));
+
+      assertTrue(exception.getCause() instanceof IllegalStateException);
+      assertTrue(
+          exception
+              .getCause()
+              .getMessage()
+              .contains("Failed to apply the FinGrind SQLite book key from"));
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void applyKey_rethrowsSqliteNativeException() throws Exception {
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "applyKey",
+            MemorySegment.class,
+            SqliteBookKeyFile.KeyMaterial.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"),
+            Arena.class);
+    method.setAccessible(true);
+
+    Path keyFile = tempDirectory.resolve("apply-key-native-failure.key");
+    Files.writeString(keyFile, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+
+    try (SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(keyFile);
+        Arena arena = Arena.ofConfined()) {
+      Object sqliteApi =
+          sqliteApi(
+              constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class),
+              constantMethodHandle(0, MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
+              constantMethodHandle(arena.allocateFrom("boom"), int.class),
+              constantMethodHandle(14, MemorySegment.class));
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () -> method.invoke(null, MemorySegment.NULL, keyMaterial, sqliteApi, arena));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      assertEquals("SQLITE_CANTOPEN: boom", exception.getCause().getMessage());
+    }
+  }
+
+  @Test
+  void sqlite3MultipleCiphersVersion_wrapsUnexpectedLookupFailure() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeLibrary.sqlite3MultipleCiphersVersion(
+                    throwingMethodHandle(new IllegalStateException("boom"), MemorySegment.class)));
+
+    assertTrue(
+        exception
+            .getMessage()
+            .contains("Failed to read the SQLite3 Multiple Ciphers library version."));
+  }
+
+  @Test
+  void shutdownQuietly_ignoresThrowablesFromNativeShutdown() {
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeLibrary.shutdownQuietly(
+                throwingMethodHandle(new IllegalStateException("boom"), int.class)));
   }
 
   @Test
@@ -608,6 +857,7 @@ class SqliteNativeLibraryTest {
 
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
   private static Object sqliteApi(
+      MethodHandle keyHandle,
       MethodHandle closeHandle,
       MethodHandle errorMessageHandle,
       MethodHandle errorStringHandle,
@@ -615,28 +865,7 @@ class SqliteNativeLibraryTest {
       throws ReflectiveOperationException {
     Class<?> sqliteApiClass =
         Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
-    var constructor =
-        sqliteApiClass.getDeclaredConstructor(
-            Arena.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            MethodHandle.class,
-            String.class);
+    var constructor = sqliteApiClass.getDeclaredConstructors()[0];
     constructor.setAccessible(true);
 
     return constructor.newInstance(
@@ -644,6 +873,8 @@ class SqliteNativeLibraryTest {
         constantMethodHandle(
             0, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class),
         closeHandle,
+        keyHandle,
+        constantMethodHandle(0),
         constantMethodHandle(0, MemorySegment.class, int.class),
         constantMethodHandle(0, MemorySegment.class, int.class),
         constantMethodHandle(
@@ -668,12 +899,53 @@ class SqliteNativeLibraryTest {
         errorMessageHandle,
         errorStringHandle,
         extendedErrcodeHandle,
-        "3.53.0");
+        "3.53.0",
+        "2.3.3");
+  }
+
+  private static Object sqliteApi(
+      MethodHandle closeHandle,
+      MethodHandle errorMessageHandle,
+      MethodHandle errorStringHandle,
+      MethodHandle extendedErrcodeHandle)
+      throws ReflectiveOperationException {
+    return sqliteApi(
+        constantMethodHandle(0, MemorySegment.class, MemorySegment.class, int.class),
+        closeHandle,
+        errorMessageHandle,
+        errorStringHandle,
+        extendedErrcodeHandle);
+  }
+
+  private BookAccess bookAccess(Path bookPath) {
+    return bookAccess(bookPath, TEST_BOOK_KEY);
+  }
+
+  private BookAccess bookAccess(Path bookPath, String keyText) {
+    try {
+      Path keyDirectory = tempDirectory.resolve("book-keys");
+      Files.createDirectories(keyDirectory);
+      Path keyPath = keyDirectory.resolve(bookPath.getFileName() + ".key");
+      if (keyPath.getParent() != null) {
+        Files.createDirectories(keyPath.getParent());
+      }
+      Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
+      return new BookAccess(bookPath, keyPath);
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
   }
 
   private static MethodHandle constantMethodHandle(Object value, Class<?>... parameterTypes) {
     MethodHandle constantHandle = MethodHandles.constant(constantType(value), value);
     return MethodHandles.dropArguments(constantHandle, 0, parameterTypes);
+  }
+
+  private static MethodHandle throwingMethodHandle(
+      Throwable throwable, Class<?> returnType, Class<?>... parameterTypes) {
+    MethodHandle throwingHandle = MethodHandles.throwException(returnType, Throwable.class);
+    return MethodHandles.dropArguments(
+        MethodHandles.insertArguments(throwingHandle, 0, throwable), 0, parameterTypes);
   }
 
   private static MethodHandle voidMethodHandle(Class<?>... parameterTypes) {

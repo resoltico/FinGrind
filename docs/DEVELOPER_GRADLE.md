@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
-  keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, jazzer, buildsrc, managed-sqlite, toolchain, verification]
+  keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "what should we review in the gradle setup"]
 ---
 
@@ -128,10 +128,20 @@ avoids silent version skew between the main product modules and Jazzer support c
 
 ### One managed-SQLite contract
 
-Both the root build and the nested Jazzer build compile the managed SQLite 3.53.0 runtime from the
-same vendored amalgamation, through the same typed Gradle tasks. That keeps tests, CLI runs, and
-fuzzing on one native runtime contract instead of letting Gradle surfaces drift onto whatever
-system `libsqlite3` happened to be present.
+Both the root build and the nested Jazzer build compile the managed SQLite 3.53.0 / SQLite3
+Multiple Ciphers 2.3.3 runtime from the same vendored official amalgamation, through the same
+typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
+of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
+
+That contract now has a few explicit rules:
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/`
+- `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
+- managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
+  `SQLITE_TEMP_STORE=3`, and `SQLITE_SECURE_DELETE=1`
+- `:cli:shadowJar` does not build a native library; `prepareManagedSqlite` is the separate Gradle
+  step that produces the managed host library under `build/managed-sqlite/`
+- local standalone `java -jar` verification that wants the managed runtime must therefore run both
+  `:cli:shadowJar` and `prepareManagedSqlite`
 
 ### Committed Jazzer topology
 
@@ -222,7 +232,8 @@ These are the Gradle-level invariants worth preserving:
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
 - the repository contains no active `buildSrc` tree
 - the nested Jazzer build imports `../gradle/libs.versions.toml`
-- root and nested Gradle surfaces use the same vendored SQLite source and managed runtime contract
+- root and nested Gradle surfaces use the same vendored SQLite3MC source and managed runtime
+  contract
 - shared pulse scheduling lives in one base implementation, with build-specific listeners layered on
   top
 - the Jazzer topology file remains the single source of truth for harness keys, task names, and
@@ -247,7 +258,10 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are root and nested verification scopes still cleanly separated?
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
-- Are root and nested builds still using the same managed SQLite runtime contract?
+- Are root and nested builds still using the same managed SQLite 3.53.0 / SQLite3 Multiple
+  Ciphers 2.3.3 runtime contract?
+- Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
+  than an ad-hoc host library or repackaged archive?
 - Does the nested Jazzer build still need to stay independent from the root project graph?
 - Are configuration-cache or composite-build constraints forcing awkward workarounds that deserve a
   redesign instead?

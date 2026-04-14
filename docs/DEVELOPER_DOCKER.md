@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh"]
@@ -70,10 +70,16 @@ Then the supported local gates are:
 `./check.sh` Stage 5 invokes `scripts/docker-smoke.sh`, which:
 - builds the local image from the repository root
 - verifies `version`
-- verifies the managed SQLite runtime contract through `capabilities`
+- verifies the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime contract through
+  `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
 - verifies `declare-account` and `list-accounts`
 - verifies `preflight-entry` and `post-entry` after the explicit Phase 2 lifecycle setup
+- verifies the containerized protected-book metadata surface:
+  `bookProtectionMode`, `defaultBookCipher`, `requiredSqlite3mcVersion`, and
+  `loadedSqlite3mcVersion`
+- verifies that reopening the same mounted book with the wrong key fails as `runtime-failure`
+  rather than silently reading the file
 
 ## Troubleshooting
 

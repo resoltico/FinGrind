@@ -28,6 +28,24 @@ Runtime Notes
 ================================================================================
 
 --------------------------------------------------------------------------------
+SQLite3 Multiple Ciphers
+  https://utelle.github.io/SQLite3MultipleCiphers/
+
+  SQLite3 Multiple Ciphers
+  Copyright (c) 2019-2024 Ulrich Telle
+
+  Licensed under the MIT License (see LICENSE-SQLITE3MULTIPLECIPHERS).
+
+  FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.3 amalgamation,
+  based on SQLite 3.53.0, and builds managed native SQLite libraries from that
+  source for Gradle, Jazzer, CI, and container runtime surfaces.
+
+  FinGrind protects book files with SQLite3 Multiple Ciphers using the upstream
+  default sqleet / chacha20 cipher. FinGrind does not pass keys through
+  SQLite URI key= or hexkey= parameters; the supported contract is an explicit
+  UTF-8 book key file supplied via --book-key-file.
+
+--------------------------------------------------------------------------------
 SQLite
   https://www.sqlite.org/
 
@@ -38,13 +56,14 @@ SQLite
     May you find forgiveness for yourself and forgive others.
     May you share freely, never taking more than you give.
 
-  FinGrind vendors the official SQLite 3.53.0 amalgamation in the repository
-  and builds managed native SQLite libraries from that source for Gradle, CI,
-  and container runtime surfaces.
+  FinGrind vendors SQLite 3.53.0 through the official SQLite3 Multiple Ciphers
+  2.3.3 amalgamation and builds managed native SQLite libraries from that
+  source for Gradle, Jazzer, CI, and container runtime surfaces.
 
   FinGrind does not bundle a native SQLite library inside the CLI JAR itself.
   Standalone JAR execution uses Java 26 FFM with either
-  `FINGRIND_SQLITE_LIBRARY` or a compatible host `libsqlite3`.
+  `FINGRIND_SQLITE_LIBRARY` or a compatible host `libsqlite3` that exposes the
+  same SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 contract.
 
 ================================================================================
 Trademark Notice
@@ -58,4 +77,4 @@ not imply affiliation with or endorsement by The Apache Software Foundation.
 trademark owner.
 
 FinGrind is not affiliated with, endorsed by, or sponsored by The Apache
-Software Foundation or the SQLite authors.
+Software Foundation, Ulrich Telle, or the SQLite authors.

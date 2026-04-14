@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -26,8 +26,8 @@ That separation is deliberate:
 - committed regression replay remains explicit
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
-- the nested build compiles and injects its own managed SQLite 3.53.0 runtime from the same
-  vendored source used by the root build
+- the nested build compiles and injects its own managed SQLite 3.53.0 / SQLite3 Multiple Ciphers
+  2.3.3 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer entrypoint classes of its own:
@@ -115,7 +115,7 @@ jazzer/bin/clean-local-corpus
 |:--------|:------|:-------------------|
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
 | `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
-| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected book, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
+| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using a temp UTF-8 key file, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
 ## Deterministic Support Tests
 

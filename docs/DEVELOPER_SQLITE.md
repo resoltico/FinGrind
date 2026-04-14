@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
-  keywords: [fingrind, sqlite, ffm, java26, storage, single-book, filesystem-path, schema, canonical-schema, strict, trusted-schema, no-migrations]
-  questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new book"]
+  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, no-migrations]
+  questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
 ---
 
 # SQLite Developer Reference
@@ -16,30 +16,42 @@ route:
 
 ## Hard-Break Storage Stance
 
-FinGrind currently treats one SQLite file as one book for one entity.
+FinGrind currently treats one protected SQLite file as one book for one entity.
 
 That means:
-- the selected file path is the book identity
+- the selected SQLite file path is the durable book identity
+- one `BookAccess` value pairs that durable path with the explicit key file required to open it
 - the file may live anywhere on the operating-system filesystem
 - there is no default database location
-- `--book-file` is required for both preflight and commit
+- every book-bound command requires both `--book-file` and `--book-key-file`
+- the key file must contain one non-empty UTF-8 passphrase; one trailing LF or CRLF is tolerated
+  and stripped
+- newly opened books are protected through SQLite3 Multiple Ciphers 2.3.3 using the upstream
+  default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
 - there is no schema migration framework, version table, or compatibility layer
+- legacy plaintext books and other encryption variants are out of scope for the current
+  foundation
 
-Older book shapes are out of scope for the current foundation.
+Older book shapes are intentionally unsupported during this hard-break phase.
 
 ## Current Adapter Choice
 
-FinGrind's durable adapter is [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
+FinGrind's durable adapter is
+[`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
 
 Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
+- express book access explicitly as
+  [`BookAccess`](../application/src/main/java/dev/erst/fingrind/application/BookAccess.java)
 - keep one open native SQLite handle per opened book session
+- apply the book key immediately after open through `sqlite3_key()`
+- validate the configured key before any schema or data access proceeds
 - initialize the schema from the canonical embedded SQL resource through `sqlite3_exec`
 - create canonical book tables as SQLite `STRICT` tables
 - use prepared statements through the native SQLite C API
-- rely on the chosen book path as the durable boundary
+- rely on the chosen book path as the durable boundary and the key file as the access secret
 
 Why this is the current design:
 - it keeps the adapter explicit and SQLite-first instead of introducing a generic SQL abstraction
@@ -47,62 +59,126 @@ Why this is the current design:
 - it gives one real SQLite transaction boundary per commit attempt
 - it keeps prepared statements and typed SQLite result codes close to the actual C API surface
 - the packaged CLI no longer requires an external `sqlite3` binary
-- controlled FinGrind surfaces can now pin one audited SQLite source version instead of inheriting
-  host-library drift
+- controlled FinGrind surfaces can now pin one audited SQLite 3.53.0 / SQLite3 Multiple Ciphers
+  2.3.3 source contract instead of inheriting host-library drift
 
 Observed implementation note:
 - we also reproduced a local `sqlite-jdbc` native-library load failure on this Java 26 macOS
   environment during the Phase 1 rewrite, but that was an environment-specific observation rather
   than the primary architecture reason for choosing FFM
 
-Current runtime policy:
+## Source Provenance And License
+
+FinGrind treats the upstream SQLite3 Multiple Ciphers project page as the source-of-truth entry
+point for design, configuration, and operator guidance:
+- project information: [https://utelle.github.io/SQLite3MultipleCiphers/](https://utelle.github.io/SQLite3MultipleCiphers/)
+- upstream configuration guidance on URI key transport:
+  [https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/](https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/)
+- vendored release asset:
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.3/sqlite3mc-2.3.3-sqlite-3.53.0-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.3/sqlite3mc-2.3.3-sqlite-3.53.0-amalgamation.zip)
+
+License and attribution stance:
+- SQLite3 Multiple Ciphers is MIT-licensed; the upstream text is copied verbatim in
+  [LICENSE-SQLITE3MULTIPLECIPHERS](../LICENSE-SQLITE3MULTIPLECIPHERS)
+- bundled original SQLite sources remain in the public domain
+- repository attribution and runtime notes live in [NOTICE](../NOTICE)
+
+## Current Runtime Policy
+
 - root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
-  image all build from the vendored official SQLite 3.53.0 amalgamation under
-- [`third_party/sqlite/sqlite-amalgamation-3530000/`](../third_party/sqlite/sqlite-amalgamation-3530000)
+  image all build from the vendored official SQLite3 Multiple Ciphers 2.3.3 amalgamation under
+  [third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000)
 - [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned
-  `sqlite3.c` SHA3-256 before the managed native library is used
-- [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native
-  shared library and injects it through `FINGRIND_SQLITE_LIBRARY`
+  LF-normalized `sqlite3mc_amalgamation.c` SHA3-256 before the managed native library is used, so
+  Git checkout line-ending policy cannot create false integrity failures across machines or CI
+- [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native shared library from that
+  source with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`, `SQLITE_TEMP_STORE=3`, and
+  `SQLITE_SECURE_DELETE=1`, then injects it through `FINGRIND_SQLITE_LIBRARY`
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not fall back to an older host library
+- the Docker image compiles the same vendored SQLite3MC source during image build
 - standalone `java -jar` execution still allows a compatible external library, but
   [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
-  rejects anything older than SQLite 3.53.0
+  rejects anything older than SQLite 3.53.0 or outside the exact SQLite3 Multiple Ciphers 2.3.3
+  pin
+- `:cli:shadowJar` packages only the Java surface; local standalone verification that wants the
+  managed native library must also run `prepareManagedSqlite` first and point
+  `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`
 
 ## Adapter Composition
 
 The SQLite adapter is split into focused collaborators:
-- [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java): owns one thread-confined book session, lookup paths, transaction-scoped duplicate checks, and durable commit outcomes
-- [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java): minimal FFM binding surface to the SQLite C API, including configured-library selection, version enforcement, and `sqlite3_exec` for canonical schema application
-- [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java): one open native SQLite database handle with distinct control-statement and script helpers
-- [`SqliteNativeStatement`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java): single-use prepared statement wrapper with statement-scoped native memory; bound text length is derived from the native UTF-8 segment size instead of re-encoding Java strings on every bind
-- [`SqliteSchemaManager`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSchemaManager.java): lazily loads and caches the canonical schema resource, then applies it on the writable connection
-- [`SqlitePostingSql`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSql.java): holds canonical lookup and insert SQL strings
-- [`SqlitePostingMapper`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingMapper.java): reconstructs domain facts from native SQLite result rows
-- [`SqliteRuntime`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRuntime.java): exposes machine-readable runtime probe metadata to the CLI surface
+- [`BookAccess`](../application/src/main/java/dev/erst/fingrind/application/BookAccess.java):
+  durable book file plus the key file required to access it
+- [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
+  owns one thread-confined protected-book session, lookup paths, transaction-scoped duplicate
+  checks, and durable commit outcomes
+- [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java):
+  minimal FFM binding surface to the SQLite C API, including configured-library selection, version
+  enforcement, key application, key validation, and `sqlite3_exec` for canonical schema
+  application
+- [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
+  loads the UTF-8 key file, strips one trailing line ending, rejects invalid material, and zeroizes
+  transient plaintext bytes after use
+- [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
+  one open native SQLite database handle with distinct control-statement and script helpers
+- [`SqliteNativeStatement`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java):
+  single-use prepared statement wrapper with statement-scoped native memory; bound text length is
+  derived from the native UTF-8 segment size instead of re-encoding Java strings on every bind
+- [`SqliteSchemaManager`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSchemaManager.java):
+  lazily loads and caches the canonical schema resource, then applies it on the writable
+  connection
+- [`SqlitePostingSql`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSql.java):
+  holds canonical lookup and insert SQL strings
+- [`SqlitePostingMapper`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingMapper.java):
+  reconstructs domain facts from native SQLite result rows
+- [`SqliteRuntime`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRuntime.java):
+  exposes machine-readable runtime probe metadata to the CLI surface
 
 ## Runtime Behavior
 
-- Reads and preflight against a missing book return empty state and do not create a file.
-- `open-book` creates parent directories if needed, applies the canonical schema, and inserts the authoritative `book_meta.initialized_at` marker.
-- `post-entry` no longer initializes a book implicitly; a missing or unopened book returns `BookNotInitialized`.
-- Posting lines are validated against the declared-account registry before ordinary duplicate checks proceed.
-- Opened book handles keep `foreign_keys = on` and `trusted_schema = off`.
-- Schema bootstrap is intentionally separate from the posting transaction because it is idempotent
-  book initialization, not one accounting fact commit.
-- Book-local uniqueness enforces duplicate idempotency durably.
-- SQLite enforces declared-account durability through the `journal_line.account_code -> account.account_code` foreign key.
-- SQLite also enforces one reversal per target through a partial unique index.
-- Reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key.
-- Runtime probes distinguish `managed` versus `system` library source and report
-  `requiredMinimumSqliteVersion`, `sqliteRuntimeStatus`, and `loadedSqliteVersion` through
-  `capabilities`.
+- reads and preflight against a missing book return empty state and do not create a file
+- `open-book` creates parent directories if needed, applies the canonical schema, inserts the
+  authoritative `book_meta.initialized_at` marker, and initializes a protected SQLite3MC book file
+- `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
+  `BookNotInitialized`
+- opening an existing plaintext SQLite file or using the wrong key file fails during key
+  validation, typically surfacing `SQLITE_NOTADB`
+- posting lines are validated against the declared-account registry before ordinary duplicate
+  checks proceed
+- opened book handles keep `foreign_keys = on` and `trusted_schema = off`
+- schema bootstrap is intentionally separate from the posting transaction because it is idempotent
+  book initialization, not one accounting fact commit
+- book-local uniqueness enforces duplicate idempotency durably
+- SQLite enforces declared-account durability through the
+  `journal_line.account_code -> account.account_code` foreign key
+- SQLite also enforces one reversal per target through a partial unique index
+- reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
+- runtime probes distinguish `managed` versus `system` library source and report
+  `requiredMinimumSqliteVersion`, `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`,
+  `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher`
+  through `capabilities`
 
 The book-session seam distinguishes ordinary duplicate outcomes from true runtime failures:
 - duplicate idempotency returns `PostingCommitResult.DuplicateIdempotency`
 - duplicate reversal target returns `PostingCommitResult.DuplicateReversalTarget`
-- other SQLite-native, bridge, or filesystem failures stay `IllegalStateException` and become CLI
-  `runtime-failure`
+- other SQLite-native, bridge, filesystem, key-file, or cipher failures stay
+  `IllegalStateException` and become CLI `runtime-failure`
+
+## Book Protection Contract
+
+- every protected-book session starts from one explicit `BookAccess` pair:
+  durable book path plus key-file path
+- the key file is read as bytes, normalized by removing one trailing line ending, validated as
+  UTF-8, and rejected if empty
+- transient key bytes are zeroized after native handoff
+- FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
+- FinGrind validates the configured key by executing `SELECT count(*) FROM sqlite_master;` before
+  any schema or business operation can proceed
+- FinGrind intentionally relies on the upstream default `sqleet` / `chacha20` cipher and does not
+  expose cipher selection through its own API
+- FinGrind intentionally avoids SQLite URI `key=` and `hexkey=` transport because the upstream
+  SQLite3MC guidance discourages keeping passphrases in URI strings
 
 ## Transaction Model
 
@@ -119,11 +195,14 @@ text or re-querying after rollback.
 
 ## Canonical Schema Policy
 
-- The canonical schema resource is [`book_schema.sql`](../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql).
-- The canonical schema uses SQLite `STRICT` tables for `book_meta`, `account`, `posting_fact`, and `journal_line`.
-- There are no versioned migration file names such as `V1__...`.
-- There is no migration step between old and new book shapes.
-- If the schema changes again during this hard-break phase, new books are created from the new canonical file.
+- the canonical schema resource is
+  [`book_schema.sql`](../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
+- the canonical schema uses SQLite `STRICT` tables for `book_meta`, `account`, `posting_fact`, and
+  `journal_line`
+- there are no versioned migration file names such as `V1__...`
+- there is no migration step between old and new book shapes
+- if the schema changes again during this hard-break phase, new books are created from the new
+  canonical file
 
 ## Why FFM-Backed SQLite
 
@@ -132,21 +211,27 @@ Reasons for the current design:
 - prepared statements replace manual quoting
 - one native handle enables real commit-time transaction scope
 - typed SQLite result codes replace subprocess stderr interpretation
-- the design stays explicit and SQLite-specific without introducing an ORM or generic SQL abstraction
+- the design stays explicit and SQLite-specific without introducing an ORM or generic SQL
+  abstraction
 - Java 26 FFM works directly against a managed or compatible external `libsqlite3` without
   reintroducing JNI glue code into FinGrind itself
 
-Managed runtime targets currently build SQLite 3.53.0 from the vendored amalgamation on macOS and
-Linux. The CLI JAR declares `Enable-Native-Access: ALL-UNNAMED`, Gradle `Test` and `JavaExec`
-tasks are configured with `--enable-native-access=ALL-UNNAMED`, and controlled surfaces inject the
-managed library through `FINGRIND_SQLITE_LIBRARY`. Standalone execution may still load a system
-library, but only if it satisfies the same 3.53.0 minimum.
+Managed runtime targets currently build SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 from the
+vendored amalgamation on macOS and Linux. The CLI JAR declares
+`Enable-Native-Access: ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with
+`--enable-native-access=ALL-UNNAMED`, and controlled surfaces inject the managed library through
+`FINGRIND_SQLITE_LIBRARY`.
 
 Native bridge notes:
-- the SQLite symbol arena in [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java) intentionally lives for the JVM lifetime because the downcall handles outlive any individual book session
+- the SQLite symbol arena in
+  [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
+  intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
+  session
 - native library lookup prefers `FINGRIND_SQLITE_LIBRARY`, then falls back to the platform default
   `libsqlite3`
-- runtime initialization validates the loaded SQLite version before any book operation is allowed
+- runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
+  Ciphers version before any book operation is allowed
+- key application happens before any schema statement or pragma configuration
 - text parameters use SQLite's `SQLITE_TRANSIENT` contract so bound text does not rely on statement
   arena lifetime conventions
 - error messages and SQLite version strings read exact C-string lengths rather than a guessed fixed
@@ -155,6 +240,7 @@ Native bridge notes:
   diagnostics do not dereference invalid database handles just to render an exception message
 - `sqlite3_exec` failure reporting prefers the exec-owned error buffer when SQLite provides one,
   then falls back to `sqlite3_errstr(resultCode)`
+- the runtime installs a best-effort JVM shutdown hook that calls `sqlite3_shutdown()`
 
 This is a deliberate hard-break correction to the earlier shell-out design, not an accidental
 runtime experiment.

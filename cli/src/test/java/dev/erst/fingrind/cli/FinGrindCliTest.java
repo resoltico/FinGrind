@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.application.BookAccess;
 import dev.erst.fingrind.application.BookAdministrationRejection;
 import dev.erst.fingrind.application.DeclareAccountCommand;
 import dev.erst.fingrind.application.DeclareAccountResult;
@@ -25,6 +26,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +44,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
 class FinGrindCliTest {
+  private static final String TEST_BOOK_KEY = "cli-test-book-key";
+
   @TempDir Path tempDirectory;
 
   @Test
@@ -107,8 +111,13 @@ class FinGrindCliTest {
             .asText());
     assertTrue(payload.path("responseModel").path("rejections").isArray());
     assertFalse(payload.path("responseModel").has("rejectionCodes"));
-    assertEquals("sqlite-ffm", payload.path("environment").path("storageDriver").asString());
+    assertEquals(
+        "sqlite-ffm-sqlite3mc", payload.path("environment").path("storageDriver").asString());
+    assertEquals("required", payload.path("environment").path("bookProtectionMode").asText());
+    assertEquals("chacha20", payload.path("environment").path("defaultBookCipher").asText());
     assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asString());
+    assertEquals("2.3.3", payload.path("environment").path("requiredSqlite3mcVersion").asText());
+    assertEquals("2.3.3", payload.path("environment").path("loadedSqlite3mcVersion").asText());
   }
 
   @Test
@@ -132,17 +141,23 @@ class FinGrindCliTest {
             new SqliteRuntime.Probe(
                 "system",
                 "3.53.0",
+                "2.3.3",
                 SqliteRuntime.Status.UNAVAILABLE,
+                null,
                 null,
                 "system sqlite unavailable"));
 
-    assertEquals("sqlite-ffm", environmentDescriptor.storageDriver());
+    assertEquals("sqlite-ffm-sqlite3mc", environmentDescriptor.storageDriver());
     assertEquals("sqlite", environmentDescriptor.storageEngine());
+    assertEquals("required", environmentDescriptor.bookProtectionMode());
+    assertEquals("chacha20", environmentDescriptor.defaultBookCipher());
     assertEquals("system", environmentDescriptor.sqliteLibrarySource());
     assertEquals("3.53.0", environmentDescriptor.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", environmentDescriptor.requiredSqlite3mcVersion());
     assertEquals("unavailable", environmentDescriptor.sqliteRuntimeStatus());
     assertEquals("system sqlite unavailable", environmentDescriptor.sqliteRuntimeIssue());
     assertNull(environmentDescriptor.loadedSqliteVersion());
+    assertNull(environmentDescriptor.loadedSqlite3mcVersion());
   }
 
   @Test
@@ -167,6 +182,7 @@ class FinGrindCliTest {
       throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("live-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         new FinGrindCli(
@@ -178,6 +194,8 @@ class FinGrindCliTest {
               "preflight-entry",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             });
@@ -199,13 +217,23 @@ class FinGrindCliTest {
     Path declareRevenueFile =
         writeNamedRequest("declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
     Path bookFilePath = tempDirectory.resolve("committed-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     FinGrindCli cli;
 
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     cli =
         new FinGrindCli(
             new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, cli.run(new String[] {"open-book", "--book-file", bookFilePath.toString()}));
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
     assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
 
     ByteArrayOutputStream declareCashOutput = new ByteArrayOutputStream();
@@ -221,6 +249,8 @@ class FinGrindCliTest {
               "declare-account",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               declareCashFile.toString()
             }));
@@ -240,6 +270,8 @@ class FinGrindCliTest {
               "declare-account",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               declareRevenueFile.toString()
             }));
@@ -249,7 +281,15 @@ class FinGrindCliTest {
         new FinGrindCli(
             new ByteArrayInputStream(new byte[0]), utf8PrintStream(listOutput), fixedClock());
     assertEquals(
-        0, cli.run(new String[] {"list-accounts", "--book-file", bookFilePath.toString()}));
+        0,
+        cli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
     assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"accountName\":\"Cash\""));
     assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"accountName\":\"Revenue\""));
 
@@ -264,6 +304,8 @@ class FinGrindCliTest {
               "preflight-entry",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             }));
@@ -283,6 +325,8 @@ class FinGrindCliTest {
               "post-entry",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             }));
@@ -301,6 +345,7 @@ class FinGrindCliTest {
     Path declareAccountFile =
         writeNamedRequest("declare.json", declareAccountJson("1000", "Cash", "DEBIT"));
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
@@ -335,7 +380,16 @@ class FinGrindCliTest {
             fixedClock(),
             workflow);
 
-    assertEquals(0, cli.run(new String[] {"open-book", "--book-file", bookFilePath.toString()}));
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
     assertEquals(
         0,
         cli.run(
@@ -343,11 +397,21 @@ class FinGrindCliTest {
               "declare-account",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               declareAccountFile.toString()
             }));
     assertEquals(
-        0, cli.run(new String[] {"list-accounts", "--book-file", bookFilePath.toString()}));
+        0,
+        cli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
     assertEquals(
         0,
         cli.run(
@@ -355,6 +419,8 @@ class FinGrindCliTest {
               "preflight-entry",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             }));
@@ -365,15 +431,19 @@ class FinGrindCliTest {
               "post-entry",
               "--book-file",
               bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             }));
 
-    assertEquals(List.of(bookFilePath), workflow.openBookPaths());
-    assertEquals(List.of(bookFilePath), workflow.declareAccountPaths());
-    assertEquals(List.of(bookFilePath), workflow.listAccountPaths());
-    assertEquals(List.of(bookFilePath), workflow.preflightPaths());
-    assertEquals(List.of(bookFilePath), workflow.commitPaths());
+    assertEquals(List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.openBookAccesses());
+    assertEquals(
+        List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.declareAccountAccesses());
+    assertEquals(
+        List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.listAccountAccesses());
+    assertEquals(List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.preflightAccesses());
+    assertEquals(List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.commitAccesses());
   }
 
   @Test
@@ -390,6 +460,7 @@ class FinGrindCliTest {
             new PostEntryResult.Rejected(
                 new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()));
     Path bookFilePath = tempDirectory.resolve("reject.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     Path requestFile = writeRequest(validRequestJson());
 
     assertEquals(
@@ -399,7 +470,14 @@ class FinGrindCliTest {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
                 workflow)
-            .run(new String[] {"open-book", "--book-file", bookFilePath.toString()}));
+            .run(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString()
+                }));
     assertEquals(
         2,
         new FinGrindCli(
@@ -412,6 +490,8 @@ class FinGrindCliTest {
                   "declare-account",
                   "--book-file",
                   bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
                   "--request-file",
                   declareAccountFile.toString()
                 }));
@@ -422,7 +502,14 @@ class FinGrindCliTest {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
                 workflow)
-            .run(new String[] {"list-accounts", "--book-file", bookFilePath.toString()}));
+            .run(
+                new String[] {
+                  "list-accounts",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString()
+                }));
     assertEquals(
         2,
         new FinGrindCli(
@@ -435,6 +522,8 @@ class FinGrindCliTest {
                   "preflight-entry",
                   "--book-file",
                   bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
                   "--request-file",
                   requestFile.toString()
                 }));
@@ -450,6 +539,8 @@ class FinGrindCliTest {
                   "post-entry",
                   "--book-file",
                   bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
                   "--request-file",
                   requestFile.toString()
                 }));
@@ -472,6 +563,8 @@ class FinGrindCliTest {
   @Test
   void run_mapsSqliteRuntimeFailureToRuntimeFailureWithSqliteHint() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         new FinGrindCli(
@@ -485,7 +578,9 @@ class FinGrindCliTest {
             new String[] {
               "preflight-entry",
               "--book-file",
-              tempDirectory.resolve("book.sqlite").toString(),
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             });
@@ -499,6 +594,8 @@ class FinGrindCliTest {
   @Test
   void run_mapsGenericRuntimeFailureToRuntimeFailureWithGenericHint() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         new FinGrindCli(
@@ -512,7 +609,9 @@ class FinGrindCliTest {
             new String[] {
               "post-entry",
               "--book-file",
-              tempDirectory.resolve("book.sqlite").toString(),
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             });
@@ -530,6 +629,8 @@ class FinGrindCliTest {
   @Test
   void run_mapsGenericIllegalArgumentExceptionToInvalidRequest() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         new FinGrindCli(
@@ -543,7 +644,9 @@ class FinGrindCliTest {
             new String[] {
               "preflight-entry",
               "--book-file",
-              tempDirectory.resolve("book.sqlite").toString(),
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             });
@@ -557,6 +660,8 @@ class FinGrindCliTest {
   @Test
   void run_mapsCliRequestExceptionToInvalidRequestWithoutInvokingWorkflow() throws IOException {
     Path requestFile = writeNamedRequest("broken-declare-account.json", "{");
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
@@ -588,7 +693,9 @@ class FinGrindCliTest {
             new String[] {
               "declare-account",
               "--book-file",
-              tempDirectory.resolve("book.sqlite").toString(),
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
               "--request-file",
               requestFile.toString()
             });
@@ -646,6 +753,19 @@ class FinGrindCliTest {
     return requestFile;
   }
 
+  private Path writeBookKey(Path bookFilePath) {
+    try {
+      Path bookKeyFilePath = bookFilePath.resolveSibling(bookFilePath.getFileName() + ".key");
+      if (bookKeyFilePath.getParent() != null) {
+        Files.createDirectories(bookKeyFilePath.getParent());
+      }
+      Files.writeString(bookKeyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+      return bookKeyFilePath;
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
+  }
+
   private static Clock fixedClock() {
     return Clock.fixed(Instant.parse("2026-04-07T12:00:00Z"), ZoneOffset.UTC);
   }
@@ -697,11 +817,11 @@ class FinGrindCliTest {
 
   /** Recording workflow used to assert CLI routing without opening SQLite. */
   private static final class RecordingWorkflow implements FinGrindCli.BookWorkflow {
-    private final List<Path> openBookPaths = new ArrayList<>();
-    private final List<Path> declareAccountPaths = new ArrayList<>();
-    private final List<Path> listAccountPaths = new ArrayList<>();
-    private final List<Path> preflightPaths = new ArrayList<>();
-    private final List<Path> commitPaths = new ArrayList<>();
+    private final List<BookAccess> openBookAccesses = new ArrayList<>();
+    private final List<BookAccess> declareAccountAccesses = new ArrayList<>();
+    private final List<BookAccess> listAccountAccesses = new ArrayList<>();
+    private final List<BookAccess> preflightAccesses = new ArrayList<>();
+    private final List<BookAccess> commitAccesses = new ArrayList<>();
     private final OpenBookResult openBookResult;
     private final DeclareAccountResult declareAccountResult;
     private final ListAccountsResult listAccountsResult;
@@ -722,61 +842,62 @@ class FinGrindCliTest {
     }
 
     @Override
-    public OpenBookResult openBook(Path bookFilePath) {
-      openBookPaths.add(bookFilePath);
+    public OpenBookResult openBook(BookAccess bookAccess) {
+      openBookAccesses.add(bookAccess);
       return openBookResult;
     }
 
     @Override
-    public DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command) {
-      declareAccountPaths.add(bookFilePath);
+    public DeclareAccountResult declareAccount(
+        BookAccess bookAccess, DeclareAccountCommand command) {
+      declareAccountAccesses.add(bookAccess);
       return declareAccountResult;
     }
 
     @Override
-    public ListAccountsResult listAccounts(Path bookFilePath) {
-      listAccountPaths.add(bookFilePath);
+    public ListAccountsResult listAccounts(BookAccess bookAccess) {
+      listAccountAccesses.add(bookAccess);
       return listAccountsResult;
     }
 
     @Override
-    public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
-      preflightPaths.add(bookFilePath);
+    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+      preflightAccesses.add(bookAccess);
       return preflightResult;
     }
 
     @Override
-    public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
-      commitPaths.add(bookFilePath);
+    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+      commitAccesses.add(bookAccess);
       return commitResult;
     }
 
-    private List<Path> openBookPaths() {
-      return openBookPaths;
+    private List<BookAccess> openBookAccesses() {
+      return openBookAccesses;
     }
 
-    private List<Path> declareAccountPaths() {
-      return declareAccountPaths;
+    private List<BookAccess> declareAccountAccesses() {
+      return declareAccountAccesses;
     }
 
-    private List<Path> listAccountPaths() {
-      return listAccountPaths;
+    private List<BookAccess> listAccountAccesses() {
+      return listAccountAccesses;
     }
 
-    private List<Path> preflightPaths() {
-      return preflightPaths;
+    private List<BookAccess> preflightAccesses() {
+      return preflightAccesses;
     }
 
-    private List<Path> commitPaths() {
-      return commitPaths;
+    private List<BookAccess> commitAccesses() {
+      return commitAccesses;
     }
 
     private boolean workflowInvoked() {
-      return !openBookPaths.isEmpty()
-          || !declareAccountPaths.isEmpty()
-          || !listAccountPaths.isEmpty()
-          || !preflightPaths.isEmpty()
-          || !commitPaths.isEmpty();
+      return !openBookAccesses.isEmpty()
+          || !declareAccountAccesses.isEmpty()
+          || !listAccountAccesses.isEmpty()
+          || !preflightAccesses.isEmpty()
+          || !commitAccesses.isEmpty();
     }
   }
 
@@ -789,27 +910,28 @@ class FinGrindCliTest {
     }
 
     @Override
-    public OpenBookResult openBook(Path bookFilePath) {
+    public OpenBookResult openBook(BookAccess bookAccess) {
       throw new IllegalStateException(message);
     }
 
     @Override
-    public DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command) {
+    public DeclareAccountResult declareAccount(
+        BookAccess bookAccess, DeclareAccountCommand command) {
       throw new IllegalStateException(message);
     }
 
     @Override
-    public ListAccountsResult listAccounts(Path bookFilePath) {
+    public ListAccountsResult listAccounts(BookAccess bookAccess) {
       throw new IllegalStateException(message);
     }
 
     @Override
-    public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
+    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalStateException(message);
     }
 
     @Override
-    public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
+    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalStateException(message);
     }
   }
@@ -817,28 +939,33 @@ class FinGrindCliTest {
   /** Workflow stub that always throws an invalid-request style exception. */
   private static final class IllegalArgumentWorkflow implements FinGrindCli.BookWorkflow {
     @Override
-    public OpenBookResult openBook(Path bookFilePath) {
+    public OpenBookResult openBook(BookAccess bookAccess) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command) {
+    public DeclareAccountResult declareAccount(
+        BookAccess bookAccess, DeclareAccountCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public ListAccountsResult listAccounts(Path bookFilePath) {
+    public ListAccountsResult listAccounts(BookAccess bookAccess) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
+    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
+    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
+  }
+
+  private static BookAccess bookAccess(Path bookFilePath, Path bookKeyFilePath) {
+    return new BookAccess(bookFilePath, bookKeyFilePath);
   }
 }

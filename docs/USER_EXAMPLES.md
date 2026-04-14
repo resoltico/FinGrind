@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: USER_EXAMPLES
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
-  keywords: [fingrind, examples, open-book, declare-account, list-accounts, preflight, commit, duplicate, stdin, reversal, book-file, request-template]
+  keywords: [fingrind, examples, open-book, declare-account, list-accounts, preflight, commit, duplicate, stdin, reversal, book-file, book-key-file, request-template]
   questions: ["show me a working fingrind example", "how do I initialize a book and post in fingrind", "how do I send a fingrind request on stdin"]
 ---
 
@@ -14,16 +14,36 @@ route:
 **Prerequisites**: Java 26 or newer and `./gradlew :cli:shadowJar`.
 
 For source-driven local runs, `./gradlew :cli:run` automatically compiles and injects the managed
-SQLite 3.53.0 runtime. For standalone `java -jar`, provide `FINGRIND_SQLITE_LIBRARY` or a host
-`libsqlite3` at version 3.53.0 or newer. No external `sqlite3` binary is required, and FinGrind
-does not shell out to `sqlite3`.
+SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime. For standalone `java -jar`, prefer the
+managed library from `./gradlew prepareManagedSqlite` via `FINGRIND_SQLITE_LIBRARY`, or provide a
+host `libsqlite3` that already satisfies the same SQLite / SQLite3MC contract. No external
+`sqlite3` binary is required, and FinGrind does not shell out to `sqlite3`.
+
+For a local source checkout, the copy-paste `java -jar` examples below assume:
+
+```bash
+./gradlew prepareManagedSqlite
+export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
+```
+
+## Create A Book Key File
+
+```bash
+install -d -m 700 /tmp/fingrind/keys
+umask 077
+printf '%s\n' 'acme-demo-passphrase' > /tmp/fingrind/keys/acme.book-key
+```
+
+The key file must contain one non-empty UTF-8 passphrase.
+One trailing newline is tolerated and stripped.
 
 ## Initialize One Book
 
 ```bash
 java -jar cli/build/libs/fingrind.jar \
   open-book \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key
 ```
 
 One successful response:
@@ -38,16 +58,19 @@ One successful response:
 java -jar cli/build/libs/fingrind.jar \
   declare-account \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/declare-account-cash.json
 
 java -jar cli/build/libs/fingrind.jar \
   declare-account \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/declare-account-revenue.json
 
 java -jar cli/build/libs/fingrind.jar \
   list-accounts \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key
 ```
 
 One successful `list-accounts` response:
@@ -71,11 +94,13 @@ For the concrete walkthrough below, reuse the checked-in example request:
 java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/basic-posting-request.json
 
 java -jar cli/build/libs/fingrind.jar \
   post-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/basic-posting-request.json
 ```
 
@@ -106,6 +131,7 @@ Every line in that request uses the same `currencyCode`; mixed-currency entries 
 java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
   --book-file /tmp/fingrind/books/missing/missing.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/basic-posting-request.json
 ```
 
@@ -121,6 +147,7 @@ One deterministic rejection:
 java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/unknown-account-request.json
 ```
 
@@ -136,6 +163,7 @@ One deterministic rejection:
 java -jar cli/build/libs/fingrind.jar \
   post-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/basic-posting-request.json
 ```
 
@@ -152,6 +180,7 @@ cat docs/examples/basic-posting-request.json | \
   java -jar cli/build/libs/fingrind.jar \
     preflight-entry \
     --book-file /tmp/fingrind/books/stdin/stdin.sqlite \
+    --book-key-file /tmp/fingrind/keys/acme.book-key \
     --request-file -
 ```
 
@@ -171,6 +200,7 @@ earlier commit in the same book, then preflight or commit it:
 java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
   --book-file /tmp/fingrind/books/reversals/reversals.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/reversal-request.json
 ```
 
@@ -180,6 +210,7 @@ java -jar cli/build/libs/fingrind.jar \
 java -jar cli/build/libs/fingrind.jar \
   preflight-entry \
   --book-file /tmp/fingrind/books/errors/errors.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/invalid-empty-lines-request.json
 ```
 
@@ -188,3 +219,17 @@ One invalid-request response:
 ```json
 {"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for a minimal valid request document, or 'fingrind capabilities' for accepted enums and fields."}
 ```
+
+## Wrong Key Fails The Open
+
+```bash
+printf '%s\n' 'wrong-passphrase' > /tmp/fingrind/keys/wrong.book-key
+
+java -jar cli/build/libs/fingrind.jar \
+  list-accounts \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/wrong.book-key
+```
+
+One runtime-failure response includes `SQLITE_NOTADB`, because FinGrind validates the configured
+book key before any schema or account read proceeds.

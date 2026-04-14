@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.application.BookAccess;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -35,12 +36,17 @@ final class SqliteNativeLibrary {
           DEFAULT_LOOKUP,
           "strlen",
           FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+  private static final String KEY_VALIDATION_QUERY = "SELECT count(*) FROM sqlite_master;";
 
   private SqliteNativeLibrary() {}
 
-  static SqliteNativeDatabase open(Path bookPath) throws SqliteNativeException {
+  static SqliteNativeDatabase open(BookAccess bookAccess) throws SqliteNativeException {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Path bookPath = bookAccess.bookFilePath().toAbsolutePath().normalize();
+    Path bookKeyFilePath = bookAccess.bookKeyFilePath().toAbsolutePath().normalize();
     SqliteApi sqliteApi = api();
-    try (Arena arena = Arena.ofConfined()) {
+    try (Arena arena = Arena.ofConfined();
+        SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(bookKeyFilePath)) {
       MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment filename = arena.allocateFrom(bookPath.toString());
       int resultCode =
@@ -56,6 +62,7 @@ final class SqliteNativeLibrary {
         closeQuietly(databaseHandle, sqliteApi);
         throw exception;
       }
+      applyKey(databaseHandle, keyMaterial, sqliteApi, arena);
       int timeoutResult =
           (int)
               sqliteApi.sqlite3BusyTimeout.invokeExact(databaseHandle, SQLITE_BUSY_TIMEOUT_MILLIS);
@@ -63,6 +70,7 @@ final class SqliteNativeLibrary {
       int extendedCodeResult =
           (int) sqliteApi.sqlite3ExtendedResultCodes.invokeExact(databaseHandle, 1);
       requireOpenConfigurationSuccess(databaseHandle, extendedCodeResult, sqliteApi);
+      validateConfiguredKey(databaseHandle);
       return new SqliteNativeDatabase(databaseHandle);
     } catch (SqliteNativeException exception) {
       throw exception;
@@ -342,6 +350,26 @@ final class SqliteNativeLibrary {
     }
   }
 
+  static String sqlite3MultipleCiphersVersion() {
+    return api().loadedSqlite3mcVersion;
+  }
+
+  static String sqlite3MultipleCiphersVersion(MethodHandle versionHandle) {
+    return sqlite3MultipleCiphersVersion(versionHandle, STRLEN);
+  }
+
+  static String sqlite3MultipleCiphersVersion(
+      MethodHandle versionHandle, MethodHandle strlenHandle) {
+    try {
+      MemorySegment versionPointer = (MemorySegment) versionHandle.invokeExact();
+      String loadedVersion = cString(versionPointer, strlenHandle);
+      return loadedVersion.replace("SQLite3 Multiple Ciphers ", "").trim();
+    } catch (Throwable throwable) {
+      throw new IllegalStateException(
+          "Failed to read the SQLite3 Multiple Ciphers library version.", throwable);
+    }
+  }
+
   static String configuredLibrarySource() {
     return configuredLibrarySource(
         System.getenv(SqliteRuntime.LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE));
@@ -371,6 +399,16 @@ final class SqliteNativeLibrary {
     if (compareVersions(loadedVersion, SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION) < 0) {
       throw new UnsupportedSqliteVersionException(
           loadedVersion, SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION, librarySource);
+    }
+    return loadedVersion;
+  }
+
+  static String requireSupportedSqlite3mcVersion(String loadedVersion, String librarySource) {
+    Objects.requireNonNull(loadedVersion, "loadedVersion");
+    Objects.requireNonNull(librarySource, "librarySource");
+    if (!SqliteRuntime.REQUIRED_SQLITE3MC_VERSION.equals(loadedVersion)) {
+      throw new UnsupportedSqliteMultipleCiphersVersionException(
+          loadedVersion, SqliteRuntime.REQUIRED_SQLITE3MC_VERSION, librarySource);
     }
     return loadedVersion;
   }
@@ -432,8 +470,13 @@ final class SqliteNativeLibrary {
       SymbolLookup lookup = SymbolLookup.libraryLookup(libraryTarget.lookupTarget(), libraryArena);
       MethodHandle sqlite3Libversion =
           downcall(lookup, "sqlite3_libversion", FunctionDescriptor.of(ValueLayout.ADDRESS));
+      MethodHandle sqlite3mcVersion =
+          downcall(lookup, "sqlite3mc_version", FunctionDescriptor.of(ValueLayout.ADDRESS));
       String loadedVersion =
           requireSupportedVersion(sqliteVersion(sqlite3Libversion, STRLEN), libraryTarget.source());
+      String loadedSqlite3mcVersion =
+          requireSupportedSqlite3mcVersion(
+              sqlite3MultipleCiphersVersion(sqlite3mcVersion, STRLEN), libraryTarget.source());
       return new SqliteApi(
           libraryArena,
           downcall(
@@ -449,6 +492,15 @@ final class SqliteNativeLibrary {
               lookup,
               "sqlite3_close_v2",
               FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)),
+          downcall(
+              lookup,
+              "sqlite3_key",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.JAVA_INT)),
+          downcall(lookup, "sqlite3_shutdown", FunctionDescriptor.of(ValueLayout.JAVA_INT)),
           downcall(
               lookup,
               "sqlite3_busy_timeout",
@@ -538,7 +590,8 @@ final class SqliteNativeLibrary {
               lookup,
               "sqlite3_extended_errcode",
               FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)),
-          loadedVersion);
+          loadedVersion,
+          loadedSqlite3mcVersion);
     } catch (RuntimeException | Error exception) {
       libraryArena.close();
       throw exception;
@@ -631,6 +684,35 @@ final class SqliteNativeLibrary {
     }
   }
 
+  private static void applyKey(
+      MemorySegment databaseHandle,
+      SqliteBookKeyFile.KeyMaterial keyMaterial,
+      SqliteApi sqliteApi,
+      Arena arena)
+      throws SqliteNativeException {
+    try {
+      MemorySegment keyPointer = keyMaterial.copyToCString(arena);
+      int resultCode =
+          (int)
+              sqliteApi.sqlite3Key.invokeExact(
+                  databaseHandle, keyPointer, keyMaterial.byteLength());
+      requireOpenConfigurationSuccess(databaseHandle, resultCode, sqliteApi);
+    } catch (SqliteNativeException exception) {
+      throw exception;
+    } catch (Throwable throwable) {
+      throw new IllegalStateException(
+          "Failed to apply the FinGrind SQLite book key from " + keyMaterial.sourcePath() + ".",
+          throwable);
+    }
+  }
+
+  private static void validateConfiguredKey(MemorySegment databaseHandle)
+      throws SqliteNativeException {
+    try (Arena arena = Arena.ofConfined()) {
+      executeScript(databaseHandle, arena.allocateFrom(KEY_VALIDATION_QUERY));
+    }
+  }
+
   private static int[] parseVersionParts(String version) {
     Objects.requireNonNull(version, "version");
     String[] parts = version.split("\\.", -1);
@@ -661,10 +743,17 @@ final class SqliteNativeLibrary {
   }
 
   /** Lazily publishes the process-scoped SQLite native API bundle on first use. */
+  @SuppressWarnings("PMD.DoNotUseThreads")
   private static final class SqliteApiHolder {
     private static final SqliteApi INSTANCE = loadApi();
 
     private SqliteApiHolder() {}
+
+    static {
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(SqliteNativeLibrary::shutdownQuietly, "fingrind-sqlite3mc-shutdown"));
+    }
   }
 
   /** Loaded SQLite symbol handles and process-scoped resources for one JVM lifetime. */
@@ -674,6 +763,8 @@ final class SqliteNativeLibrary {
 
     private final MethodHandle sqlite3OpenV2;
     private final MethodHandle sqlite3CloseV2;
+    private final MethodHandle sqlite3Key;
+    private final MethodHandle sqlite3Shutdown;
     private final MethodHandle sqlite3BusyTimeout;
     private final MethodHandle sqlite3ExtendedResultCodes;
     private final MethodHandle sqlite3Exec;
@@ -691,11 +782,14 @@ final class SqliteNativeLibrary {
     private final MethodHandle sqlite3Errstr;
     private final MethodHandle sqlite3ExtendedErrcode;
     private final String loadedVersion;
+    private final String loadedSqlite3mcVersion;
 
     private SqliteApi(
         Arena libraryArena,
         MethodHandle sqlite3OpenV2,
         MethodHandle sqlite3CloseV2,
+        MethodHandle sqlite3Key,
+        MethodHandle sqlite3Shutdown,
         MethodHandle sqlite3BusyTimeout,
         MethodHandle sqlite3ExtendedResultCodes,
         MethodHandle sqlite3Exec,
@@ -712,10 +806,13 @@ final class SqliteNativeLibrary {
         MethodHandle sqlite3Errmsg,
         MethodHandle sqlite3Errstr,
         MethodHandle sqlite3ExtendedErrcode,
-        String loadedVersion) {
+        String loadedVersion,
+        String loadedSqlite3mcVersion) {
       this.libraryArena = Objects.requireNonNull(libraryArena, "libraryArena");
       this.sqlite3OpenV2 = Objects.requireNonNull(sqlite3OpenV2, "sqlite3OpenV2");
       this.sqlite3CloseV2 = Objects.requireNonNull(sqlite3CloseV2, "sqlite3CloseV2");
+      this.sqlite3Key = Objects.requireNonNull(sqlite3Key, "sqlite3Key");
+      this.sqlite3Shutdown = Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
       this.sqlite3BusyTimeout = Objects.requireNonNull(sqlite3BusyTimeout, "sqlite3BusyTimeout");
       this.sqlite3ExtendedResultCodes =
           Objects.requireNonNull(sqlite3ExtendedResultCodes, "sqlite3ExtendedResultCodes");
@@ -735,6 +832,21 @@ final class SqliteNativeLibrary {
       this.sqlite3ExtendedErrcode =
           Objects.requireNonNull(sqlite3ExtendedErrcode, "sqlite3ExtendedErrcode");
       this.loadedVersion = Objects.requireNonNull(loadedVersion, "loadedVersion");
+      this.loadedSqlite3mcVersion =
+          Objects.requireNonNull(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
+    }
+  }
+
+  private static void shutdownQuietly() {
+    shutdownQuietly(SqliteApiHolder.INSTANCE.sqlite3Shutdown);
+  }
+
+  static void shutdownQuietly(MethodHandle sqlite3Shutdown) {
+    Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
+    try {
+      int ignored = (int) sqlite3Shutdown.invokeExact();
+    } catch (Throwable ignored) {
+      // Process exit owns final cleanup; best-effort shutdown is sufficient here.
     }
   }
 }

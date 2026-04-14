@@ -43,16 +43,16 @@ class CliResponseWriterTest {
     responseWriter.writeVersion(
         new MachineContract.VersionDescriptor(
             "FinGrind",
-            "0.8.0",
+            "0.9.0",
             "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"));
 
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").asText());
-    assertEquals("0.8.0", json.path("payload").path("version").asText());
+    assertEquals("0.9.0", json.path("payload").path("version").asText());
   }
 
   @Test
-  void writeCapabilities_omitsNullEnvironmentFields() {
+  void writeCapabilities_omitsNullEnvironmentFields() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
@@ -60,23 +60,32 @@ class CliResponseWriterTest {
         MachineContract.capabilities(
             new MachineContract.ApplicationIdentity(
                 "FinGrind",
-                "0.8.0",
+                "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             new MachineContract.EnvironmentDescriptor(
                 "26+",
-                "sqlite-ffm",
+                "sqlite-ffm-sqlite3mc",
                 "sqlite",
+                "required",
+                "chacha20",
                 "system",
                 "3.53.0",
+                "2.3.3",
                 "unavailable",
+                null,
                 null,
                 "system sqlite unavailable"),
             Instant.parse("2026-04-13T12:00:00Z")));
 
-    String json = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(json.contains("\"preflightSemantics\""));
-    assertTrue(json.contains("\"currencyModel\""));
-    assertFalse(json.contains("\"loadedSqliteVersion\""));
+    JsonNode json = readJson(outputStream);
+    JsonNode payload = json.path("payload");
+    JsonNode environment = payload.path("environment");
+
+    assertTrue(payload.has("preflightSemantics"));
+    assertTrue(payload.has("currencyModel"));
+    assertEquals("required", environment.path("bookProtectionMode").asText());
+    assertFalse(environment.has("loadedSqliteVersion"));
+    assertFalse(environment.has("loadedSqlite3mcVersion"));
   }
 
   @Test
