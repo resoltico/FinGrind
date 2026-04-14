@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: USER_REQUESTS
 updated: "2026-04-14"
 route:
@@ -24,7 +24,7 @@ source:
 Inspect the minimal valid posting request:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar print-request-template
+fingrind print-request-template
 ```
 
 Or inspect the checked-in example payload:
@@ -121,9 +121,11 @@ string lists for the drift-prone parts of the surface:
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
-- `environment` also reports `sqliteLibraryMode`, `sqliteLibraryEnvironmentVariable`,
-  `requiredSqlite3mcVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and
-  `defaultBookCipher` for the protected-book runtime
+- `environment` also reports `publicCliDistribution`, `sourceCheckoutJava`,
+  `sqliteLibraryMode`, `sqliteLibraryEnvironmentVariable`,
+  `sqliteLibraryBundleHomeSystemProperty`, `requiredSqlite3mcVersion`,
+  `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher`
+  for the protected-book runtime
 
 ## Book Administration Responses
 

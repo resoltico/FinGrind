@@ -100,7 +100,7 @@ command -v docker >/dev/null 2>&1 || die "docker is required for the Docker smok
 docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the Docker smoke gate"
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 [[ -f "${repo_root}/cli/build/libs/fingrind.jar" ]] || die \
-    "missing CLI fat JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
+    "missing internal application JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
 
 docker_endpoint="${DOCKER_HOST:-}"
 if [[ -z "${docker_endpoint}" ]]; then

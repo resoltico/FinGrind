@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verify that the GitHub release for the current tag exists as a published release with the
-# expected fat-JAR asset attached.
+# expected bundle and checksum assets attached.
 
 set -euo pipefail
 
@@ -9,8 +9,13 @@ die() {
     exit 1
 }
 
-readonly tag_name="${1:-${RELEASE_TAG:-${GITHUB_REF_NAME:-}}}"
-readonly asset_name="${2:-fingrind.jar}"
+tag_name="${RELEASE_TAG:-${GITHUB_REF_NAME:-}}"
+if [[ -z "${tag_name}" && $# -gt 0 && "$1" == v* ]]; then
+    tag_name="$1"
+    shift
+fi
+readonly tag_name
+readonly asset_names=("$@")
 
 [[ -n "${GH_TOKEN:-}" ]] || die "GH_TOKEN is required"
 [[ -n "${tag_name}" ]] || die "tag name is required"
@@ -25,10 +30,12 @@ is_draft="$(gh release view "${tag_name}" --json isDraft --jq '.isDraft')"
 is_prerelease="$(gh release view "${tag_name}" --json isPrerelease --jq '.isPrerelease')"
 [[ "${is_prerelease}" == "false" ]] || die "release ${tag_name} is marked prerelease"
 
-has_asset="$(gh release view "${tag_name}" --json assets --jq \
-    ".assets | map(.name) | index(\"${asset_name}\") != null")"
-[[ "${has_asset}" == "true" ]] || die \
-    "release ${tag_name} is missing required asset ${asset_name}"
+for asset_name in "${asset_names[@]}"; do
+    has_asset="$(gh release view "${tag_name}" --json assets --jq \
+        ".assets | map(.name) | index(\"${asset_name}\") != null")"
+    [[ "${has_asset}" == "true" ]] || die \
+        "release ${tag_name} is missing required asset ${asset_name}"
+done
 
 release_url="$(gh release view "${tag_name}" --json url --jq '.url')"
 printf 'Verified GitHub release handoff: %s\n' "${release_url}"

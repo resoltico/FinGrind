@@ -12,6 +12,7 @@ public final class SqliteRuntime {
   public static final String BOOK_PROTECTION_MODE = "required";
   public static final String DEFAULT_BOOK_CIPHER = "chacha20";
   public static final String LIBRARY_ENVIRONMENT_VARIABLE = "FINGRIND_SQLITE_LIBRARY";
+  public static final String BUNDLE_HOME_SYSTEM_PROPERTY = "fingrind.bundle.home";
   public static final String LIBRARY_MODE = "managed-only";
   public static final String REQUIRED_MINIMUM_SQLITE_VERSION = "3.53.0";
   public static final String REQUIRED_SQLITE3MC_VERSION = "2.3.3";

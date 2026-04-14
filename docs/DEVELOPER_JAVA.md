@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
-  keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, workstation, shell, java-home, macos]
-  questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind"]
+  keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
+  questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
 ---
 
 # Java 26 And Gradle Workstation Setup
@@ -56,7 +56,10 @@ FinGrind contributors should therefore treat:
 Reasons:
 - the wrapper pins FinGrind's actual Gradle version and downloads the official Gradle distribution
   declared by the repository
-- `java -jar` and the packaged CLI use the ambient shell `java`, not Gradle toolchains
+- source-driven Gradle and the developer-only raw `java -jar` path use the ambient shell `java`,
+  not Gradle toolchains
+- the public packaged CLI bundles its own Java 26 runtime instead of depending on ambient shell
+  Java
 - FinGrind's SQLite adapter relies on Java 26 FFM, so shell Java and Gradle-launched Java must
   both meet the same baseline
 - CI already runs on Java 26, so local shells should match that contract
@@ -67,6 +70,12 @@ Reasons:
   repo's Java story again
 - building Gradle from source adds bootstrap cost, maintenance burden, and version ambiguity without
   improving reproducibility for a wrapped application repo
+
+Release-build note:
+- GitHub Actions release automation currently uses `actions/setup-java` with `distribution: zulu`
+  because the release bundle matrix needs a provisioned full JDK 26 surface with `javac`,
+  `jdeps`, and `jlink` across Ubuntu x86_64, Ubuntu arm64, and macOS arm64 runners
+- that is a release-builder choice, not a contributor-workstation rule
 
 ## Current Baseline
 
@@ -94,6 +103,10 @@ In other words:
 - OpenJDK owns the information source
 - OpenJDK owns the binary-selection path
 - third-party redistributions are outside the documented FinGrind workstation standard
+
+For public CLI downloads, this workstation Java requirement does not apply: FinGrind release
+bundles ship a private Java 26 runtime image and are intended to run without a separately
+installed JDK.
 
 ## Installed Layout
 
@@ -232,7 +245,7 @@ Current practical result:
 ## Pitfalls
 
 Known pitfalls:
-- `java -jar` does not use Gradle toolchains
+- developer-only `java -jar` does not use Gradle toolchains
 - Homebrew `gradle` declares a dependency on `openjdk`, which can reintroduce Java drift during
   unrelated Brew upgrades
 - `~/.zprofile` alone is not enough for terminals that start interactive non-login shells
@@ -276,7 +289,8 @@ java --version
 ./gradlew --version --console=plain
 ./gradlew check --no-daemon --console=plain
 ./gradlew -p jazzer test jazzerRegression --no-daemon --console=plain
-./gradlew :cli:shadowJar --no-daemon --console=plain
+./gradlew :cli:bundleCliArchive --no-daemon --console=plain
+./scripts/bundle-smoke.sh
 ./check.sh --console=plain
 ```
 
@@ -284,7 +298,8 @@ Run those commands from a real terminal session.
 
 Why:
 - local shell startup files are what make Java 26 the default `java`
-- the packaged CLI depends on the ambient launcher runtime
+- the public packaged CLI bundles its own runtime, while source-driven Gradle and the
+  developer-only raw `java -jar` path still depend on the ambient launcher runtime
 - Gradle toolchains complement the shell JDK; they do not replace it
 
 ## Maintenance Guidance

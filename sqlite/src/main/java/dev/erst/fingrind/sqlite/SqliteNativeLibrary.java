@@ -8,7 +8,9 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -563,7 +565,9 @@ final class SqliteNativeLibrary {
 
   private static SqliteApi loadApi() {
     return loadApi(
-        configuredLibraryTarget(System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE)));
+        configuredLibraryTarget(
+            System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE),
+            System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
   }
 
   private static SqliteApi loadApi(SqliteLibraryTarget libraryTarget) {
@@ -731,11 +735,22 @@ final class SqliteNativeLibrary {
         SqliteRuntime.LIBRARY_MODE, normalizeConfiguredLibraryPath(configuredLibraryPath));
   }
 
+  static SqliteLibraryTarget configuredLibraryTarget(
+      String configuredLibraryPath, String bundleHomePath) {
+    String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
+    if (normalizedConfiguredPath != null) {
+      return new SqliteLibraryTarget(SqliteRuntime.LIBRARY_MODE, normalizedConfiguredPath);
+    }
+    String normalizedBundleHomePath = normalizeNullablePath(bundleHomePath);
+    if (normalizedBundleHomePath != null) {
+      return bundledLibraryTarget(normalizedBundleHomePath);
+    }
+    throw missingLibraryTargetFailure();
+  }
+
   private static String normalizeConfiguredLibraryPath(String configuredLibraryPath) {
     if (configuredLibraryPath == null) {
-      throw new IllegalStateException(
-          SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
-              + " must point to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
+      throw missingLibraryTargetFailure();
     }
     String normalizedPath = configuredLibraryPath.trim();
     if (normalizedPath.isEmpty()) {
@@ -743,6 +758,67 @@ final class SqliteNativeLibrary {
           SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE + " must not be blank.");
     }
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
+  }
+
+  private static String normalizeNullableConfiguredLibraryPath(String configuredLibraryPath) {
+    if (configuredLibraryPath == null) {
+      return null;
+    }
+    String normalizedPath = configuredLibraryPath.trim();
+    if (normalizedPath.isEmpty()) {
+      return null;
+    }
+    return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
+  }
+
+  private static String normalizeNullablePath(String path) {
+    if (path == null) {
+      return null;
+    }
+    String normalizedPath = path.trim();
+    if (normalizedPath.isEmpty()) {
+      return null;
+    }
+    return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
+  }
+
+  private static SqliteLibraryTarget bundledLibraryTarget(String normalizedBundleHomePath) {
+    Path bundleLibraryPath =
+        Path.of(normalizedBundleHomePath)
+            .resolve("lib")
+            .resolve("native")
+            .resolve(supportedNativeLibraryFileName());
+    if (!Files.isRegularFile(bundleLibraryPath)) {
+      throw new IllegalStateException(
+          "FinGrind bundle home at "
+              + normalizedBundleHomePath
+              + " does not contain the managed SQLite library at "
+              + bundleLibraryPath
+              + ". Use the published FinGrind bundle as extracted, or for a local source checkout set "
+              + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
+              + " to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
+    }
+    return new SqliteLibraryTarget(SqliteRuntime.LIBRARY_MODE, bundleLibraryPath.toString());
+  }
+
+  private static IllegalStateException missingLibraryTargetFailure() {
+    return new IllegalStateException(
+        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle via bin/fingrind, or for a local source checkout set "
+            + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
+            + " to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
+  }
+
+  private static String supportedNativeLibraryFileName() {
+    String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+    if (operatingSystem.contains("mac")) {
+      return "libsqlite3.dylib";
+    }
+    if (operatingSystem.contains("linux")) {
+      return "libsqlite3.so.0";
+    }
+    throw new IllegalStateException(
+        "FinGrind bundles currently support managed SQLite on macOS and Linux only. Detected: "
+            + System.getProperty("os.name"));
   }
 
   private static SqliteNativeException failure(int resultCode, SqliteApi sqliteApi) {

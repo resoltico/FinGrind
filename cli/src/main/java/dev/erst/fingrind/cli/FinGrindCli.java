@@ -215,6 +215,7 @@ final class FinGrindCli {
   static MachineContract.EnvironmentDescriptor environmentDescriptor(
       SqliteRuntime.Probe runtimeProbe) {
     return new MachineContract.EnvironmentDescriptor(
+        "self-contained-bundle",
         "26+",
         SqliteRuntime.STORAGE_DRIVER,
         SqliteRuntime.STORAGE_ENGINE,
@@ -222,6 +223,7 @@ final class FinGrindCli {
         SqliteRuntime.DEFAULT_BOOK_CIPHER,
         runtimeProbe.libraryMode(),
         SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE,
+        SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY,
         SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
         runtimeProbe.status() == SqliteRuntime.Status.READY,
         runtimeProbe.requiredMinimumSqliteVersion(),
@@ -236,7 +238,9 @@ final class FinGrindCli {
     String message = message(exception);
     String hint =
         message.contains("FINGRIND_SQLITE_LIBRARY")
-            ? "Build the managed SQLite runtime with ./gradlew prepareManagedSqlite, export FINGRIND_SQLITE_LIBRARY to the produced shared library path, and rerun after fixing the underlying runtime problem."
+                || message.contains("fingrind.bundle.home")
+                || message.contains("bin/fingrind")
+            ? "Run the published FinGrind bundle via bin/fingrind, or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning."
             : message.contains("SQLite")
                 ? "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
                 : "Inspect the message and rerun after fixing the underlying runtime problem.";

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: USER_CLI
 updated: "2026-04-14"
 route:
@@ -11,10 +11,11 @@ route:
 # CLI Guide
 
 **Purpose**: Run the packaged FinGrind CLI and understand its command, file, and exit behavior.
-**Prerequisites**: Java 26 or newer. For source-driven local runs, `./gradlew :cli:run` manages
-SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically. For standalone `java -jar`, run
-`./gradlew prepareManagedSqlite` and point `FINGRIND_SQLITE_LIBRARY` at the produced managed
-library. FinGrind does not support arbitrary host `libsqlite3` fallback.
+**Prerequisites**: For public use, download one self-contained FinGrind release bundle and unpack it.
+No separate Java install is required for that path. For source-driven local runs,
+`./gradlew :cli:run` manages SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically.
+The raw `java -jar` route remains developer-only and requires `./gradlew prepareManagedSqlite`
+plus `FINGRIND_SQLITE_LIBRARY`.
 
 ## Overview
 
@@ -59,33 +60,54 @@ Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `ch
 
 ## Packaged CLI
 
+Public FinGrind CLI downloads are self-contained bundle archives, not a standalone JAR.
+The current public target set is:
+- `macos-aarch64`
+- `linux-x86_64`
+- `linux-aarch64`
+
+Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
+hosts. They are not presented as a universal Linux binary for every libc variant.
+
+One public bundle flow:
+
+```bash
+tar -xzf fingrind-0.13.0-macos-aarch64.tar.gz
+./fingrind-0.13.0-macos-aarch64/bin/fingrind help
+./fingrind-0.13.0-macos-aarch64/bin/fingrind \
+  print-request-template > /tmp/fingrind-request.json
+```
+
+In the examples below, `fingrind` means the extracted bundle launcher.
+
 For source-driven local use, prefer:
 
 ```bash
 ./gradlew :cli:run --args="help"
 ```
 
-For standalone JAR execution:
+For local bundle verification from a source checkout:
+
+```bash
+./gradlew :cli:bundleCliArchive
+./scripts/bundle-smoke.sh
+```
+
+The raw `java -jar` path is still available for advanced contributor work, but it is not the
+public FinGrind download contract:
 
 ```bash
 ./gradlew :cli:shadowJar
 ./gradlew prepareManagedSqlite
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
 java -jar cli/build/libs/fingrind.jar help
-java -jar cli/build/libs/fingrind.jar \
-  print-request-template > /tmp/fingrind-request.json
 ```
 
 `--request-file -` means read the request JSON from standard input.
 `--book-passphrase-stdin` means read the book passphrase from standard input instead.
 Those two stdin modes cannot be combined in one invocation.
-Use `java -jar` for real process exit codes; `./gradlew :cli:run` wraps non-zero application exits
-as a Gradle task failure.
-`./gradlew :cli:run` is the easiest local route because Gradle automatically compiles and injects
-the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime.
-If you want the standalone JAR to use the managed runtime from a local source checkout, point
-`FINGRIND_SQLITE_LIBRARY` at the file produced under `build/managed-sqlite/`.
-The `find .../build/managed-sqlite` export above is the supported checked-in-repo path.
+Use the extracted bundle launcher or `java -jar` for real process exit codes;
+`./gradlew :cli:run` wraps non-zero application exits as a Gradle task failure.
 
 ## Exit Codes
 
@@ -115,12 +137,13 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 | posting uses an inactive account | `2` | `inactive-account` | `Account '...' is inactive in this book.` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
 | wrong book key or plaintext legacy book | `1` | `runtime-failure` | storage open failure including `SQLITE_NOTADB` |
-| standalone JAR is missing `FINGRIND_SQLITE_LIBRARY` or points at the wrong managed library | `1` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
+| extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `1` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime environment failure | `1` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
 ## Notes
 
-- Error envelopes may include `hint` and `argument` fields to help an agent or human repair the call without consulting docs.
+- Error envelopes may include `hint` and `argument` fields to help an agent or human repair the
+  call without consulting docs.
 - `help`, `version`, `capabilities`, and `print-request-template` reject extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths.
 - `generate-book-key-file` creates one new `0600` UTF-8 key file and refuses to overwrite an
@@ -136,19 +159,21 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
   it rejects using the same key-file path for both.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
-- The packaged CLI enforces SQLite 3.53.0 and SQLite3 Multiple Ciphers 2.3.3.
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /
+  SQLite3 Multiple Ciphers 2.3.3 native library.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
   object level.
-- `capabilities` reports `sqliteLibraryMode`, `sqliteLibraryEnvironmentVariable`,
+- `capabilities` reports `publicCliDistribution`, `sourceCheckoutJava`,
+  `sqliteLibraryEnvironmentVariable`, `sqliteLibraryBundleHomeSystemProperty`,
   `requiredMinimumSqliteVersion`, `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`,
-  `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher`
-  so agents can verify the runtime contract directly.
+  `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and
+  `defaultBookCipher` so agents can verify the runtime contract directly.
 - `capabilities` also reports `preflightSemantics`, `preflight.isCommitGuarantee`, and
   `currencyModel` so agents can discover the advisory preflight contract and single-currency scope
   without reading source code.
 - Gradle-driven local runs and the container image use a managed SQLite 3.53.0 / SQLite3 Multiple
   Ciphers 2.3.3 shared library.
-- Standalone `java -jar` execution relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
+- The developer-only `java -jar` path relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
   SQLite3MC library produced by `prepareManagedSqlite`.
 - `capabilities` is the best machine-readable contract surface.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send

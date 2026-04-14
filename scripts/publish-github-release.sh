@@ -23,20 +23,23 @@ resolve_script_dir() {
 }
 
 readonly script_dir="$(resolve_script_dir)"
-readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
-readonly tag_name="${1:-${RELEASE_TAG:-${GITHUB_REF_NAME:-}}}"
-readonly asset_path="${repo_root}/cli/build/libs/fingrind.jar"
-readonly asset_name="$(basename -- "${asset_path}")"
+tag_name="${RELEASE_TAG:-${GITHUB_REF_NAME:-}}"
+if [[ -z "${tag_name}" && $# -gt 0 && "$1" == v* ]]; then
+    tag_name="$1"
+    shift
+fi
+readonly tag_name
+readonly asset_paths=("$@")
 
 [[ -n "${GH_TOKEN:-}" ]] || die "GH_TOKEN is required"
-[[ -n "${tag_name}" ]] || die "GITHUB_REF_NAME is required"
-[[ -f "${asset_path}" ]] || die "missing release asset at ${asset_path}"
+[[ -n "${tag_name}" ]] || die "release tag is required"
 
 release_exists() {
     gh release view "${tag_name}" >/dev/null 2>&1
 }
 
 release_has_asset() {
+    local asset_name=$1
     gh release view "${tag_name}" --json assets --jq \
         ".assets | map(.name) | index(\"${asset_name}\") != null"
 }
@@ -52,7 +55,7 @@ create_or_converge_release() {
         return
     fi
 
-    if gh release create "${tag_name}" "${asset_path}" \
+    if gh release create "${tag_name}" \
         --title "${tag_name}" \
         --generate-notes \
         --latest \
@@ -64,7 +67,12 @@ create_or_converge_release() {
 }
 
 upload_asset_if_missing() {
-    if [[ "$(release_has_asset)" == "true" ]]; then
+    local asset_path=$1
+    local asset_name
+    asset_name="$(basename -- "${asset_path}")"
+    [[ -f "${asset_path}" ]] || die "missing release asset at ${asset_path}"
+
+    if [[ "$(release_has_asset "${asset_name}")" == "true" ]]; then
         return
     fi
 
@@ -72,10 +80,12 @@ upload_asset_if_missing() {
         return
     fi
 
-    [[ "$(release_has_asset)" == "true" ]] || die \
+    [[ "$(release_has_asset "${asset_name}")" == "true" ]] || die \
         "failed to upload ${asset_name} to release ${tag_name}"
 }
 
 create_or_converge_release
-upload_asset_if_missing
+for asset_path in "${asset_paths[@]}"; do
+    upload_asset_if_missing "${asset_path}"
+done
 printf 'GitHub release publish converged for %s\n' "${tag_name}"

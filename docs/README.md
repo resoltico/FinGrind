@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -34,6 +34,7 @@ Then choose one of the user, developer, or reference tracks below.
 ## Developer Guides
 
 - [DEVELOPER.md](./DEVELOPER.md)
+- [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md)
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)

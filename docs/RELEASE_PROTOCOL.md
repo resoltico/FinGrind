@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-04-14"
 route:
@@ -40,7 +40,7 @@ Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceedin
 
 Then verify every item in this checklist. All must be true before any commit or tag:
 
-- `gradle.properties` `version=` equals the target release version exactly (for example `0.12.0`).
+- `gradle.properties` `version=` equals the target release version exactly (for example `0.13.0`).
 - All `docs/*.md` frontmatter `version:` fields equal the target version.
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.
@@ -264,7 +264,13 @@ Requirements:
 - The release exists for tag `vX.Y.Z`.
 - `isDraft` is `false`.
 - `isPrerelease` is `false` unless the target release is intentionally a prerelease.
-- The fat JAR asset is present (currently `fingrind.jar`).
+- The complete bundle asset set is present:
+  - `fingrind-X.Y.Z-macos-aarch64.tar.gz`
+  - `fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256`
+  - `fingrind-X.Y.Z-linux-x86_64.tar.gz`
+  - `fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256`
+  - `fingrind-X.Y.Z-linux-aarch64.tar.gz`
+  - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
 
 If these conditions are satisfied, the GitHub Release handoff is complete even if an additional
 duplicate release workflow run failed after the release was already created.

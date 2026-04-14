@@ -16,13 +16,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  release:
-    name: Build and publish release
+  prepare-release:
+    name: Prepare GitHub release
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     permissions:
       contents: write
+
+    outputs:
+      tag: ${{ steps.target-tag.outputs.tag }}
+      version: ${{ steps.target-tag.outputs.version }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -64,27 +68,112 @@ jobs:
             exit 1
           fi
 
-      - name: Build fat JAR
-        run: ./gradlew :cli:shadowJar --no-daemon
-
-      - name: Verify managed SQLite CLI runtime
-        run: |
-          set -euo pipefail
-          output="$(./gradlew :cli:run --args='capabilities' --no-daemon --console=plain)"
-          printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -Eq '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"'
-          printf '%s\n' "$output" | grep -Eq '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
-          printf '%s\n' "$output" | grep -Eq '"sqliteRuntimeStatus"[[:space:]]*:[[:space:]]*"ready"'
-          printf '%s\n' "$output" | grep -Eq '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
-
-      - name: Publish GitHub release idempotently
+      - name: Converge the GitHub release object
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
         run: ./scripts/publish-github-release.sh
 
+  build-bundles:
+    name: Build bundle (${{ matrix.classifier }})
+    needs: prepare-release
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            classifier: linux-x86_64
+            expected_os: Linux
+            expected_arch: x86_64
+          - runner: ubuntu-24.04-arm
+            classifier: linux-aarch64
+            expected_os: Linux
+            expected_arch: aarch64
+          - runner: macos-latest
+            classifier: macos-aarch64
+            expected_os: Darwin
+            expected_arch: arm64
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '26'
+          distribution: 'zulu'
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Verify runner identity matches bundle target
+        run: |
+          set -euo pipefail
+          actual_os="$(uname -s)"
+          actual_arch="$(uname -m)"
+          [ "${actual_os}" = "${{ matrix.expected_os }}" ] || {
+            echo "Expected OS ${{ matrix.expected_os }} but runner reported ${actual_os}"
+            exit 1
+          }
+          [ "${actual_arch}" = "${{ matrix.expected_arch }}" ] || {
+            echo "Expected arch ${{ matrix.expected_arch }} but runner reported ${actual_arch}"
+            exit 1
+          }
+
+      - name: Build self-contained CLI bundle
+        run: |
+          ./gradlew :cli:bundleCliArchive \
+            -PfingrindBundleClassifier=${{ matrix.classifier }} \
+            --no-daemon \
+            --console=plain
+
+      - name: Smoke test the self-contained CLI bundle
+        run: |
+          ./scripts/bundle-smoke.sh \
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.tar.gz"
+
+      - name: Publish bundle assets to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          ./scripts/publish-github-release.sh \
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.tar.gz" \
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.tar.gz.sha256"
+
+  verify-release:
+    name: Verify GitHub release assets
+    needs:
+      - prepare-release
+      - build-bundles
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
+
       - name: Verify GitHub release handoff
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
-        run: ./scripts/verify-github-release.sh
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          ./scripts/verify-github-release.sh \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-linux-x86_64.tar.gz" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-linux-x86_64.tar.gz.sha256" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-linux-aarch64.tar.gz" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-linux-aarch64.tar.gz.sha256" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz.sha256"

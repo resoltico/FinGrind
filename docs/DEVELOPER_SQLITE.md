@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-14"
 route:
@@ -107,10 +107,13 @@ License and attribution stance:
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not drift away from the managed runtime contract
 - the Docker image compiles the same vendored SQLite3MC source during image build
-- standalone `java -jar` execution is also managed-only: it must receive
+- public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
+  runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
+- standalone `java -jar` execution remains developer-only and must receive
   `FINGRIND_SQLITE_LIBRARY` pointing at the library produced by `prepareManagedSqlite`
-- `:cli:shadowJar` packages only the Java surface; local standalone verification that wants the
-  managed native library must also run `prepareManagedSqlite` first and point
+- `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
+- `:cli:shadowJar` packages only the Java application surface; local standalone verification that
+  wants the managed native library must also run `prepareManagedSqlite` first and point
   `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`
 
 ## Adapter Composition
@@ -245,16 +248,18 @@ Reasons for the current design:
 
 Managed runtime targets currently build SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 from the
 vendored amalgamation on macOS and Linux. The CLI JAR declares
-`Enable-Native-Access: ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with
-`--enable-native-access=ALL-UNNAMED`, and controlled surfaces inject the managed library through
-`FINGRIND_SQLITE_LIBRARY`.
+`Enable-Native-Access: ALL-UNNAMED`, the public bundle launcher starts its private runtime with
+`--enable-native-access=ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with the
+same native-access flag, and controlled surfaces resolve the managed library either through
+`fingrind.bundle.home` or `FINGRIND_SQLITE_LIBRARY`.
 
 Native bridge notes:
 - the SQLite symbol arena in
   [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
   intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
   session
-- native library lookup requires `FINGRIND_SQLITE_LIBRARY`; there is no platform-default fallback
+- native library lookup has no platform-default fallback; it uses extracted bundle home for the
+  public launcher and `FINGRIND_SQLITE_LIBRARY` for the developer-only raw-JAR route
 - runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
   Ciphers version before any book operation is allowed
 - runtime initialization also validates the required compile-option hardening before the managed

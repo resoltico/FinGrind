@@ -89,11 +89,12 @@ class FinGrindCliTest {
     assertEquals("[\"list-accounts\"]", payload.path("queryCommands").toString());
     assertTrue(payload.path("requestShapes").has("postEntry"));
     assertTrue(payload.path("requestShapes").has("declareAccount"));
-    assertEquals("advisory", payload.path("preflightSemantics").asText());
+    assertEquals("advisory", payload.path("preflightSemantics").asString());
     assertFalse(payload.path("preflight").path("isCommitGuarantee").asBoolean(true));
-    assertEquals("single-currency-per-entry", payload.path("currencyModel").path("scope").asText());
     assertEquals(
-        "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").asText());
+        "single-currency-per-entry", payload.path("currencyModel").path("scope").asString());
+    assertEquals(
+        "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").asString());
     assertTrue(payload.path("requestShapes").path("postEntry").path("topLevelFields").isArray());
     assertEquals(
         "effectiveDate",
@@ -103,7 +104,7 @@ class FinGrindCliTest {
             .path("topLevelFields")
             .get(0)
             .path("name")
-            .asText());
+            .asString());
     assertEquals(
         "required",
         payload
@@ -112,23 +113,29 @@ class FinGrindCliTest {
             .path("topLevelFields")
             .get(0)
             .path("presence")
-            .asText());
+            .asString());
     assertTrue(payload.path("responseModel").path("rejections").isArray());
     assertFalse(payload.path("responseModel").has("rejectionCodes"));
     assertEquals(
         "sqlite-ffm-sqlite3mc", payload.path("environment").path("storageDriver").asString());
-    assertEquals("required", payload.path("environment").path("bookProtectionMode").asText());
-    assertEquals("chacha20", payload.path("environment").path("defaultBookCipher").asText());
+    assertEquals("required", payload.path("environment").path("bookProtectionMode").asString());
+    assertEquals("chacha20", payload.path("environment").path("defaultBookCipher").asString());
     assertEquals("managed-only", payload.path("environment").path("sqliteLibraryMode").asString());
+    assertEquals(
+        "self-contained-bundle",
+        payload.path("environment").path("publicCliDistribution").asString());
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY",
         payload.path("environment").path("sqliteLibraryEnvironmentVariable").asString());
     assertEquals(
+        "fingrind.bundle.home",
+        payload.path("environment").path("sqliteLibraryBundleHomeSystemProperty").asString());
+    assertEquals(
         "[\"THREADSAFE=1\",\"OMIT_LOAD_EXTENSION\",\"TEMP_STORE=3\",\"SECURE_DELETE\"]",
         payload.path("environment").path("requiredSqliteCompileOptions").toString());
     assertTrue(payload.path("environment").path("sqliteCompileOptionsVerified").asBoolean());
-    assertEquals("2.3.3", payload.path("environment").path("requiredSqlite3mcVersion").asText());
-    assertEquals("2.3.3", payload.path("environment").path("loadedSqlite3mcVersion").asText());
+    assertEquals("2.3.3", payload.path("environment").path("requiredSqlite3mcVersion").asString());
+    assertEquals("2.3.3", payload.path("environment").path("loadedSqlite3mcVersion").asString());
     assertEquals(
         "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
         payload.path("requestInput").path("bookPassphraseOptions").toString());
@@ -172,8 +179,12 @@ class FinGrindCliTest {
     assertEquals("required", environmentDescriptor.bookProtectionMode());
     assertEquals("chacha20", environmentDescriptor.defaultBookCipher());
     assertEquals("managed-only", environmentDescriptor.sqliteLibraryMode());
+    assertEquals("self-contained-bundle", environmentDescriptor.publicCliDistribution());
+    assertEquals("26+", environmentDescriptor.sourceCheckoutJava());
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqliteLibraryEnvironmentVariable());
+    assertEquals(
+        "fingrind.bundle.home", environmentDescriptor.sqliteLibraryBundleHomeSystemProperty());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         environmentDescriptor.requiredSqliteCompileOptions());
@@ -204,10 +215,11 @@ class FinGrindCliTest {
         Files.getPosixFilePermissions(keyFilePath));
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
     assertEquals(
-        keyFilePath.toAbsolutePath().normalize().toString(), payload.path("bookKeyFile").asText());
-    assertEquals("base64url-no-padding", payload.path("encoding").asText());
+        keyFilePath.toAbsolutePath().normalize().toString(),
+        payload.path("bookKeyFile").asString());
+    assertEquals("base64url-no-padding", payload.path("encoding").asString());
     assertEquals(256, payload.path("entropyBits").asInt());
-    assertEquals("0600", payload.path("permissions").asText());
+    assertEquals("0600", payload.path("permissions").asString());
     assertFalse(
         outputStream.toString(StandardCharsets.UTF_8).contains(Files.readString(keyFilePath)));
   }
@@ -554,8 +566,8 @@ class FinGrindCliTest {
             }));
 
     JsonNode envelope = new ObjectMapper().readTree(commitOutput.toString(StandardCharsets.UTF_8));
-    assertEquals("committed", envelope.path("status").asText());
-    UUID postingId = UUID.fromString(envelope.path("postingId").asText());
+    assertEquals("committed", envelope.path("status").asString());
+    UUID postingId = UUID.fromString(envelope.path("postingId").asString());
     assertEquals(7, postingId.version());
     assertEquals(2, postingId.variant());
     assertTrue(Files.exists(bookFilePath));
@@ -914,7 +926,67 @@ class FinGrindCliTest {
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("Build the managed SQLite runtime with ./gradlew prepareManagedSqlite"));
+            .contains("Run the published FinGrind bundle via bin/fingrind"));
+  }
+
+  @Test
+  void run_mapsBundleHomeRuntimeFailureToRuntimeFailureWithEnvironmentHint() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            new ExplodingWorkflow(
+                "fingrind.bundle.home did not resolve a bundled SQLite library."));
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("Run the published FinGrind bundle via bin/fingrind"));
+  }
+
+  @Test
+  void run_mapsBundleLauncherRuntimeFailureToRuntimeFailureWithEnvironmentHint()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            new ExplodingWorkflow("bin/fingrind must be used from the extracted bundle root."));
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("Run the published FinGrind bundle via bin/fingrind"));
   }
 
   @Test

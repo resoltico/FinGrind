@@ -68,7 +68,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build fat JAR
+      - name: Build internal application JAR for the Docker image
         run: ./gradlew :cli:shadowJar --no-daemon
 
       - name: Verify managed SQLite CLI runtime

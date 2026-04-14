@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: USER_EXAMPLES
 updated: "2026-04-14"
 route:
@@ -11,26 +11,17 @@ route:
 # Example Workflows
 
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current hard-break surface.
-**Prerequisites**: Java 26 or newer and `./gradlew :cli:shadowJar`.
-
-For source-driven local runs, `./gradlew :cli:run` automatically compiles and injects the managed
-SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime. For standalone `java -jar`, use the
-managed library from `./gradlew prepareManagedSqlite` via `FINGRIND_SQLITE_LIBRARY`. No external
-`sqlite3` binary is required, and FinGrind does not shell out to `sqlite3`.
-
-For a local source checkout, the copy-paste `java -jar` examples below assume:
-
-```bash
-./gradlew prepareManagedSqlite
-export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-```
+**Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
+below, `fingrind` means that launcher, for example
+`./fingrind-0.13.0-macos-aarch64/bin/fingrind`. For source-driven local work, the equivalent
+developer route is `./gradlew :cli:run --args="..."`.
 
 ## Choose A Book Passphrase Source
 
 For humans, the best non-persistent route is the interactive prompt:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   open-book \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-passphrase-prompt
@@ -39,7 +30,7 @@ java -jar cli/build/libs/fingrind.jar \
 For automation, generate a dedicated key file:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   generate-book-key-file \
   --book-key-file /tmp/fingrind/keys/acme.book-key
 ```
@@ -53,7 +44,7 @@ For pipeline automation without a persistent file:
 
 ```bash
 printf '%s\n' 'acme-demo-passphrase' | \
-  java -jar cli/build/libs/fingrind.jar \
+  fingrind \
     open-book \
     --book-file /tmp/fingrind/books/acme/acme.sqlite \
     --book-passphrase-stdin
@@ -62,7 +53,7 @@ printf '%s\n' 'acme-demo-passphrase' | \
 ## Initialize One Book
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   open-book \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key
@@ -77,7 +68,7 @@ One successful response:
 ## Rotate One Book Passphrase
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   rekey-book \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -93,19 +84,19 @@ One successful response:
 ## Declare And List Accounts
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   declare-account \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/declare-account-cash.json
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   declare-account \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/declare-account-revenue.json
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   list-accounts \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key
@@ -122,20 +113,20 @@ One successful `list-accounts` response:
 You can generate a new template at any time:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 For the concrete walkthrough below, reuse the checked-in example request:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   preflight-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/basic-posting-request.json
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   post-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -166,7 +157,7 @@ Every line in that request uses the same `currencyCode`; mixed-currency entries 
 ## Book Must Exist And Be Opened
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   preflight-entry \
   --book-file /tmp/fingrind/books/missing/missing.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -182,7 +173,7 @@ One deterministic rejection:
 ## Accounts Must Be Declared First
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   preflight-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -198,7 +189,7 @@ One deterministic rejection:
 ## Duplicate Rejection
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   post-entry \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -215,7 +206,7 @@ One repeat commit response:
 
 ```bash
 cat docs/examples/basic-posting-request.json | \
-  java -jar cli/build/libs/fingrind.jar \
+  fingrind \
     preflight-entry \
     --book-file /tmp/fingrind/books/stdin/stdin.sqlite \
     --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -237,7 +228,7 @@ That file is a template. Replace `reversal.priorPostingId` with a real `postingI
 earlier commit in the same book, then preflight or commit it:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   preflight-entry \
   --book-file /tmp/fingrind/books/reversals/reversals.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -247,7 +238,7 @@ java -jar cli/build/libs/fingrind.jar \
 ## Trigger A Deterministic Invalid Request
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   preflight-entry \
   --book-file /tmp/fingrind/books/errors/errors.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -266,7 +257,7 @@ One invalid-request response:
 printf '%s\n' 'wrong-passphrase' > /tmp/fingrind/keys/wrong.book-key
 chmod 600 /tmp/fingrind/keys/wrong.book-key
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   list-accounts \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/wrong.book-key
