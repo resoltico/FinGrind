@@ -99,7 +99,7 @@ jobs:
             classifier: macos-aarch64
             expected_os: Darwin
             expected_arch: arm64
-          - runner: macos-13
+          - runner: macos-15-intel
             classifier: macos-x86_64
             expected_os: Darwin
             expected_arch: x86_64
