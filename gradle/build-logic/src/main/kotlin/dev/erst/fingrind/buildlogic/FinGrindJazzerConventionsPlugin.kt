@@ -45,9 +45,11 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                     project = this,
                     sourceDirectory =
                         repoRootDirectory.dir(
-                            "third_party/sqlite/sqlite-amalgamation-${sharedFingrindProperty("fingrindManagedSqliteAmalgamationId")}",
+                            "third_party/sqlite/${sharedFingrindProperty("fingrindManagedSqlitePackageId")}",
                         ),
                     sqliteVersionValue = sharedFingrindProperty("fingrindManagedSqliteVersion"),
+                    sqlite3mcVersionValue =
+                        sharedFingrindProperty("fingrindManagedSqlite3mcVersion"),
                     sourceSha3 = sharedFingrindProperty("fingrindManagedSqliteSourceSha3"),
                 )
             ManagedSqliteSupport.configureConsumers(this, managedSqlite)

@@ -26,13 +26,15 @@ internal object ManagedSqliteSupport {
         project: Project,
         sourceDirectory: Directory,
         sqliteVersionValue: String,
+        sqlite3mcVersionValue: String,
         sourceSha3: String,
     ): ManagedSqliteProvisioning {
         val managedSqliteOperatingSystemId = operatingSystemId()
         val classifier = "$managedSqliteOperatingSystemId-${architectureId()}"
         val libraryFileName = libraryFileName(managedSqliteOperatingSystemId)
-        val sqliteSourceFile = sourceDirectory.file("sqlite3.c")
-        val headerFile = sourceDirectory.file("sqlite3.h")
+        val sqliteSourceFile = sourceDirectory.file("sqlite3mc_amalgamation.c")
+        val headerFile = sourceDirectory.file("sqlite3mc_amalgamation.h")
+        val sqliteHeaderFile = sourceDirectory.file("sqlite3.h")
         val extensionHeaderFile = sourceDirectory.file("sqlite3ext.h")
         val sqliteCompiler =
             project.providers.environmentVariable("CC").orNull
@@ -45,7 +47,7 @@ internal object ManagedSqliteSupport {
             project.tasks.register<VerifyManagedSqliteSourceTask>("verifyManagedSqliteSource") {
                 group = "build setup"
                 description =
-                    "Verifies the vendored SQLite amalgamation matches the pinned upstream $sqliteVersionValue source hash."
+                    "Verifies the vendored SQLite3 Multiple Ciphers $sqlite3mcVersionValue amalgamation matches the pinned upstream source hash."
                 sourceFile.set(sqliteSourceFile.asFile)
                 expectedSha3.set(sourceSha3)
             }
@@ -54,10 +56,10 @@ internal object ManagedSqliteSupport {
             project.tasks.register<PrepareManagedSqliteTask>("prepareManagedSqlite") {
                 group = "build setup"
                 description =
-                    "Builds the managed SQLite $sqliteVersionValue shared library for the current host."
+                    "Builds the managed SQLite $sqliteVersionValue / SQLite3 Multiple Ciphers $sqlite3mcVersionValue shared library for the current host."
                 dependsOn(verifyManagedSqliteSource)
                 sourceFile.set(sqliteSourceFile.asFile)
-                supportFiles.from(headerFile.asFile, extensionHeaderFile.asFile)
+                supportFiles.from(headerFile.asFile, sqliteHeaderFile.asFile, extensionHeaderFile.asFile)
                 compiler.set(sqliteCompiler)
                 operatingSystemId.set(managedSqliteOperatingSystemId)
                 sqliteVersion.set(sqliteVersionValue)

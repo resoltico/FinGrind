@@ -42,9 +42,13 @@ class CliArgumentsTest {
     CliCommand.OpenBook command =
         assertInstanceOf(
             CliCommand.OpenBook.class,
-            CliArguments.parse(new String[] {"open-book", "--book-file", "book.sqlite"}));
+            CliArguments.parse(
+                new String[] {
+                  "open-book", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                }));
 
-    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
   }
 
   @Test
@@ -54,10 +58,17 @@ class CliArgumentsTest {
             CliCommand.DeclareAccount.class,
             CliArguments.parse(
                 new String[] {
-                  "declare-account", "--book-file", "book.sqlite", "--request-file", "account.json"
+                  "declare-account",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "account.json"
                 }));
 
-    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
     assertEquals(Path.of("account.json"), command.requestFile());
   }
 
@@ -66,9 +77,13 @@ class CliArgumentsTest {
     CliCommand.ListAccounts command =
         assertInstanceOf(
             CliCommand.ListAccounts.class,
-            CliArguments.parse(new String[] {"list-accounts", "--book-file", "book.sqlite"}));
+            CliArguments.parse(
+                new String[] {
+                  "list-accounts", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                }));
 
-    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
   }
 
   @Test
@@ -90,10 +105,17 @@ class CliArgumentsTest {
             CliCommand.PreflightEntry.class,
             CliArguments.parse(
                 new String[] {
-                  "preflight-entry", "--book-file", "book.sqlite", "--request-file", "request.json"
+                  "preflight-entry",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "request.json"
                 }));
 
-    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
     assertEquals(Path.of("request.json"), command.requestFile());
   }
 
@@ -104,10 +126,17 @@ class CliArgumentsTest {
             CliCommand.PostEntry.class,
             CliArguments.parse(
                 new String[] {
-                  "post-entry", "--book-file", "book.sqlite", "--request-file", "request.json"
+                  "post-entry",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "request.json"
                 }));
 
-    assertEquals(Path.of("book.sqlite"), command.bookFilePath());
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
     assertEquals(Path.of("request.json"), command.requestFile());
   }
 
@@ -122,6 +151,8 @@ class CliArgumentsTest {
                       "post-entry",
                       "--book-file",
                       "book-a.sqlite",
+                      "--book-key-file",
+                      "book.key",
                       "--book-file",
                       "book-b.sqlite",
                       "--request-file",
@@ -145,6 +176,8 @@ class CliArgumentsTest {
                       "post-entry",
                       "--book-file",
                       "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
                       "--request-file",
                       "request-a.json",
                       "--request-file",
@@ -154,6 +187,30 @@ class CliArgumentsTest {
     assertEquals("invalid-request", exception.code());
     assertEquals("--request-file", exception.argument());
     assertEquals("Duplicate argument: --request-file", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsDuplicateBookKeyFileArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "key-a.key",
+                      "--book-key-file",
+                      "key-b.key",
+                      "--request-file",
+                      "request.json"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals("Duplicate argument: --book-key-file", exception.getMessage());
   }
 
   @Test
@@ -167,6 +224,8 @@ class CliArgumentsTest {
                       "post-entry",
                       "--book-file",
                       "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
                       "--request-file",
                       "request.json",
                       "--wat"
@@ -194,11 +253,27 @@ class CliArgumentsTest {
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
-            () -> CliArguments.parse(new String[] {"post-entry", "--book-file", "book.sqlite"}));
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                    }));
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--request-file", exception.argument());
     assertEquals("A --request-file argument is required.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsMissingBookKeyFileArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"post-entry", "--book-file", "book.sqlite"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals("A --book-key-file argument is required.", exception.getMessage());
   }
 
   @Test
@@ -209,7 +284,13 @@ class CliArgumentsTest {
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "open-book", "--book-file", "book.sqlite", "--request-file", "oops.json"
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "oops.json"
                     }));
 
     assertEquals("invalid-request", exception.code());
@@ -225,13 +306,60 @@ class CliArgumentsTest {
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "post-entry", "--book-file", "shared.path", "--request-file", "shared.path"
+                      "post-entry",
+                      "--book-file",
+                      "shared.path",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "shared.path"
                     }));
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--request-file", exception.argument());
     assertEquals(
         "--book-file and --request-file must not point to the same path.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsSameBookKeyAndRequestPath() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "shared.path",
+                      "--request-file",
+                      "shared.path"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals(
+        "--book-key-file and --request-file must not point to the same path.",
+        exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsSameBookAndKeyPath() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book", "--book-file", "shared.path", "--book-key-file", "shared.path"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals(
+        "--book-file and --book-key-file must not point to the same path.", exception.getMessage());
   }
 
   @Test

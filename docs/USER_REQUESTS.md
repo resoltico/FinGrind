@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: USER_REQUESTS
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, enums, payload, rejection, declare-account]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "which enum values are valid in a fingrind request"]
@@ -12,6 +12,9 @@ route:
 
 **Purpose**: Show the accepted JSON request shapes and the output documents returned by the CLI.
 **Prerequisites**: Familiarity with the packaged CLI in [USER_CLI.md](./USER_CLI.md).
+
+Book-bound commands pair these JSON payloads with both `--book-file` and `--book-key-file`.
+The key file must contain the UTF-8 passphrase for the protected book.
 
 ## Posting Request Shape
 
@@ -107,6 +110,8 @@ string lists for the drift-prone parts of the surface:
   `isCommitGuarantee`
 - `currencyModel` declares the current single-currency scope and the explicit
   `multiCurrencyStatus: "not-supported"`
+- `environment` also reports `requiredSqlite3mcVersion`, `loadedSqlite3mcVersion`,
+  `bookProtectionMode`, and `defaultBookCipher` for the protected-book runtime
 
 ## Account Registry Responses
 

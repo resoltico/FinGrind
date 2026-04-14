@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.application.BookAccess;
 import dev.erst.fingrind.application.BookAdministrationService;
 import dev.erst.fingrind.application.BookSession;
 import dev.erst.fingrind.application.DeclareAccountCommand;
@@ -51,14 +52,14 @@ final class FinGrindCli {
         case CliCommand.Capabilities _ -> writeCapabilities();
         case CliCommand.Version _ -> writeVersion();
         case CliCommand.PrintRequestTemplate _ -> writeRequestTemplate();
-        case CliCommand.OpenBook command -> runOpenBookCommand(command.bookFilePath());
+        case CliCommand.OpenBook command -> runOpenBookCommand(command.bookAccess());
         case CliCommand.DeclareAccount command ->
-            runDeclareAccountCommand(command.bookFilePath(), command.requestFile());
-        case CliCommand.ListAccounts command -> runListAccountsCommand(command.bookFilePath());
+            runDeclareAccountCommand(command.bookAccess(), command.requestFile());
+        case CliCommand.ListAccounts command -> runListAccountsCommand(command.bookAccess());
         case CliCommand.PreflightEntry command ->
-            runEntryCommand(command.bookFilePath(), command.requestFile(), bookWorkflow::preflight);
+            runEntryCommand(command.bookAccess(), command.requestFile(), bookWorkflow::preflight);
         case CliCommand.PostEntry command ->
-            runEntryCommand(command.bookFilePath(), command.requestFile(), bookWorkflow::commit);
+            runEntryCommand(command.bookAccess(), command.requestFile(), bookWorkflow::commit);
       };
     } catch (CliArgumentsException exception) {
       responseWriter.writeFailure(exception.failure());
@@ -98,28 +99,29 @@ final class FinGrindCli {
     return 0;
   }
 
-  private int runOpenBookCommand(Path bookFilePath) {
-    OpenBookResult result = bookWorkflow.openBook(bookFilePath);
-    responseWriter.writeOpenBookResult(bookFilePath, result);
+  private int runOpenBookCommand(BookAccess bookAccess) {
+    OpenBookResult result = bookWorkflow.openBook(bookAccess);
+    responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result);
     return exitCodeFor(result);
   }
 
-  private int runDeclareAccountCommand(Path bookFilePath, Path requestFile) {
+  private int runDeclareAccountCommand(BookAccess bookAccess, Path requestFile) {
     DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
-    DeclareAccountResult result = bookWorkflow.declareAccount(bookFilePath, command);
+    DeclareAccountResult result = bookWorkflow.declareAccount(bookAccess, command);
     responseWriter.writeDeclareAccountResult(result);
     return exitCodeFor(result);
   }
 
-  private int runListAccountsCommand(Path bookFilePath) {
-    ListAccountsResult result = bookWorkflow.listAccounts(bookFilePath);
+  private int runListAccountsCommand(BookAccess bookAccess) {
+    ListAccountsResult result = bookWorkflow.listAccounts(bookAccess);
     responseWriter.writeListAccountsResult(result);
     return exitCodeFor(result);
   }
 
-  private int runEntryCommand(Path bookFilePath, Path requestFile, EntryOperation entryOperation) {
+  private int runEntryCommand(
+      BookAccess bookAccess, Path requestFile, EntryOperation entryOperation) {
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
-    PostEntryResult result = entryOperation.execute(bookFilePath, command);
+    PostEntryResult result = entryOperation.execute(bookAccess, command);
     responseWriter.writePostEntryResult(result);
     return exitCodeFor(result);
   }
@@ -168,10 +170,14 @@ final class FinGrindCli {
         "26+",
         SqliteRuntime.STORAGE_DRIVER,
         SqliteRuntime.STORAGE_ENGINE,
+        SqliteRuntime.BOOK_PROTECTION_MODE,
+        SqliteRuntime.DEFAULT_BOOK_CIPHER,
         runtimeProbe.librarySource(),
         runtimeProbe.requiredMinimumSqliteVersion(),
+        runtimeProbe.requiredSqlite3mcVersion(),
         runtimeProbe.status().wireValue(),
         runtimeProbe.loadedSqliteVersion(),
+        runtimeProbe.loadedSqlite3mcVersion(),
         runtimeProbe.issue());
   }
 
@@ -179,7 +185,7 @@ final class FinGrindCli {
     String message = message(exception);
     String hint =
         message.contains("SQLite")
-            ? "Inspect the selected book file path, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
+            ? "Inspect the selected book file path, book key file path, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
             : "Inspect the message and rerun after fixing the underlying runtime problem.";
     return new CliFailure("runtime-failure", message, hint, null);
   }
@@ -191,19 +197,19 @@ final class FinGrindCli {
   /** Execution seam for routing CLI commands through the selected book adapter. */
   interface BookWorkflow {
     /** Opens the selected book and installs the canonical FinGrind schema when possible. */
-    OpenBookResult openBook(Path bookFilePath);
+    OpenBookResult openBook(BookAccess bookAccess);
 
     /** Declares or reactivates one account inside the selected book. */
-    DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command);
+    DeclareAccountResult declareAccount(BookAccess bookAccess, DeclareAccountCommand command);
 
     /** Lists the declared accounts currently stored in the selected book. */
-    ListAccountsResult listAccounts(Path bookFilePath);
+    ListAccountsResult listAccounts(BookAccess bookAccess);
 
     /** Validates a posting request without mutating the selected book. */
-    PostEntryResult preflight(Path bookFilePath, PostEntryCommand command);
+    PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command);
 
     /** Commits a posting request into the selected book. */
-    PostEntryResult commit(Path bookFilePath, PostEntryCommand command);
+    PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command);
   }
 
   /** Default workflow that opens one SQLite-backed book file per command. */
@@ -215,36 +221,37 @@ final class FinGrindCli {
     }
 
     @Override
-    public OpenBookResult openBook(Path bookFilePath) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+    public OpenBookResult openBook(BookAccess bookAccess) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
         return bookAdministrationService(bookSession, clock).openBook();
       }
     }
 
     @Override
-    public DeclareAccountResult declareAccount(Path bookFilePath, DeclareAccountCommand command) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+    public DeclareAccountResult declareAccount(
+        BookAccess bookAccess, DeclareAccountCommand command) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
         return bookAdministrationService(bookSession, clock).declareAccount(command);
       }
     }
 
     @Override
-    public ListAccountsResult listAccounts(Path bookFilePath) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+    public ListAccountsResult listAccounts(BookAccess bookAccess) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
         return bookAdministrationService(bookSession, clock).listAccounts();
       }
     }
 
     @Override
-    public PostEntryResult preflight(Path bookFilePath, PostEntryCommand command) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
         return postingApplicationService(bookSession, clock).preflight(command);
       }
     }
 
     @Override
-    public PostEntryResult commit(Path bookFilePath, PostEntryCommand command) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookFilePath)) {
+    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
         return postingApplicationService(bookSession, clock).commit(command);
       }
     }
@@ -264,6 +271,6 @@ final class FinGrindCli {
   @FunctionalInterface
   private interface EntryOperation {
     /** Executes the selected write-boundary command. */
-    PostEntryResult execute(Path bookFilePath, PostEntryCommand command);
+    PostEntryResult execute(BookAccess bookAccess, PostEntryCommand command);
   }
 }

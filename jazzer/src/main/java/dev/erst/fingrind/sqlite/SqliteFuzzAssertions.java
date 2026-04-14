@@ -1,17 +1,23 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.application.BookAccess;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** Shared SQLite-specific assertions for Jazzer harnesses. */
 public final class SqliteFuzzAssertions {
+  private static final String TEST_BOOK_KEY = "fingrind-jazzer-book-key";
+
   private SqliteFuzzAssertions() {}
 
   /** Asserts that a committed FinGrind book file uses the canonical strict-table schema. */
   public static void assertCommittedBookUsesStrictTables(Path bookPath) {
     try {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath);
+      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
       try {
         assertQueryInt(
             database,
@@ -59,7 +65,7 @@ public final class SqliteFuzzAssertions {
       throw new IllegalArgumentException("SQLite book does not exist: " + bookPath);
     }
     try {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath);
+      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
       try {
         database.executeStatement(
             """
@@ -73,6 +79,20 @@ public final class SqliteFuzzAssertions {
       }
     } catch (SqliteNativeException exception) {
       throw new IllegalStateException("Failed to update account active flag for SQLite fuzz setup.", exception);
+    }
+  }
+
+  /** Builds deterministic encrypted-book access for one temporary fuzz book path. */
+  public static BookAccess bookAccess(Path bookPath) {
+    try {
+      Path keyPath = bookPath.resolveSibling(bookPath.getFileName() + ".key");
+      if (keyPath.getParent() != null) {
+        Files.createDirectories(keyPath.getParent());
+      }
+      Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+      return new BookAccess(bookPath, keyPath);
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
     }
   }
 

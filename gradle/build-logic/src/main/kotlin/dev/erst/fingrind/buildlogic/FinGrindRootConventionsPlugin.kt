@@ -55,18 +55,17 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             }
 
             val managedSqliteVersion = requiredGradleProperty("fingrindManagedSqliteVersion")
-            val managedSqliteAmalgamationId =
-                requiredGradleProperty("fingrindManagedSqliteAmalgamationId")
+            val managedSqlitePackageId = requiredGradleProperty("fingrindManagedSqlitePackageId")
+            val managedSqlite3mcVersion =
+                requiredGradleProperty("fingrindManagedSqlite3mcVersion")
             val managedSqliteSourceSha3 = requiredGradleProperty("fingrindManagedSqliteSourceSha3")
 
             val managedSqlite =
                 ManagedSqliteSupport.register(
                     project = this,
-                    sourceDirectory =
-                        layout.projectDirectory.dir(
-                            "third_party/sqlite/sqlite-amalgamation-$managedSqliteAmalgamationId",
-                        ),
+                    sourceDirectory = layout.projectDirectory.dir("third_party/sqlite/$managedSqlitePackageId"),
                     sqliteVersionValue = managedSqliteVersion,
+                    sqlite3mcVersionValue = managedSqlite3mcVersion,
                     sourceSha3 = managedSqliteSourceSha3,
                 )
 

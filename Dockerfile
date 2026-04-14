@@ -4,12 +4,11 @@ WORKDIR /build/sqlite
 
 RUN apk add --no-cache build-base
 
-COPY third_party/sqlite/sqlite-amalgamation-3530000/sqlite3.c sqlite3.c
-COPY third_party/sqlite/sqlite-amalgamation-3530000/sqlite3.h sqlite3.h
-COPY third_party/sqlite/sqlite-amalgamation-3530000/sqlite3ext.h sqlite3ext.h
+COPY third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/sqlite3mc_amalgamation.c sqlite3mc_amalgamation.c
 
-RUN cc -O2 -fPIC -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 -shared \
-    -Wl,-soname,libsqlite3.so.0 -o libsqlite3.so.0 sqlite3.c -ldl -lpthread
+RUN cc -O2 -fPIC -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 \
+    -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1 -shared \
+    -Wl,-soname,libsqlite3.so.0 -o libsqlite3.so.0 sqlite3mc_amalgamation.c -ldl -lpthread
 
 FROM azul/zulu-openjdk-alpine:26-jre
 

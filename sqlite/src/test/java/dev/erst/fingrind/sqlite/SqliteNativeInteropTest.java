@@ -4,18 +4,24 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.application.BookAccess;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Integration tests for the low-level SQLite FFM bridge failure paths. */
 class SqliteNativeInteropTest {
+  private static final String TEST_BOOK_KEY = "interop-test-book-key";
+
   @TempDir Path tempDirectory;
 
   @Test
@@ -43,7 +49,7 @@ class SqliteNativeInteropTest {
   @Test
   void invalidSqlAndConstraintFailures_mapToSQLiteFailures() throws Exception {
     SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(tempDirectory.resolve("interop.sqlite"));
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("interop.sqlite")));
     try {
       database.executeStatement("create table sample (id integer primary key)");
 
@@ -99,7 +105,7 @@ class SqliteNativeInteropTest {
   @Test
   void executeScript_surfacesTypedSqliteFailureForInvalidSql() throws Exception {
     SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(tempDirectory.resolve("script-failure.sqlite"));
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("script-failure.sqlite")));
     try {
       SqliteNativeException exception =
           assertThrows(
@@ -121,7 +127,7 @@ class SqliteNativeInteropTest {
   @Test
   void executeStatement_rejectsRowProducingSql() throws Exception {
     SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(tempDirectory.resolve("row-producing.sqlite"));
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("row-producing.sqlite")));
     try {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, () -> database.executeStatement("select 1"));
@@ -136,7 +142,7 @@ class SqliteNativeInteropTest {
   @Test
   void mapper_readsReversalReferenceOnlyFromPriorPostingIdColumn() throws Exception {
     SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(tempDirectory.resolve("mapper.sqlite"));
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("mapper.sqlite")));
     try {
       try (SqliteNativeStatement missingPrior =
           SqliteNativeLibrary.prepare(
@@ -172,7 +178,8 @@ class SqliteNativeInteropTest {
   @Test
   @SuppressWarnings("PMD.CloseResource")
   void databaseAndStatementClose_areIdempotent() throws Exception {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(tempDirectory.resolve("close.sqlite"));
+    SqliteNativeDatabase database =
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("close.sqlite")));
     try {
       SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, "select 1");
       assertDoesNotThrow(statement::close);
@@ -317,6 +324,19 @@ class SqliteNativeInteropTest {
 
   private static void assertBridgeFailure(ThrowingRunnable runnable) {
     assertThrows(IllegalStateException.class, runnable::run);
+  }
+
+  private static BookAccess bookAccess(Path bookPath) {
+    try {
+      Path keyPath = bookPath.resolveSibling(bookPath.getFileName() + ".key");
+      if (keyPath.getParent() != null) {
+        Files.createDirectories(keyPath.getParent());
+      }
+      Files.writeString(keyPath, TEST_BOOK_KEY);
+      return new BookAccess(bookPath, keyPath);
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
   }
 
   private static MethodHandle strlenHandle() throws NoSuchMethodException, IllegalAccessException {

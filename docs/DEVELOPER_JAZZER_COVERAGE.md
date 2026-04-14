@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.8.0"
+version: "0.9.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -18,7 +18,7 @@ route:
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, and legacy-field hard breaks | `8` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
-| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
+| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
 ## `cli-request`
 
@@ -59,7 +59,7 @@ Surface:
 - request parsing through the same CLI seam
 - explicit `open-book` initialization through the SQLite-backed session
 - explicit account declaration before durable posting
-- commit and reload against a real filesystem path
+- commit and reload against a real filesystem path plus a temp UTF-8 book key file
 - reopening the same SQLite book file in a fresh adapter instance
 
 What it asserts:
@@ -67,6 +67,7 @@ What it asserts:
 - opened books with undeclared accounts reject with `unknown-account`
 - deactivated accounts reject with `inactive-account`
 - one valid request commits durably into one selected initialized book file
+- the durable book file is opened through SQLite3 Multiple Ciphers rather than plain SQLite
 - reloading by idempotency returns the same fact shape
 - duplicate commit attempts are rejected in the same book
 - parent-directory creation works for nested arbitrary paths

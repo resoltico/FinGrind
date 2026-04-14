@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.application.BookAccess;
 import dev.erst.fingrind.application.BookAdministrationRejection;
 import dev.erst.fingrind.application.BookSession;
 import dev.erst.fingrind.application.DeclareAccountResult;
@@ -33,14 +34,16 @@ public final class SqlitePostingFactStore implements BookSession {
   private static final String BOOK_META_TABLE = "book_meta";
   private static final String POSTING_FACT_TABLE = "posting_fact";
 
+  private final BookAccess bookAccess;
   private final Path bookPath;
 
   private SqliteNativeDatabase database;
   private boolean closed;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
-  public SqlitePostingFactStore(Path bookPath) {
-    this.bookPath = Objects.requireNonNull(bookPath, "bookPath").toAbsolutePath();
+  public SqlitePostingFactStore(BookAccess bookAccess) {
+    this.bookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
+    this.bookPath = bookAccess.bookFilePath().toAbsolutePath().normalize();
   }
 
   @Override
@@ -500,7 +503,7 @@ public final class SqlitePostingFactStore implements BookSession {
       return database;
     }
     try {
-      database = SqliteNativeLibrary.open(bookPath);
+      database = SqliteNativeLibrary.open(bookAccess);
       database.executeStatement("pragma foreign_keys = on");
       database.executeStatement("pragma trusted_schema = off");
       return database;

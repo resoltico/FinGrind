@@ -18,9 +18,20 @@ class MachineContractTest {
   void capabilities_areDerivedFromLiveEnumsAndRejectionCatalogs() {
     MachineContract.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new MachineContract.ApplicationIdentity("FinGrind", "0.8.0", "desc"),
+            new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
             new MachineContract.EnvironmentDescriptor(
-                "26+", "sqlite-ffm", "sqlite", "managed", "3.53.0", "ready", "3.53.0", null),
+                "26+",
+                "sqlite-ffm-sqlite3mc",
+                "sqlite",
+                "required",
+                "chacha20",
+                "managed",
+                "3.53.0",
+                "2.3.3",
+                "ready",
+                "3.53.0",
+                "2.3.3",
+                null),
             Instant.parse("2026-04-13T12:00:00Z"));
 
     assertEquals("advisory", capabilities.preflightSemantics());
@@ -62,10 +73,21 @@ class MachineContractTest {
   @Test
   void helpVersionAndRequestTemplate_publishCanonicalDiscoveryMetadata() {
     MachineContract.ApplicationIdentity identity =
-        new MachineContract.ApplicationIdentity("FinGrind", "0.8.0", "desc");
+        new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc");
     MachineContract.EnvironmentDescriptor environment =
         new MachineContract.EnvironmentDescriptor(
-            "26+", "sqlite-ffm", "sqlite", "managed", "3.53.0", "ready", "3.53.0", null);
+            "26+",
+            "sqlite-ffm-sqlite3mc",
+            "sqlite",
+            "required",
+            "chacha20",
+            "managed",
+            "3.53.0",
+            "2.3.3",
+            "ready",
+            "3.53.0",
+            "2.3.3",
+            null);
 
     MachineContract.HelpDescriptor help = MachineContract.help(identity, environment);
     MachineContract.VersionDescriptor version = MachineContract.version(identity);
@@ -81,7 +103,7 @@ class MachineContractTest {
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());
 
-    assertEquals("0.8.0", version.version());
+    assertEquals("0.9.0", version.version());
     assertEquals("2026-04-08", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals("USER", template.provenance().actorType());

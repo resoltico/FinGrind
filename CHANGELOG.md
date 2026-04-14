@@ -5,6 +5,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-14
+
+### Changed
+- Hard-broke book persistence onto SQLite3 Multiple Ciphers 2.3.3, so every book-bound CLI
+  command now requires `--book-key-file` and every newly opened book is protected at rest with the
+  upstream default `chacha20` cipher.
+- Replaced the vendored plain SQLite amalgamation with the official SQLite3 Multiple Ciphers 2.3.3
+  amalgamation, based on SQLite 3.53.0, across the root build, nested Jazzer build, Docker image,
+  CLI runtime metadata, and contributor documentation.
+
+### Fixed
+- Hardened protected-book key handling by reading explicit UTF-8 key files, rejecting empty or
+  malformed key material, stripping one trailing line ending, and zeroizing transient plaintext
+  bytes after native handoff.
+- Codified the local standalone verification rule that `:cli:shadowJar` packages only the Java
+  surface and `prepareManagedSqlite` must also run before validating the JAR against the managed
+  SQLite3 Multiple Ciphers library.
+
 ## [0.8.0] - 2026-04-14
 
 ### Changed
@@ -206,7 +224,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.9.0
 [0.8.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.8.0
 [0.7.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.7.0
 [0.6.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.6.0

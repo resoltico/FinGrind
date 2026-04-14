@@ -71,6 +71,8 @@ abstract class PrepareManagedSqliteTask
                 add("-fPIC")
                 add("-DSQLITE_THREADSAFE=1")
                 add("-DSQLITE_OMIT_LOAD_EXTENSION=1")
+                add("-DSQLITE_TEMP_STORE=3")
+                add("-DSQLITE_SECURE_DELETE=1")
                 if (operatingSystemId == "macos") {
                     add("-dynamiclib")
                     add("-current_version")
