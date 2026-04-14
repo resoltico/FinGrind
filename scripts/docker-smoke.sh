@@ -36,8 +36,45 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly image_tag="fingrind-docker-smoke:$$"
 readonly smoke_root="${repo_root}/tmp/docker smoke.$$"
+readonly docker_run_user="$(id -u):$(id -g)"
 anonymous_docker_config=''
 docker_endpoint=''
+
+resolve_docker_buildx_plugin() {
+    local docker_binary=''
+    local -a candidates=()
+    local candidate=''
+
+    if candidate="$(command -v docker-buildx 2>/dev/null || true)"; then
+        if [[ -n "${candidate}" ]]; then
+            candidates+=("${candidate}")
+        fi
+    fi
+
+    docker_binary="$(command -v docker)"
+    candidates+=(
+        "${HOME}/.docker/cli-plugins/docker-buildx"
+        "/Applications/Docker.app/Contents/Resources/cli-plugins/docker-buildx"
+        "/usr/local/lib/docker/cli-plugins/docker-buildx"
+        "/usr/local/libexec/docker/cli-plugins/docker-buildx"
+        "/opt/homebrew/lib/docker/cli-plugins/docker-buildx"
+        "/opt/homebrew/libexec/docker/cli-plugins/docker-buildx"
+        "/usr/lib/docker/cli-plugins/docker-buildx"
+        "/usr/libexec/docker/cli-plugins/docker-buildx"
+        "/usr/lib64/docker/cli-plugins/docker-buildx"
+        "/usr/share/docker/cli-plugins/docker-buildx"
+        "$(cd -P -- "$(dirname -- "${docker_binary}")" && pwd)/docker-buildx"
+    )
+
+    for candidate in "${candidates[@]}"; do
+        if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+            printf '%s\n' "${candidate}"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 docker_with_repo_config() {
     if [[ -n "${docker_endpoint}" ]]; then
@@ -60,6 +97,7 @@ cleanup() {
 trap cleanup EXIT
 
 command -v docker >/dev/null 2>&1 || die "docker is required for the Docker smoke gate"
+docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the Docker smoke gate"
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 [[ -f "${repo_root}/cli/build/libs/fingrind.jar" ]] || die \
     "missing CLI fat JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
@@ -73,6 +111,15 @@ if [[ -z "${docker_endpoint}" ]]; then
 fi
 anonymous_docker_config="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-config.XXXXXX")"
 printf '{}\n' > "${anonymous_docker_config}/config.json"
+
+if ! docker_with_repo_config buildx version >/dev/null 2>&1; then
+    docker_buildx_plugin="$(resolve_docker_buildx_plugin)" || die \
+        "docker buildx is available in the current shell, but no reusable docker-buildx plugin binary was found for the anonymous DOCKER_CONFIG"
+    mkdir -p "${anonymous_docker_config}/cli-plugins"
+    ln -s "${docker_buildx_plugin}" "${anonymous_docker_config}/cli-plugins/docker-buildx"
+    docker_with_repo_config buildx version >/dev/null 2>&1 || die \
+        "docker buildx is not reachable through the anonymous DOCKER_CONFIG even after staging ${docker_buildx_plugin}"
+fi
 
 mkdir -p "${smoke_root}/requests odd"
 
@@ -135,15 +182,15 @@ cat > "${declare_revenue_path}" <<JSON
 }
 JSON
 
-printf 'docker-smoke-passphrase\n' > "${book_key_path}"
 printf 'definitely-wrong-docker-smoke-passphrase\n' > "${wrong_book_key_path}"
-chmod 600 "${book_key_path}" "${wrong_book_key_path}"
+chmod 600 "${wrong_book_key_path}"
 
 printf 'Docker smoke: building local image\n'
-docker_with_repo_config build -t "${image_tag}" "${repo_root}" >/dev/null
+docker_with_repo_config buildx build --load -t "${image_tag}" "${repo_root}" >/dev/null
 
 printf 'Docker smoke: verifying version command\n'
 version_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -157,12 +204,13 @@ require_match "${version_output}" '"version"[[:space:]]*:[[:space:]]*"' \
 
 printf 'Docker smoke: verifying managed SQLite runtime contract\n'
 capabilities_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     capabilities | tr -d '\r')"
-require_match "${capabilities_output}" '"sqliteLibrarySource"[[:space:]]*:[[:space:]]*"managed"' \
-    "capabilities output did not report the managed SQLite library source"
+	require_match "${capabilities_output}" '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"' \
+	    "capabilities output did not report the managed-only SQLite runtime mode"
 require_match "${capabilities_output}" '"storageDriver"[[:space:]]*:[[:space:]]*"sqlite-ffm-sqlite3mc"' \
     "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"
 require_match "${capabilities_output}" '"bookProtectionMode"[[:space:]]*:[[:space:]]*"required"' \
@@ -182,15 +230,35 @@ require_match "${capabilities_output}" '"loadedSqliteVersion"[[:space:]]*:[[:spa
 require_match "${capabilities_output}" '"loadedSqlite3mcVersion"[[:space:]]*:[[:space:]]*"2\.3\.3"' \
     "capabilities output did not report SQLite3 Multiple Ciphers 2.3.3"
 
+printf 'Docker smoke: generating a dedicated book key file inside the mounted workspace\n'
+generate_key_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
+    -w /workdir \
+    -v "${smoke_root}:/workdir" \
+    "${image_tag}" \
+    generate-book-key-file \
+    --book-key-file "${book_key_rel}" | tr -d '\r')"
+
+[[ -f "${book_key_path}" ]] || die "docker smoke did not generate the requested key file: ${book_key_path}"
+require_match "${generate_key_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
+    "docker smoke key generation did not report ok status"
+require_match "${generate_key_output}" '"bookKeyFile"[[:space:]]*:[[:space:]]*"/workdir/' \
+    "docker smoke key generation did not report the generated key path"
+require_match "${generate_key_output}" '"permissions"[[:space:]]*:[[:space:]]*"0600"' \
+    "docker smoke key generation did not report owner-only file permissions"
+generated_book_passphrase="$(cat "${book_key_path}")"
+[[ -n "${generated_book_passphrase}" ]] || die "docker smoke generated an empty key file"
+
 printf 'Docker smoke: verifying explicit book initialization through mounted path\n'
 open_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     open-book \
     --book-file "${book_rel}" \
-    --book-passphrase-stdin <<< 'docker-smoke-passphrase' | tr -d '\r')"
+    --book-passphrase-stdin <<< "${generated_book_passphrase}" | tr -d '\r')"
 
 [[ -f "${book_path}" ]] || die "docker smoke book file was not initialized: ${book_path}"
 require_match "${open_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
@@ -200,6 +268,7 @@ require_match "${open_output}" '"initializedAt"[[:space:]]*:[[:space:]]*"' \
 
 printf 'Docker smoke: verifying account declaration and registry listing\n'
 declare_cash_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -207,8 +276,9 @@ declare_cash_output="$(docker_with_repo_config run --rm \
     declare-account \
     --book-file "${book_rel}" \
     --book-passphrase-stdin \
-    --request-file "${declare_cash_rel}" <<< 'docker-smoke-passphrase' | tr -d '\r')"
+    --request-file "${declare_cash_rel}" <<< "${generated_book_passphrase}" | tr -d '\r')"
 declare_revenue_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -217,6 +287,7 @@ declare_revenue_output="$(docker_with_repo_config run --rm \
     --book-key-file "${book_key_rel}" \
     --request-file "${declare_revenue_rel}" | tr -d '\r')"
 list_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -238,6 +309,7 @@ require_match "${list_output}" '"accountCode"[[:space:]]*:[[:space:]]*"2000"' \
 printf 'Docker smoke: verifying wrong key is rejected deterministically\n'
 set +e
 wrong_key_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
@@ -256,6 +328,7 @@ require_match "${wrong_key_output}" 'SQLITE_NOTADB' \
 
 printf 'Docker smoke: verifying preflight and commit through mounted path\n'
 preflight_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -263,8 +336,9 @@ preflight_output="$(docker_with_repo_config run --rm \
     preflight-entry \
     --book-file "${book_rel}" \
     --book-passphrase-stdin \
-    --request-file "${request_rel}" <<< 'docker-smoke-passphrase' | tr -d '\r')"
+    --request-file "${request_rel}" <<< "${generated_book_passphrase}" | tr -d '\r')"
 commit_output="$(docker_with_repo_config run --rm \
+    --user "${docker_run_user}" \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \

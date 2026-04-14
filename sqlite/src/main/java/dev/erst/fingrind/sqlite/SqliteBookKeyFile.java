@@ -33,7 +33,7 @@ public final class SqliteBookKeyFile {
     }
   }
 
-  private static void requireSecureKeyFile(Path bookKeyFilePath) {
+  static void requireSecureKeyFile(Path bookKeyFilePath) {
     requireSecureKeyFile(
         bookKeyFilePath, path -> Files.getPosixFilePermissions(path, LinkOption.NOFOLLOW_LINKS));
   }

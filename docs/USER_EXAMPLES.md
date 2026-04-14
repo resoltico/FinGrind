@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: USER_EXAMPLES
 updated: "2026-04-14"
 route:
@@ -14,9 +14,8 @@ route:
 **Prerequisites**: Java 26 or newer and `./gradlew :cli:shadowJar`.
 
 For source-driven local runs, `./gradlew :cli:run` automatically compiles and injects the managed
-SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime. For standalone `java -jar`, prefer the
-managed library from `./gradlew prepareManagedSqlite` via `FINGRIND_SQLITE_LIBRARY`, or provide a
-host `libsqlite3` that already satisfies the same SQLite / SQLite3MC contract. No external
+SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime. For standalone `java -jar`, use the
+managed library from `./gradlew prepareManagedSqlite` via `FINGRIND_SQLITE_LIBRARY`. No external
 `sqlite3` binary is required, and FinGrind does not shell out to `sqlite3`.
 
 For a local source checkout, the copy-paste `java -jar` examples below assume:
@@ -37,17 +36,17 @@ java -jar cli/build/libs/fingrind.jar \
   --book-passphrase-prompt
 ```
 
-For automation, a dedicated key file is still supported:
+For automation, generate a dedicated key file:
 
 ```bash
-install -d -m 700 /tmp/fingrind/keys
-umask 077
-printf '%s\n' 'acme-demo-passphrase' > /tmp/fingrind/keys/acme.book-key
-chmod 600 /tmp/fingrind/keys/acme.book-key
+java -jar cli/build/libs/fingrind.jar \
+  generate-book-key-file \
+  --book-key-file /tmp/fingrind/keys/acme.book-key
 ```
 
-The key file must contain one non-empty UTF-8 passphrase.
-One trailing newline is tolerated and stripped.
+The generated key file contains one non-empty single-line UTF-8 passphrase.
+One trailing newline is tolerated and stripped when loading an existing file.
+Embedded control characters are rejected.
 The key file must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`).
 
 For pipeline automation without a persistent file:

@@ -12,6 +12,7 @@ public final class SqliteRuntime {
   public static final String BOOK_PROTECTION_MODE = "required";
   public static final String DEFAULT_BOOK_CIPHER = "chacha20";
   public static final String LIBRARY_ENVIRONMENT_VARIABLE = "FINGRIND_SQLITE_LIBRARY";
+  public static final String LIBRARY_MODE = "managed-only";
   public static final String REQUIRED_MINIMUM_SQLITE_VERSION = "3.53.0";
   public static final String REQUIRED_SQLITE3MC_VERSION = "2.3.3";
   public static final List<String> REQUIRED_SQLITE_COMPILE_OPTIONS =
@@ -32,7 +33,7 @@ public final class SqliteRuntime {
   /** Probes the packaged SQLite runtime without throwing, for CLI discovery surfaces. */
   public static Probe probe() {
     return probe(
-        SqliteNativeLibrary::configuredLibrarySource,
+        SqliteNativeLibrary::configuredLibraryMode,
         SqliteNativeLibrary::sqliteVersion,
         SqliteNativeLibrary::sqlite3MultipleCiphersVersion,
         SqliteRuntime::failureDetail);
@@ -44,20 +45,20 @@ public final class SqliteRuntime {
   }
 
   static Probe probe(
-      Supplier<String> librarySourceSupplier,
+      Supplier<String> libraryModeSupplier,
       Supplier<String> sqliteVersionSupplier,
       Supplier<String> sqlite3MultipleCiphersVersionSupplier,
       Function<Throwable, String> failureDetail) {
-    Objects.requireNonNull(librarySourceSupplier, "librarySourceSupplier");
+    Objects.requireNonNull(libraryModeSupplier, "libraryModeSupplier");
     Objects.requireNonNull(sqliteVersionSupplier, "sqliteVersionSupplier");
     Objects.requireNonNull(
         sqlite3MultipleCiphersVersionSupplier, "sqlite3MultipleCiphersVersionSupplier");
     Objects.requireNonNull(failureDetail, "failureDetail");
 
-    String librarySource = librarySourceSupplier.get();
+    String libraryMode = libraryModeSupplier.get();
     try {
       return new Probe(
-          librarySource,
+          libraryMode,
           REQUIRED_MINIMUM_SQLITE_VERSION,
           REQUIRED_SQLITE3MC_VERSION,
           Status.READY,
@@ -66,7 +67,7 @@ public final class SqliteRuntime {
           null);
     } catch (UnsupportedSqliteVersionException exception) {
       return new Probe(
-          librarySource,
+          libraryMode,
           REQUIRED_MINIMUM_SQLITE_VERSION,
           REQUIRED_SQLITE3MC_VERSION,
           Status.INCOMPATIBLE,
@@ -75,7 +76,7 @@ public final class SqliteRuntime {
           failureDetail.apply(exception));
     } catch (UnsupportedSqliteMultipleCiphersVersionException exception) {
       return new Probe(
-          librarySource,
+          libraryMode,
           REQUIRED_MINIMUM_SQLITE_VERSION,
           REQUIRED_SQLITE3MC_VERSION,
           Status.INCOMPATIBLE,
@@ -84,7 +85,7 @@ public final class SqliteRuntime {
           failureDetail.apply(exception));
     } catch (UnsupportedSqliteCompileOptionsException exception) {
       return new Probe(
-          librarySource,
+          libraryMode,
           REQUIRED_MINIMUM_SQLITE_VERSION,
           REQUIRED_SQLITE3MC_VERSION,
           Status.INCOMPATIBLE,
@@ -93,7 +94,7 @@ public final class SqliteRuntime {
           failureDetail.apply(exception));
     } catch (RuntimeException | Error throwable) {
       return new Probe(
-          librarySource,
+          libraryMode,
           REQUIRED_MINIMUM_SQLITE_VERSION,
           REQUIRED_SQLITE3MC_VERSION,
           Status.UNAVAILABLE,
@@ -105,7 +106,7 @@ public final class SqliteRuntime {
 
   /** Machine-facing runtime state for one SQLite probe. */
   public record Probe(
-      String librarySource,
+      String libraryMode,
       String requiredMinimumSqliteVersion,
       String requiredSqlite3mcVersion,
       Status status,
@@ -113,7 +114,7 @@ public final class SqliteRuntime {
       String loadedSqlite3mcVersion,
       String issue) {
     public Probe {
-      librarySource = requireText(librarySource, "librarySource");
+      libraryMode = requireText(libraryMode, "libraryMode");
       requiredMinimumSqliteVersion =
           requireText(requiredMinimumSqliteVersion, "requiredMinimumSqliteVersion");
       requiredSqlite3mcVersion = requireText(requiredSqlite3mcVersion, "requiredSqlite3mcVersion");

@@ -18,7 +18,6 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -51,7 +50,7 @@ class SqliteNativeLibraryTest {
         SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS);
     assertEquals("3.53.0", SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION);
     assertEquals("2.3.3", SqliteRuntime.REQUIRED_SQLITE3MC_VERSION);
-    assertEquals("managed", runtimeProbe.librarySource());
+    assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
@@ -71,14 +70,14 @@ class SqliteNativeLibraryTest {
   void probe_reportsIncompatibleRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
         SqliteRuntime.probe(
-            () -> "system",
+            () -> "managed-only",
             () -> {
-              throw new UnsupportedSqliteVersionException("3.51.0", "3.53.0", "system");
+              throw new UnsupportedSqliteVersionException("3.51.0", "3.53.0", "managed-only");
             },
             () -> "2.3.3",
             SqliteRuntime::failureDetail);
 
-    assertEquals("system", runtimeProbe.librarySource());
+    assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
@@ -91,14 +90,14 @@ class SqliteNativeLibraryTest {
   void probe_reportsUnavailableRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
         SqliteRuntime.probe(
-            () -> "managed",
+            () -> "managed-only",
             () -> {
               throw new IllegalStateException("sqlite runtime unavailable");
             },
             () -> "2.3.3",
             SqliteRuntime::failureDetail);
 
-    assertEquals("managed", runtimeProbe.librarySource());
+    assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
     assertEquals("sqlite runtime unavailable", runtimeProbe.issue());
     assertNull(runtimeProbe.loadedSqliteVersion());
@@ -109,15 +108,15 @@ class SqliteNativeLibraryTest {
   void probe_reportsIncompatibleSqlite3mcRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
         SqliteRuntime.probe(
-            () -> "system",
+            () -> "managed-only",
             () -> "3.53.0",
             () -> {
               throw new UnsupportedSqliteMultipleCiphersVersionException(
-                  "2.3.2", "2.3.3", "system");
+                  "2.3.2", "2.3.3", "managed-only");
             },
             SqliteRuntime::failureDetail);
 
-    assertEquals("system", runtimeProbe.librarySource());
+    assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.2", runtimeProbe.loadedSqlite3mcVersion());
@@ -128,17 +127,17 @@ class SqliteNativeLibraryTest {
   void probe_reportsIncompatibleCompileOptionsRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
         SqliteRuntime.probe(
-            () -> "managed",
+            () -> "managed-only",
             () -> {
               throw new UnsupportedSqliteCompileOptionsException(
-                  "3.53.0", "2.3.3", "managed", List.of("SECURE_DELETE"));
+                  "3.53.0", "2.3.3", "managed-only", List.of("SECURE_DELETE"));
             },
             () -> {
               throw new AssertionError("sqlite3mc version lookup should not run");
             },
             SqliteRuntime::failureDetail);
 
-    assertEquals("managed", runtimeProbe.librarySource());
+    assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
@@ -149,9 +148,9 @@ class SqliteNativeLibraryTest {
   void runtimeProbeAndStatusExposeStableValueSemantics() {
     SqliteRuntime.Probe runtimeProbe =
         new SqliteRuntime.Probe(
-            "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null);
+            "managed-only", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null);
 
-    assertEquals("managed", runtimeProbe.librarySource());
+    assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
@@ -161,13 +160,25 @@ class SqliteNativeLibraryTest {
     assertEquals(
         runtimeProbe,
         new SqliteRuntime.Probe(
-            "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null));
+            "managed-only",
+            "3.53.0",
+            "2.3.3",
+            SqliteRuntime.Status.READY,
+            "3.53.0",
+            "2.3.3",
+            null));
     assertEquals(
         runtimeProbe.hashCode(),
         new SqliteRuntime.Probe(
-                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null)
+                "managed-only",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.READY,
+                "3.53.0",
+                "2.3.3",
+                null)
             .hashCode());
-    assertTrue(runtimeProbe.toString().contains("managed"));
+    assertTrue(runtimeProbe.toString().contains("managed-only"));
     assertEquals("ready", SqliteRuntime.Status.READY.wireValue());
     assertEquals("unavailable", SqliteRuntime.Status.UNAVAILABLE.wireValue());
     assertEquals("incompatible", SqliteRuntime.Status.INCOMPATIBLE.wireValue());
@@ -177,22 +188,34 @@ class SqliteNativeLibraryTest {
   void runtimeProbe_rejectsInvalidStatusSpecificShapes() {
     assertThrows(
         NullPointerException.class,
-        () -> new SqliteRuntime.Probe("managed", "3.53.0", "2.3.3", null, null, null, "boom"));
+        () -> new SqliteRuntime.Probe("managed-only", "3.53.0", "2.3.3", null, null, null, "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, null, "2.3.3", null));
+                "managed-only",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.READY,
+                null,
+                "2.3.3",
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", null, null));
+                "managed-only",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.READY,
+                "3.53.0",
+                null,
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed",
+                "managed-only",
                 "3.53.0",
                 "2.3.3",
                 SqliteRuntime.Status.READY,
@@ -203,7 +226,7 @@ class SqliteNativeLibraryTest {
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed",
+                "managed-only",
                 "3.53.0",
                 "2.3.3",
                 SqliteRuntime.Status.UNAVAILABLE,
@@ -225,12 +248,18 @@ class SqliteNativeLibraryTest {
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed", "3.53.0", "2.3.3", SqliteRuntime.Status.UNAVAILABLE, null, null, null));
+                "managed-only",
+                "3.53.0",
+                "2.3.3",
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                null,
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed",
+                "managed-only",
                 "3.53.0",
                 "2.3.3",
                 SqliteRuntime.Status.INCOMPATIBLE,
@@ -241,7 +270,7 @@ class SqliteNativeLibraryTest {
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed",
+                "managed-only",
                 "3.53.0",
                 "2.3.3",
                 SqliteRuntime.Status.INCOMPATIBLE,
@@ -252,7 +281,7 @@ class SqliteNativeLibraryTest {
         IllegalArgumentException.class,
         () ->
             new SqliteRuntime.Probe(
-                "managed",
+                "managed-only",
                 "3.53.0",
                 "2.3.3",
                 SqliteRuntime.Status.INCOMPATIBLE,
@@ -295,11 +324,10 @@ class SqliteNativeLibraryTest {
     SqliteNativeLibrary.SqliteLibraryTarget libraryTarget =
         SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
 
-    assertEquals("managed", libraryTarget.source());
+    assertEquals("managed-only", libraryTarget.mode());
     assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
-    assertEquals("managed", SqliteNativeLibrary.configuredLibrarySource("/tmp/libsqlite3.so.0"));
-    assertEquals("managed", SqliteNativeLibrary.configuredLibrarySource(null));
-    assertTrue(libraryTarget.toString().contains("managed"));
+    assertEquals("managed-only", SqliteNativeLibrary.configuredLibraryMode());
+    assertTrue(libraryTarget.toString().contains("managed-only"));
     assertEquals(
         libraryTarget,
         SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
@@ -326,11 +354,11 @@ class SqliteNativeLibraryTest {
     UnsupportedSqliteVersionException exception =
         assertThrows(
             UnsupportedSqliteVersionException.class,
-            () -> SqliteNativeLibrary.requireSupportedVersion("3.51.0", "system"));
+            () -> SqliteNativeLibrary.requireSupportedVersion("3.51.0", "managed-only"));
 
     assertEquals("3.51.0", exception.loadedVersion());
     assertEquals("3.53.0", exception.requiredMinimumVersion());
-    assertEquals("system", exception.librarySource());
+    assertEquals("managed-only", exception.libraryMode());
   }
 
   @Test
@@ -338,11 +366,11 @@ class SqliteNativeLibraryTest {
     UnsupportedSqliteMultipleCiphersVersionException exception =
         assertThrows(
             UnsupportedSqliteMultipleCiphersVersionException.class,
-            () -> SqliteNativeLibrary.requireSupportedSqlite3mcVersion("2.3.2", "system"));
+            () -> SqliteNativeLibrary.requireSupportedSqlite3mcVersion("2.3.2", "managed-only"));
 
     assertEquals("2.3.2", exception.loadedVersion());
     assertEquals("2.3.3", exception.requiredVersion());
-    assertEquals("system", exception.librarySource());
+    assertEquals("managed-only", exception.libraryMode());
   }
 
   @Test
@@ -485,11 +513,14 @@ class SqliteNativeLibraryTest {
             UnsupportedSqliteCompileOptionsException.class,
             () ->
                 SqliteNativeLibrary.requireSupportedCompileOptions(
-                    constantMethodHandle(0, MemorySegment.class), "3.53.0", "2.3.3", "managed"));
+                    constantMethodHandle(0, MemorySegment.class),
+                    "3.53.0",
+                    "2.3.3",
+                    "managed-only"));
 
     assertEquals("3.53.0", exception.loadedSqliteVersion());
     assertEquals("2.3.3", exception.loadedSqlite3mcVersion());
-    assertEquals("managed", exception.librarySource());
+    assertEquals("managed-only", exception.libraryMode());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS, exception.missingCompileOptions());
   }
 
@@ -753,12 +784,9 @@ class SqliteNativeLibraryTest {
       database = SqliteNativeLibrary.open(bookPath, passphrase);
     }
 
-    MethodHandle originalRekeyHandle = sqliteApiMethodHandle("sqlite3Rekey");
-    try {
-      replaceSqliteApiMethodHandle(
-          "sqlite3Rekey",
-          constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class));
-
+    try (AutoCloseable ignored =
+        SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+            constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))) {
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "native failure replacement", "rotated-key".toCharArray())) {
@@ -770,7 +798,6 @@ class SqliteNativeLibraryTest {
         assertEquals("SQLITE_CANTOPEN", exception.resultName());
       }
     } finally {
-      replaceSqliteApiMethodHandle("sqlite3Rekey", originalRekeyHandle);
       database.close();
     }
   }
@@ -785,17 +812,14 @@ class SqliteNativeLibraryTest {
       database = SqliteNativeLibrary.open(bookPath, passphrase);
     }
 
-    MethodHandle originalRekeyHandle = sqliteApiMethodHandle("sqlite3Rekey");
-    try {
-      replaceSqliteApiMethodHandle(
-          "sqlite3Rekey",
-          throwingMethodHandle(
-              new IllegalStateException("boom"),
-              int.class,
-              MemorySegment.class,
-              MemorySegment.class,
-              int.class));
-
+    try (AutoCloseable ignored =
+        SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+            throwingMethodHandle(
+                new IllegalStateException("boom"),
+                int.class,
+                MemorySegment.class,
+                MemorySegment.class,
+                int.class))) {
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "throwable replacement", "rotated-key".toCharArray())) {
@@ -812,7 +836,6 @@ class SqliteNativeLibraryTest {
         assertEquals("boom", exception.getCause().getMessage());
       }
     } finally {
-      replaceSqliteApiMethodHandle("sqlite3Rekey", originalRekeyHandle);
       database.close();
     }
   }
@@ -1268,36 +1291,6 @@ class SqliteNativeLibraryTest {
   @SuppressWarnings("unused")
   private static int recordShutdownCall(AtomicInteger shutdownCalls) {
     return shutdownCalls.incrementAndGet();
-  }
-
-  private static MethodHandle sqliteApiMethodHandle(String fieldName)
-      throws ReflectiveOperationException {
-    Field field = sqliteApiField(fieldName);
-    return (MethodHandle) field.get(sqliteApiSingleton());
-  }
-
-  private static void replaceSqliteApiMethodHandle(String fieldName, MethodHandle handle)
-      throws ReflectiveOperationException {
-    Field field = sqliteApiField(fieldName);
-    field.set(sqliteApiSingleton(), handle);
-  }
-
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  private static Field sqliteApiField(String fieldName) throws ReflectiveOperationException {
-    Class<?> sqliteApiClass =
-        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
-    Field field = sqliteApiClass.getDeclaredField(fieldName);
-    field.setAccessible(true);
-    return field;
-  }
-
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  private static Object sqliteApiSingleton() throws ReflectiveOperationException {
-    Class<?> sqliteApiHolderClass =
-        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApiHolder");
-    Field instanceField = sqliteApiHolderClass.getDeclaredField("INSTANCE");
-    instanceField.setAccessible(true);
-    return instanceField.get(null);
   }
 
   private static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {

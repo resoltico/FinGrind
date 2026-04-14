@@ -15,7 +15,7 @@ public final class MachineContract {
   private static final List<String> DISCOVERY_COMMANDS =
       List.of("help", "version", "capabilities", "print-request-template");
   private static final List<String> ADMINISTRATION_COMMANDS =
-      List.of("open-book", "rekey-book", "declare-account");
+      List.of("generate-book-key-file", "open-book", "rekey-book", "declare-account");
   private static final List<String> QUERY_COMMANDS = List.of("list-accounts");
   private static final List<String> WRITE_COMMANDS = List.of("preflight-entry", "post-entry");
   private static final List<String> STORAGE_ENGINES = List.of("sqlite");
@@ -38,6 +38,7 @@ public final class MachineContract {
             "fingrind version",
             "fingrind capabilities",
             "fingrind print-request-template",
+            "fingrind generate-book-key-file --book-key-file <path>",
             "fingrind open-book --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt]",
             "fingrind rekey-book --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] [--new-book-key-file <path> | --new-book-passphrase-stdin | --new-book-passphrase-prompt]",
             "fingrind declare-account --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->",
@@ -47,9 +48,10 @@ public final class MachineContract {
         bookModel(),
         commandDescriptors(),
         List.of(
+            "fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key",
             "fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
-            "printf '%s\n' 'acme-demo-passphrase' | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
             "fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-prompt",
+            "printf '%s\n' 'acme-demo-passphrase' | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
             "fingrind rekey-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --new-book-passphrase-prompt",
             "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-cash.json",
             "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-revenue.json",
@@ -149,6 +151,12 @@ public final class MachineContract {
             "raw-json",
             "Print a minimal valid posting request JSON document."),
         new CommandDescriptor(
+            "generate-book-key-file",
+            List.of(),
+            List.of("--book-key-file <path>"),
+            "json-envelope",
+            "Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase."),
+        new CommandDescriptor(
             "open-book",
             List.of(),
             List.of(
@@ -217,9 +225,15 @@ public final class MachineContract {
         "-",
         "single SQLite book file for one entity",
         List.of(
-            "UTF-8 passphrase file for the selected encrypted book",
-            "read one UTF-8 passphrase payload from standard input; this cannot be combined with --request-file -",
-            "prompt for the passphrase on the controlling terminal without echo"));
+            "key-file route: one UTF-8 passphrase file for the selected encrypted book; the file must be a regular non-symlink file on a POSIX filesystem with owner-only permissions (0400 or 0600)",
+            "standard-input route: read one UTF-8 passphrase payload from standard input; this cannot be combined with --request-file -, and rekey-book cannot use standard input for both current and replacement secrets",
+            "interactive-prompt route: prompt for the passphrase on the controlling terminal without echo; replacement prompt entry requires confirmation",
+            "all passphrase routes strip one trailing LF or CRLF, reject empty secrets, and reject control characters so one secret remains reproducible across file, stdin, and prompt usage"),
+        List.of(
+            "request JSON must be one object document",
+            "unknown request fields are rejected at every object level",
+            "duplicate JSON object keys are rejected",
+            "legacy forbidden fields such as correction, reversal.kind, provenance.recordedAt, and provenance.sourceChannel remain hard-broken"));
   }
 
   private static RequestShapesDescriptor requestShapes() {
@@ -538,7 +552,8 @@ public final class MachineContract {
       String requestFileOption,
       String stdinToken,
       String bookFileSemantics,
-      List<String> bookPassphraseSemantics) {}
+      List<String> bookPassphraseSemantics,
+      List<String> requestDocumentSemantics) {}
 
   /** Descriptor grouping the current request shapes. */
   public record RequestShapesDescriptor(
@@ -609,7 +624,8 @@ public final class MachineContract {
       String storageEngine,
       String bookProtectionMode,
       String defaultBookCipher,
-      String sqliteLibrarySource,
+      String sqliteLibraryMode,
+      String sqliteLibraryEnvironmentVariable,
       List<String> requiredSqliteCompileOptions,
       boolean sqliteCompileOptionsVerified,
       String requiredMinimumSqliteVersion,

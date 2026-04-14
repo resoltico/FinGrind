@@ -84,7 +84,7 @@ class FinGrindCliTest {
     assertTrue(json.contains("\"book-not-initialized\""));
     assertTrue(json.contains("\"account-normal-balance-conflict\""));
     assertEquals(
-        "[\"open-book\",\"rekey-book\",\"declare-account\"]",
+        "[\"generate-book-key-file\",\"open-book\",\"rekey-book\",\"declare-account\"]",
         payload.path("administrationCommands").toString());
     assertEquals("[\"list-accounts\"]", payload.path("queryCommands").toString());
     assertTrue(payload.path("requestShapes").has("postEntry"));
@@ -119,7 +119,10 @@ class FinGrindCliTest {
         "sqlite-ffm-sqlite3mc", payload.path("environment").path("storageDriver").asString());
     assertEquals("required", payload.path("environment").path("bookProtectionMode").asText());
     assertEquals("chacha20", payload.path("environment").path("defaultBookCipher").asText());
-    assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asString());
+    assertEquals("managed-only", payload.path("environment").path("sqliteLibraryMode").asString());
+    assertEquals(
+        "FINGRIND_SQLITE_LIBRARY",
+        payload.path("environment").path("sqliteLibraryEnvironmentVariable").asString());
     assertEquals(
         "[\"THREADSAFE=1\",\"OMIT_LOAD_EXTENSION\",\"TEMP_STORE=3\",\"SECURE_DELETE\"]",
         payload.path("environment").path("requiredSqliteCompileOptions").toString());
@@ -129,6 +132,12 @@ class FinGrindCliTest {
     assertEquals(
         "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
         payload.path("requestInput").path("bookPassphraseOptions").toString());
+    assertTrue(
+        payload
+            .path("requestInput")
+            .path("requestDocumentSemantics")
+            .toString()
+            .contains("duplicate JSON object keys are rejected"));
   }
 
   @Test
@@ -150,19 +159,21 @@ class FinGrindCliTest {
     MachineContract.EnvironmentDescriptor environmentDescriptor =
         FinGrindCli.environmentDescriptor(
             new SqliteRuntime.Probe(
-                "system",
+                "managed-only",
                 "3.53.0",
                 "2.3.3",
                 SqliteRuntime.Status.UNAVAILABLE,
                 null,
                 null,
-                "system sqlite unavailable"));
+                "managed sqlite unavailable"));
 
     assertEquals("sqlite-ffm-sqlite3mc", environmentDescriptor.storageDriver());
     assertEquals("sqlite", environmentDescriptor.storageEngine());
     assertEquals("required", environmentDescriptor.bookProtectionMode());
     assertEquals("chacha20", environmentDescriptor.defaultBookCipher());
-    assertEquals("system", environmentDescriptor.sqliteLibrarySource());
+    assertEquals("managed-only", environmentDescriptor.sqliteLibraryMode());
+    assertEquals(
+        "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqliteLibraryEnvironmentVariable());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         environmentDescriptor.requiredSqliteCompileOptions());
@@ -170,9 +181,35 @@ class FinGrindCliTest {
     assertEquals("3.53.0", environmentDescriptor.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", environmentDescriptor.requiredSqlite3mcVersion());
     assertEquals("unavailable", environmentDescriptor.sqliteRuntimeStatus());
-    assertEquals("system sqlite unavailable", environmentDescriptor.sqliteRuntimeIssue());
+    assertEquals("managed sqlite unavailable", environmentDescriptor.sqliteRuntimeIssue());
     assertNull(environmentDescriptor.loadedSqliteVersion());
     assertNull(environmentDescriptor.loadedSqlite3mcVersion());
+  }
+
+  @Test
+  void run_generatesBookKeyFileWithNonSecretMetadata() throws IOException {
+    Path keyFilePath = tempDirectory.resolve("secrets").resolve("entity.book-key");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
+
+    assertEquals(0, exitCode);
+    assertTrue(Files.isRegularFile(keyFilePath));
+    assertEquals(
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+        Files.getPosixFilePermissions(keyFilePath));
+    JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertEquals(
+        keyFilePath.toAbsolutePath().normalize().toString(), payload.path("bookKeyFile").asText());
+    assertEquals("base64url-no-padding", payload.path("encoding").asText());
+    assertEquals(256, payload.path("entropyBits").asInt());
+    assertEquals("0600", payload.path("permissions").asText());
+    assertFalse(
+        outputStream.toString(StandardCharsets.UTF_8).contains(Files.readString(keyFilePath)));
   }
 
   @Test

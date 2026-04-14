@@ -75,14 +75,9 @@ That route automatically compiles and injects the managed SQLite 3.53.0 / SQLite
 Ciphers 2.3.3 runtime.
 
 For standalone `java -jar`, FinGrind does not bundle a native SQLite library.
-Use either:
-- `FINGRIND_SQLITE_LIBRARY` pointing at the managed library produced by
-  `./gradlew prepareManagedSqlite`
-- a host `libsqlite3` that is already SQLite 3.53.0-compatible and exposes SQLite3 Multiple
-  Ciphers 2.3.3
-
-If the host library is older, lacks SQLite3 Multiple Ciphers, or exposes the wrong SQLite3MC
-version, write commands such as `open-book` fail immediately by design.
+Set `FINGRIND_SQLITE_LIBRARY` to the managed library produced by
+`./gradlew prepareManagedSqlite`.
+FinGrind does not support arbitrary host `libsqlite3` fallback for standalone execution.
 
 The `find .../build/managed-sqlite` export above is the supported local source-checkout path
 because it keeps standalone JAR verification on the same managed native library contract as
@@ -91,8 +86,12 @@ Gradle, Jazzer, CI, and Docker.
 For full contributor verification, keep the checkout on the Mac's local filesystem.
 Mounted external volumes are outside the supported setup because Gradle project-cache and JaCoCo
 file locking can fail there on macOS.
-Docker Desktop must also be running before `./check.sh`, because the contributor gate includes a
-real Docker smoke stage.
+Docker Desktop must also be running before `./check.sh`, and `docker buildx` must be available in
+the current shell, because the contributor gate includes a real Docker smoke stage built through
+Buildx rather than Docker's deprecated legacy builder path. That smoke stage uses an anonymous
+`DOCKER_CONFIG` and, when needed, stages the host's already-installed `docker-buildx` plugin into
+that empty config so verification stays independent from personal Docker auth state without
+assuming one fixed plugin-install path.
 
 Inspect the standalone command surface:
 
@@ -136,6 +135,10 @@ printf '%s\n' 'acme-demo-passphrase' | \
 Initialize a new book:
 
 ```bash
+java -jar cli/build/libs/fingrind.jar \
+  generate-book-key-file \
+  --book-key-file /tmp/fingrind/keys/acme.book-key
+
 java -jar cli/build/libs/fingrind.jar \
   open-book \
   --book-file /tmp/acme-book.sqlite \
@@ -263,9 +266,12 @@ Current deterministic rejection codes include:
   for supported local active fuzzing, regression replay, and cleanup.
 - Active fuzzing is local-only. GitHub Actions intentionally never runs `jazzer/bin/*`, and active
   harness execution hard-fails when `GITHUB_ACTIONS=true`.
-- Opened book connections keep `foreign_keys` enabled and `trusted_schema` disabled.
-- Standalone `java -jar ...` execution requires either `FINGRIND_SQLITE_LIBRARY` or a host
-  `libsqlite3` that satisfies the same SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 contract.
+- `generate-book-key-file` creates one new `0600` book key file and refuses to overwrite an
+  existing path.
+- Opened book connections keep `foreign_keys=ON`, `journal_mode=DELETE`, `synchronous=EXTRA`,
+  `trusted_schema=OFF`, `secure_delete=ON`, and `temp_store=MEMORY`.
+- Standalone `java -jar ...` execution requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed
+  SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 library built by `prepareManagedSqlite`.
 - For a local source checkout, `:cli:shadowJar` packages only the Java surface.
   Run `./gradlew prepareManagedSqlite` as well before validating the standalone JAR against the
   managed native library under `build/managed-sqlite/`.
@@ -275,12 +281,14 @@ Current deterministic rejection codes include:
   `post-entry` require `--book-file` plus exactly one explicit passphrase source.
 - `rekey-book` also requires exactly one replacement passphrase source through
   `--new-book-key-file`, `--new-book-passphrase-stdin`, or `--new-book-passphrase-prompt`.
-- `--book-key-file` must point to a non-empty UTF-8 passphrase file on a POSIX filesystem, and
-  that file must use owner-only permissions (`0400` or `0600`); one trailing LF or CRLF is
-  tolerated and stripped.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file on a POSIX
+  filesystem, and that file must use owner-only permissions (`0400` or `0600`); one trailing LF or
+  CRLF is tolerated and stripped, but embedded control characters are rejected.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input, so it cannot
   be combined with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
+- Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
+  object level.
 - `list-accounts` and `preflight-entry` now reopen books through an explicit read-only SQLite
   session that also enforces `pragma query_only = on`.
 - FinGrind does not assume a default database location.

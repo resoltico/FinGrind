@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-14"
 route:
@@ -105,14 +105,10 @@ License and attribution stance:
   source with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`, `SQLITE_TEMP_STORE=3`, and
   `SQLITE_SECURE_DELETE=1`, then injects it through `FINGRIND_SQLITE_LIBRARY`
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
-  regression replay do not fall back to an older host library
+  regression replay do not drift away from the managed runtime contract
 - the Docker image compiles the same vendored SQLite3MC source during image build
-- standalone `java -jar` execution still allows a compatible external library, but
-  [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
-  rejects anything older than SQLite 3.53.0 or outside the exact SQLite3 Multiple Ciphers 2.3.3
-  pin
-- compatible external libraries must also expose the required compile-option hardening:
-  `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`, and `SECURE_DELETE=1`
+- standalone `java -jar` execution is also managed-only: it must receive
+  `FINGRIND_SQLITE_LIBRARY` pointing at the library produced by `prepareManagedSqlite`
 - `:cli:shadowJar` packages only the Java surface; local standalone verification that wants the
   managed native library must also run `prepareManagedSqlite` first and point
   `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`
@@ -244,8 +240,8 @@ Reasons for the current design:
 - typed SQLite result codes replace subprocess stderr interpretation
 - the design stays explicit and SQLite-specific without introducing an ORM or generic SQL
   abstraction
-- Java 26 FFM works directly against a managed or compatible external `libsqlite3` without
-  reintroducing JNI glue code into FinGrind itself
+- Java 26 FFM works directly against the managed SQLite3MC library without reintroducing JNI glue
+  code into FinGrind itself
 
 Managed runtime targets currently build SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 from the
 vendored amalgamation on macOS and Linux. The CLI JAR declares
@@ -258,13 +254,15 @@ Native bridge notes:
   [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
   intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
   session
-- native library lookup prefers `FINGRIND_SQLITE_LIBRARY`, then falls back to the platform default
-  `libsqlite3`
+- native library lookup requires `FINGRIND_SQLITE_LIBRARY`; there is no platform-default fallback
 - runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
   Ciphers version before any book operation is allowed
-- runtime initialization also validates the required compile-option hardening before any external
+- runtime initialization also validates the required compile-option hardening before the managed
   library is accepted as compatible
 - key application happens before any schema statement or pragma configuration
+- opened book sessions pin `journal_mode=DELETE`, `synchronous=EXTRA`, `secure_delete=ON`,
+  `temp_store=MEMORY`, `foreign_keys=ON`, and `trusted_schema=OFF`, and FinGrind rejects drift in
+  those settings instead of trusting host defaults
 - text parameters use SQLite's `SQLITE_TRANSIENT` contract so bound text does not rely on statement
   arena lifetime conventions
 - error messages and SQLite version strings read exact C-string lengths rather than a guessed fixed

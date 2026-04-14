@@ -29,7 +29,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     Objects.requireNonNull(loadedBytes, "loadedBytes");
     try {
       byte[] normalizedBytes = stripTrailingLineEnding(loadedBytes, normalizedSource);
-      validateUtf8(normalizedBytes, normalizedSource);
+      validateTextPassphrase(normalizedBytes, normalizedSource);
       return new SqliteBookPassphrase(normalizedSource, normalizedBytes);
     } finally {
       Arrays.fill(loadedBytes, (byte) 0);
@@ -100,18 +100,34 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return Arrays.copyOf(loadedBytes, endIndex);
   }
 
-  private static void validateUtf8(byte[] keyBytes, String sourceDescription) {
+  private static void validateTextPassphrase(byte[] keyBytes, String sourceDescription) {
+    CharBuffer decoded;
     try {
-      StandardCharsets.UTF_8
-          .newDecoder()
-          .onMalformedInput(CodingErrorAction.REPORT)
-          .onUnmappableCharacter(CodingErrorAction.REPORT)
-          .decode(ByteBuffer.wrap(keyBytes));
+      decoded =
+          StandardCharsets.UTF_8
+              .newDecoder()
+              .onMalformedInput(CodingErrorAction.REPORT)
+              .onUnmappableCharacter(CodingErrorAction.REPORT)
+              .decode(ByteBuffer.wrap(keyBytes));
     } catch (CharacterCodingException exception) {
       throw new IllegalStateException(
           "The FinGrind book passphrase source must contain a UTF-8 passphrase: "
               + sourceDescription,
           exception);
+    }
+    try {
+      int offset = 0;
+      while (offset < decoded.length()) {
+        int codePoint = Character.codePointAt(decoded, offset);
+        if (Character.isISOControl(codePoint)) {
+          throw new IllegalStateException(
+              "The FinGrind book passphrase source must contain a single-line UTF-8 text passphrase without control characters: "
+                  + sourceDescription);
+        }
+        offset += Character.charCount(codePoint);
+      }
+    } finally {
+      zeroize(decoded);
     }
   }
 
@@ -125,6 +141,19 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     }
     for (int index = 0; index < duplicate.limit(); index++) {
       duplicate.put(index, (byte) 0);
+    }
+  }
+
+  private static void zeroize(CharBuffer decodedCharacters) {
+    CharBuffer duplicate = decodedCharacters.duplicate();
+    if (duplicate.hasArray()) {
+      int startIndex = duplicate.arrayOffset();
+      int endIndex = startIndex + duplicate.limit();
+      Arrays.fill(duplicate.array(), startIndex, endIndex, '\0');
+      return;
+    }
+    for (int index = 0; index < duplicate.limit(); index++) {
+      duplicate.put(index, '\0');
     }
   }
 }

@@ -1,0 +1,25 @@
+{
+  "effectiveDate": "2026-04-07",
+  "lines": [
+    {
+      "accountCode": "1000",
+      "side": "DEBIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    },
+    {
+      "accountCode": "2000",
+      "side": "CREDIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    }
+  ],
+  "provenance": {
+    "actorId": "actor-8",
+    "actorType": "AGENT",
+    "commandId": "command-8",
+    "idempotencyKey": "idem-8",
+    "causationId": "cause-8"
+  },
+  "unexpectedField": "should-be-rejected"
+}

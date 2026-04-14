@@ -101,6 +101,8 @@ public final class SqliteFuzzAssertions {
         throw new IllegalStateException("SQLite store did not open a database handle.");
       }
       assertQueryInt(database, "pragma foreign_keys", 1);
+      assertQueryText(database, "pragma journal_mode", "delete");
+      assertQueryInt(database, "pragma synchronous", 3);
       assertQueryInt(database, "pragma trusted_schema", 0);
     } catch (SqliteNativeException exception) {
       throw new IllegalStateException(
@@ -123,6 +125,24 @@ public final class SqliteFuzzAssertions {
             "Expected one SQLite row only for hardening assertion: " + sql);
       }
       if (actualValue != expectedValue) {
+        throw new IllegalStateException(
+            "Unexpected SQLite pragma/query value for '" + sql + "': " + actualValue);
+      }
+    }
+  }
+
+  private static void assertQueryText(
+      SqliteNativeDatabase database, String sql, String expectedValue) throws SqliteNativeException {
+    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
+      if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+        throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
+      }
+      String actualValue = statement.columnText(0);
+      if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+        throw new IllegalStateException(
+            "Expected one SQLite row only for hardening assertion: " + sql);
+      }
+      if (!expectedValue.equalsIgnoreCase(actualValue)) {
         throw new IllegalStateException(
             "Unexpected SQLite pragma/query value for '" + sql + "': " + actualValue);
       }

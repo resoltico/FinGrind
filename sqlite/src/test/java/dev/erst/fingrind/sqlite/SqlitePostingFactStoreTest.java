@@ -328,6 +328,8 @@ class SqlitePostingFactStoreTest {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
 
       assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma foreign_keys"));
+      assertEquals("delete", queryText(storeDatabase(postingFactStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(storeDatabase(postingFactStore), "pragma synchronous"));
       assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma trusted_schema"));
       assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma secure_delete"));
       assertEquals(2, queryInt(storeDatabase(postingFactStore), "pragma temp_store"));
@@ -567,7 +569,7 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
-  void openBook_configuresOpenConnectionForForeignKeysAndUntrustedSchema() throws Exception {
+  void openBook_configuresOpenConnectionForHardeningAndDurability() throws Exception {
     Path databasePath = tempDirectory.resolve("connection-pragmas.sqlite");
 
     try (SqlitePostingFactStore postingFactStore =
@@ -575,6 +577,8 @@ class SqlitePostingFactStoreTest {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
 
       assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma foreign_keys"));
+      assertEquals("delete", queryText(storeDatabase(postingFactStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(storeDatabase(postingFactStore), "pragma synchronous"));
       assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma trusted_schema"));
     }
   }
@@ -994,6 +998,8 @@ class SqlitePostingFactStoreTest {
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
           rotatedStore.listAccounts());
+      assertEquals("delete", queryText(storeDatabase(rotatedStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(storeDatabase(rotatedStore), "pragma synchronous"));
       assertEquals(1, queryInt(storeDatabase(rotatedStore), "pragma query_only"));
     }
   }
@@ -1101,6 +1107,8 @@ class SqlitePostingFactStoreTest {
               new AccountName("Equity"),
               NormalBalance.CREDIT,
               Instant.parse("2026-04-07T10:15:30Z")));
+      assertEquals("delete", queryText(storeDatabase(postingFactStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(storeDatabase(postingFactStore), "pragma synchronous"));
       assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma query_only"));
     }
 
@@ -1130,6 +1138,10 @@ class SqlitePostingFactStoreTest {
         SqlitePostingFactStore.class.getDeclaredMethod(
             "querySingleInt", SqliteNativeDatabase.class, String.class);
     querySingleInt.setAccessible(true);
+    Method querySingleText =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "querySingleText", SqliteNativeDatabase.class, String.class);
+    querySingleText.setAccessible(true);
     Method queryOptionalInt =
         SqlitePostingFactStore.class.getDeclaredMethod(
             "queryOptionalInt", SqliteNativeDatabase.class, String.class);
@@ -1174,6 +1186,14 @@ class SqlitePostingFactStoreTest {
               "SQLite integer query returned no rows: select 1 where 0",
               emptyQueryException.getCause().getMessage());
 
+          InvocationTargetException emptyTextQueryException =
+              assertThrows(
+                  InvocationTargetException.class,
+                  () -> querySingleText.invoke(null, database, "select 'x' where 0"));
+          assertEquals(
+              "SQLite text query returned no rows: select 'x' where 0",
+              emptyTextQueryException.getCause().getMessage());
+
           try (SqlitePostingFactStore postingFactStore =
               new SqlitePostingFactStore(bookAccess(blankBookPath))) {
             InvocationTargetException blankException =
@@ -1198,8 +1218,17 @@ class SqlitePostingFactStoreTest {
           assertEquals(
               "SQLite integer query returned more than one row: select 1 union all select 2",
               multiRowException.getCause().getMessage());
+
+          InvocationTargetException multiRowTextException =
+              assertThrows(
+                  InvocationTargetException.class,
+                  () -> querySingleText.invoke(null, database, "select 'x' union all select 'y'"));
+          assertEquals(
+              "SQLite text query returned more than one row: select 'x' union all select 'y'",
+              multiRowTextException.getCause().getMessage());
           try {
             assertEquals(OptionalInt.of(1), queryOptionalInt.invoke(null, database, "select 1"));
+            assertEquals("x", querySingleText.invoke(null, database, "select 'x'"));
           } catch (ReflectiveOperationException exception) {
             throw new LinkageError(exception.getMessage(), exception);
           }
@@ -1302,13 +1331,10 @@ class SqlitePostingFactStoreTest {
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
 
-      MethodHandle originalOpenHandle = sqliteApiMethodHandle("sqlite3OpenV2");
-      try {
-        replaceSqliteApiMethodHandle(
-            "sqlite3OpenV2",
-            constantMethodHandle(
-                14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class));
-
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3OpenV2HandleForTesting(
+              constantMethodHandle(
+                  14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class))) {
         try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "rekey reopen failure", "rotated-store-key".toCharArray())) {
@@ -1320,8 +1346,6 @@ class SqlitePostingFactStoreTest {
           assertTrue(exception.getMessage().contains("Failed to rekey SQLite book."));
           assertNull(storeDatabase(postingFactStore));
         }
-      } finally {
-        replaceSqliteApiMethodHandle("sqlite3OpenV2", originalOpenHandle);
       }
     }
   }
@@ -1334,12 +1358,9 @@ class SqlitePostingFactStoreTest {
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
 
-      MethodHandle originalRekeyHandle = sqliteApiMethodHandle("sqlite3Rekey");
-      try {
-        replaceSqliteApiMethodHandle(
-            "sqlite3Rekey",
-            constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class));
-
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+              constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))) {
         try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "rekey native failure", "rotated-store-key".toCharArray())) {
@@ -1351,8 +1372,6 @@ class SqlitePostingFactStoreTest {
           assertTrue(exception.getMessage().contains("Failed to rekey SQLite book."));
           assertNotNull(storeDatabase(postingFactStore));
         }
-      } finally {
-        replaceSqliteApiMethodHandle("sqlite3Rekey", originalRekeyHandle);
       }
     }
   }
@@ -1371,6 +1390,14 @@ class SqlitePostingFactStoreTest {
         assertOpenConfiguration,
         "pragma foreign_keys = off",
         "SQLite connection failed to keep foreign_keys enabled.");
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma journal_mode = wal",
+        "SQLite connection failed to enforce journal_mode=DELETE.");
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma synchronous = normal",
+        "SQLite connection failed to enforce synchronous=EXTRA.");
     assertOpenConfigurationFailure(
         assertOpenConfiguration,
         "pragma trusted_schema = on",
@@ -1904,6 +1931,16 @@ class SqlitePostingFactStoreTest {
     }
   }
 
+  private static String queryText(SqliteNativeDatabase database, String sql)
+      throws SqliteNativeException {
+    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
+      assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+      String value = statement.columnText(0);
+      assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
+      return value;
+    }
+  }
+
   private static PostingFact postingFact(
       String postingId,
       String idempotencyKey,
@@ -2244,36 +2281,6 @@ class SqlitePostingFactStoreTest {
   private static void closeStandaloneDatabase(SqliteNativeDatabase database)
       throws SqliteNativeException {
     database.close();
-  }
-
-  private static MethodHandle sqliteApiMethodHandle(String fieldName)
-      throws ReflectiveOperationException {
-    Field field = sqliteApiField(fieldName);
-    return (MethodHandle) field.get(sqliteApiSingleton());
-  }
-
-  private static void replaceSqliteApiMethodHandle(String fieldName, MethodHandle handle)
-      throws ReflectiveOperationException {
-    Field field = sqliteApiField(fieldName);
-    field.set(sqliteApiSingleton(), handle);
-  }
-
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  private static Field sqliteApiField(String fieldName) throws ReflectiveOperationException {
-    Class<?> sqliteApiClass =
-        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
-    Field field = sqliteApiClass.getDeclaredField(fieldName);
-    field.setAccessible(true);
-    return field;
-  }
-
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  private static Object sqliteApiSingleton() throws ReflectiveOperationException {
-    Class<?> sqliteApiHolderClass =
-        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApiHolder");
-    Field instanceField = sqliteApiHolderClass.getDeclaredField("INSTANCE");
-    instanceField.setAccessible(true);
-    return instanceField.get(null);
   }
 
   private static MethodHandle constantMethodHandle(Object value, Class<?>... parameterTypes) {

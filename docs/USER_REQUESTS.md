@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: USER_REQUESTS
 updated: "2026-04-14"
 route:
@@ -49,6 +49,8 @@ Current posting-request rules:
 - `reversal.priorPostingId` must already exist in the selected book
 - a reversal requires an exact line-by-line negation of the target posting and only one reversal is allowed per target
 - legacy `correction` and `reversal.kind` fields are rejected
+- unknown fields are rejected at every object level
+- duplicate JSON object keys are rejected
 
 ## Account-Declaration Request Shape
 
@@ -81,7 +83,7 @@ Current account-declaration rules:
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `open-book`, `rekey-book`, `declare-account`, `list-accounts` | `status`, `payload` |
+| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `list-accounts` | `status`, `payload` |
 | raw request document | `print-request-template` | minimal valid posting request JSON |
 | `preflight-accepted` | successful `preflight-entry` | `status`, `idempotencyKey`, `effectiveDate` |
 | `committed` | successful `post-entry` | `status`, `postingId`, `idempotencyKey`, `effectiveDate`, `recordedAt` |
@@ -90,6 +92,9 @@ Current account-declaration rules:
 
 Dynamic fields:
 - `capabilities.payload.timestamp` varies per invocation
+- `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
+- `generate-book-key-file.payload.encoding`, `entropyBits`, and `permissions` describe the created
+  key file without revealing the generated secret
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `committed.postingId` is generated per successful commit as a UUID v7 value
@@ -114,8 +119,11 @@ string lists for the drift-prone parts of the surface:
 - `currencyModel` declares the current single-currency scope and the explicit
   `multiCurrencyStatus: "not-supported"`
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
-- `environment` also reports `requiredSqlite3mcVersion`, `loadedSqlite3mcVersion`,
-  `bookProtectionMode`, and `defaultBookCipher` for the protected-book runtime
+- `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
+  unknown-field rules
+- `environment` also reports `sqliteLibraryMode`, `sqliteLibraryEnvironmentVariable`,
+  `requiredSqlite3mcVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and
+  `defaultBookCipher` for the protected-book runtime
 
 ## Book Administration Responses
 

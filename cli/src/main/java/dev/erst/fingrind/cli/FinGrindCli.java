@@ -13,6 +13,7 @@ import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingApplicationService;
 import dev.erst.fingrind.application.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.RekeyBookResult;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
@@ -75,6 +76,8 @@ final class FinGrindCli {
         case CliCommand.Capabilities _ -> writeCapabilities();
         case CliCommand.Version _ -> writeVersion();
         case CliCommand.PrintRequestTemplate _ -> writeRequestTemplate();
+        case CliCommand.GenerateBookKeyFile command ->
+            runGenerateBookKeyFileCommand(command.bookKeyFilePath());
         case CliCommand.OpenBook command -> runOpenBookCommand(command.bookAccess());
         case CliCommand.RekeyBook command ->
             runRekeyBookCommand(command.bookAccess(), command.replacementPassphraseSource());
@@ -121,6 +124,12 @@ final class FinGrindCli {
 
   private int writeRequestTemplate() {
     responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
+    return 0;
+  }
+
+  private int runGenerateBookKeyFileCommand(Path bookKeyFilePath) {
+    responseWriter.writeGenerateBookKeyFileResult(
+        SqliteBookKeyFileGenerator.generate(bookKeyFilePath));
     return 0;
   }
 
@@ -211,7 +220,8 @@ final class FinGrindCli {
         SqliteRuntime.STORAGE_ENGINE,
         SqliteRuntime.BOOK_PROTECTION_MODE,
         SqliteRuntime.DEFAULT_BOOK_CIPHER,
-        runtimeProbe.librarySource(),
+        runtimeProbe.libraryMode(),
+        SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE,
         SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
         runtimeProbe.status() == SqliteRuntime.Status.READY,
         runtimeProbe.requiredMinimumSqliteVersion(),

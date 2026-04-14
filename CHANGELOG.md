@@ -5,6 +5,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-04-14
+
+### Changed
+- Added `generate-book-key-file` as the canonical machine-safe secret-file workflow, so FinGrind can
+  create one new owner-only key file without ever printing the generated passphrase.
+- Hard-broke standalone SQLite runtime discovery onto a managed-only contract in both code and
+  machine-facing capabilities metadata.
+
+### Fixed
+- Hardened CLI request decoding to reject duplicate JSON object keys, reject unknown fields at every
+  object level, and publish those strict request rules through the capabilities surface.
+- Hardened passphrase handling further by rejecting embedded control characters across key-file and
+  stdin routes, so machine and interactive secret entry stay on one reproducible single-line text
+  contract.
+- Hardened SQLite book connections to pin `journal_mode=DELETE`, `synchronous=EXTRA`,
+  `secure_delete=ON`, `temp_store=MEMORY`, and the existing schema-safety pragmas instead of
+  relying on ambient host defaults.
+- Hardened Docker smoke verification onto `docker buildx build --load` while preserving anonymous
+  `DOCKER_CONFIG` isolation by staging an already-installed host `docker-buildx` plugin into the
+  temporary smoke config when the empty config would otherwise hide it, so FinGrind no longer
+  falls back to Docker's deprecated legacy builder path.
+- Hardened Docker smoke further to discover and reuse an already-installed host `docker-buildx`
+  plugin portably, so anonymous-config verification works both on macOS Docker Desktop and on CI
+  runners without one fixed plugin path.
+- Hardened Docker smoke mounted-path execution further by running container commands as the caller's
+  UID:GID, so generated `0600` key files stay readable by the invoking operator on Linux CI as well
+  as local macOS Docker Desktop.
+- Aligned the GitHub CI, container, and release workflow runtime assertions with the managed-only
+  capabilities contract, so publication no longer checks the removed `sqliteLibrarySource` field.
+- Removed reflective final-field mutation from the SQLite native-handle failure tests by replacing
+  it with package-private native-handle override seams, keeping the suite compatible with Java 26's
+  current warning posture and future stricter JDK behavior.
+- Updated Docker smoke, Jazzer hardening assertions, README, and user/developer docs so they no
+  longer claim unsupported host-library fallback behavior or the old `sqliteLibrarySource` field.
+
 ## [0.11.0] - 2026-04-14
 
 ### Changed
@@ -260,7 +295,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.12.0
 [0.11.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.11.0
 [0.10.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.10.0
 [0.9.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.9.0

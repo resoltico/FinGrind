@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: SQLITE_SCHEMA_CORE
 updated: "2026-04-11"
 route:
@@ -105,7 +105,11 @@ Important rules:
 ## Connection Hardening
 
 - FinGrind opens book connections with `pragma foreign_keys = on`.
+- FinGrind opens writable book connections with `pragma journal_mode = delete`.
+- FinGrind opens book connections with `pragma synchronous = extra`.
 - FinGrind opens book connections with `pragma trusted_schema = off`.
+- FinGrind opens book connections with `pragma secure_delete = on`.
+- FinGrind opens book connections with `pragma temp_store = memory`.
 
 ## Schema Posture
 

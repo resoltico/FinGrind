@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -82,6 +83,51 @@ class CliRequestReaderTest {
 
     assertEquals(
         "No enum constant dev.erst.fingrind.core.NormalBalance.SIDEWAYS", exception.getMessage());
+  }
+
+  @Test
+  void readDeclareAccountCommand_rejectsUnexpectedTopLevelField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "accountCode": "1000",
+                  "accountName": "Cash",
+                  "normalBalance": "DEBIT",
+                  "ignored": true
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: ignored", exception.getMessage());
+  }
+
+  @Test
+  void readDeclareAccountCommand_rejectsNonObjectRootDocument() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                [
+                  {
+                    "accountCode": "1000",
+                    "accountName": "Cash",
+                    "normalBalance": "DEBIT"
+                  }
+                ]
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals("Request JSON document must be an object.", exception.getMessage());
   }
 
   @Test
@@ -247,6 +293,152 @@ class CliRequestReaderTest {
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
     assertEquals("Field is no longer accepted: correction", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsUnexpectedTopLevelField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  },
+                  "ignoredTopLevel": true
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: ignoredTopLevel", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsUnexpectedJournalLineField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00",
+                      "ignoredByParser": "yes"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Unexpected field: lines[0].ignoredByParser", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsDuplicateObjectKeys() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "idempotencyKey": "idem-2",
+                    "causationId": "cause-1"
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey",
+        exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsNonObjectRootDocument() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                [
+                  {
+                    "effectiveDate": "2026-04-07"
+                  }
+                ]
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Request JSON document must be an object.", exception.getMessage());
   }
 
   @Test
@@ -936,6 +1128,52 @@ class CliRequestReaderTest {
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Failed to read request JSON.", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsEmptyInputDocument() {
+    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Request JSON document must be an object.", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsExplicitNullRootDocument() {
+    CliRequestReader requestReader =
+        new CliRequestReader(new ByteArrayInputStream("null".getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Request JSON document must be an object.", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_handlesReadFailureWithNullExceptionMessage() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new InputStream() {
+              @Override
+              public int read() throws IOException {
+                throw new IOException((String) null);
+              }
+
+              @Override
+              public int read(byte[] destination, int offset, int length) throws IOException {
+                throw new IOException((String) null);
+              }
+            });
 
     CliRequestException exception =
         assertThrows(

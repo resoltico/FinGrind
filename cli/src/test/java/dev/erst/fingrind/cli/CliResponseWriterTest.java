@@ -70,7 +70,8 @@ class CliResponseWriterTest {
                 "sqlite",
                 "required",
                 "chacha20",
-                "system",
+                "managed-only",
+                "FINGRIND_SQLITE_LIBRARY",
                 List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
                 false,
                 "3.53.0",
@@ -90,6 +91,25 @@ class CliResponseWriterTest {
     assertEquals("required", environment.path("bookProtectionMode").asText());
     assertFalse(environment.has("loadedSqliteVersion"));
     assertFalse(environment.has("loadedSqlite3mcVersion"));
+  }
+
+  @Test
+  void writeGenerateBookKeyFileResult_writesNonSecretMetadataEnvelope() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeGenerateBookKeyFileResult(
+        new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+            Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
+
+    JsonNode json = readJson(outputStream);
+    assertEquals("ok", json.path("status").asText());
+    assertEquals(
+        Path.of("secrets").resolve("entity.book-key").toAbsolutePath().normalize().toString(),
+        json.path("payload").path("bookKeyFile").asText());
+    assertEquals("base64url-no-padding", json.path("payload").path("encoding").asText());
+    assertEquals(256, json.path("payload").path("entropyBits").asInt());
+    assertEquals("0600", json.path("payload").path("permissions").asText());
   }
 
   @Test
