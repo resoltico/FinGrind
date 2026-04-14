@@ -130,6 +130,12 @@ Every release must verify:
 - `capabilities` reports the expected managed runtime contract
 - the GitHub release object contains the complete bundle-and-checksum set
 
+Release helper scripts are part of that contract and must remain portable across the actual
+GitHub-hosted release runners. In practice this means publication-critical shell code must work
+with the runner-provided Bash on macOS, which is still Bash 3.2. Do not introduce Bash 4+
+builtins such as `mapfile` into `scripts/bundle-smoke.sh` or other release-path scripts unless the
+release environment policy is changed explicitly and codified first.
+
 These rules are enforced through:
 - `./scripts/bundle-smoke.sh`
 - `.github/workflows/release.yml`
