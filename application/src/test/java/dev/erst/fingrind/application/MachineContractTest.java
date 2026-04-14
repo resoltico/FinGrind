@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +22,9 @@ class MachineContractTest {
             new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
             new MachineContract.EnvironmentDescriptor(
                 "self-contained-bundle",
+                "self-contained-bundle",
+                List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64"),
+                List.of("windows"),
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -90,6 +94,9 @@ class MachineContractTest {
     MachineContract.EnvironmentDescriptor environment =
         new MachineContract.EnvironmentDescriptor(
             "self-contained-bundle",
+            "self-contained-bundle",
+            List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64"),
+            List.of("windows"),
             "26+",
             "sqlite-ffm-sqlite3mc",
             "sqlite",
@@ -109,7 +116,9 @@ class MachineContractTest {
 
     MachineContract.HelpDescriptor help = MachineContract.help(identity, environment);
     MachineContract.VersionDescriptor version = MachineContract.version(identity);
-    MachineContract.PostingRequestTemplateDescriptor template = MachineContract.requestTemplate();
+    MachineContract.PostingRequestTemplateDescriptor template =
+        MachineContract.requestTemplate(
+            Clock.fixed(Instant.parse("2026-04-13T12:00:00Z"), java.time.ZoneOffset.UTC));
     MachineContract.ReversalTemplateDescriptor reversalTemplate =
         new MachineContract.ReversalTemplateDescriptor("posting-1");
 
@@ -125,7 +134,11 @@ class MachineContractTest {
     assertEquals(environment, help.environment());
 
     assertEquals("0.9.0", version.version());
-    assertEquals("2026-04-08", template.effectiveDate());
+    assertEquals(
+        List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64"),
+        MachineContract.supportedPublicCliBundleTargets());
+    assertEquals(List.of("windows"), MachineContract.unsupportedPublicCliOperatingSystems());
+    assertEquals("2026-04-13", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals("USER", template.provenance().actorType());
     assertEquals("posting-1", reversalTemplate.priorPostingId());

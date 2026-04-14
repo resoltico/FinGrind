@@ -68,6 +68,23 @@ jobs:
             exit 1
           fi
 
+      - name: Wait for GitHub release assets before publishing the container
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
+          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
+          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
+        run: |
+          ./scripts/verify-github-release.sh \
+            "fingrind-${{ steps.target-tag.outputs.version }}-linux-x86_64.tar.gz" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-linux-x86_64.tar.gz.sha256" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-linux-aarch64.tar.gz" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-linux-aarch64.tar.gz.sha256" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-macos-x86_64.tar.gz" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-macos-x86_64.tar.gz.sha256" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-macos-aarch64.tar.gz" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-macos-aarch64.tar.gz.sha256"
+
       - name: Build internal application JAR for the Docker image
         run: ./gradlew :cli:shadowJar --no-daemon
 

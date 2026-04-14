@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: DEVELOPER
 updated: "2026-04-14"
 route:
@@ -182,6 +182,8 @@ Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a
 Public release verification now centers on the self-contained bundle archive, not the raw JAR.
 `./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` proves that
 the extracted bundle runs without ambient Java or a preconfigured `FINGRIND_SQLITE_LIBRARY`.
+That smoke gate also verifies the top-level archive bootstrap files and the trimmed `jlink`
+runtime-image contract.
 
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
 Java surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
@@ -208,6 +210,8 @@ That keeps the gate aligned with the real Docker runtime without making public p
 Docker Desktop credential-helper state or a contributor's personal login configuration.
 If that stage materializes protected-book key files, those fixtures must obey the same owner-only
 filesystem rule as production (`0400` or `0600`) instead of weakening the runtime contract.
+The Docker path also verifies its managed SQLite source integrity and trimmed private runtime so
+bundle and container publication stay on the same public runtime contract.
 
 During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight test-progress heartbeats instead of relying only on stale Gradle task banners.
 

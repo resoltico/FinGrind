@@ -53,18 +53,30 @@ The book lifecycle is explicit:
 Public FinGrind CLI downloads are self-contained bundle archives, not a standalone JAR.
 Current bundle targets are:
 - `macos-aarch64`
+- `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
 
 One public bundle flow:
 
 ```bash
-tar -xzf fingrind-0.13.0-macos-aarch64.tar.gz
-./fingrind-0.13.0-macos-aarch64/bin/fingrind help
+tar -xzf fingrind-0.14.0-macos-aarch64.tar.gz
+./fingrind-0.14.0-macos-aarch64/bin/fingrind help
 ```
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
+Windows is not part of the current public bundle contract.
+
+Each extracted archive includes:
+- `bin/fingrind`
+- `runtime/`
+- `lib/`
+- top-level `README.md`
+- top-level `bundle-manifest.json`
+
+The top-level `README.md` is the human quick-start inside the archive.
+`bundle-manifest.json` is the machine-readable bootstrap descriptor for agents and automation.
 
 Controlled FinGrind surfaces pin a managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3
 runtime:

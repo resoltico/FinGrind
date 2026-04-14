@@ -16,25 +16,40 @@ if [[ -z "${tag_name}" && $# -gt 0 && "$1" == v* ]]; then
 fi
 readonly tag_name
 readonly asset_names=("$@")
+readonly retry_count="${FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:-1}"
+readonly retry_delay_seconds="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-0}"
 
 [[ -n "${GH_TOKEN:-}" ]] || die "GH_TOKEN is required"
 [[ -n "${tag_name}" ]] || die "tag name is required"
 
-release_tag="$(gh release view "${tag_name}" --json tagName --jq '.tagName')"
-[[ "${release_tag}" == "${tag_name}" ]] || die \
-    "expected release tag ${tag_name}, got ${release_tag}"
+verify_release_once() {
+    local release_tag is_draft is_prerelease has_asset asset_name
 
-is_draft="$(gh release view "${tag_name}" --json isDraft --jq '.isDraft')"
-[[ "${is_draft}" == "false" ]] || die "release ${tag_name} is still a draft"
+    release_tag="$(gh release view "${tag_name}" --json tagName --jq '.tagName' 2>/dev/null)" || return 1
+    [[ "${release_tag}" == "${tag_name}" ]] || return 1
 
-is_prerelease="$(gh release view "${tag_name}" --json isPrerelease --jq '.isPrerelease')"
-[[ "${is_prerelease}" == "false" ]] || die "release ${tag_name} is marked prerelease"
+    is_draft="$(gh release view "${tag_name}" --json isDraft --jq '.isDraft' 2>/dev/null)" || return 1
+    [[ "${is_draft}" == "false" ]] || return 1
 
-for asset_name in "${asset_names[@]}"; do
-    has_asset="$(gh release view "${tag_name}" --json assets --jq \
-        ".assets | map(.name) | index(\"${asset_name}\") != null")"
-    [[ "${has_asset}" == "true" ]] || die \
-        "release ${tag_name} is missing required asset ${asset_name}"
+    is_prerelease="$(gh release view "${tag_name}" --json isPrerelease --jq '.isPrerelease' 2>/dev/null)" || return 1
+    [[ "${is_prerelease}" == "false" ]] || return 1
+
+    for asset_name in "${asset_names[@]}"; do
+        has_asset="$(gh release view "${tag_name}" --json assets --jq \
+            ".assets | map(.name) | index(\"${asset_name}\") != null" 2>/dev/null)" || return 1
+        [[ "${has_asset}" == "true" ]] || return 1
+    done
+
+    return 0
+}
+
+attempt=1
+until verify_release_once; do
+    if (( attempt >= retry_count )); then
+        die "release ${tag_name} is missing or incomplete for the required asset set"
+    fi
+    attempt=$((attempt + 1))
+    sleep "${retry_delay_seconds}"
 done
 
 release_url="$(gh release view "${tag_name}" --json url --jq '.url')"

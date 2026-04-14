@@ -33,5 +33,6 @@ fi
 exec "${runtime_java}" \
     --enable-native-access=ALL-UNNAMED \
     -Dfingrind.bundle.home="${app_home}" \
+    -Dfingrind.runtime.distribution=self-contained-bundle \
     -jar "${application_jar}" \
     "$@"

@@ -65,7 +65,10 @@ class CliResponseWriterTest {
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             new MachineContract.EnvironmentDescriptor(
+                "container-image",
                 "self-contained-bundle",
+                List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64"),
+                List.of("windows"),
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -91,7 +94,13 @@ class CliResponseWriterTest {
     assertTrue(payload.has("preflightSemantics"));
     assertTrue(payload.has("currencyModel"));
     assertEquals("required", environment.path("bookProtectionMode").asString());
+    assertEquals("container-image", environment.path("runtimeDistribution").asString());
     assertEquals("self-contained-bundle", environment.path("publicCliDistribution").asString());
+    assertEquals(
+        "[\"macos-aarch64\",\"macos-x86_64\",\"linux-x86_64\",\"linux-aarch64\"]",
+        environment.path("supportedPublicCliBundleTargets").toString());
+    assertEquals(
+        "[\"windows\"]", environment.path("unsupportedPublicCliOperatingSystems").toString());
     assertFalse(environment.has("loadedSqliteVersion"));
     assertFalse(environment.has("loadedSqlite3mcVersion"));
   }

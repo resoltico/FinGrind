@@ -357,7 +357,7 @@ class SqliteNativeLibraryTest {
 
   @Test
   void configuredLibraryTarget_resolvesBundledLibraryWhenBundleHomeIsPresent() throws IOException {
-    Path bundleHomePath = tempDirectory.resolve("fingrind-0.13.0-test");
+    Path bundleHomePath = tempDirectory.resolve("fingrind-0.14.0-test");
     Path bundledLibraryPath =
         bundleHomePath.resolve("lib").resolve("native").resolve(expectedNativeLibraryFileName());
     Files.createDirectories(bundledLibraryPath.getParent());
@@ -373,7 +373,7 @@ class SqliteNativeLibraryTest {
 
   @Test
   void configuredLibraryTarget_rejectsIncompleteBundleHome() throws IOException {
-    Path bundleHomePath = tempDirectory.resolve("fingrind-0.13.0-test");
+    Path bundleHomePath = tempDirectory.resolve("fingrind-0.14.0-test");
     Files.createDirectories(bundleHomePath);
 
     IllegalStateException exception =

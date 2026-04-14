@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: APPLICATION
-updated: "2026-04-13"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, application, open-book, declare-account, list-accounts, post-entry, preflight, rejection, committed, uuid-v7]
   questions: ["how does the application boundary work in fingrind", "what results can posting return in fingrind", "how are posting ids generated in fingrind"]
@@ -106,7 +106,7 @@ public final class MachineContract
 
 - Purpose: keep `help`, `version`, `capabilities`, and `print-request-template` sourced from one
   application-owned contract instead of CLI-local map assembly
-- Surface: `help(...)`, `capabilities(...)`, `version(...)`, and `requestTemplate()`
+- Surface: `help(...)`, `capabilities(...)`, `version(...)`, and `requestTemplate(Clock)`
 - Shared constants: exports canonical request-field names so `CliRequestReader` and the
   `capabilities` payload stay aligned
 - Live vocabularies: derives enum vocabularies from `JournalLine.EntrySide`, `ActorType`, and
@@ -115,6 +115,9 @@ public final class MachineContract
   `PostingRejection` families instead of a hand-maintained CLI list
 - Explicit policy: publishes `preflightSemantics = advisory` plus
   `currencyModel.scope = single-currency-per-entry`
+- Distribution contract: publishes `runtimeDistribution`, `publicCliDistribution`,
+  `supportedPublicCliBundleTargets`, and `unsupportedPublicCliOperatingSystems` so agents can
+  discover the real public runtime surface from `capabilities`
 
 ## `PostEntryCommand`
 

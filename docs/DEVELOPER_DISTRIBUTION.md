@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-04-14"
 route:
@@ -24,6 +24,8 @@ Each published archive contains:
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
+- a top-level `README.md` for local human bootstrap
+- a top-level `bundle-manifest.json` for machine bootstrap and target discovery
 - license and notice files
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
@@ -62,6 +64,7 @@ self-contained runtime contract, not the primary public artifact.
 
 Current public bundle targets:
 - `macos-aarch64`
+- `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
 
@@ -83,7 +86,7 @@ Why that is acceptable:
 - Zulu 26 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
 - the supported release matrix is covered by those runners today: Ubuntu x86_64, Ubuntu arm64,
-  and macOS arm64
+  macOS arm64, and macOS x86_64
 
 When to revisit this choice:
 - if Zulu stops offering Java 26 for one of the supported public bundle builders
@@ -92,6 +95,39 @@ When to revisit this choice:
 
 This does not replace the contributor workstation rule in [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md):
 local developer shells remain documented against the OpenJDK route published from `openjdk.org`.
+
+## Runtime Image Policy
+
+FinGrind's private Java runtime images are intentionally built as minimal execution images, not as
+full developer JDKs or inherited full JRE installations.
+
+Current rules:
+- module discovery must fail loud on unresolved runtime dependencies; do not use
+  `jdeps --ignore-missing-deps` on the public-runtime path
+- runtime compression uses `jlink --compress=zip-6`, not deprecated numeric aliases
+- the runtime image must not pull in tool modules such as `jdk.jdeps`, `jdk.jlink`, or
+  `jdk.jpackage`
+- do not use `jlink --bind-services` on the public-runtime path unless a demonstrated runtime
+  need appears and is verified against the final module list, because it can drag tool modules
+  into the image and erase the size benefit of the bundle
+
+`./scripts/bundle-smoke.sh` asserts those runtime-image rules directly against the extracted
+bundle.
+
+## Container Parity Policy
+
+The container image is a second public distribution surface and must stay on the same managed
+runtime contract as the bundle archives.
+
+Current rules:
+- Docker image assembly verifies the vendored SQLite3MC source hash before compiling the native
+  library
+- the container image ships the same application JAR plus a private `jlink` runtime, not a full
+  inherited distro JRE
+- the container image advertises itself through
+  `capabilities.environment.runtimeDistribution = "container-image"`
+- the bundle remains the canonical public CLI artifact; the container is an additional supported
+  public runtime surface, not a weaker or differently pinned path
 
 ## Local Build Surface
 
@@ -127,8 +163,12 @@ Every GitHub release must publish:
 Every release must verify:
 - the extracted bundle runs without ambient Java
 - the extracted bundle runs without a preconfigured `FINGRIND_SQLITE_LIBRARY`
+- the extracted bundle contains a top-level human `README.md` and machine-readable
+  `bundle-manifest.json`
 - `capabilities` reports the expected managed runtime contract
 - the GitHub release object contains the complete bundle-and-checksum set
+- the container workflow waits for the complete GitHub release asset set before it publishes the
+  public image, so Docker publication cannot outrun an incomplete release handoff
 
 Release helper scripts are part of that contract and must remain portable across the actual
 GitHub-hosted release runners. In practice this means publication-critical shell code must work

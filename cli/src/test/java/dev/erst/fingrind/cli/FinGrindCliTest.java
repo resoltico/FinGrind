@@ -125,6 +125,15 @@ class FinGrindCliTest {
         "self-contained-bundle",
         payload.path("environment").path("publicCliDistribution").asString());
     assertEquals(
+        "direct-java-invocation",
+        payload.path("environment").path("runtimeDistribution").asString());
+    assertEquals(
+        "[\"macos-aarch64\",\"macos-x86_64\",\"linux-x86_64\",\"linux-aarch64\"]",
+        payload.path("environment").path("supportedPublicCliBundleTargets").toString());
+    assertEquals(
+        "[\"windows\"]",
+        payload.path("environment").path("unsupportedPublicCliOperatingSystems").toString());
+    assertEquals(
         "FINGRIND_SQLITE_LIBRARY",
         payload.path("environment").path("sqliteLibraryEnvironmentVariable").asString());
     assertEquals(
@@ -172,14 +181,20 @@ class FinGrindCliTest {
                 SqliteRuntime.Status.UNAVAILABLE,
                 null,
                 null,
-                "managed sqlite unavailable"));
+                "managed sqlite unavailable"),
+            FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
 
+    assertEquals("source-checkout-gradle", environmentDescriptor.runtimeDistribution());
     assertEquals("sqlite-ffm-sqlite3mc", environmentDescriptor.storageDriver());
     assertEquals("sqlite", environmentDescriptor.storageEngine());
     assertEquals("required", environmentDescriptor.bookProtectionMode());
     assertEquals("chacha20", environmentDescriptor.defaultBookCipher());
     assertEquals("managed-only", environmentDescriptor.sqliteLibraryMode());
     assertEquals("self-contained-bundle", environmentDescriptor.publicCliDistribution());
+    assertEquals(
+        List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64"),
+        environmentDescriptor.supportedPublicCliBundleTargets());
+    assertEquals(List.of("windows"), environmentDescriptor.unsupportedPublicCliOperatingSystems());
     assertEquals("26+", environmentDescriptor.sourceCheckoutJava());
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqliteLibraryEnvironmentVariable());

@@ -4,6 +4,7 @@ import java.io.File
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
@@ -12,6 +13,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
+@CacheableTask
 abstract class WriteRuntimeModuleListTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.NONE)
@@ -39,7 +41,6 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
                         jdepsExecutable.absolutePath,
                         "--multi-release",
                         javaVersion.get().toString(),
-                        "--ignore-missing-deps",
                         "--print-module-deps",
                         applicationJar.get().asFile.absolutePath,
                     ),

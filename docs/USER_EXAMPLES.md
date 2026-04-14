@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: USER_EXAMPLES
 updated: "2026-04-14"
 route:
@@ -13,7 +13,7 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current hard-break surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.13.0-macos-aarch64/bin/fingrind`. For source-driven local work, the equivalent
+`./fingrind-0.14.0-macos-aarch64/bin/fingrind`. For source-driven local work, the equivalent
 developer route is `./gradlew :cli:run --args="..."`.
 
 ## Choose A Book Passphrase Source

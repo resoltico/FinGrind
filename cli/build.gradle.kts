@@ -1,6 +1,7 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.erst.fingrind.buildlogic.CreateTarGzArchiveTask
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
+import dev.erst.fingrind.buildlogic.DistributionSupport
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
 import org.gradle.api.tasks.Delete
@@ -33,7 +34,7 @@ application {
 val fingrindJavaVersion = providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
 val bundleClassifier =
     providers.gradleProperty("fingrindBundleClassifier").orElse(
-        providers.provider { hostBundleClassifier() },
+        providers.provider { DistributionSupport.hostClassifier() },
     )
 val bundleName = bundleClassifier.map { classifier -> "fingrind-${project.version}-$classifier" }
 val currentJavaHomeDirectory = layout.dir(providers.provider { file(System.getProperty("java.home")) })
@@ -52,9 +53,32 @@ val distributionDirectory = layout.buildDirectory.dir("distributions")
 val bundleArchiveFileName = bundleName.map { name -> "$name.tar.gz" }
 val bundleSha256File =
     bundleName.flatMap { name -> layout.buildDirectory.file("distributions/$name.tar.gz.sha256") }
+val bundleClassifierValue = bundleClassifier.get()
+val bundleOperatingSystem = bundleClassifierValue.substringBefore('-')
+val bundleArchitecture = bundleClassifierValue.substringAfter('-')
+val bundleTemplateProperties =
+    mapOf(
+        "version" to project.version.toString(),
+        "bundleClassifier" to bundleClassifierValue,
+        "bundleOperatingSystem" to bundleOperatingSystem,
+        "bundleArchitecture" to bundleArchitecture,
+        "publicBundleTargetsJson" to
+            DistributionSupport.jsonStringArray(DistributionSupport.PUBLIC_CLI_BUNDLE_TARGETS),
+        "unsupportedPublicOperatingSystemsJson" to
+            DistributionSupport.jsonStringArray(
+                DistributionSupport.UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS,
+            ),
+        "publicBundleTargetsMarkdown" to
+            DistributionSupport.markdownBulletList(DistributionSupport.PUBLIC_CLI_BUNDLE_TARGETS),
+        "unsupportedPublicOperatingSystemsMarkdown" to
+            DistributionSupport.markdownBulletList(
+                DistributionSupport.UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS,
+            ),
+    )
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
+    jvmArgs("-Dfingrind.runtime.distribution=source-checkout-gradle")
 }
 
 tasks.named<ShadowJar>("shadowJar") {
@@ -162,9 +186,13 @@ val stageCliBundle =
         dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
         dependsOn(createRuntimeImage)
         into(bundleRootDirectory)
+        inputs.properties(bundleTemplateProperties)
 
         from(layout.projectDirectory.file("src/bundle/bin/fingrind")) {
             into("bin")
+        }
+        from(layout.projectDirectory.dir("src/bundle/root")) {
+            expand(bundleTemplateProperties)
         }
         from(shadowJarArchiveFile) {
             into("lib/app")
@@ -210,38 +238,15 @@ tasks.register("bundleCliArchive") {
 }
 
 fun hostBundleClassifier(): String {
-    val operatingSystemId = operatingSystemId()
-    val architectureId =
-        when (System.getProperty("os.arch", "").lowercase()) {
-            "arm64", "aarch64" -> "aarch64"
-            "amd64", "x86_64", "x64" -> "x86_64"
-            else ->
-                System.getProperty("os.arch", "unknown")
-                    .lowercase()
-                    .replace(Regex("[^a-z0-9]+"), "-")
-        }
-    return "$operatingSystemId-$architectureId"
+    return DistributionSupport.hostClassifier()
 }
 
 fun managedSqliteHostClassifier(): String =
-    operatingSystemId() +
-        "-" +
-        System.getProperty("os.arch", "unknown").lowercase().replace(Regex("[^a-z0-9]+"), "-")
+    DistributionSupport.hostClassifier()
 
 fun managedSqliteLibraryFileNameForHost(): String =
-    when (operatingSystemId()) {
-        "macos" -> "libsqlite3.dylib"
-        "linux" -> "libsqlite3.so.0"
-        else -> throw IllegalStateException("Unsupported host operating system for bundle staging.")
-    }
+    DistributionSupport.libraryFileNameForOperatingSystemId(operatingSystemId())
 
 fun operatingSystemId(): String {
-    val operatingSystem = System.getProperty("os.name", "").lowercase()
-    if (operatingSystem.contains("mac")) {
-        return "macos"
-    }
-    if (operatingSystem.contains("linux")) {
-        return "linux"
-    }
-    throw IllegalStateException("FinGrind bundles currently support macOS and Linux only.")
+    return DistributionSupport.operatingSystemId()
 }

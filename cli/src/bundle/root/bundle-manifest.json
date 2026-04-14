@@ -1,0 +1,62 @@
+{
+  "application": "FinGrind",
+  "version": "${version}",
+  "artifactType": "self-contained-cli-bundle",
+  "runtimeDistribution": "self-contained-bundle",
+  "publicCliDistribution": "self-contained-bundle",
+  "bundleTarget": {
+    "classifier": "${bundleClassifier}",
+    "operatingSystem": "${bundleOperatingSystem}",
+    "architecture": "${bundleArchitecture}"
+  },
+  "supportedPublicCliBundleTargets": ${publicBundleTargetsJson},
+  "unsupportedPublicCliOperatingSystems": ${unsupportedPublicOperatingSystemsJson},
+  "launcher": "./bin/fingrind",
+  "noExternalJavaRequired": true,
+  "requiresFingrindSqliteLibraryEnvironmentVariable": false,
+  "managedSqlite": {
+    "storageDriver": "sqlite-ffm-sqlite3mc",
+    "storageEngine": "sqlite",
+    "bookProtectionMode": "required",
+    "defaultBookCipher": "chacha20",
+    "libraryMode": "managed-only"
+  },
+  "bootstrap": {
+    "recommendedFirstCommand": [
+      "./bin/fingrind",
+      "help"
+    ],
+    "machineReadableContractCommand": [
+      "./bin/fingrind",
+      "capabilities"
+    ],
+    "discoveryCommands": [
+      "help",
+      "version",
+      "capabilities",
+      "print-request-template"
+    ],
+    "administrationCommands": [
+      "generate-book-key-file",
+      "open-book",
+      "rekey-book",
+      "declare-account"
+    ],
+    "queryCommands": [
+      "list-accounts"
+    ],
+    "writeCommands": [
+      "preflight-entry",
+      "post-entry"
+    ]
+  },
+  "documentationFiles": [
+    "README.md",
+    "bundle-manifest.json",
+    "LICENSE",
+    "LICENSE-APACHE-2.0",
+    "LICENSE-SQLITE3MULTIPLECIPHERS",
+    "NOTICE",
+    "PATENTS.md"
+  ]
+}
