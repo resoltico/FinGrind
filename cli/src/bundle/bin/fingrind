@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    while [[ -h "${source_path}" ]]; do
+        local source_dir
+        source_dir="$(cd -P -- "$(dirname -- "${source_path}")" && pwd)"
+        source_path="$(readlink "${source_path}")"
+        if [[ "${source_path}" != /* ]]; then
+            source_path="${source_dir}/${source_path}"
+        fi
+    done
+    cd -P -- "$(dirname -- "${source_path}")" && pwd
+}
+
+readonly script_dir="$(resolve_script_dir)"
+readonly app_home="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly runtime_java="${app_home}/runtime/bin/java"
+readonly application_jar="${app_home}/lib/app/fingrind.jar"
+
+if [[ ! -x "${runtime_java}" ]]; then
+    printf 'error: missing bundled Java runtime at %s\n' "${runtime_java}" >&2
+    exit 1
+fi
+
+if [[ ! -f "${application_jar}" ]]; then
+    printf 'error: missing FinGrind application JAR at %s\n' "${application_jar}" >&2
+    exit 1
+fi
+
+exec "${runtime_java}" \
+    --enable-native-access=ALL-UNNAMED \
+    -Dfingrind.bundle.home="${app_home}" \
+    -jar "${application_jar}" \
+    "$@"

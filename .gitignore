@@ -8,6 +8,9 @@ target/
 # IDE compiler output (VSCode Java extension, Eclipse)
 bin/
 **/bin/
+!cli/src/bundle/
+!cli/src/bundle/bin/
+!cli/src/bundle/bin/fingrind
 
 # Kotlin daemon sessions (buildSrc)
 .kotlin/
