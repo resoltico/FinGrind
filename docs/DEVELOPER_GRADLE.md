@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-14"
 route:
@@ -138,10 +138,14 @@ That contract now has a few explicit rules:
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, and `SQLITE_SECURE_DELETE=1`
-- `:cli:shadowJar` does not build a native library; `prepareManagedSqlite` is the separate Gradle
-  step that produces the managed host library under `build/managed-sqlite/`
-- local standalone `java -jar` verification that wants the managed runtime must therefore run both
-  `:cli:shadowJar` and `prepareManagedSqlite`
+- `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
+  private Java runtime image, managed native library, launcher, and checksum
+- `:cli:shadowJar` remains an internal assembly input for Docker and advanced contributor
+  debugging; it does not build a native library
+- `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
+  `build/managed-sqlite/`
+- local developer-only `java -jar` verification that wants the managed runtime must therefore run
+  both `:cli:shadowJar` and `prepareManagedSqlite`
 
 ### Committed Jazzer topology
 

@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,7 @@ class SqliteNativeLibraryTest {
     assertEquals("required", SqliteRuntime.BOOK_PROTECTION_MODE);
     assertEquals("chacha20", SqliteRuntime.DEFAULT_BOOK_CIPHER);
     assertEquals("FINGRIND_SQLITE_LIBRARY", SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE);
+    assertEquals("fingrind.bundle.home", SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY);
     assertEquals(
         java.util.List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS);
@@ -316,6 +318,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget(null));
 
+    assertTrue(exception.getMessage().contains("bin/fingrind"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
   }
 
@@ -340,6 +343,93 @@ class SqliteNativeLibraryTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new SqliteNativeLibrary.SqliteLibraryTarget(" ", "x"));
+  }
+
+  @Test
+  void configuredLibraryTarget_prefersExplicitEnvironmentLibraryOverBundleHome() {
+    SqliteNativeLibrary.SqliteLibraryTarget libraryTarget =
+        SqliteNativeLibrary.configuredLibraryTarget(
+            "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
+
+    assertEquals("managed-only", libraryTarget.mode());
+    assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
+  }
+
+  @Test
+  void configuredLibraryTarget_resolvesBundledLibraryWhenBundleHomeIsPresent() throws IOException {
+    Path bundleHomePath = tempDirectory.resolve("fingrind-0.13.0-test");
+    Path bundledLibraryPath =
+        bundleHomePath.resolve("lib").resolve("native").resolve(expectedNativeLibraryFileName());
+    Files.createDirectories(bundledLibraryPath.getParent());
+    Files.writeString(bundledLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
+
+    SqliteNativeLibrary.SqliteLibraryTarget libraryTarget =
+        SqliteNativeLibrary.configuredLibraryTarget(null, bundleHomePath.toString());
+
+    assertEquals("managed-only", libraryTarget.mode());
+    assertEquals(
+        bundledLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
+  }
+
+  @Test
+  void configuredLibraryTarget_rejectsIncompleteBundleHome() throws IOException {
+    Path bundleHomePath = tempDirectory.resolve("fingrind-0.13.0-test");
+    Files.createDirectories(bundleHomePath);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeLibrary.configuredLibraryTarget(null, bundleHomePath.toString()));
+
+    assertTrue(exception.getMessage().contains("bundle home"));
+    assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
+  }
+
+  @Test
+  void configuredLibraryTarget_rejectsMissingOrBlankInputsAcrossBundleResolutionModes() {
+    IllegalStateException missingEverywhere =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeLibrary.configuredLibraryTarget(null, null));
+    IllegalStateException blankConfiguredPath =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeLibrary.configuredLibraryTarget("   ", null));
+    IllegalStateException blankBundleHome =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeLibrary.configuredLibraryTarget(null, "   "));
+
+    assertTrue(missingEverywhere.getMessage().contains("bin/fingrind"));
+    assertTrue(blankConfiguredPath.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
+    assertTrue(blankBundleHome.getMessage().contains("bin/fingrind"));
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void supportedNativeLibraryFileName_supportsMacOsLinuxAndRejectsUnsupportedHosts()
+      throws Exception {
+    Method method = SqliteNativeLibrary.class.getDeclaredMethod("supportedNativeLibraryFileName");
+    method.setAccessible(true);
+
+    String originalOsName = System.getProperty("os.name");
+    try {
+      System.setProperty("os.name", "Mac OS X");
+      assertEquals("libsqlite3.dylib", method.invoke(null));
+
+      System.setProperty("os.name", "Linux");
+      assertEquals("libsqlite3.so.0", method.invoke(null));
+
+      System.setProperty("os.name", "FreeBSD");
+      InvocationTargetException exception =
+          assertThrows(InvocationTargetException.class, () -> method.invoke(null));
+
+      assertTrue(exception.getCause() instanceof IllegalStateException);
+      assertTrue(exception.getCause().getMessage().contains("macOS and Linux only"));
+      assertTrue(exception.getCause().getMessage().contains("FreeBSD"));
+    } finally {
+      restoreSystemProperty("os.name", originalOsName);
+    }
   }
 
   @Test
@@ -1282,6 +1372,26 @@ class SqliteNativeLibraryTest {
       case MemorySegment _ -> MemorySegment.class;
       default -> value.getClass();
     };
+  }
+
+  private static String expectedNativeLibraryFileName() {
+    String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+    if (operatingSystem.contains("mac")) {
+      return "libsqlite3.dylib";
+    }
+    if (operatingSystem.contains("linux")) {
+      return "libsqlite3.so.0";
+    }
+    throw new IllegalStateException(
+        "Unsupported test operating system: " + System.getProperty("os.name"));
+  }
+
+  private static void restoreSystemProperty(String key, String value) {
+    if (value == null) {
+      System.clearProperty(key);
+      return;
+    }
+    System.setProperty(key, value);
   }
 
   private static void closeDatabase(SqliteNativeDatabase database) throws SqliteNativeException {

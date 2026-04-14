@@ -46,6 +46,12 @@ jobs:
           printf '%s\n' "$output" | grep -Eq '"sqliteRuntimeStatus"[[:space:]]*:[[:space:]]*"ready"'
           printf '%s\n' "$output" | grep -Eq '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
 
+      - name: Build self-contained CLI bundle
+        run: ./gradlew :cli:bundleCliArchive --no-daemon --console=plain
+
+      - name: Smoke test the self-contained CLI bundle
+        run: ./scripts/bundle-smoke.sh
+
   docker-smoke:
     name: Docker smoke
     runs-on: ubuntu-latest
@@ -67,7 +73,7 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Build fat JAR
+      - name: Build internal application JAR for the Docker image
         run: ./gradlew :cli:shadowJar --no-daemon
 
       - name: Smoke test the Docker image

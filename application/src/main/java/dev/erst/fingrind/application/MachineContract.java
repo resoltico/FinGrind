@@ -619,13 +619,15 @@ public final class MachineContract {
 
   /** Descriptor for the active SQLite runtime environment. */
   public record EnvironmentDescriptor(
-      String packagedJarJava,
+      String publicCliDistribution,
+      String sourceCheckoutJava,
       String storageDriver,
       String storageEngine,
       String bookProtectionMode,
       String defaultBookCipher,
       String sqliteLibraryMode,
       String sqliteLibraryEnvironmentVariable,
+      String sqliteLibraryBundleHomeSystemProperty,
       List<String> requiredSqliteCompileOptions,
       boolean sqliteCompileOptionsVerified,
       String requiredMinimumSqliteVersion,

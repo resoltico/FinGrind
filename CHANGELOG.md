@@ -5,6 +5,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-04-14
+
+### Changed
+- Hard-broke public CLI distribution from a GitHub-release JAR onto self-contained per-platform
+  bundle archives that carry the FinGrind launcher, a private Java 26 runtime image, the managed
+  SQLite3MC native library, and release checksums.
+- Reworked the machine-facing runtime contract to describe the real public distribution surface
+  through `publicCliDistribution`, `sourceCheckoutJava`, and
+  `sqliteLibraryBundleHomeSystemProperty`.
+
+### Fixed
+- Eliminated the public `fingrind.jar` release mismatch by teaching the SQLite runtime to resolve
+  its managed native library from extracted bundle home while preserving the explicit
+  `FINGRIND_SQLITE_LIBRARY` override for developer-only raw-JAR work.
+- Added first-class bundle packaging and smoke verification to Gradle, `./check.sh`, CI, and the
+  GitHub release workflow, so the primary published artifact is now built and asserted directly.
+- Fixed bundle smoke archive discovery to target the current host/version bundle deterministically
+  instead of failing when older release archives are still present in `cli/build/distributions`.
+- Updated the README, user docs, developer docs, and release protocol to codify the bundle-first
+  distribution policy, the current public target matrix, the Linux glibc bundle stance, and the
+  release-automation use of Zulu 26 for `javac`, `jdeps`, and `jlink`.
+
 ## [0.12.0] - 2026-04-14
 
 ### Changed
@@ -295,7 +317,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.13.0
 [0.12.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.12.0
 [0.11.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.11.0
 [0.10.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.10.0

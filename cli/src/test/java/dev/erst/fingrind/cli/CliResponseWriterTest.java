@@ -49,8 +49,8 @@ class CliResponseWriterTest {
             "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"));
 
     JsonNode json = readJson(outputStream);
-    assertEquals("ok", json.path("status").asText());
-    assertEquals("0.9.0", json.path("payload").path("version").asText());
+    assertEquals("ok", json.path("status").asString());
+    assertEquals("0.9.0", json.path("payload").path("version").asString());
   }
 
   @Test
@@ -65,6 +65,7 @@ class CliResponseWriterTest {
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             new MachineContract.EnvironmentDescriptor(
+                "self-contained-bundle",
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -72,6 +73,7 @@ class CliResponseWriterTest {
                 "chacha20",
                 "managed-only",
                 "FINGRIND_SQLITE_LIBRARY",
+                "fingrind.bundle.home",
                 List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
                 false,
                 "3.53.0",
@@ -88,7 +90,8 @@ class CliResponseWriterTest {
 
     assertTrue(payload.has("preflightSemantics"));
     assertTrue(payload.has("currencyModel"));
-    assertEquals("required", environment.path("bookProtectionMode").asText());
+    assertEquals("required", environment.path("bookProtectionMode").asString());
+    assertEquals("self-contained-bundle", environment.path("publicCliDistribution").asString());
     assertFalse(environment.has("loadedSqliteVersion"));
     assertFalse(environment.has("loadedSqlite3mcVersion"));
   }
@@ -103,13 +106,13 @@ class CliResponseWriterTest {
             Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
 
     JsonNode json = readJson(outputStream);
-    assertEquals("ok", json.path("status").asText());
+    assertEquals("ok", json.path("status").asString());
     assertEquals(
         Path.of("secrets").resolve("entity.book-key").toAbsolutePath().normalize().toString(),
-        json.path("payload").path("bookKeyFile").asText());
-    assertEquals("base64url-no-padding", json.path("payload").path("encoding").asText());
+        json.path("payload").path("bookKeyFile").asString());
+    assertEquals("base64url-no-padding", json.path("payload").path("encoding").asString());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());
-    assertEquals("0600", json.path("payload").path("permissions").asText());
+    assertEquals("0600", json.path("payload").path("permissions").asString());
   }
 
   @Test
@@ -345,11 +348,11 @@ class CliResponseWriterTest {
     objectNode.set("array", arrayNode);
 
     JsonNode sanitized = invokeWithoutNulls(withoutNulls, objectNode);
-    assertEquals("value", sanitized.path("kept").asText());
+    assertEquals("value", sanitized.path("kept").asString());
     assertFalse(sanitized.has("jsonNull"));
     assertFalse(sanitized.path("nested").has("nestedNull"));
-    assertEquals("nested-value", sanitized.path("nested").path("nestedKept").asText());
-    assertEquals("entry", sanitized.path("array").get(0).asText());
+    assertEquals("nested-value", sanitized.path("nested").path("nestedKept").asString());
+    assertEquals("entry", sanitized.path("array").get(0).asString());
     assertTrue(sanitized.path("array").get(1).isNull());
   }
 

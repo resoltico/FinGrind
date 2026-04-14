@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.12.0"
+version: "0.13.0"
 domain: DEVELOPER
 updated: "2026-04-14"
 route:
@@ -18,6 +18,7 @@ Companion documents:
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md)
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
+- [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md)
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
@@ -91,7 +92,7 @@ FinGrind is intentionally hard-break oriented right now:
 | Java | 26 |
 | Gradle Wrapper | 9.4.1 |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build |
+| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build |
 | Jackson Databind | 3.1.1 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
@@ -127,7 +128,8 @@ java --version
 ./gradlew prepareManagedSqlite
 ./gradlew check
 ./gradlew coverage
-./gradlew :cli:shadowJar
+./gradlew :cli:bundleCliArchive
+./scripts/bundle-smoke.sh
 ./check.sh
 ```
 
@@ -174,11 +176,15 @@ This matters even when a repo currently has only the default Gradle `test` task:
 Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a managed SQLite
 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library from
 `third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/`, inject that library through
-`FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI JAR on the same
+`FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI surfaces on the same
 `Enable-Native-Access: ALL-UNNAMED` runtime contract.
 
-For local standalone JAR verification, remember that `:cli:shadowJar` packages only the Java
-surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
+Public release verification now centers on the self-contained bundle archive, not the raw JAR.
+`./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` proves that
+the extracted bundle runs without ambient Java or a preconfigured `FINGRIND_SQLITE_LIBRARY`.
+
+For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
+Java surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
 `FINGRIND_SQLITE_LIBRARY` at
 the resulting file under `build/managed-sqlite/`, for example:
 
@@ -191,7 +197,8 @@ java -jar cli/build/libs/fingrind.jar capabilities
 - root `check`
 - root `coverage`
 - nested `./gradlew -p jazzer check`
-- `:cli:shadowJar`
+- `:cli:bundleCliArchive`
+- self-contained bundle smoke verification
 - shell syntax checks for release-surface scripts
 - Docker smoke verification, including semantic JSON assertions for discovery, explicit book lifecycle, and write responses
 
@@ -232,9 +239,9 @@ root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 
-The repository currently ships three workflow surfaces:
+The repository currently ships four workflow surfaces:
 - `CI` runs on pushes and pull requests to `main`, and includes `Check` and `Docker smoke`.
-- `Release` runs for `v*` tags or manual dispatch, builds the fat JAR, and publishes the GitHub release.
+- `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
 

@@ -20,6 +20,7 @@ class MachineContractTest {
         MachineContract.capabilities(
             new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
             new MachineContract.EnvironmentDescriptor(
+                "self-contained-bundle",
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -27,6 +28,7 @@ class MachineContractTest {
                 "chacha20",
                 "managed-only",
                 "FINGRIND_SQLITE_LIBRARY",
+                "fingrind.bundle.home",
                 List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
                 true,
                 "3.53.0",
@@ -87,6 +89,7 @@ class MachineContractTest {
         new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc");
     MachineContract.EnvironmentDescriptor environment =
         new MachineContract.EnvironmentDescriptor(
+            "self-contained-bundle",
             "26+",
             "sqlite-ffm-sqlite3mc",
             "sqlite",
@@ -94,6 +97,7 @@ class MachineContractTest {
             "chacha20",
             "managed-only",
             "FINGRIND_SQLITE_LIBRARY",
+            "fingrind.bundle.home",
             List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
             true,
             "3.53.0",

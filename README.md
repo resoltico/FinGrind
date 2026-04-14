@@ -50,22 +50,32 @@ The book lifecycle is explicit:
 
 ## Quick Start
 
-Build the standalone CLI JAR:
+Public FinGrind CLI downloads are self-contained bundle archives, not a standalone JAR.
+Current bundle targets are:
+- `macos-aarch64`
+- `linux-x86_64`
+- `linux-aarch64`
+
+One public bundle flow:
 
 ```bash
-./gradlew :cli:shadowJar
-./gradlew prepareManagedSqlite
-export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
+tar -xzf fingrind-0.13.0-macos-aarch64.tar.gz
+./fingrind-0.13.0-macos-aarch64/bin/fingrind help
 ```
+
+Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
+hosts. They are not presented as a universal Linux binary for every libc variant.
 
 Controlled FinGrind surfaces pin a managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3
 runtime:
+- public bundle archives
 - `./gradlew test`, `./gradlew check`, and `./gradlew :cli:run`
+- `./gradlew :cli:bundleCliArchive` and `./scripts/bundle-smoke.sh`
 - `./gradlew -p jazzer check` and local `jazzer/bin/*` fuzzing commands
 - GitHub Actions verification and release workflows
 - the published container image
 
-For local work from a supported local-filesystem checkout, the simplest path is:
+For local work from a supported local-filesystem checkout, the simplest path remains:
 
 ```bash
 ./gradlew :cli:run --args="help"
@@ -74,14 +84,20 @@ For local work from a supported local-filesystem checkout, the simplest path is:
 That route automatically compiles and injects the managed SQLite 3.53.0 / SQLite3 Multiple
 Ciphers 2.3.3 runtime.
 
-For standalone `java -jar`, FinGrind does not bundle a native SQLite library.
-Set `FINGRIND_SQLITE_LIBRARY` to the managed library produced by
-`./gradlew prepareManagedSqlite`.
-FinGrind does not support arbitrary host `libsqlite3` fallback for standalone execution.
+The raw `java -jar` path still exists for advanced contributor work, but it is not the public
+FinGrind download contract:
 
+```bash
+./gradlew :cli:shadowJar
+./gradlew prepareManagedSqlite
+export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
+java -jar cli/build/libs/fingrind.jar help
+```
+
+FinGrind does not support arbitrary host `libsqlite3` fallback.
 The `find .../build/managed-sqlite` export above is the supported local source-checkout path
-because it keeps standalone JAR verification on the same managed native library contract as
-Gradle, Jazzer, CI, and Docker.
+because it keeps developer-only raw-JAR verification on the same managed native library contract
+as Gradle, Jazzer, CI, and Docker.
 
 For full contributor verification, keep the checkout on the Mac's local filesystem.
 Mounted external volumes are outside the supported setup because Gradle project-cache and JaCoCo
@@ -93,17 +109,13 @@ Buildx rather than Docker's deprecated legacy builder path. That smoke stage use
 that empty config so verification stays independent from personal Docker auth state without
 assuming one fixed plugin-install path.
 
-Inspect the standalone command surface:
-
-```bash
-java -jar cli/build/libs/fingrind.jar help
-```
+In the examples below, `fingrind` means the extracted bundle launcher.
 
 Choose one book passphrase source before any book-bound command.
 For humans, the best non-persistent route is the interactive prompt:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   open-book \
   --book-file /tmp/acme-book.sqlite \
   --book-passphrase-prompt
@@ -126,7 +138,7 @@ For pipeline-style automation without a persistent file, standard input is also 
 
 ```bash
 printf '%s\n' 'acme-demo-passphrase' | \
-  java -jar cli/build/libs/fingrind.jar \
+  fingrind \
     open-book \
     --book-file /tmp/acme-book.sqlite \
     --book-passphrase-stdin
@@ -135,11 +147,11 @@ printf '%s\n' 'acme-demo-passphrase' | \
 Initialize a new book:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   generate-book-key-file \
   --book-key-file /tmp/fingrind/keys/acme.book-key
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   open-book \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key
@@ -148,7 +160,7 @@ java -jar cli/build/libs/fingrind.jar \
 Rotate that book onto a replacement passphrase when needed:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   rekey-book \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -158,13 +170,13 @@ java -jar cli/build/libs/fingrind.jar \
 Declare the accounts that your first entry will use:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   declare-account \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file docs/examples/declare-account-cash.json
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   declare-account \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -174,20 +186,20 @@ java -jar cli/build/libs/fingrind.jar \
 Generate a minimal posting request:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 Preflight and then commit that request:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   preflight-entry \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --request-file /tmp/fingrind-request.json
 
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   post-entry \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
@@ -197,7 +209,7 @@ java -jar cli/build/libs/fingrind.jar \
 Inspect the declared account registry at any time:
 
 ```bash
-java -jar cli/build/libs/fingrind.jar \
+fingrind \
   list-accounts \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key
@@ -255,8 +267,8 @@ Current deterministic rejection codes include:
 
 ## Notes
 
-- `java -jar cli/build/libs/fingrind.jar ...` assumes `java` is version 26 or newer.
-- The packaged JAR does not require an external `sqlite3` binary and does not shell out to
+- Public bundle execution does not require a separately installed Java runtime.
+- The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - `./gradlew :cli:run ...` automatically injects the managed SQLite 3.53.0 / SQLite3 Multiple
   Ciphers 2.3.3 runtime.
@@ -270,11 +282,12 @@ Current deterministic rejection codes include:
   existing path.
 - Opened book connections keep `foreign_keys=ON`, `journal_mode=DELETE`, `synchronous=EXTRA`,
   `trusted_schema=OFF`, `secure_delete=ON`, and `temp_store=MEMORY`.
-- Standalone `java -jar ...` execution requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed
-  SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 library built by `prepareManagedSqlite`.
-- For a local source checkout, `:cli:shadowJar` packages only the Java surface.
-  Run `./gradlew prepareManagedSqlite` as well before validating the standalone JAR against the
-  managed native library under `build/managed-sqlite/`.
+- The public bundle launcher resolves the managed SQLite library from its extracted bundle home.
+- The developer-only `java -jar ...` path requires `FINGRIND_SQLITE_LIBRARY` pointing at the
+  managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 library built by `prepareManagedSqlite`.
+- For a local source checkout, `:cli:shadowJar` packages only the Java application surface.
+  Run `./gradlew prepareManagedSqlite` as well before validating that developer-only raw-JAR path
+  against the managed native library under `build/managed-sqlite/`.
 - `help`, `version`, and `capabilities` return JSON envelopes for discovery.
 - `print-request-template` returns raw JSON so it can be piped straight into a file.
 - `open-book`, `rekey-book`, `declare-account`, `list-accounts`, `preflight-entry`, and
@@ -316,6 +329,7 @@ Current deterministic rejection codes include:
 ## More Developer Docs
 
 - [docs/DEVELOPER.md](docs/DEVELOPER.md)
+- [docs/DEVELOPER_DISTRIBUTION.md](docs/DEVELOPER_DISTRIBUTION.md)
 - [docs/DEVELOPER_DOCKER.md](docs/DEVELOPER_DOCKER.md)
 - [docs/DEVELOPER_GRADLE.md](docs/DEVELOPER_GRADLE.md)
 - [docs/DEVELOPER_SQLITE.md](docs/DEVELOPER_SQLITE.md)
@@ -324,12 +338,13 @@ Current deterministic rejection codes include:
 
 ## Legal
 
-FinGrind is MIT-licensed. Its executable JAR bundles Jackson; see [NOTICE](NOTICE) for the
-complete attribution list and [PATENTS.md](PATENTS.md) for patent considerations. FinGrind vendors
-the official SQLite3 Multiple Ciphers 2.3.3 amalgamation, based on SQLite 3.53.0, to build
-managed native libraries for Gradle, CI, Jazzer, and container surfaces. SQLite3 Multiple Ciphers
-is MIT-licensed via [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS), while the
-underlying SQLite sources remain in the public domain. The executable JAR itself does not bundle a
-native SQLite library.
+FinGrind is MIT-licensed. Public CLI bundles ship the FinGrind application JAR, a private Java 26
+runtime, and the managed SQLite3 Multiple Ciphers native library for the target platform; the app
+JAR itself bundles Jackson. See [NOTICE](NOTICE) for the complete attribution list and
+[PATENTS.md](PATENTS.md) for patent considerations. FinGrind vendors the official SQLite3 Multiple
+Ciphers 2.3.3 amalgamation, based on SQLite 3.53.0, to build managed native libraries for bundle,
+Gradle, CI, Jazzer, and container surfaces. SQLite3 Multiple Ciphers is MIT-licensed via
+[LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS), while the underlying SQLite
+sources remain in the public domain.
 
 [LICENSE](LICENSE) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md)

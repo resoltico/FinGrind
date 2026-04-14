@@ -16,12 +16,16 @@
 # CI runs only the root check task (verification without report generation).
 #
 # Stage 3 mirrors the GitHub release packaging workflow:
-#   :cli:shadowJar -> build the distributable fat JAR
+#   :cli:bundleCliArchive -> build the self-contained CLI archive plus SHA-256 checksum
 #
-# Stage 4 syntax-checks the release-surface shell scripts:
+# Stage 4 exercises the public release bundle from a clean extracted archive:
+#   scripts/bundle-smoke.sh -> verify discovery, explicit book lifecycle, and write behavior
+#                              without ambient Java or a preconfigured SQLite library path
+#
+# Stage 5 syntax-checks the release-surface shell scripts:
 #   bash -n check.sh scripts/*.sh jazzer/bin/*
 #
-# Stage 5 exercises the Docker release surface from a non-default working directory:
+# Stage 6 exercises the Docker release surface from a non-default working directory:
 #   scripts/docker-smoke.sh -> build the image and verify discovery, explicit book lifecycle,
 #                              and write behavior
 #
@@ -129,12 +133,13 @@ print_usage() {
     printf '%s\n' \
         'Usage: ./check.sh [supported gradle options]' \
         '' \
-        'Runs five fixed stages against the repository that contains this script:' \
+        'Runs six fixed stages against the repository that contains this script:' \
         '  1. check coverage' \
         '  2. jazzer check' \
-        '  3. :cli:shadowJar' \
-        '  4. bash -n check.sh scripts/*.sh jazzer/bin/*' \
-        '  5. scripts/docker-smoke.sh' \
+        '  3. :cli:bundleCliArchive' \
+        '  4. scripts/bundle-smoke.sh' \
+        '  5. bash -n check.sh scripts/*.sh jazzer/bin/*' \
+        '  6. scripts/docker-smoke.sh' \
         '' \
         'Supported options:' \
         '  -h, --help' \
@@ -772,13 +777,15 @@ run_shell_stage() {
     run_monitored_command "${stage_id}" "${stage_label}" "${repo_root}" "$@"
 }
 
-run_stage 'quality-gates' 'Stage 1/5: running quality gates' "${repo_root}" check coverage
+run_stage 'quality-gates' 'Stage 1/6: running quality gates' "${repo_root}" check coverage
 run_stage \
     'jazzer-check' \
-    'Stage 2/5: running Jazzer support tests and regression replay' \
+    'Stage 2/6: running Jazzer support tests and regression replay' \
     "${repo_root}/jazzer" \
     check
-run_stage 'cli-shadowjar' 'Stage 3/5: building CLI fat JAR' "${repo_root}" :cli:shadowJar
+run_stage 'cli-bundle' 'Stage 3/6: building self-contained CLI bundle archive' "${repo_root}" :cli:bundleCliArchive
+run_shell_stage 'bundle-smoke' 'Stage 4/6: running self-contained bundle smoke test' \
+    "${repo_root}/scripts/bundle-smoke.sh"
 
 shell_syntax_targets=("${repo_root}/check.sh")
 if [[ -d "${repo_root}/scripts" ]]; then
@@ -792,6 +799,6 @@ if [[ -d "${repo_root}/jazzer/bin" ]]; then
     done < <(find "${repo_root}/jazzer/bin" -maxdepth 1 -type f | sort)
 fi
 
-run_shell_stage 'shell-syntax' 'Stage 4/5: syntax-checking release-surface shell scripts' \
+run_shell_stage 'shell-syntax' 'Stage 5/6: syntax-checking release-surface shell scripts' \
     bash -n "${shell_syntax_targets[@]}"
-run_shell_stage 'docker-smoke' 'Stage 5/5: running Docker smoke test' "${repo_root}/scripts/docker-smoke.sh"
+run_shell_stage 'docker-smoke' 'Stage 6/6: running Docker smoke test' "${repo_root}/scripts/docker-smoke.sh"

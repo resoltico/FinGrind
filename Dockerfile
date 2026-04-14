@@ -18,8 +18,9 @@ ENV FINGRIND_SQLITE_LIBRARY=/opt/fingrind/lib/libsqlite3.so.0
 
 COPY --from=sqlite-builder /build/sqlite/libsqlite3.so.0 /opt/fingrind/lib/libsqlite3.so.0
 
-# The fat JAR is built by the GitHub Actions workflow (./gradlew :cli:shadowJar)
-# before docker build is invoked. For local use, run that command first.
+# The internal application JAR is built by the GitHub Actions workflow
+# (./gradlew :cli:shadowJar) before docker build is invoked. Public CLI downloads are the
+# self-contained bundle archives, not this assembly input.
 COPY cli/build/libs/fingrind.jar fingrind.jar
 
 ENTRYPOINT ["java", "-jar", "/app/fingrind.jar"]
