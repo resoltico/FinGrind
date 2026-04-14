@@ -15,7 +15,7 @@ public final class MachineContract {
   private static final List<String> DISCOVERY_COMMANDS =
       List.of("help", "version", "capabilities", "print-request-template");
   private static final List<String> ADMINISTRATION_COMMANDS =
-      List.of("open-book", "declare-account");
+      List.of("open-book", "rekey-book", "declare-account");
   private static final List<String> QUERY_COMMANDS = List.of("list-accounts");
   private static final List<String> WRITE_COMMANDS = List.of("preflight-entry", "post-entry");
   private static final List<String> STORAGE_ENGINES = List.of("sqlite");
@@ -39,6 +39,7 @@ public final class MachineContract {
             "fingrind capabilities",
             "fingrind print-request-template",
             "fingrind open-book --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt]",
+            "fingrind rekey-book --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] [--new-book-key-file <path> | --new-book-passphrase-stdin | --new-book-passphrase-prompt]",
             "fingrind declare-account --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->",
             "fingrind list-accounts --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt]",
             "fingrind preflight-entry --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->",
@@ -49,6 +50,7 @@ public final class MachineContract {
             "fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
             "printf '%s\n' 'acme-demo-passphrase' | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
             "fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-prompt",
+            "fingrind rekey-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --new-book-passphrase-prompt",
             "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-cash.json",
             "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-revenue.json",
             "fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
@@ -154,6 +156,15 @@ public final class MachineContract {
                 "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt"),
             "json-envelope",
             "Initialize a new book file with the canonical schema."),
+        new CommandDescriptor(
+            "rekey-book",
+            List.of(),
+            List.of(
+                "--book-file <path>",
+                "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt",
+                "--new-book-key-file <path> | --new-book-passphrase-stdin | --new-book-passphrase-prompt"),
+            "json-envelope",
+            "Rotate the passphrase that protects one existing book."),
         new CommandDescriptor(
             "declare-account",
             List.of(),
@@ -599,6 +610,8 @@ public final class MachineContract {
       String bookProtectionMode,
       String defaultBookCipher,
       String sqliteLibrarySource,
+      List<String> requiredSqliteCompileOptions,
+      boolean sqliteCompileOptionsVerified,
       String requiredMinimumSqliteVersion,
       String requiredSqlite3mcVersion,
       String sqliteRuntimeStatus,

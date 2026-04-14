@@ -20,6 +20,10 @@ sealed interface CliCommand {
   /** Explicitly initializes one book file with the canonical schema. */
   record OpenBook(BookAccess bookAccess) implements CliCommand {}
 
+  /** Rotates the passphrase that protects one existing book file. */
+  record RekeyBook(BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource)
+      implements CliCommand {}
+
   /** Declares or reactivates one account in the selected book. */
   record DeclareAccount(BookAccess bookAccess, Path requestFile) implements CliCommand {}
 

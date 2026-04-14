@@ -21,6 +21,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.sqlite.RekeyBookResult;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,12 +31,14 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -81,7 +84,8 @@ class FinGrindCliTest {
     assertTrue(json.contains("\"book-not-initialized\""));
     assertTrue(json.contains("\"account-normal-balance-conflict\""));
     assertEquals(
-        "[\"open-book\",\"declare-account\"]", payload.path("administrationCommands").toString());
+        "[\"open-book\",\"rekey-book\",\"declare-account\"]",
+        payload.path("administrationCommands").toString());
     assertEquals("[\"list-accounts\"]", payload.path("queryCommands").toString());
     assertTrue(payload.path("requestShapes").has("postEntry"));
     assertTrue(payload.path("requestShapes").has("declareAccount"));
@@ -116,6 +120,10 @@ class FinGrindCliTest {
     assertEquals("required", payload.path("environment").path("bookProtectionMode").asText());
     assertEquals("chacha20", payload.path("environment").path("defaultBookCipher").asText());
     assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asString());
+    assertEquals(
+        "[\"THREADSAFE=1\",\"OMIT_LOAD_EXTENSION\",\"TEMP_STORE=3\",\"SECURE_DELETE\"]",
+        payload.path("environment").path("requiredSqliteCompileOptions").toString());
+    assertTrue(payload.path("environment").path("sqliteCompileOptionsVerified").asBoolean());
     assertEquals("2.3.3", payload.path("environment").path("requiredSqlite3mcVersion").asText());
     assertEquals("2.3.3", payload.path("environment").path("loadedSqlite3mcVersion").asText());
     assertEquals(
@@ -155,6 +163,10 @@ class FinGrindCliTest {
     assertEquals("required", environmentDescriptor.bookProtectionMode());
     assertEquals("chacha20", environmentDescriptor.defaultBookCipher());
     assertEquals("system", environmentDescriptor.sqliteLibrarySource());
+    assertEquals(
+        List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+        environmentDescriptor.requiredSqliteCompileOptions());
+    assertFalse(environmentDescriptor.sqliteCompileOptionsVerified());
     assertEquals("3.53.0", environmentDescriptor.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", environmentDescriptor.requiredSqlite3mcVersion());
     assertEquals("unavailable", environmentDescriptor.sqliteRuntimeStatus());
@@ -309,6 +321,79 @@ class FinGrindCliTest {
   }
 
   @Test
+  void run_rekeyBookThroughDefaultSqliteWorkflowRotatesBookKey() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("rekey-books").resolve("entity.sqlite");
+    Path currentBookKeyFilePath = writeBookKey(bookFilePath, TEST_BOOK_KEY);
+    Path replacementBookKeyFilePath = writeNamedBookKey("replacement-book.key", "replacement-key");
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              currentBookKeyFilePath.toString()
+            }));
+
+    ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
+    FinGrindCli rekeyCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
+    assertEquals(
+        0,
+        rekeyCli.run(
+            new String[] {
+              "rekey-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              currentBookKeyFilePath.toString(),
+              "--new-book-key-file",
+              replacementBookKeyFilePath.toString()
+            }));
+    assertTrue(rekeyOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
+
+    ByteArrayOutputStream oldKeyOutput = new ByteArrayOutputStream();
+    FinGrindCli oldKeyCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(oldKeyOutput), fixedClock());
+    assertEquals(
+        1,
+        oldKeyCli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              currentBookKeyFilePath.toString()
+            }));
+    assertTrue(
+        oldKeyOutput.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
+
+    ByteArrayOutputStream newKeyOutput = new ByteArrayOutputStream();
+    FinGrindCli newKeyCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(newKeyOutput), fixedClock());
+    assertEquals(
+        0,
+        newKeyCli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              replacementBookKeyFilePath.toString()
+            }));
+    assertTrue(newKeyOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
   void run_openBookDeclareAccountListAccountsAndCommitThroughDefaultSqliteWorkflow()
       throws IOException {
     Path requestFile = writeRequest(validRequestJson());
@@ -449,6 +534,7 @@ class FinGrindCliTest {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 new DeclaredAccount(
                     new AccountCode("1000"),
@@ -547,12 +633,67 @@ class FinGrindCliTest {
   }
 
   @Test
+  void run_routesRekeyBookThroughSelectedBookWorkflow() {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("rekey.sqlite");
+    Path currentBookKeyFilePath = writeBookKey(bookFilePath);
+    Path replacementBookKeyFilePath = writeNamedBookKey("replacement.key", "replacement-key");
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(bookFilePath),
+            new DeclareAccountResult.Declared(
+                new DeclaredAccount(
+                    new AccountCode("1000"),
+                    new AccountName("Cash"),
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(List.of()),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    assertEquals(
+        0,
+        cli.run(
+            new String[] {
+              "rekey-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              currentBookKeyFilePath.toString(),
+              "--new-book-key-file",
+              replacementBookKeyFilePath.toString()
+            }));
+
+    assertEquals(
+        List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.rekeyBookAccesses());
+    assertEquals(
+        List.of(new BookAccess.PassphraseSource.KeyFile(replacementBookKeyFilePath)),
+        workflow.rekeyReplacementPassphraseSources());
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
   void run_mapsBookWorkflowRejectionsToExitCodeTwo() throws IOException {
     Path declareAccountFile =
         writeNamedRequest("declare.json", declareAccountJson("1000", "Cash", "DEBIT"));
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
+            new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
             new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
             new ListAccountsResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
             new PostEntryResult.Rejected(
@@ -577,6 +718,23 @@ class FinGrindCliTest {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString()
+                }));
+    assertEquals(
+        2,
+        new FinGrindCli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                workflow)
+            .run(
+                new String[] {
+                  "rekey-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--new-book-key-file",
+                  tempDirectory.resolve("replacement.key").toString()
                 }));
     assertEquals(
         2,
@@ -692,6 +850,37 @@ class FinGrindCliTest {
   }
 
   @Test
+  void run_mapsManagedSqliteRuntimeFailureToRuntimeFailureWithEnvironmentHint() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            new ExplodingWorkflow("FINGRIND_SQLITE_LIBRARY is not configured."));
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "rekey-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--new-book-key-file",
+              tempDirectory.resolve("replacement.key").toString()
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("Build the managed SQLite runtime with ./gradlew prepareManagedSqlite"));
+  }
+
+  @Test
   void run_mapsGenericRuntimeFailureToRuntimeFailureWithGenericHint() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
@@ -765,6 +954,7 @@ class FinGrindCliTest {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 new DeclaredAccount(
                     new AccountCode("1000"),
@@ -813,6 +1003,7 @@ class FinGrindCliTest {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
                 new DeclaredAccount(
                     new AccountCode("1000"),
@@ -854,16 +1045,39 @@ class FinGrindCliTest {
   }
 
   private Path writeBookKey(Path bookFilePath) {
+    return writeBookKey(bookFilePath, TEST_BOOK_KEY);
+  }
+
+  private Path writeBookKey(Path bookFilePath, String keyText) {
     try {
       Path bookKeyFilePath = bookFilePath.resolveSibling(bookFilePath.getFileName() + ".key");
       if (bookKeyFilePath.getParent() != null) {
         Files.createDirectories(bookKeyFilePath.getParent());
       }
-      Files.writeString(bookKeyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+      writeSecureKey(bookKeyFilePath, keyText);
       return bookKeyFilePath;
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
+  }
+
+  private Path writeNamedBookKey(String fileName, String keyText) {
+    try {
+      Path keyFilePath = tempDirectory.resolve(fileName);
+      writeSecureKey(keyFilePath, keyText);
+      return keyFilePath;
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
+  }
+
+  private static void writeSecureKey(Path keyFilePath, String keyText) throws IOException {
+    if (keyFilePath.getParent() != null) {
+      Files.createDirectories(keyFilePath.getParent());
+    }
+    Files.writeString(keyFilePath, keyText, StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        keyFilePath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   private static Clock fixedClock() {
@@ -918,11 +1132,15 @@ class FinGrindCliTest {
   /** Recording workflow used to assert CLI routing without opening SQLite. */
   private static final class RecordingWorkflow implements FinGrindCli.BookWorkflow {
     private final List<BookAccess> openBookAccesses = new ArrayList<>();
+    private final List<BookAccess> rekeyBookAccesses = new ArrayList<>();
+    private final List<BookAccess.PassphraseSource> rekeyReplacementPassphraseSources =
+        new ArrayList<>();
     private final List<BookAccess> declareAccountAccesses = new ArrayList<>();
     private final List<BookAccess> listAccountAccesses = new ArrayList<>();
     private final List<BookAccess> preflightAccesses = new ArrayList<>();
     private final List<BookAccess> commitAccesses = new ArrayList<>();
     private final OpenBookResult openBookResult;
+    private final RekeyBookResult rekeyBookResult;
     private final DeclareAccountResult declareAccountResult;
     private final ListAccountsResult listAccountsResult;
     private final PostEntryResult preflightResult;
@@ -930,11 +1148,13 @@ class FinGrindCliTest {
 
     private RecordingWorkflow(
         OpenBookResult openBookResult,
+        RekeyBookResult rekeyBookResult,
         DeclareAccountResult declareAccountResult,
         ListAccountsResult listAccountsResult,
         PostEntryResult preflightResult,
         PostEntryResult commitResult) {
       this.openBookResult = openBookResult;
+      this.rekeyBookResult = rekeyBookResult;
       this.declareAccountResult = declareAccountResult;
       this.listAccountsResult = listAccountsResult;
       this.preflightResult = preflightResult;
@@ -945,6 +1165,14 @@ class FinGrindCliTest {
     public OpenBookResult openBook(BookAccess bookAccess) {
       openBookAccesses.add(bookAccess);
       return openBookResult;
+    }
+
+    @Override
+    public RekeyBookResult rekeyBook(
+        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+      rekeyBookAccesses.add(bookAccess);
+      rekeyReplacementPassphraseSources.add(replacementPassphraseSource);
+      return rekeyBookResult;
     }
 
     @Override
@@ -980,6 +1208,14 @@ class FinGrindCliTest {
       return declareAccountAccesses;
     }
 
+    private List<BookAccess> rekeyBookAccesses() {
+      return rekeyBookAccesses;
+    }
+
+    private List<BookAccess.PassphraseSource> rekeyReplacementPassphraseSources() {
+      return rekeyReplacementPassphraseSources;
+    }
+
     private List<BookAccess> listAccountAccesses() {
       return listAccountAccesses;
     }
@@ -994,6 +1230,7 @@ class FinGrindCliTest {
 
     private boolean workflowInvoked() {
       return !openBookAccesses.isEmpty()
+          || !rekeyBookAccesses.isEmpty()
           || !declareAccountAccesses.isEmpty()
           || !listAccountAccesses.isEmpty()
           || !preflightAccesses.isEmpty()
@@ -1011,6 +1248,12 @@ class FinGrindCliTest {
 
     @Override
     public OpenBookResult openBook(BookAccess bookAccess) {
+      throw new IllegalStateException(message);
+    }
+
+    @Override
+    public RekeyBookResult rekeyBook(
+        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       throw new IllegalStateException(message);
     }
 
@@ -1040,6 +1283,12 @@ class FinGrindCliTest {
   private static final class IllegalArgumentWorkflow implements FinGrindCli.BookWorkflow {
     @Override
     public OpenBookResult openBook(BookAccess bookAccess) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
+    public RekeyBookResult rekeyBook(
+        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       throw new IllegalArgumentException("workflow boom");
     }
 

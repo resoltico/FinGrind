@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: USER_CLI
 updated: "2026-04-14"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, stdin, open-book, declare-account]
-  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "what exit codes does the fingrind cli use"]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, stdin, open-book, rekey-book, declare-account]
+  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I rotate a fingrind book passphrase", "what exit codes does the fingrind cli use"]
 ---
 
 # CLI Guide
@@ -30,6 +30,7 @@ Every book-bound command also requires exactly one passphrase source:
 `print-request-template` returns one raw JSON document so it can be redirected into a file or piped
 into another process.
 `open-book` explicitly initializes one new protected book.
+`rekey-book` rotates the passphrase that protects one existing initialized book.
 `declare-account` inserts or reactivates one account in the selected book.
 `list-accounts` returns the current account registry.
 `preflight-entry` and `post-entry` both require an already initialized book and declared active
@@ -48,6 +49,7 @@ Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `ch
 | `capabilities` | none | none | returns machine-readable storage, command, typed request-field descriptors, response descriptors, and account-registry capabilities |
 | `print-request-template` | `--print-request-template` | none | returns a minimal valid posting request JSON document |
 | `open-book` | none | `--book-file`, exactly one of `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt` | creates one initialized protected book with the canonical schema |
+| `rekey-book` | none | `--book-file`, exactly one current passphrase source, exactly one replacement passphrase source | rotates the passphrase that protects the selected existing book |
 | `declare-account` | none | `--book-file`, exactly one passphrase source, `--request-file` | declares or reactivates one account in the selected book |
 | `list-accounts` | none | `--book-file`, exactly one passphrase source | returns the selected book's declared account registry |
 | `preflight-entry` | none | `--book-file`, exactly one passphrase source, `--request-file` | validates one posting request without committing it |
@@ -98,8 +100,10 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 | unsupported command | `2` | `unknown-command` | `Unsupported command: ...` |
 | missing `--book-file` | `2` | `invalid-request` | `A --book-file argument is required.` |
 | missing book passphrase source | `2` | `invalid-request` | `Exactly one book passphrase source is required: ...` |
+| missing replacement passphrase source on `rekey-book` | `2` | `invalid-request` | `Exactly one replacement book passphrase source is required: ...` |
 | missing `--request-file` | `2` | `invalid-request` | `A --request-file argument is required.` |
 | multiple passphrase sources | `2` | `invalid-request` | `Exactly one book passphrase source is permitted per command.` |
+| multiple replacement passphrase sources on `rekey-book` | `2` | `invalid-request` | `Exactly one replacement book passphrase source is permitted per command.` |
 | same path used for both files | `2` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `2` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
 | malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
@@ -116,11 +120,14 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the call without consulting docs.
 - `help`, `version`, `capabilities`, and `print-request-template` reject extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths.
-- `--book-key-file` must point to a non-empty UTF-8 passphrase file; one trailing LF or CRLF is
-  tolerated and stripped.
+- `--book-key-file` must point to a non-empty UTF-8 passphrase file on a POSIX filesystem; one
+  trailing LF or CRLF is tolerated and stripped.
+- Book key files must use owner-only permissions (`0400` or `0600`), or the runtime rejects them.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
   cannot be paired with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
+- `rekey-book` requires one current passphrase source plus one replacement passphrase source, and
+  it rejects using the same key-file path for both.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The packaged CLI enforces SQLite 3.53.0 and SQLite3 Multiple Ciphers 2.3.3.
@@ -134,7 +141,8 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 - Gradle-driven local runs and the container image use a managed SQLite 3.53.0 / SQLite3 Multiple
   Ciphers 2.3.3 shared library.
 - Standalone `java -jar` execution still relies on `FINGRIND_SQLITE_LIBRARY` or a compatible host
-  `libsqlite3`.
+  `libsqlite3`, and that external library must satisfy the same SQLite3MC compile-option
+  hardening contract.
 - `capabilities` is the best machine-readable contract surface.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send
   `provenance.recordedAt` or `provenance.sourceChannel`.

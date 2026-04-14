@@ -9,8 +9,8 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
-import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /** Minimal Java FFM binding layer over the configured SQLite C library. */
@@ -19,6 +19,7 @@ final class SqliteNativeLibrary {
   static final int SQLITE_ROW = 100;
   static final int SQLITE_DONE = 101;
 
+  static final int SQLITE_OPEN_READONLY = 0x00000001;
   static final int SQLITE_OPEN_READWRITE = 0x00000002;
   static final int SQLITE_OPEN_CREATE = 0x00000004;
 
@@ -31,6 +32,7 @@ final class SqliteNativeLibrary {
   private static final Linker LINKER = Linker.nativeLinker();
   private static final SymbolLookup DEFAULT_LOOKUP = LINKER.defaultLookup();
   private static final MemorySegment SQLITE_TRANSIENT = MemorySegment.ofAddress(-1L);
+  private static final AtomicInteger ACTIVE_CONNECTIONS = new AtomicInteger();
   private static final MethodHandle STRLEN =
       downcall(
           DEFAULT_LOOKUP,
@@ -46,19 +48,29 @@ final class SqliteNativeLibrary {
       throw new IllegalArgumentException(
           "SQLite same-package file-backed open requires a --book-key-file access selection.");
     }
-    return open(bookAccess.bookFilePath(), SqliteBookKeyFile.load(keyFile.bookKeyFilePath()));
+    return open(
+        bookAccess.bookFilePath(),
+        SqliteBookKeyFile.load(keyFile.bookKeyFilePath()),
+        OpenMode.READ_WRITE_CREATE);
   }
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase)
       throws SqliteNativeException {
-    return open(bookPath, bookPassphrase, api());
+    return open(bookPath, bookPassphrase, OpenMode.READ_WRITE_CREATE);
   }
 
   static SqliteNativeDatabase open(
-      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteApi sqliteApi)
+      Path bookPath, SqliteBookPassphrase bookPassphrase, OpenMode openMode)
+      throws SqliteNativeException {
+    return open(bookPath, bookPassphrase, openMode, api());
+  }
+
+  static SqliteNativeDatabase open(
+      Path bookPath, SqliteBookPassphrase bookPassphrase, OpenMode openMode, SqliteApi sqliteApi)
       throws SqliteNativeException {
     Objects.requireNonNull(bookPath, "bookPath");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
+    Objects.requireNonNull(openMode, "openMode");
     Objects.requireNonNull(sqliteApi, "sqliteApi");
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
     try (Arena arena = Arena.ofConfined()) {
@@ -67,10 +79,7 @@ final class SqliteNativeLibrary {
       int resultCode =
           (int)
               sqliteApi.sqlite3OpenV2.invokeExact(
-                  filename,
-                  databasePointer,
-                  SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                  MemorySegment.NULL);
+                  filename, databasePointer, openMode.flags(), MemorySegment.NULL);
       MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
       if (resultCode != SQLITE_OK) {
         SqliteNativeException exception = failure(resultCode, sqliteApi);
@@ -86,6 +95,7 @@ final class SqliteNativeLibrary {
           (int) sqliteApi.sqlite3ExtendedResultCodes.invokeExact(databaseHandle, 1);
       requireOpenConfigurationSuccess(databaseHandle, extendedCodeResult, sqliteApi);
       validateConfiguredKey(databaseHandle);
+      ACTIVE_CONNECTIONS.incrementAndGet();
       return new SqliteNativeDatabase(databaseHandle);
     } catch (SqliteNativeException exception) {
       throw exception;
@@ -102,11 +112,38 @@ final class SqliteNativeLibrary {
       if (resultCode != SQLITE_OK) {
         throw failure(resultCode, sqliteApi);
       }
+      ACTIVE_CONNECTIONS.decrementAndGet();
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
       throw new IllegalStateException(
           "Failed to close the SQLite native library bridge.", throwable);
+    }
+  }
+
+  static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase)
+      throws SqliteNativeException {
+    Objects.requireNonNull(database, "database");
+    Objects.requireNonNull(bookPassphrase, "bookPassphrase");
+    SqliteApi sqliteApi = api();
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment keyPointer = bookPassphrase.copyToCString(arena);
+      int resultCode =
+          (int)
+              sqliteApi.sqlite3Rekey.invokeExact(
+                  database.handle(), keyPointer, bookPassphrase.byteLength());
+      if (resultCode != SQLITE_OK) {
+        throw failure(resultCode, sqliteApi);
+      }
+      validateConfiguredKey(database.handle());
+    } catch (SqliteNativeException exception) {
+      throw exception;
+    } catch (Throwable throwable) {
+      throw new IllegalStateException(
+          "Failed to rekey the FinGrind SQLite book with passphrase material from "
+              + bookPassphrase.sourceDescription()
+              + ".",
+          throwable);
     }
   }
 
@@ -386,12 +423,11 @@ final class SqliteNativeLibrary {
   }
 
   static String configuredLibrarySource() {
-    return configuredLibrarySource(
-        System.getenv(SqliteRuntime.LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE));
+    return configuredLibrarySource(System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE));
   }
 
   static String configuredLibrarySource(String configuredLibraryPath) {
-    return configuredLibraryPath == null ? "system" : "managed";
+    return "managed";
   }
 
   static int compareVersions(String leftVersion, String rightVersion) {
@@ -426,6 +462,36 @@ final class SqliteNativeLibrary {
           loadedVersion, SqliteRuntime.REQUIRED_SQLITE3MC_VERSION, librarySource);
     }
     return loadedVersion;
+  }
+
+  static void requireSupportedCompileOptions(
+      MethodHandle compileOptionUsedHandle,
+      String loadedSqliteVersion,
+      String loadedSqlite3mcVersion,
+      String librarySource) {
+    Objects.requireNonNull(compileOptionUsedHandle, "compileOptionUsedHandle");
+    Objects.requireNonNull(loadedSqliteVersion, "loadedSqliteVersion");
+    Objects.requireNonNull(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
+    Objects.requireNonNull(librarySource, "librarySource");
+    var missingCompileOptions =
+        SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS.stream()
+            .filter(option -> !compileOptionUsed(compileOptionUsedHandle, option))
+            .toList();
+    if (!missingCompileOptions.isEmpty()) {
+      throw new UnsupportedSqliteCompileOptionsException(
+          loadedSqliteVersion, loadedSqlite3mcVersion, librarySource, missingCompileOptions);
+    }
+  }
+
+  static boolean compileOptionUsed(MethodHandle compileOptionUsedHandle, String compileOption) {
+    Objects.requireNonNull(compileOptionUsedHandle, "compileOptionUsedHandle");
+    Objects.requireNonNull(compileOption, "compileOption");
+    try (Arena arena = Arena.ofConfined()) {
+      return (int) compileOptionUsedHandle.invokeExact(arena.allocateFrom(compileOption)) != 0;
+    } catch (Throwable throwable) {
+      throw new IllegalStateException(
+          "Failed to read the SQLite compile option: " + compileOption, throwable);
+    }
   }
 
   static String resultName(int resultCode) {
@@ -472,9 +538,7 @@ final class SqliteNativeLibrary {
 
   private static SqliteApi loadApi() {
     return loadApi(
-        configuredLibraryTarget(
-            System.getenv(SqliteRuntime.LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE),
-            System.getProperty("os.name", "")));
+        configuredLibraryTarget(System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE)));
   }
 
   private static SqliteApi loadApi(SqliteLibraryTarget libraryTarget) {
@@ -487,11 +551,18 @@ final class SqliteNativeLibrary {
           downcall(lookup, "sqlite3_libversion", FunctionDescriptor.of(ValueLayout.ADDRESS));
       MethodHandle sqlite3mcVersion =
           downcall(lookup, "sqlite3mc_version", FunctionDescriptor.of(ValueLayout.ADDRESS));
+      MethodHandle sqlite3CompileoptionUsed =
+          downcall(
+              lookup,
+              "sqlite3_compileoption_used",
+              FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
       String loadedVersion =
           requireSupportedVersion(sqliteVersion(sqlite3Libversion, STRLEN), libraryTarget.source());
       String loadedSqlite3mcVersion =
           requireSupportedSqlite3mcVersion(
               sqlite3MultipleCiphersVersion(sqlite3mcVersion, STRLEN), libraryTarget.source());
+      requireSupportedCompileOptions(
+          sqlite3CompileoptionUsed, loadedVersion, loadedSqlite3mcVersion, libraryTarget.source());
       return new SqliteApi(
           libraryArena,
           downcall(
@@ -510,6 +581,14 @@ final class SqliteNativeLibrary {
           downcall(
               lookup,
               "sqlite3_key",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3_rekey",
               FunctionDescriptor.of(
                   ValueLayout.JAVA_INT,
                   ValueLayout.ADDRESS,
@@ -622,35 +701,23 @@ final class SqliteNativeLibrary {
     return LINKER.downcallHandle(symbol, functionDescriptor);
   }
 
-  static SqliteLibraryTarget configuredLibraryTarget(
-      String configuredLibraryPath, String operatingSystemName) {
-    if (configuredLibraryPath != null) {
-      return new SqliteLibraryTarget(
-          "managed", normalizeConfiguredLibraryPath(configuredLibraryPath));
-    }
-    return new SqliteLibraryTarget("system", sqliteLibraryNameFor(operatingSystemName));
+  static SqliteLibraryTarget configuredLibraryTarget(String configuredLibraryPath) {
+    return new SqliteLibraryTarget(
+        "managed", normalizeConfiguredLibraryPath(configuredLibraryPath));
   }
 
   private static String normalizeConfiguredLibraryPath(String configuredLibraryPath) {
-    Objects.requireNonNull(configuredLibraryPath, "configuredLibraryPath");
+    if (configuredLibraryPath == null) {
+      throw new IllegalStateException(
+          SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
+              + " must point to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
+    }
     String normalizedPath = configuredLibraryPath.trim();
     if (normalizedPath.isEmpty()) {
       throw new IllegalStateException(
-          SqliteRuntime.LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE + " must not be blank.");
+          SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE + " must not be blank.");
     }
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
-  }
-
-  static String sqliteLibraryNameFor(String operatingSystemName) {
-    String operatingSystem = operatingSystemName.toLowerCase(Locale.ROOT);
-    if (operatingSystem.contains("mac")) {
-      return "/usr/lib/libsqlite3.dylib";
-    }
-    if (operatingSystem.contains("linux")) {
-      return "libsqlite3.so.0";
-    }
-    throw new IllegalStateException(
-        "Unsupported operating system for the FinGrind SQLite runtime: " + operatingSystem);
   }
 
   private static SqliteNativeException failure(int resultCode, SqliteApi sqliteApi) {
@@ -759,6 +826,27 @@ final class SqliteNativeLibrary {
     }
   }
 
+  /** Native SQLite open policies that FinGrind maps from its command-level access intents. */
+  enum OpenMode {
+    READ_ONLY(SQLITE_OPEN_READONLY),
+    READ_WRITE_EXISTING(SQLITE_OPEN_READWRITE),
+    READ_WRITE_CREATE(SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+
+    private final int flags;
+
+    OpenMode(int flags) {
+      this.flags = flags;
+    }
+
+    int flags() {
+      return flags;
+    }
+  }
+
+  static int activeConnectionCount() {
+    return ACTIVE_CONNECTIONS.get();
+  }
+
   /** Lazily publishes the process-scoped SQLite native API bundle on first use. */
   @SuppressWarnings("PMD.DoNotUseThreads")
   private static final class SqliteApiHolder {
@@ -769,7 +857,7 @@ final class SqliteNativeLibrary {
     static {
       Runtime.getRuntime()
           .addShutdownHook(
-              new Thread(SqliteNativeLibrary::shutdownQuietly, "fingrind-sqlite3mc-shutdown"));
+              new Thread(SqliteNativeLibrary::shutdownIfQuiescent, "fingrind-sqlite3mc-shutdown"));
     }
   }
 
@@ -781,6 +869,7 @@ final class SqliteNativeLibrary {
     private final MethodHandle sqlite3OpenV2;
     private final MethodHandle sqlite3CloseV2;
     private final MethodHandle sqlite3Key;
+    private final MethodHandle sqlite3Rekey;
     private final MethodHandle sqlite3Shutdown;
     private final MethodHandle sqlite3BusyTimeout;
     private final MethodHandle sqlite3ExtendedResultCodes;
@@ -806,6 +895,7 @@ final class SqliteNativeLibrary {
         MethodHandle sqlite3OpenV2,
         MethodHandle sqlite3CloseV2,
         MethodHandle sqlite3Key,
+        MethodHandle sqlite3Rekey,
         MethodHandle sqlite3Shutdown,
         MethodHandle sqlite3BusyTimeout,
         MethodHandle sqlite3ExtendedResultCodes,
@@ -829,6 +919,7 @@ final class SqliteNativeLibrary {
       this.sqlite3OpenV2 = Objects.requireNonNull(sqlite3OpenV2, "sqlite3OpenV2");
       this.sqlite3CloseV2 = Objects.requireNonNull(sqlite3CloseV2, "sqlite3CloseV2");
       this.sqlite3Key = Objects.requireNonNull(sqlite3Key, "sqlite3Key");
+      this.sqlite3Rekey = Objects.requireNonNull(sqlite3Rekey, "sqlite3Rekey");
       this.sqlite3Shutdown = Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
       this.sqlite3BusyTimeout = Objects.requireNonNull(sqlite3BusyTimeout, "sqlite3BusyTimeout");
       this.sqlite3ExtendedResultCodes =
@@ -854,8 +945,15 @@ final class SqliteNativeLibrary {
     }
   }
 
-  private static void shutdownQuietly() {
-    shutdownQuietly(SqliteApiHolder.INSTANCE.sqlite3Shutdown);
+  private static void shutdownIfQuiescent() {
+    shutdownIfQuiescent(SqliteApiHolder.INSTANCE.sqlite3Shutdown, activeConnectionCount());
+  }
+
+  static void shutdownIfQuiescent(MethodHandle sqlite3Shutdown, int activeConnections) {
+    Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
+    if (activeConnections == 0) {
+      shutdownQuietly(sqlite3Shutdown);
+    }
   }
 
   static void shutdownQuietly(MethodHandle sqlite3Shutdown) {

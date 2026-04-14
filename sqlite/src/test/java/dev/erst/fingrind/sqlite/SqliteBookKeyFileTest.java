@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -18,7 +21,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_acceptsUtf8PassphraseAndStripsOneTrailingLineEnding() throws Exception {
     Path keyFile = tempDirectory.resolve("book.key");
-    Files.writeString(keyFile, "swordfish\n", StandardCharsets.UTF_8);
+    writeSecureString(keyFile, "swordfish\n");
 
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
@@ -39,7 +42,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_acceptsUtf8PassphraseAndStripsOneTrailingCrLf() throws Exception {
     Path keyFile = tempDirectory.resolve("book-crlf.key");
-    Files.writeString(keyFile, "swordfish\r\n", StandardCharsets.UTF_8);
+    writeSecureString(keyFile, "swordfish\r\n");
 
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(9, keyMaterial.byteLength());
@@ -49,7 +52,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_acceptsUtf8PassphraseWithoutTrailingLineEnding() throws Exception {
     Path keyFile = tempDirectory.resolve("book-no-newline.key");
-    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+    writeSecureString(keyFile, "swordfish");
 
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(9, keyMaterial.byteLength());
@@ -59,7 +62,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_rejectsEmptyPassphraseAfterTrailingLineEndingNormalization() throws Exception {
     Path keyFile = tempDirectory.resolve("empty.key");
-    Files.writeString(keyFile, "\r\n", StandardCharsets.UTF_8);
+    writeSecureString(keyFile, "\r\n");
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
@@ -70,7 +73,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_rejectsSingleLineFeedThatNormalizesToEmptyPassphrase() throws Exception {
     Path keyFile = tempDirectory.resolve("line-feed-only.key");
-    Files.writeString(keyFile, "\n", StandardCharsets.UTF_8);
+    writeSecureString(keyFile, "\n");
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
@@ -81,7 +84,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_rejectsTrulyEmptyKeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("empty-file.key");
-    Files.write(keyFile, new byte[0]);
+    writeSecureBytes(keyFile, new byte[0]);
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
@@ -92,7 +95,7 @@ class SqliteBookKeyFileTest {
   @Test
   void load_rejectsInvalidUtf8() throws Exception {
     Path keyFile = tempDirectory.resolve("invalid-utf8.key");
-    Files.write(keyFile, new byte[] {(byte) 0xC3, (byte) 0x28});
+    writeSecureBytes(keyFile, new byte[] {(byte) 0xC3, (byte) 0x28});
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
@@ -108,5 +111,99 @@ class SqliteBookKeyFileTest {
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
 
     assertTrue(exception.getMessage().contains("Failed to read the FinGrind book key file"));
+  }
+
+  @Test
+  void load_rejectsDirectoryTargets() throws IOException {
+    Path keyDirectory = tempDirectory.resolve("not-a-file.key");
+    Files.createDirectories(keyDirectory);
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyDirectory));
+
+    assertTrue(exception.getMessage().contains("regular non-symlink file"));
+  }
+
+  @Test
+  void load_rejectsOwnerUnreadableKeyFiles() throws IOException {
+    Path keyFile = tempDirectory.resolve("owner-unreadable.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(keyFile, Set.of(PosixFilePermission.OWNER_WRITE));
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
+
+    assertTrue(exception.getMessage().contains("owner-readable"));
+  }
+
+  @Test
+  void load_rejectsGroupReadableKeyFiles() throws IOException {
+    Path keyFile = tempDirectory.resolve("group-readable.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        keyFile,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.GROUP_READ));
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
+
+    assertTrue(exception.getMessage().contains("owner-only permissions"));
+  }
+
+  @Test
+  void requireSecureKeyFile_wrapsUnsupportedPosixFilesystem() throws IOException {
+    Path keyFile = tempDirectory.resolve("zipfs.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFile.requireSecureKeyFile(
+                    keyFile,
+                    path -> {
+                      throw new UnsupportedOperationException("no posix");
+                    }));
+
+    assertTrue(exception.getMessage().contains("must live on a POSIX filesystem"));
+  }
+
+  @Test
+  void requireSecureKeyFile_wrapsPermissionInspectionIoFailures() throws IOException {
+    Path keyFile = tempDirectory.resolve("permission-io.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFile.requireSecureKeyFile(
+                    keyFile,
+                    path -> {
+                      throw new IOException("boom");
+                    }));
+
+    assertTrue(
+        exception
+            .getMessage()
+            .contains("Failed to inspect the FinGrind book key file permissions"));
+  }
+
+  private static void writeSecureString(Path keyFile, String content) throws IOException {
+    Files.writeString(keyFile, content, StandardCharsets.UTF_8);
+    secure(keyFile);
+  }
+
+  private static void writeSecureBytes(Path keyFile, byte[] content) throws IOException {
+    Files.write(keyFile, content);
+    secure(keyFile);
+  }
+
+  private static void secure(Path keyFile) throws IOException {
+    Files.setPosixFilePermissions(
+        keyFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 }

@@ -5,7 +5,9 @@ import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -25,13 +27,27 @@ final class CliBookPassphraseResolver {
 
   /** Resolves the selected book passphrase source for one CLI command invocation. */
   SqliteBookPassphrase resolve(BookAccess bookAccess) {
+    return resolve(bookAccess, PromptStyle.SINGLE);
+  }
+
+  /** Resolves the selected book passphrase source for one CLI command invocation. */
+  SqliteBookPassphrase resolve(BookAccess bookAccess, PromptStyle promptStyle) {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    return switch (bookAccess.passphraseSource()) {
+    return resolve(bookAccess.bookFilePath(), bookAccess.passphraseSource(), promptStyle);
+  }
+
+  /** Resolves one explicit passphrase source for the selected book path. */
+  SqliteBookPassphrase resolve(
+      Path bookFilePath, BookAccess.PassphraseSource passphraseSource, PromptStyle promptStyle) {
+    Objects.requireNonNull(bookFilePath, "bookFilePath");
+    Objects.requireNonNull(passphraseSource, "passphraseSource");
+    Objects.requireNonNull(promptStyle, "promptStyle");
+    return switch (passphraseSource) {
       case BookAccess.PassphraseSource.KeyFile keyFile ->
           SqliteBookKeyFile.load(keyFile.bookKeyFilePath());
       case BookAccess.PassphraseSource.StandardInput _ -> readFromStandardInput();
       case BookAccess.PassphraseSource.InteractivePrompt _ ->
-          readFromInteractivePrompt(bookAccess.bookFilePath());
+          readFromInteractivePrompt(bookFilePath, promptStyle);
     };
   }
 
@@ -44,14 +60,31 @@ final class CliBookPassphraseResolver {
     }
   }
 
-  private SqliteBookPassphrase readFromInteractivePrompt(Path bookFilePath) {
+  private SqliteBookPassphrase readFromInteractivePrompt(
+      Path bookFilePath, PromptStyle promptStyle) {
     Path normalizedPath = bookFilePath.toAbsolutePath().normalize();
-    char[] password =
-        terminal.readPassword("FinGrind book passphrase for %s: ".formatted(normalizedPath));
+    char[] password = terminal.readPassword(promptStyle.primaryPrompt(normalizedPath));
     if (password == null) {
       throw new IllegalStateException(
           "FinGrind did not receive a book passphrase from the interactive console.");
     }
+    if (promptStyle == PromptStyle.SINGLE) {
+      return SqliteBookPassphrase.fromCharacters(
+          "interactive prompt for " + normalizedPath, password);
+    }
+    char[] confirmation = terminal.readPassword(promptStyle.confirmationPrompt(normalizedPath));
+    if (confirmation == null) {
+      Arrays.fill(password, '\0');
+      throw new IllegalStateException(
+          "FinGrind did not receive a confirmed book passphrase from the interactive console.");
+    }
+    if (!Arrays.equals(password, confirmation)) {
+      Arrays.fill(password, '\0');
+      Arrays.fill(confirmation, '\0');
+      throw new IllegalStateException(
+          "FinGrind did not receive matching book passphrases from the interactive console.");
+    }
+    Arrays.fill(confirmation, '\0');
     return SqliteBookPassphrase.fromCharacters(
         "interactive prompt for " + normalizedPath, password);
   }
@@ -68,8 +101,11 @@ final class CliBookPassphraseResolver {
   }
 
   static Optional<Terminal> systemConsoleReader() {
-    return Optional.ofNullable(System.console())
-        .map(console -> promptText -> console.readPassword("%s", promptText));
+    return systemConsoleReader(System.console());
+  }
+
+  static Optional<Terminal> systemConsoleReader(Object consoleHandle) {
+    return Optional.ofNullable(consoleHandle).map(ReflectiveConsoleTerminal::new);
   }
 
   /** Terminal adapter that obtains the controlling prompt bridge lazily for each read. */
@@ -91,7 +127,64 @@ final class CliBookPassphraseResolver {
     }
   }
 
+  /** Adapts a JDK console-like object by invoking its readPassword(format, args...) method. */
+  static final class ReflectiveConsoleTerminal implements Terminal {
+    private final Object consoleHandle;
+    private final Method readPasswordMethod;
+
+    ReflectiveConsoleTerminal(Object consoleHandle) {
+      this.consoleHandle = Objects.requireNonNull(consoleHandle, "consoleHandle");
+      this.readPasswordMethod = resolveReadPasswordMethod(consoleHandle);
+    }
+
+    @Override
+    public char[] readPassword(String prompt) {
+      Objects.requireNonNull(prompt, "prompt");
+      try {
+        return (char[]) readPasswordMethod.invoke(consoleHandle, "%s", new Object[] {prompt});
+      } catch (ReflectiveOperationException exception) {
+        throw new IllegalStateException(
+            "Failed to prompt for a book passphrase from the interactive console.", exception);
+      }
+    }
+
+    private static Method resolveReadPasswordMethod(Object consoleHandle) {
+      try {
+        Method readPasswordMethod =
+            consoleHandle
+                .getClass()
+                .getDeclaredMethod("readPassword", String.class, Object[].class);
+        return readPasswordMethod;
+      } catch (NoSuchMethodException exception) {
+        throw new IllegalArgumentException(
+            "Interactive console handle does not expose readPassword(String, Object...).",
+            exception);
+      }
+    }
+  }
+
   private static IllegalStateException noConsole() {
     return new IllegalStateException(NO_INTERACTIVE_CONSOLE_MESSAGE);
+  }
+
+  /** Prompt modes for existing-book secrets versus newly entered replacement secrets. */
+  enum PromptStyle {
+    SINGLE,
+    CONFIRMED_NEW_SECRET;
+
+    private String primaryPrompt(Path normalizedPath) {
+      return switch (this) {
+        case SINGLE -> "FinGrind book passphrase for %s: ".formatted(normalizedPath);
+        case CONFIRMED_NEW_SECRET ->
+            "New FinGrind book passphrase for %s: ".formatted(normalizedPath);
+      };
+    }
+
+    private String confirmationPrompt(Path normalizedPath) {
+      if (this != CONFIRMED_NEW_SECRET) {
+        throw new IllegalStateException("This prompt style does not support confirmation.");
+      }
+      return "Confirm new FinGrind book passphrase for %s: ".formatted(normalizedPath);
+    }
   }
 }

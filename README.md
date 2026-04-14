@@ -116,10 +116,12 @@ For automation or repeatable local workflows, a dedicated key file is also suppo
 install -d -m 700 /tmp/fingrind/keys
 umask 077
 printf '%s\n' 'acme-demo-passphrase' > /tmp/fingrind/keys/acme.book-key
+chmod 600 /tmp/fingrind/keys/acme.book-key
 ```
 
 The key file must contain one non-empty UTF-8 passphrase.
 One trailing newline is tolerated and stripped.
+The key file must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`).
 
 For pipeline-style automation without a persistent file, standard input is also supported:
 
@@ -138,6 +140,16 @@ java -jar cli/build/libs/fingrind.jar \
   open-book \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key
+```
+
+Rotate that book onto a replacement passphrase when needed:
+
+```bash
+java -jar cli/build/libs/fingrind.jar \
+  rekey-book \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --new-book-passphrase-prompt
 ```
 
 Declare the accounts that your first entry will use:
@@ -259,18 +271,25 @@ Current deterministic rejection codes include:
   managed native library under `build/managed-sqlite/`.
 - `help`, `version`, and `capabilities` return JSON envelopes for discovery.
 - `print-request-template` returns raw JSON so it can be piped straight into a file.
-- `open-book`, `declare-account`, `list-accounts`, `preflight-entry`, and `post-entry` require
-  `--book-file` plus exactly one of `--book-key-file`, `--book-passphrase-stdin`, or
-  `--book-passphrase-prompt`.
-- `--book-key-file` must point to a non-empty UTF-8 passphrase file; one trailing LF or CRLF is
+- `open-book`, `rekey-book`, `declare-account`, `list-accounts`, `preflight-entry`, and
+  `post-entry` require `--book-file` plus exactly one explicit passphrase source.
+- `rekey-book` also requires exactly one replacement passphrase source through
+  `--new-book-key-file`, `--new-book-passphrase-stdin`, or `--new-book-passphrase-prompt`.
+- `--book-key-file` must point to a non-empty UTF-8 passphrase file on a POSIX filesystem, and
+  that file must use owner-only permissions (`0400` or `0600`); one trailing LF or CRLF is
   tolerated and stripped.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input, so it cannot
   be combined with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
+- `list-accounts` and `preflight-entry` now reopen books through an explicit read-only SQLite
+  session that also enforces `pragma query_only = on`.
 - FinGrind does not assume a default database location.
 - FinGrind does not accept SQLite URI `key=` or `hexkey=` transport, plaintext CLI passphrase
   arguments, or environment-variable passphrase transport; protected books always use the upstream
   default `chacha20` cipher.
+- Protected books are stamped as FinGrind books with a fixed SQLite `application_id` and
+  `user_version`, and the runtime rejects external libraries that miss the required SQLite3MC
+  compile-option hardening.
 - `postingId` in committed responses is generated as a UUID v7 value.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
 - Using the wrong key file or wrong non-file passphrase source fails the runtime open with a

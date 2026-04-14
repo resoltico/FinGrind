@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: DEVELOPER_JAZZER
 updated: "2026-04-14"
 route:
@@ -73,6 +73,8 @@ that raw Gradle does not communicate clearly enough on its own:
 - wrapper-owned duration watchdogs enforce the requested max duration plus a fixed grace window
 - active fuzzing preloads a tiny project-owned premain agent so Java 26 does not depend on late
   self-attach behavior
+- wrapper scripts must remain compatible with stock macOS `/bin/bash` 3.2 under `set -u`, even
+  when no optional Gradle arguments are passed
 
 Active harness execution also hard-fails when `GITHUB_ACTIONS=true`.
 That hard block is deliberate defense in depth: GitHub workflows already avoid active fuzzing, and

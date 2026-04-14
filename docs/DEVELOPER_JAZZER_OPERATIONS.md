@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-04-11"
+updated: "2026-04-14"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, run-lock]
   questions: ["how do I run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do I clean local jazzer state in fingrind"]
@@ -64,6 +64,8 @@ The wrapper adds the operator safety contract:
 - serializes all Jazzer commands through `jazzer/.local/run-lock`
 - writes `latest.log` and `history/<timestamp>/run.log`
 - owns `INT` and `TERM` cleanup for the launched Gradle client tree
+- stays compatible with stock macOS `/bin/bash` 3.2 under `set -u`, including zero-argument
+  cleanup invocations such as `jazzer/bin/clean-local-findings`
 
 ### Run all active harnesses sequentially
 
@@ -150,3 +152,6 @@ Interpretation:
 - Keep local corpora uncommitted.
 - Treat any new `crash-*` file as a bug until replay or root-cause analysis proves otherwise.
 - Clean findings after intentional fixes so the local run directory reflects the current state.
+- If wrapper shell logic or topology changes, rerun at least one live `jazzer/bin/fuzz-*` command
+  and the zero-argument cleanup scripts on the real macOS operator surface before calling the
+  work complete.

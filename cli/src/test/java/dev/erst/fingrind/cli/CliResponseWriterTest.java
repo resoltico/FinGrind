@@ -17,6 +17,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.sqlite.RekeyBookResult;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -69,6 +71,8 @@ class CliResponseWriterTest {
                 "required",
                 "chacha20",
                 "system",
+                List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+                false,
                 "3.53.0",
                 "2.3.3",
                 "unavailable",
@@ -226,6 +230,29 @@ class CliResponseWriterTest {
     assertTrue(alreadyInitializedJson.contains("already initialized"));
     assertTrue(schemaConflictJson.contains("\"code\":\"book-contains-schema\""));
     assertTrue(schemaConflictJson.contains("already contains schema objects"));
+  }
+
+  @Test
+  void writeRekeyBookResult_writesSuccessAndRejectionEnvelopes() {
+    ByteArrayOutputStream successOutput = new ByteArrayOutputStream();
+    CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
+
+    successWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")));
+
+    String successJson = successOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(successJson.contains("\"status\":\"ok\""));
+    assertTrue(successJson.contains("\"bookFile\""));
+
+    ByteArrayOutputStream rejectionOutput = new ByteArrayOutputStream();
+    CliResponseWriter rejectionWriter = new CliResponseWriter(utf8PrintStream(rejectionOutput));
+
+    rejectionWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()));
+
+    String rejectionJson = rejectionOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(rejectionJson.contains("\"status\":\"rejected\""));
+    assertTrue(rejectionJson.contains("\"code\":\"book-not-initialized\""));
   }
 
   @Test

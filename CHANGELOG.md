@@ -5,6 +5,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-14
+
+### Changed
+- Hard-broke protected-book administration again by adding `rekey-book`, enforcing real read-only
+  SQLite sessions for `list-accounts` and `preflight-entry`, and stamping initialized books with a
+  fixed FinGrind `application_id` plus storage `user_version`.
+
+### Fixed
+- Hardened external SQLite runtime acceptance so FinGrind now rejects libraries that miss the
+  required SQLite3MC compile-option contract instead of trusting version strings alone.
+- Hardened book-key handling further by rejecting non-POSIX or non-owner-only key files, aligning
+  Docker smoke fixtures with that same requirement, and documenting the enforced `0400` / `0600`
+  secret-file rule.
+- Fixed the documented shell operator surface on stock macOS Bash 3.2 under `set -u`, including
+  both `./check.sh` and `jazzer/bin/*`, so empty optional-argument arrays no longer abort the
+  supported verification and fuzzing entrypoints.
+
 ## [0.10.0] - 2026-04-14
 
 ### Changed
@@ -243,7 +260,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.11.0
 [0.10.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.10.0
 [0.9.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.9.0
 [0.8.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.8.0

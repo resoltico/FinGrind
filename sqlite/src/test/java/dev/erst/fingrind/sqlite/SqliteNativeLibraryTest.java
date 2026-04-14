@@ -18,11 +18,16 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -40,7 +45,10 @@ class SqliteNativeLibraryTest {
     assertEquals("sqlite", SqliteRuntime.STORAGE_ENGINE);
     assertEquals("required", SqliteRuntime.BOOK_PROTECTION_MODE);
     assertEquals("chacha20", SqliteRuntime.DEFAULT_BOOK_CIPHER);
-    assertEquals("FINGRIND_SQLITE_LIBRARY", SqliteRuntime.LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE);
+    assertEquals("FINGRIND_SQLITE_LIBRARY", SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE);
+    assertEquals(
+        java.util.List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+        SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS);
     assertEquals("3.53.0", SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION);
     assertEquals("2.3.3", SqliteRuntime.REQUIRED_SQLITE3MC_VERSION);
     assertEquals("managed", runtimeProbe.librarySource());
@@ -114,6 +122,27 @@ class SqliteNativeLibraryTest {
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.2", runtimeProbe.loadedSqlite3mcVersion());
     assertTrue(runtimeProbe.issue().contains("requires SQLite3 Multiple Ciphers 2.3.3"));
+  }
+
+  @Test
+  void probe_reportsIncompatibleCompileOptionsRuntimeWithoutThrowing() {
+    SqliteRuntime.Probe runtimeProbe =
+        SqliteRuntime.probe(
+            () -> "managed",
+            () -> {
+              throw new UnsupportedSqliteCompileOptionsException(
+                  "3.53.0", "2.3.3", "managed", List.of("SECURE_DELETE"));
+            },
+            () -> {
+              throw new AssertionError("sqlite3mc version lookup should not run");
+            },
+            SqliteRuntime::failureDetail);
+
+    assertEquals("managed", runtimeProbe.librarySource());
+    assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
+    assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
+    assertTrue(runtimeProbe.issue().contains("missing required compile options"));
   }
 
   @Test
@@ -253,42 +282,33 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
-  void sqliteLibraryNameFor_mapsSupportedAndUnsupportedOperatingSystems() {
-    assertEquals("/usr/lib/libsqlite3.dylib", SqliteNativeLibrary.sqliteLibraryNameFor("Mac OS X"));
-    assertEquals("libsqlite3.so.0", SqliteNativeLibrary.sqliteLibraryNameFor("Linux"));
-
+  void configuredLibraryTarget_requiresManagedLibraryPath() {
     IllegalStateException exception =
         assertThrows(
-            IllegalStateException.class,
-            () -> SqliteNativeLibrary.sqliteLibraryNameFor("Windows 11"));
+            IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget(null));
 
-    assertTrue(exception.getMessage().contains("Unsupported operating system"));
+    assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
   }
 
   @Test
-  void configuredLibraryTarget_prefersManagedOverrideAndNormalizesPath() {
+  void configuredLibraryTarget_requiresManagedPathAndNormalizesIt() {
     SqliteNativeLibrary.SqliteLibraryTarget libraryTarget =
-        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0", "Linux");
-    SqliteNativeLibrary.SqliteLibraryTarget systemLibraryTarget =
-        SqliteNativeLibrary.configuredLibraryTarget(null, "Linux");
+        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
 
     assertEquals("managed", libraryTarget.source());
     assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
     assertEquals("managed", SqliteNativeLibrary.configuredLibrarySource("/tmp/libsqlite3.so.0"));
-    assertEquals("system", SqliteNativeLibrary.configuredLibrarySource(null));
-    assertEquals("system", systemLibraryTarget.source());
-    assertEquals("libsqlite3.so.0", systemLibraryTarget.lookupTarget());
+    assertEquals("managed", SqliteNativeLibrary.configuredLibrarySource(null));
     assertTrue(libraryTarget.toString().contains("managed"));
     assertEquals(
         libraryTarget,
-        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0", "Linux"));
+        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
     assertEquals(
         libraryTarget.hashCode(),
-        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0", "Linux")
+        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0")
             .hashCode());
     assertThrows(
-        IllegalStateException.class,
-        () -> SqliteNativeLibrary.configuredLibraryTarget("   ", "Linux"));
+        IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget("   "));
     assertThrows(
         IllegalArgumentException.class,
         () -> new SqliteNativeLibrary.SqliteLibraryTarget(" ", "x"));
@@ -456,6 +476,36 @@ class SqliteNativeLibraryTest {
   @Test
   void errorString_convenienceOverload_readsConfiguredApi() {
     assertFalse(SqliteNativeLibrary.errorString(14).isBlank());
+  }
+
+  @Test
+  void requireSupportedCompileOptions_rejectsMissingHardeningOptions() {
+    UnsupportedSqliteCompileOptionsException exception =
+        assertThrows(
+            UnsupportedSqliteCompileOptionsException.class,
+            () ->
+                SqliteNativeLibrary.requireSupportedCompileOptions(
+                    constantMethodHandle(0, MemorySegment.class), "3.53.0", "2.3.3", "managed"));
+
+    assertEquals("3.53.0", exception.loadedSqliteVersion());
+    assertEquals("2.3.3", exception.loadedSqlite3mcVersion());
+    assertEquals("managed", exception.librarySource());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS, exception.missingCompileOptions());
+  }
+
+  @Test
+  void compileOptionUsed_wrapsUnexpectedThrowableFromNativeInvocation() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeLibrary.compileOptionUsed(
+                    throwingMethodHandle(
+                        new IllegalStateException("boom"), int.class, MemorySegment.class),
+                    "SECURE_DELETE"));
+
+    assertEquals("Failed to read the SQLite compile option: SECURE_DELETE", exception.getMessage());
+    assertEquals("boom", exception.getCause().getMessage());
   }
 
   @Test
@@ -627,6 +677,147 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
+  void openOverloadAndRekey_rotateBookPassphrase() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-native.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase initialPassphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "initial native passphrase", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, initialPassphrase);
+    }
+
+    try {
+      database.executeStatement("create table sample (id integer primary key, note text not null)");
+      database.executeStatement("insert into sample (id, note) values (1, 'ok')");
+
+      try (SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "replacement native passphrase", "rotated-key".toCharArray())) {
+        SqliteNativeLibrary.rekey(database, replacementPassphrase);
+      }
+    } finally {
+      database.close();
+    }
+
+    try (SqliteBookPassphrase replacementPassphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "replacement native passphrase", "rotated-key".toCharArray())) {
+      SqliteNativeDatabase reopened = SqliteNativeLibrary.open(bookPath, replacementPassphrase);
+      try {
+        try (SqliteNativeStatement statement =
+            SqliteNativeLibrary.prepare(reopened, "select count(*) from sample")) {
+          assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+          assertEquals(1, statement.columnInt(0));
+        }
+      } finally {
+        reopened.close();
+      }
+    }
+
+    try (SqliteBookPassphrase oldPassphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "stale native passphrase", TEST_BOOK_KEY.toCharArray())) {
+      SqliteNativeException exception =
+          assertThrows(
+              SqliteNativeException.class, () -> SqliteNativeLibrary.open(bookPath, oldPassphrase));
+
+      assertEquals("SQLITE_NOTADB", exception.resultName());
+    }
+  }
+
+  @Test
+  void rekey_rejectsNullArguments() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-nulls.sqlite");
+
+    assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(null, null));
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("rekey null passphrase", TEST_BOOK_KEY.toCharArray())) {
+      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
+      try {
+        assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(database, null));
+      } finally {
+        database.close();
+      }
+    }
+  }
+
+  @Test
+  void rekey_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-native-failure.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "native failure passphrase", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, passphrase);
+    }
+
+    MethodHandle originalRekeyHandle = sqliteApiMethodHandle("sqlite3Rekey");
+    try {
+      replaceSqliteApiMethodHandle(
+          "sqlite3Rekey",
+          constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class));
+
+      try (SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "native failure replacement", "rotated-key".toCharArray())) {
+        SqliteNativeException exception =
+            assertThrows(
+                SqliteNativeException.class,
+                () -> SqliteNativeLibrary.rekey(database, replacementPassphrase));
+
+        assertEquals("SQLITE_CANTOPEN", exception.resultName());
+      }
+    } finally {
+      replaceSqliteApiMethodHandle("sqlite3Rekey", originalRekeyHandle);
+      database.close();
+    }
+  }
+
+  @Test
+  void rekey_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-throwable.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("throwable passphrase", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, passphrase);
+    }
+
+    MethodHandle originalRekeyHandle = sqliteApiMethodHandle("sqlite3Rekey");
+    try {
+      replaceSqliteApiMethodHandle(
+          "sqlite3Rekey",
+          throwingMethodHandle(
+              new IllegalStateException("boom"),
+              int.class,
+              MemorySegment.class,
+              MemorySegment.class,
+              int.class));
+
+      try (SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "throwable replacement", "rotated-key".toCharArray())) {
+        IllegalStateException exception =
+            assertThrows(
+                IllegalStateException.class,
+                () -> SqliteNativeLibrary.rekey(database, replacementPassphrase));
+
+        assertTrue(
+            exception
+                .getMessage()
+                .contains(
+                    "Failed to rekey the FinGrind SQLite book with passphrase material from"));
+        assertEquals("boom", exception.getCause().getMessage());
+      }
+    } finally {
+      replaceSqliteApiMethodHandle("sqlite3Rekey", originalRekeyHandle);
+      database.close();
+    }
+  }
+
+  @Test
   void open_propagatesBookKeyReadFailureBeforeNativeBridgeOpen() {
     Path bookPath = tempDirectory.resolve("missing-key.sqlite");
     Path missingKeyPath = tempDirectory.resolve("missing.key");
@@ -655,7 +846,7 @@ class SqliteNativeLibraryTest {
     method.setAccessible(true);
 
     Path keyFile = tempDirectory.resolve("apply-key.key");
-    Files.writeString(keyFile, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+    writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
 
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
@@ -699,7 +890,7 @@ class SqliteNativeLibraryTest {
     method.setAccessible(true);
 
     Path keyFile = tempDirectory.resolve("apply-key-native-failure.key");
-    Files.writeString(keyFile, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+    writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
 
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
@@ -729,6 +920,7 @@ class SqliteNativeLibraryTest {
             "open",
             Path.class,
             SqliteBookPassphrase.class,
+            SqliteNativeLibrary.OpenMode.class,
             Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"));
     method.setAccessible(true);
 
@@ -750,7 +942,11 @@ class SqliteNativeLibraryTest {
               InvocationTargetException.class,
               () ->
                   method.invoke(
-                      null, tempDirectory.resolve("open-throwable.sqlite"), passphrase, sqliteApi));
+                      null,
+                      tempDirectory.resolve("open-throwable.sqlite"),
+                      passphrase,
+                      SqliteNativeLibrary.OpenMode.READ_WRITE_CREATE,
+                      sqliteApi));
 
       assertTrue(exception.getCause() instanceof IllegalStateException);
       assertEquals(
@@ -780,6 +976,26 @@ class SqliteNativeLibraryTest {
         () ->
             SqliteNativeLibrary.shutdownQuietly(
                 throwingMethodHandle(new IllegalStateException("boom"), int.class)));
+  }
+
+  @Test
+  void shutdownIfQuiescent_runsShutdownOnlyWhenNoConnectionsRemain() throws Throwable {
+    AtomicInteger shutdownCalls = new AtomicInteger();
+    MethodHandle shutdownHandle =
+        MethodHandles.insertArguments(
+            MethodHandles.lookup()
+                .findStatic(
+                    SqliteNativeLibraryTest.class,
+                    "recordShutdownCall",
+                    java.lang.invoke.MethodType.methodType(int.class, AtomicInteger.class)),
+            0,
+            shutdownCalls);
+
+    SqliteNativeLibrary.shutdownIfQuiescent(shutdownHandle, 1);
+    assertEquals(0, shutdownCalls.get());
+
+    SqliteNativeLibrary.shutdownIfQuiescent(shutdownHandle, 0);
+    assertEquals(1, shutdownCalls.get());
   }
 
   @Test
@@ -927,9 +1143,9 @@ class SqliteNativeLibraryTest {
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
     sqliteApiArguments[2] = closeHandle;
     sqliteApiArguments[3] = keyHandle;
-    sqliteApiArguments[18] = errorMessageHandle;
-    sqliteApiArguments[19] = errorStringHandle;
-    sqliteApiArguments[20] = extendedErrcodeHandle;
+    sqliteApiArguments[19] = errorMessageHandle;
+    sqliteApiArguments[20] = errorStringHandle;
+    sqliteApiArguments[21] = extendedErrcodeHandle;
     return buildSqliteApi(sqliteApiArguments);
   }
 
@@ -941,9 +1157,9 @@ class SqliteNativeLibraryTest {
       throws ReflectiveOperationException {
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
     sqliteApiArguments[2] = closeHandle;
-    sqliteApiArguments[18] = errorMessageHandle;
-    sqliteApiArguments[19] = errorStringHandle;
-    sqliteApiArguments[20] = extendedErrcodeHandle;
+    sqliteApiArguments[19] = errorMessageHandle;
+    sqliteApiArguments[20] = errorStringHandle;
+    sqliteApiArguments[21] = extendedErrcodeHandle;
     return buildSqliteApi(sqliteApiArguments);
   }
 
@@ -953,6 +1169,7 @@ class SqliteNativeLibraryTest {
       constantMethodHandle(
           0, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class),
       constantMethodHandle(0, MemorySegment.class),
+      constantMethodHandle(0, MemorySegment.class, MemorySegment.class, int.class),
       constantMethodHandle(0, MemorySegment.class, MemorySegment.class, int.class),
       constantMethodHandle(0),
       constantMethodHandle(0, MemorySegment.class, int.class),
@@ -1011,7 +1228,7 @@ class SqliteNativeLibraryTest {
       if (keyPath.getParent() != null) {
         Files.createDirectories(keyPath.getParent());
       }
-      Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
+      writeSecureKeyFile(keyPath, keyText);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
@@ -1046,6 +1263,47 @@ class SqliteNativeLibraryTest {
 
   private static void closeDatabase(SqliteNativeDatabase database) throws SqliteNativeException {
     database.close();
+  }
+
+  @SuppressWarnings("unused")
+  private static int recordShutdownCall(AtomicInteger shutdownCalls) {
+    return shutdownCalls.incrementAndGet();
+  }
+
+  private static MethodHandle sqliteApiMethodHandle(String fieldName)
+      throws ReflectiveOperationException {
+    Field field = sqliteApiField(fieldName);
+    return (MethodHandle) field.get(sqliteApiSingleton());
+  }
+
+  private static void replaceSqliteApiMethodHandle(String fieldName, MethodHandle handle)
+      throws ReflectiveOperationException {
+    Field field = sqliteApiField(fieldName);
+    field.set(sqliteApiSingleton(), handle);
+  }
+
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  private static Field sqliteApiField(String fieldName) throws ReflectiveOperationException {
+    Class<?> sqliteApiClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
+    Field field = sqliteApiClass.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field;
+  }
+
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  private static Object sqliteApiSingleton() throws ReflectiveOperationException {
+    Class<?> sqliteApiHolderClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApiHolder");
+    Field instanceField = sqliteApiHolderClass.getDeclaredField("INSTANCE");
+    instanceField.setAccessible(true);
+    return instanceField.get(null);
+  }
+
+  private static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {
+    Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        keyPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action)

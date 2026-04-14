@@ -12,6 +12,7 @@ import dev.erst.fingrind.application.PostEntryCommand;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingApplicationService;
 import dev.erst.fingrind.application.UuidV7PostingIdGenerator;
+import dev.erst.fingrind.sqlite.RekeyBookResult;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
@@ -75,6 +76,8 @@ final class FinGrindCli {
         case CliCommand.Version _ -> writeVersion();
         case CliCommand.PrintRequestTemplate _ -> writeRequestTemplate();
         case CliCommand.OpenBook command -> runOpenBookCommand(command.bookAccess());
+        case CliCommand.RekeyBook command ->
+            runRekeyBookCommand(command.bookAccess(), command.replacementPassphraseSource());
         case CliCommand.DeclareAccount command ->
             runDeclareAccountCommand(command.bookAccess(), command.requestFile());
         case CliCommand.ListAccounts command -> runListAccountsCommand(command.bookAccess());
@@ -124,6 +127,13 @@ final class FinGrindCli {
   private int runOpenBookCommand(BookAccess bookAccess) {
     OpenBookResult result = bookWorkflow.openBook(bookAccess);
     responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result);
+    return exitCodeFor(result);
+  }
+
+  private int runRekeyBookCommand(
+      BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+    RekeyBookResult result = bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource);
+    responseWriter.writeRekeyBookResult(result);
     return exitCodeFor(result);
   }
 
@@ -177,6 +187,13 @@ final class FinGrindCli {
     };
   }
 
+  private static int exitCodeFor(RekeyBookResult result) {
+    return switch (result) {
+      case RekeyBookResult.Rekeyed _ -> 0;
+      case RekeyBookResult.Rejected _ -> 2;
+    };
+  }
+
   private MachineContract.ApplicationIdentity applicationIdentity() {
     return new MachineContract.ApplicationIdentity(
         metadata.applicationName(), metadata.version(), metadata.description());
@@ -195,6 +212,8 @@ final class FinGrindCli {
         SqliteRuntime.BOOK_PROTECTION_MODE,
         SqliteRuntime.DEFAULT_BOOK_CIPHER,
         runtimeProbe.librarySource(),
+        SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
+        runtimeProbe.status() == SqliteRuntime.Status.READY,
         runtimeProbe.requiredMinimumSqliteVersion(),
         runtimeProbe.requiredSqlite3mcVersion(),
         runtimeProbe.status().wireValue(),
@@ -206,9 +225,11 @@ final class FinGrindCli {
   private CliFailure runtimeFailure(IllegalStateException exception) {
     String message = message(exception);
     String hint =
-        message.contains("SQLite")
-            ? "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
-            : "Inspect the message and rerun after fixing the underlying runtime problem.";
+        message.contains("FINGRIND_SQLITE_LIBRARY")
+            ? "Build the managed SQLite runtime with ./gradlew prepareManagedSqlite, export FINGRIND_SQLITE_LIBRARY to the produced shared library path, and rerun after fixing the underlying runtime problem."
+            : message.contains("SQLite")
+                ? "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
+                : "Inspect the message and rerun after fixing the underlying runtime problem.";
     return new CliFailure("runtime-failure", message, hint, null);
   }
 
@@ -220,6 +241,10 @@ final class FinGrindCli {
   interface BookWorkflow {
     /** Opens the selected book and installs the canonical FinGrind schema when possible. */
     OpenBookResult openBook(BookAccess bookAccess);
+
+    /** Rotates the passphrase that protects one existing book file. */
+    RekeyBookResult rekeyBook(
+        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource);
 
     /** Declares or reactivates one account inside the selected book. */
     DeclareAccountResult declareAccount(BookAccess bookAccess, DeclareAccountCommand command);
@@ -246,43 +271,87 @@ final class FinGrindCli {
 
     @Override
     public OpenBookResult openBook(BookAccess bookAccess) {
-      try (BookSession bookSession = openBookSession(bookAccess)) {
+      try (BookSession bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE,
+              CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
         return new BookAdministrationService(bookSession, clock).openBook();
+      }
+    }
+
+    @Override
+    public RekeyBookResult rekeyBook(
+        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+      CliBookPassphraseResolver.PromptStyle currentPromptStyle =
+          CliBookPassphraseResolver.PromptStyle.SINGLE;
+      try (SqlitePostingFactStore bookSession =
+              new SqlitePostingFactStore(
+                  bookAccess.bookFilePath(),
+                  passphraseResolver.resolve(bookAccess, currentPromptStyle),
+                  SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING);
+          var replacementPassphrase =
+              passphraseResolver.resolve(
+                  bookAccess.bookFilePath(),
+                  replacementPassphraseSource,
+                  CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
+        return bookSession.rekeyBook(replacementPassphrase);
       }
     }
 
     @Override
     public DeclareAccountResult declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
-      try (BookSession bookSession = openBookSession(bookAccess)) {
+      try (BookSession bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
         return new BookAdministrationService(bookSession, clock).declareAccount(command);
       }
     }
 
     @Override
     public ListAccountsResult listAccounts(BookAccess bookAccess) {
-      try (BookSession bookSession = openBookSession(bookAccess)) {
+      try (BookSession bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_ONLY,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
         return new BookAdministrationService(bookSession, clock).listAccounts();
       }
     }
 
     @Override
     public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
-      try (BookSession bookSession = openBookSession(bookAccess)) {
+      try (BookSession bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_ONLY,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
         return postingApplicationService(bookSession, clock).preflight(command);
       }
     }
 
     @Override
     public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
-      try (BookSession bookSession = openBookSession(bookAccess)) {
+      try (BookSession bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
         return postingApplicationService(bookSession, clock).commit(command);
       }
     }
 
-    private BookSession openBookSession(BookAccess bookAccess) {
+    private BookSession openBookSession(
+        BookAccess bookAccess,
+        SqlitePostingFactStore.AccessMode accessMode,
+        CliBookPassphraseResolver.PromptStyle promptStyle) {
       return new SqlitePostingFactStore(
-          bookAccess.bookFilePath(), passphraseResolver.resolve(bookAccess));
+          bookAccess.bookFilePath(),
+          passphraseResolver.resolve(bookAccess, promptStyle),
+          accessMode);
     }
 
     private static PostingApplicationService postingApplicationService(
