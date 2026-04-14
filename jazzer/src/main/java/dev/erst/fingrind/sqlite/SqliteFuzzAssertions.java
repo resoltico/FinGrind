@@ -1,10 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.application.BookAccess;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -16,8 +13,8 @@ public final class SqliteFuzzAssertions {
 
   /** Asserts that a committed FinGrind book file uses the canonical strict-table schema. */
   public static void assertCommittedBookUsesStrictTables(Path bookPath) {
-    try {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
+    try (SqliteBookPassphrase passphrase = bookPassphrase()) {
+      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
       try {
         assertQueryInt(
             database,
@@ -64,8 +61,8 @@ public final class SqliteFuzzAssertions {
     if (!Files.exists(bookPath)) {
       throw new IllegalArgumentException("SQLite book does not exist: " + bookPath);
     }
-    try {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
+    try (SqliteBookPassphrase passphrase = bookPassphrase()) {
+      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
       try {
         database.executeStatement(
             """
@@ -82,18 +79,15 @@ public final class SqliteFuzzAssertions {
     }
   }
 
-  /** Builds deterministic encrypted-book access for one temporary fuzz book path. */
-  public static BookAccess bookAccess(Path bookPath) {
-    try {
-      Path keyPath = bookPath.resolveSibling(bookPath.getFileName() + ".key");
-      if (keyPath.getParent() != null) {
-        Files.createDirectories(keyPath.getParent());
-      }
-      Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
-      return new BookAccess(bookPath, keyPath);
-    } catch (IOException exception) {
-      throw new UncheckedIOException(exception);
-    }
+  /** Builds deterministic protected-book passphrase material for one fuzz or replay command. */
+  public static SqliteBookPassphrase bookPassphrase() {
+    return SqliteBookPassphrase.fromCharacters(
+        "jazzer deterministic book passphrase", TEST_BOOK_KEY.toCharArray());
+  }
+
+  /** Opens one deterministic protected-book store for fuzz and replay flows. */
+  public static SqlitePostingFactStore openStore(Path bookPath) {
+    return new SqlitePostingFactStore(bookPath, bookPassphrase());
   }
 
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */

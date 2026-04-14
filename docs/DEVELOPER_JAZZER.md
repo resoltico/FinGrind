@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: DEVELOPER_JAZZER
 updated: "2026-04-14"
 route:
@@ -115,7 +115,7 @@ jazzer/bin/clean-local-corpus
 |:--------|:------|:-------------------|
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
 | `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
-| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using a temp UTF-8 key file, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
+| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using deterministic UTF-8 passphrase material, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
 ## Deterministic Support Tests
 

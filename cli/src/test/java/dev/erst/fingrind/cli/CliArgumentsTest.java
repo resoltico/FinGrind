@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.application.BookAccess;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +49,7 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
-    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
+    assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
   }
 
   @Test
@@ -68,7 +69,7 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
-    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
+    assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
     assertEquals(Path.of("account.json"), command.requestFile());
   }
 
@@ -83,7 +84,7 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
-    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
+    assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
   }
 
   @Test
@@ -115,7 +116,7 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
-    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
+    assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
     assertEquals(Path.of("request.json"), command.requestFile());
   }
 
@@ -136,8 +137,40 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
-    assertEquals(Path.of("book.key"), command.bookAccess().bookKeyFilePath());
+    assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
     assertEquals(Path.of("request.json"), command.requestFile());
+  }
+
+  @Test
+  void parse_returnsOpenBookForStandardInputPassphraseSource() {
+    CliCommand.OpenBook command =
+        assertInstanceOf(
+            CliCommand.OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book", "--book-file", "book.sqlite", "--book-passphrase-stdin"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(
+        BookAccess.PassphraseSource.StandardInput.INSTANCE,
+        command.bookAccess().passphraseSource());
+  }
+
+  @Test
+  void parse_returnsOpenBookForInteractivePromptPassphraseSource() {
+    CliCommand.OpenBook command =
+        assertInstanceOf(
+            CliCommand.OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book", "--book-file", "book.sqlite", "--book-passphrase-prompt"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(
+        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+        command.bookAccess().passphraseSource());
   }
 
   @Test
@@ -210,7 +243,32 @@ class CliArgumentsTest {
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--book-key-file", exception.argument());
-    assertEquals("Duplicate argument: --book-key-file", exception.getMessage());
+    assertEquals(
+        "Exactly one book passphrase source is permitted per command.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsMixedBookPassphraseSources() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--book-passphrase-prompt",
+                      "--request-file",
+                      "request.json"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-passphrase-prompt", exception.argument());
+    assertEquals(
+        "Exactly one book passphrase source is permitted per command.", exception.getMessage());
   }
 
   @Test
@@ -273,7 +331,55 @@ class CliArgumentsTest {
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--book-key-file", exception.argument());
-    assertEquals("A --book-key-file argument is required.", exception.getMessage());
+    assertEquals(
+        "Exactly one book passphrase source is required: --book-key-file <path>,"
+            + " --book-passphrase-stdin, or --book-passphrase-prompt.",
+        exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUsingStandardInputForBothPassphraseAndRequestJson() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "post-entry",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-passphrase-stdin",
+                      "--request-file",
+                      "-"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-passphrase-stdin", exception.argument());
+    assertEquals(
+        "Standard input cannot supply both the book passphrase and the request JSON.",
+        exception.getMessage());
+  }
+
+  @Test
+  void parse_allowsRequestJsonFromStandardInputWhenPassphraseUsesPrompt() {
+    CliCommand.PostEntry command =
+        assertInstanceOf(
+            CliCommand.PostEntry.class,
+            CliArguments.parse(
+                new String[] {
+                  "post-entry",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-passphrase-prompt",
+                  "--request-file",
+                  "-"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(
+        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+        command.bookAccess().passphraseSource());
+    assertEquals(Path.of("-"), command.requestFile());
   }
 
   @Test
@@ -372,5 +478,10 @@ class CliArgumentsTest {
     assertEquals("Unsupported command: wat", exception.getMessage());
     assertEquals(
         "Run 'fingrind help' to inspect the supported commands and examples.", exception.hint());
+  }
+
+  private static BookAccess.PassphraseSource.KeyFile assertKeyFileSource(BookAccess bookAccess) {
+    return assertInstanceOf(
+        BookAccess.PassphraseSource.KeyFile.class, bookAccess.passphraseSource());
   }
 }

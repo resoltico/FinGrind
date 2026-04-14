@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: DEVELOPER_JAVA
 updated: "2026-04-13"
 route:
@@ -209,6 +209,25 @@ There is one deliberate toolchain exception: the shared included build logic und
 `gradle/build-logic` still emits JVM 25 bytecode because Kotlin `2.3.0` does not yet target JVM 26
 directly. That build still compiles with the Java 26 toolchain, so a separate Java 25 install is
 not part of the supported setup.
+
+## Java 26 Feature Adoption
+
+FinGrind's Java 26 stance is stable-first:
+- use finalized Java 26 features as soon as they materially improve the codebase
+- keep preview and incubator features disabled by default
+
+Why:
+- the official JDK 26 release surface still includes major preview / incubator items
+- enabling preview features changes the repo-wide compiler, runtime, tooling, and release
+  contract
+- a bookkeeping kernel benefits more from stability and explicitness than from adopting preview
+  syntax for its own sake
+
+Current practical result:
+- FinGrind already leans on modern stable Java such as records, sealed families, modern switch
+  forms, `List.getFirst()`, and the finalized FFM API
+- FinGrind intentionally does not codify `--enable-preview` into the build until a preview feature
+  creates a clear architectural win worth the lifecycle cost
 
 ## Pitfalls
 

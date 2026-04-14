@@ -263,8 +263,7 @@ public final class JazzerReplaySupport {
       bookDirectory = Files.createTempDirectory("fingrind-jazzer-replay-");
       Path bookPath = bookDirectory.resolve("nested").resolve("entity-book.sqlite");
 
-      try (SqlitePostingFactStore postingFactStore =
-          new SqlitePostingFactStore(SqliteFuzzAssertions.bookAccess(bookPath))) {
+      try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
         BookAdministrationService administrationService =
             CliFuzzSupport.administrationService(postingFactStore);
         PostingApplicationService applicationService =
@@ -296,8 +295,7 @@ public final class JazzerReplaySupport {
         PostEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
           finalCommitStatus = "COMMITTED";
-          try (SqlitePostingFactStore reloadedStore =
-              new SqlitePostingFactStore(SqliteFuzzAssertions.bookAccess(bookPath))) {
+          try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
             Optional<PostingFact> storedPosting =
                 reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
             if (storedPosting.isEmpty()) {

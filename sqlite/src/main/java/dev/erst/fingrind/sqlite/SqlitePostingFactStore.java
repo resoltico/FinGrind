@@ -34,16 +34,21 @@ public final class SqlitePostingFactStore implements BookSession {
   private static final String BOOK_META_TABLE = "book_meta";
   private static final String POSTING_FACT_TABLE = "posting_fact";
 
-  private final BookAccess bookAccess;
   private final Path bookPath;
+  private SqliteBookPassphrase bookPassphrase;
 
   private SqliteNativeDatabase database;
   private boolean closed;
+  private IllegalStateException terminalFailure;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
-  public SqlitePostingFactStore(BookAccess bookAccess) {
-    this.bookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
-    this.bookPath = bookAccess.bookFilePath().toAbsolutePath().normalize();
+  public SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
+    this.bookPath = Objects.requireNonNull(bookPath, "bookPath").toAbsolutePath().normalize();
+    this.bookPassphrase = Objects.requireNonNull(bookPassphrase, "bookPassphrase");
+  }
+
+  SqlitePostingFactStore(BookAccess bookAccess) {
+    this(bookAccess.bookFilePath(), passphraseFor(bookAccess));
   }
 
   @Override
@@ -63,23 +68,23 @@ public final class SqlitePostingFactStore implements BookSession {
   public OpenBookResult openBook(Instant initializedAt) {
     ensureOpen();
     SqliteSchemaManager.ensureParentDirectory(bookPath);
-    SqliteNativeDatabase writableDatabase = database();
+    database();
     try {
-      if (isInitialized(writableDatabase)) {
+      if (isInitialized(database)) {
         return new OpenBookResult.Rejected(
             new BookAdministrationRejection.BookAlreadyInitialized());
       }
-      if (hasUserSchemaObjects(writableDatabase)) {
+      if (hasUserSchemaObjects(database)) {
         return new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema());
       }
 
-      writableDatabase.executeStatement("begin immediate");
-      SqliteSchemaManager.initializeBook(writableDatabase);
-      insertInitializedAt(writableDatabase, initializedAt);
-      writableDatabase.executeStatement("commit");
+      database.executeStatement("begin immediate");
+      SqliteSchemaManager.initializeBook(database);
+      insertInitializedAt(database, initializedAt);
+      database.executeStatement("commit");
       return new OpenBookResult.Opened(initializedAt);
     } catch (SqliteNativeException exception) {
-      rollbackQuietly(writableDatabase);
+      rollbackQuietly(database);
       throw sqliteFailure("Failed to initialize SQLite book.", exception);
     }
   }
@@ -112,18 +117,18 @@ public final class SqlitePostingFactStore implements BookSession {
       return new DeclareAccountResult.Rejected(
           new BookAdministrationRejection.BookNotInitialized());
     }
-    SqliteNativeDatabase activeDatabase = database();
+    database();
     try {
-      if (!isInitialized(activeDatabase)) {
+      if (!isInitialized(database)) {
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.BookNotInitialized());
       }
 
-      activeDatabase.executeStatement("begin immediate");
-      Optional<DeclaredAccount> existingAccount = findOneAccount(activeDatabase, accountCode);
+      database.executeStatement("begin immediate");
+      Optional<DeclaredAccount> existingAccount = findOneAccount(database, accountCode);
       if (existingAccount.isPresent()
           && existingAccount.orElseThrow().normalBalance() != normalBalance) {
-        rollbackQuietly(activeDatabase);
+        rollbackQuietly(database);
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.NormalBalanceConflict(
                 accountCode, existingAccount.orElseThrow().normalBalance(), normalBalance));
@@ -143,11 +148,11 @@ public final class SqlitePostingFactStore implements BookSession {
                   () ->
                       new DeclaredAccount(
                           accountCode, accountName, normalBalance, true, declaredAt));
-      upsertAccount(activeDatabase, declaredAccount);
-      activeDatabase.executeStatement("commit");
+      upsertAccount(database, declaredAccount);
+      database.executeStatement("commit");
       return new DeclareAccountResult.Declared(declaredAccount);
     } catch (SqliteNativeException exception) {
-      rollbackQuietly(activeDatabase);
+      rollbackQuietly(database);
       throw sqliteFailure("Failed to declare SQLite book account.", exception);
     }
   }
@@ -235,21 +240,21 @@ public final class SqlitePostingFactStore implements BookSession {
     if (Files.notExists(bookPath)) {
       return new PostingCommitResult.BookNotInitialized();
     }
-    SqliteNativeDatabase activeDatabase = database();
+    database();
     try {
-      activeDatabase.executeStatement("begin immediate");
+      database.executeStatement("begin immediate");
       Optional<PostingCommitResult> ordinaryOutcome =
-          ordinaryOutcomeBeforeInsert(activeDatabase, postingFact);
+          ordinaryOutcomeBeforeInsert(database, postingFact);
       if (ordinaryOutcome.isPresent()) {
-        rollbackQuietly(activeDatabase);
+        rollbackQuietly(database);
         return ordinaryOutcome.orElseThrow();
       }
-      insertPostingFact(activeDatabase, postingFact);
-      insertJournalLines(activeDatabase, postingFact);
-      activeDatabase.executeStatement("commit");
+      insertPostingFact(database, postingFact);
+      insertJournalLines(database, postingFact);
+      database.executeStatement("commit");
       return new PostingCommitResult.Committed(postingFact);
     } catch (SqliteNativeException exception) {
-      rollbackQuietly(activeDatabase);
+      rollbackQuietly(database);
       throw sqliteFailure("Failed to commit SQLite posting fact.", exception);
     }
   }
@@ -260,15 +265,17 @@ public final class SqlitePostingFactStore implements BookSession {
       return;
     }
     closed = true;
-    if (database == null) {
-      return;
-    }
+    SqliteNativeDatabase activeDatabase = database;
+    database = null;
     try {
-      database.close();
+      if (activeDatabase == null) {
+        return;
+      }
+      closeOwnedDatabase(activeDatabase);
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to close SQLite book connection.", exception);
     } finally {
-      database = null;
+      closePendingPassphrase();
     }
   }
 
@@ -502,19 +509,24 @@ public final class SqlitePostingFactStore implements BookSession {
     if (database != null) {
       return database;
     }
-    try {
-      database = SqliteNativeLibrary.open(bookAccess);
-      database.executeStatement("pragma foreign_keys = on");
-      database.executeStatement("pragma trusted_schema = off");
+    try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
+      SqliteNativeDatabase openedDatabase = SqliteNativeLibrary.open(bookPath, passphrase);
+      database = configureOpenedDatabase(openedDatabase);
       return database;
     } catch (SqliteNativeException exception) {
-      throw sqliteFailure("Failed to open SQLite book connection.", exception);
+      throw rememberTerminalFailure(
+          sqliteFailure("Failed to open SQLite book connection.", exception));
+    } catch (IllegalStateException exception) {
+      throw rememberTerminalFailure(exception);
     }
   }
 
   private void ensureOpen() {
     if (closed) {
       throw new IllegalStateException("SQLite book session is already closed.");
+    }
+    if (terminalFailure != null) {
+      throw terminalFailure;
     }
   }
 
@@ -538,5 +550,61 @@ public final class SqlitePostingFactStore implements BookSession {
   private interface SqliteBinder {
     /** Applies parameter values to one prepared SQLite statement. */
     void bind(SqliteNativeStatement statement) throws SqliteNativeException;
+  }
+
+  private static SqliteBookPassphrase passphraseFor(BookAccess bookAccess) {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    if (!(bookAccess.passphraseSource() instanceof BookAccess.PassphraseSource.KeyFile keyFile)) {
+      throw new IllegalArgumentException(
+          "SQLite same-package file-backed stores require a --book-key-file access selection.");
+    }
+    return SqliteBookKeyFile.load(keyFile.bookKeyFilePath());
+  }
+
+  private static void closeOwnedDatabase(SqliteNativeDatabase database)
+      throws SqliteNativeException {
+    database.close();
+  }
+
+  private void closePendingPassphrase() {
+    if (bookPassphrase == null) {
+      return;
+    }
+    bookPassphrase.close();
+    bookPassphrase = null;
+  }
+
+  private SqliteBookPassphrase takeBookPassphrase() {
+    SqliteBookPassphrase passphrase = bookPassphrase;
+    bookPassphrase = null;
+    if (passphrase == null) {
+      throw new IllegalStateException("SQLite book passphrase is no longer available.");
+    }
+    return passphrase;
+  }
+
+  private IllegalStateException rememberTerminalFailure(IllegalStateException failure) {
+    terminalFailure = Objects.requireNonNull(failure, "failure");
+    return failure;
+  }
+
+  static SqliteNativeDatabase configureOpenedDatabase(SqliteNativeDatabase openedDatabase)
+      throws SqliteNativeException {
+    try {
+      openedDatabase.executeStatement("pragma foreign_keys = on");
+      openedDatabase.executeStatement("pragma trusted_schema = off");
+      return openedDatabase;
+    } catch (SqliteNativeException exception) {
+      closeAfterConfigurationFailure(openedDatabase);
+      throw exception;
+    }
+  }
+
+  static void closeAfterConfigurationFailure(SqliteNativeDatabase openedDatabase) {
+    try {
+      openedDatabase.close();
+    } catch (SqliteNativeException ignored) {
+      // Preserve the original open/configuration failure.
+    }
   }
 }

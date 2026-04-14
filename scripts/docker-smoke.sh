@@ -168,6 +168,8 @@ require_match "${capabilities_output}" '"bookProtectionMode"[[:space:]]*:[[:spac
     "capabilities output did not report required book protection"
 require_match "${capabilities_output}" '"defaultBookCipher"[[:space:]]*:[[:space:]]*"chacha20"' \
     "capabilities output did not report the default chacha20 cipher"
+require_match "${capabilities_output}" '"bookPassphraseOptions"[[:space:]]*:[[:space:]]*\[[[:space:]]*"--book-key-file"[[:space:]]*,[[:space:]]*"--book-passphrase-stdin"[[:space:]]*,[[:space:]]*"--book-passphrase-prompt"[[:space:]]*\]' \
+    "capabilities output did not report the supported book passphrase options"
 require_match "${capabilities_output}" '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"' \
     "capabilities output did not report the required SQLite 3.53.0 minimum"
 require_match "${capabilities_output}" '"requiredSqlite3mcVersion"[[:space:]]*:[[:space:]]*"2\.3\.3"' \
@@ -181,12 +183,13 @@ require_match "${capabilities_output}" '"loadedSqlite3mcVersion"[[:space:]]*:[[:
 
 printf 'Docker smoke: verifying explicit book initialization through mounted path\n'
 open_output="$(docker_with_repo_config run --rm \
+    -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     open-book \
     --book-file "${book_rel}" \
-    --book-key-file "${book_key_rel}" | tr -d '\r')"
+    --book-passphrase-stdin <<< 'docker-smoke-passphrase' | tr -d '\r')"
 
 [[ -f "${book_path}" ]] || die "docker smoke book file was not initialized: ${book_path}"
 require_match "${open_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
@@ -196,13 +199,14 @@ require_match "${open_output}" '"initializedAt"[[:space:]]*:[[:space:]]*"' \
 
 printf 'Docker smoke: verifying account declaration and registry listing\n'
 declare_cash_output="$(docker_with_repo_config run --rm \
+    -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     declare-account \
     --book-file "${book_rel}" \
-    --book-key-file "${book_key_rel}" \
-    --request-file "${declare_cash_rel}" | tr -d '\r')"
+    --book-passphrase-stdin \
+    --request-file "${declare_cash_rel}" <<< 'docker-smoke-passphrase' | tr -d '\r')"
 declare_revenue_output="$(docker_with_repo_config run --rm \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
@@ -251,13 +255,14 @@ require_match "${wrong_key_output}" 'SQLITE_NOTADB' \
 
 printf 'Docker smoke: verifying preflight and commit through mounted path\n'
 preflight_output="$(docker_with_repo_config run --rm \
+    -i \
     -w /workdir \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     preflight-entry \
     --book-file "${book_rel}" \
-    --book-key-file "${book_key_rel}" \
-    --request-file "${request_rel}" | tr -d '\r')"
+    --book-passphrase-stdin \
+    --request-file "${request_rel}" <<< 'docker-smoke-passphrase' | tr -d '\r')"
 commit_output="$(docker_with_repo_config run --rm \
     -w /workdir \
     -v "${smoke_root}:/workdir" \

@@ -333,7 +333,7 @@ class SqliteNativeInteropTest {
         Files.createDirectories(keyPath.getParent());
       }
       Files.writeString(keyPath, TEST_BOOK_KEY);
-      return new BookAccess(bookPath, keyPath);
+      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }

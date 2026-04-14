@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-14"
 route:
@@ -20,12 +20,15 @@ FinGrind currently treats one protected SQLite file as one book for one entity.
 
 That means:
 - the selected SQLite file path is the durable book identity
-- one `BookAccess` value pairs that durable path with the explicit key file required to open it
+- one `BookAccess` value pairs that durable path with one explicit passphrase-source selection
 - the file may live anywhere on the operating-system filesystem
 - there is no default database location
-- every book-bound command requires both `--book-file` and `--book-key-file`
-- the key file must contain one non-empty UTF-8 passphrase; one trailing LF or CRLF is tolerated
-  and stripped
+- every book-bound command requires `--book-file` plus exactly one of `--book-key-file`,
+  `--book-passphrase-stdin`, or `--book-passphrase-prompt`
+- key files remain the automation-friendly route; stdin and interactive prompt are the supported
+  non-file routes
+- FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
+  passphrase transport
 - newly opened books are protected through SQLite3 Multiple Ciphers 2.3.3 using the upstream
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
@@ -45,13 +48,17 @@ Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
 - express book access explicitly as
   [`BookAccess`](../application/src/main/java/dev/erst/fingrind/application/BookAccess.java)
+- resolve passphrase sources into
+  [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java)
+  before the storage adapter opens SQLite
 - keep one open native SQLite handle per opened book session
 - apply the book key immediately after open through `sqlite3_key()`
 - validate the configured key before any schema or data access proceeds
 - initialize the schema from the canonical embedded SQL resource through `sqlite3_exec`
 - create canonical book tables as SQLite `STRICT` tables
 - use prepared statements through the native SQLite C API
-- rely on the chosen book path as the durable boundary and the key file as the access secret
+- rely on the chosen book path as the durable boundary and the resolved passphrase bytes as the
+  access secret
 
 Why this is the current design:
 - it keeps the adapter explicit and SQLite-first instead of introducing a generic SQL abstraction
@@ -109,7 +116,9 @@ License and attribution stance:
 
 The SQLite adapter is split into focused collaborators:
 - [`BookAccess`](../application/src/main/java/dev/erst/fingrind/application/BookAccess.java):
-  durable book file plus the key file required to access it
+  durable book file plus one explicit passphrase-source selection
+- [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
+  normalized zeroizable UTF-8 passphrase bytes after CLI-side source resolution
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
   owns one thread-confined protected-book session, lookup paths, transaction-scoped duplicate
   checks, and durable commit outcomes
@@ -118,8 +127,7 @@ The SQLite adapter is split into focused collaborators:
   enforcement, key application, key validation, and `sqlite3_exec` for canonical schema
   application
 - [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
-  loads the UTF-8 key file, strips one trailing line ending, rejects invalid material, and zeroizes
-  transient plaintext bytes after use
+  loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
 - [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
   one open native SQLite database handle with distinct control-statement and script helpers
 - [`SqliteNativeStatement`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java):
@@ -142,7 +150,7 @@ The SQLite adapter is split into focused collaborators:
   authoritative `book_meta.initialized_at` marker, and initializes a protected SQLite3MC book file
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
   `BookNotInitialized`
-- opening an existing plaintext SQLite file or using the wrong key file fails during key
+- opening an existing plaintext SQLite file or using the wrong passphrase source fails during key
   validation, typically surfacing `SQLITE_NOTADB`
 - posting lines are validated against the declared-account registry before ordinary duplicate
   checks proceed
@@ -162,14 +170,15 @@ The SQLite adapter is split into focused collaborators:
 The book-session seam distinguishes ordinary duplicate outcomes from true runtime failures:
 - duplicate idempotency returns `PostingCommitResult.DuplicateIdempotency`
 - duplicate reversal target returns `PostingCommitResult.DuplicateReversalTarget`
-- other SQLite-native, bridge, filesystem, key-file, or cipher failures stay
+- other SQLite-native, bridge, filesystem, passphrase-source, or cipher failures stay
   `IllegalStateException` and become CLI `runtime-failure`
 
 ## Book Protection Contract
 
-- every protected-book session starts from one explicit `BookAccess` pair:
-  durable book path plus key-file path
-- the key file is read as bytes, normalized by removing one trailing line ending, validated as
+- every protected-book session starts from one explicit `BookAccess` value:
+  durable book path plus one selected passphrase source
+- CLI passphrase resolution currently supports key file, standard input, and interactive prompt
+- resolved passphrase bytes are normalized by removing one trailing line ending, validated as
   UTF-8, and rejected if empty
 - transient key bytes are zeroized after native handoff
 - FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
@@ -179,6 +188,9 @@ The book-session seam distinguishes ordinary duplicate outcomes from true runtim
   expose cipher selection through its own API
 - FinGrind intentionally avoids SQLite URI `key=` and `hexkey=` transport because the upstream
   SQLite3MC guidance discourages keeping passphrases in URI strings
+- FinGrind also intentionally avoids plaintext CLI passphrase arguments and environment-variable
+  passphrase transport because those routes expose secrets too broadly in shells, process tables,
+  logs, and child-process environments
 
 ## Transaction Model
 

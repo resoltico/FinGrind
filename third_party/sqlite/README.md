@@ -29,7 +29,9 @@ Runtime policy:
 - controlled FinGrind surfaces pin SQLite 3.53.0 together with SQLite3 Multiple Ciphers 2.3.3
 - FinGrind applies `sqlite3_key()` immediately after open and relies on the upstream default
   `sqleet` / `chacha20` cipher
-- the supported key-transport contract is a separate UTF-8 passphrase file, not SQLite URI
-  `key=` or `hexkey=` parameters
+- the supported FinGrind passphrase transport contract is one explicit safe source
+  (`--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`) wired into
+  `sqlite3_key()`, not SQLite URI `key=` or `hexkey=` parameters and not plaintext CLI or
+  environment-variable secret transport
 - there is no migration path or backward-compatibility layer for legacy plaintext books or other
   encryption variants
