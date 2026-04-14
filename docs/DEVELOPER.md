@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: DEVELOPER
 updated: "2026-04-14"
 route:
@@ -90,8 +90,8 @@ FinGrind is intentionally hard-break oriented right now:
 |:----------|:--------|
 | Java | 26 |
 | Gradle Wrapper | 9.4.1 |
-| Docker runtime | Docker Desktop daemon reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires a managed path or an exact compatible SQLite3MC system library |
+| Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
+| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in root Gradle, nested Jazzer, CI, and Docker; standalone JAR requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build |
 | Jackson Databind | 3.1.1 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
@@ -178,8 +178,8 @@ Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a
 `Enable-Native-Access: ALL-UNNAMED` runtime contract.
 
 For local standalone JAR verification, remember that `:cli:shadowJar` packages only the Java
-surface. If you want that JAR to run against the managed native library instead of a host
-`libsqlite3`, run `./gradlew prepareManagedSqlite` as well and point `FINGRIND_SQLITE_LIBRARY` at
+surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
+`FINGRIND_SQLITE_LIBRARY` at
 the resulting file under `build/managed-sqlite/`, for example:
 
 ```bash

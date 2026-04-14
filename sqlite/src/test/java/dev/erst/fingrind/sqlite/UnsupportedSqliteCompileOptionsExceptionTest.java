@@ -13,11 +13,11 @@ class UnsupportedSqliteCompileOptionsExceptionTest {
   void constructor_exposesStableValueSemantics() {
     UnsupportedSqliteCompileOptionsException exception =
         new UnsupportedSqliteCompileOptionsException(
-            "3.53.0", "2.3.3", "managed", List.of("SECURE_DELETE", "TEMP_STORE=3"));
+            "3.53.0", "2.3.3", "managed-only", List.of("SECURE_DELETE", "TEMP_STORE=3"));
 
     assertEquals("3.53.0", exception.loadedSqliteVersion());
     assertEquals("2.3.3", exception.loadedSqlite3mcVersion());
-    assertEquals("managed", exception.librarySource());
+    assertEquals("managed-only", exception.libraryMode());
     assertEquals(List.of("SECURE_DELETE", "TEMP_STORE=3"), exception.missingCompileOptions());
     assertTrue(exception.getMessage().contains("missing required compile options"));
   }
@@ -26,19 +26,25 @@ class UnsupportedSqliteCompileOptionsExceptionTest {
   void constructor_rejectsInvalidInputs() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new UnsupportedSqliteCompileOptionsException(" ", "2.3.3", "managed", List.of("X")));
+        () ->
+            new UnsupportedSqliteCompileOptionsException(
+                " ", "2.3.3", "managed-only", List.of("X")));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new UnsupportedSqliteCompileOptionsException("3.53.0", " ", "managed", List.of("X")));
+        () ->
+            new UnsupportedSqliteCompileOptionsException(
+                "3.53.0", " ", "managed-only", List.of("X")));
     assertThrows(
         IllegalArgumentException.class,
         () -> new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", " ", List.of("X")));
     assertThrows(
         NullPointerException.class,
-        () -> new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", "managed", null));
+        () ->
+            new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", "managed-only", null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", "managed", List.of()));
+            new UnsupportedSqliteCompileOptionsException(
+                "3.53.0", "2.3.3", "managed-only", List.of()));
   }
 }

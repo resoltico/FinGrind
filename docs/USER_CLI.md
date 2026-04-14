@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: USER_CLI
 updated: "2026-04-14"
 route:
@@ -12,9 +12,9 @@ route:
 
 **Purpose**: Run the packaged FinGrind CLI and understand its command, file, and exit behavior.
 **Prerequisites**: Java 26 or newer. For source-driven local runs, `./gradlew :cli:run` manages
-SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically. For standalone `java -jar`, prefer
-the managed library from `./gradlew prepareManagedSqlite` via `FINGRIND_SQLITE_LIBRARY`, or
-provide a host `libsqlite3` that already satisfies the same SQLite / SQLite3MC contract.
+SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically. For standalone `java -jar`, run
+`./gradlew prepareManagedSqlite` and point `FINGRIND_SQLITE_LIBRARY` at the produced managed
+library. FinGrind does not support arbitrary host `libsqlite3` fallback.
 
 ## Overview
 
@@ -29,6 +29,7 @@ Every book-bound command also requires exactly one passphrase source:
 `help`, `version`, and `capabilities` return pretty JSON envelopes for discovery.
 `print-request-template` returns one raw JSON document so it can be redirected into a file or piped
 into another process.
+`generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 `open-book` explicitly initializes one new protected book.
 `rekey-book` rotates the passphrase that protects one existing initialized book.
 `declare-account` inserts or reactivates one account in the selected book.
@@ -48,6 +49,7 @@ Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `ch
 | `version` | `--version` | none | returns application name, version, and description |
 | `capabilities` | none | none | returns machine-readable storage, command, typed request-field descriptors, response descriptors, and account-registry capabilities |
 | `print-request-template` | `--print-request-template` | none | returns a minimal valid posting request JSON document |
+| `generate-book-key-file` | none | `--book-key-file` | creates one new owner-only key file and returns only non-secret metadata |
 | `open-book` | none | `--book-file`, exactly one of `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt` | creates one initialized protected book with the canonical schema |
 | `rekey-book` | none | `--book-file`, exactly one current passphrase source, exactly one replacement passphrase source | rotates the passphrase that protects the selected existing book |
 | `declare-account` | none | `--book-file`, exactly one passphrase source, `--request-file` | declares or reactivates one account in the selected book |
@@ -99,6 +101,7 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 |:----------|:-----|:--------------|:----------------|
 | unsupported command | `2` | `unknown-command` | `Unsupported command: ...` |
 | missing `--book-file` | `2` | `invalid-request` | `A --book-file argument is required.` |
+| key-file generation target already exists | `1` | `runtime-failure` | `The FinGrind book key file already exists and will not be overwritten.` |
 | missing book passphrase source | `2` | `invalid-request` | `Exactly one book passphrase source is required: ...` |
 | missing replacement passphrase source on `rekey-book` | `2` | `invalid-request` | `Exactly one replacement book passphrase source is required: ...` |
 | missing `--request-file` | `2` | `invalid-request` | `A --request-file argument is required.` |
@@ -112,7 +115,7 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 | posting uses an inactive account | `2` | `inactive-account` | `Account '...' is inactive in this book.` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
 | wrong book key or plaintext legacy book | `1` | `runtime-failure` | storage open failure including `SQLITE_NOTADB` |
-| standalone JAR sees an old or incompatible host SQLite library | `1` | `runtime-failure` | SQLite / SQLite3MC version guidance describing the unsupported native library |
+| standalone JAR is missing `FINGRIND_SQLITE_LIBRARY` or points at the wrong managed library | `1` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime environment failure | `1` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
 ## Notes
@@ -120,8 +123,11 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the call without consulting docs.
 - `help`, `version`, `capabilities`, and `print-request-template` reject extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths.
-- `--book-key-file` must point to a non-empty UTF-8 passphrase file on a POSIX filesystem; one
-  trailing LF or CRLF is tolerated and stripped.
+- `generate-book-key-file` creates one new `0600` UTF-8 key file and refuses to overwrite an
+  existing path.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file on a POSIX
+  filesystem; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
+  are rejected.
 - Book key files must use owner-only permissions (`0400` or `0600`), or the runtime rejects them.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
   cannot be paired with `--request-file -`.
@@ -131,18 +137,19 @@ The `find .../build/managed-sqlite` export above is the supported checked-in-rep
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The packaged CLI enforces SQLite 3.53.0 and SQLite3 Multiple Ciphers 2.3.3.
-- `capabilities` reports `sqliteLibrarySource`, `requiredMinimumSqliteVersion`,
-  `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`, `loadedSqliteVersion`,
-  `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher` so agents can verify the
-  runtime contract directly.
+- Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
+  object level.
+- `capabilities` reports `sqliteLibraryMode`, `sqliteLibraryEnvironmentVariable`,
+  `requiredMinimumSqliteVersion`, `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`,
+  `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher`
+  so agents can verify the runtime contract directly.
 - `capabilities` also reports `preflightSemantics`, `preflight.isCommitGuarantee`, and
   `currencyModel` so agents can discover the advisory preflight contract and single-currency scope
   without reading source code.
 - Gradle-driven local runs and the container image use a managed SQLite 3.53.0 / SQLite3 Multiple
   Ciphers 2.3.3 shared library.
-- Standalone `java -jar` execution still relies on `FINGRIND_SQLITE_LIBRARY` or a compatible host
-  `libsqlite3`, and that external library must satisfy the same SQLite3MC compile-option
-  hardening contract.
+- Standalone `java -jar` execution relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
+  SQLite3MC library produced by `prepareManagedSqlite`.
 - `capabilities` is the best machine-readable contract surface.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send
   `provenance.recordedAt` or `provenance.sourceChannel`.

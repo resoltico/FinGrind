@@ -23,6 +23,7 @@ final class CliArguments {
       case "capabilities" -> parseSingleToken(arguments, new CliCommand.Capabilities());
       case "print-request-template", "--print-request-template" ->
           parseSingleToken(arguments, new CliCommand.PrintRequestTemplate());
+      case "generate-book-key-file" -> parseGenerateBookKeyFileCommand(arguments);
       case "open-book" -> parseBookOnlyCommand(arguments, CliCommand.OpenBook::new);
       case "rekey-book" -> parseRekeyBookCommand(arguments);
       case "declare-account" -> parseRequestBoundCommand(arguments, CliCommand.DeclareAccount::new);
@@ -44,6 +45,25 @@ final class CliArguments {
       List<String> arguments, BookOnlyCommandFactory commandFactory) {
     ParsedBookArguments parsedArguments = parseBookArguments(arguments, false);
     return commandFactory.create(parsedArguments.bookAccess());
+  }
+
+  private static CliCommand parseGenerateBookKeyFileCommand(List<String> arguments) {
+    Path bookKeyFilePath = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (!"--book-key-file".equals(argument)) {
+        throw invalid(argument, "Unsupported argument: " + argument);
+      }
+      if (bookKeyFilePath != null) {
+        throw invalid("--book-key-file", "Duplicate argument: --book-key-file");
+      }
+      bookKeyFilePath = Path.of(requireValue(argumentIterator, "--book-key-file"));
+    }
+    if (bookKeyFilePath == null) {
+      throw invalid("--book-key-file", "A --book-key-file argument is required.");
+    }
+    return new CliCommand.GenerateBookKeyFile(bookKeyFilePath);
   }
 
   private static CliCommand parseRequestBoundCommand(

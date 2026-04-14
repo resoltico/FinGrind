@@ -9,19 +9,18 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
 
   private final String loadedSqliteVersion;
   private final String loadedSqlite3mcVersion;
-  private final String librarySource;
+  private final String libraryMode;
   private final List<String> missingCompileOptions;
 
   UnsupportedSqliteCompileOptionsException(
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
-      String librarySource,
+      String libraryMode,
       List<String> missingCompileOptions) {
-    super(
-        message(loadedSqliteVersion, loadedSqlite3mcVersion, librarySource, missingCompileOptions));
+    super(message(loadedSqliteVersion, loadedSqlite3mcVersion, libraryMode, missingCompileOptions));
     this.loadedSqliteVersion = requireText(loadedSqliteVersion, "loadedSqliteVersion");
     this.loadedSqlite3mcVersion = requireText(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
-    this.librarySource = requireText(librarySource, "librarySource");
+    this.libraryMode = requireText(libraryMode, "libraryMode");
     this.missingCompileOptions =
         List.copyOf(Objects.requireNonNull(missingCompileOptions, "missingCompileOptions"));
     if (this.missingCompileOptions.isEmpty()) {
@@ -37,8 +36,8 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
     return loadedSqlite3mcVersion;
   }
 
-  public String librarySource() {
-    return librarySource;
+  public String libraryMode() {
+    return libraryMode;
   }
 
   public List<String> missingCompileOptions() {
@@ -48,14 +47,14 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
   private static String message(
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
-      String librarySource,
+      String libraryMode,
       List<String> missingCompileOptions) {
     return "SQLite "
         + loadedSqliteVersion
         + " / SQLite3 Multiple Ciphers "
         + loadedSqlite3mcVersion
-        + " from "
-        + librarySource
+        + " in "
+        + libraryMode
         + " is missing required compile options: "
         + String.join(", ", missingCompileOptions);
   }

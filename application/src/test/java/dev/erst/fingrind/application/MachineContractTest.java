@@ -25,7 +25,8 @@ class MachineContractTest {
                 "sqlite",
                 "required",
                 "chacha20",
-                "managed",
+                "managed-only",
+                "FINGRIND_SQLITE_LIBRARY",
                 List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
                 true,
                 "3.53.0",
@@ -43,6 +44,11 @@ class MachineContractTest {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());
+    assertTrue(
+        capabilities
+            .requestInput()
+            .requestDocumentSemantics()
+            .contains("duplicate JSON object keys are rejected"));
 
     assertEquals(
         enumValues(JournalLine.EntrySide.values()),
@@ -86,7 +92,8 @@ class MachineContractTest {
             "sqlite",
             "required",
             "chacha20",
-            "managed",
+            "managed-only",
+            "FINGRIND_SQLITE_LIBRARY",
             List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
             true,
             "3.53.0",
@@ -104,10 +111,11 @@ class MachineContractTest {
 
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
-    assertEquals(10, help.commands().size());
-    assertEquals("open-book", help.commands().get(4).name());
-    assertEquals("rekey-book", help.commands().get(5).name());
-    assertTrue(help.commands().get(5).options().get(2).contains("--new-book-passphrase-prompt"));
+    assertEquals(11, help.commands().size());
+    assertEquals("generate-book-key-file", help.commands().get(4).name());
+    assertEquals("open-book", help.commands().get(5).name());
+    assertEquals("rekey-book", help.commands().get(6).name());
+    assertTrue(help.commands().get(6).options().get(2).contains("--new-book-passphrase-prompt"));
     assertEquals(3, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());

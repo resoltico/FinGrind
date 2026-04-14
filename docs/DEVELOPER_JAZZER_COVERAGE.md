@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.11.0"
+version: "0.12.0"
 domain: DEVELOPER_JAZZER_COVERAGE
 updated: "2026-04-14"
 route:
@@ -16,7 +16,7 @@ route:
 
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
-| `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, and legacy-field hard breaks | `8` |
+| `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, duplicate-key rejection, unexpected-field rejection, and legacy-field hard breaks | `10` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
 | `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
@@ -31,6 +31,8 @@ What it asserts:
 - fresh valid requests parse successfully
 - malformed JSON is normalized into `invalid-request`
 - invalid domain shapes fail deterministically
+- duplicate JSON object keys are rejected deterministically
+- unexpected object fields are rejected deterministically
 - legacy `correction` request shapes are rejected deterministically
 - caller-supplied `sourceChannel` is not trusted; parsed commands always carry `CLI`
 - caller-supplied `recordedAt` and `sourceChannel` are rejected because they are committed fields, not request fields
@@ -87,7 +89,9 @@ What it asserts:
 | `cli-request` | `invalid_forbidden_recorded_at.json` | rejected committed-audit request field |
 | `cli-request` | `invalid_forbidden_source_channel.json` | rejected committed-audit request field, even as `null` |
 | `cli-request` | `invalid_amount_exponent.json` | exponent notation rejection |
+| `cli-request` | `invalid_duplicate_idempotency_key.json` | duplicate JSON object key rejection |
 | `cli-request` | `invalid_missing_provenance.json` | missing provenance object |
+| `cli-request` | `invalid_unexpected_top_level_field.json` | unexpected request field rejection |
 | `cli-request` | `invalid_unbalanced.json` | unbalanced journal entry |
 | `posting-workflow` | `basic_valid.json` | successful preflight then commit |
 | `posting-workflow` | `reversal_reason_required.json` | deterministic rejection for missing reversal reason |

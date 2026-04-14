@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link SqliteBookPassphrase}. */
@@ -56,5 +57,25 @@ class SqliteBookPassphraseTest {
       actual[index] = directBytes.get(index);
     }
     assertArrayEquals(new byte[4], actual);
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void zeroize_overwritesDirectCharBuffers() throws Exception {
+    CharBuffer directCharacters = ByteBuffer.allocateDirect(8).asCharBuffer();
+    directCharacters.put(0, 'a');
+    directCharacters.put(1, 'b');
+    directCharacters.put(2, 'c');
+    directCharacters.put(3, 'd');
+
+    Method method = SqliteBookPassphrase.class.getDeclaredMethod("zeroize", CharBuffer.class);
+    method.setAccessible(true);
+    method.invoke(null, directCharacters);
+
+    char[] actual = new char[4];
+    for (int index = 0; index < actual.length; index++) {
+      actual[index] = directCharacters.get(index);
+    }
+    assertArrayEquals(new char[4], actual);
   }
 }

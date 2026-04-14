@@ -6,21 +6,21 @@ final class UnsupportedSqliteMultipleCiphersVersionException extends IllegalStat
 
   private final String loadedVersion;
   private final String requiredVersion;
-  private final String librarySource;
+  private final String libraryMode;
 
   UnsupportedSqliteMultipleCiphersVersionException(
-      String loadedVersion, String requiredVersion, String librarySource) {
+      String loadedVersion, String requiredVersion, String libraryMode) {
     super(
         "FinGrind requires SQLite3 Multiple Ciphers "
             + requiredVersion
             + " but loaded "
             + loadedVersion
-            + " from the "
-            + librarySource
-            + " library.");
+            + " in "
+            + libraryMode
+            + " mode.");
     this.loadedVersion = loadedVersion;
     this.requiredVersion = requiredVersion;
-    this.librarySource = librarySource;
+    this.libraryMode = libraryMode;
   }
 
   String loadedVersion() {
@@ -31,7 +31,7 @@ final class UnsupportedSqliteMultipleCiphersVersionException extends IllegalStat
     return requiredVersion;
   }
 
-  String librarySource() {
-    return librarySource;
+  String libraryMode() {
+    return libraryMode;
   }
 }

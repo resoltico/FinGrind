@@ -1,0 +1,18 @@
+{
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_duplicate_idempotency_key.json",
+  "expectation" : {
+    "outcomeKind" : "EXPECTED_INVALID",
+    "details" : {
+      "type" : "CLI_REQUEST",
+      "requestStatus" : "INVALID_REQUEST",
+      "effectiveDate" : "NOT_PARSED",
+      "idempotencyKey" : "NOT_PARSED",
+      "lineCount" : 0,
+      "reversalPresent" : false,
+      "actorType" : "NOT_PARSED",
+      "sourceChannel" : "NOT_PARSED",
+      "failureMessage" : "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey"
+    }
+  }
+}

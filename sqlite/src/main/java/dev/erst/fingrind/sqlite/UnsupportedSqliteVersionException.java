@@ -6,21 +6,21 @@ final class UnsupportedSqliteVersionException extends IllegalStateException {
 
   private final String loadedVersion;
   private final String requiredMinimumVersion;
-  private final String librarySource;
+  private final String libraryMode;
 
   UnsupportedSqliteVersionException(
-      String loadedVersion, String requiredMinimumVersion, String librarySource) {
+      String loadedVersion, String requiredMinimumVersion, String libraryMode) {
     super(
         "FinGrind requires SQLite "
             + requiredMinimumVersion
             + " or newer but loaded "
             + loadedVersion
-            + " from the "
-            + librarySource
-            + " library.");
+            + " in "
+            + libraryMode
+            + " mode.");
     this.loadedVersion = loadedVersion;
     this.requiredMinimumVersion = requiredMinimumVersion;
-    this.librarySource = librarySource;
+    this.libraryMode = libraryMode;
   }
 
   String loadedVersion() {
@@ -31,7 +31,7 @@ final class UnsupportedSqliteVersionException extends IllegalStateException {
     return requiredMinimumVersion;
   }
 
-  String librarySource() {
-    return librarySource;
+  String libraryMode() {
+    return libraryMode;
   }
 }

@@ -9,6 +9,7 @@ import dev.erst.fingrind.application.OpenBookResult;
 import dev.erst.fingrind.application.PostEntryResult;
 import dev.erst.fingrind.application.PostingRejection;
 import dev.erst.fingrind.sqlite.RekeyBookResult;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -86,6 +87,19 @@ final class CliResponseWriter {
               administrationRejectedEnvelope(rejected.rejection());
         };
     writeEnvelope(envelope, false);
+  }
+
+  /** Writes one generated book-key-file result as a deterministic JSON envelope. */
+  void writeGenerateBookKeyFileResult(
+      SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile) {
+    writeEnvelope(
+        successEnvelope(
+            new GeneratedBookKeyFilePayload(
+                absolutePath(generatedKeyFile.bookKeyFilePath()),
+                generatedKeyFile.encoding(),
+                generatedKeyFile.entropyBits(),
+                generatedKeyFile.permissions())),
+        false);
   }
 
   /** Writes one explicit rekey-book result as a deterministic JSON envelope. */
@@ -333,6 +347,9 @@ final class CliResponseWriter {
       String status, String code, String message, String idempotencyKey, Object details) {}
 
   private record OpenBookPayload(String bookFile, String initializedAt) {}
+
+  private record GeneratedBookKeyFilePayload(
+      String bookKeyFile, String encoding, int entropyBits, String permissions) {}
 
   private record RekeyBookPayload(String bookFile) {}
 

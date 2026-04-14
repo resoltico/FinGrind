@@ -251,6 +251,29 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void resolve_rejectsControlCharactersFromStandardInput() {
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream("line-1\nline-2\n".getBytes(StandardCharsets.UTF_8)),
+            prompt -> failPrompt(prompt));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                resolver.resolve(
+                    new BookAccess(
+                        Path.of("book.sqlite"),
+                        BookAccess.PassphraseSource.StandardInput.INSTANCE)));
+
+    assertTrue(
+        exception
+            .getMessage()
+            .contains(
+                "must contain a single-line UTF-8 text passphrase without control characters"));
+  }
+
+  @Test
   void systemConsoleReader_reportsNoInteractiveConsoleInTheGradleTestEnvironment() {
     assertTrue(CliBookPassphraseResolver.systemConsoleReader().isEmpty());
   }

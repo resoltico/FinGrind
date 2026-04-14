@@ -37,6 +37,8 @@ public final class SqlitePostingFactStore implements BookSession {
   private static final String ACCOUNT_TABLE = "account";
   private static final String BOOK_META_TABLE = "book_meta";
   private static final String JOURNAL_LINE_TABLE = "journal_line";
+  private static final String REQUIRED_JOURNAL_MODE = "delete";
+  private static final int REQUIRED_SYNCHRONOUS_MODE = 3;
   private static final String NOT_INITIALIZED_BOOK_MESSAGE =
       "The selected SQLite file is not initialized as a FinGrind book.";
   private static final String POSTING_FACT_TABLE = "posting_fact";
@@ -585,6 +587,24 @@ public final class SqlitePostingFactStore implements BookSession {
     }
   }
 
+  @SuppressWarnings("PMD.UseTryWithResources")
+  private static String querySingleText(SqliteNativeDatabase activeDatabase, String sql)
+      throws SqliteNativeException {
+    SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
+    try {
+      if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+        throw new IllegalStateException("SQLite text query returned no rows: " + sql);
+      }
+      String value = statement.columnText(0);
+      if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+        throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
+      }
+      return value;
+    } finally {
+      statement.close();
+    }
+  }
+
   private List<JournalLine> loadLines(SqliteNativeDatabase activeDatabase, PostingId postingId)
       throws SqliteNativeException {
     try (SqliteNativeStatement statement =
@@ -773,13 +793,16 @@ public final class SqlitePostingFactStore implements BookSession {
       openedDatabase.executeScript(
           """
           pragma foreign_keys = on;
+          %spragma synchronous = extra;
           pragma trusted_schema = off;
           pragma secure_delete = on;
           pragma temp_store = memory;
           pragma memory_security = fill;
           pragma query_only = %d;
           """
-              .formatted(accessMode.queryOnlyPragmaValue()));
+              .formatted(
+                  accessMode.writesJournalMode() ? "pragma journal_mode = delete;\n" : "",
+                  accessMode.queryOnlyPragmaValue()));
       assertOpenConfiguration(openedDatabase, accessMode);
       return openedDatabase;
     } catch (SqliteNativeException | RuntimeException exception) {
@@ -792,6 +815,13 @@ public final class SqlitePostingFactStore implements BookSession {
       SqliteNativeDatabase openedDatabase, AccessMode accessMode) throws SqliteNativeException {
     if (querySingleInt(openedDatabase, "pragma foreign_keys") != 1) {
       throw new IllegalStateException("SQLite connection failed to keep foreign_keys enabled.");
+    }
+    if (!REQUIRED_JOURNAL_MODE.equalsIgnoreCase(
+        querySingleText(openedDatabase, "pragma journal_mode"))) {
+      throw new IllegalStateException("SQLite connection failed to enforce journal_mode=DELETE.");
+    }
+    if (querySingleInt(openedDatabase, "pragma synchronous") != REQUIRED_SYNCHRONOUS_MODE) {
+      throw new IllegalStateException("SQLite connection failed to enforce synchronous=EXTRA.");
     }
     if (querySingleInt(openedDatabase, "pragma trusted_schema") != 0) {
       throw new IllegalStateException("SQLite connection failed to disable trusted_schema.");
@@ -857,6 +887,10 @@ public final class SqlitePostingFactStore implements BookSession {
 
     int queryOnlyPragmaValue() {
       return queryOnly ? 1 : 0;
+    }
+
+    boolean writesJournalMode() {
+      return writable;
     }
 
     void requireWritableMutation() {

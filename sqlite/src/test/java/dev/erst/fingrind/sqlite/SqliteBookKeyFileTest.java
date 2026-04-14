@@ -104,6 +104,36 @@ class SqliteBookKeyFileTest {
   }
 
   @Test
+  void load_rejectsControlCharactersInsidePassphrase() throws Exception {
+    Path keyFile = tempDirectory.resolve("control-character.key");
+    writeSecureString(keyFile, "sword\u0007fish");
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
+
+    assertTrue(
+        exception
+            .getMessage()
+            .contains(
+                "must contain a single-line UTF-8 text passphrase without control characters"));
+  }
+
+  @Test
+  void load_rejectsEmbeddedLineFeedsAfterTrailingNormalization() throws Exception {
+    Path keyFile = tempDirectory.resolve("embedded-line-feed.key");
+    writeSecureString(keyFile, "first\nsecond\n");
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
+
+    assertTrue(
+        exception
+            .getMessage()
+            .contains(
+                "must contain a single-line UTF-8 text passphrase without control characters"));
+  }
+
+  @Test
   void load_rethrowsMissingKeyFileAsStableIllegalState() {
     Path keyFile = tempDirectory.resolve("missing.key");
 

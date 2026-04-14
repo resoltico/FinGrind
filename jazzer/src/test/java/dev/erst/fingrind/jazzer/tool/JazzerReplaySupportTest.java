@@ -106,6 +106,48 @@ class JazzerReplaySupportTest {
   }
 
   @Test
+  void replay_returnsExpectedInvalidForDuplicateObjectKeyCliRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.cliRequest(), invalidDuplicateIdempotencyKeyRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new CliRequestReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey"),
+        invalid.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForUnexpectedTopLevelFieldCliRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.cliRequest(), invalidUnexpectedTopLevelFieldRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new CliRequestReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            "Unexpected field: unexpectedField"),
+        invalid.details());
+  }
+
+  @Test
   void replay_returnsSuccessForValidPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
@@ -429,6 +471,66 @@ class JazzerReplaySupportTest {
             "idempotencyKey": "idem-1",
             "causationId": "cause-1"
           }
+        }
+        """;
+  }
+
+  private static String invalidDuplicateIdempotencyKeyRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "1000",
+              "side": "DEBIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            },
+            {
+              "accountCode": "2000",
+              "side": "CREDIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-7",
+            "actorType": "AGENT",
+            "commandId": "command-7",
+            "idempotencyKey": "idem-7-a",
+            "idempotencyKey": "idem-7-b",
+            "causationId": "cause-7"
+          }
+        }
+        """;
+  }
+
+  private static String invalidUnexpectedTopLevelFieldRequest() {
+    return """
+        {
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "1000",
+              "side": "DEBIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            },
+            {
+              "accountCode": "2000",
+              "side": "CREDIT",
+              "currencyCode": "EUR",
+              "amount": "10.00"
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-8",
+            "actorType": "AGENT",
+            "commandId": "command-8",
+            "idempotencyKey": "idem-8",
+            "causationId": "cause-8"
+          },
+          "unexpectedField": "should-be-rejected"
         }
         """;
   }

@@ -17,6 +17,9 @@ sealed interface CliCommand {
   /** Requests a minimal valid posting request JSON document. */
   record PrintRequestTemplate() implements CliCommand {}
 
+  /** Creates one new owner-only generated book key file. */
+  record GenerateBookKeyFile(Path bookKeyFilePath) implements CliCommand {}
+
   /** Explicitly initializes one book file with the canonical schema. */
   record OpenBook(BookAccess bookAccess) implements CliCommand {}
 

@@ -39,6 +39,19 @@ class CliArgumentsTest {
   }
 
   @Test
+  void parse_returnsGenerateBookKeyFileForValidCommand() {
+    CliCommand.GenerateBookKeyFile command =
+        assertInstanceOf(
+            CliCommand.GenerateBookKeyFile.class,
+            CliArguments.parse(
+                new String[] {
+                  "generate-book-key-file", "--book-key-file", "books/entity.book-key"
+                }));
+
+    assertEquals(Path.of("books/entity.book-key"), command.bookKeyFilePath());
+  }
+
+  @Test
   void parse_returnsOpenBookForValidBookOnlyCommand() {
     CliCommand.OpenBook command =
         assertInstanceOf(
@@ -97,6 +110,54 @@ class CliArgumentsTest {
     assertEquals("invalid-request", exception.code());
     assertEquals("--extra", exception.argument());
     assertEquals("This command does not accept additional arguments.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsMissingBookKeyFileForGeneratorCommand() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"generate-book-key-file"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals("A --book-key-file argument is required.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsDuplicateBookKeyFileForGeneratorCommand() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "generate-book-key-file",
+                      "--book-key-file",
+                      "first.key",
+                      "--book-key-file",
+                      "second.key"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--book-key-file", exception.argument());
+    assertEquals("Duplicate argument: --book-key-file", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedArgumentForGeneratorCommand() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "generate-book-key-file", "--book-key-file", "entity.key", "--extra"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--extra", exception.argument());
+    assertEquals("Unsupported argument: --extra", exception.getMessage());
   }
 
   @Test
