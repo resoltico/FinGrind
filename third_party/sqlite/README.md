@@ -11,12 +11,12 @@ Source provenance:
 - official amalgamation asset:
   [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.3/sqlite3mc-2.3.3-sqlite-3.53.0-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.3/sqlite3mc-2.3.3-sqlite-3.53.0-amalgamation.zip)
 - upstream license: [../../LICENSE-SQLITE3MULTIPLECIPHERS](../../LICENSE-SQLITE3MULTIPLECIPHERS)
-- verified `sqlite3mc_amalgamation.c` SHA3-256:
-  `84512ff957a27f066a3ed94e6ce388815622695c8a8b68f9f2de89dd8e4e9e0f`
+- verified LF-normalized `sqlite3mc_amalgamation.c` SHA3-256:
+  `64efba2c47b1db44be7c6b7fdad93267c5cbcf8c0ec4e2f65d73d3de68279526`
 
 Build policy:
 - the Gradle task `verifyManagedSqliteSource` verifies the vendored `sqlite3mc_amalgamation.c`
-  hash
+  hash after normalizing line endings to LF so Git checkout policy cannot skew the integrity check
 - the Gradle task `prepareManagedSqlite` compiles a managed shared library from this source for the
   current macOS or Linux host
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,

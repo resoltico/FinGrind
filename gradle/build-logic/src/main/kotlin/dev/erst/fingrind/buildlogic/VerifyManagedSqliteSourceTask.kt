@@ -27,14 +27,36 @@ abstract class VerifyManagedSqliteSourceTask : DefaultTask() {
         if (!sqliteSource.isFile) {
             throw GradleException("Missing vendored SQLite source at ${sqliteSource.absolutePath}")
         }
+        // Normalize to LF before hashing so Git checkout line-ending policy cannot falsify the
+        // integrity check across CI and developer workstations.
         val actualSourceSha3 =
             MessageDigest.getInstance("SHA3-256")
-                .digest(sqliteSource.readBytes())
+                .digest(sqliteSource.readBytes().normalizeLineEndings())
                 .joinToString(separator = "") { byte -> "%02x".format(byte) }
         if (actualSourceSha3 != expectedSha3.get()) {
             throw GradleException(
                 "Vendored SQLite source hash mismatch. Expected ${expectedSha3.get()} but found $actualSourceSha3 for ${sqliteSource.absolutePath}.",
             )
         }
+    }
+
+    private fun ByteArray.normalizeLineEndings(): ByteArray {
+        var index = 0
+        var sawCarriageReturn = false
+        val normalized = ByteArray(size)
+        for (byte in this) {
+            if (byte == '\r'.code.toByte()) {
+                normalized[index++] = '\n'.code.toByte()
+                sawCarriageReturn = true
+                continue
+            }
+            if (sawCarriageReturn && byte == '\n'.code.toByte()) {
+                sawCarriageReturn = false
+                continue
+            }
+            sawCarriageReturn = false
+            normalized[index++] = byte
+        }
+        return normalized.copyOf(index)
     }
 }

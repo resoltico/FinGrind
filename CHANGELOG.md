@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened protected-book key handling by reading explicit UTF-8 key files, rejecting empty or
   malformed key material, stripping one trailing line ending, and zeroizing transient plaintext
   bytes after native handoff.
+- Stabilized vendored SQLite3MC source verification across Git checkouts by hashing normalized
+  LF line endings instead of host-specific working-tree bytes.
 - Codified the local standalone verification rule that `:cli:shadowJar` packages only the Java
   surface and `prepareManagedSqlite` must also run before validating the JAR against the managed
   SQLite3 Multiple Ciphers library.

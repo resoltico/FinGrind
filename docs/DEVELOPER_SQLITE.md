@@ -89,7 +89,8 @@ License and attribution stance:
   image all build from the vendored official SQLite3 Multiple Ciphers 2.3.3 amalgamation under
   [third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000)
 - [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned
-  `sqlite3mc_amalgamation.c` SHA3-256 before the managed native library is used
+  LF-normalized `sqlite3mc_amalgamation.c` SHA3-256 before the managed native library is used, so
+  Git checkout line-ending policy cannot create false integrity failures across machines or CI
 - [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native shared library from that
   source with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`, `SQLITE_TEMP_STORE=3`, and
   `SQLITE_SECURE_DELETE=1`, then injects it through `FINGRIND_SQLITE_LIBRARY`
