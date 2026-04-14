@@ -20,9 +20,10 @@ class SqliteBookKeyFileTest {
     Path keyFile = tempDirectory.resolve("book.key");
     Files.writeString(keyFile, "swordfish\n", StandardCharsets.UTF_8);
 
-    try (SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(keyFile);
+    try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
-      assertEquals(keyFile.toAbsolutePath().normalize(), keyMaterial.sourcePath());
+      assertEquals(
+          keyFile.toAbsolutePath().normalize().toString(), keyMaterial.sourceDescription());
       assertEquals(9, keyMaterial.byteLength());
       assertEquals(
           "swordfish",
@@ -40,7 +41,7 @@ class SqliteBookKeyFileTest {
     Path keyFile = tempDirectory.resolve("book-crlf.key");
     Files.writeString(keyFile, "swordfish\r\n", StandardCharsets.UTF_8);
 
-    try (SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(keyFile)) {
+    try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(9, keyMaterial.byteLength());
     }
   }
@@ -50,7 +51,7 @@ class SqliteBookKeyFileTest {
     Path keyFile = tempDirectory.resolve("book-no-newline.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
 
-    try (SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(keyFile)) {
+    try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(9, keyMaterial.byteLength());
     }
   }

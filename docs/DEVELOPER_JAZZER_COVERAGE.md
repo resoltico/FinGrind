@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: DEVELOPER_JAZZER_COVERAGE
 updated: "2026-04-14"
 route:
@@ -59,7 +59,8 @@ Surface:
 - request parsing through the same CLI seam
 - explicit `open-book` initialization through the SQLite-backed session
 - explicit account declaration before durable posting
-- commit and reload against a real filesystem path plus a temp UTF-8 book key file
+- commit and reload against a real filesystem path plus deterministic protected-book passphrase
+  material
 - reopening the same SQLite book file in a fresh adapter instance
 
 What it asserts:

@@ -30,8 +30,7 @@ public class SqliteBookRoundTripFuzzTest {
               .resolve("arbitrary")
               .resolve("entity-book.sqlite");
 
-      try (SqlitePostingFactStore postingFactStore =
-          new SqlitePostingFactStore(SqliteFuzzAssertions.bookAccess(bookPath))) {
+      try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
         BookAdministrationService administrationService =
             CliFuzzSupport.administrationService(postingFactStore);
         PostingApplicationService applicationService =
@@ -66,8 +65,7 @@ public class SqliteBookRoundTripFuzzTest {
         PostEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
           SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
-          try (SqlitePostingFactStore reloadedStore =
-              new SqlitePostingFactStore(SqliteFuzzAssertions.bookAccess(bookPath))) {
+          try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
             Optional<PostingFact> storedPosting =
                 reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
             SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);

@@ -42,8 +42,9 @@ SQLite3 Multiple Ciphers
 
   FinGrind protects book files with SQLite3 Multiple Ciphers using the upstream
   default sqleet / chacha20 cipher. FinGrind does not pass keys through
-  SQLite URI key= or hexkey= parameters; the supported contract is an explicit
-  UTF-8 book key file supplied via --book-key-file.
+  SQLite URI key= or hexkey= parameters; the supported contract is exactly one
+  explicit safe passphrase source: a UTF-8 key file, standard input payload,
+  or interactive terminal prompt.
 
 --------------------------------------------------------------------------------
 SQLite

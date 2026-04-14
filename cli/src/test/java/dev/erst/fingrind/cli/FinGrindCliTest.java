@@ -118,6 +118,9 @@ class FinGrindCliTest {
     assertEquals("managed", payload.path("environment").path("sqliteLibrarySource").asString());
     assertEquals("2.3.3", payload.path("environment").path("requiredSqlite3mcVersion").asText());
     assertEquals("2.3.3", payload.path("environment").path("loadedSqlite3mcVersion").asText());
+    assertEquals(
+        "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
+        payload.path("requestInput").path("bookPassphraseOptions").toString());
   }
 
   @Test
@@ -206,6 +209,103 @@ class FinGrindCliTest {
             .toString(StandardCharsets.UTF_8)
             .contains("\"code\":\"book-not-initialized\""));
     assertFalse(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_openBookAndListAccountsThroughDefaultSqliteWorkflowSupportsStandardInputPassphrase()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("stdin-books").resolve("entity.sqlite");
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        new FinGrindCli(
+            new ByteArrayInputStream((TEST_BOOK_KEY + "\n").getBytes(StandardCharsets.UTF_8)),
+            utf8PrintStream(openOutput),
+            fixedClock());
+
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
+            }));
+    assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
+
+    ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
+    FinGrindCli listCli =
+        new FinGrindCli(
+            new ByteArrayInputStream((TEST_BOOK_KEY + "\n").getBytes(StandardCharsets.UTF_8)),
+            utf8PrintStream(listOutput),
+            fixedClock());
+
+    assertEquals(
+        0,
+        listCli.run(
+            new String[] {
+              "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
+            }));
+    assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
+  void run_openBookThroughDefaultSqliteWorkflowRejectsPromptPassphraseWithoutInteractiveConsole() {
+    Path bookFilePath = tempDirectory.resolve("no-console-books").resolve("entity.sqlite");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains(
+                "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
+  }
+
+  @Test
+  void run_openBookAndListAccountsThroughDefaultSqliteWorkflowSupportsInteractivePromptPassphrase()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("prompt-books").resolve("entity.sqlite");
+    CliBookPassphraseResolver.Terminal terminal = prompt -> TEST_BOOK_KEY.toCharArray();
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(openOutput),
+            fixedClock(),
+            terminal);
+
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
+            }));
+    assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
+
+    ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
+    FinGrindCli listCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(listOutput),
+            fixedClock(),
+            terminal);
+
+    assertEquals(
+        0,
+        listCli.run(
+            new String[] {
+              "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
+            }));
+    assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
   }
 
   @Test
@@ -966,6 +1066,6 @@ class FinGrindCliTest {
   }
 
   private static BookAccess bookAccess(Path bookFilePath, Path bookKeyFilePath) {
-    return new BookAccess(bookFilePath, bookKeyFilePath);
+    return new BookAccess(bookFilePath, new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath));
   }
 }

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: DEVELOPER
 updated: "2026-04-14"
 route:
@@ -68,7 +68,8 @@ application -> core
 
 FinGrind is intentionally hard-break oriented right now:
 - one SQLite file is one book for one entity
-- every book-bound command requires one explicit UTF-8 key file via `--book-key-file`
+- every book-bound command requires exactly one explicit passphrase source:
+  `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
 - book files are protected at rest with SQLite3 Multiple Ciphers 2.3.3 using the upstream default
   `chacha20` cipher
 - one canonical current schema defines new books
@@ -95,6 +96,26 @@ FinGrind is intentionally hard-break oriented right now:
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
 | PMD | 7.23.0 |
+
+## Java 26 Feature Policy
+
+FinGrind uses stable modern Java aggressively where it improves clarity or removes glue:
+- records and sealed result families for closed business outcomes
+- pattern-switch and other modern switch forms for deterministic dispatch
+- collection conveniences such as `List.getFirst()`
+- the final Java 26 FFM API for the SQLite bridge
+
+FinGrind does not enable preview or incubator features by default.
+That is deliberate best practice, not conservatism-by-accident:
+- most headline JDK 26 additions remain preview or incubator surfaces
+- preview features add repo-wide build, tooling, and release coupling through `--enable-preview`
+- they should be adopted only when they materially simplify the architecture, not just because a
+  newer syntax exists
+
+Current stance:
+- stable Java 26 features are preferred immediately
+- preview or incubator JDK 26 features stay off until there is a concrete architecture win worth
+  the extra lifecycle cost
 
 ## Commands
 
@@ -229,7 +250,11 @@ Operational protocols for those surfaces live in:
 FinGrind deliberately keeps several boundaries sharp:
 - SQLite is the only durable backend currently planned.
 - One SQLite file is one book for one entity.
-- Every book is protected at rest through SQLite3 Multiple Ciphers and an explicit UTF-8 key file.
+- Every book is protected at rest through SQLite3 Multiple Ciphers and exactly one explicit
+  passphrase source.
+- FinGrind supports key files, stdin, and interactive terminal prompts; it intentionally rejects
+  plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
+  `key=` / `hexkey=` secret transport.
 - There is no generic database-independence layer.
 - There is one canonical current SQLite schema and no migration layer.
 - The CLI never bypasses the application boundary.

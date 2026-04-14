@@ -42,13 +42,28 @@ final class SqliteNativeLibrary {
 
   static SqliteNativeDatabase open(BookAccess bookAccess) throws SqliteNativeException {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    Path bookPath = bookAccess.bookFilePath().toAbsolutePath().normalize();
-    Path bookKeyFilePath = bookAccess.bookKeyFilePath().toAbsolutePath().normalize();
-    SqliteApi sqliteApi = api();
-    try (Arena arena = Arena.ofConfined();
-        SqliteBookKeyFile.KeyMaterial keyMaterial = SqliteBookKeyFile.load(bookKeyFilePath)) {
+    if (!(bookAccess.passphraseSource() instanceof BookAccess.PassphraseSource.KeyFile keyFile)) {
+      throw new IllegalArgumentException(
+          "SQLite same-package file-backed open requires a --book-key-file access selection.");
+    }
+    return open(bookAccess.bookFilePath(), SqliteBookKeyFile.load(keyFile.bookKeyFilePath()));
+  }
+
+  static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase)
+      throws SqliteNativeException {
+    return open(bookPath, bookPassphrase, api());
+  }
+
+  static SqliteNativeDatabase open(
+      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteApi sqliteApi)
+      throws SqliteNativeException {
+    Objects.requireNonNull(bookPath, "bookPath");
+    Objects.requireNonNull(bookPassphrase, "bookPassphrase");
+    Objects.requireNonNull(sqliteApi, "sqliteApi");
+    Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
+    try (Arena arena = Arena.ofConfined()) {
       MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
-      MemorySegment filename = arena.allocateFrom(bookPath.toString());
+      MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
       int resultCode =
           (int)
               sqliteApi.sqlite3OpenV2.invokeExact(
@@ -62,7 +77,7 @@ final class SqliteNativeLibrary {
         closeQuietly(databaseHandle, sqliteApi);
         throw exception;
       }
-      applyKey(databaseHandle, keyMaterial, sqliteApi, arena);
+      applyKey(databaseHandle, bookPassphrase, sqliteApi, arena);
       int timeoutResult =
           (int)
               sqliteApi.sqlite3BusyTimeout.invokeExact(databaseHandle, SQLITE_BUSY_TIMEOUT_MILLIS);
@@ -686,22 +701,24 @@ final class SqliteNativeLibrary {
 
   private static void applyKey(
       MemorySegment databaseHandle,
-      SqliteBookKeyFile.KeyMaterial keyMaterial,
+      SqliteBookPassphrase bookPassphrase,
       SqliteApi sqliteApi,
       Arena arena)
       throws SqliteNativeException {
     try {
-      MemorySegment keyPointer = keyMaterial.copyToCString(arena);
+      MemorySegment keyPointer = bookPassphrase.copyToCString(arena);
       int resultCode =
           (int)
               sqliteApi.sqlite3Key.invokeExact(
-                  databaseHandle, keyPointer, keyMaterial.byteLength());
+                  databaseHandle, keyPointer, bookPassphrase.byteLength());
       requireOpenConfigurationSuccess(databaseHandle, resultCode, sqliteApi);
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
       throw new IllegalStateException(
-          "Failed to apply the FinGrind SQLite book key from " + keyMaterial.sourcePath() + ".",
+          "Failed to apply the FinGrind SQLite book passphrase from "
+              + bookPassphrase.sourceDescription()
+              + ".",
           throwable);
     }
   }

@@ -38,15 +38,17 @@ public final class MachineContract {
             "fingrind version",
             "fingrind capabilities",
             "fingrind print-request-template",
-            "fingrind open-book --book-file <path> --book-key-file <path>",
-            "fingrind declare-account --book-file <path> --book-key-file <path> --request-file <path|->",
-            "fingrind list-accounts --book-file <path> --book-key-file <path>",
-            "fingrind preflight-entry --book-file <path> --book-key-file <path> --request-file <path|->",
-            "fingrind post-entry --book-file <path> --book-key-file <path> --request-file <path|->"),
+            "fingrind open-book --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt]",
+            "fingrind declare-account --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->",
+            "fingrind list-accounts --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt]",
+            "fingrind preflight-entry --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->",
+            "fingrind post-entry --book-file <path> [--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->"),
         bookModel(),
         commandDescriptors(),
         List.of(
             "fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
+            "printf '%s\n' 'acme-demo-passphrase' | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+            "fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-prompt",
             "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-cash.json",
             "fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./docs/examples/declare-account-revenue.json",
             "fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key",
@@ -111,7 +113,7 @@ public final class MachineContract {
         "one SQLite file equals one book",
         "one book belongs to one entity",
         "--book-file may point anywhere on the OS filesystem",
-        "every book-bound command requires one explicit UTF-8 passphrase file via --book-key-file",
+        "every book-bound command requires exactly one explicit passphrase source via --book-key-file, --book-passphrase-stdin, or --book-passphrase-prompt",
         "books must be opened explicitly before any posting or account declaration",
         "every posting line must reference a declared active account",
         "there is no migration or compatibility layer during the hard-break phase",
@@ -147,31 +149,44 @@ public final class MachineContract {
         new CommandDescriptor(
             "open-book",
             List.of(),
-            List.of("--book-file <path>", "--book-key-file <path>"),
+            List.of(
+                "--book-file <path>",
+                "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt"),
             "json-envelope",
             "Initialize a new book file with the canonical schema."),
         new CommandDescriptor(
             "declare-account",
             List.of(),
-            List.of("--book-file <path>", "--book-key-file <path>", "--request-file <path|->"),
+            List.of(
+                "--book-file <path>",
+                "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt",
+                "--request-file <path|->"),
             "json-envelope",
             "Declare or reactivate one account in the selected book."),
         new CommandDescriptor(
             "list-accounts",
             List.of(),
-            List.of("--book-file <path>", "--book-key-file <path>"),
+            List.of(
+                "--book-file <path>",
+                "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt"),
             "json-envelope",
             "List every declared account in the selected book."),
         new CommandDescriptor(
             "preflight-entry",
             List.of(),
-            List.of("--book-file <path>", "--book-key-file <path>", "--request-file <path|->"),
+            List.of(
+                "--book-file <path>",
+                "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt",
+                "--request-file <path|->"),
             "json-envelope",
             "Validate one posting request without committing it."),
         new CommandDescriptor(
             "post-entry",
             List.of(),
-            List.of("--book-file <path>", "--book-key-file <path>", "--request-file <path|->"),
+            List.of(
+                "--book-file <path>",
+                "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt",
+                "--request-file <path|->"),
             "json-envelope",
             "Commit one posting request into the selected SQLite book."));
   }
@@ -186,11 +201,14 @@ public final class MachineContract {
   private static RequestInputDescriptor requestInput() {
     return new RequestInputDescriptor(
         "--book-file",
-        "--book-key-file",
+        List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         "--request-file",
         "-",
         "single SQLite book file for one entity",
-        "UTF-8 passphrase file for the selected encrypted book");
+        List.of(
+            "UTF-8 passphrase file for the selected encrypted book",
+            "read one UTF-8 passphrase payload from standard input; this cannot be combined with --request-file -",
+            "prompt for the passphrase on the controlling terminal without echo"));
   }
 
   private static RequestShapesDescriptor requestShapes() {
@@ -505,11 +523,11 @@ public final class MachineContract {
   /** Descriptor for request-file and book-file input plumbing. */
   public record RequestInputDescriptor(
       String bookFileOption,
-      String bookKeyFileOption,
+      List<String> bookPassphraseOptions,
       String requestFileOption,
       String stdinToken,
       String bookFileSemantics,
-      String bookKeyFileSemantics) {}
+      List<String> bookPassphraseSemantics) {}
 
   /** Descriptor grouping the current request shapes. */
   public record RequestShapesDescriptor(

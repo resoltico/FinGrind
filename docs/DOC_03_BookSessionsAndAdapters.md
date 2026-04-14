@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: ADAPTERS
 updated: "2026-04-14"
 route:
-  keywords: [fingrind, book-session, sqlite, sqlite3mc, adapter, posting-fact, in-memory, cli, ffm, account-registry, book-key-file]
+  keywords: [fingrind, book-session, sqlite, sqlite3mc, adapter, posting-fact, in-memory, cli, ffm, account-registry, book-key-file, book-passphrase-stdin, book-passphrase-prompt]
   questions: ["how is a committed posting stored in fingrind", "what is BookSession in fingrind", "what does the sqlite adapter do in fingrind"]
 ---
 
@@ -45,13 +45,28 @@ public interface BookSession extends AutoCloseable
 ```java
 public record BookAccess(
     Path bookFilePath,
-    Path bookKeyFilePath)
+    PassphraseSource passphraseSource)
 ```
 
-- Purpose: keep the durable book path and the required key-file path coupled as one value
+- Purpose: keep the durable book path and the selected passphrase-source contract coupled as one
+  value
 - Book identity: `bookFilePath` remains the durable book identity
-- Access contract: `bookKeyFilePath` must point at the UTF-8 passphrase file needed to open that
-  protected book
+- Access contract: `passphraseSource` must be exactly one of key file, standard input, or
+  interactive prompt
+
+## `SqliteBookPassphrase`
+
+`SqliteBookPassphrase` is the resolved zeroizable UTF-8 passphrase payload used by the SQLite
+adapter.
+
+```java
+public final class SqliteBookPassphrase
+    implements AutoCloseable
+```
+
+- Purpose: hold normalized UTF-8 passphrase bytes only after the CLI has resolved a safe source
+- Lifecycle: copied into native memory for `sqlite3_key()` and then zeroized
+- Safety: avoids keeping CLI source transport concerns inside the low-level SQLite bridge
 
 ## `PostingCommitResult`
 
@@ -87,8 +102,9 @@ public final class SqlitePostingFactStore
 ```
 
 - Purpose: persist one protected book into one selected SQLite file
-- Book identity: constructor `BookAccess.bookFilePath()` is the durable book boundary
-- Access secret: constructor `BookAccess.bookKeyFilePath()` supplies the required passphrase file
+- Book identity: constructor `Path bookPath` is the durable book boundary
+- Access secret: constructor `SqliteBookPassphrase` supplies the resolved protected-book
+  passphrase bytes
 - Concurrency: thread-confined to one owning CLI command
 - Reads: return empty for a missing file and do not initialize storage eagerly
 - Open configuration: applies `sqlite3_key()` immediately after open, validates the key, enables

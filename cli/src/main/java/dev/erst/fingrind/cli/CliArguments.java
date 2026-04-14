@@ -56,6 +56,7 @@ final class CliArguments {
       List<String> arguments, boolean requestRequired) {
     Path bookFilePath = null;
     Path bookKeyFilePath = null;
+    PassphraseSourceKind passphraseSourceKind = null;
     Path requestFile = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
@@ -68,10 +69,19 @@ final class CliArguments {
           bookFilePath = Path.of(requireValue(argumentIterator, "--book-file"));
         }
         case "--book-key-file" -> {
-          if (bookKeyFilePath != null) {
-            throw invalid("--book-key-file", "Duplicate argument: --book-key-file");
-          }
+          passphraseSourceKind =
+              requireSinglePassphraseSource(passphraseSourceKind, PassphraseSourceKind.KEY_FILE);
           bookKeyFilePath = Path.of(requireValue(argumentIterator, "--book-key-file"));
+        }
+        case "--book-passphrase-stdin" -> {
+          passphraseSourceKind =
+              requireSinglePassphraseSource(
+                  passphraseSourceKind, PassphraseSourceKind.STANDARD_INPUT);
+        }
+        case "--book-passphrase-prompt" -> {
+          passphraseSourceKind =
+              requireSinglePassphraseSource(
+                  passphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
         case "--request-file" -> {
           if (!requestRequired) {
@@ -88,13 +98,48 @@ final class CliArguments {
     if (bookFilePath == null) {
       throw invalid("--book-file", "A --book-file argument is required.");
     }
-    if (bookKeyFilePath == null) {
-      throw invalid("--book-key-file", "A --book-key-file argument is required.");
+    if (passphraseSourceKind == null) {
+      throw invalid(
+          "--book-key-file",
+          "Exactly one book passphrase source is required: --book-key-file <path>,"
+              + " --book-passphrase-stdin, or --book-passphrase-prompt.");
     }
     if (requestRequired && requestFile == null) {
       throw invalid("--request-file", "A --request-file argument is required.");
     }
-    if (bookFilePath.toAbsolutePath().equals(bookKeyFilePath.toAbsolutePath())) {
+    BookAccess.PassphraseSource passphraseSource =
+        passphraseSource(passphraseSourceKind, bookKeyFilePath);
+    validateDistinctPaths(bookFilePath, passphraseSource, requestFile);
+    validateStandardInputUsage(passphraseSource, requestFile);
+    return new ParsedBookArguments(new BookAccess(bookFilePath, passphraseSource), requestFile);
+  }
+
+  private static PassphraseSourceKind requireSinglePassphraseSource(
+      PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
+    Objects.requireNonNull(candidateSource, "candidateSource");
+    if (currentSource != null) {
+      throw invalid(
+          candidateSource.optionName(),
+          "Exactly one book passphrase source is permitted per command.");
+    }
+    return candidateSource;
+  }
+
+  private static BookAccess.PassphraseSource passphraseSource(
+      PassphraseSourceKind passphraseSourceKind, Path bookKeyFilePath) {
+    return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
+      case KEY_FILE ->
+          new BookAccess.PassphraseSource.KeyFile(
+              Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath"));
+      case STANDARD_INPUT -> BookAccess.PassphraseSource.StandardInput.INSTANCE;
+      case INTERACTIVE_PROMPT -> BookAccess.PassphraseSource.InteractivePrompt.INSTANCE;
+    };
+  }
+
+  private static void validateDistinctPaths(
+      Path bookFilePath, BookAccess.PassphraseSource passphraseSource, Path requestFile) {
+    if (passphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile
+        && bookFilePath.toAbsolutePath().equals(keyFile.bookKeyFilePath().toAbsolutePath())) {
       throw invalid(
           "--book-key-file", "--book-file and --book-key-file must not point to the same path.");
     }
@@ -103,11 +148,22 @@ final class CliArguments {
           "--request-file", "--book-file and --request-file must not point to the same path.");
     }
     if (requestFile != null
-        && bookKeyFilePath.toAbsolutePath().equals(requestFile.toAbsolutePath())) {
+        && passphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile
+        && keyFile.bookKeyFilePath().toAbsolutePath().equals(requestFile.toAbsolutePath())) {
       throw invalid(
           "--book-key-file", "--book-key-file and --request-file must not point to the same path.");
     }
-    return new ParsedBookArguments(new BookAccess(bookFilePath, bookKeyFilePath), requestFile);
+  }
+
+  private static void validateStandardInputUsage(
+      BookAccess.PassphraseSource passphraseSource, Path requestFile) {
+    if (requestFile != null
+        && "-".equals(requestFile.toString())
+        && passphraseSource instanceof BookAccess.PassphraseSource.StandardInput) {
+      throw invalid(
+          "--book-passphrase-stdin",
+          "Standard input cannot supply both the book passphrase and the request JSON.");
+    }
   }
 
   private static String requireValue(ListIterator<String> argumentIterator, String optionName) {
@@ -123,6 +179,23 @@ final class CliArguments {
         argument,
         message,
         "Run 'fingrind help' to inspect the supported command syntax.");
+  }
+
+  /** Canonical passphrase-source selections accepted by the CLI parser. */
+  private enum PassphraseSourceKind {
+    KEY_FILE("--book-key-file"),
+    STANDARD_INPUT("--book-passphrase-stdin"),
+    INTERACTIVE_PROMPT("--book-passphrase-prompt");
+
+    private final String optionName;
+
+    PassphraseSourceKind(String optionName) {
+      this.optionName = optionName;
+    }
+
+    private String optionName() {
+      return optionName;
+    }
   }
 
   private static CliArgumentsException unknownCommand(String commandName) {

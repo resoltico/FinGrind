@@ -38,6 +38,9 @@ class MachineContractTest {
     assertFalse(capabilities.preflight().isCommitGuarantee());
     assertEquals("single-currency-per-entry", capabilities.currencyModel().scope());
     assertEquals("not-supported", capabilities.currencyModel().multiCurrencyStatus());
+    assertEquals(
+        List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
+        capabilities.requestInput().bookPassphraseOptions());
 
     assertEquals(
         enumValues(JournalLine.EntrySide.values()),
@@ -99,6 +102,7 @@ class MachineContractTest {
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
     assertEquals(9, help.commands().size());
     assertEquals("open-book", help.commands().get(4).name());
+    assertTrue(help.commands().get(4).options().get(1).contains("--book-passphrase-prompt"));
     assertEquals(3, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());

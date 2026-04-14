@@ -1,8 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -417,30 +419,30 @@ class SqlitePostingFactStoreTest {
       assertTrue(postingFactStore.isInitialized());
     }
 
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(databasePath));
-    try {
-      assertEquals(
-          1,
-          queryInt(
-              database,
-              "select strict from pragma_table_list('book_meta') where name = 'book_meta'"));
-      assertEquals(
-          1,
-          queryInt(
-              database, "select strict from pragma_table_list('account') where name = 'account'"));
-      assertEquals(
-          1,
-          queryInt(
-              database,
-              "select strict from pragma_table_list('posting_fact') where name = 'posting_fact'"));
-      assertEquals(
-          1,
-          queryInt(
-              database,
-              "select strict from pragma_table_list('journal_line') where name = 'journal_line'"));
-    } finally {
-      database.close();
-    }
+    withStandaloneDatabase(
+        bookAccess(databasePath),
+        database -> {
+          assertEquals(
+              1,
+              queryInt(
+                  database,
+                  "select strict from pragma_table_list('book_meta') where name = 'book_meta'"));
+          assertEquals(
+              1,
+              queryInt(
+                  database,
+                  "select strict from pragma_table_list('account') where name = 'account'"));
+          assertEquals(
+              1,
+              queryInt(
+                  database,
+                  "select strict from pragma_table_list('posting_fact') where name = 'posting_fact'"));
+          assertEquals(
+              1,
+              queryInt(
+                  database,
+                  "select strict from pragma_table_list('journal_line') where name = 'journal_line'"));
+        });
   }
 
   @Test
@@ -451,52 +453,52 @@ class SqlitePostingFactStoreTest {
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
 
-      SqliteNativeDatabase activeDatabase = storeDatabase(postingFactStore);
-      assertEquals(1, queryInt(activeDatabase, "pragma foreign_keys"));
-      assertEquals(0, queryInt(activeDatabase, "pragma trusted_schema"));
+      assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma foreign_keys"));
+      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma trusted_schema"));
     }
   }
 
   @Test
   void canonicalStrictSchema_rejectsNonLosslessTypeMismatches() throws SqliteNativeException {
     Path bookPath = tempDirectory.resolve("strict-datatype.sqlite");
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteSchemaManager.initializeBook(database);
+                  insertInitializedAtRow(database);
+                  insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(database, "posting-1", "idem-1");
 
-    try {
-      SqliteSchemaManager.initializeBook(database);
-      insertInitializedAtRow(database);
-      insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
-      insertPostingFactRow(database, "posting-1", "idem-1");
+                  SqliteNativeException exception =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  """
+                                  insert into journal_line (
+                                      posting_id,
+                                      line_order,
+                                      account_code,
+                                      entry_side,
+                                      currency_code,
+                                      amount
+                                  ) values (
+                                      'posting-1',
+                                      'not-an-integer',
+                                      '1000',
+                                      'DEBIT',
+                                      'EUR',
+                                      '10.00'
+                                  )
+                                  """));
 
-      SqliteNativeException exception =
-          assertThrows(
-              SqliteNativeException.class,
-              () ->
-                  database.executeStatement(
-                      """
-                      insert into journal_line (
-                          posting_id,
-                          line_order,
-                          account_code,
-                          entry_side,
-                          currency_code,
-                          amount
-                      ) values (
-                          'posting-1',
-                          'not-an-integer',
-                          '1000',
-                          'DEBIT',
-                          'EUR',
-                          '10.00'
-                      )
-                      """));
-
-      assertEquals(SqliteNativeLibrary.SQLITE_CONSTRAINT_DATATYPE, exception.resultCode());
-      assertEquals("SQLITE_CONSTRAINT_DATATYPE", exception.resultName());
-      assertEquals(0, queryInt(database, "select count(*) from journal_line"));
-    } finally {
-      database.close();
-    }
+                  assertEquals(
+                      SqliteNativeLibrary.SQLITE_CONSTRAINT_DATATYPE, exception.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_DATATYPE", exception.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from journal_line"));
+                }));
   }
 
   @Test
@@ -642,7 +644,10 @@ class SqlitePostingFactStoreTest {
     Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
 
     try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(new BookAccess(fileParent.resolve("entity.sqlite"), keyPath))) {
+        new SqlitePostingFactStore(
+            new BookAccess(
+                fileParent.resolve("entity.sqlite"),
+                new BookAccess.PassphraseSource.KeyFile(keyPath)))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
@@ -695,41 +700,41 @@ class SqlitePostingFactStoreTest {
   void initializeBook_executesWholeSchemaScriptWithoutStatementSplitting()
       throws SqliteNativeException {
     Path bookPath = tempDirectory.resolve("schema-script.sqlite");
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteSchemaManager.initializeBook(
+                      database,
+                      () ->
+                          new ByteArrayInputStream(
+                              """
+                              create table sample (
+                                  id integer primary key,
+                                  note text not null
+                              );
+                              create table sample_audit (
+                                  note text not null
+                              );
+                              -- comment with semicolon;
+                              create trigger sample_after_insert
+                              after insert on sample
+                              begin
+                                  insert into sample_audit (note) values ('semi;colon');
+                              end;
+                              """
+                                  .getBytes(StandardCharsets.UTF_8)));
 
-    try {
-      SqliteSchemaManager.initializeBook(
-          database,
-          () ->
-              new ByteArrayInputStream(
-                  """
-                  create table sample (
-                      id integer primary key,
-                      note text not null
-                  );
-                  create table sample_audit (
-                      note text not null
-                  );
-                  -- comment with semicolon;
-                  create trigger sample_after_insert
-                  after insert on sample
-                  begin
-                      insert into sample_audit (note) values ('semi;colon');
-                  end;
-                  """
-                      .getBytes(StandardCharsets.UTF_8)));
+                  database.executeStatement("insert into sample (id, note) values (1, 'ok')");
 
-      database.executeStatement("insert into sample (id, note) values (1, 'ok')");
-
-      try (SqliteNativeStatement statement =
-          SqliteNativeLibrary.prepare(database, "select note from sample_audit")) {
-        assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
-        assertEquals("semi;colon", statement.columnText(0));
-        assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
-      }
-    } finally {
-      database.close();
-    }
+                  try (SqliteNativeStatement statement =
+                      SqliteNativeLibrary.prepare(database, "select note from sample_audit")) {
+                    assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+                    assertEquals("semi;colon", statement.columnText(0));
+                    assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
+                  }
+                }));
   }
 
   @Test
@@ -774,6 +779,166 @@ class SqlitePostingFactStoreTest {
         new SqlitePostingFactStore(bookAccess(tempDirectory.resolve("close-ok.sqlite")))) {
       assertDoesNotThrow(postingFactStore::close);
       assertDoesNotThrow(postingFactStore::close);
+    }
+  }
+
+  @Test
+  void close_afterDatabaseOpenRemainsIdempotent() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-opened.sqlite");
+    initializeBookOnDisk(bookPath);
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      assertDoesNotThrow(postingFactStore::listAccounts);
+      assertDoesNotThrow(postingFactStore::close);
+      assertDoesNotThrow(postingFactStore::close);
+    }
+  }
+
+  @Test
+  void close_zeroizesPendingPassphraseWhenDatabaseWasNeverOpened() throws Exception {
+    SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "test close pending passphrase", TEST_BOOK_KEY.toCharArray());
+    byte[] expectedZeroes = new byte[TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8).length];
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(tempDirectory.resolve("never-opened.sqlite"), passphrase)) {
+      postingFactStore.close();
+    }
+
+    assertArrayEquals(expectedZeroes, passphraseBytes(passphrase));
+  }
+
+  @Test
+  void storeRetainsStableOpenFailureAfterPassphraseConsumption() throws Exception {
+    Path invalidBookPath = tempDirectory.resolve("invalid-retry.sqlite");
+    Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+      IllegalStateException firstFailure =
+          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
+      IllegalStateException secondFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findAccount(new AccountCode("1000")));
+
+      assertInvalidPlaintextBookFailure(firstFailure);
+      assertSame(firstFailure, secondFailure);
+    }
+  }
+
+  @Test
+  void constructor_rejectsNonKeyFileAccessSelection() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new SqlitePostingFactStore(
+                    new BookAccess(
+                        tempDirectory.resolve("stdin-access.sqlite"),
+                        BookAccess.PassphraseSource.StandardInput.INSTANCE)));
+
+    assertEquals(
+        "SQLite same-package file-backed stores require a --book-key-file access selection.",
+        exception.getMessage());
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void passphraseFor_loadsKeyFileBackedAccessSelection() throws Exception {
+    Path keyFile = tempDirectory.resolve("book-passphrase.key");
+    Files.writeString(keyFile, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+    Method method =
+        SqlitePostingFactStore.class.getDeclaredMethod("passphraseFor", BookAccess.class);
+    method.setAccessible(true);
+
+    try (SqliteBookPassphrase passphrase =
+        (SqliteBookPassphrase)
+            method.invoke(
+                null,
+                new BookAccess(
+                    tempDirectory.resolve("book-passphrase.sqlite"),
+                    new BookAccess.PassphraseSource.KeyFile(keyFile)))) {
+      assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
+      assertEquals(TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
+    }
+  }
+
+  @Test
+  void configureOpenedDatabase_closesUnconfiguredDatabaseQuietlyWhenPragmasFail() throws Exception {
+    SqliteNativeException exception =
+        assertThrows(
+            SqliteNativeException.class,
+            () ->
+                SqlitePostingFactStore.configureOpenedDatabase(
+                    staleDatabaseHandle(tempDirectory.resolve("stale.sqlite"))));
+
+    assertFalse(exception.getMessage().isBlank());
+  }
+
+  @Test
+  void closeAfterConfigurationFailure_closesOpenDatabase() throws Exception {
+    Path bookPath = tempDirectory.resolve("configured-close.sqlite");
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
+
+    assertDoesNotThrow(() -> SqlitePostingFactStore.closeAfterConfigurationFailure(database));
+  }
+
+  @Test
+  void closeAfterConfigurationFailure_ignoresNativeCloseFailure() throws Exception {
+    assertDoesNotThrow(
+        () ->
+            SqlitePostingFactStore.closeAfterConfigurationFailure(
+                staleDatabaseHandle(tempDirectory.resolve("stale-close.sqlite"))));
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void takeBookPassphrase_rejectsSecondConsumption() throws Exception {
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(
+            tempDirectory.resolve("passphrase-consumption.sqlite"),
+            SqliteBookPassphrase.fromCharacters(
+                "test passphrase consumption", TEST_BOOK_KEY.toCharArray()))) {
+      Method method = SqlitePostingFactStore.class.getDeclaredMethod("takeBookPassphrase");
+      method.setAccessible(true);
+
+      try (SqliteBookPassphrase ignored = (SqliteBookPassphrase) method.invoke(postingFactStore)) {
+        InvocationTargetException exception =
+            assertThrows(InvocationTargetException.class, () -> method.invoke(postingFactStore));
+
+        assertEquals(
+            "SQLite book passphrase is no longer available.", exception.getCause().getMessage());
+      }
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void openBook_remembersConsumedPassphraseFailureAsTerminalState() throws Exception {
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(
+            tempDirectory.resolve("consumed-passphrase.sqlite"),
+            SqliteBookPassphrase.fromCharacters(
+                "test consumed passphrase", TEST_BOOK_KEY.toCharArray()))) {
+      Method method = SqlitePostingFactStore.class.getDeclaredMethod("takeBookPassphrase");
+      method.setAccessible(true);
+
+      try (SqliteBookPassphrase ignored = (SqliteBookPassphrase) method.invoke(postingFactStore)) {
+        IllegalStateException firstFailure =
+            assertThrows(
+                IllegalStateException.class,
+                () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+        IllegalStateException secondFailure =
+            assertThrows(
+                IllegalStateException.class,
+                () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+
+        assertEquals("SQLite book passphrase is no longer available.", firstFailure.getMessage());
+        assertSame(firstFailure, secondFailure);
+      }
     }
   }
 
@@ -992,8 +1157,7 @@ class SqlitePostingFactStoreTest {
     Path bookPath = tempDirectory.resolve("row-mapping-failure.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
-      setStoreDatabase(postingFactStore, database);
+      setStoreDatabase(postingFactStore, SqliteNativeLibrary.open(bookAccess(bookPath)));
 
       Class<?> binderType =
           Class.forName("dev.erst.fingrind.sqlite.SqlitePostingFactStore$SqliteBinder");
@@ -1013,7 +1177,12 @@ class SqlitePostingFactStoreTest {
       InvocationTargetException exception =
           assertThrows(
               InvocationTargetException.class,
-              () -> method.invoke(postingFactStore, database, "select null as posting_id", binder));
+              () ->
+                  method.invoke(
+                      postingFactStore,
+                      storeDatabase(postingFactStore),
+                      "select null as posting_id",
+                      binder));
 
       assertTrue(exception.getCause() instanceof NullPointerException);
     }
@@ -1197,105 +1366,95 @@ class SqlitePostingFactStoreTest {
   private SqliteNativeDatabase staleDatabaseHandle(Path bookPath) throws Exception {
     SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
     MemorySegment handle = database.handle();
-    database.close();
+    closeStandaloneDatabase(database);
     return new SqliteNativeDatabase(handle);
   }
 
   private static void createPostingFactOnlyBook(Path bookPath) throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(staticBookAccess(bookPath));
-    try {
-      database.executeStatement(
-          """
-          create table posting_fact (
-              posting_id text primary key,
-              effective_date text not null,
-              recorded_at text not null,
-              actor_id text not null,
-              actor_type text not null,
-              command_id text not null,
-              idempotency_key text not null unique,
-              causation_id text not null,
-              correlation_id text null,
-              reason text null,
-              source_channel text not null,
-              prior_posting_id text null
-          )
-          """);
-      database.executeStatement(
-          """
-          insert into posting_fact (
-              posting_id,
-              effective_date,
-              recorded_at,
-              actor_id,
-              actor_type,
-              command_id,
-              idempotency_key,
-              causation_id,
-              correlation_id,
-              reason,
-              source_channel,
-              prior_posting_id
-          ) values (
-              'posting-partial',
-              '2026-04-07',
-              '2026-04-07T10:15:30Z',
-              'actor-1',
-              'AGENT',
-              'command-partial',
-              'idem-partial',
-              'cause-1',
-              null,
-              null,
-              'CLI',
-              null
-          )
-          """);
-    } finally {
-      database.close();
-    }
+    withStandaloneDatabase(
+        staticBookAccess(bookPath),
+        database -> {
+          database.executeStatement(
+              """
+              create table posting_fact (
+                  posting_id text primary key,
+                  effective_date text not null,
+                  recorded_at text not null,
+                  actor_id text not null,
+                  actor_type text not null,
+                  command_id text not null,
+                  idempotency_key text not null unique,
+                  causation_id text not null,
+                  correlation_id text null,
+                  reason text null,
+                  source_channel text not null,
+                  prior_posting_id text null
+              )
+              """);
+          database.executeStatement(
+              """
+              insert into posting_fact (
+                  posting_id,
+                  effective_date,
+                  recorded_at,
+                  actor_id,
+                  actor_type,
+                  command_id,
+                  idempotency_key,
+                  causation_id,
+                  correlation_id,
+                  reason,
+                  source_channel,
+                  prior_posting_id
+              ) values (
+                  'posting-partial',
+                  '2026-04-07',
+                  '2026-04-07T10:15:30Z',
+                  'actor-1',
+                  'AGENT',
+                  'command-partial',
+                  'idem-partial',
+                  'cause-1',
+                  null,
+                  null,
+                  'CLI',
+                  null
+              )
+              """);
+        });
   }
 
   private static void createEmptySqliteFile(Path bookPath) throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(staticBookAccess(bookPath));
-    database.close();
+    withStandaloneDatabase(staticBookAccess(bookPath), database -> {});
   }
 
   private static void createSchemaOnlyBook(Path bookPath) throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(staticBookAccess(bookPath));
-    try {
-      SqliteSchemaManager.initializeBook(database);
-    } finally {
-      database.close();
-    }
+    withStandaloneDatabase(staticBookAccess(bookPath), SqliteSchemaManager::initializeBook);
   }
 
   private static void initializeBookOnDisk(Path bookPath) throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(staticBookAccess(bookPath));
-    try {
-      SqliteSchemaManager.initializeBook(database);
-      insertInitializedAtRow(database);
-      insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
-      insertAccountRow(database, "2000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");
-    } finally {
-      database.close();
-    }
+    withStandaloneDatabase(
+        staticBookAccess(bookPath),
+        database -> {
+          SqliteSchemaManager.initializeBook(database);
+          insertInitializedAtRow(database);
+          insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
+          insertAccountRow(database, "2000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");
+        });
   }
 
   private static void deactivateAccount(Path bookPath, String accountCode)
       throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(staticBookAccess(bookPath));
-    try {
-      database.executeStatement(
-          """
-          update account
-          set active = 0
-          where account_code = '%s'
-          """
-              .formatted(accountCode));
-    } finally {
-      database.close();
-    }
+    withStandaloneDatabase(
+        staticBookAccess(bookPath),
+        database ->
+            database.executeStatement(
+                """
+                update account
+                set active = 0
+                where account_code = '%s'
+                """
+                    .formatted(accountCode)));
   }
 
   @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.SignatureDeclareThrowsException"})
@@ -1314,6 +1473,28 @@ class SqlitePostingFactStoreTest {
     return (SqliteNativeDatabase) field.get(postingFactStore);
   }
 
+  @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.SignatureDeclareThrowsException"})
+  private static byte[] passphraseBytes(SqliteBookPassphrase passphrase) throws Exception {
+    Field field = SqliteBookPassphrase.class.getDeclaredField("utf8Bytes");
+    field.setAccessible(true);
+    return ((byte[]) field.get(passphrase)).clone();
+  }
+
+  private static void closeStandaloneDatabase(SqliteNativeDatabase database)
+      throws SqliteNativeException {
+    database.close();
+  }
+
+  private static void withStandaloneDatabase(BookAccess bookAccess, SqliteDatabaseAction action)
+      throws SqliteNativeException {
+    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess);
+    try {
+      action.run(database);
+    } finally {
+      closeStandaloneDatabase(database);
+    }
+  }
+
   private BookAccess bookAccess(Path bookPath) {
     try {
       Path keyDirectory = tempDirectory.resolve("book-keys");
@@ -1323,7 +1504,7 @@ class SqlitePostingFactStoreTest {
         Files.createDirectories(keyPath.getParent());
       }
       Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
-      return new BookAccess(bookPath, keyPath);
+      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
@@ -1334,7 +1515,7 @@ class SqlitePostingFactStoreTest {
       Path keyPath = Files.createTempFile("fingrind-book-key-", ".key");
       keyPath.toFile().deleteOnExit();
       Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
-      return new BookAccess(bookPath, keyPath);
+      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
@@ -1343,5 +1524,11 @@ class SqlitePostingFactStoreTest {
   private static void assertInvalidPlaintextBookFailure(IllegalStateException exception) {
     assertTrue(exception.getMessage().contains("Failed to open SQLite book connection."));
     assertTrue(exception.getMessage().contains("SQLITE_NOTADB"));
+  }
+
+  /** Performs one checked action against a temporary native SQLite handle. */
+  @FunctionalInterface
+  private interface SqliteDatabaseAction {
+    void run(SqliteNativeDatabase database) throws SqliteNativeException;
   }
 }

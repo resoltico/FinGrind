@@ -32,7 +32,14 @@ final class FinGrindCli {
   private final BookWorkflow bookWorkflow;
 
   FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
-    this(inputStream, outputStream, clock, new SqliteBookWorkflow(clock));
+    this(
+        inputStream,
+        outputStream,
+        clock,
+        new SqliteBookWorkflow(
+            clock,
+            new CliBookPassphraseResolver(
+                inputStream, CliBookPassphraseResolver.systemTerminal())));
   }
 
   FinGrindCli(
@@ -42,6 +49,21 @@ final class FinGrindCli {
     this.metadata = new CliMetadata();
     this.clock = Objects.requireNonNull(clock, "clock");
     this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+  }
+
+  FinGrindCli(
+      InputStream inputStream,
+      PrintStream outputStream,
+      Clock clock,
+      CliBookPassphraseResolver.Terminal terminal) {
+    this(
+        inputStream,
+        outputStream,
+        clock,
+        new SqliteBookWorkflow(
+            clock,
+            new CliBookPassphraseResolver(
+                inputStream, Objects.requireNonNull(terminal, "terminal"))));
   }
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */
@@ -185,7 +207,7 @@ final class FinGrindCli {
     String message = message(exception);
     String hint =
         message.contains("SQLite")
-            ? "Inspect the selected book file path, book key file path, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
+            ? "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
             : "Inspect the message and rerun after fixing the underlying runtime problem.";
     return new CliFailure("runtime-failure", message, hint, null);
   }
@@ -215,50 +237,52 @@ final class FinGrindCli {
   /** Default workflow that opens one SQLite-backed book file per command. */
   private static final class SqliteBookWorkflow implements BookWorkflow {
     private final Clock clock;
+    private final CliBookPassphraseResolver passphraseResolver;
 
-    private SqliteBookWorkflow(Clock clock) {
+    private SqliteBookWorkflow(Clock clock, CliBookPassphraseResolver passphraseResolver) {
       this.clock = Objects.requireNonNull(clock, "clock");
+      this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
     }
 
     @Override
     public OpenBookResult openBook(BookAccess bookAccess) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
-        return bookAdministrationService(bookSession, clock).openBook();
+      try (BookSession bookSession = openBookSession(bookAccess)) {
+        return new BookAdministrationService(bookSession, clock).openBook();
       }
     }
 
     @Override
     public DeclareAccountResult declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
-        return bookAdministrationService(bookSession, clock).declareAccount(command);
+      try (BookSession bookSession = openBookSession(bookAccess)) {
+        return new BookAdministrationService(bookSession, clock).declareAccount(command);
       }
     }
 
     @Override
     public ListAccountsResult listAccounts(BookAccess bookAccess) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
-        return bookAdministrationService(bookSession, clock).listAccounts();
+      try (BookSession bookSession = openBookSession(bookAccess)) {
+        return new BookAdministrationService(bookSession, clock).listAccounts();
       }
     }
 
     @Override
     public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
+      try (BookSession bookSession = openBookSession(bookAccess)) {
         return postingApplicationService(bookSession, clock).preflight(command);
       }
     }
 
     @Override
     public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
-      try (BookSession bookSession = new SqlitePostingFactStore(bookAccess)) {
+      try (BookSession bookSession = openBookSession(bookAccess)) {
         return postingApplicationService(bookSession, clock).commit(command);
       }
     }
 
-    private static BookAdministrationService bookAdministrationService(
-        BookSession bookSession, Clock clock) {
-      return new BookAdministrationService(bookSession, clock);
+    private BookSession openBookSession(BookAccess bookAccess) {
+      return new SqlitePostingFactStore(
+          bookAccess.bookFilePath(), passphraseResolver.resolve(bookAccess));
     }
 
     private static PostingApplicationService postingApplicationService(

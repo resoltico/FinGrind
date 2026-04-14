@@ -5,6 +5,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-14
+
+### Changed
+- Hard-broke protected-book access to require exactly one explicit passphrase source per
+  book-bound command: `--book-key-file`, `--book-passphrase-stdin`, or
+  `--book-passphrase-prompt`.
+- Reworked the protected-book seam so CLI parsing now models passphrase-source selection
+  explicitly while the SQLite adapter opens books from resolved zeroizable UTF-8 passphrase
+  material instead of carrying a key-file-only assumption through the storage boundary.
+
+### Fixed
+- Added safe non-file passphrase support for humans and pipelines without exposing plaintext book
+  secrets through CLI arguments or environment variables.
+- Updated machine-readable discovery, Docker smoke verification, Jazzer support flows, and user /
+  developer documentation so the protected-book contract no longer drifts back to a file-only
+  model.
+
 ## [0.9.0] - 2026-04-14
 
 ### Changed
@@ -226,7 +243,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.10.0
 [0.9.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.9.0
 [0.8.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.8.0
 [0.7.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.7.0

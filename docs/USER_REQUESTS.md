@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: USER_REQUESTS
 updated: "2026-04-14"
 route:
@@ -13,8 +13,11 @@ route:
 **Purpose**: Show the accepted JSON request shapes and the output documents returned by the CLI.
 **Prerequisites**: Familiarity with the packaged CLI in [USER_CLI.md](./USER_CLI.md).
 
-Book-bound commands pair these JSON payloads with both `--book-file` and `--book-key-file`.
-The key file must contain the UTF-8 passphrase for the protected book.
+Book-bound commands pair these JSON payloads with `--book-file` plus exactly one passphrase
+source:
+- `--book-key-file` with a UTF-8 passphrase file
+- `--book-passphrase-stdin` with one UTF-8 passphrase payload from standard input
+- `--book-passphrase-prompt` with an interactive non-echo terminal prompt
 
 ## Posting Request Shape
 
@@ -110,6 +113,7 @@ string lists for the drift-prone parts of the surface:
   `isCommitGuarantee`
 - `currencyModel` declares the current single-currency scope and the explicit
   `multiCurrencyStatus: "not-supported"`
+- `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
 - `environment` also reports `requiredSqlite3mcVersion`, `loadedSqlite3mcVersion`,
   `bookProtectionMode`, and `defaultBookCipher` for the protected-book runtime
 

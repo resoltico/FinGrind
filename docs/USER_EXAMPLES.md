@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.9.0"
+version: "0.10.0"
 domain: USER_EXAMPLES
 updated: "2026-04-14"
 route:
-  keywords: [fingrind, examples, open-book, declare-account, list-accounts, preflight, commit, duplicate, stdin, reversal, book-file, book-key-file, request-template]
+  keywords: [fingrind, examples, open-book, declare-account, list-accounts, preflight, commit, duplicate, stdin, reversal, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, request-template]
   questions: ["show me a working fingrind example", "how do I initialize a book and post in fingrind", "how do I send a fingrind request on stdin"]
 ---
 
@@ -26,7 +26,18 @@ For a local source checkout, the copy-paste `java -jar` examples below assume:
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
 ```
 
-## Create A Book Key File
+## Choose A Book Passphrase Source
+
+For humans, the best non-persistent route is the interactive prompt:
+
+```bash
+java -jar cli/build/libs/fingrind.jar \
+  open-book \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-passphrase-prompt
+```
+
+For automation, a dedicated key file is still supported:
 
 ```bash
 install -d -m 700 /tmp/fingrind/keys
@@ -36,6 +47,16 @@ printf '%s\n' 'acme-demo-passphrase' > /tmp/fingrind/keys/acme.book-key
 
 The key file must contain one non-empty UTF-8 passphrase.
 One trailing newline is tolerated and stripped.
+
+For pipeline automation without a persistent file:
+
+```bash
+printf '%s\n' 'acme-demo-passphrase' | \
+  java -jar cli/build/libs/fingrind.jar \
+    open-book \
+    --book-file /tmp/fingrind/books/acme/acme.sqlite \
+    --book-passphrase-stdin
+```
 
 ## Initialize One Book
 
@@ -186,6 +207,8 @@ cat docs/examples/basic-posting-request.json | \
 
 Remember that the selected book must already be initialized and the referenced accounts must
 already be declared before that stdin-driven preflight can succeed.
+`--request-file -` uses standard input for JSON, so it cannot be combined with
+`--book-passphrase-stdin` in the same invocation.
 
 ## Reversal Request Template
 
@@ -232,4 +255,4 @@ java -jar cli/build/libs/fingrind.jar \
 ```
 
 One runtime-failure response includes `SQLITE_NOTADB`, because FinGrind validates the configured
-book key before any schema or account read proceeds.
+book passphrase before any schema or account read proceeds.
