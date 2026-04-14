@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-04-14"
 route:
@@ -40,7 +40,7 @@ Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceedin
 
 Then verify every item in this checklist. All must be true before any commit or tag:
 
-- `gradle.properties` `version=` equals the target release version exactly (for example `0.13.0`).
+- `gradle.properties` `version=` equals the target release version exactly (for example `0.14.0`).
 - All `docs/*.md` frontmatter `version:` fields equal the target version.
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.
@@ -267,6 +267,8 @@ Requirements:
 - The complete bundle asset set is present:
   - `fingrind-X.Y.Z-macos-aarch64.tar.gz`
   - `fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256`
+  - `fingrind-X.Y.Z-macos-x86_64.tar.gz`
+  - `fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256`
   - `fingrind-X.Y.Z-linux-x86_64.tar.gz`
   - `fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256`
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz`
@@ -278,6 +280,10 @@ duplicate release workflow run failed after the release was already created.
 The release workflow is expected to perform this same verification internally after publication.
 The operator-side `gh release view` check remains mandatory because workflow success is still not
 the authoritative state.
+
+The container workflow is also expected to wait for this complete GitHub release asset set before
+it publishes the public image. If container publication succeeds while the release asset set is
+incomplete, treat that as a release-system defect and fix the repository before the next release.
 
 ### Step 9
 

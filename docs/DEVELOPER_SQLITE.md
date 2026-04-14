@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-14"
 route:
@@ -107,6 +107,8 @@ License and attribution stance:
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not drift away from the managed runtime contract
 - the Docker image compiles the same vendored SQLite3MC source during image build
+- the Docker image verifies the vendored SQLite3MC source hash before compile, mirroring the
+  managed-source integrity contract used in Gradle
 - public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
   runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
 - standalone `java -jar` execution remains developer-only and must receive
@@ -252,6 +254,10 @@ vendored amalgamation on macOS and Linux. The CLI JAR declares
 `--enable-native-access=ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with the
 same native-access flag, and controlled surfaces resolve the managed library either through
 `fingrind.bundle.home` or `FINGRIND_SQLITE_LIBRARY`.
+
+Distribution note:
+- public bundle archives and the public container image both package a private `jlink` runtime so
+  FinGrind's managed SQLite3MC contract does not depend on an ambient host Java installation
 
 Native bridge notes:
 - the SQLite symbol arena in

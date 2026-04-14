@@ -9,6 +9,16 @@ die() {
     exit 1
 }
 
+require_no_match() {
+    local text=$1
+    local pattern=$2
+    local message=$3
+
+    if printf '%s\n' "${text}" | grep -Eq "${pattern}"; then
+        die "${message}"
+    fi
+}
+
 require_match() {
     local text=$1
     local pattern=$2
@@ -92,6 +102,10 @@ project_version() {
     printf '%s\n' "${version}"
 }
 
+current_utc_date() {
+    date -u +%F
+}
+
 run_bundle_command() {
     env -u FINGRIND_SQLITE_LIBRARY -u JAVA_HOME \
         PATH="/usr/bin:/bin" \
@@ -161,10 +175,35 @@ bundle_launcher="${bundle_root}/bin/fingrind"
 [[ -f "${bundle_root}/LICENSE-SQLITE3MULTIPLECIPHERS" ]] || die \
     "missing LICENSE-SQLITE3MULTIPLECIPHERS in bundle root"
 [[ -f "${bundle_root}/PATENTS.md" ]] || die "missing PATENTS.md in bundle root"
+[[ -f "${bundle_root}/README.md" ]] || die "missing README.md in bundle root"
+[[ -f "${bundle_root}/bundle-manifest.json" ]] || die "missing bundle-manifest.json in bundle root"
+
+bundle_readme="$(tr -d '\r' < "${bundle_root}/README.md")"
+require_match "${bundle_readme}" '^# FinGrind ' \
+    "bundle README did not start with the FinGrind title"
+require_match "${bundle_readme}" 'bundle-manifest\.json' \
+    "bundle README did not mention the machine-readable bundle manifest"
+
+bundle_manifest="$(tr -d '\r' < "${bundle_root}/bundle-manifest.json")"
+require_match "${bundle_manifest}" '"runtimeDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
+    "bundle manifest did not report the self-contained runtime distribution"
+require_match "${bundle_manifest}" "\"classifier\"[[:space:]]*:[[:space:]]*\"$(host_bundle_classifier)\"" \
+    "bundle manifest did not report the current host classifier"
+require_match "${bundle_manifest}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"macos-x86_64"' \
+    "bundle manifest did not report the supported public bundle targets"
+require_match "${bundle_manifest}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[^]]*"windows"' \
+    "bundle manifest did not report unsupported public operating systems"
 
 runtime_version_output="$("${bundle_root}/runtime/bin/java" --version | tr -d '\r')"
 require_match "${runtime_version_output}" '^openjdk 26 ' \
     "bundled Java runtime did not report Java 26"
+runtime_modules_output="$("${bundle_root}/runtime/bin/java" --list-modules | tr -d '\r')"
+require_no_match "${runtime_modules_output}" '^jdk\.jlink@' \
+    "bundled Java runtime still contains jdk.jlink"
+require_no_match "${runtime_modules_output}" '^jdk\.jpackage@' \
+    "bundled Java runtime still contains jdk.jpackage"
+require_no_match "${runtime_modules_output}" '^jdk\.jdeps@' \
+    "bundled Java runtime still contains jdk.jdeps"
 
 readonly request_path="${work_root}/requests odd/request [bundle #smoke].json"
 readonly declare_cash_path="${work_root}/requests odd/declare account cash [bundle #smoke].json"
@@ -177,7 +216,7 @@ mkdir -p "$(dirname -- "${request_path}")" "$(dirname -- "${book_path}")"
 
 cat > "${request_path}" <<JSON
 {
-  "effectiveDate": "2026-04-14",
+  "effectiveDate": "$(current_utc_date)",
   "lines": [
     {
       "accountCode": "1000",
@@ -232,8 +271,14 @@ require_match "${version_output}" '"version"[[:space:]]*:[[:space:]]*"' \
 
 printf 'Bundle smoke: verifying self-contained runtime contract\n'
 capabilities_output="$(run_bundle_command capabilities | tr -d '\r')"
+require_match "${capabilities_output}" '"runtimeDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
+    "capabilities output did not report the self-contained bundle runtime"
 require_match "${capabilities_output}" '"publicCliDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
     "capabilities output did not report the self-contained bundle distribution"
+require_match "${capabilities_output}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"macos-x86_64"' \
+    "capabilities output did not report the supported public bundle targets"
+require_match "${capabilities_output}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[^]]*"windows"' \
+    "capabilities output did not report unsupported public operating systems"
 require_match "${capabilities_output}" '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"' \
     "capabilities output did not report the managed-only SQLite runtime mode"
 require_match "${capabilities_output}" '"sqliteLibraryBundleHomeSystemProperty"[[:space:]]*:[[:space:]]*"fingrind\.bundle\.home"' \

@@ -99,6 +99,10 @@ jobs:
             classifier: macos-aarch64
             expected_os: Darwin
             expected_arch: arm64
+          - runner: macos-13
+            classifier: macos-x86_64
+            expected_os: Darwin
+            expected_arch: x86_64
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -175,5 +179,7 @@ jobs:
             "fingrind-${{ needs.prepare-release.outputs.version }}-linux-x86_64.tar.gz.sha256" \
             "fingrind-${{ needs.prepare-release.outputs.version }}-linux-aarch64.tar.gz" \
             "fingrind-${{ needs.prepare-release.outputs.version }}-linux-aarch64.tar.gz.sha256" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-macos-x86_64.tar.gz" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-macos-x86_64.tar.gz.sha256" \
             "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz" \
             "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz.sha256"

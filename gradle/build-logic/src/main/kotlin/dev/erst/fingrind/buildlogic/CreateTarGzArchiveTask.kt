@@ -3,12 +3,14 @@ package dev.erst.fingrind.buildlogic
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
+@CacheableTask
 abstract class CreateTarGzArchiveTask : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)

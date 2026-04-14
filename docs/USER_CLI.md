@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.13.0"
+version: "0.14.0"
 domain: USER_CLI
 updated: "2026-04-14"
 route:
@@ -63,18 +63,24 @@ Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `ch
 Public FinGrind CLI downloads are self-contained bundle archives, not a standalone JAR.
 The current public target set is:
 - `macos-aarch64`
+- `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
+Windows is not part of the current public bundle contract.
+
+Each extracted archive also contains:
+- a top-level `README.md` with the local quick start
+- a top-level `bundle-manifest.json` with machine-readable distribution metadata
 
 One public bundle flow:
 
 ```bash
-tar -xzf fingrind-0.13.0-macos-aarch64.tar.gz
-./fingrind-0.13.0-macos-aarch64/bin/fingrind help
-./fingrind-0.13.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.14.0-macos-aarch64.tar.gz
+./fingrind-0.14.0-macos-aarch64/bin/fingrind help
+./fingrind-0.14.0-macos-aarch64/bin/fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
@@ -161,9 +167,17 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /
   SQLite3 Multiple Ciphers 2.3.3 native library.
+- `capabilities.environment.runtimeDistribution` tells you whether the current process is running
+  from a self-contained bundle, container image, source-checkout Gradle launch, or direct
+  `java -jar` invocation.
+- `capabilities.environment.supportedPublicCliBundleTargets` and
+  `capabilities.environment.unsupportedPublicCliOperatingSystems` expose the public distribution
+  matrix directly to automation.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
   object level.
 - `capabilities` reports `publicCliDistribution`, `sourceCheckoutJava`,
+  `runtimeDistribution`, `supportedPublicCliBundleTargets`,
+  `unsupportedPublicCliOperatingSystems`,
   `sqliteLibraryEnvironmentVariable`, `sqliteLibraryBundleHomeSystemProperty`,
   `requiredMinimumSqliteVersion`, `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`,
   `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and

@@ -9,6 +9,16 @@ die() {
     exit 1
 }
 
+require_no_match() {
+    local text=$1
+    local pattern=$2
+    local message=$3
+
+    if printf '%s\n' "${text}" | grep -Eq "${pattern}"; then
+        die "${message}"
+    fi
+}
+
 require_match() {
     local text=$1
     local pattern=$2
@@ -30,6 +40,10 @@ resolve_script_dir() {
         fi
     done
     cd -P -- "$(dirname -- "${source_path}")" && pwd
+}
+
+current_utc_date() {
+    date -u +%F
 }
 
 readonly script_dir="$(resolve_script_dir)"
@@ -141,7 +155,7 @@ mkdir -p "$(dirname -- "${book_key_path}")"
 
 cat > "${request_path}" <<JSON
 {
-  "effectiveDate": "2026-04-07",
+  "effectiveDate": "$(current_utc_date)",
   "lines": [
     {
       "accountCode": "1000",
@@ -209,8 +223,16 @@ capabilities_output="$(docker_with_repo_config run --rm \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     capabilities | tr -d '\r')"
-	require_match "${capabilities_output}" '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"' \
-	    "capabilities output did not report the managed-only SQLite runtime mode"
+require_match "${capabilities_output}" '"runtimeDistribution"[[:space:]]*:[[:space:]]*"container-image"' \
+    "capabilities output did not report the container runtime distribution"
+require_match "${capabilities_output}" '"publicCliDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
+    "capabilities output did not report the public bundle distribution contract"
+require_match "${capabilities_output}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"macos-x86_64"' \
+    "capabilities output did not report the supported public bundle targets"
+require_match "${capabilities_output}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[^]]*"windows"' \
+    "capabilities output did not report unsupported public operating systems"
+require_match "${capabilities_output}" '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"' \
+    "capabilities output did not report the managed-only SQLite runtime mode"
 require_match "${capabilities_output}" '"storageDriver"[[:space:]]*:[[:space:]]*"sqlite-ffm-sqlite3mc"' \
     "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"
 require_match "${capabilities_output}" '"bookProtectionMode"[[:space:]]*:[[:space:]]*"required"' \
@@ -229,6 +251,17 @@ require_match "${capabilities_output}" '"loadedSqliteVersion"[[:space:]]*:[[:spa
     "capabilities output did not report SQLite 3.53.0"
 require_match "${capabilities_output}" '"loadedSqlite3mcVersion"[[:space:]]*:[[:space:]]*"2\.3\.3"' \
     "capabilities output did not report SQLite3 Multiple Ciphers 2.3.3"
+
+runtime_modules_output="$(docker_with_repo_config run --rm \
+    --entrypoint /opt/fingrind/runtime/bin/java \
+    "${image_tag}" \
+    --list-modules | tr -d '\r')"
+require_no_match "${runtime_modules_output}" '^jdk\.jlink@' \
+    "container runtime still contains jdk.jlink"
+require_no_match "${runtime_modules_output}" '^jdk\.jpackage@' \
+    "container runtime still contains jdk.jpackage"
+require_no_match "${runtime_modules_output}" '^jdk\.jdeps@' \
+    "container runtime still contains jdk.jdeps"
 
 printf 'Docker smoke: generating a dedicated book key file inside the mounted workspace\n'
 generate_key_output="$(docker_with_repo_config run --rm \

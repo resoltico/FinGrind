@@ -5,10 +5,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-04-14
+
+### Changed
+- Expanded the public self-contained CLI bundle matrix to include `macos-x86_64`, added
+  top-level archive bootstrap files (`README.md` and `bundle-manifest.json`), and extended the
+  machine-facing environment contract with `runtimeDistribution`,
+  `supportedPublicCliBundleTargets`, and `unsupportedPublicCliOperatingSystems`.
+- Tightened the private runtime-image policy for both bundles and containers so public
+  distributions now use `jlink --compress=zip-6`, fail loud on unresolved module analysis, and
+  avoid dragging tool modules into the shipped runtime image.
+
 ### Fixed
 - Hardened bundle smoke portability on GitHub macOS runners by removing the Bash 4-only
   `mapfile` dependency, so release automation now remains compatible with the runner-provided
   Bash 3.2 shell while asserting the same self-contained bundle contract.
+- Brought the public container image onto the same managed-runtime contract as the bundle
+  archives by verifying the vendored SQLite3MC source hash during Docker build, shipping a
+  trimmed private Java runtime, and making tag-driven container publication wait for the complete
+  GitHub release asset set.
 
 ## [0.13.0] - 2026-04-14
 
@@ -322,7 +337,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.14.0
 [0.13.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.13.0
 [0.12.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.12.0
 [0.11.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.11.0

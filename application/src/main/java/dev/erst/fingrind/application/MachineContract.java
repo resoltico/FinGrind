@@ -3,7 +3,9 @@ package dev.erst.fingrind.application;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -19,6 +21,9 @@ public final class MachineContract {
   private static final List<String> QUERY_COMMANDS = List.of("list-accounts");
   private static final List<String> WRITE_COMMANDS = List.of("preflight-entry", "post-entry");
   private static final List<String> STORAGE_ENGINES = List.of("sqlite");
+  private static final List<String> SUPPORTED_PUBLIC_CLI_BUNDLE_TARGETS =
+      List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64");
+  private static final List<String> UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS = List.of("windows");
   private static final List<String> SUCCESS_STATUSES =
       List.of("ok", "preflight-accepted", "committed");
 
@@ -101,9 +106,10 @@ public final class MachineContract {
   }
 
   /** Builds the canonical minimal posting-request template descriptor. */
-  public static PostingRequestTemplateDescriptor requestTemplate() {
+  public static PostingRequestTemplateDescriptor requestTemplate(Clock clock) {
+    Objects.requireNonNull(clock, "clock");
     return new PostingRequestTemplateDescriptor(
-        "2026-04-08",
+        LocalDate.now(clock).toString(),
         List.of(
             new JournalLineTemplateDescriptor("1000", "DEBIT", "EUR", "10.00"),
             new JournalLineTemplateDescriptor("2000", "CREDIT", "EUR", "10.00")),
@@ -619,7 +625,10 @@ public final class MachineContract {
 
   /** Descriptor for the active SQLite runtime environment. */
   public record EnvironmentDescriptor(
+      String runtimeDistribution,
       String publicCliDistribution,
+      List<String> supportedPublicCliBundleTargets,
+      List<String> unsupportedPublicCliOperatingSystems,
       String sourceCheckoutJava,
       String storageDriver,
       String storageEngine,
@@ -636,6 +645,16 @@ public final class MachineContract {
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
       String sqliteRuntimeIssue) {}
+
+  /** Supported self-contained public CLI bundle targets. */
+  public static List<String> supportedPublicCliBundleTargets() {
+    return SUPPORTED_PUBLIC_CLI_BUNDLE_TARGETS;
+  }
+
+  /** Operating systems intentionally outside the current self-contained public CLI contract. */
+  public static List<String> unsupportedPublicCliOperatingSystems() {
+    return UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS;
+  }
 
   /** Canonical top-level posting request fields shared by the parser and capabilities surface. */
   public static final class PostEntryTopLevelFields {

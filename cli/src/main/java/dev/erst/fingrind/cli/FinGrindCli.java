@@ -26,6 +26,11 @@ import java.util.Objects;
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
   private static final String HELP_HINT = "Run 'fingrind help' to inspect the supported commands.";
+  static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
+  static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION = "direct-java-invocation";
+  static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION = "source-checkout-gradle";
+  static final String CONTAINER_RUNTIME_DISTRIBUTION = "container-image";
+  static final String BUNDLE_RUNTIME_DISTRIBUTION = "self-contained-bundle";
 
   private final CliRequestReader requestReader;
   private final CliResponseWriter responseWriter;
@@ -123,7 +128,7 @@ final class FinGrindCli {
   }
 
   private int writeRequestTemplate() {
-    responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
+    responseWriter.writeRequestTemplate(MachineContract.requestTemplate(clock));
     return 0;
   }
 
@@ -209,13 +214,16 @@ final class FinGrindCli {
   }
 
   private MachineContract.EnvironmentDescriptor environmentDescriptor() {
-    return environmentDescriptor(SqliteRuntime.probe());
+    return environmentDescriptor(SqliteRuntime.probe(), runtimeDistribution());
   }
 
   static MachineContract.EnvironmentDescriptor environmentDescriptor(
-      SqliteRuntime.Probe runtimeProbe) {
+      SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
     return new MachineContract.EnvironmentDescriptor(
+        runtimeDistribution,
         "self-contained-bundle",
+        MachineContract.supportedPublicCliBundleTargets(),
+        MachineContract.unsupportedPublicCliOperatingSystems(),
         "26+",
         SqliteRuntime.STORAGE_DRIVER,
         SqliteRuntime.STORAGE_ENGINE,
@@ -232,6 +240,10 @@ final class FinGrindCli {
         runtimeProbe.loadedSqliteVersion(),
         runtimeProbe.loadedSqlite3mcVersion(),
         runtimeProbe.issue());
+  }
+
+  private static String runtimeDistribution() {
+    return System.getProperty(RUNTIME_DISTRIBUTION_PROPERTY, DIRECT_JAVA_RUNTIME_DISTRIBUTION);
   }
 
   private CliFailure runtimeFailure(IllegalStateException exception) {

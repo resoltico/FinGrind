@@ -87,25 +87,21 @@ internal object ManagedSqliteSupport {
     }
 
     private fun operatingSystemId(): String {
-        val operatingSystem = System.getProperty("os.name", "").lowercase()
-        if (operatingSystem.contains("mac")) {
-            return "macos"
+        return try {
+            DistributionSupport.operatingSystemId()
+        } catch (_: IllegalStateException) {
+            throw GradleException(
+                "FinGrind's managed SQLite build currently supports macOS and Linux only. Detected: ${System.getProperty("os.name")}",
+            )
         }
-        if (operatingSystem.contains("linux")) {
-            return "linux"
-        }
-        throw GradleException(
-            "FinGrind's managed SQLite build currently supports macOS and Linux only. Detected: ${System.getProperty("os.name")}",
-        )
     }
 
-    private fun architectureId(): String =
-        System.getProperty("os.arch", "unknown").lowercase().replace(Regex("[^a-z0-9]+"), "-")
+    private fun architectureId(): String = DistributionSupport.architectureId()
 
     private fun libraryFileName(operatingSystemId: String): String =
-        when (operatingSystemId) {
-            "macos" -> "libsqlite3.dylib"
-            "linux" -> "libsqlite3.so.0"
-            else -> throw GradleException("Unsupported managed SQLite operating system id: $operatingSystemId")
+        try {
+            DistributionSupport.libraryFileNameForOperatingSystemId(operatingSystemId)
+        } catch (_: IllegalStateException) {
+            throw GradleException("Unsupported managed SQLite operating system id: $operatingSystemId")
         }
 }
