@@ -139,7 +139,10 @@ trap cleanup EXIT
 mkdir -p "${extract_root}" "${work_root}"
 tar -xzf "${bundle_archive_path}" -C "${extract_root}"
 
-mapfile -t extracted_roots < <(find "${extract_root}" -mindepth 1 -maxdepth 1 -type d | sort)
+extracted_roots=()
+while IFS= read -r extracted_root; do
+    extracted_roots+=("${extracted_root}")
+done < <(find "${extract_root}" -mindepth 1 -maxdepth 1 -type d | sort)
 [[ "${#extracted_roots[@]}" -eq 1 ]] || die \
     "expected exactly one extracted bundle root under ${extract_root}"
 bundle_root="${extracted_roots[0]}"
