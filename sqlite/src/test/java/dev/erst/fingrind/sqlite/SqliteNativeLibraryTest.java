@@ -407,12 +407,16 @@ class SqliteNativeLibraryTest {
 
   @Test
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void supportedNativeLibraryFileName_supportsLinuxAndRejectsUnsupportedHosts() throws Exception {
+  void supportedNativeLibraryFileName_supportsMacOsLinuxAndRejectsUnsupportedHosts()
+      throws Exception {
     Method method = SqliteNativeLibrary.class.getDeclaredMethod("supportedNativeLibraryFileName");
     method.setAccessible(true);
 
     String originalOsName = System.getProperty("os.name");
     try {
+      System.setProperty("os.name", "Mac OS X");
+      assertEquals("libsqlite3.dylib", method.invoke(null));
+
       System.setProperty("os.name", "Linux");
       assertEquals("libsqlite3.so.0", method.invoke(null));
 
