@@ -1,3 +1,6 @@
+pragma application_id = 1179079236;
+pragma user_version = 1;
+
 create table if not exists book_meta (
     key text primary key,
     value text not null

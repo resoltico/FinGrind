@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -10,9 +11,11 @@ public final class SqliteRuntime {
   public static final String STORAGE_ENGINE = "sqlite";
   public static final String BOOK_PROTECTION_MODE = "required";
   public static final String DEFAULT_BOOK_CIPHER = "chacha20";
-  public static final String LIBRARY_OVERRIDE_ENVIRONMENT_VARIABLE = "FINGRIND_SQLITE_LIBRARY";
+  public static final String LIBRARY_ENVIRONMENT_VARIABLE = "FINGRIND_SQLITE_LIBRARY";
   public static final String REQUIRED_MINIMUM_SQLITE_VERSION = "3.53.0";
   public static final String REQUIRED_SQLITE3MC_VERSION = "2.3.3";
+  public static final List<String> REQUIRED_SQLITE_COMPILE_OPTIONS =
+      List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE");
 
   private SqliteRuntime() {}
 
@@ -78,6 +81,15 @@ public final class SqliteRuntime {
           Status.INCOMPATIBLE,
           sqliteVersionSupplier.get(),
           exception.loadedVersion(),
+          failureDetail.apply(exception));
+    } catch (UnsupportedSqliteCompileOptionsException exception) {
+      return new Probe(
+          librarySource,
+          REQUIRED_MINIMUM_SQLITE_VERSION,
+          REQUIRED_SQLITE3MC_VERSION,
+          Status.INCOMPATIBLE,
+          exception.loadedSqliteVersion(),
+          exception.loadedSqlite3mcVersion(),
           failureDetail.apply(exception));
     } catch (RuntimeException | Error throwable) {
       return new Probe(

@@ -24,6 +24,7 @@ final class CliArguments {
       case "print-request-template", "--print-request-template" ->
           parseSingleToken(arguments, new CliCommand.PrintRequestTemplate());
       case "open-book" -> parseBookOnlyCommand(arguments, CliCommand.OpenBook::new);
+      case "rekey-book" -> parseRekeyBookCommand(arguments);
       case "declare-account" -> parseRequestBoundCommand(arguments, CliCommand.DeclareAccount::new);
       case "list-accounts" -> parseBookOnlyCommand(arguments, CliCommand.ListAccounts::new);
       case "preflight-entry" -> parseRequestBoundCommand(arguments, CliCommand.PreflightEntry::new);
@@ -50,6 +51,83 @@ final class CliArguments {
     ParsedBookArguments parsedArguments = parseBookArguments(arguments, true);
     return commandFactory.create(
         parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
+  }
+
+  private static CliCommand parseRekeyBookCommand(List<String> arguments) {
+    Path bookFilePath = null;
+    Path currentBookKeyFilePath = null;
+    Path replacementBookKeyFilePath = null;
+    PassphraseSourceKind currentPassphraseSourceKind = null;
+    PassphraseSourceKind replacementPassphraseSourceKind = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case "--book-file" -> {
+          if (bookFilePath != null) {
+            throw invalid("--book-file", "Duplicate argument: --book-file");
+          }
+          bookFilePath = Path.of(requireValue(argumentIterator, "--book-file"));
+        }
+        case "--book-key-file" -> {
+          currentPassphraseSourceKind =
+              requireSinglePassphraseSource(
+                  currentPassphraseSourceKind, PassphraseSourceKind.KEY_FILE);
+          currentBookKeyFilePath = Path.of(requireValue(argumentIterator, "--book-key-file"));
+        }
+        case "--book-passphrase-stdin" -> {
+          currentPassphraseSourceKind =
+              requireSinglePassphraseSource(
+                  currentPassphraseSourceKind, PassphraseSourceKind.STANDARD_INPUT);
+        }
+        case "--book-passphrase-prompt" -> {
+          currentPassphraseSourceKind =
+              requireSinglePassphraseSource(
+                  currentPassphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
+        }
+        case "--new-book-key-file" -> {
+          replacementPassphraseSourceKind =
+              requireSingleReplacementPassphraseSource(
+                  replacementPassphraseSourceKind, PassphraseSourceKind.KEY_FILE);
+          replacementBookKeyFilePath =
+              Path.of(requireValue(argumentIterator, "--new-book-key-file"));
+        }
+        case "--new-book-passphrase-stdin" -> {
+          replacementPassphraseSourceKind =
+              requireSingleReplacementPassphraseSource(
+                  replacementPassphraseSourceKind, PassphraseSourceKind.STANDARD_INPUT);
+        }
+        case "--new-book-passphrase-prompt" -> {
+          replacementPassphraseSourceKind =
+              requireSingleReplacementPassphraseSource(
+                  replacementPassphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
+        }
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    if (bookFilePath == null) {
+      throw invalid("--book-file", "A --book-file argument is required.");
+    }
+    if (currentPassphraseSourceKind == null) {
+      throw invalid(
+          "--book-key-file",
+          "Exactly one current book passphrase source is required: --book-key-file <path>,"
+              + " --book-passphrase-stdin, or --book-passphrase-prompt.");
+    }
+    if (replacementPassphraseSourceKind == null) {
+      throw invalid(
+          "--new-book-key-file",
+          "Exactly one replacement book passphrase source is required: --new-book-key-file <path>,"
+              + " --new-book-passphrase-stdin, or --new-book-passphrase-prompt.");
+    }
+    BookAccess.PassphraseSource currentPassphraseSource =
+        passphraseSource(currentPassphraseSourceKind, currentBookKeyFilePath);
+    BookAccess.PassphraseSource replacementPassphraseSource =
+        passphraseSource(replacementPassphraseSourceKind, replacementBookKeyFilePath);
+    validateDistinctRekeyPaths(bookFilePath, currentPassphraseSource, replacementPassphraseSource);
+    validateRekeyStandardInputUsage(currentPassphraseSource, replacementPassphraseSource);
+    return new CliCommand.RekeyBook(
+        new BookAccess(bookFilePath, currentPassphraseSource), replacementPassphraseSource);
   }
 
   private static ParsedBookArguments parseBookArguments(
@@ -125,6 +203,17 @@ final class CliArguments {
     return candidateSource;
   }
 
+  private static PassphraseSourceKind requireSingleReplacementPassphraseSource(
+      PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
+    Objects.requireNonNull(candidateSource, "candidateSource");
+    if (currentSource != null) {
+      throw invalid(
+          replacementOptionName(candidateSource),
+          "Exactly one replacement book passphrase source is permitted per command.");
+    }
+    return candidateSource;
+  }
+
   private static BookAccess.PassphraseSource passphraseSource(
       PassphraseSourceKind passphraseSourceKind, Path bookKeyFilePath) {
     return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
@@ -166,6 +255,36 @@ final class CliArguments {
     }
   }
 
+  private static void validateDistinctRekeyPaths(
+      Path bookFilePath,
+      BookAccess.PassphraseSource currentPassphraseSource,
+      BookAccess.PassphraseSource replacementPassphraseSource) {
+    validateDistinctPaths(bookFilePath, currentPassphraseSource, null);
+    validateDistinctPaths(bookFilePath, replacementPassphraseSource, null);
+    if (currentPassphraseSource instanceof BookAccess.PassphraseSource.KeyFile currentKeyFile
+        && replacementPassphraseSource
+            instanceof BookAccess.PassphraseSource.KeyFile replacementKeyFile
+        && currentKeyFile
+            .bookKeyFilePath()
+            .toAbsolutePath()
+            .equals(replacementKeyFile.bookKeyFilePath().toAbsolutePath())) {
+      throw invalid(
+          "--new-book-key-file",
+          "--book-key-file and --new-book-key-file must not point to the same path.");
+    }
+  }
+
+  private static void validateRekeyStandardInputUsage(
+      BookAccess.PassphraseSource currentPassphraseSource,
+      BookAccess.PassphraseSource replacementPassphraseSource) {
+    if (currentPassphraseSource instanceof BookAccess.PassphraseSource.StandardInput
+        && replacementPassphraseSource instanceof BookAccess.PassphraseSource.StandardInput) {
+      throw invalid(
+          "--new-book-passphrase-stdin",
+          "Standard input cannot supply both the current and replacement book passphrases.");
+    }
+  }
+
   private static String requireValue(ListIterator<String> argumentIterator, String optionName) {
     if (!argumentIterator.hasNext()) {
       throw invalid(optionName, "Missing value for " + optionName + ".");
@@ -196,6 +315,14 @@ final class CliArguments {
     private String optionName() {
       return optionName;
     }
+  }
+
+  private static String replacementOptionName(PassphraseSourceKind passphraseSourceKind) {
+    return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
+      case KEY_FILE -> "--new-book-key-file";
+      case STANDARD_INPUT -> "--new-book-passphrase-stdin";
+      case INTERACTIVE_PROMPT -> "--new-book-passphrase-prompt";
+    };
   }
 
   private static CliArgumentsException unknownCommand(String commandName) {

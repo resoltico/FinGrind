@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: ADAPTERS
 updated: "2026-04-14"
 route:
@@ -65,7 +65,7 @@ public final class SqliteBookPassphrase
 ```
 
 - Purpose: hold normalized UTF-8 passphrase bytes only after the CLI has resolved a safe source
-- Lifecycle: copied into native memory for `sqlite3_key()` and then zeroized
+- Lifecycle: copied into native memory for `sqlite3_key()` or `sqlite3_rekey()` and then zeroized
 - Safety: avoids keeping CLI source transport concerns inside the low-level SQLite bridge
 
 ## `PostingCommitResult`
@@ -107,11 +107,17 @@ public final class SqlitePostingFactStore
   passphrase bytes
 - Concurrency: thread-confined to one owning CLI command
 - Reads: return empty for a missing file and do not initialize storage eagerly
+- Access modes: query-style operations reopen books through an explicit read-only SQLite session
+  that also enforces `pragma query_only = on`
 - Open configuration: applies `sqlite3_key()` immediately after open, validates the key, enables
   `foreign_keys`, and disables `trusted_schema` on the opened handle
-- Initialization: `openBook(...)` creates parent directories when needed, applies the canonical schema, and inserts `book_meta.initialized_at`
+- Initialization: `openBook(...)` creates parent directories when needed, applies the canonical
+  schema, inserts `book_meta.initialized_at`, and stamps the canonical FinGrind `application_id`
+  plus `user_version`
 - Account registry: stores declared accounts in the `account` table and enforces the `journal_line.account_code -> account.account_code` foreign key
 - Commit: rejects unopened books plus unknown or inactive accounts before ordinary duplicate checks
+- SQLite-specific administration: also exposes `rekeyBook(...)` outside the generic `BookSession`
+  surface so one existing protected book can rotate onto replacement passphrase material
 - Process model: opens one in-process SQLite3 Multiple Ciphers handle per session instance and
   closes it through the `BookSession` lifecycle
 
@@ -125,6 +131,7 @@ public final class App
 
 - Surface: exposes `main(String[] args)`
 - Purpose: run the JSON CLI and exit with its process status code
-- Commands: fronts `help`, `version`, `capabilities`, `print-request-template`, `open-book`, `declare-account`, `list-accounts`, `preflight-entry`, and `post-entry`
+- Commands: fronts `help`, `version`, `capabilities`, `print-request-template`, `open-book`,
+  `rekey-book`, `declare-account`, `list-accounts`, `preflight-entry`, and `post-entry`
 - Discovery contract: serializes application-owned `MachineContract` descriptors instead of
   assembling discovery payload maps inside the CLI layer

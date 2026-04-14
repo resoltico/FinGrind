@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: USER_EXAMPLES
 updated: "2026-04-14"
 route:
-  keywords: [fingrind, examples, open-book, declare-account, list-accounts, preflight, commit, duplicate, stdin, reversal, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, request-template]
+  keywords: [fingrind, examples, open-book, rekey-book, declare-account, list-accounts, preflight, commit, duplicate, stdin, reversal, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, request-template]
   questions: ["show me a working fingrind example", "how do I initialize a book and post in fingrind", "how do I send a fingrind request on stdin"]
 ---
 
@@ -43,10 +43,12 @@ For automation, a dedicated key file is still supported:
 install -d -m 700 /tmp/fingrind/keys
 umask 077
 printf '%s\n' 'acme-demo-passphrase' > /tmp/fingrind/keys/acme.book-key
+chmod 600 /tmp/fingrind/keys/acme.book-key
 ```
 
 The key file must contain one non-empty UTF-8 passphrase.
 One trailing newline is tolerated and stripped.
+The key file must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`).
 
 For pipeline automation without a persistent file:
 
@@ -71,6 +73,22 @@ One successful response:
 
 ```json
 {"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite","initializedAt":"2026-04-13T11:58:35.532739Z"}}
+```
+
+## Rotate One Book Passphrase
+
+```bash
+java -jar cli/build/libs/fingrind.jar \
+  rekey-book \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --new-book-passphrase-prompt
+```
+
+One successful response:
+
+```json
+{"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite"}}
 ```
 
 ## Declare And List Accounts
@@ -247,6 +265,7 @@ One invalid-request response:
 
 ```bash
 printf '%s\n' 'wrong-passphrase' > /tmp/fingrind/keys/wrong.book-key
+chmod 600 /tmp/fingrind/keys/wrong.book-key
 
 java -jar cli/build/libs/fingrind.jar \
   list-accounts \

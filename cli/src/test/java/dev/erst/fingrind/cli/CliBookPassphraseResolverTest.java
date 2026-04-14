@@ -10,10 +10,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.Arena;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,7 +29,7 @@ class CliBookPassphraseResolverTest {
   @Test
   void resolve_readsUtf8PassphraseFromKeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("book.key");
-    Files.writeString(keyFile, "swordfish\n", StandardCharsets.UTF_8);
+    writeSecureString(keyFile, "swordfish\n");
     CliBookPassphraseResolver resolver =
         new CliBookPassphraseResolver(
             new ByteArrayInputStream(new byte[0]), prompt -> failPrompt(prompt));
@@ -117,6 +121,106 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void resolve_readsConfirmedPromptPassphraseFromTerminal() throws Exception {
+    Path bookPath = tempDirectory.resolve("confirmed.sqlite");
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            new CliBookPassphraseResolver.Terminal() {
+              private int readCount;
+
+              @Override
+              public char[] readPassword(String prompt) {
+                readCount++;
+                if (readCount == 1) {
+                  assertTrue(prompt.startsWith("New FinGrind book passphrase for "));
+                  return "confirmed-secret".toCharArray();
+                }
+                assertTrue(prompt.startsWith("Confirm new FinGrind book passphrase for "));
+                return "confirmed-secret".toCharArray();
+              }
+            });
+
+    try (SqliteBookPassphrase passphrase =
+            resolver.resolve(
+                bookPath,
+                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET);
+        Arena arena = Arena.ofConfined()) {
+      assertTrue(
+          passphrase
+              .sourceDescription()
+              .contains(bookPath.toAbsolutePath().normalize().toString()));
+      assertEquals(
+          "confirmed-secret",
+          new String(
+              passphrase
+                  .copyToCString(arena)
+                  .asSlice(0, passphrase.byteLength())
+                  .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
+              StandardCharsets.UTF_8));
+    }
+  }
+
+  @Test
+  void resolve_rejectsMissingConfirmedPromptPassphrase() {
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            new CliBookPassphraseResolver.Terminal() {
+              private int readCount;
+
+              @Override
+              public char[] readPassword(String prompt) {
+                readCount++;
+                return readCount == 1 ? "secret".toCharArray() : null;
+              }
+            });
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                resolver.resolve(
+                    Path.of("book.sqlite"),
+                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET));
+
+    assertEquals(
+        "FinGrind did not receive a confirmed book passphrase from the interactive console.",
+        exception.getMessage());
+  }
+
+  @Test
+  void resolve_rejectsMismatchedConfirmedPromptPassphrases() {
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            new CliBookPassphraseResolver.Terminal() {
+              private int readCount;
+
+              @Override
+              public char[] readPassword(String prompt) {
+                readCount++;
+                return readCount == 1 ? "first".toCharArray() : "second".toCharArray();
+              }
+            });
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                resolver.resolve(
+                    Path.of("book.sqlite"),
+                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET));
+
+    assertEquals(
+        "FinGrind did not receive matching book passphrases from the interactive console.",
+        exception.getMessage());
+  }
+
+  @Test
   void resolve_wrapsStandardInputReadFailure() {
     CliBookPassphraseResolver resolver =
         new CliBookPassphraseResolver(
@@ -149,6 +253,59 @@ class CliBookPassphraseResolverTest {
   @Test
   void systemConsoleReader_reportsNoInteractiveConsoleInTheGradleTestEnvironment() {
     assertTrue(CliBookPassphraseResolver.systemConsoleReader().isEmpty());
+  }
+
+  @Test
+  void systemConsoleReader_wrapsConsoleLikeHandle() {
+    CliBookPassphraseResolver.Terminal terminal =
+        CliBookPassphraseResolver.systemConsoleReader(new FakeConsoleHandle()).orElseThrow();
+
+    assertEquals("console-secret", new String(terminal.readPassword("book.sqlite")));
+  }
+
+  @Test
+  void systemConsoleReader_rejectsHandlesWithoutReadPasswordMethod() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliBookPassphraseResolver.systemConsoleReader(new Object()));
+
+    assertEquals(
+        "Interactive console handle does not expose readPassword(String, Object...).",
+        exception.getMessage());
+  }
+
+  @Test
+  void systemConsoleReader_wrapsReadPasswordInvocationFailures() {
+    CliBookPassphraseResolver.Terminal terminal =
+        CliBookPassphraseResolver.systemConsoleReader(new ThrowingConsoleHandle()).orElseThrow();
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, () -> terminal.readPassword("book.sqlite"));
+
+    assertEquals(
+        "Failed to prompt for a book passphrase from the interactive console.",
+        exception.getMessage());
+    assertEquals("boom", exception.getCause().getCause().getMessage());
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void promptStyle_singlePromptDoesNotExposeConfirmationPrompt() throws Exception {
+    Method method =
+        CliBookPassphraseResolver.PromptStyle.class.getDeclaredMethod(
+            "confirmationPrompt", Path.class);
+    method.setAccessible(true);
+
+    InvocationTargetException exception =
+        assertThrows(
+            InvocationTargetException.class,
+            () ->
+                method.invoke(
+                    CliBookPassphraseResolver.PromptStyle.SINGLE, Path.of("book.sqlite")));
+
+    assertEquals(
+        "This prompt style does not support confirmation.", exception.getCause().getMessage());
   }
 
   @Test
@@ -199,6 +356,12 @@ class CliBookPassphraseResolverTest {
     throw new AssertionError("Unexpected prompt usage: " + prompt);
   }
 
+  private static void writeSecureString(Path keyFile, String content) throws IOException {
+    Files.writeString(keyFile, content, StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        keyFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+  }
+
   private static Supplier<Optional<CliBookPassphraseResolver.Terminal>> readerSupplier(
       String password) {
     return () ->
@@ -207,5 +370,27 @@ class CliBookPassphraseResolverTest {
               assertEquals("book.sqlite", prompt);
               return password.toCharArray();
             });
+  }
+
+  /** Console-shaped test double that records the reflected prompt format and arguments. */
+  private static final class FakeConsoleHandle {
+    @SuppressWarnings("UnusedMethod")
+    char[] readPassword(String format, Object... arguments) {
+      assertEquals("%s", format);
+      assertEquals(1, arguments.length);
+      assertEquals("book.sqlite", arguments[0]);
+      return "console-secret".toCharArray();
+    }
+  }
+
+  /** Console-shaped test double that fails once the reflected readPassword method is invoked. */
+  private static final class ThrowingConsoleHandle {
+    @SuppressWarnings({"UnusedMethod", "DoNotCallSuggester"})
+    char[] readPassword(String format, Object... arguments) {
+      assertEquals("%s", format);
+      assertEquals(1, arguments.length);
+      assertEquals("book.sqlite", arguments[0]);
+      throw new IllegalStateException("boom");
+    }
   }
 }

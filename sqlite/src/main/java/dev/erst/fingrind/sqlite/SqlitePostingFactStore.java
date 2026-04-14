@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * SQLite-backed book session that keeps one in-process database handle per opened book.
@@ -30,11 +31,18 @@ import java.util.Optional;
  * <p>This session is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
 public final class SqlitePostingFactStore implements BookSession {
+  static final int BOOK_APPLICATION_ID = 1_179_079_236; // "FGRD"
+  static final int BOOK_FORMAT_VERSION = 1;
+
   private static final String ACCOUNT_TABLE = "account";
   private static final String BOOK_META_TABLE = "book_meta";
+  private static final String JOURNAL_LINE_TABLE = "journal_line";
+  private static final String NOT_INITIALIZED_BOOK_MESSAGE =
+      "The selected SQLite file is not initialized as a FinGrind book.";
   private static final String POSTING_FACT_TABLE = "posting_fact";
 
   private final Path bookPath;
+  private final AccessMode accessMode;
   private SqliteBookPassphrase bookPassphrase;
 
   private SqliteNativeDatabase database;
@@ -43,12 +51,23 @@ public final class SqlitePostingFactStore implements BookSession {
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
   public SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
+    this(bookPath, bookPassphrase, AccessMode.READ_WRITE_CREATE);
+  }
+
+  /** Opens one SQLite-backed book boundary with the selected storage access mode. */
+  public SqlitePostingFactStore(
+      Path bookPath, SqliteBookPassphrase bookPassphrase, AccessMode accessMode) {
     this.bookPath = Objects.requireNonNull(bookPath, "bookPath").toAbsolutePath().normalize();
     this.bookPassphrase = Objects.requireNonNull(bookPassphrase, "bookPassphrase");
+    this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
   }
 
   SqlitePostingFactStore(BookAccess bookAccess) {
-    this(bookAccess.bookFilePath(), passphraseFor(bookAccess));
+    this(bookAccess, AccessMode.READ_WRITE_CREATE);
+  }
+
+  SqlitePostingFactStore(BookAccess bookAccess, AccessMode accessMode) {
+    this(bookAccess.bookFilePath(), passphraseFor(bookAccess), accessMode);
   }
 
   @Override
@@ -58,7 +77,13 @@ public final class SqlitePostingFactStore implements BookSession {
       return false;
     }
     try {
-      return isInitialized(database());
+      return switch (bookState(database())) {
+        case BLANK_SQLITE -> false;
+        case INITIALIZED_FINGRIND -> true;
+        case FOREIGN_SQLITE -> throw foreignBookFailure();
+        case UNSUPPORTED_FINGRIND_VERSION -> throw unsupportedBookVersionFailure(database);
+        case INCOMPLETE_FINGRIND -> throw incompleteBookFailure();
+      };
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to query SQLite book.", exception);
     }
@@ -67,15 +92,23 @@ public final class SqlitePostingFactStore implements BookSession {
   @Override
   public OpenBookResult openBook(Instant initializedAt) {
     ensureOpen();
+    accessMode.requireWritableInitialization();
     SqliteSchemaManager.ensureParentDirectory(bookPath);
     database();
     try {
-      if (isInitialized(database)) {
+      BookState state = bookState(database);
+      if (state == BookState.INITIALIZED_FINGRIND) {
         return new OpenBookResult.Rejected(
             new BookAdministrationRejection.BookAlreadyInitialized());
       }
-      if (hasUserSchemaObjects(database)) {
+      if (state == BookState.FOREIGN_SQLITE) {
         return new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema());
+      }
+      if (state == BookState.UNSUPPORTED_FINGRIND_VERSION) {
+        throw unsupportedBookVersionFailure(database);
+      }
+      if (state == BookState.INCOMPLETE_FINGRIND) {
+        throw incompleteBookFailure();
       }
 
       database.executeStatement("begin immediate");
@@ -97,9 +130,10 @@ public final class SqlitePostingFactStore implements BookSession {
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (!existsTable(activeDatabase, ACCOUNT_TABLE)) {
+      if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
         return Optional.empty();
       }
+      requireInitializedBook(activeDatabase);
       return findOneAccount(activeDatabase, accountCode);
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to query SQLite book.", exception);
@@ -113,13 +147,14 @@ public final class SqlitePostingFactStore implements BookSession {
       NormalBalance normalBalance,
       Instant declaredAt) {
     ensureOpen();
+    accessMode.requireWritableMutation();
     if (Files.notExists(bookPath)) {
       return new DeclareAccountResult.Rejected(
           new BookAdministrationRejection.BookNotInitialized());
     }
     database();
     try {
-      if (!isInitialized(database)) {
+      if (!isInitializedBook(database)) {
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.BookNotInitialized());
       }
@@ -165,9 +200,10 @@ public final class SqlitePostingFactStore implements BookSession {
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (!existsTable(activeDatabase, ACCOUNT_TABLE)) {
+      if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
         return List.of();
       }
+      requireInitializedBook(activeDatabase);
       return loadAccounts(activeDatabase);
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to query SQLite book.", exception);
@@ -182,9 +218,10 @@ public final class SqlitePostingFactStore implements BookSession {
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (!existsTable(activeDatabase, POSTING_FACT_TABLE)) {
+      if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
         return Optional.empty();
       }
+      requireInitializedBook(activeDatabase);
       return findOnePosting(
           activeDatabase,
           SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
@@ -202,9 +239,10 @@ public final class SqlitePostingFactStore implements BookSession {
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (!existsTable(activeDatabase, POSTING_FACT_TABLE)) {
+      if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
         return Optional.empty();
       }
+      requireInitializedBook(activeDatabase);
       return findOnePosting(
           activeDatabase,
           SqlitePostingSql.FIND_POSTING_BY_ID,
@@ -222,9 +260,10 @@ public final class SqlitePostingFactStore implements BookSession {
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (!existsTable(activeDatabase, POSTING_FACT_TABLE)) {
+      if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
         return Optional.empty();
       }
+      requireInitializedBook(activeDatabase);
       return findOnePosting(
           activeDatabase,
           SqlitePostingSql.FIND_REVERSAL_FOR,
@@ -237,11 +276,15 @@ public final class SqlitePostingFactStore implements BookSession {
   @Override
   public PostingCommitResult commit(PostingFact postingFact) {
     ensureOpen();
+    accessMode.requireWritableMutation();
     if (Files.notExists(bookPath)) {
       return new PostingCommitResult.BookNotInitialized();
     }
     database();
     try {
+      if (!isInitializedBook(database)) {
+        return new PostingCommitResult.BookNotInitialized();
+      }
       database.executeStatement("begin immediate");
       Optional<PostingCommitResult> ordinaryOutcome =
           ordinaryOutcomeBeforeInsert(database, postingFact);
@@ -279,9 +322,46 @@ public final class SqlitePostingFactStore implements BookSession {
     }
   }
 
+  /** Rekeys one initialized FinGrind book and verifies the replacement passphrase durably. */
+  @SuppressWarnings("PMD.UseTryWithResources")
+  public RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase) {
+    ensureOpen();
+    accessMode.requireWritableMutation();
+    SqliteBookPassphrase activeReplacementPassphrase =
+        Objects.requireNonNull(replacementPassphrase, "replacementPassphrase");
+    boolean databaseHandleClosedForRekey = false;
+    try {
+      if (Files.notExists(bookPath)) {
+        return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
+      }
+      database();
+      if (!isInitializedBook(database)) {
+        return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
+      }
+      SqliteNativeLibrary.rekey(database, activeReplacementPassphrase);
+      closeOwnedDatabase(database);
+      databaseHandleClosedForRekey = true;
+      database =
+          configureOpenedDatabase(
+              SqliteNativeLibrary.open(
+                  bookPath, activeReplacementPassphrase, accessMode.nativeOpenMode()),
+              accessMode);
+      databaseHandleClosedForRekey = false;
+      requireInitializedBook(database);
+      return new RekeyBookResult.Rekeyed(bookPath);
+    } catch (SqliteNativeException exception) {
+      if (databaseHandleClosedForRekey) {
+        database = null;
+      }
+      throw sqliteFailure("Failed to rekey SQLite book.", exception);
+    } finally {
+      activeReplacementPassphrase.close();
+    }
+  }
+
   private Optional<PostingCommitResult> ordinaryOutcomeBeforeInsert(
       SqliteNativeDatabase activeDatabase, PostingFact postingFact) throws SqliteNativeException {
-    if (!isInitialized(activeDatabase)) {
+    if (!isInitializedBook(activeDatabase)) {
       return Optional.of(new PostingCommitResult.BookNotInitialized());
     }
 
@@ -415,7 +495,21 @@ public final class SqlitePostingFactStore implements BookSession {
         statement -> statement.bindText(1, tableName));
   }
 
-  private boolean isInitialized(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+  private boolean hasUserSchemaObjects(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
+    return existsRow(activeDatabase, SqlitePostingSql.USER_SCHEMA_EXISTS, statement -> {});
+  }
+
+  private boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
+    return existsTable(activeDatabase, BOOK_META_TABLE)
+        && existsTable(activeDatabase, ACCOUNT_TABLE)
+        && existsTable(activeDatabase, POSTING_FACT_TABLE)
+        && existsTable(activeDatabase, JOURNAL_LINE_TABLE);
+  }
+
+  private boolean hasInitializedMarker(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
     return existsTable(activeDatabase, BOOK_META_TABLE)
         && existsRow(
             activeDatabase,
@@ -423,9 +517,72 @@ public final class SqlitePostingFactStore implements BookSession {
             statement -> statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY));
   }
 
-  private boolean hasUserSchemaObjects(SqliteNativeDatabase activeDatabase)
+  private boolean isInitializedBook(SqliteNativeDatabase activeDatabase)
       throws SqliteNativeException {
-    return existsRow(activeDatabase, SqlitePostingSql.USER_SCHEMA_EXISTS, statement -> {});
+    return bookState(activeDatabase) == BookState.INITIALIZED_FINGRIND;
+  }
+
+  private void requireInitializedBook(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
+    BookState state = bookState(activeDatabase);
+    if (state == BookState.INITIALIZED_FINGRIND) {
+      return;
+    }
+    if (state == BookState.BLANK_SQLITE) {
+      throw new IllegalStateException(NOT_INITIALIZED_BOOK_MESSAGE);
+    }
+    if (state == BookState.FOREIGN_SQLITE) {
+      throw foreignBookFailure();
+    }
+    if (state == BookState.UNSUPPORTED_FINGRIND_VERSION) {
+      throw unsupportedBookVersionFailure(activeDatabase);
+    }
+    throw incompleteBookFailure();
+  }
+
+  private BookState bookState(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+    int applicationId = querySingleInt(activeDatabase, "pragma application_id");
+    int userVersion = querySingleInt(activeDatabase, "pragma user_version");
+    if (applicationId == 0 && userVersion == 0 && !hasUserSchemaObjects(activeDatabase)) {
+      return BookState.BLANK_SQLITE;
+    }
+    if (applicationId == BOOK_APPLICATION_ID) {
+      if (userVersion != BOOK_FORMAT_VERSION) {
+        return BookState.UNSUPPORTED_FINGRIND_VERSION;
+      }
+      if (hasCanonicalTables(activeDatabase) && hasInitializedMarker(activeDatabase)) {
+        return BookState.INITIALIZED_FINGRIND;
+      }
+      return BookState.INCOMPLETE_FINGRIND;
+    }
+    return BookState.FOREIGN_SQLITE;
+  }
+
+  private static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql)
+      throws SqliteNativeException {
+    OptionalInt value = queryOptionalInt(activeDatabase, sql);
+    if (value.isEmpty()) {
+      throw new IllegalStateException("SQLite integer query returned no rows: " + sql);
+    }
+    return value.orElseThrow();
+  }
+
+  @SuppressWarnings("PMD.UseTryWithResources")
+  private static OptionalInt queryOptionalInt(SqliteNativeDatabase activeDatabase, String sql)
+      throws SqliteNativeException {
+    SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
+    try {
+      if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+        return OptionalInt.empty();
+      }
+      int value = statement.columnInt(0);
+      if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+        throw new IllegalStateException("SQLite integer query returned more than one row: " + sql);
+      }
+      return OptionalInt.of(value);
+    } finally {
+      statement.close();
+    }
   }
 
   private List<JournalLine> loadLines(SqliteNativeDatabase activeDatabase, PostingId postingId)
@@ -510,8 +667,9 @@ public final class SqlitePostingFactStore implements BookSession {
       return database;
     }
     try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
-      SqliteNativeDatabase openedDatabase = SqliteNativeLibrary.open(bookPath, passphrase);
-      database = configureOpenedDatabase(openedDatabase);
+      SqliteNativeDatabase openedDatabase =
+          SqliteNativeLibrary.open(bookPath, passphrase, accessMode.nativeOpenMode());
+      database = configureOpenedDatabase(openedDatabase, accessMode);
       return database;
     } catch (SqliteNativeException exception) {
       throw rememberTerminalFailure(
@@ -545,10 +703,10 @@ public final class SqlitePostingFactStore implements BookSession {
         message + " " + exception.resultName() + ": " + detail, exception);
   }
 
-  /** Binds one prepared SQLite statement before it is stepped. */
+  @SuppressWarnings("PMD.CommentRequired")
   @FunctionalInterface
   private interface SqliteBinder {
-    /** Applies parameter values to one prepared SQLite statement. */
+    @SuppressWarnings("PMD.CommentRequired")
     void bind(SqliteNativeStatement statement) throws SqliteNativeException;
   }
 
@@ -588,15 +746,69 @@ public final class SqlitePostingFactStore implements BookSession {
     return failure;
   }
 
-  static SqliteNativeDatabase configureOpenedDatabase(SqliteNativeDatabase openedDatabase)
-      throws SqliteNativeException {
+  private static IllegalStateException foreignBookFailure() {
+    return new IllegalStateException("The selected SQLite file is not a FinGrind book.");
+  }
+
+  private static IllegalStateException incompleteBookFailure() {
+    return new IllegalStateException(
+        "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
+  }
+
+  private static IllegalStateException unsupportedBookVersionFailure(
+      SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+    int loadedUserVersion = querySingleInt(activeDatabase, "pragma user_version");
+    return new IllegalStateException(
+        "The selected FinGrind book format version "
+            + loadedUserVersion
+            + " is unsupported. Expected version "
+            + BOOK_FORMAT_VERSION
+            + ".");
+  }
+
+  static SqliteNativeDatabase configureOpenedDatabase(
+      SqliteNativeDatabase openedDatabase, AccessMode accessMode) throws SqliteNativeException {
     try {
-      openedDatabase.executeStatement("pragma foreign_keys = on");
-      openedDatabase.executeStatement("pragma trusted_schema = off");
+      Objects.requireNonNull(accessMode, "accessMode");
+      openedDatabase.executeScript(
+          """
+          pragma foreign_keys = on;
+          pragma trusted_schema = off;
+          pragma secure_delete = on;
+          pragma temp_store = memory;
+          pragma memory_security = fill;
+          pragma query_only = %d;
+          """
+              .formatted(accessMode.queryOnlyPragmaValue()));
+      assertOpenConfiguration(openedDatabase, accessMode);
       return openedDatabase;
-    } catch (SqliteNativeException exception) {
+    } catch (SqliteNativeException | RuntimeException exception) {
       closeAfterConfigurationFailure(openedDatabase);
       throw exception;
+    }
+  }
+
+  private static void assertOpenConfiguration(
+      SqliteNativeDatabase openedDatabase, AccessMode accessMode) throws SqliteNativeException {
+    if (querySingleInt(openedDatabase, "pragma foreign_keys") != 1) {
+      throw new IllegalStateException("SQLite connection failed to keep foreign_keys enabled.");
+    }
+    if (querySingleInt(openedDatabase, "pragma trusted_schema") != 0) {
+      throw new IllegalStateException("SQLite connection failed to disable trusted_schema.");
+    }
+    if (querySingleInt(openedDatabase, "pragma secure_delete") != 1) {
+      throw new IllegalStateException("SQLite connection failed to enable secure_delete.");
+    }
+    if (querySingleInt(openedDatabase, "pragma temp_store") != 2) {
+      throw new IllegalStateException("SQLite connection failed to force temp_store=MEMORY.");
+    }
+    requireOptionalPragmaValue(
+        queryOptionalInt(openedDatabase, "pragma memory_security"),
+        1,
+        "SQLite connection failed to enable memory_security=fill.");
+    if (querySingleInt(openedDatabase, "pragma query_only") != accessMode.queryOnlyPragmaValue()) {
+      throw new IllegalStateException(
+          "SQLite connection failed to enforce the expected query_only setting.");
     }
   }
 
@@ -606,5 +818,68 @@ public final class SqlitePostingFactStore implements BookSession {
     } catch (SqliteNativeException ignored) {
       // Preserve the original open/configuration failure.
     }
+  }
+
+  static void requireOptionalPragmaValue(
+      OptionalInt actualValue, int expectedValue, String failureMessage) {
+    Objects.requireNonNull(actualValue, "actualValue");
+    Objects.requireNonNull(failureMessage, "failureMessage");
+    if (actualValue.isPresent() && actualValue.orElseThrow() != expectedValue) {
+      throw new IllegalStateException(failureMessage);
+    }
+  }
+
+  @SuppressWarnings("PMD.CommentRequired")
+  public enum AccessMode {
+    READ_ONLY(SqliteNativeLibrary.OpenMode.READ_ONLY, true, false, false),
+    READ_WRITE_EXISTING(SqliteNativeLibrary.OpenMode.READ_WRITE_EXISTING, false, true, false),
+    READ_WRITE_CREATE(SqliteNativeLibrary.OpenMode.READ_WRITE_CREATE, false, true, true);
+
+    private final SqliteNativeLibrary.OpenMode nativeOpenMode;
+    private final boolean queryOnly;
+    private final boolean writable;
+    private final boolean createsFiles;
+
+    AccessMode(
+        SqliteNativeLibrary.OpenMode nativeOpenMode,
+        boolean queryOnly,
+        boolean writable,
+        boolean createsFiles) {
+      this.nativeOpenMode = Objects.requireNonNull(nativeOpenMode, "nativeOpenMode");
+      this.queryOnly = queryOnly;
+      this.writable = writable;
+      this.createsFiles = createsFiles;
+    }
+
+    SqliteNativeLibrary.OpenMode nativeOpenMode() {
+      return nativeOpenMode;
+    }
+
+    int queryOnlyPragmaValue() {
+      return queryOnly ? 1 : 0;
+    }
+
+    void requireWritableMutation() {
+      if (!writable) {
+        throw new IllegalStateException(
+            "This FinGrind SQLite session is read-only and cannot mutate the book.");
+      }
+    }
+
+    void requireWritableInitialization() {
+      if (!createsFiles) {
+        throw new IllegalStateException(
+            "This FinGrind SQLite session cannot initialize or create a book file.");
+      }
+    }
+  }
+
+  @SuppressWarnings("PMD.CommentRequired")
+  private enum BookState {
+    BLANK_SQLITE,
+    INITIALIZED_FINGRIND,
+    FOREIGN_SQLITE,
+    UNSUPPORTED_FINGRIND_VERSION,
+    INCOMPLETE_FINGRIND
   }
 }

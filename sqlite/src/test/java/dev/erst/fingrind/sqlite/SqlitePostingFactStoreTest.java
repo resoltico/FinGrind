@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,6 +41,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.foreign.MemorySegment;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -47,10 +51,13 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -279,15 +286,109 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
-  void schemaOnlyBook_reportsUninitializedStateAndEmptyAccountLookup()
-      throws SqliteNativeException {
+  void schemaOnlyBook_isRejectedAsIncompleteFinGrindBook() throws SqliteNativeException {
     Path databasePath = tempDirectory.resolve("schema-only.sqlite");
     createSchemaOnlyBook(databasePath);
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      assertFalse(postingFactStore.isInitialized());
-      assertEquals(Optional.empty(), postingFactStore.findAccount(new AccountCode("1000")));
+      IllegalStateException initializedException =
+          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
+      assertTrue(
+          initializedException
+              .getMessage()
+              .contains("incomplete or corrupted and cannot be opened safely"));
+
+      IllegalStateException accountException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findAccount(new AccountCode("1000")));
+      assertTrue(
+          accountException
+              .getMessage()
+              .contains("incomplete or corrupted and cannot be opened safely"));
+
+      IllegalStateException openException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+      assertTrue(
+          openException
+              .getMessage()
+              .contains("incomplete or corrupted and cannot be opened safely"));
+    }
+  }
+
+  @Test
+  void openBook_setsFinGrindIdentityAndHardeningPragmas() throws Exception {
+    Path databasePath = tempDirectory.resolve("identity-pragmas.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+
+      assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma foreign_keys"));
+      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma trusted_schema"));
+      assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma secure_delete"));
+      assertEquals(2, queryInt(storeDatabase(postingFactStore), "pragma temp_store"));
+      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma query_only"));
+    }
+
+    withStandaloneDatabase(
+        bookAccess(databasePath),
+        database -> {
+          assertEquals(
+              SqlitePostingFactStore.BOOK_APPLICATION_ID,
+              queryInt(database, "pragma application_id"));
+          assertEquals(
+              SqlitePostingFactStore.BOOK_FORMAT_VERSION,
+              queryInt(database, "pragma user_version"));
+        });
+  }
+
+  @Test
+  void foreignAndUnsupportedBooks_areRejectedAcrossBoundaries() throws Exception {
+    Path foreignBookPath = tempDirectory.resolve("foreign.sqlite");
+    createPostingFactOnlyBook(foreignBookPath);
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
+      IllegalStateException initializedException =
+          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
+      assertEquals(
+          "The selected SQLite file is not a FinGrind book.", initializedException.getMessage());
+
+      IllegalStateException accountException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findAccount(new AccountCode("1000")));
+      assertEquals(
+          "The selected SQLite file is not a FinGrind book.", accountException.getMessage());
+    }
+
+    Path unsupportedBookPath = tempDirectory.resolve("unsupported-version.sqlite");
+    initializeBookOnDisk(unsupportedBookPath);
+    withStandaloneDatabase(
+        bookAccess(unsupportedBookPath),
+        database -> database.executeStatement("pragma user_version = 2"));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
+      IllegalStateException initializedException =
+          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
+      assertTrue(initializedException.getMessage().contains("format version 2 is unsupported"));
+
+      IllegalStateException openException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+      assertTrue(openException.getMessage().contains("format version 2 is unsupported"));
+
+      IllegalStateException accountException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findAccount(new AccountCode("1000")));
+      assertTrue(accountException.getMessage().contains("format version 2 is unsupported"));
     }
   }
 
@@ -336,6 +437,26 @@ class SqlitePostingFactStoreTest {
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
           postingFactStore.listAccounts());
+    }
+  }
+
+  @Test
+  void findAccount_returnsDeclaredAccountFromInitializedBook() {
+    Path databasePath = tempDirectory.resolve("find-account.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+
+      assertEquals(
+          Optional.of(
+              new DeclaredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  NormalBalance.DEBIT,
+                  true,
+                  Instant.parse("2026-04-07T10:15:30Z"))),
+          postingFactStore.findAccount(new AccountCode("1000")));
     }
   }
 
@@ -641,7 +762,7 @@ class SqlitePostingFactStoreTest {
     Files.writeString(fileParent, "nope", StandardCharsets.UTF_8);
     Path keyPath = tempDirectory.resolve("book-keys").resolve("entity.book-key");
     Files.createDirectories(keyPath.getParent());
-    Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+    writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
@@ -830,6 +951,576 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  void rekeyBook_rotatesPassphraseAndPreservesReadableState() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-book.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+
+      try (SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "replacement store passphrase", "rotated-store-key".toCharArray())) {
+        assertEquals(
+            new RekeyBookResult.Rekeyed(bookPath.toAbsolutePath().normalize()),
+            postingFactStore.rekeyBook(replacementPassphrase));
+      }
+    }
+
+    try (SqlitePostingFactStore oldKeyStore = new SqlitePostingFactStore(bookAccess(bookPath))) {
+      IllegalStateException exception =
+          assertThrows(IllegalStateException.class, oldKeyStore::listAccounts);
+      assertInvalidPlaintextBookFailure(exception);
+    }
+
+    try (SqliteBookPassphrase replacementPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "replacement store passphrase", "rotated-store-key".toCharArray());
+        SqlitePostingFactStore rotatedStore =
+            new SqlitePostingFactStore(
+                bookPath, replacementPassphrase, SqlitePostingFactStore.AccessMode.READ_ONLY)) {
+      assertEquals(
+          List.of(
+              new DeclaredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  NormalBalance.DEBIT,
+                  true,
+                  Instant.parse("2026-04-07T10:15:30Z")),
+              new DeclaredAccount(
+                  new AccountCode("2000"),
+                  new AccountName("Revenue"),
+                  NormalBalance.CREDIT,
+                  true,
+                  Instant.parse("2026-04-07T10:15:30Z"))),
+          rotatedStore.listAccounts());
+      assertEquals(1, queryInt(storeDatabase(rotatedStore), "pragma query_only"));
+    }
+  }
+
+  @Test
+  void rekeyBook_rejectsUninitializedBooksAndReadOnlyMutation() throws Exception {
+    Path missingBookPath = tempDirectory.resolve("rekey-missing.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(missingBookPath))) {
+      SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "replacement missing book", "rotated-store-key".toCharArray());
+      try (replacementPassphrase) {
+        assertEquals(
+            new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+            postingFactStore.rekeyBook(replacementPassphrase));
+      }
+      assertArrayEquals(
+          new byte["rotated-store-key".getBytes(StandardCharsets.UTF_8).length],
+          passphraseBytes(replacementPassphrase));
+    }
+
+    Path blankBookPath = tempDirectory.resolve("rekey-blank.sqlite");
+    createEmptySqliteFile(blankBookPath);
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+      SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "replacement blank book", "rotated-store-key".toCharArray());
+      try (replacementPassphrase) {
+        assertEquals(
+            new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+            postingFactStore.rekeyBook(replacementPassphrase));
+      }
+      assertArrayEquals(
+          new byte["rotated-store-key".getBytes(StandardCharsets.UTF_8).length],
+          passphraseBytes(replacementPassphrase));
+    }
+
+    Path initializedBookPath = tempDirectory.resolve("rekey-read-only.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "read-only book passphrase", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                initializedBookPath, bookPassphrase, SqlitePostingFactStore.AccessMode.READ_ONLY)) {
+      try (SqliteBookPassphrase replacementPassphrase =
+          SqliteBookPassphrase.fromCharacters(
+              "replacement read-only book", "rotated-store-key".toCharArray())) {
+        IllegalStateException exception =
+            assertThrows(
+                IllegalStateException.class,
+                () -> postingFactStore.rekeyBook(replacementPassphrase));
+        assertEquals(
+            "This FinGrind SQLite session is read-only and cannot mutate the book.",
+            exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void accessModes_enforceWritableBoundariesAndQueryOnlyPolicy() throws Exception {
+    assertEquals(1, SqlitePostingFactStore.AccessMode.READ_ONLY.queryOnlyPragmaValue());
+    assertEquals(0, SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING.queryOnlyPragmaValue());
+    assertEquals(0, SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE.queryOnlyPragmaValue());
+
+    assertThrows(
+        IllegalStateException.class,
+        SqlitePostingFactStore.AccessMode.READ_ONLY::requireWritableMutation);
+    assertDoesNotThrow(
+        SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING::requireWritableMutation);
+    assertDoesNotThrow(
+        SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE::requireWritableMutation);
+
+    assertThrows(
+        IllegalStateException.class,
+        SqlitePostingFactStore.AccessMode.READ_ONLY::requireWritableInitialization);
+    assertThrows(
+        IllegalStateException.class,
+        SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING::requireWritableInitialization);
+    assertDoesNotThrow(
+        SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE::requireWritableInitialization);
+
+    Path existingBookPath = tempDirectory.resolve("read-write-existing.sqlite");
+    initializeBookOnDisk(existingBookPath);
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "existing access mode", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                existingBookPath,
+                bookPassphrase,
+                SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING)) {
+      assertEquals(
+          new DeclareAccountResult.Declared(
+              new DeclaredAccount(
+                  new AccountCode("3000"),
+                  new AccountName("Equity"),
+                  NormalBalance.CREDIT,
+                  true,
+                  Instant.parse("2026-04-07T10:15:30Z"))),
+          postingFactStore.declareAccount(
+              new AccountCode("3000"),
+              new AccountName("Equity"),
+              NormalBalance.CREDIT,
+              Instant.parse("2026-04-07T10:15:30Z")));
+      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma query_only"));
+    }
+
+    Path missingBookPath = tempDirectory.resolve("read-write-existing-missing.sqlite");
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "existing access mode missing", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                missingBookPath,
+                bookPassphrase,
+                SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING)) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+      assertEquals(
+          "This FinGrind SQLite session cannot initialize or create a book file.",
+          exception.getMessage());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void helperBoundaries_rejectUnsafeShapesAndWrapNativeFailures() throws Exception {
+    Method querySingleInt =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "querySingleInt", SqliteNativeDatabase.class, String.class);
+    querySingleInt.setAccessible(true);
+    Method queryOptionalInt =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "queryOptionalInt", SqliteNativeDatabase.class, String.class);
+    queryOptionalInt.setAccessible(true);
+    Method bookState =
+        SqlitePostingFactStore.class.getDeclaredMethod("bookState", SqliteNativeDatabase.class);
+    bookState.setAccessible(true);
+    Method requireInitializedBook =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "requireInitializedBook", SqliteNativeDatabase.class);
+    requireInitializedBook.setAccessible(true);
+    Method ordinaryOutcomeBeforeInsert =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "ordinaryOutcomeBeforeInsert", SqliteNativeDatabase.class, PostingFact.class);
+    ordinaryOutcomeBeforeInsert.setAccessible(true);
+    Method findOnePosting =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "findOnePosting",
+            SqliteNativeDatabase.class,
+            String.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqlitePostingFactStore$SqliteBinder"));
+    findOnePosting.setAccessible(true);
+    Class<?> binderType =
+        Class.forName("dev.erst.fingrind.sqlite.SqlitePostingFactStore$SqliteBinder");
+    ClassLoader proxyClassLoader =
+        Optional.ofNullable(Thread.currentThread().getContextClassLoader())
+            .orElseGet(SqlitePostingFactStoreTest.class::getClassLoader);
+    Object binder =
+        Proxy.newProxyInstance(
+            proxyClassLoader, new Class<?>[] {binderType}, (proxy, method, arguments) -> null);
+
+    Path blankBookPath = tempDirectory.resolve("helper-blank.sqlite");
+    createEmptySqliteFile(blankBookPath);
+    withStandaloneDatabase(
+        bookAccess(blankBookPath),
+        database -> {
+          InvocationTargetException emptyQueryException =
+              assertThrows(
+                  InvocationTargetException.class,
+                  () -> querySingleInt.invoke(null, database, "select 1 where 0"));
+          assertEquals(
+              "SQLite integer query returned no rows: select 1 where 0",
+              emptyQueryException.getCause().getMessage());
+
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+            InvocationTargetException blankException =
+                assertThrows(
+                    InvocationTargetException.class,
+                    () -> requireInitializedBook.invoke(postingFactStore, database));
+            assertEquals(
+                "The selected SQLite file is not initialized as a FinGrind book.",
+                blankException.getCause().getMessage());
+          }
+        });
+
+    Path initializedBookPath = tempDirectory.resolve("helper-initialized.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database -> {
+          InvocationTargetException multiRowException =
+              assertThrows(
+                  InvocationTargetException.class,
+                  () -> queryOptionalInt.invoke(null, database, "select 1 union all select 2"));
+          assertEquals(
+              "SQLite integer query returned more than one row: select 1 union all select 2",
+              multiRowException.getCause().getMessage());
+          try {
+            assertEquals(OptionalInt.of(1), queryOptionalInt.invoke(null, database, "select 1"));
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(initializedBookPath))) {
+            try {
+              assertEquals(
+                  "INITIALIZED_FINGRIND", bookState.invoke(postingFactStore, database).toString());
+            } catch (ReflectiveOperationException exception) {
+              throw new LinkageError(exception.getMessage(), exception);
+            }
+          }
+        });
+
+    Path foreignBookPath = tempDirectory.resolve("helper-foreign.sqlite");
+    createPostingFactOnlyBook(foreignBookPath);
+    withStandaloneDatabase(
+        bookAccess(foreignBookPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
+            InvocationTargetException foreignException =
+                assertThrows(
+                    InvocationTargetException.class,
+                    () -> requireInitializedBook.invoke(postingFactStore, database));
+            assertEquals(
+                "The selected SQLite file is not a FinGrind book.",
+                foreignException.getCause().getMessage());
+          }
+        });
+
+    Path unsupportedBookPath = tempDirectory.resolve("helper-unsupported.sqlite");
+    initializeBookOnDisk(unsupportedBookPath);
+    withStandaloneDatabase(
+        bookAccess(unsupportedBookPath),
+        database -> database.executeStatement("pragma user_version = 2"));
+    withStandaloneDatabase(
+        bookAccess(unsupportedBookPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
+            try {
+              assertEquals(
+                  "UNSUPPORTED_FINGRIND_VERSION",
+                  bookState.invoke(postingFactStore, database).toString());
+            } catch (ReflectiveOperationException exception) {
+              throw new LinkageError(exception.getMessage(), exception);
+            }
+          }
+        });
+
+    Path incompleteBookPath = tempDirectory.resolve("helper-incomplete.sqlite");
+    createSchemaOnlyBook(incompleteBookPath);
+    withStandaloneDatabase(
+        bookAccess(incompleteBookPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(incompleteBookPath))) {
+            try {
+              assertEquals(
+                  "INCOMPLETE_FINGRIND", bookState.invoke(postingFactStore, database).toString());
+            } catch (ReflectiveOperationException exception) {
+              throw new LinkageError(exception.getMessage(), exception);
+            }
+          }
+        });
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(blankBookPath))) {
+      setStoreDatabase(postingFactStore, SqliteNativeLibrary.open(bookAccess(blankBookPath)));
+      assertEquals(
+          Optional.of(new PostingCommitResult.BookNotInitialized()),
+          ordinaryOutcomeBeforeInsert.invoke(
+              postingFactStore,
+              storeDatabase(postingFactStore),
+              postingFact("posting-helper", "idem-helper", Optional.empty(), Optional.empty())));
+    }
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(tempDirectory.resolve("find-one-stale.sqlite")))) {
+      InvocationTargetException failure =
+          assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  findOnePosting.invoke(
+                      postingFactStore,
+                      staleDatabaseHandle(tempDirectory.resolve("find-one-stale.sqlite")),
+                      SqlitePostingSql.FIND_POSTING_BY_ID,
+                      binder));
+      assertTrue(failure.getCause() instanceof IllegalStateException);
+      assertTrue(failure.getCause().getMessage().contains("Failed to query SQLite book."));
+    }
+  }
+
+  @Test
+  void rekeyBook_clearsCachedDatabaseHandleWhenReopenFailsAfterRotation() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-reopen-failure.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+
+      MethodHandle originalOpenHandle = sqliteApiMethodHandle("sqlite3OpenV2");
+      try {
+        replaceSqliteApiMethodHandle(
+            "sqlite3OpenV2",
+            constantMethodHandle(
+                14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class));
+
+        try (SqliteBookPassphrase replacementPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "rekey reopen failure", "rotated-store-key".toCharArray())) {
+          IllegalStateException exception =
+              assertThrows(
+                  IllegalStateException.class,
+                  () -> postingFactStore.rekeyBook(replacementPassphrase));
+
+          assertTrue(exception.getMessage().contains("Failed to rekey SQLite book."));
+          assertNull(storeDatabase(postingFactStore));
+        }
+      } finally {
+        replaceSqliteApiMethodHandle("sqlite3OpenV2", originalOpenHandle);
+      }
+    }
+  }
+
+  @Test
+  void rekeyBook_preservesOpenDatabaseWhenNativeRekeyFailsBeforeClose() throws Exception {
+    Path bookPath = tempDirectory.resolve("rekey-native-failure.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+
+      MethodHandle originalRekeyHandle = sqliteApiMethodHandle("sqlite3Rekey");
+      try {
+        replaceSqliteApiMethodHandle(
+            "sqlite3Rekey",
+            constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class));
+
+        try (SqliteBookPassphrase replacementPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "rekey native failure", "rotated-store-key".toCharArray())) {
+          IllegalStateException exception =
+              assertThrows(
+                  IllegalStateException.class,
+                  () -> postingFactStore.rekeyBook(replacementPassphrase));
+
+          assertTrue(exception.getMessage().contains("Failed to rekey SQLite book."));
+          assertNotNull(storeDatabase(postingFactStore));
+        }
+      } finally {
+        replaceSqliteApiMethodHandle("sqlite3Rekey", originalRekeyHandle);
+      }
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void assertOpenConfiguration_rejectsHardeningDrift() throws Exception {
+    Method assertOpenConfiguration =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "assertOpenConfiguration",
+            SqliteNativeDatabase.class,
+            SqlitePostingFactStore.AccessMode.class);
+    assertOpenConfiguration.setAccessible(true);
+
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma foreign_keys = off",
+        "SQLite connection failed to keep foreign_keys enabled.");
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma trusted_schema = on",
+        "SQLite connection failed to disable trusted_schema.");
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma secure_delete = off",
+        "SQLite connection failed to enable secure_delete.");
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma temp_store = file",
+        "SQLite connection failed to force temp_store=MEMORY.");
+    assertOpenConfigurationFailure(
+        assertOpenConfiguration,
+        "pragma query_only = on",
+        "SQLite connection failed to enforce the expected query_only setting.");
+  }
+
+  @Test
+  void requireOptionalPragmaValue_enforcesPresentUnexpectedValuesOnly() {
+    assertDoesNotThrow(
+        () ->
+            SqlitePostingFactStore.requireOptionalPragmaValue(
+                OptionalInt.empty(), 1, "should stay optional"));
+    assertDoesNotThrow(
+        () ->
+            SqlitePostingFactStore.requireOptionalPragmaValue(
+                OptionalInt.of(1), 1, "should accept expected value"));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqlitePostingFactStore.requireOptionalPragmaValue(
+                    OptionalInt.of(0),
+                    1,
+                    "SQLite connection failed to enable memory_security=fill."));
+
+    assertEquals(
+        "SQLite connection failed to enable memory_security=fill.", exception.getMessage());
+  }
+
+  @Test
+  @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.UnitTestShouldIncludeAssert"})
+  void bookStateHelpers_coverCanonicalAndMarkerShortCircuits() throws Exception {
+    Method hasCanonicalTables =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "hasCanonicalTables", SqliteNativeDatabase.class);
+    hasCanonicalTables.setAccessible(true);
+    Method hasInitializedMarker =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "hasInitializedMarker", SqliteNativeDatabase.class);
+    hasInitializedMarker.setAccessible(true);
+    Method bookState =
+        SqlitePostingFactStore.class.getDeclaredMethod("bookState", SqliteNativeDatabase.class);
+    bookState.setAccessible(true);
+    Method requireInitializedBook =
+        SqlitePostingFactStore.class.getDeclaredMethod(
+            "requireInitializedBook", SqliteNativeDatabase.class);
+    requireInitializedBook.setAccessible(true);
+
+    Path noMetaPath = tempDirectory.resolve("fgrd-no-meta.sqlite");
+    createPartialFinGrindBook(noMetaPath, false, false, false, false, false);
+    withStandaloneDatabase(
+        bookAccess(noMetaPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(noMetaPath))) {
+            assertEquals(false, hasCanonicalTables.invoke(postingFactStore, database));
+            assertEquals(false, hasInitializedMarker.invoke(postingFactStore, database));
+            assertEquals(
+                "INCOMPLETE_FINGRIND", bookState.invoke(postingFactStore, database).toString());
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+        });
+
+    Path noAccountPath = tempDirectory.resolve("fgrd-no-account.sqlite");
+    createPartialFinGrindBook(noAccountPath, true, false, false, false, false);
+    withStandaloneDatabase(
+        bookAccess(noAccountPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(noAccountPath))) {
+            assertEquals(false, hasCanonicalTables.invoke(postingFactStore, database));
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+        });
+
+    Path noPostingPath = tempDirectory.resolve("fgrd-no-posting.sqlite");
+    createPartialFinGrindBook(noPostingPath, true, true, false, false, false);
+    withStandaloneDatabase(
+        bookAccess(noPostingPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(noPostingPath))) {
+            assertEquals(false, hasCanonicalTables.invoke(postingFactStore, database));
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+        });
+
+    Path noJournalLinePath = tempDirectory.resolve("fgrd-no-journal-line.sqlite");
+    createPartialFinGrindBook(noJournalLinePath, true, true, true, false, false);
+    withStandaloneDatabase(
+        bookAccess(noJournalLinePath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(noJournalLinePath))) {
+            assertEquals(false, hasCanonicalTables.invoke(postingFactStore, database));
+            assertEquals(
+                "INCOMPLETE_FINGRIND", bookState.invoke(postingFactStore, database).toString());
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+        });
+
+    Path initializedPath = tempDirectory.resolve("fgrd-initialized-short-circuit.sqlite");
+    initializeBookOnDisk(initializedPath);
+    withStandaloneDatabase(
+        bookAccess(initializedPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(initializedPath))) {
+            assertEquals(true, hasCanonicalTables.invoke(postingFactStore, database));
+            assertEquals(true, hasInitializedMarker.invoke(postingFactStore, database));
+            assertDoesNotThrow(() -> requireInitializedBook.invoke(postingFactStore, database));
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+        });
+
+    Path versionOnlyPath = tempDirectory.resolve("foreign-version-only.sqlite");
+    withStandaloneDatabase(
+        bookAccess(versionOnlyPath),
+        database -> database.executeStatement("pragma user_version = 1"));
+    withStandaloneDatabase(
+        bookAccess(versionOnlyPath),
+        database -> {
+          try (SqlitePostingFactStore postingFactStore =
+              new SqlitePostingFactStore(bookAccess(versionOnlyPath))) {
+            assertEquals("FOREIGN_SQLITE", bookState.invoke(postingFactStore, database).toString());
+          } catch (ReflectiveOperationException exception) {
+            throw new LinkageError(exception.getMessage(), exception);
+          }
+        });
+  }
+
+  @Test
   void constructor_rejectsNonKeyFileAccessSelection() {
     IllegalArgumentException exception =
         assertThrows(
@@ -849,7 +1540,7 @@ class SqlitePostingFactStoreTest {
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
   void passphraseFor_loadsKeyFileBackedAccessSelection() throws Exception {
     Path keyFile = tempDirectory.resolve("book-passphrase.key");
-    Files.writeString(keyFile, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+    writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
     Method method =
         SqlitePostingFactStore.class.getDeclaredMethod("passphraseFor", BookAccess.class);
     method.setAccessible(true);
@@ -873,7 +1564,8 @@ class SqlitePostingFactStoreTest {
             SqliteNativeException.class,
             () ->
                 SqlitePostingFactStore.configureOpenedDatabase(
-                    staleDatabaseHandle(tempDirectory.resolve("stale.sqlite"))));
+                    staleDatabaseHandle(tempDirectory.resolve("stale.sqlite")),
+                    SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE));
 
     assertFalse(exception.getMessage().isBlank());
   }
@@ -1135,7 +1827,7 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
-  void findByIdempotency_wrapsJournalLineLoadFailureAfterPostingRowMatch()
+  void findByIdempotency_rejectsForeignSqliteFileWithPostingLikeSchema()
       throws SqliteNativeException {
     Path bookPath = tempDirectory.resolve("missing-line-table.sqlite");
     createPostingFactOnlyBook(bookPath);
@@ -1147,7 +1839,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () -> postingFactStore.findByIdempotency(new IdempotencyKey("idem-partial")));
 
-      assertTrue(exception.getMessage().contains("Failed to query SQLite book."));
+      assertEquals("The selected SQLite file is not a FinGrind book.", exception.getMessage());
     }
   }
 
@@ -1432,6 +2124,75 @@ class SqlitePostingFactStoreTest {
     withStandaloneDatabase(staticBookAccess(bookPath), SqliteSchemaManager::initializeBook);
   }
 
+  private static void createPartialFinGrindBook(
+      Path bookPath,
+      boolean includeBookMeta,
+      boolean includeAccount,
+      boolean includePostingFact,
+      boolean includeJournalLine,
+      boolean includeInitializedMarker)
+      throws SqliteNativeException {
+    withStandaloneDatabase(
+        staticBookAccess(bookPath),
+        database -> {
+          database.executeStatement(
+              "pragma application_id = " + SqlitePostingFactStore.BOOK_APPLICATION_ID);
+          database.executeStatement(
+              "pragma user_version = " + SqlitePostingFactStore.BOOK_FORMAT_VERSION);
+          if (includeBookMeta) {
+            database.executeStatement(
+                "create table book_meta (key text primary key, value text not null)");
+          }
+          if (includeAccount) {
+            database.executeStatement(
+                """
+                create table account (
+                    account_code text primary key,
+                    account_name text not null,
+                    normal_balance text not null,
+                    active integer not null,
+                    declared_at text not null
+                )
+                """);
+          }
+          if (includePostingFact) {
+            database.executeStatement(
+                """
+                create table posting_fact (
+                    posting_id text primary key,
+                    effective_date text not null,
+                    recorded_at text not null,
+                    actor_id text not null,
+                    actor_type text not null,
+                    command_id text not null,
+                    idempotency_key text not null unique,
+                    causation_id text not null,
+                    correlation_id text null,
+                    reason text null,
+                    source_channel text not null,
+                    prior_posting_id text null
+                )
+                """);
+          }
+          if (includeJournalLine) {
+            database.executeStatement(
+                """
+                create table journal_line (
+                    posting_id text not null,
+                    line_order integer not null,
+                    account_code text not null,
+                    entry_side text not null,
+                    currency_code text not null,
+                    amount text not null
+                )
+                """);
+          }
+          if (includeInitializedMarker) {
+            insertInitializedAtRow(database);
+          }
+        });
+  }
+
   private static void initializeBookOnDisk(Path bookPath) throws SqliteNativeException {
     withStandaloneDatabase(
         staticBookAccess(bookPath),
@@ -1485,6 +2246,75 @@ class SqlitePostingFactStoreTest {
     database.close();
   }
 
+  private static MethodHandle sqliteApiMethodHandle(String fieldName)
+      throws ReflectiveOperationException {
+    Field field = sqliteApiField(fieldName);
+    return (MethodHandle) field.get(sqliteApiSingleton());
+  }
+
+  private static void replaceSqliteApiMethodHandle(String fieldName, MethodHandle handle)
+      throws ReflectiveOperationException {
+    Field field = sqliteApiField(fieldName);
+    field.set(sqliteApiSingleton(), handle);
+  }
+
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  private static Field sqliteApiField(String fieldName) throws ReflectiveOperationException {
+    Class<?> sqliteApiClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
+    Field field = sqliteApiClass.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    return field;
+  }
+
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  private static Object sqliteApiSingleton() throws ReflectiveOperationException {
+    Class<?> sqliteApiHolderClass =
+        Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApiHolder");
+    Field instanceField = sqliteApiHolderClass.getDeclaredField("INSTANCE");
+    instanceField.setAccessible(true);
+    return instanceField.get(null);
+  }
+
+  private static MethodHandle constantMethodHandle(Object value, Class<?>... parameterTypes) {
+    return MethodHandles.dropArguments(
+        MethodHandles.constant(constantType(value), value), 0, parameterTypes);
+  }
+
+  private static Class<?> constantType(Object value) {
+    return switch (value) {
+      case Integer _ -> int.class;
+      case Long _ -> long.class;
+      case MemorySegment _ -> MemorySegment.class;
+      default -> value.getClass();
+    };
+  }
+
+  private void assertOpenConfigurationFailure(
+      Method assertOpenConfiguration, String driftSql, String expectedMessage)
+      throws ReflectiveOperationException, SqliteNativeException {
+    Path bookPath =
+        tempDirectory.resolve(expectedMessage.replace(' ', '-').replace('.', '_') + ".sqlite");
+    SqliteNativeDatabase database =
+        SqlitePostingFactStore.configureOpenedDatabase(
+            SqliteNativeLibrary.open(bookAccess(bookPath)),
+            SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE);
+    try {
+      database.executeScript(driftSql + ";");
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  assertOpenConfiguration.invoke(
+                      null, database, SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE));
+
+      assertEquals(expectedMessage, exception.getCause().getMessage());
+    } finally {
+      database.close();
+    }
+  }
+
   private static void withStandaloneDatabase(BookAccess bookAccess, SqliteDatabaseAction action)
       throws SqliteNativeException {
     SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess);
@@ -1503,7 +2333,7 @@ class SqlitePostingFactStoreTest {
       if (keyPath.getParent() != null) {
         Files.createDirectories(keyPath.getParent());
       }
-      Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+      writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
@@ -1514,7 +2344,7 @@ class SqlitePostingFactStoreTest {
     try {
       Path keyPath = Files.createTempFile("fingrind-book-key-", ".key");
       keyPath.toFile().deleteOnExit();
-      Files.writeString(keyPath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+      writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
@@ -1524,6 +2354,12 @@ class SqlitePostingFactStoreTest {
   private static void assertInvalidPlaintextBookFailure(IllegalStateException exception) {
     assertTrue(exception.getMessage().contains("Failed to open SQLite book connection."));
     assertTrue(exception.getMessage().contains("SQLITE_NOTADB"));
+  }
+
+  private static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {
+    Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
+    Files.setPosixFilePermissions(
+        keyPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   /** Performs one checked action against a temporary native SQLite handle. */

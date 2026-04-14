@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-14"
 route:
@@ -219,6 +219,8 @@ Rules:
 - do not reintroduce `buildSrc`
 - do not hardcode overlapping dependency versions inside `jazzer/`
 - do not make the root build depend on active fuzzing tasks
+- do not assume Bash 4+ array semantics in `jazzer/bin/*`; the supported macOS operator surface is
+  stock `/bin/bash` 3.2 under `set -u`
 - do not run root and nested Jazzer Gradle builds in parallel against the same workspace
 
 ---
@@ -262,6 +264,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
   Ciphers 2.3.3 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
+- Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional
+  Gradle arguments are passed?
 - Does the nested Jazzer build still need to stay independent from the root project graph?
 - Are configuration-cache or composite-build constraints forcing awkward workarounds that deserve a
   redesign instead?
@@ -288,5 +292,6 @@ For structural Gradle changes, the normal bar is:
 ./check.sh
 ```
 
-If Jazzer topology changed, also run at least one live `jazzer/bin/fuzz-*` command so the
-operator path is exercised in the same shape contributors will actually use.
+If Jazzer topology or `jazzer/bin/*` wrapper shell logic changed, also run at least one live
+`jazzer/bin/fuzz-*` command plus the zero-argument cleanup scripts so the documented operator path
+is exercised in the same shape contributors will actually use.

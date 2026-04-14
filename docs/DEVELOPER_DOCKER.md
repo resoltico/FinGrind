@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: DEVELOPER_DOCKER
 updated: "2026-04-14"
 route:
@@ -28,6 +28,8 @@ For FinGrind's local container work, the documented standard is:
 - local smoke and release verification must not depend on personal Docker login state
 - public-image verification should run through a temporary anonymous `DOCKER_CONFIG` while still
   targeting the active local Docker engine
+- any temporary secret-bearing fixture files created by smoke scripts must obey the same
+  filesystem-security contract as production, not a weakened test-only variant
 
 The repository now enforces that last rule in `scripts/docker-smoke.sh`.
 
@@ -73,6 +75,8 @@ Then the supported local gates are:
 - verifies the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime contract through
   `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
+- creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized
+  verification matches the real protected-book contract
 - verifies `declare-account` and `list-accounts`
 - verifies `preflight-entry` and `post-entry` after the explicit Phase 2 lifecycle setup
 - verifies the containerized protected-book metadata surface:
@@ -89,3 +93,5 @@ If Docker verification fails on a fresh machine:
 - prefer fixing the local Docker runtime over weakening `./check.sh`
 - if a public pull still hangs, inspect whether personal Docker config customizations were
   reintroduced into the verification path
+- if a mounted protected-book operation fails unexpectedly, inspect the mounted key-file
+  permissions before changing the runtime policy

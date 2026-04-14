@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: USER_REQUESTS
 updated: "2026-04-14"
 route:
@@ -15,7 +15,7 @@ route:
 
 Book-bound commands pair these JSON payloads with `--book-file` plus exactly one passphrase
 source:
-- `--book-key-file` with a UTF-8 passphrase file
+- `--book-key-file` with a UTF-8 passphrase file that uses owner-only permissions (`0400` or `0600`)
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload from standard input
 - `--book-passphrase-prompt` with an interactive non-echo terminal prompt
 
@@ -81,7 +81,7 @@ Current account-declaration rules:
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `open-book`, `declare-account`, `list-accounts` | `status`, `payload` |
+| success envelope | `help`, `version`, `capabilities`, `open-book`, `rekey-book`, `declare-account`, `list-accounts` | `status`, `payload` |
 | raw request document | `print-request-template` | minimal valid posting request JSON |
 | `preflight-accepted` | successful `preflight-entry` | `status`, `idempotencyKey`, `effectiveDate` |
 | `committed` | successful `post-entry` | `status`, `postingId`, `idempotencyKey`, `effectiveDate`, `recordedAt` |
@@ -117,11 +117,14 @@ string lists for the drift-prone parts of the surface:
 - `environment` also reports `requiredSqlite3mcVersion`, `loadedSqlite3mcVersion`,
   `bookProtectionMode`, and `defaultBookCipher` for the protected-book runtime
 
-## Account Registry Responses
+## Book Administration Responses
 
 `open-book` success returns:
 - `payload.bookFile`
 - `payload.initializedAt`
+
+`rekey-book` success returns:
+- `payload.bookFile`
 
 `declare-account` success returns:
 - `payload.accountCode`

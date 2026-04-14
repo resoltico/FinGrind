@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-14"
 route:
-  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, no-migrations]
+  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
 ---
 
@@ -25,8 +25,11 @@ That means:
 - there is no default database location
 - every book-bound command requires `--book-file` plus exactly one of `--book-key-file`,
   `--book-passphrase-stdin`, or `--book-passphrase-prompt`
+- `rekey-book` also requires exactly one replacement passphrase source and rotates an existing
+  initialized book without introducing a compatibility layer
 - key files remain the automation-friendly route; stdin and interactive prompt are the supported
   non-file routes
+- key files must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`)
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
 - newly opened books are protected through SQLite3 Multiple Ciphers 2.3.3 using the upstream
@@ -108,6 +111,8 @@ License and attribution stance:
   [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
   rejects anything older than SQLite 3.53.0 or outside the exact SQLite3 Multiple Ciphers 2.3.3
   pin
+- compatible external libraries must also expose the required compile-option hardening:
+  `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`, and `SECURE_DELETE=1`
 - `:cli:shadowJar` packages only the Java surface; local standalone verification that wants the
   managed native library must also run `prepareManagedSqlite` first and point
   `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`
@@ -122,9 +127,11 @@ The SQLite adapter is split into focused collaborators:
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
   owns one thread-confined protected-book session, lookup paths, transaction-scoped duplicate
   checks, and durable commit outcomes
+- [`RekeyBookResult`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/RekeyBookResult.java):
+  explicit result family for SQLite-specific passphrase rotation
 - [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java):
   minimal FFM binding surface to the SQLite C API, including configured-library selection, version
-  enforcement, key application, key validation, and `sqlite3_exec` for canonical schema
+  and compile-option enforcement, key/rekey application, key validation, and `sqlite3_exec` for canonical schema
   application
 - [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
   loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
@@ -150,11 +157,19 @@ The SQLite adapter is split into focused collaborators:
   authoritative `book_meta.initialized_at` marker, and initializes a protected SQLite3MC book file
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
   `BookNotInitialized`
+- read-oriented sessions (`list-accounts` and `preflight-entry`) open SQLite through
+  `SQLITE_OPEN_READONLY` and then enforce `pragma query_only = on`
 - opening an existing plaintext SQLite file or using the wrong passphrase source fails during key
   validation, typically surfacing `SQLITE_NOTADB`
+- initialized FinGrind books are stamped with a fixed `pragma application_id` and
+  `pragma user_version`, and foreign or unsupported SQLite files are rejected before ordinary book
+  reads proceed
+- `rekey-book` rotates the passphrase through the native SQLite rekey path, reopens the book, and
+  revalidates the replacement passphrase before the command reports success
 - posting lines are validated against the declared-account registry before ordinary duplicate
   checks proceed
-- opened book handles keep `foreign_keys = on` and `trusted_schema = off`
+- opened book handles keep `foreign_keys = on`, `trusted_schema = off`, and the expected
+  `query_only` setting for the current access mode
 - schema bootstrap is intentionally separate from the posting transaction because it is idempotent
   book initialization, not one accounting fact commit
 - book-local uniqueness enforces duplicate idempotency durably
@@ -182,10 +197,14 @@ The book-session seam distinguishes ordinary duplicate outcomes from true runtim
   UTF-8, and rejected if empty
 - transient key bytes are zeroized after native handoff
 - FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
+- FinGrind calls `sqlite3_rekey()` for `rekey-book` instead of routing replacement secrets through
+  SQL text
 - FinGrind validates the configured key by executing `SELECT count(*) FROM sqlite_master;` before
   any schema or business operation can proceed
 - FinGrind intentionally relies on the upstream default `sqleet` / `chacha20` cipher and does not
   expose cipher selection through its own API
+- FinGrind intentionally avoids the SQL `PRAGMA key` / `PRAGMA rekey` transport even though
+  SQLite3MC exposes it, because those routes embed secrets into SQL strings
 - FinGrind intentionally avoids SQLite URI `key=` and `hexkey=` transport because the upstream
   SQLite3MC guidance discourages keeping passphrases in URI strings
 - FinGrind also intentionally avoids plaintext CLI passphrase arguments and environment-variable
@@ -243,6 +262,8 @@ Native bridge notes:
   `libsqlite3`
 - runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
   Ciphers version before any book operation is allowed
+- runtime initialization also validates the required compile-option hardening before any external
+  library is accepted as compatible
 - key application happens before any schema statement or pragma configuration
 - text parameters use SQLite's `SQLITE_TRANSIENT` contract so bound text does not rely on statement
   arena lifetime conventions
@@ -252,7 +273,9 @@ Native bridge notes:
   diagnostics do not dereference invalid database handles just to render an exception message
 - `sqlite3_exec` failure reporting prefers the exec-owned error buffer when SQLite provides one,
   then falls back to `sqlite3_errstr(resultCode)`
-- the runtime installs a best-effort JVM shutdown hook that calls `sqlite3_shutdown()`
+- the runtime installs a JVM shutdown hook that attempts `sqlite3_shutdown()` after ordinary
+  session-close paths have already released active handles, matching SQLite3MC's shutdown
+  guidance for auto-extension and VFS cleanup
 
 This is a deliberate hard-break correction to the earlier shell-out design, not an accidental
 runtime experiment.

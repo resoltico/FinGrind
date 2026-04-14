@@ -26,6 +26,8 @@ class MachineContractTest {
                 "required",
                 "chacha20",
                 "managed",
+                List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+                true,
                 "3.53.0",
                 "2.3.3",
                 "ready",
@@ -85,6 +87,8 @@ class MachineContractTest {
             "required",
             "chacha20",
             "managed",
+            List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+            true,
             "3.53.0",
             "2.3.3",
             "ready",
@@ -100,9 +104,10 @@ class MachineContractTest {
 
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
-    assertEquals(9, help.commands().size());
+    assertEquals(10, help.commands().size());
     assertEquals("open-book", help.commands().get(4).name());
-    assertTrue(help.commands().get(4).options().get(1).contains("--book-passphrase-prompt"));
+    assertEquals("rekey-book", help.commands().get(5).name());
+    assertTrue(help.commands().get(5).options().get(2).contains("--new-book-passphrase-prompt"));
     assertEquals(3, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());

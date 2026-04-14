@@ -137,6 +137,7 @@ JSON
 
 printf 'docker-smoke-passphrase\n' > "${book_key_path}"
 printf 'definitely-wrong-docker-smoke-passphrase\n' > "${wrong_book_key_path}"
+chmod 600 "${book_key_path}" "${wrong_book_key_path}"
 
 printf 'Docker smoke: building local image\n'
 docker_with_repo_config build -t "${image_tag}" "${repo_root}" >/dev/null

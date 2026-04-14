@@ -758,11 +758,11 @@ run_stage() {
         "${stage_id}" \
         "${stage_label}" \
         "${project_dir}" \
-        "${command_prefix[@]}" \
+        ${command_prefix[@]+"${command_prefix[@]}"} \
         "${gradlew}" \
         --project-dir "${project_dir}" \
         "$@" \
-        "${gradle_args[@]}"
+        ${gradle_args[@]+"${gradle_args[@]}"}
 }
 
 run_shell_stage() {

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.10.0"
+version: "0.11.0"
 domain: DEVELOPER
 updated: "2026-04-14"
 route:
@@ -199,6 +199,8 @@ The Docker smoke stage now runs public-image operations through a temporary anon
 `DOCKER_CONFIG` while targeting the active local Docker engine derived from the current context.
 That keeps the gate aligned with the real Docker runtime without making public pulls depend on
 Docker Desktop credential-helper state or a contributor's personal login configuration.
+If that stage materializes protected-book key files, those fixtures must obey the same owner-only
+filesystem rule as production (`0400` or `0600`) instead of weakening the runtime contract.
 
 During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight test-progress heartbeats instead of relying only on stale Gradle task banners.
 
@@ -213,6 +215,11 @@ For active fuzzing, the supported operator surface is now `jazzer/bin/*`.
 Those wrappers force active fuzz runs onto `--no-daemon`, serialize Jazzer commands through one
 run lock, and own interrupt cleanup. Raw `./gradlew -p jazzer fuzz...` task names remain build
 internals and are not the supported live-fuzz entrypoint.
+The documented shell operator surface, including `./check.sh` and `jazzer/bin/*`, must also remain
+compatible with stock macOS `/bin/bash` 3.2 under `set -u`; in particular, do not assume
+empty-array `"${array[@]}"` expansion is safe there.
+If wrapper shell logic or Jazzer topology changes, run at least one live `jazzer/bin/*` command in
+addition to deterministic nested `check`.
 
 Shared Gradle plugins, managed-SQLite task types, and pulse listeners now live under
 `gradle/build-logic`, and the nested Jazzer build imports both that included build and the root
