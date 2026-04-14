@@ -17,7 +17,7 @@ route:
 Supported workstation shape:
 - Docker Desktop installed from Docker's own macOS distribution path on `docker.com`
 - the Docker daemon is running and reachable from the current shell
-- the `docker buildx` plugin provided by Docker Desktop is available in the current shell
+- the `docker buildx` plugin is available in the current shell
 - the active Docker context targets the local Docker Desktop engine
 - the repository checkout lives on the Mac's local filesystem
 
@@ -46,10 +46,12 @@ not depend on:
 
 On fresh macOS machines, Docker Desktop's credential helper can stall public metadata fetches even
 though the daemon itself is healthy. FinGrind's smoke script therefore uses a temporary empty
-`DOCKER_CONFIG`, stages Docker Desktop's `docker-buildx` CLI plugin into that anonymous config, and
-derives the active engine endpoint from the current Docker context. That keeps the container-runtime
-target correct while making public pulls and runs independent from personal Docker auth state
-without falling back to Docker's deprecated legacy builder path.
+`DOCKER_CONFIG`, derives the active engine endpoint from the current Docker context, and only if
+that empty config would hide Buildx, stages an already-installed host `docker-buildx` plugin into
+the anonymous config. On macOS that plugin often comes from Docker Desktop; on CI or other hosts it
+may come from a system CLI-plugin directory. That keeps the container-runtime target correct while
+making public pulls and runs independent from personal Docker auth state without falling back to
+Docker's deprecated legacy builder path.
 
 ## Verification
 

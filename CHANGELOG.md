@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened Docker smoke verification onto `docker buildx build --load` while preserving anonymous
   `DOCKER_CONFIG` isolation by staging Docker Desktop's `docker-buildx` plugin into the temporary
   smoke config, so FinGrind no longer falls back to Docker's deprecated legacy builder path.
+- Hardened Docker smoke further to discover and reuse an already-installed host `docker-buildx`
+  plugin portably, so anonymous-config verification works both on macOS Docker Desktop and on CI
+  runners without one fixed plugin path.
 - Aligned the GitHub CI, container, and release workflow runtime assertions with the managed-only
   capabilities contract, so publication no longer checks the removed `sqliteLibrarySource` field.
 - Removed reflective final-field mutation from the SQLite native-handle failure tests by replacing

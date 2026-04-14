@@ -36,9 +36,44 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly image_tag="fingrind-docker-smoke:$$"
 readonly smoke_root="${repo_root}/tmp/docker smoke.$$"
-readonly docker_buildx_plugin='/Applications/Docker.app/Contents/Resources/cli-plugins/docker-buildx'
 anonymous_docker_config=''
 docker_endpoint=''
+
+resolve_docker_buildx_plugin() {
+    local docker_binary=''
+    local -a candidates=()
+    local candidate=''
+
+    if candidate="$(command -v docker-buildx 2>/dev/null || true)"; then
+        if [[ -n "${candidate}" ]]; then
+            candidates+=("${candidate}")
+        fi
+    fi
+
+    docker_binary="$(command -v docker)"
+    candidates+=(
+        "${HOME}/.docker/cli-plugins/docker-buildx"
+        "/Applications/Docker.app/Contents/Resources/cli-plugins/docker-buildx"
+        "/usr/local/lib/docker/cli-plugins/docker-buildx"
+        "/usr/local/libexec/docker/cli-plugins/docker-buildx"
+        "/opt/homebrew/lib/docker/cli-plugins/docker-buildx"
+        "/opt/homebrew/libexec/docker/cli-plugins/docker-buildx"
+        "/usr/lib/docker/cli-plugins/docker-buildx"
+        "/usr/libexec/docker/cli-plugins/docker-buildx"
+        "/usr/lib64/docker/cli-plugins/docker-buildx"
+        "/usr/share/docker/cli-plugins/docker-buildx"
+        "$(cd -P -- "$(dirname -- "${docker_binary}")" && pwd)/docker-buildx"
+    )
+
+    for candidate in "${candidates[@]}"; do
+        if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+            printf '%s\n' "${candidate}"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 docker_with_repo_config() {
     if [[ -n "${docker_endpoint}" ]]; then
@@ -62,8 +97,6 @@ trap cleanup EXIT
 
 command -v docker >/dev/null 2>&1 || die "docker is required for the Docker smoke gate"
 docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the Docker smoke gate"
-[[ -x "${docker_buildx_plugin}" ]] || die \
-    "missing Docker Desktop buildx plugin at ${docker_buildx_plugin}"
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 [[ -f "${repo_root}/cli/build/libs/fingrind.jar" ]] || die \
     "missing CLI fat JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
@@ -76,9 +109,16 @@ if [[ -z "${docker_endpoint}" ]]; then
     )"
 fi
 anonymous_docker_config="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-config.XXXXXX")"
-mkdir -p "${anonymous_docker_config}/cli-plugins"
-ln -s "${docker_buildx_plugin}" "${anonymous_docker_config}/cli-plugins/docker-buildx"
 printf '{}\n' > "${anonymous_docker_config}/config.json"
+
+if ! docker_with_repo_config buildx version >/dev/null 2>&1; then
+    docker_buildx_plugin="$(resolve_docker_buildx_plugin)" || die \
+        "docker buildx is available in the current shell, but no reusable docker-buildx plugin binary was found for the anonymous DOCKER_CONFIG"
+    mkdir -p "${anonymous_docker_config}/cli-plugins"
+    ln -s "${docker_buildx_plugin}" "${anonymous_docker_config}/cli-plugins/docker-buildx"
+    docker_with_repo_config buildx version >/dev/null 2>&1 || die \
+        "docker buildx is not reachable through the anonymous DOCKER_CONFIG even after staging ${docker_buildx_plugin}"
+fi
 
 mkdir -p "${smoke_root}/requests odd"
 

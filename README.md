@@ -86,9 +86,12 @@ Gradle, Jazzer, CI, and Docker.
 For full contributor verification, keep the checkout on the Mac's local filesystem.
 Mounted external volumes are outside the supported setup because Gradle project-cache and JaCoCo
 file locking can fail there on macOS.
-Docker Desktop must also be running before `./check.sh`, and the bundled `docker buildx` plugin
-must be available in the current shell, because the contributor gate includes a real Docker smoke
-stage built through Buildx rather than Docker's deprecated legacy builder path.
+Docker Desktop must also be running before `./check.sh`, and `docker buildx` must be available in
+the current shell, because the contributor gate includes a real Docker smoke stage built through
+Buildx rather than Docker's deprecated legacy builder path. That smoke stage uses an anonymous
+`DOCKER_CONFIG` and, when needed, stages the host's already-installed `docker-buildx` plugin into
+that empty config so verification stays independent from personal Docker auth state without
+assuming one fixed plugin-install path.
 
 Inspect the standalone command surface:
 
