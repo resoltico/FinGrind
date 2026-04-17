@@ -63,6 +63,8 @@ class SqliteBookKeyFileSecurityTest {
       assertEquals(fileSystem.owner, keyPath.aclView.getAcl().getFirst().principal());
       assertTrue(
           keyPath.aclView.getAcl().getFirst().permissions().contains(AclEntryPermission.READ_DATA));
+      assertTrue(
+          keyPath.aclView.getAcl().getFirst().permissions().contains(AclEntryPermission.DELETE));
     }
   }
 

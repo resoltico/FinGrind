@@ -3114,7 +3114,9 @@ class SqlitePostingFactStoreTest {
 
   private static BookAccess staticBookAccess(Path bookPath) {
     try {
-      Path keyPath = Files.createTempFile("fingrind-book-key-", ".key");
+      Path keyDirectory = Files.createTempDirectory("fingrind-book-key-");
+      Path keyPath = keyDirectory.resolve("book.key");
+      keyDirectory.toFile().deleteOnExit();
       keyPath.toFile().deleteOnExit();
       writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));

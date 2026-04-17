@@ -326,7 +326,8 @@ class SqliteNativeLibraryTest {
         SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
 
     assertEquals("managed-only", libraryTarget.mode());
-    assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
+    assertTrue(
+        Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
     assertEquals("managed-only", SqliteNativeLibrary.configuredLibraryMode());
     assertTrue(libraryTarget.toString().contains("managed-only"));
     assertEquals(
@@ -350,7 +351,8 @@ class SqliteNativeLibraryTest {
             "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
 
     assertEquals("managed-only", libraryTarget.mode());
-    assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
+    assertTrue(
+        Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
   }
 
   @Test

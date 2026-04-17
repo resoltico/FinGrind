@@ -38,6 +38,7 @@ final class SqliteBookKeyFileSecurity {
           AclEntryPermission.WRITE_NAMED_ATTRS,
           AclEntryPermission.READ_ATTRIBUTES,
           AclEntryPermission.WRITE_ATTRIBUTES,
+          AclEntryPermission.DELETE,
           AclEntryPermission.READ_ACL,
           AclEntryPermission.SYNCHRONIZE);
   private static final Set<AclEntryPermission> ACL_READ_PERMISSIONS =
