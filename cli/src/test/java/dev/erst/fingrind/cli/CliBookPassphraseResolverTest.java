@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -15,9 +16,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -380,9 +379,8 @@ class CliBookPassphraseResolverTest {
   }
 
   private static void writeSecureString(Path keyFile, String content) throws IOException {
+    SqliteBookKeyFileGenerator.generate(keyFile);
     Files.writeString(keyFile, content, StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        keyFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   private static Supplier<Optional<CliBookPassphraseResolver.Terminal>> readerSupplier(

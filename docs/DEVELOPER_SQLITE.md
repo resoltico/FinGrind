@@ -29,7 +29,8 @@ That means:
   initialized book without introducing a compatibility layer
 - key files remain the automation-friendly route; stdin and interactive prompt are the supported
   non-file routes
-- key files must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`)
+- key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
+  Windows owner-only ACL on Windows
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
 - newly opened books are protected through SQLite3 Multiple Ciphers 2.3.3 using the upstream

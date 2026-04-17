@@ -61,13 +61,11 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -3158,9 +3156,12 @@ class SqlitePostingFactStoreTest {
   }
 
   private static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {
+    if (Files.notExists(keyPath)) {
+      SqliteBookKeyFileGenerator.generate(keyPath);
+    } else {
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+    }
     Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        keyPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   /** Performs one checked action against a temporary native SQLite handle. */

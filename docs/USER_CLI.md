@@ -179,12 +179,13 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject
   extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths.
-- `generate-book-key-file` creates one new `0600` UTF-8 key file and refuses to overwrite an
-  existing path.
-- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file on a POSIX
-  filesystem; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
-  are rejected.
-- Book key files must use owner-only permissions (`0400` or `0600`), or the runtime rejects them.
+- `generate-book-key-file` creates one new owner-only UTF-8 key file and refuses to overwrite an
+  existing path. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
+  Windows.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file; one trailing LF
+  or CRLF is tolerated and stripped, but embedded control characters are rejected.
+- Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
+  Windows owner-only ACL on Windows, or the runtime rejects them.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
   cannot be paired with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.

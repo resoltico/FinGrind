@@ -40,6 +40,7 @@ class ProtocolContractLintTest {
                   "json-envelope",
                   "linux-aarch64",
                   "macos-aarch64",
+                  "owner-only-acl",
                   "windows-x86_64",
                   "posting-not-found",
                   "posting-workflow",
@@ -180,7 +181,7 @@ class ProtocolContractLintTest {
       try (Stream<Path> sources = Files.walk(root.resolve(sourceDirectory))) {
         sources
             .filter(path -> path.toString().endsWith(".java"))
-            .filter(path -> !path.toString().contains("contract/protocol"))
+            .filter(path -> !isContractProtocolSource(root, path))
             .forEach(files::add);
       }
     }
@@ -223,7 +224,25 @@ class ProtocolContractLintTest {
   }
 
   private static String relative(Path path) {
-    return repositoryRoot().relativize(path).toString();
+    return repositoryRoot()
+        .relativize(path)
+        .toString()
+        .replace(path.getFileSystem().getSeparator(), "/");
+  }
+
+  private static boolean isContractProtocolSource(Path root, Path path) {
+    return root.relativize(path)
+        .startsWith(
+            Path.of(
+                "contract",
+                "src",
+                "main",
+                "java",
+                "dev",
+                "erst",
+                "fingrind",
+                "contract",
+                "protocol"));
   }
 
   private static String sorted(Set<String> values) {

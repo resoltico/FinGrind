@@ -15,7 +15,8 @@ route:
 
 Book-bound commands pair these JSON payloads with `--book-file` plus exactly one passphrase
 source:
-- `--book-key-file` with a UTF-8 passphrase file that uses owner-only permissions (`0400` or `0600`)
+- `--book-key-file` with a UTF-8 passphrase file protected by POSIX owner-only permissions
+  (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload from standard input
 - `--book-passphrase-prompt` with an interactive non-echo terminal prompt
 

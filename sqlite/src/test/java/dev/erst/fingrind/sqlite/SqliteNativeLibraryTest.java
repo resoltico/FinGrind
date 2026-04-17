@@ -23,10 +23,8 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -1460,9 +1458,12 @@ class SqliteNativeLibraryTest {
   }
 
   private static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {
+    if (Files.notExists(keyPath)) {
+      SqliteBookKeyFileGenerator.generate(keyPath);
+    } else {
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+    }
     Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        keyPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action)

@@ -39,6 +39,9 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,7 +51,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
+import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -245,16 +253,13 @@ class FinGrindCliTest {
 
     assertEquals(0, exitCode);
     assertTrue(Files.isRegularFile(keyFilePath));
-    assertEquals(
-        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
-        Files.getPosixFilePermissions(keyFilePath));
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertGeneratedKeyFileIsSecure(keyFilePath, payload.path("permissions").asString());
     assertEquals(
         keyFilePath.toAbsolutePath().normalize().toString(),
         payload.path("bookKeyFile").asString());
     assertEquals("base64url-no-padding", payload.path("encoding").asString());
     assertEquals(256, payload.path("entropyBits").asInt());
-    assertEquals("0600", payload.path("permissions").asString());
     assertFalse(
         outputStream.toString(StandardCharsets.UTF_8).contains(Files.readString(keyFilePath)));
   }
@@ -1710,9 +1715,45 @@ class FinGrindCliTest {
     if (keyFilePath.getParent() != null) {
       Files.createDirectories(keyFilePath.getParent());
     }
+    if (Files.notExists(keyFilePath)) {
+      SqliteBookKeyFileGenerator.generate(keyFilePath);
+    }
     Files.writeString(keyFilePath, keyText, StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        keyFilePath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+  }
+
+  private static void assertGeneratedKeyFileIsSecure(Path keyFilePath, String permissions)
+      throws IOException {
+    try (SqliteBookPassphrase ignored = SqliteBookKeyFile.load(keyFilePath)) {
+      if (supportsPosix(keyFilePath)) {
+        assertEquals("0600", permissions);
+        assertEquals(
+            Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+            Files.getPosixFilePermissions(keyFilePath));
+        return;
+      }
+      assertEquals("owner-only-acl", permissions);
+      assertOwnerOnlyAcl(keyFilePath);
+    }
+  }
+
+  private static void assertOwnerOnlyAcl(Path keyFilePath) throws IOException {
+    AclFileAttributeView view = Files.getFileAttributeView(keyFilePath, AclFileAttributeView.class);
+    UserPrincipal owner = view.getOwner();
+    assertTrue(
+        view.getAcl().stream()
+            .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(entry -> owner.equals(entry.principal()))
+            .anyMatch(entry -> entry.permissions().contains(AclEntryPermission.READ_DATA)));
+    assertFalse(
+        view.getAcl().stream()
+            .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(entry -> !owner.equals(entry.principal()))
+            .map(AclEntry::permissions)
+            .anyMatch(permissions -> permissions.contains(AclEntryPermission.READ_DATA)));
+  }
+
+  private static boolean supportsPosix(Path path) {
+    return path.getFileSystem().supportedFileAttributeViews().contains("posix");
   }
 
   private static Clock fixedClock() {

@@ -216,8 +216,6 @@ try {
 }
 "@ | Set-Content -Path $declareRevenuePath -Encoding utf8NoBOM
 
-    "definitely-wrong-bundle-smoke-passphrase" | Set-Content -Path $wrongBookKeyPath -Encoding utf8NoBOM
-
     Write-Host "Bundle smoke: verifying version command"
     $versionPayload = (Invoke-BundleCommand -Arguments @("version")).Output | ConvertFrom-Json
     if ($versionPayload.status -ne "ok") {
@@ -264,7 +262,12 @@ try {
     }
 
     Write-Host "Bundle smoke: generating a dedicated book key file"
-    Invoke-BundleCommand -Arguments @("generate-book-key-file", "--book-key-file", $bookKeyPath) | Out-Null
+    $generateKeyPayload =
+        (Invoke-BundleCommand -Arguments @("generate-book-key-file", "--book-key-file", $bookKeyPath)).Output |
+            ConvertFrom-Json
+    if ($generateKeyPayload.payload.permissions -ne "owner-only-acl") {
+        Fail "generate-book-key-file did not report Windows owner-only ACL protection"
+    }
     if (-not (Test-Path -Path $bookKeyPath -PathType Leaf)) {
         Fail "generate-book-key-file did not create the expected key file"
     }
@@ -302,6 +305,8 @@ try {
     }
 
     Write-Host "Bundle smoke: verifying wrong key is rejected deterministically"
+    Invoke-BundleCommand -Arguments @("generate-book-key-file", "--book-key-file", $wrongBookKeyPath) | Out-Null
+    "definitely-wrong-bundle-smoke-passphrase" | Set-Content -Path $wrongBookKeyPath -Encoding utf8NoBOM
     $wrongKeyResult =
         Invoke-BundleCommand -Arguments @("list-accounts", "--book-file", $bookPath, "--book-key-file", $wrongBookKeyPath) -AllowFailure
     if ($wrongKeyResult.ExitCode -eq 0) {

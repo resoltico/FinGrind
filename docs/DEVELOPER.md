@@ -230,7 +230,8 @@ The Docker smoke stage now runs public-image operations through a temporary anon
 That keeps the gate aligned with the real Docker runtime without making public pulls depend on
 Docker Desktop credential-helper state or a contributor's personal login configuration.
 If that stage materializes protected-book key files, those fixtures must obey the same owner-only
-filesystem rule as production (`0400` or `0600`) instead of weakening the runtime contract.
+filesystem rule as production (`0400`/`0600` on POSIX filesystems, owner-only ACL on Windows)
+instead of weakening the runtime contract.
 The Docker path also verifies its managed SQLite source integrity and trimmed private runtime so
 bundle and container publication stay on the same public runtime contract.
 

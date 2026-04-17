@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bin\fingrind.cmd` launcher plus Windows `.zip` archives, and taught release/container
   automation to wait for and publish the Windows asset set as part of the canonical release
   contract.
+- Extended secure book-key files to Windows by enforcing owner-only ACLs alongside POSIX
+  `0400`/`0600` permissions, so the Windows bundle supports the same key-file workflow as
+  macOS and Linux without weakening secret-file checks.
 - Hardened bundle assembly so requested bundle classifiers must match the active host platform;
   FinGrind no longer allows metadata-only cross-classifier bundle builds that would lie about the
   bundled runtime image or managed SQLite library.
@@ -62,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a native Windows managed-SQLite build path using MSVC, updated runtime lookup to resolve
   `sqlite3.dll`, and added Windows-specific smoke verification plus CI coverage for the published
   Windows bundle.
+- Made contract lint and key-file fixture tests platform-deterministic on Windows by removing
+  slash-sensitive source exclusions and by creating secure test key files through the production
+  generator path.
 - Pinned Spotless-managed source and project-file verification to LF line endings so
   configuration-cache-enabled Windows CI does not depend on Spotless' platform-default
   line-ending provider.

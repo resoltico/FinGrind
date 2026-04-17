@@ -40,7 +40,8 @@ fingrind \
 The generated key file contains one non-empty single-line UTF-8 passphrase.
 One trailing newline is tolerated and stripped when loading an existing file.
 Embedded control characters are rejected.
-The key file must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`).
+The key file must be protected with POSIX owner-only permissions (`0400` or `0600`) on
+macOS/Linux, or a Windows owner-only ACL on Windows.
 
 For pipeline automation without a persistent file:
 

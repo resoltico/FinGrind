@@ -177,7 +177,8 @@ chmod 600 /tmp/fingrind/keys/acme.book-key
 
 The key file must contain one non-empty UTF-8 passphrase.
 One trailing newline is tolerated and stripped.
-The key file must live on a POSIX filesystem and use owner-only permissions (`0400` or `0600`).
+The key file must be protected with POSIX owner-only permissions (`0400` or `0600`) on
+macOS/Linux, or a Windows owner-only ACL on Windows.
 
 For pipeline-style automation without a persistent file, standard input is also supported:
 
@@ -372,8 +373,9 @@ Current deterministic rejection codes include:
   for supported local active fuzzing, regression replay, and cleanup.
 - Active fuzzing is local-only. GitHub Actions intentionally never runs `jazzer/bin/*`, and active
   harness execution hard-fails when `GITHUB_ACTIONS=true`.
-- `generate-book-key-file` creates one new `0600` book key file and refuses to overwrite an
-  existing path.
+- `generate-book-key-file` creates one new owner-only book key file and refuses to overwrite an
+  existing path. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
+  Windows.
 - Opened book connections keep `foreign_keys=ON`, `journal_mode=DELETE`, `synchronous=EXTRA`,
   `trusted_schema=OFF`, `secure_delete=ON`, and `temp_store=MEMORY`.
 - The public bundle launcher resolves the managed SQLite library from its extracted bundle home.
@@ -390,9 +392,10 @@ Current deterministic rejection codes include:
   `--book-file` plus exactly one explicit passphrase source.
 - `rekey-book` also requires exactly one replacement passphrase source through
   `--new-book-key-file`, `--new-book-passphrase-stdin`, or `--new-book-passphrase-prompt`.
-- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file on a POSIX
-  filesystem, and that file must use owner-only permissions (`0400` or `0600`); one trailing LF or
-  CRLF is tolerated and stripped, but embedded control characters are rejected.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file protected with
+  POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on
+  Windows; one trailing LF or CRLF is tolerated and stripped, but embedded control characters are
+  rejected.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input, so it cannot
   be combined with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.

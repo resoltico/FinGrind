@@ -180,7 +180,7 @@ public final class MachineContract {
         ProtocolOptions.STDIN_TOKEN,
         "single SQLite book file for one entity",
         List.of(
-            "key-file route: one UTF-8 passphrase file for the selected encrypted book; the file must be a regular non-symlink file on a POSIX filesystem with owner-only permissions (0400 or 0600)",
+            "key-file route: one UTF-8 passphrase file for the selected encrypted book; the file must be a regular non-symlink file protected by POSIX owner-only permissions (0400 or 0600) or a Windows owner-only ACL",
             "standard-input route: read one UTF-8 passphrase payload from standard input; this cannot be combined with --request-file -, and rekey-book cannot use standard input for both current and replacement secrets",
             "interactive-prompt route: prompt for the passphrase on the controlling terminal without echo; replacement prompt entry requires confirmation",
             "all passphrase routes strip one trailing LF or CRLF, reject empty secrets, and reject control characters so one secret remains reproducible across file, stdin, and prompt usage"),
