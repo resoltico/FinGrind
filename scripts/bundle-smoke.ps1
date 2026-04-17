@@ -332,8 +332,11 @@ try {
         Fail "wrong key unexpectedly succeeded"
     }
     $wrongKeyPayload = $wrongKeyResult.Output | ConvertFrom-Json
-    if ($wrongKeyPayload.error.code -ne "runtime-failure") {
+    if ($wrongKeyPayload.code -ne "runtime-failure") {
         Fail "wrong key failure did not map to runtime-failure"
+    }
+    if ($wrongKeyPayload.message -notmatch "SQLITE_NOTADB") {
+        Fail "wrong key failure did not expose the SQLite NOTADB failure"
     }
 
     Write-Host "Bundle smoke: verifying preflight and commit"

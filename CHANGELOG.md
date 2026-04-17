@@ -76,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   .NET helper instead of host-specific `Set-Content -Encoding` variants.
 - Made the Windows bundle smoke script use literal path semantics for dynamic filesystem checks, so
   the intentional bracketed smoke-test filenames no longer become PowerShell wildcard patterns.
+- Corrected the Windows bundle smoke wrong-key assertion to verify FinGrind's public
+  top-level `runtime-failure` envelope and the expected `SQLITE_NOTADB` storage diagnostic.
 - Made native-library path assertions platform-native, so Windows CI verifies managed SQLite
   lookup without relying on POSIX path separators.
 - Pinned Spotless-managed source and project-file verification to LF line endings so
