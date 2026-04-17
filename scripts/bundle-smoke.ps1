@@ -77,14 +77,14 @@ $bundleArchivePath = if ($args.Count -gt 0) { $args[0] } else { Join-Path $scrip
 $bundleArchivePath = [System.IO.Path]::GetFullPath($bundleArchivePath)
 $bundleChecksumPath = "$bundleArchivePath.sha256"
 
-if (-not (Test-Path -Path $bundleArchivePath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $bundleArchivePath -PathType Leaf)) {
     Fail "missing bundle archive at $bundleArchivePath"
 }
-if (-not (Test-Path -Path $bundleChecksumPath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $bundleChecksumPath -PathType Leaf)) {
     Fail "missing bundle checksum file at $bundleChecksumPath"
 }
 
-$checksumLine = Get-Content -Path $bundleChecksumPath | Select-Object -First 1
+$checksumLine = Get-Content -LiteralPath $bundleChecksumPath | Select-Object -First 1
 $checksumTokens = $checksumLine -split '\s+', 3
 if ($checksumTokens.Count -lt 2) {
     Fail "invalid bundle checksum file at $bundleChecksumPath"
@@ -92,10 +92,10 @@ if ($checksumTokens.Count -lt 2) {
 $expectedArchiveSha256 = $checksumTokens[0]
 $expectedArchiveNameFromChecksum = $checksumTokens[1].TrimStart('*')
 if ($expectedArchiveNameFromChecksum -ne [System.IO.Path]::GetFileName($bundleArchivePath)) {
-    Fail "bundle checksum file $bundleChecksumPath does not match archive $(Split-Path -Leaf $bundleArchivePath)"
+    Fail "bundle checksum file $bundleChecksumPath does not match archive $([System.IO.Path]::GetFileName($bundleArchivePath))"
 }
 
-$actualArchiveSha256 = (Get-FileHash -Path $bundleArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$actualArchiveSha256 = (Get-FileHash -LiteralPath $bundleArchivePath -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actualArchiveSha256 -ne $expectedArchiveSha256.ToLowerInvariant()) {
     Fail "bundle archive checksum mismatch for $bundleArchivePath"
 }
@@ -109,8 +109,8 @@ try {
     New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
     New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
 
-    Expand-Archive -Path $bundleArchivePath -DestinationPath $extractRoot -Force
-    $extractedRoots = @(Get-ChildItem -Path $extractRoot -Directory)
+    Expand-Archive -LiteralPath $bundleArchivePath -DestinationPath $extractRoot -Force
+    $extractedRoots = @(Get-ChildItem -LiteralPath $extractRoot -Directory)
     if ($extractedRoots.Count -ne 1) {
         Fail "expected exactly one extracted bundle root under $extractRoot"
     }
@@ -134,12 +134,12 @@ try {
         (Join-Path $bundleRoot "README.md"),
         (Join-Path $bundleRoot "bundle-manifest.json")
     )) {
-        if (-not (Test-Path -Path $path -PathType Leaf)) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             Fail "missing bundle file at $path"
         }
     }
 
-    $bundleReadme = Get-Content -Path (Join-Path $bundleRoot "README.md") -Raw
+    $bundleReadme = Get-Content -LiteralPath (Join-Path $bundleRoot "README.md") -Raw
     if (-not $bundleReadme.StartsWith("# FinGrind ")) {
         Fail "bundle README did not start with the FinGrind title"
     }
@@ -147,7 +147,7 @@ try {
         Fail "bundle README did not mention the machine-readable bundle manifest"
     }
 
-    $bundleManifest = Get-Content -Path (Join-Path $bundleRoot "bundle-manifest.json") -Raw | ConvertFrom-Json
+    $bundleManifest = Get-Content -LiteralPath (Join-Path $bundleRoot "bundle-manifest.json") -Raw | ConvertFrom-Json
     if ($bundleManifest.runtimeDistribution -ne "self-contained-bundle") {
         Fail "bundle manifest did not report the self-contained runtime distribution"
     }
@@ -186,8 +186,8 @@ try {
     $bookKeyPath = Join-Path $workRoot "books odd/nested/entity [bundle #smoke].key"
     $wrongBookKeyPath = Join-Path $workRoot "books odd/nested/entity [bundle #smoke]-wrong.key"
 
-    New-Item -ItemType Directory -Path (Split-Path $requestPath -Parent) -Force | Out-Null
-    New-Item -ItemType Directory -Path (Split-Path $bookPath -Parent) -Force | Out-Null
+    New-Item -ItemType Directory -Path ([System.IO.Path]::GetDirectoryName($requestPath)) -Force | Out-Null
+    New-Item -ItemType Directory -Path ([System.IO.Path]::GetDirectoryName($bookPath)) -Force | Out-Null
 
     @"
 {
@@ -286,7 +286,7 @@ try {
     if ($generateKeyPayload.payload.permissions -ne "owner-only-acl") {
         Fail "generate-book-key-file did not report Windows owner-only ACL protection"
     }
-    if (-not (Test-Path -Path $bookKeyPath -PathType Leaf)) {
+    if (-not (Test-Path -LiteralPath $bookKeyPath -PathType Leaf)) {
         Fail "generate-book-key-file did not create the expected key file"
     }
 
@@ -361,7 +361,7 @@ try {
 
     Write-Host "Bundle smoke: success"
 } finally {
-    if (Test-Path -Path $smokeRoot) {
-        Remove-Item -Path $smokeRoot -Recurse -Force
+    if (Test-Path -LiteralPath $smokeRoot) {
+        Remove-Item -LiteralPath $smokeRoot -Recurse -Force
     }
 }
