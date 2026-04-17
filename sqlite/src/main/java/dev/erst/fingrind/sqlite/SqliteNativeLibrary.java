@@ -58,10 +58,9 @@ final class SqliteNativeLibrary {
       throw new IllegalArgumentException(
           "SQLite same-package file-backed open requires a --book-key-file access selection.");
     }
-    return open(
-        bookAccess.bookFilePath(),
-        SqliteBookKeyFile.load(keyFile.bookKeyFilePath()),
-        OpenMode.READ_WRITE_CREATE);
+    try (SqliteBookPassphrase bookPassphrase = SqliteBookKeyFile.load(keyFile.bookKeyFilePath())) {
+      return open(bookAccess.bookFilePath(), bookPassphrase, OpenMode.READ_WRITE_CREATE);
+    }
   }
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase)
@@ -86,30 +85,54 @@ final class SqliteNativeLibrary {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
-      int resultCode =
-          (int)
-              effectiveSqlite3OpenV2(sqliteApi)
-                  .invokeExact(filename, databasePointer, openMode.flags(), MemorySegment.NULL);
+      int resultCode = openNativeDatabase(filename, databasePointer, openMode, sqliteApi);
       MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
       if (resultCode != SQLITE_OK) {
-        SqliteNativeException exception = failure(resultCode, sqliteApi);
         closeQuietly(databaseHandle, sqliteApi);
-        throw exception;
+        throw failure(resultCode, sqliteApi);
       }
+      return configureOpenedDatabase(databaseHandle, bookPassphrase, sqliteApi, arena);
+    }
+  }
+
+  private static int openNativeDatabase(
+      MemorySegment filename,
+      MemorySegment databasePointer,
+      OpenMode openMode,
+      SqliteApi sqliteApi) {
+    try {
+      return (int)
+          effectiveSqlite3OpenV2(sqliteApi)
+              .invokeExact(filename, databasePointer, openMode.flags(), MemorySegment.NULL);
+    } catch (Throwable throwable) {
+      throw new IllegalStateException(
+          "Failed to open the SQLite native library bridge.", throwable);
+    }
+  }
+
+  private static SqliteNativeDatabase configureOpenedDatabase(
+      MemorySegment databaseHandle,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteApi sqliteApi,
+      Arena arena)
+      throws SqliteNativeException {
+    try {
       applyKey(databaseHandle, bookPassphrase, sqliteApi, arena);
       int timeoutResult =
           (int)
               sqliteApi.sqlite3BusyTimeout.invokeExact(databaseHandle, SQLITE_BUSY_TIMEOUT_MILLIS);
-      requireOpenConfigurationSuccess(databaseHandle, timeoutResult, sqliteApi);
+      requireOpenConfigurationSuccess(timeoutResult, sqliteApi);
       int extendedCodeResult =
           (int) sqliteApi.sqlite3ExtendedResultCodes.invokeExact(databaseHandle, 1);
-      requireOpenConfigurationSuccess(databaseHandle, extendedCodeResult, sqliteApi);
-      validateConfiguredKey(databaseHandle);
+      requireOpenConfigurationSuccess(extendedCodeResult, sqliteApi);
+      validateConfiguredKey(databaseHandle, sqliteApi);
       ACTIVE_CONNECTIONS.incrementAndGet();
       return new SqliteNativeDatabase(databaseHandle);
     } catch (SqliteNativeException exception) {
+      closeQuietly(databaseHandle, sqliteApi);
       throw exception;
     } catch (Throwable throwable) {
+      closeQuietly(databaseHandle, sqliteApi);
       throw new IllegalStateException(
           "Failed to open the SQLite native library bridge.", throwable);
     }
@@ -145,7 +168,7 @@ final class SqliteNativeLibrary {
       if (resultCode != SQLITE_OK) {
         throw failure(resultCode, sqliteApi);
       }
-      validateConfiguredKey(database.handle());
+      validateConfiguredKey(database.handle(), sqliteApi);
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
@@ -200,7 +223,12 @@ final class SqliteNativeLibrary {
 
   static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer)
       throws SqliteNativeException {
-    SqliteApi sqliteApi = api();
+    executeScript(databaseHandle, sqlPointer, api());
+  }
+
+  private static void executeScript(
+      MemorySegment databaseHandle, MemorySegment sqlPointer, SqliteApi sqliteApi)
+      throws SqliteNativeException {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPointer = arena.allocate(ValueLayout.ADDRESS);
       int resultCode =
@@ -872,16 +900,17 @@ final class SqliteNativeLibrary {
     }
   }
 
-  static void requireOpenConfigurationSuccess(
-      MemorySegment databaseHandle, int resultCode, SqliteApi sqliteApi)
+  private static void requireOpenConfigurationSuccess(int resultCode, SqliteApi sqliteApi)
       throws SqliteNativeException {
     if (resultCode != SQLITE_OK) {
-      closeQuietly(databaseHandle, sqliteApi);
       throw failure(resultCode, sqliteApi);
     }
   }
 
   private static void closeQuietly(MemorySegment databaseHandle, SqliteApi sqliteApi) {
+    if (databaseHandle.equals(MemorySegment.NULL)) {
+      return;
+    }
     try {
       int ignored = (int) sqliteApi.sqlite3CloseV2.invokeExact(databaseHandle);
     } catch (Throwable ignored) {
@@ -901,7 +930,7 @@ final class SqliteNativeLibrary {
           (int)
               sqliteApi.sqlite3Key.invokeExact(
                   databaseHandle, keyPointer, bookPassphrase.byteLength());
-      requireOpenConfigurationSuccess(databaseHandle, resultCode, sqliteApi);
+      requireOpenConfigurationSuccess(resultCode, sqliteApi);
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
@@ -913,10 +942,10 @@ final class SqliteNativeLibrary {
     }
   }
 
-  private static void validateConfiguredKey(MemorySegment databaseHandle)
+  private static void validateConfiguredKey(MemorySegment databaseHandle, SqliteApi sqliteApi)
       throws SqliteNativeException {
     try (Arena arena = Arena.ofConfined()) {
-      executeScript(databaseHandle, arena.allocateFrom(KEY_VALIDATION_QUERY));
+      executeScript(databaseHandle, arena.allocateFrom(KEY_VALIDATION_QUERY), sqliteApi);
     }
   }
 

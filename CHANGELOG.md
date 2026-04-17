@@ -74,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pinned Spotless-managed source and project-file verification to LF line endings so
   configuration-cache-enabled Windows CI does not depend on Spotless' platform-default
   line-ending provider.
+- Closed native SQLite handles on failed open/configuration/validation paths, preventing Windows
+  from retaining database-file locks after wrong-key, failed-rekey, or failed-open workflows.
 
 ### Documentation
 - Updated README, user guides, examples, developer references, and API parity docs for the
