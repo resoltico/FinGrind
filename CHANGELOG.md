@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Made the GitHub Release workflow publish step explicitly run under Bash so Windows bundle assets
+  use the same release-upload script semantics as macOS and Linux assets.
+
 ## [0.15.0] - 2026-04-17
 
 ### Changed

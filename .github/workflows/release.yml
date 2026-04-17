@@ -189,6 +189,7 @@ jobs:
             "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}"
 
       - name: Publish bundle assets to the GitHub release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
