@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generator path.
 - Covered POSIX permission, Windows ACL, and cleanup-failure key-file branches through
   platform-neutral fixtures, keeping the strict coverage gate meaningful on every runner.
+- Hardened the Windows bundle smoke script under PowerShell strict mode by normalizing singleton
+  file and JSON collections before counting them.
 - Made native-library path assertions platform-native, so Windows CI verifies managed SQLite
   lookup without relying on POSIX path separators.
 - Pinned Spotless-managed source and project-file verification to LF line endings so

@@ -95,7 +95,7 @@ try {
     New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
 
     Expand-Archive -Path $bundleArchivePath -DestinationPath $extractRoot -Force
-    $extractedRoots = Get-ChildItem -Path $extractRoot -Directory
+    $extractedRoots = @(Get-ChildItem -Path $extractRoot -Directory)
     if ($extractedRoots.Count -ne 1) {
         Fail "expected exactly one extracted bundle root under $extractRoot"
     }
@@ -148,7 +148,8 @@ try {
     if ($bundleManifest.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {
         Fail "bundle manifest did not report the supported public bundle targets"
     }
-    if ($bundleManifest.unsupportedPublicCliOperatingSystems.Count -ne 0) {
+    $unsupportedBundleOperatingSystems = @($bundleManifest.unsupportedPublicCliOperatingSystems)
+    if ($unsupportedBundleOperatingSystems.Count -ne 0) {
         Fail "bundle manifest still reported unsupported public operating systems"
     }
 
@@ -236,7 +237,9 @@ try {
     if ($capabilitiesPayload.payload.environment.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {
         Fail "capabilities output did not report the supported public bundle targets"
     }
-    if ($capabilitiesPayload.payload.environment.unsupportedPublicCliOperatingSystems.Count -ne 0) {
+    $unsupportedCapabilityOperatingSystems =
+        @($capabilitiesPayload.payload.environment.unsupportedPublicCliOperatingSystems)
+    if ($unsupportedCapabilityOperatingSystems.Count -ne 0) {
         Fail "capabilities output still reported unsupported public operating systems"
     }
     if ($capabilitiesPayload.payload.environment.sqliteLibraryMode -ne "managed-only") {
@@ -300,7 +303,8 @@ try {
     if ($listAccountsPayload.status -ne "ok") {
         Fail "list-accounts did not report ok status"
     }
-    if ($listAccountsPayload.payload.accounts.Count -ne 2) {
+    $listedAccounts = @($listAccountsPayload.payload.accounts)
+    if ($listedAccounts.Count -ne 2) {
         Fail "list-accounts did not report the declared account set"
     }
 
