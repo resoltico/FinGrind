@@ -19,6 +19,21 @@ function CurrentUtcDate {
     return [DateTime]::UtcNow.ToString("yyyy-MM-dd")
 }
 
+function Write-Utf8NoBomFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [AllowEmptyString()]
+        [string] $Content
+    )
+
+    process {
+        $encoding = New-Object -TypeName System.Text.UTF8Encoding -ArgumentList $false
+        [System.IO.File]::WriteAllText($Path, $Content, $encoding)
+    }
+}
+
 function Invoke-BundleCommand {
     param(
         [string[]] $Arguments,
@@ -199,7 +214,7 @@ try {
     "causationId": "bundle-smoke-cause"
   }
 }
-"@ | Set-Content -Path $requestPath -Encoding utf8NoBOM
+"@ | Write-Utf8NoBomFile -Path $requestPath
 
     @"
 {
@@ -207,7 +222,7 @@ try {
   "accountName": "Cash",
   "normalBalance": "DEBIT"
 }
-"@ | Set-Content -Path $declareCashPath -Encoding utf8NoBOM
+"@ | Write-Utf8NoBomFile -Path $declareCashPath
 
     @"
 {
@@ -215,7 +230,7 @@ try {
   "accountName": "Revenue",
   "normalBalance": "CREDIT"
 }
-"@ | Set-Content -Path $declareRevenuePath -Encoding utf8NoBOM
+"@ | Write-Utf8NoBomFile -Path $declareRevenuePath
 
     Write-Host "Bundle smoke: verifying version command"
     $versionPayload = (Invoke-BundleCommand -Arguments @("version")).Output | ConvertFrom-Json
@@ -310,7 +325,7 @@ try {
 
     Write-Host "Bundle smoke: verifying wrong key is rejected deterministically"
     Invoke-BundleCommand -Arguments @("generate-book-key-file", "--book-key-file", $wrongBookKeyPath) | Out-Null
-    "definitely-wrong-bundle-smoke-passphrase" | Set-Content -Path $wrongBookKeyPath -Encoding utf8NoBOM
+    "definitely-wrong-bundle-smoke-passphrase" | Write-Utf8NoBomFile -Path $wrongBookKeyPath
     $wrongKeyResult =
         Invoke-BundleCommand -Arguments @("list-accounts", "--book-file", $bookPath, "--book-key-file", $wrongBookKeyPath) -AllowFailure
     if ($wrongKeyResult.ExitCode -eq 0) {
