@@ -4,6 +4,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Prepared SQLite statement with statement-scoped native memory for bound text values.
@@ -35,7 +36,7 @@ final class SqliteNativeStatement implements AutoCloseable {
     }
   }
 
-  void bindText(int parameterIndex, String value) throws SqliteNativeException {
+  void bindText(int parameterIndex, @Nullable String value) throws SqliteNativeException {
     if (value == null) {
       SqliteNativeLibrary.bindNull(statementHandle, parameterIndex);
       return;
@@ -53,7 +54,7 @@ final class SqliteNativeStatement implements AutoCloseable {
     return SqliteNativeLibrary.step(database.handle(), statementHandle);
   }
 
-  String columnText(int columnIndex) {
+  @Nullable String columnText(int columnIndex) {
     return SqliteNativeLibrary.columnText(statementHandle, columnIndex);
   }
 

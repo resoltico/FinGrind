@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-04-11"
+updated: "2026-04-17"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -47,6 +47,9 @@ When behavior changes, update the matching docs in the same change:
 
 Keep examples runnable as shown.
 If a guide references a command or response envelope, verify it against the live CLI before closing the change.
+Command references are also contract-linted: docs that invoke `fingrind` must use operation ids
+registered in the contract protocol catalog, and backticked hyphen identifiers must be either
+registered operations or known non-operation ids.
 
 ## Source Protocol
 

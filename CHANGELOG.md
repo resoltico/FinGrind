@@ -5,6 +5,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-04-17
+
+### Changed
+- Hard-broke the product module graph from `core -> application -> sqlite -> cli` into
+  `core -> contract -> executor -> sqlite -> cli`, moving all public request/result/metadata types
+  and protocol ownership into `contract` while keeping execution services and seams in `executor`.
+- Added AI-agent-first ledger plans as a first-class contract and CLI surface through
+  `print-plan-template` and `execute-plan`, including ordered plan steps, assertions, atomic
+  execution, and durable per-step journals returned to callers.
+- Moved public operation metadata into the contract protocol catalog, so operation ids, aliases,
+  display labels, output modes, command summaries, hard book-model facts, preflight facts,
+  currency facts, status lists, and shared query limits now have one typed owner before `help`,
+  `capabilities`, or CLI rendering.
+- The release protocol now treats open Dependabot PRs as first-class release hygiene. Release-time
+  pre-flight now requires explicitly identifying open Dependabot work, and after the public
+  release is verified each Dependabot PR must be merged, closed, or consciously kept open with a
+  stated reason; stale automation branches are no longer acceptable release leftovers.
+- Split the old monolithic book-session seam into dedicated administration, posting, and query
+  interfaces, and added first-class read/query workflows for `inspect-book`, `get-posting`,
+  `list-postings`, `account-balance`, and paged `list-accounts`.
+- Reworked posting commit flow to reuse one shared validation model across preflight and
+  transactional SQLite commit, while deferring UUID v7 `postingId` allocation until the store has
+  accepted the write.
+- Tightened the core accounting model by introducing `PositiveMoney` for journal lines, leaving
+  `Money` as the exact non-negative type used by balances and other zero-capable read models.
+- Expanded the public bundle matrix to include `windows-x86_64`, added a first-class
+  `bin\fingrind.cmd` launcher plus Windows `.zip` archives, and taught release/container
+  automation to wait for and publish the Windows asset set as part of the canonical release
+  contract.
+- Extended secure book-key files to Windows by enforcing owner-only ACLs alongside POSIX
+  `0400`/`0600` permissions, so the Windows bundle supports the same key-file workflow as
+  macOS and Linux without weakening secret-file checks while still letting the owner rewrite and
+  delete generated key files.
+- Hardened bundle assembly so requested bundle classifiers must match the active host platform;
+  FinGrind no longer allows metadata-only cross-classifier bundle builds that would lie about the
+  bundled runtime image or managed SQLite library.
+
+### Fixed
+- Added contract lint coverage that fails the build when production Java reauthors operation ids
+  outside the contract protocol catalog or when docs/catalog examples mention unregistered operation
+  references.
+- Fixed `print-plan-template` so the emitted document now matches the accepted `execute-plan`
+  request shape, uses the generic `assertion` field instead of a non-existent
+  `accountBalanceAssertion`, and includes an initial `open-book` step that lets agents bootstrap a
+  brand-new book in one plan.
+- Replaced first-failure account admission on posting writes with aggregated
+  `account-state-violations`, so callers now receive every undeclared or inactive account issue in
+  one deterministic rejection.
+- Hardened machine-facing discovery and help metadata to advertise paged account reads,
+  compatibility inspection, and the current hard-break format policy explicitly instead of
+  implying an unbounded or migration-backed surface.
+- Restored the documented `jazzer/bin/*` operator surface, including wrapper-owned lock, log,
+  cleanup, and timeout behavior, fixed cleanup tasks so they also succeed on a fresh checkout with
+  no prior `.local` state, and added a deterministic Jazzer support test so that wrapper contract
+  cannot disappear from the checkout unnoticed.
+- Added JSpecify package coverage, updated query/result tests, and refreshed Jazzer fixtures and
+  replay support so the new read surface, account-state rejection shape, and positive-amount
+  invariant are asserted end to end.
+- Added a native Windows managed-SQLite build path using MSVC, updated runtime lookup to resolve
+  `sqlite3.dll`, and added Windows-specific smoke verification plus CI coverage for the published
+  Windows bundle.
+- Made contract lint and key-file fixture tests platform-deterministic on Windows by removing
+  slash-sensitive source exclusions and by creating secure test key files through the production
+  generator path.
+- Covered POSIX permission, Windows ACL, and cleanup-failure key-file branches through
+  platform-neutral fixtures, keeping the strict coverage gate meaningful on every runner.
+- Hardened the Windows bundle smoke script under PowerShell strict mode by normalizing singleton
+  file and JSON collections before counting them and by writing UTF-8 fixtures through a stable
+  .NET helper instead of host-specific `Set-Content -Encoding` variants.
+- Made the Windows bundle smoke script use literal path semantics for dynamic filesystem checks, so
+  the intentional bracketed smoke-test filenames no longer become PowerShell wildcard patterns.
+- Corrected the Windows bundle smoke wrong-key assertion to verify FinGrind's public
+  top-level `runtime-failure` envelope and the expected `SQLITE_NOTADB` storage diagnostic.
+- Made native-library path assertions platform-native, so Windows CI verifies managed SQLite
+  lookup without relying on POSIX path separators.
+- Pinned Spotless-managed source and project-file verification to LF line endings so
+  configuration-cache-enabled Windows CI does not depend on Spotless' platform-default
+  line-ending provider.
+- Closed native SQLite handles on failed open/configuration/validation paths, preventing Windows
+  from retaining database-file locks after wrong-key, failed-rekey, or failed-open workflows.
+
+### Documentation
+- Updated README, user guides, examples, developer references, and API parity docs for the
+  contract/executor module split, AI-agent ledger plans, `print-plan-template`, `execute-plan`,
+  committed plan journals, query commands, paged responses, inspect-book compatibility metadata,
+  aggregated account-state rejections, and positive journal-line amounts.
+- Documented the contract protocol catalog ownership model and the contract lint expectations that
+  keep CLI help, capabilities, docs, and user-facing hints aligned.
+- Updated the public distribution, user CLI, and release-protocol docs for Windows x64 bundles,
+  Windows `.zip` release assets, the `bin\fingrind.cmd` launcher, and the new Windows bundle
+  smoke workflow.
+
 ## [0.14.0] - 2026-04-14
 
 ### Changed
@@ -337,7 +429,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.15.0
 [0.14.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.14.0
 [0.13.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.13.0
 [0.12.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.12.0

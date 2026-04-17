@@ -16,6 +16,13 @@ class MoneyTest {
   }
 
   @Test
+  void constructor_acceptsZeroAmount() {
+    Money money = new Money(new CurrencyCode("EUR"), BigDecimal.ZERO);
+
+    assertEquals(BigDecimal.ZERO, money.amount());
+  }
+
+  @Test
   void constructor_rejectsNegativeAmount() {
     assertThrows(
         IllegalArgumentException.class,

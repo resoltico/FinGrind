@@ -1,36 +1,28 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.application.BookAccess;
-import dev.erst.fingrind.application.BookAdministrationRejection;
-import dev.erst.fingrind.application.BookSession;
-import dev.erst.fingrind.application.DeclareAccountResult;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.OpenBookResult;
-import dev.erst.fingrind.application.PostingCommitResult;
-import dev.erst.fingrind.application.PostingFact;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.core.*;
+import dev.erst.fingrind.executor.*;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import org.jspecify.annotations.Nullable;
 
 /**
  * SQLite-backed book session that keeps one in-process database handle per opened book.
  *
  * <p>This session is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
-public final class SqlitePostingFactStore implements BookSession {
+public final class SqlitePostingFactStore implements LedgerPlanSession {
   static final int BOOK_APPLICATION_ID = 1_179_079_236; // "FGRD"
   static final int BOOK_FORMAT_VERSION = 1;
 
@@ -45,11 +37,12 @@ public final class SqlitePostingFactStore implements BookSession {
 
   private final Path bookPath;
   private final AccessMode accessMode;
-  private SqliteBookPassphrase bookPassphrase;
+  private @Nullable SqliteBookPassphrase bookPassphrase;
 
-  private SqliteNativeDatabase database;
+  private @Nullable SqliteNativeDatabase database;
   private boolean closed;
-  private IllegalStateException terminalFailure;
+  private boolean ledgerPlanTransactionActive;
+  private @Nullable IllegalStateException terminalFailure;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
   public SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
@@ -62,6 +55,8 @@ public final class SqlitePostingFactStore implements BookSession {
     this.bookPath = Objects.requireNonNull(bookPath, "bookPath").toAbsolutePath().normalize();
     this.bookPassphrase = Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
+    this.database = null;
+    this.terminalFailure = null;
   }
 
   SqlitePostingFactStore(BookAccess bookAccess) {
@@ -73,17 +68,100 @@ public final class SqlitePostingFactStore implements BookSession {
   }
 
   @Override
+  public BookInspection inspectBook() {
+    ensureOpen();
+    if (Files.notExists(bookPath)) {
+      return new BookInspection(
+          BookInspection.Status.MISSING,
+          false,
+          false,
+          true,
+          null,
+          null,
+          BOOK_FORMAT_VERSION,
+          "hard-break-no-migration",
+          null);
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      int applicationId = querySingleInt(activeDatabase, "pragma application_id");
+      int userVersion = querySingleInt(activeDatabase, "pragma user_version");
+      BookState state = bookState(activeDatabase);
+      return switch (state) {
+        case BLANK_SQLITE ->
+            new BookInspection(
+                BookInspection.Status.BLANK_SQLITE,
+                false,
+                false,
+                true,
+                applicationId,
+                userVersion,
+                BOOK_FORMAT_VERSION,
+                "hard-break-no-migration",
+                null);
+        case INITIALIZED_FINGRIND ->
+            new BookInspection(
+                BookInspection.Status.INITIALIZED,
+                true,
+                true,
+                false,
+                applicationId,
+                userVersion,
+                BOOK_FORMAT_VERSION,
+                "hard-break-no-migration",
+                loadInitializedAt(activeDatabase).orElse(null));
+        case FOREIGN_SQLITE ->
+            new BookInspection(
+                BookInspection.Status.FOREIGN_SQLITE,
+                false,
+                false,
+                false,
+                applicationId,
+                userVersion,
+                BOOK_FORMAT_VERSION,
+                "hard-break-no-migration",
+                null);
+        case UNSUPPORTED_FINGRIND_VERSION ->
+            new BookInspection(
+                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+                false,
+                false,
+                false,
+                applicationId,
+                userVersion,
+                BOOK_FORMAT_VERSION,
+                "hard-break-no-migration",
+                null);
+        case INCOMPLETE_FINGRIND ->
+            new BookInspection(
+                BookInspection.Status.INCOMPLETE_FINGRIND,
+                false,
+                false,
+                false,
+                applicationId,
+                userVersion,
+                BOOK_FORMAT_VERSION,
+                "hard-break-no-migration",
+                null);
+      };
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to inspect SQLite book.", exception);
+    }
+  }
+
+  @Override
   public boolean isInitialized() {
     ensureOpen();
     if (Files.notExists(bookPath)) {
       return false;
     }
     try {
-      return switch (bookState(database())) {
+      SqliteNativeDatabase activeDatabase = database();
+      return switch (bookState(activeDatabase)) {
         case BLANK_SQLITE -> false;
         case INITIALIZED_FINGRIND -> true;
         case FOREIGN_SQLITE -> throw foreignBookFailure();
-        case UNSUPPORTED_FINGRIND_VERSION -> throw unsupportedBookVersionFailure(database);
+        case UNSUPPORTED_FINGRIND_VERSION -> throw unsupportedBookVersionFailure(activeDatabase);
         case INCOMPLETE_FINGRIND -> throw incompleteBookFailure();
       };
     } catch (SqliteNativeException exception) {
@@ -96,9 +174,10 @@ public final class SqlitePostingFactStore implements BookSession {
     ensureOpen();
     accessMode.requireWritableInitialization();
     SqliteSchemaManager.ensureParentDirectory(bookPath);
-    database();
+    SqliteNativeDatabase activeDatabase = database();
+    boolean ownsTransaction = false;
     try {
-      BookState state = bookState(database);
+      BookState state = bookState(activeDatabase);
       if (state == BookState.INITIALIZED_FINGRIND) {
         return new OpenBookResult.Rejected(
             new BookAdministrationRejection.BookAlreadyInitialized());
@@ -107,19 +186,19 @@ public final class SqlitePostingFactStore implements BookSession {
         return new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema());
       }
       if (state == BookState.UNSUPPORTED_FINGRIND_VERSION) {
-        throw unsupportedBookVersionFailure(database);
+        throw unsupportedBookVersionFailure(activeDatabase);
       }
       if (state == BookState.INCOMPLETE_FINGRIND) {
         throw incompleteBookFailure();
       }
 
-      database.executeStatement("begin immediate");
-      SqliteSchemaManager.initializeBook(database);
-      insertInitializedAt(database, initializedAt);
-      database.executeStatement("commit");
+      ownsTransaction = beginImmediateIfNeeded(activeDatabase);
+      SqliteSchemaManager.initializeBook(activeDatabase);
+      insertInitializedAt(activeDatabase, initializedAt);
+      commitIfOwned(activeDatabase, ownsTransaction);
       return new OpenBookResult.Opened(initializedAt);
     } catch (SqliteNativeException exception) {
-      rollbackQuietly(database);
+      rollbackIfOwned(activeDatabase, ownsTransaction);
       throw sqliteFailure("Failed to initialize SQLite book.", exception);
     }
   }
@@ -154,18 +233,19 @@ public final class SqlitePostingFactStore implements BookSession {
       return new DeclareAccountResult.Rejected(
           new BookAdministrationRejection.BookNotInitialized());
     }
-    database();
+    SqliteNativeDatabase activeDatabase = database();
+    boolean ownsTransaction = false;
     try {
-      if (!isInitializedBook(database)) {
+      if (!isInitializedBook(activeDatabase)) {
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.BookNotInitialized());
       }
 
-      database.executeStatement("begin immediate");
-      Optional<DeclaredAccount> existingAccount = findOneAccount(database, accountCode);
+      ownsTransaction = beginImmediateIfNeeded(activeDatabase);
+      Optional<DeclaredAccount> existingAccount = findOneAccount(activeDatabase, accountCode);
       if (existingAccount.isPresent()
           && existingAccount.orElseThrow().normalBalance() != normalBalance) {
-        rollbackQuietly(database);
+        rollbackIfOwned(activeDatabase, ownsTransaction);
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.NormalBalanceConflict(
                 accountCode, existingAccount.orElseThrow().normalBalance(), normalBalance));
@@ -185,35 +265,35 @@ public final class SqlitePostingFactStore implements BookSession {
                   () ->
                       new DeclaredAccount(
                           accountCode, accountName, normalBalance, true, declaredAt));
-      upsertAccount(database, declaredAccount);
-      database.executeStatement("commit");
+      upsertAccount(activeDatabase, declaredAccount);
+      commitIfOwned(activeDatabase, ownsTransaction);
       return new DeclareAccountResult.Declared(declaredAccount);
     } catch (SqliteNativeException exception) {
-      rollbackQuietly(database);
+      rollbackIfOwned(activeDatabase, ownsTransaction);
       throw sqliteFailure("Failed to declare SQLite book account.", exception);
     }
   }
 
   @Override
-  public List<DeclaredAccount> listAccounts() {
+  public AccountPage listAccounts(ListAccountsQuery query) {
     ensureOpen();
     if (Files.notExists(bookPath)) {
-      return List.of();
+      return new AccountPage(List.of(), query.limit(), query.offset(), false);
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
       if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
-        return List.of();
+        return new AccountPage(List.of(), query.limit(), query.offset(), false);
       }
       requireInitializedBook(activeDatabase);
-      return loadAccounts(activeDatabase);
+      return loadAccountPage(activeDatabase, query);
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
   @Override
-  public Optional<PostingFact> findByIdempotency(IdempotencyKey idempotencyKey) {
+  public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
     ensureOpen();
     if (Files.notExists(bookPath)) {
       return Optional.empty();
@@ -234,7 +314,7 @@ public final class SqlitePostingFactStore implements BookSession {
   }
 
   @Override
-  public Optional<PostingFact> findByPostingId(PostingId postingId) {
+  public Optional<PostingFact> findPosting(PostingId postingId) {
     ensureOpen();
     if (Files.notExists(bookPath)) {
       return Optional.empty();
@@ -276,31 +356,120 @@ public final class SqlitePostingFactStore implements BookSession {
   }
 
   @Override
-  public PostingCommitResult commit(PostingFact postingFact) {
+  public PostingPage listPostings(ListPostingsQuery query) {
+    ensureOpen();
+    if (Files.notExists(bookPath)) {
+      return new PostingPage(List.of(), query.limit(), query.offset(), false);
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      if (bookState(activeDatabase) == BookState.BLANK_SQLITE) {
+        return new PostingPage(List.of(), query.limit(), query.offset(), false);
+      }
+      requireInitializedBook(activeDatabase);
+      return loadPostingPage(activeDatabase, query);
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  @Override
+  public AccountBalanceSnapshot accountBalance(AccountBalanceQuery query) {
+    ensureOpen();
+    if (Files.notExists(bookPath)) {
+      throw new IllegalStateException(NOT_INITIALIZED_BOOK_MESSAGE);
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      requireInitializedBook(activeDatabase);
+      DeclaredAccount account =
+          findOneAccount(activeDatabase, query.accountCode())
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          "Account is not declared: " + query.accountCode().value()));
+      return new AccountBalanceSnapshot(
+          account,
+          query.effectiveDateFrom(),
+          query.effectiveDateTo(),
+          loadCurrencyBalances(activeDatabase, query, account));
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  @Override
+  public PostingCommitResult commit(
+      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
     ensureOpen();
     accessMode.requireWritableMutation();
     if (Files.notExists(bookPath)) {
-      return new PostingCommitResult.BookNotInitialized();
+      return new PostingCommitResult.Rejected(new PostingRejection.BookNotInitialized());
     }
-    database();
+    SqliteNativeDatabase activeDatabase = database();
+    boolean ownsTransaction = false;
     try {
-      if (!isInitializedBook(database)) {
-        return new PostingCommitResult.BookNotInitialized();
-      }
-      database.executeStatement("begin immediate");
-      Optional<PostingCommitResult> ordinaryOutcome =
-          ordinaryOutcomeBeforeInsert(database, postingFact);
+      ownsTransaction = beginImmediateIfNeeded(activeDatabase);
+      Optional<PostingRejection> ordinaryOutcome =
+          rejectionBeforeInsert(activeDatabase, postingDraft);
       if (ordinaryOutcome.isPresent()) {
-        rollbackQuietly(database);
-        return ordinaryOutcome.orElseThrow();
+        rollbackIfOwned(activeDatabase, ownsTransaction);
+        return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
       }
-      insertPostingFact(database, postingFact);
-      insertJournalLines(database, postingFact);
-      database.executeStatement("commit");
+      PostingFact postingFact =
+          postingDraft.materialize(
+              Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId());
+      insertPostingFact(activeDatabase, postingFact);
+      insertJournalLines(activeDatabase, postingFact);
+      commitIfOwned(activeDatabase, ownsTransaction);
       return new PostingCommitResult.Committed(postingFact);
     } catch (SqliteNativeException exception) {
-      rollbackQuietly(database);
+      rollbackIfOwned(activeDatabase, ownsTransaction);
       throw sqliteFailure("Failed to commit SQLite posting fact.", exception);
+    }
+  }
+
+  @Override
+  public void beginLedgerPlanTransaction() {
+    ensureOpen();
+    accessMode.requireWritableMutation();
+    if (ledgerPlanTransactionActive) {
+      throw new IllegalStateException("Ledger plan transaction is already active.");
+    }
+    SqliteSchemaManager.ensureParentDirectory(bookPath);
+    SqliteNativeDatabase activeDatabase = database();
+    try {
+      activeDatabase.executeStatement("begin immediate");
+      ledgerPlanTransactionActive = true;
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to begin SQLite ledger plan transaction.", exception);
+    }
+  }
+
+  @Override
+  public void commitLedgerPlanTransaction() {
+    ensureOpen();
+    if (!ledgerPlanTransactionActive) {
+      throw new IllegalStateException("No ledger plan transaction is active.");
+    }
+    SqliteNativeDatabase activeDatabase = database();
+    try {
+      activeDatabase.executeStatement("commit");
+      ledgerPlanTransactionActive = false;
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to commit SQLite ledger plan transaction.", exception);
+    }
+  }
+
+  @Override
+  public void rollbackLedgerPlanTransaction() {
+    if (!ledgerPlanTransactionActive) {
+      return;
+    }
+    SqliteNativeDatabase activeDatabase = database;
+    ledgerPlanTransactionActive = false;
+    if (activeDatabase != null) {
+      rollbackQuietly(activeDatabase);
     }
   }
 
@@ -336,20 +505,21 @@ public final class SqlitePostingFactStore implements BookSession {
       if (Files.notExists(bookPath)) {
         return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
       }
-      database();
-      if (!isInitializedBook(database)) {
+      SqliteNativeDatabase activeDatabase = database();
+      if (!isInitializedBook(activeDatabase)) {
         return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
       }
-      SqliteNativeLibrary.rekey(database, activeReplacementPassphrase);
-      closeOwnedDatabase(database);
+      SqliteNativeLibrary.rekey(activeDatabase, activeReplacementPassphrase);
+      closeOwnedDatabase(activeDatabase);
       databaseHandleClosedForRekey = true;
-      database =
+      SqliteNativeDatabase reopenedDatabase =
           configureOpenedDatabase(
               SqliteNativeLibrary.open(
                   bookPath, activeReplacementPassphrase, accessMode.nativeOpenMode()),
               accessMode);
+      database = reopenedDatabase;
       databaseHandleClosedForRekey = false;
-      requireInitializedBook(database);
+      requireInitializedBook(reopenedDatabase);
       return new RekeyBookResult.Rekeyed(bookPath);
     } catch (SqliteNativeException exception) {
       if (databaseHandleClosedForRekey) {
@@ -361,62 +531,149 @@ public final class SqlitePostingFactStore implements BookSession {
     }
   }
 
-  private Optional<PostingCommitResult> ordinaryOutcomeBeforeInsert(
-      SqliteNativeDatabase activeDatabase, PostingFact postingFact) throws SqliteNativeException {
-    if (!isInitializedBook(activeDatabase)) {
-      return Optional.of(new PostingCommitResult.BookNotInitialized());
-    }
-
-    Optional<PostingCommitResult> accountOutcome =
-        accountOutcomeBeforeInsert(activeDatabase, postingFact);
-    if (accountOutcome.isPresent()) {
-      return accountOutcome;
-    }
-
-    if (existsRow(
-        activeDatabase,
-        SqlitePostingSql.EXISTS_POSTING_BY_IDEMPOTENCY,
-        statement ->
-            statement.bindText(
-                1, postingFact.provenance().requestProvenance().idempotencyKey().value()))) {
-      return Optional.of(
-          new PostingCommitResult.DuplicateIdempotency(
-              postingFact.provenance().requestProvenance().idempotencyKey()));
-    }
-
-    ReversalReference reversalReference = postingFact.reversalReference().orElse(null);
-    if (reversalReference != null) {
-      PostingId priorPostingId = reversalReference.priorPostingId();
-      if (existsRow(
-          activeDatabase,
-          SqlitePostingSql.EXISTS_REVERSAL_FOR,
-          statement -> statement.bindText(1, priorPostingId.value()))) {
-        return Optional.of(new PostingCommitResult.DuplicateReversalTarget(priorPostingId));
-      }
-    }
-    return Optional.empty();
+  private Optional<PostingRejection> rejectionBeforeInsert(
+      SqliteNativeDatabase activeDatabase, PostingRequest postingRequest) {
+    return PostingValidation.rejectionFor(
+        postingRequest, new TransactionValidationBook(activeDatabase));
   }
 
-  private Optional<PostingCommitResult> accountOutcomeBeforeInsert(
-      SqliteNativeDatabase activeDatabase, PostingFact postingFact) throws SqliteNativeException {
-    for (JournalLine line : postingFact.journalEntry().lines()) {
-      Optional<DeclaredAccount> account = findOneAccount(activeDatabase, line.accountCode());
-      if (account.isEmpty()) {
-        return unknownAccount(line.accountCode());
-      }
-      if (!account.orElseThrow().active()) {
-        return inactiveAccount(line.accountCode());
+  private PostingPage loadPostingPage(SqliteNativeDatabase activeDatabase, ListPostingsQuery query)
+      throws SqliteNativeException {
+    List<PostingFact> postings = new ArrayList<>();
+    boolean filterAccount = query.accountCode().isPresent();
+    boolean filterEffectiveDateFrom = query.effectiveDateFrom().isPresent();
+    boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
+    String sql =
+        SqlitePostingSql.listPostings(
+            filterAccount, filterEffectiveDateFrom, filterEffectiveDateTo);
+    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
+      bindPostingPageQuery(
+          statement, query, filterAccount, filterEffectiveDateFrom, filterEffectiveDateTo);
+      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+        postings.add(loadPostingRow(activeDatabase, statement));
       }
     }
-    return Optional.empty();
+    boolean hasMore = postings.size() > query.limit();
+    List<PostingFact> pageItems = hasMore ? postings.subList(0, query.limit()) : postings;
+    return new PostingPage(pageItems, query.limit(), query.offset(), hasMore);
   }
 
-  private static Optional<PostingCommitResult> unknownAccount(AccountCode accountCode) {
-    return Optional.of(new PostingCommitResult.UnknownAccount(accountCode));
+  @SuppressWarnings("PMD.UseConcurrentHashMap")
+  private List<CurrencyBalance> loadCurrencyBalances(
+      SqliteNativeDatabase activeDatabase, AccountBalanceQuery query, DeclaredAccount account)
+      throws SqliteNativeException {
+    boolean filterEffectiveDateFrom = query.effectiveDateFrom().isPresent();
+    boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
+    String sql =
+        SqlitePostingSql.loadAccountLinesForBalance(filterEffectiveDateFrom, filterEffectiveDateTo);
+    // This accumulator never escapes the query call, so a plain local map is the correct tool.
+    Map<CurrencyCode, Totals> totalsByCurrency = new HashMap<>();
+    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
+      bindAccountBalanceQuery(statement, query, filterEffectiveDateFrom, filterEffectiveDateTo);
+      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+        JournalLine.EntrySide side = readEntrySide(statement);
+        CurrencyCode currencyCode = readCurrencyCode(statement);
+        BigDecimal amount = readAmount(statement);
+        Totals totals =
+            totalsByCurrency.computeIfAbsent(currencyCode, SqlitePostingFactStore::newTotals);
+        if (side == JournalLine.EntrySide.DEBIT) {
+          totals.debit = totals.debit.add(amount);
+          continue;
+        }
+        totals.credit = totals.credit.add(amount);
+      }
+    }
+    List<CurrencyBalance> balances = new ArrayList<>();
+    List<Map.Entry<CurrencyCode, Totals>> orderedTotals =
+        totalsByCurrency.entrySet().stream()
+            .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+            .toList();
+    for (Map.Entry<CurrencyCode, Totals> entry : orderedTotals) {
+      balances.add(balance(entry.getKey(), entry.getValue(), account.normalBalance()));
+    }
+    return List.copyOf(balances);
   }
 
-  private static Optional<PostingCommitResult> inactiveAccount(AccountCode accountCode) {
-    return Optional.of(new PostingCommitResult.InactiveAccount(accountCode));
+  private static void bindPostingPageQuery(
+      SqliteNativeStatement statement,
+      ListPostingsQuery query,
+      boolean filterAccount,
+      boolean filterEffectiveDateFrom,
+      boolean filterEffectiveDateTo)
+      throws SqliteNativeException {
+    int bindIndex = 1;
+    if (filterAccount) {
+      statement.bindText(bindIndex, query.accountCode().orElseThrow().value());
+      bindIndex++;
+    }
+    if (filterEffectiveDateFrom) {
+      statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
+      bindIndex++;
+    }
+    if (filterEffectiveDateTo) {
+      statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
+      bindIndex++;
+    }
+    statement.bindInt(bindIndex, query.limit() + 1);
+    bindIndex++;
+    statement.bindInt(bindIndex, query.offset());
+  }
+
+  private PostingFact loadPostingRow(
+      SqliteNativeDatabase activeDatabase, SqliteNativeStatement statement)
+      throws SqliteNativeException {
+    PostingId postingId =
+        new PostingId(SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
+    return SqlitePostingMapper.postingFact(statement, loadLines(activeDatabase, postingId));
+  }
+
+  private static void bindAccountBalanceQuery(
+      SqliteNativeStatement statement,
+      AccountBalanceQuery query,
+      boolean filterEffectiveDateFrom,
+      boolean filterEffectiveDateTo)
+      throws SqliteNativeException {
+    int bindIndex = 1;
+    statement.bindText(bindIndex, query.accountCode().value());
+    bindIndex++;
+    if (filterEffectiveDateFrom) {
+      statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
+      bindIndex++;
+    }
+    if (filterEffectiveDateTo) {
+      statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
+    }
+  }
+
+  private static JournalLine.EntrySide readEntrySide(SqliteNativeStatement statement) {
+    return JournalLine.EntrySide.valueOf(SqlitePostingMapper.requiredText(statement, 0));
+  }
+
+  private static CurrencyCode readCurrencyCode(SqliteNativeStatement statement) {
+    return new CurrencyCode(SqlitePostingMapper.requiredText(statement, 1));
+  }
+
+  private static BigDecimal readAmount(SqliteNativeStatement statement) {
+    return new BigDecimal(SqlitePostingMapper.requiredText(statement, 2));
+  }
+
+  private static Totals newTotals(CurrencyCode ignoredCurrencyCode) {
+    return new Totals();
+  }
+
+  private static CurrencyBalance balance(
+      CurrencyCode currencyCode, Totals totals, NormalBalance accountNormalBalance) {
+    BigDecimal net = totals.debit.subtract(totals.credit);
+    BigDecimal absoluteNet = net.abs();
+    NormalBalance balanceSide = net.signum() >= 0 ? NormalBalance.DEBIT : NormalBalance.CREDIT;
+    if (absoluteNet.signum() == 0) {
+      balanceSide = accountNormalBalance;
+    }
+    return new CurrencyBalance(
+        new Money(currencyCode, totals.debit),
+        new Money(currencyCode, totals.credit),
+        new Money(currencyCode, absoluteNet),
+        balanceSide);
   }
 
   private Optional<PostingFact> findOnePosting(
@@ -434,7 +691,7 @@ public final class SqlitePostingFactStore implements BookSession {
       throws SqliteNativeException {
     // This path closes a single-use statement deterministically without try-with-resources so the
     // helper stays free of compiler-generated close branches under the module's 100% coverage gate.
-    SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
+    SqliteNativeStatement statement = activeDatabase.prepare(sql);
     try {
       binder.bind(statement);
       int resultCode = statement.step();
@@ -456,8 +713,7 @@ public final class SqlitePostingFactStore implements BookSession {
       SqliteNativeDatabase activeDatabase, AccountCode accountCode) throws SqliteNativeException {
     // This path closes a single-use statement deterministically without try-with-resources so the
     // helper stays free of compiler-generated close branches under the module's 100% coverage gate.
-    SqliteNativeStatement statement =
-        SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.FIND_ACCOUNT_BY_CODE);
+    SqliteNativeStatement statement = activeDatabase.prepare(SqlitePostingSql.FIND_ACCOUNT_BY_CODE);
     try {
       statement.bindText(1, accountCode.value());
       if (statement.step() == SqliteNativeLibrary.SQLITE_DONE) {
@@ -469,21 +725,25 @@ public final class SqlitePostingFactStore implements BookSession {
     }
   }
 
-  private List<DeclaredAccount> loadAccounts(SqliteNativeDatabase activeDatabase)
+  private AccountPage loadAccountPage(SqliteNativeDatabase activeDatabase, ListAccountsQuery query)
       throws SqliteNativeException {
     List<DeclaredAccount> accounts = new ArrayList<>();
     try (SqliteNativeStatement statement =
-        SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.LIST_ACCOUNTS)) {
+        activeDatabase.prepare(SqlitePostingSql.listAccounts())) {
+      statement.bindInt(1, query.limit() + 1);
+      statement.bindInt(2, query.offset());
       while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
         accounts.add(SqlitePostingMapper.declaredAccount(statement));
       }
     }
-    return accounts;
+    boolean hasMore = accounts.size() > query.limit();
+    List<DeclaredAccount> pageItems = hasMore ? accounts.subList(0, query.limit()) : accounts;
+    return new AccountPage(pageItems, query.limit(), query.offset(), hasMore);
   }
 
   private boolean existsRow(SqliteNativeDatabase activeDatabase, String sql, SqliteBinder binder)
       throws SqliteNativeException {
-    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql)) {
+    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       binder.bind(statement);
       return statement.step() == SqliteNativeLibrary.SQLITE_ROW;
     }
@@ -517,6 +777,22 @@ public final class SqlitePostingFactStore implements BookSession {
             activeDatabase,
             SqlitePostingSql.BOOK_INITIALIZED_EXISTS,
             statement -> statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY));
+  }
+
+  @SuppressWarnings("PMD.UseTryWithResources")
+  private Optional<Instant> loadInitializedAt(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
+    SqliteNativeStatement statement =
+        activeDatabase.prepare(SqlitePostingSql.FIND_BOOK_INITIALIZED_AT);
+    try {
+      statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY);
+      if (statement.step() == SqliteNativeLibrary.SQLITE_DONE) {
+        return Optional.empty();
+      }
+      return Optional.of(Instant.parse(SqlitePostingMapper.requiredText(statement, 0)));
+    } finally {
+      statement.close();
+    }
   }
 
   private boolean isInitializedBook(SqliteNativeDatabase activeDatabase)
@@ -572,7 +848,7 @@ public final class SqlitePostingFactStore implements BookSession {
   @SuppressWarnings("PMD.UseTryWithResources")
   private static OptionalInt queryOptionalInt(SqliteNativeDatabase activeDatabase, String sql)
       throws SqliteNativeException {
-    SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
+    SqliteNativeStatement statement = activeDatabase.prepare(sql);
     try {
       if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
         return OptionalInt.empty();
@@ -590,12 +866,14 @@ public final class SqlitePostingFactStore implements BookSession {
   @SuppressWarnings("PMD.UseTryWithResources")
   private static String querySingleText(SqliteNativeDatabase activeDatabase, String sql)
       throws SqliteNativeException {
-    SqliteNativeStatement statement = SqliteNativeLibrary.prepare(activeDatabase, sql);
+    SqliteNativeStatement statement = activeDatabase.prepare(sql);
     try {
       if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
         throw new IllegalStateException("SQLite text query returned no rows: " + sql);
       }
-      String value = statement.columnText(0);
+      String value =
+          Objects.requireNonNull(
+              statement.columnText(0), "SQLite text query returned NULL: " + sql);
       if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
         throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
       }
@@ -607,8 +885,7 @@ public final class SqlitePostingFactStore implements BookSession {
 
   private List<JournalLine> loadLines(SqliteNativeDatabase activeDatabase, PostingId postingId)
       throws SqliteNativeException {
-    try (SqliteNativeStatement statement =
-        SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.LOAD_LINES)) {
+    try (SqliteNativeStatement statement = activeDatabase.prepare(SqlitePostingSql.LOAD_LINES)) {
       statement.bindText(1, postingId.value());
       return SqlitePostingMapper.journalLines(statement);
     }
@@ -617,7 +894,7 @@ public final class SqlitePostingFactStore implements BookSession {
   private void insertInitializedAt(SqliteNativeDatabase activeDatabase, Instant initializedAt)
       throws SqliteNativeException {
     try (SqliteNativeStatement statement =
-        SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.INSERT_BOOK_INITIALIZED_AT)) {
+        activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_INITIALIZED_AT)) {
       statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY);
       statement.bindText(2, initializedAt.toString());
       statement.step();
@@ -627,7 +904,7 @@ public final class SqlitePostingFactStore implements BookSession {
   private void upsertAccount(SqliteNativeDatabase activeDatabase, DeclaredAccount account)
       throws SqliteNativeException {
     try (SqliteNativeStatement statement =
-        SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.UPSERT_ACCOUNT)) {
+        activeDatabase.prepare(SqlitePostingSql.UPSERT_ACCOUNT)) {
       statement.bindText(1, account.accountCode().value());
       statement.bindText(2, account.accountName().value());
       statement.bindText(3, account.normalBalance().name());
@@ -641,7 +918,7 @@ public final class SqlitePostingFactStore implements BookSession {
       throws SqliteNativeException {
     RequestProvenance requestProvenance = postingFact.provenance().requestProvenance();
     try (SqliteNativeStatement statement =
-        SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.INSERT_POSTING_FACT)) {
+        activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
       statement.bindText(1, postingFact.postingId().value());
       statement.bindText(2, postingFact.journalEntry().effectiveDate().toString());
       statement.bindText(3, postingFact.provenance().recordedAt().toString());
@@ -650,11 +927,13 @@ public final class SqlitePostingFactStore implements BookSession {
       statement.bindText(6, requestProvenance.commandId().value());
       statement.bindText(7, requestProvenance.idempotencyKey().value());
       statement.bindText(8, requestProvenance.causationId().value());
-      statement.bindText(
-          9, requestProvenance.correlationId().map(value -> value.value()).orElse(null));
-      statement.bindText(10, requestProvenance.reason().map(value -> value.value()).orElse(null));
+      bindOptionalText(
+          statement, 9, requestProvenance.correlationId().map(value -> value.value()).orElse(null));
+      bindOptionalText(
+          statement, 10, requestProvenance.reason().map(value -> value.value()).orElse(null));
       statement.bindText(11, postingFact.provenance().sourceChannel().name());
-      statement.bindText(
+      bindOptionalText(
+          statement,
           12,
           postingFact
               .reversalReference()
@@ -670,7 +949,7 @@ public final class SqlitePostingFactStore implements BookSession {
     for (int index = 0; index < lines.size(); index++) {
       JournalLine line = lines.get(index);
       try (SqliteNativeStatement statement =
-          SqliteNativeLibrary.prepare(activeDatabase, SqlitePostingSql.INSERT_JOURNAL_LINE)) {
+          activeDatabase.prepare(SqlitePostingSql.INSERT_JOURNAL_LINE)) {
         statement.bindText(1, postingFact.postingId().value());
         statement.bindInt(2, index);
         statement.bindText(3, line.accountCode().value());
@@ -682,15 +961,23 @@ public final class SqlitePostingFactStore implements BookSession {
     }
   }
 
+  private static void bindOptionalText(
+      SqliteNativeStatement statement, int parameterIndex, @Nullable String value)
+      throws SqliteNativeException {
+    statement.bindText(parameterIndex, value);
+  }
+
   private SqliteNativeDatabase database() {
-    if (database != null) {
-      return database;
+    SqliteNativeDatabase activeDatabase = database;
+    if (activeDatabase != null) {
+      return activeDatabase;
     }
     try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
       SqliteNativeDatabase openedDatabase =
           SqliteNativeLibrary.open(bookPath, passphrase, accessMode.nativeOpenMode());
-      database = configureOpenedDatabase(openedDatabase, accessMode);
-      return database;
+      SqliteNativeDatabase configuredDatabase = configureOpenedDatabase(openedDatabase, accessMode);
+      database = configuredDatabase;
+      return configuredDatabase;
     } catch (SqliteNativeException exception) {
       throw rememberTerminalFailure(
           sqliteFailure("Failed to open SQLite book connection.", exception));
@@ -703,8 +990,9 @@ public final class SqlitePostingFactStore implements BookSession {
     if (closed) {
       throw new IllegalStateException("SQLite book session is already closed.");
     }
-    if (terminalFailure != null) {
-      throw terminalFailure;
+    IllegalStateException failure = terminalFailure;
+    if (failure != null) {
+      throw failure;
     }
   }
 
@@ -716,11 +1004,91 @@ public final class SqlitePostingFactStore implements BookSession {
     }
   }
 
+  private boolean beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
+    if (ledgerPlanTransactionActive) {
+      return false;
+    }
+    activeDatabase.executeStatement("begin immediate");
+    return true;
+  }
+
+  private static void commitIfOwned(SqliteNativeDatabase activeDatabase, boolean ownsTransaction)
+      throws SqliteNativeException {
+    if (ownsTransaction) {
+      activeDatabase.executeStatement("commit");
+    }
+  }
+
+  private static void rollbackIfOwned(
+      SqliteNativeDatabase activeDatabase, boolean ownsTransaction) {
+    if (ownsTransaction) {
+      rollbackQuietly(activeDatabase);
+    }
+  }
+
   private static IllegalStateException sqliteFailure(
       String message, SqliteNativeException exception) {
     String detail = Objects.requireNonNullElse(exception.getMessage(), "SQLite native failure.");
     return new IllegalStateException(
         message + " " + exception.resultName() + ": " + detail, exception);
+  }
+
+  /** Running debit and credit totals for one account/currency balance bucket. */
+  private static final class Totals {
+    private BigDecimal debit = BigDecimal.ZERO;
+    private BigDecimal credit = BigDecimal.ZERO;
+  }
+
+  /** Transaction-scoped validation view that rechecks posting invariants inside SQLite writes. */
+  private final class TransactionValidationBook implements PostingValidationBook {
+    private final SqliteNativeDatabase activeDatabase;
+
+    private TransactionValidationBook(SqliteNativeDatabase activeDatabase) {
+      this.activeDatabase = Objects.requireNonNull(activeDatabase, "activeDatabase");
+    }
+
+    @Override
+    public boolean isInitialized() {
+      try {
+        return isInitializedBook(activeDatabase);
+      } catch (SqliteNativeException exception) {
+        throw sqliteFailure("Failed to query SQLite book.", exception);
+      }
+    }
+
+    @Override
+    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+      try {
+        return findOneAccount(activeDatabase, accountCode);
+      } catch (SqliteNativeException exception) {
+        throw sqliteFailure("Failed to query SQLite book.", exception);
+      }
+    }
+
+    @Override
+    public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+      return findOnePosting(
+          activeDatabase,
+          SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
+          statement -> statement.bindText(1, idempotencyKey.value()));
+    }
+
+    @Override
+    public Optional<PostingFact> findPosting(PostingId postingId) {
+      return findOnePosting(
+          activeDatabase,
+          SqlitePostingSql.FIND_POSTING_BY_ID,
+          statement -> statement.bindText(1, postingId.value()));
+    }
+
+    @Override
+    public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+      return findOnePosting(
+          activeDatabase,
+          SqlitePostingSql.FIND_REVERSAL_FOR,
+          statement -> statement.bindText(1, priorPostingId.value()));
+    }
   }
 
   @SuppressWarnings("PMD.CommentRequired")
@@ -748,8 +1116,7 @@ public final class SqlitePostingFactStore implements BookSession {
     if (bookPassphrase == null) {
       return;
     }
-    bookPassphrase.close();
-    bookPassphrase = null;
+    takeBookPassphrase().close();
   }
 
   private SqliteBookPassphrase takeBookPassphrase() {

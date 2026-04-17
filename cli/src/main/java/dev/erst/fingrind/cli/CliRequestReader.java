@@ -1,8 +1,11 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.application.DeclareAccountCommand;
-import dev.erst.fingrind.application.MachineContract;
-import dev.erst.fingrind.application.PostEntryCommand;
+import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolPlanKinds;
 import dev.erst.fingrind.core.*;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +15,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.regex.*;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.JsonNode;
@@ -54,6 +58,23 @@ final class CliRequestReader {
           MachineContract.JournalLineFields.AMOUNT);
   private static final Set<String> REVERSAL_FIELDS =
       Set.of(MachineContract.ReversalFields.PRIOR_POSTING_ID);
+  private static final Set<String> LEDGER_PLAN_FIELDS =
+      Set.of("planId", "executionPolicy", "steps");
+  private static final Set<String> LEDGER_EXECUTION_POLICY_FIELDS =
+      Set.of("journalLevel", "failurePolicy", "transactionMode");
+  private static final Set<String> LEDGER_STEP_FIELDS =
+      Set.of("stepId", "kind", "posting", "declareAccount", "query", "assertion", "postingId");
+  private static final Set<String> LEDGER_QUERY_FIELDS =
+      Set.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "offset");
+  private static final Set<String> LEDGER_ASSERTION_FIELDS =
+      Set.of(
+          "accountCode",
+          "postingId",
+          "effectiveDateFrom",
+          "effectiveDateTo",
+          "currencyCode",
+          "netAmount",
+          "balanceSide");
 
   private final ObjectMapper objectMapper = configuredObjectMapper();
   private final InputStream inputStream;
@@ -65,43 +86,14 @@ final class CliRequestReader {
   /** Reads one posting request from a JSON file or standard input. */
   PostEntryCommand readPostEntryCommand(Path requestFile) {
     try {
-      ObjectNode rootNode = requireRootObject(readRootNode(requestFile));
-      rejectForbiddenField(rootNode, MachineContract.PostEntryTopLevelFields.CORRECTION);
-      rejectUnexpectedFields(rootNode, null, POST_ENTRY_TOP_LEVEL_FIELDS);
-      ObjectNode provenanceNode =
-          requiredObject(rootNode, MachineContract.PostEntryTopLevelFields.PROVENANCE);
-      rejectForbiddenField(provenanceNode, MachineContract.ProvenanceFields.RECORDED_AT);
-      rejectForbiddenField(provenanceNode, MachineContract.ProvenanceFields.SOURCE_CHANNEL);
-      rejectUnexpectedFields(
-          provenanceNode, MachineContract.PostEntryTopLevelFields.PROVENANCE, PROVENANCE_FIELDS);
-      return new PostEntryCommand(
-          new JournalEntry(
-              LocalDate.parse(
-                  requiredText(rootNode, MachineContract.PostEntryTopLevelFields.EFFECTIVE_DATE)),
-              readLines(requiredArray(rootNode, MachineContract.PostEntryTopLevelFields.LINES))),
-          readReversal(rootNode.get(MachineContract.PostEntryTopLevelFields.REVERSAL)),
-          new RequestProvenance(
-              new ActorId(requiredText(provenanceNode, MachineContract.ProvenanceFields.ACTOR_ID)),
-              dev.erst.fingrind.core.ActorType.valueOf(
-                  requiredText(provenanceNode, MachineContract.ProvenanceFields.ACTOR_TYPE)),
-              new CommandId(
-                  requiredText(provenanceNode, MachineContract.ProvenanceFields.COMMAND_ID)),
-              new IdempotencyKey(
-                  requiredText(provenanceNode, MachineContract.ProvenanceFields.IDEMPOTENCY_KEY)),
-              new CausationId(
-                  requiredText(provenanceNode, MachineContract.ProvenanceFields.CAUSATION_ID)),
-              optionalText(provenanceNode, MachineContract.ProvenanceFields.CORRELATION_ID)
-                  .map(CorrelationId::new),
-              optionalText(provenanceNode, MachineContract.ProvenanceFields.REASON)
-                  .map(ReversalReason::new)),
-          dev.erst.fingrind.core.SourceChannel.CLI);
+      return readPostEntryCommand(requireRootObject(readRootNode(requestFile)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (java.time.DateTimeException exception) {
       throw new CliRequestException(
           "invalid-request",
           "Request contains an invalid date/time value.",
-          "Use ISO-8601 values such as 2026-04-08 and 2026-04-08T12:00:00Z.",
+          "Use ISO-8601 values such as YYYY-MM-DD and YYYY-MM-DDTHH:MM:SSZ.",
           exception);
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
@@ -112,15 +104,7 @@ final class CliRequestReader {
   /** Reads one account-declaration request from a JSON file or standard input. */
   DeclareAccountCommand readDeclareAccountCommand(Path requestFile) {
     try {
-      ObjectNode rootNode = requireRootObject(readRootNode(requestFile));
-      rejectUnexpectedFields(rootNode, null, DECLARE_ACCOUNT_FIELDS);
-      return new DeclareAccountCommand(
-          new AccountCode(
-              requiredText(rootNode, MachineContract.DeclareAccountFields.ACCOUNT_CODE)),
-          new AccountName(
-              requiredText(rootNode, MachineContract.DeclareAccountFields.ACCOUNT_NAME)),
-          dev.erst.fingrind.core.NormalBalance.valueOf(
-              requiredText(rootNode, MachineContract.DeclareAccountFields.NORMAL_BALANCE)));
+      return readDeclareAccountCommand(requireRootObject(readRootNode(requestFile)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (IllegalArgumentException exception) {
@@ -129,9 +113,199 @@ final class CliRequestReader {
     }
   }
 
+  /** Reads one AI-agent ledger plan from a JSON file or standard input. */
+  LedgerPlan readLedgerPlan(Path requestFile) {
+    try {
+      ObjectNode rootNode = requireRootObject(readRootNode(requestFile));
+      rejectUnexpectedFields(rootNode, null, LEDGER_PLAN_FIELDS);
+      return new LedgerPlan(
+          requiredText(rootNode, "planId"),
+          readExecutionPolicy(requiredObject(rootNode, "executionPolicy")),
+          readLedgerSteps(requiredArray(rootNode, "steps")));
+    } catch (CliRequestException exception) {
+      throw exception;
+    } catch (java.time.DateTimeException exception) {
+      throw new CliRequestException(
+          "invalid-request",
+          "Ledger plan contains an invalid date/time value.",
+          "Use ISO-8601 values such as YYYY-MM-DD and YYYY-MM-DDTHH:MM:SSZ.",
+          exception);
+    } catch (IllegalArgumentException | ArithmeticException exception) {
+      throw new CliRequestException(
+          "invalid-request", normalizedMessage(exception), invalidRequestHint(), exception);
+    }
+  }
+
+  private PostEntryCommand readPostEntryCommand(ObjectNode rootNode) {
+    rejectForbiddenField(rootNode, MachineContract.PostEntryTopLevelFields.CORRECTION);
+    rejectUnexpectedFields(rootNode, null, POST_ENTRY_TOP_LEVEL_FIELDS);
+    ObjectNode provenanceNode =
+        requiredObject(rootNode, MachineContract.PostEntryTopLevelFields.PROVENANCE);
+    rejectForbiddenField(provenanceNode, MachineContract.ProvenanceFields.RECORDED_AT);
+    rejectForbiddenField(provenanceNode, MachineContract.ProvenanceFields.SOURCE_CHANNEL);
+    rejectUnexpectedFields(
+        provenanceNode, MachineContract.PostEntryTopLevelFields.PROVENANCE, PROVENANCE_FIELDS);
+    return new PostEntryCommand(
+        new JournalEntry(
+            LocalDate.parse(
+                requiredText(rootNode, MachineContract.PostEntryTopLevelFields.EFFECTIVE_DATE)),
+            readLines(requiredArray(rootNode, MachineContract.PostEntryTopLevelFields.LINES))),
+        readReversal(rootNode.get(MachineContract.PostEntryTopLevelFields.REVERSAL)),
+        new RequestProvenance(
+            new ActorId(requiredText(provenanceNode, MachineContract.ProvenanceFields.ACTOR_ID)),
+            ActorType.valueOf(
+                requiredText(provenanceNode, MachineContract.ProvenanceFields.ACTOR_TYPE)),
+            new CommandId(
+                requiredText(provenanceNode, MachineContract.ProvenanceFields.COMMAND_ID)),
+            new IdempotencyKey(
+                requiredText(provenanceNode, MachineContract.ProvenanceFields.IDEMPOTENCY_KEY)),
+            new CausationId(
+                requiredText(provenanceNode, MachineContract.ProvenanceFields.CAUSATION_ID)),
+            optionalText(provenanceNode, MachineContract.ProvenanceFields.CORRELATION_ID)
+                .map(CorrelationId::new),
+            optionalText(provenanceNode, MachineContract.ProvenanceFields.REASON)
+                .map(ReversalReason::new)),
+        SourceChannel.CLI);
+  }
+
+  private static DeclareAccountCommand readDeclareAccountCommand(ObjectNode rootNode) {
+    rejectUnexpectedFields(rootNode, null, DECLARE_ACCOUNT_FIELDS);
+    return new DeclareAccountCommand(
+        new AccountCode(requiredText(rootNode, MachineContract.DeclareAccountFields.ACCOUNT_CODE)),
+        new AccountName(requiredText(rootNode, MachineContract.DeclareAccountFields.ACCOUNT_NAME)),
+        NormalBalance.valueOf(
+            requiredText(rootNode, MachineContract.DeclareAccountFields.NORMAL_BALANCE)));
+  }
+
+  private static LedgerExecutionPolicy readExecutionPolicy(ObjectNode policyNode) {
+    rejectUnexpectedFields(policyNode, "executionPolicy", LEDGER_EXECUTION_POLICY_FIELDS);
+    return new LedgerExecutionPolicy(
+        LedgerJournalLevel.valueOf(requiredText(policyNode, "journalLevel")),
+        LedgerFailurePolicy.valueOf(requiredText(policyNode, "failurePolicy")),
+        LedgerTransactionMode.valueOf(requiredText(policyNode, "transactionMode")));
+  }
+
+  private List<LedgerStep> readLedgerSteps(JsonNode stepsNode) {
+    List<LedgerStep> steps = new ArrayList<>();
+    int index = 0;
+    for (JsonNode stepNode : stepsNode) {
+      steps.add(readLedgerStep(requireObjectNode(stepNode, "steps[%d]".formatted(index))));
+      index++;
+    }
+    return steps;
+  }
+
+  private LedgerStep readLedgerStep(ObjectNode stepNode) {
+    rejectUnexpectedFields(stepNode, null, LEDGER_STEP_FIELDS);
+    String stepId = requiredText(stepNode, "stepId");
+    String kind = requiredText(stepNode, "kind");
+    if (ProtocolCatalog.operationName(OperationId.OPEN_BOOK).equals(kind)) {
+      return new LedgerStep.OpenBook(stepId);
+    }
+    if (ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT).equals(kind)) {
+      return new LedgerStep.DeclareAccount(
+          stepId, readDeclareAccountCommand(requiredObject(stepNode, "declareAccount")));
+    }
+    if (ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY).equals(kind)) {
+      return new LedgerStep.PreflightEntry(
+          stepId, readPostEntryCommand(requiredObject(stepNode, "posting")));
+    }
+    if (ProtocolCatalog.operationName(OperationId.POST_ENTRY).equals(kind)) {
+      return new LedgerStep.PostEntry(
+          stepId, readPostEntryCommand(requiredObject(stepNode, "posting")));
+    }
+    if (ProtocolCatalog.operationName(OperationId.INSPECT_BOOK).equals(kind)) {
+      return new LedgerStep.InspectBook(stepId);
+    }
+    if (ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS).equals(kind)) {
+      return new LedgerStep.ListAccounts(
+          stepId, readListAccountsQuery(optionalObject(stepNode, "query")));
+    }
+    if (ProtocolCatalog.operationName(OperationId.GET_POSTING).equals(kind)) {
+      return new LedgerStep.GetPosting(stepId, new PostingId(requiredText(stepNode, "postingId")));
+    }
+    if (ProtocolCatalog.operationName(OperationId.LIST_POSTINGS).equals(kind)) {
+      return new LedgerStep.ListPostings(
+          stepId, readListPostingsQuery(optionalObject(stepNode, "query")));
+    }
+    if (ProtocolCatalog.operationName(OperationId.ACCOUNT_BALANCE).equals(kind)) {
+      return new LedgerStep.AccountBalance(
+          stepId, readAccountBalanceQuery(requiredObject(stepNode, "query")));
+    }
+    return new LedgerStep.Assert(
+        stepId, readLedgerAssertion(kind, requiredObject(stepNode, "assertion")));
+  }
+
+  private static LedgerAssertion readLedgerAssertion(String kind, ObjectNode assertionNode) {
+    rejectUnexpectedFields(assertionNode, "assertion", LEDGER_ASSERTION_FIELDS);
+    if (ProtocolPlanKinds.ASSERT_ACCOUNT_DECLARED.equals(kind)) {
+      return new LedgerAssertion.AccountDeclared(
+          new AccountCode(requiredText(assertionNode, "accountCode")));
+    }
+    if (ProtocolPlanKinds.ASSERT_ACCOUNT_ACTIVE.equals(kind)) {
+      return new LedgerAssertion.AccountActive(
+          new AccountCode(requiredText(assertionNode, "accountCode")));
+    }
+    if (ProtocolPlanKinds.ASSERT_POSTING_EXISTS.equals(kind)) {
+      return new LedgerAssertion.PostingExists(
+          new PostingId(requiredText(assertionNode, "postingId")));
+    }
+    if (ProtocolPlanKinds.ASSERT_ACCOUNT_BALANCE.equals(kind)) {
+      return new LedgerAssertion.AccountBalanceEquals(
+          new AccountCode(requiredText(assertionNode, "accountCode")),
+          optionalText(assertionNode, "effectiveDateFrom").map(LocalDate::parse),
+          optionalText(assertionNode, "effectiveDateTo").map(LocalDate::parse),
+          new Money(
+              new CurrencyCode(requiredText(assertionNode, "currencyCode")),
+              parseAmount(requiredText(assertionNode, "netAmount"))),
+          NormalBalance.valueOf(requiredText(assertionNode, "balanceSide")));
+    }
+    throw new IllegalArgumentException("Unsupported ledger plan step kind: " + kind);
+  }
+
+  private static ListAccountsQuery readListAccountsQuery(Optional<ObjectNode> queryNode) {
+    if (queryNode.isEmpty()) {
+      return new ListAccountsQuery(
+          ProtocolLimits.DEFAULT_PAGE_LIMIT, ProtocolLimits.DEFAULT_PAGE_OFFSET);
+    }
+    ObjectNode query = queryNode.orElseThrow();
+    rejectUnexpectedFields(query, "query", LEDGER_QUERY_FIELDS);
+    return new ListAccountsQuery(
+        optionalInt(query, "limit").orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
+        optionalInt(query, "offset").orElse(ProtocolLimits.DEFAULT_PAGE_OFFSET));
+  }
+
+  private static ListPostingsQuery readListPostingsQuery(Optional<ObjectNode> queryNode) {
+    if (queryNode.isEmpty()) {
+      return new ListPostingsQuery(
+          Optional.empty(),
+          Optional.empty(),
+          Optional.empty(),
+          ProtocolLimits.DEFAULT_PAGE_LIMIT,
+          ProtocolLimits.DEFAULT_PAGE_OFFSET);
+    }
+    ObjectNode query = queryNode.orElseThrow();
+    rejectUnexpectedFields(query, "query", LEDGER_QUERY_FIELDS);
+    return new ListPostingsQuery(
+        optionalText(query, "accountCode").map(AccountCode::new),
+        optionalText(query, "effectiveDateFrom").map(LocalDate::parse),
+        optionalText(query, "effectiveDateTo").map(LocalDate::parse),
+        optionalInt(query, "limit").orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
+        optionalInt(query, "offset").orElse(ProtocolLimits.DEFAULT_PAGE_OFFSET));
+  }
+
+  private static dev.erst.fingrind.contract.AccountBalanceQuery readAccountBalanceQuery(
+      ObjectNode query) {
+    rejectUnexpectedFields(query, "query", LEDGER_QUERY_FIELDS);
+    return new dev.erst.fingrind.contract.AccountBalanceQuery(
+        new AccountCode(requiredText(query, "accountCode")),
+        optionalText(query, "effectiveDateFrom").map(LocalDate::parse),
+        optionalText(query, "effectiveDateTo").map(LocalDate::parse));
+  }
+
   private JsonNode readRootNode(Path requestFile) {
     try {
-      if ("-".equals(requestFile.toString())) {
+      if (ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())) {
         return Objects.requireNonNullElseGet(
             objectMapper.readTree(inputStream), NullNode::getInstance);
       }
@@ -149,8 +323,11 @@ final class CliRequestReader {
   }
 
   private static String invalidRequestHint() {
-    return "Run 'fingrind print-request-template' for a minimal valid request document, or"
-        + " 'fingrind capabilities' for accepted enums and fields.";
+    return "Run 'fingrind "
+        + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
+        + "' for a minimal valid request document, or 'fingrind "
+        + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
+        + "' for accepted enums and fields.";
   }
 
   private List<JournalLine> readLines(JsonNode linesNode) {
@@ -238,6 +415,25 @@ final class CliRequestReader {
     return Optional.of(fieldNode.stringValue());
   }
 
+  private static OptionalInt optionalInt(ObjectNode rootNode, String fieldName) {
+    JsonNode fieldNode = rootNode.get(fieldName);
+    if (fieldNode == null || fieldNode.isNull()) {
+      return OptionalInt.empty();
+    }
+    if (!fieldNode.isInt()) {
+      throw new IllegalArgumentException("Field must be an integer when present: " + fieldName);
+    }
+    return OptionalInt.of(fieldNode.intValue());
+  }
+
+  private static Optional<ObjectNode> optionalObject(ObjectNode rootNode, String fieldName) {
+    JsonNode fieldNode = rootNode.get(fieldName);
+    if (fieldNode == null || fieldNode.isNull()) {
+      return Optional.empty();
+    }
+    return Optional.of(requireObjectNode(fieldNode, fieldName));
+  }
+
   private static BigDecimal parseAmount(String amountText) {
     if (amountText.indexOf('e') >= 0 || amountText.indexOf('E') >= 0) {
       throw new IllegalArgumentException(
@@ -258,7 +454,9 @@ final class CliRequestReader {
     return new CliRequestException(
         "invalid-request",
         readFailureMessage(exception),
-        "Run 'fingrind print-request-template' for a minimal valid request document.",
+        "Run 'fingrind "
+            + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
+            + "' for a minimal valid request document.",
         exception);
   }
 
@@ -274,7 +472,7 @@ final class CliRequestReader {
     return "Failed to read request JSON.";
   }
 
-  private static String duplicateFieldName(String message) {
+  private static @Nullable String duplicateFieldName(@Nullable String message) {
     Matcher matcher = DUPLICATE_FIELD_PATTERN.matcher(Objects.toString(message, ""));
     return matcher.find() ? matcher.group(1) : null;
   }
@@ -297,7 +495,7 @@ final class CliRequestReader {
   }
 
   private static void rejectUnexpectedFields(
-      ObjectNode rootNode, String context, Set<String> acceptedFields) {
+      ObjectNode rootNode, @Nullable String context, Set<String> acceptedFields) {
     rootNode
         .propertyStream()
         .map(java.util.Map.Entry::getKey)

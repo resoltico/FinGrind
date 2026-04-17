@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: USER_CLI
-updated: "2026-04-14"
+updated: "2026-04-17"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, stdin, open-book, rekey-book, declare-account]
-  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I rotate a fingrind book passphrase", "what exit codes does the fingrind cli use"]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-postings, account-balance, print-plan-template, execute-plan]
+  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
 ---
 
 # CLI Guide
@@ -30,17 +30,26 @@ Every book-bound command also requires exactly one passphrase source:
 `help`, `version`, and `capabilities` return pretty JSON envelopes for discovery.
 `print-request-template` returns one raw JSON document so it can be redirected into a file or piped
 into another process.
+`print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
+account declarations, one posting step, and one balance assertion.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 `open-book` explicitly initializes one new protected book.
 `rekey-book` rotates the passphrase that protects one existing initialized book.
 `declare-account` inserts or reactivates one account in the selected book.
-`list-accounts` returns the current account registry.
+`inspect-book` reports lifecycle state, format metadata, and compatibility for one selected book.
+`list-accounts` returns one stable page of the current account registry.
+`get-posting`, `list-postings`, and `account-balance` expose read/query access to committed history.
+`execute-plan` runs one ordered ledger plan atomically and returns a structured execution journal.
 `preflight-entry` and `post-entry` both require an already initialized book and declared active
-accounts for every journal line they touch.
+accounts for every journal line they touch, and surface those failures as
+`account-state-violations` with structured `details.violations`.
 `preflight-entry` is advisory only: FinGrind still re-checks commit-time durability rules inside
 the write transaction before `post-entry` succeeds.
 Every journal entry is single-currency; mixed-currency lines inside one entry are not supported.
+Every journal-line amount must be greater than zero.
 Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `chacha20` cipher.
+The operation catalog rendered in `help` and `capabilities` is contract-owned protocol metadata,
+so CLI help, parser aliases, output modes, summaries, and query limits share one source.
 
 ## Commands
 
@@ -50,11 +59,17 @@ Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `ch
 | `version` | `--version` | none | returns application name, version, and description |
 | `capabilities` | none | none | returns machine-readable storage, command, typed request-field descriptors, response descriptors, and account-registry capabilities |
 | `print-request-template` | `--print-request-template` | none | returns a minimal valid posting request JSON document |
+| `print-plan-template` | `--print-plan-template` | none | returns a runnable AI-agent ledger-plan scaffold as raw JSON |
 | `generate-book-key-file` | none | `--book-key-file` | creates one new owner-only key file and returns only non-secret metadata |
 | `open-book` | none | `--book-file`, exactly one of `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt` | creates one initialized protected book with the canonical schema |
 | `rekey-book` | none | `--book-file`, exactly one current passphrase source, exactly one replacement passphrase source | rotates the passphrase that protects the selected existing book |
 | `declare-account` | none | `--book-file`, exactly one passphrase source, `--request-file` | declares or reactivates one account in the selected book |
-| `list-accounts` | none | `--book-file`, exactly one passphrase source | returns the selected book's declared account registry |
+| `inspect-book` | none | `--book-file`, exactly one passphrase source | returns lifecycle state, compatibility, and book-format metadata for the selected book |
+| `list-accounts` | none | `--book-file`, exactly one passphrase source, optional `--limit`, optional `--offset` | returns one paginated slice of the selected book's declared account registry |
+| `get-posting` | none | `--book-file`, exactly one passphrase source, `--posting-id` | returns one committed posting by durable posting id |
+| `list-postings` | none | `--book-file`, exactly one passphrase source, optional account/date filters, optional `--limit`, optional `--offset` | returns one paginated slice of committed posting history |
+| `account-balance` | none | `--book-file`, exactly one passphrase source, `--account-code`, optional date filters | returns grouped per-currency balances for one declared account |
+| `execute-plan` | none | `--book-file`, exactly one passphrase source, `--request-file` | executes one ordered ledger plan atomically and returns a durable per-step journal |
 | `preflight-entry` | none | `--book-file`, exactly one passphrase source, `--request-file` | validates one posting request without committing it |
 | `post-entry` | none | `--book-file`, exactly one passphrase source, `--request-file` | commits one posting fact into the selected book |
 
@@ -66,22 +81,33 @@ The current public target set is:
 - `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
+- `windows-x86_64`
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
-Windows is not part of the current public bundle contract.
+Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
+published as `.zip` archives with the `bin\fingrind.cmd` launcher.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
 - a top-level `bundle-manifest.json` with machine-readable distribution metadata
 
-One public bundle flow:
+One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.14.0-macos-aarch64.tar.gz
-./fingrind-0.14.0-macos-aarch64/bin/fingrind help
-./fingrind-0.14.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.15.0-macos-aarch64.tar.gz
+./fingrind-0.15.0-macos-aarch64/bin/fingrind help
+./fingrind-0.15.0-macos-aarch64/bin/fingrind \
   print-request-template > /tmp/fingrind-request.json
+```
+
+One public Windows bundle flow:
+
+```powershell
+Expand-Archive fingrind-0.15.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd help
+.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd `
+  print-request-template > $env:TEMP\fingrind-request.json
 ```
 
 In the examples below, `fingrind` means the extracted bundle launcher.
@@ -119,7 +145,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 
 | Exit Code | Meaning | Typical Output |
 |:----------|:--------|:---------------|
-| `0` | successful command | `ok`, raw request template JSON, `preflight-accepted`, `committed` |
+| `0` | successful command | `ok`, raw request or plan template JSON, `preflight-accepted`, `committed` |
 | `2` | invalid request or deterministic rejection | `error`, `rejected` |
 | `1` | runtime or environment failure | `error` with code `runtime-failure` |
 
@@ -139,8 +165,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | stdin requested for both passphrase and JSON | `2` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
 | malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
 | book is missing or never opened | `2` | `book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
-| posting uses an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
-| posting uses an inactive account | `2` | `inactive-account` | `Account '...' is inactive in this book.` |
+| query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
+| posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
 | wrong book key or plaintext legacy book | `1` | `runtime-failure` | storage open failure including `SQLITE_NOTADB` |
 | extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `1` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
@@ -150,14 +176,16 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the
   call without consulting docs.
-- `help`, `version`, `capabilities`, and `print-request-template` reject extra arguments.
+- `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject
+  extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths.
-- `generate-book-key-file` creates one new `0600` UTF-8 key file and refuses to overwrite an
-  existing path.
-- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file on a POSIX
-  filesystem; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
-  are rejected.
-- Book key files must use owner-only permissions (`0400` or `0600`), or the runtime rejects them.
+- `generate-book-key-file` creates one new owner-only UTF-8 key file and refuses to overwrite an
+  existing path. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
+  Windows.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file; one trailing LF
+  or CRLF is tolerated and stripped, but embedded control characters are rejected.
+- Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
+  Windows owner-only ACL on Windows, or the runtime rejects them.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
   cannot be paired with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
@@ -175,6 +203,16 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   matrix directly to automation.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
   object level.
+- `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or
+  `post-entry`, because it reports initialization state, detected book-format version, supported
+  book-format version, and compatibility with the current binary.
+- `list-accounts` and `list-postings` return paginated payloads with `limit`, `offset`, and
+  `hasMore`.
+- `print-plan-template` emits the accepted `execute-plan` request shape, including the generic
+  nested `assertion` object for assertion steps.
+- `execute-plan` reuses the same posting and query rules as the single-command surface, but runs
+  the whole plan inside one atomic transaction and returns the resulting journal in
+  `payload.journal`.
 - `capabilities` reports `publicCliDistribution`, `sourceCheckoutJava`,
   `runtimeDistribution`, `supportedPublicCliBundleTargets`,
   `unsupportedPublicCliOperatingSystems`,
@@ -190,10 +228,16 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - The developer-only `java -jar` path relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
   SQLite3MC library produced by `prepareManagedSqlite`.
 - `capabilities` is the best machine-readable contract surface.
+- `capabilities.commands`, command groups, usage lines, aliases, output modes, and summaries are
+  rendered from the contract protocol catalog rather than copied into the CLI renderer.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send
   `provenance.recordedAt` or `provenance.sourceChannel`.
+- `print-plan-template` is the fastest machine bootstrap for a new book because it already includes
+  `open-book` and a matching assertion step.
 - FinGrind does not accept SQLite URI `key=` or `hexkey=` transport, plaintext CLI passphrase
   arguments, or environment-variable passphrase transport. The protected-book contract is always
   one explicit safe passphrase source plus the upstream default `chacha20` cipher.
 - successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`
+- posting-side account failures are reported as `account-state-violations` with one or more
+  structured issue objects in `details.violations`
 - Example payloads live under [examples/](./examples/).

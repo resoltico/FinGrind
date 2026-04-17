@@ -1,16 +1,16 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.application.PostEntryCommand;
-import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostEntryResult.Committed;
-import dev.erst.fingrind.application.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.application.PostEntryResult.Rejected;
-import dev.erst.fingrind.application.BookAdministrationService;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.InMemoryBookSession;
-import dev.erst.fingrind.application.PostingApplicationService;
-import dev.erst.fingrind.application.PostingFact;
-import dev.erst.fingrind.application.PostingRejection;
+import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.PostEntryResult.Rejected;
+import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.cli.CliFuzzSupport;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
@@ -116,7 +116,7 @@ public final class JazzerReplaySupport {
 
       List<DeclaredAccount> declaredAccounts =
           CliFuzzSupport.declarePostingAccounts(administrationService, command);
-      if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+      if (CliFuzzSupport.listAccounts(bookSession).size() != declaredAccounts.size()) {
         throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
       }
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
@@ -144,7 +144,7 @@ public final class JazzerReplaySupport {
         finalCommitStatus = "COMMITTED";
 
         Optional<PostingFact> storedPosting =
-            bookSession.findByIdempotency(command.requestProvenance().idempotencyKey());
+            bookSession.findExistingPosting(command.requestProvenance().idempotencyKey());
         if (storedPosting.isEmpty()) {
           throw new IllegalStateException("Committed posting fact was not persisted.");
         }
@@ -282,7 +282,7 @@ public final class JazzerReplaySupport {
 
         List<DeclaredAccount> declaredAccounts =
             CliFuzzSupport.declarePostingAccounts(administrationService, command);
-        if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+        if (CliFuzzSupport.listAccounts(postingFactStore).size() != declaredAccounts.size()) {
           throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
         }
         DeclaredAccount primaryAccount = declaredAccounts.getFirst();
@@ -297,7 +297,7 @@ public final class JazzerReplaySupport {
           finalCommitStatus = "COMMITTED";
           try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
             Optional<PostingFact> storedPosting =
-                reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+                reloadedStore.findExistingPosting(command.requestProvenance().idempotencyKey());
             if (storedPosting.isEmpty()) {
               throw new IllegalStateException("Committed posting fact was not persisted to SQLite.");
             }
@@ -564,8 +564,8 @@ public final class JazzerReplaySupport {
   private static String rejectionStatus(PostingRejection rejection) {
     return switch (rejection) {
       case PostingRejection.BookNotInitialized _ -> "REJECTED_BOOK_NOT_INITIALIZED";
-      case PostingRejection.UnknownAccount _ -> "REJECTED_UNKNOWN_ACCOUNT";
-      case PostingRejection.InactiveAccount _ -> "REJECTED_INACTIVE_ACCOUNT";
+      case PostingRejection.AccountStateViolations accountStateViolations ->
+          accountStateViolationStatus(accountStateViolations);
       case PostingRejection.DuplicateIdempotencyKey _ -> "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
       case PostingRejection.ReversalReasonRequired _ -> "REJECTED_REVERSAL_REASON_REQUIRED";
       case PostingRejection.ReversalReasonForbidden _ -> "REJECTED_REVERSAL_REASON_FORBIDDEN";
@@ -574,6 +574,23 @@ public final class JazzerReplaySupport {
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
           "REJECTED_REVERSAL_DOES_NOT_NEGATE_TARGET";
     };
+  }
+
+  private static String accountStateViolationStatus(
+      PostingRejection.AccountStateViolations accountStateViolations) {
+    boolean allUnknown =
+        accountStateViolations.violations().stream()
+            .allMatch(PostingRejection.UnknownAccount.class::isInstance);
+    if (allUnknown) {
+      return "REJECTED_UNKNOWN_ACCOUNT";
+    }
+    boolean allInactive =
+        accountStateViolations.violations().stream()
+            .allMatch(PostingRejection.InactiveAccount.class::isInstance);
+    if (allInactive) {
+      return "REJECTED_INACTIVE_ACCOUNT";
+    }
+    return "REJECTED_ACCOUNT_STATE_VIOLATIONS";
   }
 
   private static Rejected rejectedResult(PostEntryResult result) {

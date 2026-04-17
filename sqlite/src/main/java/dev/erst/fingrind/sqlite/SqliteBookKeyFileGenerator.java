@@ -8,27 +8,15 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.Set;
 
 /** Creates new owner-only UTF-8 key files for protected FinGrind books. */
 public final class SqliteBookKeyFileGenerator {
   static final String GENERATED_ENCODING = "base64url-no-padding";
   static final int GENERATED_ENTROPY_BITS = 256;
-  static final String GENERATED_FILE_MODE = "0600";
-
-  private static final Set<PosixFilePermission> KEY_FILE_PERMISSIONS =
-      Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-  private static final Set<PosixFilePermission> KEY_DIRECTORY_PERMISSIONS =
-      Set.of(
-          PosixFilePermission.OWNER_READ,
-          PosixFilePermission.OWNER_WRITE,
-          PosixFilePermission.OWNER_EXECUTE);
   private static final int GENERATED_RANDOM_BYTES = GENERATED_ENTROPY_BITS / 8;
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -57,7 +45,7 @@ public final class SqliteBookKeyFileGenerator {
     Objects.requireNonNull(secureRandom, "secureRandom");
     Objects.requireNonNull(generatedKeyFileMaterializer, "generatedKeyFileMaterializer");
     Path normalizedPath = normalize(bookKeyFilePath);
-    requirePosixFileSystem(normalizedPath);
+    SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
     byte[] encodedPassphrase = encodedPassphraseBytes(secureRandom);
     boolean created = false;
     try {
@@ -66,7 +54,10 @@ public final class SqliteBookKeyFileGenerator {
       created = true;
       generatedKeyFileMaterializer.materialize(normalizedPath, encodedPassphrase);
       return new GeneratedKeyFile(
-          normalizedPath, GENERATED_ENCODING, GENERATED_ENTROPY_BITS, GENERATED_FILE_MODE);
+          normalizedPath,
+          GENERATED_ENCODING,
+          GENERATED_ENTROPY_BITS,
+          SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath));
     } catch (IOException exception) {
       if (created) {
         deleteQuietly(normalizedPath);
@@ -89,26 +80,13 @@ public final class SqliteBookKeyFileGenerator {
     return bookKeyFilePath.toAbsolutePath().normalize();
   }
 
-  private static void requirePosixFileSystem(Path normalizedPath) {
-    if (!normalizedPath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
-      throw new IllegalStateException(
-          "The FinGrind book key file must live on a POSIX filesystem so owner-only permissions can be enforced: "
-              + normalizedPath);
-    }
-  }
-
   private static void ensureParentDirectory(Path normalizedPath) throws IOException {
-    Path parentDirectory = normalizedPath.getParent();
-    if (parentDirectory == null) {
-      return;
-    }
-    Files.createDirectories(
-        parentDirectory, PosixFilePermissions.asFileAttribute(KEY_DIRECTORY_PERMISSIONS));
+    SqliteBookKeyFileSecurity.ensureSecureParentDirectory(normalizedPath);
   }
 
   private static void createFile(Path normalizedPath) throws IOException {
     try {
-      Files.createFile(normalizedPath, PosixFilePermissions.asFileAttribute(KEY_FILE_PERMISSIONS));
+      SqliteBookKeyFileSecurity.createSecureEmptyFile(normalizedPath);
     } catch (FileAlreadyExistsException exception) {
       throw new IllegalStateException(
           "The FinGrind book key file already exists and will not be overwritten: "

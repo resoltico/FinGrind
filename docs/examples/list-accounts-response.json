@@ -1,0 +1,24 @@
+{
+  "status": "ok",
+  "payload": {
+    "limit": 50,
+    "offset": 0,
+    "hasMore": false,
+    "accounts": [
+      {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "normalBalance": "DEBIT",
+        "active": true,
+        "declaredAt": "2026-04-13T11:58:35.809263Z"
+      },
+      {
+        "accountCode": "2000",
+        "accountName": "Revenue",
+        "normalBalance": "CREDIT",
+        "active": true,
+        "declaredAt": "2026-04-13T11:58:36.059952Z"
+      }
+    ]
+  }
+}

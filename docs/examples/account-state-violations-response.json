@@ -1,0 +1,14 @@
+{
+  "status": "rejected",
+  "code": "account-state-violations",
+  "message": "Posting references undeclared or inactive accounts. Fix every issue in details.violations before retrying. Reported issues: 1",
+  "idempotencyKey": "idem-unknown-1",
+  "details": {
+    "violations": [
+      {
+        "code": "unknown-account",
+        "accountCode": "3000"
+      }
+    ]
+  }
+}

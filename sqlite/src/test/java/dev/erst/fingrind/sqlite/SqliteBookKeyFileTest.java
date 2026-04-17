@@ -1,15 +1,22 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -156,6 +163,7 @@ class SqliteBookKeyFileTest {
 
   @Test
   void load_rejectsOwnerUnreadableKeyFiles() throws IOException {
+    assumePosixFileSystem();
     Path keyFile = tempDirectory.resolve("owner-unreadable.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     Files.setPosixFilePermissions(keyFile, Set.of(PosixFilePermission.OWNER_WRITE));
@@ -168,6 +176,7 @@ class SqliteBookKeyFileTest {
 
   @Test
   void load_rejectsGroupReadableKeyFiles() throws IOException {
+    assumePosixFileSystem();
     Path keyFile = tempDirectory.resolve("group-readable.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     Files.setPosixFilePermissions(
@@ -184,7 +193,7 @@ class SqliteBookKeyFileTest {
   }
 
   @Test
-  void requireSecureKeyFile_wrapsUnsupportedPosixFilesystem() throws IOException {
+  void requireSecureKeyFile_wrapsUnsupportedSecurityInspection() throws IOException {
     Path keyFile = tempDirectory.resolve("zipfs.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
 
@@ -192,13 +201,16 @@ class SqliteBookKeyFileTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteBookKeyFile.requireSecureKeyFile(
+                SqliteBookKeyFileSecurity.requireSecureKeyFile(
                     keyFile,
                     path -> {
-                      throw new UnsupportedOperationException("no posix");
+                      throw new UnsupportedOperationException("no owner-only security view");
                     }));
 
-    assertTrue(exception.getMessage().contains("must live on a POSIX filesystem"));
+    assertTrue(
+        exception
+            .getMessage()
+            .contains("supports POSIX owner-only permissions or Windows owner-only ACLs"));
   }
 
   @Test
@@ -210,7 +222,7 @@ class SqliteBookKeyFileTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteBookKeyFile.requireSecureKeyFile(
+                SqliteBookKeyFileSecurity.requireSecureKeyFile(
                     keyFile,
                     path -> {
                       throw new IOException("boom");
@@ -222,18 +234,107 @@ class SqliteBookKeyFileTest {
             .contains("Failed to inspect the FinGrind book key file permissions"));
   }
 
+  @Test
+  void requireSecureKeyFile_acceptsOwnerOnlyAclSecurity() throws IOException {
+    Path keyFile = tempDirectory.resolve("owner-only-acl.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+    UserPrincipal owner = new TestPrincipal("owner");
+    UserPrincipal other = new TestPrincipal("other");
+
+    assertDoesNotThrow(
+        () ->
+            SqliteBookKeyFileSecurity.requireSecureKeyFile(
+                keyFile,
+                path ->
+                    new SqliteBookKeyFileSecurity.AclSecurity(
+                        owner,
+                        List.of(
+                            deny(other, AclEntryPermission.READ_DATA),
+                            allow(other, Set.of()),
+                            allow(owner, AclEntryPermission.READ_DATA)))));
+  }
+
+  @Test
+  void requireSecureKeyFile_rejectsAclWithoutOwnerReadAccess() throws IOException {
+    Path keyFile = tempDirectory.resolve("owner-unreadable-acl.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+    UserPrincipal owner = new TestPrincipal("owner");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileSecurity.requireSecureKeyFile(
+                    keyFile,
+                    path ->
+                        new SqliteBookKeyFileSecurity.AclSecurity(
+                            owner, List.of(allow(owner, AclEntryPermission.WRITE_DATA)))));
+
+    assertTrue(exception.getMessage().contains("ACL must grant the file owner read access"));
+  }
+
+  @Test
+  void requireSecureKeyFile_rejectsAclThatGrantsSecretAccessToOtherPrincipals() throws IOException {
+    Path keyFile = tempDirectory.resolve("shared-acl.key");
+    Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
+    UserPrincipal owner = new TestPrincipal("owner");
+    UserPrincipal other = new TestPrincipal("other");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileSecurity.requireSecureKeyFile(
+                    keyFile,
+                    path ->
+                        new SqliteBookKeyFileSecurity.AclSecurity(
+                            owner,
+                            List.of(
+                                allow(owner, AclEntryPermission.READ_DATA),
+                                allow(other, AclEntryPermission.READ_DATA)))));
+
+    assertTrue(exception.getMessage().contains("ACL must grant secret access only"));
+    assertTrue(exception.getMessage().contains("other"));
+  }
+
   private static void writeSecureString(Path keyFile, String content) throws IOException {
+    SqliteBookKeyFileGenerator.generate(keyFile);
     Files.writeString(keyFile, content, StandardCharsets.UTF_8);
-    secure(keyFile);
   }
 
   private static void writeSecureBytes(Path keyFile, byte[] content) throws IOException {
+    SqliteBookKeyFileGenerator.generate(keyFile);
     Files.write(keyFile, content);
-    secure(keyFile);
   }
 
-  private static void secure(Path keyFile) throws IOException {
-    Files.setPosixFilePermissions(
-        keyFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+  private static AclEntry allow(UserPrincipal principal, AclEntryPermission permission) {
+    return allow(principal, Set.of(permission));
+  }
+
+  private static AclEntry allow(UserPrincipal principal, Set<AclEntryPermission> permissions) {
+    return AclEntry.newBuilder()
+        .setType(AclEntryType.ALLOW)
+        .setPrincipal(principal)
+        .setPermissions(permissions)
+        .build();
+  }
+
+  private static AclEntry deny(UserPrincipal principal, AclEntryPermission permission) {
+    return AclEntry.newBuilder()
+        .setType(AclEntryType.DENY)
+        .setPrincipal(principal)
+        .setPermissions(permission)
+        .build();
+  }
+
+  private void assumePosixFileSystem() {
+    assumeTrue(tempDirectory.getFileSystem().supportedFileAttributeViews().contains("posix"));
+  }
+
+  private record TestPrincipal(String name) implements UserPrincipal {
+    @Override
+    public String getName() {
+      return name;
+    }
   }
 }

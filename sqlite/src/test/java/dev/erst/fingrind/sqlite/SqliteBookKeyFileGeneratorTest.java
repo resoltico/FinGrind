@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -47,17 +46,21 @@ class SqliteBookKeyFileGeneratorTest {
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertEquals("base64url-no-padding", generatedKeyFile.encoding());
     assertEquals(256, generatedKeyFile.entropyBits());
-    assertEquals("0600", generatedKeyFile.permissions());
     assertTrue(Files.isRegularFile(keyFile));
-    assertEquals(
-        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
-        Files.getPosixFilePermissions(keyFile));
-    assertEquals(
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.OWNER_EXECUTE),
-        Files.getPosixFilePermissions(keyFile.getParent()));
+    if (supportsPosix(keyFile)) {
+      assertEquals("0600", generatedKeyFile.permissions());
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          Files.getPosixFilePermissions(keyFile));
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          Files.getPosixFilePermissions(keyFile.getParent()));
+    } else {
+      assertEquals("owner-only-acl", generatedKeyFile.permissions());
+    }
 
     String generatedSecret = Files.readString(keyFile, StandardCharsets.UTF_8);
     assertTrue(generatedSecret.matches("[A-Za-z0-9_-]{43}"));
@@ -71,9 +74,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_rejectsExistingKeyFiles() throws Exception {
     Path keyFile = tempDirectory.resolve("existing.book-key");
-    Files.writeString(keyFile, "already-there", StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        keyFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+    SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
 
     IllegalStateException exception =
         assertThrows(
@@ -120,10 +121,7 @@ class SqliteBookKeyFileGeneratorTest {
 
   @Test
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void helperBoundaries_enforcePosixFilesystemAndMetadataContracts() throws Exception {
-    Method requirePosixFileSystem =
-        SqliteBookKeyFileGenerator.class.getDeclaredMethod("requirePosixFileSystem", Path.class);
-    requirePosixFileSystem.setAccessible(true);
+  void helperBoundaries_enforceSecureFilesystemAndMetadataContracts() throws Exception {
     Method ensureParentDirectory =
         SqliteBookKeyFileGenerator.class.getDeclaredMethod("ensureParentDirectory", Path.class);
     ensureParentDirectory.setAccessible(true);
@@ -132,35 +130,48 @@ class SqliteBookKeyFileGeneratorTest {
     deleteQuietly.setAccessible(true);
 
     assertDoesNotThrow(
-        () -> requirePosixFileSystem.invoke(null, tempDirectory.resolve("ok.book-key")));
+        () ->
+            SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
+                tempDirectory.resolve("ok.book-key")));
     assertDoesNotThrow(() -> ensureParentDirectory.invoke(null, Path.of("/")));
 
     Path zipArchive = tempDirectory.resolve("zipfs-book-key.zip");
     try (FileSystem zipFileSystem =
         FileSystems.newFileSystem(
             URI.create("jar:" + zipArchive.toUri()), Map.of("create", "true"))) {
-      InvocationTargetException nonPosixException =
+      IllegalStateException nonSecureFilesystemException =
           assertThrows(
-              InvocationTargetException.class,
+              IllegalStateException.class,
               () ->
-                  requirePosixFileSystem.invoke(
-                      null, zipFileSystem.getPath("/keys/acme.book-key")));
+                  SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
+                      zipFileSystem.getPath("/keys/acme.book-key")));
       assertTrue(
-          nonPosixException.getCause().getMessage().contains("must live on a POSIX filesystem"));
+          nonSecureFilesystemException
+              .getMessage()
+              .contains("supports POSIX owner-only permissions or Windows owner-only ACLs"));
     }
 
-    Path lockedDirectory = tempDirectory.resolve("locked");
-    Files.createDirectory(lockedDirectory);
-    Path lockedFile = lockedDirectory.resolve("locked.book-key");
-    Files.writeString(lockedFile, "keep", StandardCharsets.UTF_8);
-    Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(lockedDirectory);
-    Files.setPosixFilePermissions(
-        lockedDirectory, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
-    try {
-      assertDoesNotThrow(() -> deleteQuietly.invoke(null, lockedFile));
-      assertTrue(Files.exists(lockedFile));
-    } finally {
-      Files.setPosixFilePermissions(lockedDirectory, originalPermissions);
+    Path nonEmptyDirectory =
+        Files.createDirectory(tempDirectory.resolve("non-empty-delete-target"));
+    Files.writeString(nonEmptyDirectory.resolve("child.txt"), "keep", StandardCharsets.UTF_8);
+    assertDoesNotThrow(() -> deleteQuietly.invoke(null, nonEmptyDirectory));
+    assertTrue(Files.exists(nonEmptyDirectory));
+
+    if (supportsPosix(tempDirectory)) {
+      Path lockedDirectory = tempDirectory.resolve("locked");
+      Files.createDirectory(lockedDirectory);
+      Path lockedFile = lockedDirectory.resolve("locked.book-key");
+      Files.writeString(lockedFile, "keep", StandardCharsets.UTF_8);
+      Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(lockedDirectory);
+      Files.setPosixFilePermissions(
+          lockedDirectory,
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
+      try {
+        assertDoesNotThrow(() -> deleteQuietly.invoke(null, lockedFile));
+        assertTrue(Files.exists(lockedFile));
+      } finally {
+        Files.setPosixFilePermissions(lockedDirectory, originalPermissions);
+      }
     }
   }
 
@@ -211,5 +222,9 @@ class SqliteBookKeyFileGeneratorTest {
         }
       }
     };
+  }
+
+  private static boolean supportsPosix(Path path) {
+    return path.getFileSystem().supportedFileAttributeViews().contains("posix");
   }
 }

@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-14"
+updated: "2026-04-17"
 route:
-  keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
-  questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "what should we review in the gradle setup"]
+  keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
+  questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
 ---
 
 # Gradle Setup Reference
@@ -68,7 +68,8 @@ gradle/
         ├── ScheduledPulseTestListener.kt
         └── ...
 core/
-application/
+contract/
+executor/
 sqlite/
 cli/
 jazzer/
@@ -78,7 +79,7 @@ jazzer/
 
 Each layer owns a different concern:
 
-- root product build: builds and verifies `core`, `application`, `sqlite`, and `cli`
+- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`, and `cli`
 - shared included build logic: houses reusable Gradle plugins, managed-SQLite tasks, and shared
   pulse infrastructure
 - nested Jazzer build: runs Jazzer support tests, regression replay, and local fuzzing flows
@@ -116,7 +117,7 @@ The consumer scripts are intentionally thin now:
 ### Composite build for Jazzer
 
 `jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can consume the live
-local `core`, `application`, `sqlite`, and `cli` modules without publishing snapshots.
+local `core`, `contract`, `executor`, `sqlite`, and `cli` modules without publishing snapshots.
 This keeps Jazzer iteration fast and ensures fuzzing runs against the exact working tree under
 review.
 
@@ -141,7 +142,8 @@ That contract now has a few explicit rules:
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
   private Java runtime image, managed native library, launcher, and checksum
 - `:cli:shadowJar` remains an internal assembly input for Docker and advanced contributor
-  debugging; it does not build a native library
+  debugging; it does not build a native library, but it does stage the Docker JDeps support jars
+  under `cli/build/docker/jdeps/`
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
   `build/managed-sqlite/`
 - local developer-only `java -jar` verification that wants the managed runtime must therefore run
@@ -197,6 +199,26 @@ Repository-specific note:
 - the nested Jazzer build remains intentionally separate from root product-module coverage; its own
   `./gradlew -p jazzer check` is the authoritative Jazzer coverage gate
 
+### Contract lint protocol
+
+FinGrind keeps public operation metadata in the contract protocol catalog and treats drift as a build
+failure.
+
+Rules:
+- production Java outside contract protocol must not reauthor hyphenated operation ids as string
+  literals
+- documentation command examples that invoke `fingrind` must reference registered operation ids
+- backticked hyphen identifiers in docs must either be registered operations or explicitly known
+  non-operation identifiers such as rejection codes, platform classifiers, or Jazzer harness keys
+- catalog usage and quick-start examples must reference only registered operations
+
+Why this rule exists:
+- agent-facing help, docs, parser aliases, capabilities summaries, plan templates, and error hints
+  must converge
+  on one command vocabulary
+- adding or renaming a command should fail fast unless the contract protocol registry, docs, and
+  renderers stay in sync
+
 ---
 
 ## Ownership Boundaries
@@ -233,7 +255,7 @@ Rules:
 
 These are the Gradle-level invariants worth preserving:
 
-- `core`, `application`, `sqlite`, and `cli` remain ordinary root subprojects
+- `core`, `contract`, `executor`, `sqlite`, and `cli` remain ordinary root subprojects
 - `jazzer/` remains a nested build, not a root subproject
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
 - the repository contains no active `buildSrc` tree

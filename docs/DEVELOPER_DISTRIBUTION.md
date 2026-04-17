@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-14"
+updated: "2026-04-17"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -21,6 +21,7 @@ FinGrind's public CLI download is a self-contained per-platform archive, not a r
 
 Each published archive contains:
 - `bin/fingrind`
+- `bin/fingrind.cmd`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
@@ -67,14 +68,17 @@ Current public bundle targets:
 - `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
+- `windows-x86_64`
 
 Linux bundle policy:
 - public Linux bundles are built on Ubuntu GitHub-hosted runners
 - they therefore target ordinary glibc Linux hosts
 - they are not claimed to be one universal binary for every Linux libc variant
 
-Windows is not part of the current public bundle contract because the managed SQLite build and
-verification policy are currently codified only for macOS and Linux.
+Windows bundle policy:
+- public Windows bundles are built on Windows GitHub-hosted runners
+- they use the native MSVC toolchain through the Developer Command Prompt environment
+- they are published as `.zip` archives and use `bin\fingrind.cmd` as the platform launcher
 
 ## Release Build Policy
 
@@ -86,7 +90,7 @@ Why that is acceptable:
 - Zulu 26 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
 - the supported release matrix is covered by those runners today: Ubuntu x86_64, Ubuntu arm64,
-  macOS arm64, and macOS x86_64
+  macOS arm64, macOS x86_64, and Windows x86_64
 
 When to revisit this choice:
 - if Zulu stops offering Java 26 for one of the supported public bundle builders
@@ -111,8 +115,8 @@ Current rules:
   need appears and is verified against the final module list, because it can drag tool modules
   into the image and erase the size benefit of the bundle
 
-`./scripts/bundle-smoke.sh` asserts those runtime-image rules directly against the extracted
-bundle.
+`./scripts/bundle-smoke.sh` and `./scripts/bundle-smoke.ps1` assert those runtime-image rules
+directly against the extracted bundle on Unix and Windows, respectively.
 
 ## Container Parity Policy
 
@@ -138,6 +142,13 @@ Bundle entrypoints:
 ./scripts/bundle-smoke.sh
 ```
 
+On Windows PowerShell, use:
+
+```powershell
+.\gradlew.bat :cli:bundleCliArchive
+.\scripts\bundle-smoke.ps1
+```
+
 Developer-only raw JAR entrypoints:
 
 ```bash
@@ -152,13 +163,16 @@ The raw JAR route remains useful for:
 - advanced contributor debugging
 - validating the application JAR directly during development
 
+`./gradlew :cli:shadowJar` also stages the compile-only JDeps support jars that the Docker build
+uses to analyze the shaded application JAR under `cli/build/docker/jdeps/`.
+
 It is not the public release artifact.
 
 ## Publication Rules
 
 Every GitHub release must publish:
-- one `.tar.gz` bundle per supported target
-- one `.tar.gz.sha256` checksum file per supported target
+- one archive per supported target (`.tar.gz` for macOS and Linux, `.zip` for Windows)
+- one `.sha256` checksum file per supported target archive
 
 Every release must verify:
 - the extracted bundle runs without ambient Java
@@ -173,10 +187,13 @@ Every release must verify:
 Release helper scripts are part of that contract and must remain portable across the actual
 GitHub-hosted release runners. In practice this means publication-critical shell code must work
 with the runner-provided Bash on macOS, which is still Bash 3.2. Do not introduce Bash 4+
-builtins such as `mapfile` into `scripts/bundle-smoke.sh` or other release-path scripts unless the
-release environment policy is changed explicitly and codified first.
+builtins such as `mapfile` into `scripts/bundle-smoke.sh` or other Bash-based release-path scripts
+unless the release environment policy is changed explicitly and codified first. Windows bundle
+verification is handled through `scripts/bundle-smoke.ps1`, so Windows-specific release-path logic
+must remain portable across the runner-provided PowerShell as well.
 
 These rules are enforced through:
 - `./scripts/bundle-smoke.sh`
+- `./scripts/bundle-smoke.ps1`
 - `.github/workflows/release.yml`
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)

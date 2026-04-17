@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.BookAccess;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -15,8 +15,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -334,9 +332,12 @@ class SqliteNativeInteropTest {
       if (keyPath.getParent() != null) {
         Files.createDirectories(keyPath.getParent());
       }
+      if (Files.notExists(keyPath)) {
+        SqliteBookKeyFileGenerator.generate(keyPath);
+      } else {
+        SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+      }
       Files.writeString(keyPath, TEST_BOOK_KEY);
-      Files.setPosixFilePermissions(
-          keyPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);

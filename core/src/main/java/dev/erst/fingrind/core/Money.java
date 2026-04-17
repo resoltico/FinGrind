@@ -3,7 +3,7 @@ package dev.erst.fingrind.core;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-/** Exact monetary value in one declared currency. */
+/** Exact non-negative monetary value in one declared currency. */
 public record Money(CurrencyCode currencyCode, BigDecimal amount) {
   /** Validates and normalizes a monetary value while preserving exact decimal semantics. */
   public Money {

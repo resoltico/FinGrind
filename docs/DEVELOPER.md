@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: DEVELOPER
-updated: "2026-04-14"
+updated: "2026-04-17"
 route:
-  keywords: [fingrind, build, gradle, architecture, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
-  questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce"]
+  keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
+  questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
 ---
 
 # Developer Reference
@@ -29,43 +29,64 @@ Companion documents:
 
 ## Architecture
 
-FinGrind is a four-module Gradle project with a narrow accounting center, an application-owned
-book-session seam, and explicit write boundaries:
+FinGrind is a five-module Gradle project with a narrow accounting center, a contract-owned public
+surface, executor-owned services, and explicit adapter seams:
 
 ```text
 core/         Accounting vocabulary and invariants:
-              money, journal lines, journal entries, reversal linkage,
+              money, positive journal-line money, journal lines, journal entries, reversal linkage,
               request provenance, committed provenance, posting identity.
 
-application/  Explicit write boundary plus persistence seam:
+contract/     Public request, result, metadata, and machine-contract surface:
+              ProtocolCatalog, OperationId, ProtocolOperation, ProtocolLimits, ProtocolOptions,
+              MachineContract, administration/query/write DTOs, rejections, committed facts,
+              ledger plans, assertions, plan journals.
+
+executor/     Execution services plus storage seams:
               BookAdministrationService, DeclareAccountCommand, DeclaredAccount,
-              MachineContract and typed discovery descriptors,
-              OpenBookResult, DeclareAccountResult, ListAccountsResult,
-              PostEntryCommand, PostEntryResult, PostingRejection,
-              PostingIdGenerator, UuidV7PostingIdGenerator,
-              PostingApplicationService, BookSession, PostingFact,
-              PostingCommitResult.
+              BookQueryService, BookInspection, paged account and posting query models,
+              PostingDraft, PostingRequest, PostingIdGenerator, UuidV7PostingIdGenerator,
+              PostingApplicationService, LedgerPlanService,
+              BookAdministrationSession, PostingBookSession, BookQuerySession,
+              PostingValidationBook, LedgerPlanSession, PostingCommitResult.
 
 sqlite/       Durable single-book adapter:
               one protected SQLite file per entity book, persisted through an in-process SQLite
               adapter backed by Java 26 FFM and a managed SQLite 3.53.0 / SQLite3 Multiple
-              Ciphers 2.3.3 runtime on controlled surfaces, implementing the application-owned
-              `BookSession` seam over the canonical strict-table `book_schema.sql`.
+              Ciphers 2.3.3 runtime on controlled surfaces, implementing the executor-owned
+              administration, posting, query, and ledger-plan seams over the canonical strict-table
+              `book_schema.sql`.
 
 cli/          Agent-first JSON CLI:
-              help/version/capabilities plus open-book, declare-account,
-              list-accounts, preflight-entry, and post-entry, with discovery
-              payloads serialized from the application-owned machine contract.
+              help/version/capabilities plus print-request-template, print-plan-template,
+              generate-book-key-file, open-book, rekey-book, inspect-book, declare-account,
+              list-accounts, get-posting, list-postings, account-balance, execute-plan,
+              preflight-entry, and post-entry, with discovery payloads rendered from
+              contract-owned protocol metadata.
 ```
 
 The dependency graph is deliberately one-way:
 
 ```text
-cli -> sqlite -> application -> core
-cli -> application -> core
-cli -> core
-application -> core
+cli -> sqlite -> executor -> contract -> core
+cli -> executor -> contract -> core
+cli -> contract -> core
+sqlite -> contract -> core
+executor -> contract -> core
+contract -> core
 ```
+
+Contract owns public protocol metadata. `dev.erst.fingrind.contract.protocol.ProtocolCatalog` is
+the registry for operation ids, display labels, aliases, output modes, command summaries, shared
+pagination limits, hard book-model facts, preflight facts, currency facts, and plan operation
+kinds. Executor code assembles and executes typed workflows from that registry, and CLI code
+renders or routes those DTOs without reauthoring operation names.
+
+The AI-agent-first workflow is now first-class:
+- `print-plan-template` emits the accepted `execute-plan` request shape
+- `execute-plan` runs ordered steps atomically against one book session
+- assertions are part of the public contract rather than ad hoc CLI behavior
+- every plan returns a durable per-step journal for agent continuation
 
 FinGrind is intentionally hard-break oriented right now:
 - one SQLite file is one book for one entity
@@ -180,10 +201,10 @@ Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a
 `Enable-Native-Access: ALL-UNNAMED` runtime contract.
 
 Public release verification now centers on the self-contained bundle archive, not the raw JAR.
-`./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` proves that
-the extracted bundle runs without ambient Java or a preconfigured `FINGRIND_SQLITE_LIBRARY`.
-That smoke gate also verifies the top-level archive bootstrap files and the trimmed `jlink`
-runtime-image contract.
+`./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` on
+macOS/Linux or `./scripts/bundle-smoke.ps1` on Windows proves that the extracted bundle runs
+without ambient Java or a preconfigured `FINGRIND_SQLITE_LIBRARY`. That smoke gate also verifies
+the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract.
 
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
 Java surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
@@ -209,7 +230,8 @@ The Docker smoke stage now runs public-image operations through a temporary anon
 That keeps the gate aligned with the real Docker runtime without making public pulls depend on
 Docker Desktop credential-helper state or a contributor's personal login configuration.
 If that stage materializes protected-book key files, those fixtures must obey the same owner-only
-filesystem rule as production (`0400` or `0600`) instead of weakening the runtime contract.
+filesystem rule as production (`0400`/`0600` on POSIX filesystems, owner-only ACL on Windows)
+instead of weakening the runtime contract.
 The Docker path also verifies its managed SQLite source integrity and trimmed private runtime so
 bundle and container publication stay on the same public runtime contract.
 
@@ -275,7 +297,7 @@ FinGrind deliberately keeps several boundaries sharp:
   `key=` / `hexkey=` secret transport.
 - There is no generic database-independence layer.
 - There is one canonical current SQLite schema and no migration layer.
-- The CLI never bypasses the application boundary.
+- The CLI never bypasses the contract and executor boundary.
 - Caller-supplied request provenance is distinct from committed audit metadata.
 - Deterministic rejections stay separate from malformed requests and runtime failures.
 - Root verification and nested Jazzer verification stay separate builds.

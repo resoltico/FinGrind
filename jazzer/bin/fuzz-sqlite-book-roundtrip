@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+fg_initialize_wrapper "$0"
+fg_run_active_command "sqlite-book-roundtrip" "fuzzSqliteBookRoundTrip" "$@"

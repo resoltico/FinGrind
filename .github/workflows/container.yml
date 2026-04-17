@@ -83,7 +83,9 @@ jobs:
             "fingrind-${{ steps.target-tag.outputs.version }}-macos-x86_64.tar.gz" \
             "fingrind-${{ steps.target-tag.outputs.version }}-macos-x86_64.tar.gz.sha256" \
             "fingrind-${{ steps.target-tag.outputs.version }}-macos-aarch64.tar.gz" \
-            "fingrind-${{ steps.target-tag.outputs.version }}-macos-aarch64.tar.gz.sha256"
+            "fingrind-${{ steps.target-tag.outputs.version }}-macos-aarch64.tar.gz.sha256" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-windows-x86_64.zip" \
+            "fingrind-${{ steps.target-tag.outputs.version }}-windows-x86_64.zip.sha256"
 
       - name: Build internal application JAR for the Docker image
         run: ./gradlew :cli:shadowJar --no-daemon

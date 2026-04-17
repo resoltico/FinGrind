@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.BookAccess;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -23,10 +23,8 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -318,7 +316,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget(null));
 
-    assertTrue(exception.getMessage().contains("bin/fingrind"));
+    assertTrue(exception.getMessage().contains("bundle launcher"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
   }
 
@@ -328,7 +326,8 @@ class SqliteNativeLibraryTest {
         SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
 
     assertEquals("managed-only", libraryTarget.mode());
-    assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
+    assertTrue(
+        Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
     assertEquals("managed-only", SqliteNativeLibrary.configuredLibraryMode());
     assertTrue(libraryTarget.toString().contains("managed-only"));
     assertEquals(
@@ -352,7 +351,8 @@ class SqliteNativeLibraryTest {
             "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
 
     assertEquals("managed-only", libraryTarget.mode());
-    assertTrue(libraryTarget.lookupTarget().endsWith("/sqlite/libsqlite3.so.0"));
+    assertTrue(
+        Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
   }
 
   @Test
@@ -400,14 +400,14 @@ class SqliteNativeLibraryTest {
             IllegalStateException.class,
             () -> SqliteNativeLibrary.configuredLibraryTarget(null, "   "));
 
-    assertTrue(missingEverywhere.getMessage().contains("bin/fingrind"));
+    assertTrue(missingEverywhere.getMessage().contains("bundle launcher"));
     assertTrue(blankConfiguredPath.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
-    assertTrue(blankBundleHome.getMessage().contains("bin/fingrind"));
+    assertTrue(blankBundleHome.getMessage().contains("bundle launcher"));
   }
 
   @Test
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void supportedNativeLibraryFileName_supportsMacOsLinuxAndRejectsUnsupportedHosts()
+  void supportedNativeLibraryFileName_supportsMacOsLinuxWindowsAndRejectsUnsupportedHosts()
       throws Exception {
     Method method = SqliteNativeLibrary.class.getDeclaredMethod("supportedNativeLibraryFileName");
     method.setAccessible(true);
@@ -420,12 +420,15 @@ class SqliteNativeLibraryTest {
       System.setProperty("os.name", "Linux");
       assertEquals("libsqlite3.so.0", method.invoke(null));
 
+      System.setProperty("os.name", "Windows 11");
+      assertEquals("sqlite3.dll", method.invoke(null));
+
       System.setProperty("os.name", "FreeBSD");
       InvocationTargetException exception =
           assertThrows(InvocationTargetException.class, () -> method.invoke(null));
 
       assertTrue(exception.getCause() instanceof IllegalStateException);
-      assertTrue(exception.getCause().getMessage().contains("macOS and Linux only"));
+      assertTrue(exception.getCause().getMessage().contains("macOS, Linux, and Windows only"));
       assertTrue(exception.getCause().getMessage().contains("FreeBSD"));
     } finally {
       restoreSystemProperty("os.name", originalOsName);
@@ -1069,6 +1072,315 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void open_closesNativeHandleWhenKeyValidationFails() throws Exception {
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "open",
+            Path.class,
+            SqliteBookPassphrase.class,
+            SqliteNativeLibrary.OpenMode.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"));
+    method.setAccessible(true);
+    AtomicInteger closeCalls = new AtomicInteger();
+
+    try (Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "native open validation failure", TEST_BOOK_KEY.toCharArray())) {
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[1] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "openWithDatabaseHandle",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          int.class,
+                          MemorySegment.class)),
+              0,
+              fakeDatabaseHandle);
+      sqliteApiArguments[2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "recordCloseCall",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      sqliteApiArguments[8] =
+          constantMethodHandle(
+              26,
+              MemorySegment.class,
+              MemorySegment.class,
+              MemorySegment.class,
+              MemorySegment.class,
+              MemorySegment.class);
+      sqliteApiArguments[20] =
+          constantMethodHandle(arena.allocateFrom("file is not a database"), int.class);
+      Object sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  method.invoke(
+                      null,
+                      tempDirectory.resolve("open-validation-failure.sqlite"),
+                      passphrase,
+                      SqliteNativeLibrary.OpenMode.READ_WRITE_CREATE,
+                      sqliteApi));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      assertEquals("SQLITE_NOTADB", ((SqliteNativeException) exception.getCause()).resultName());
+      assertEquals(1, closeCalls.get());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void open_closesNativeHandleWhenConfigurationThrowsUnexpectedly() throws Exception {
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "open",
+            Path.class,
+            SqliteBookPassphrase.class,
+            SqliteNativeLibrary.OpenMode.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"));
+    method.setAccessible(true);
+    AtomicInteger closeCalls = new AtomicInteger();
+
+    try (Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "native open configuration failure", TEST_BOOK_KEY.toCharArray())) {
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[1] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "openWithDatabaseHandle",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          int.class,
+                          MemorySegment.class)),
+              0,
+              fakeDatabaseHandle);
+      sqliteApiArguments[2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "recordCloseCall",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      sqliteApiArguments[6] =
+          throwingMethodHandle(
+              new IllegalStateException("busy-timeout boom"),
+              int.class,
+              MemorySegment.class,
+              int.class);
+      Object sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  method.invoke(
+                      null,
+                      tempDirectory.resolve("open-configuration-failure.sqlite"),
+                      passphrase,
+                      SqliteNativeLibrary.OpenMode.READ_WRITE_CREATE,
+                      sqliteApi));
+
+      assertTrue(exception.getCause() instanceof IllegalStateException);
+      assertEquals(
+          "Failed to open the SQLite native library bridge.", exception.getCause().getMessage());
+      assertEquals("busy-timeout boom", exception.getCause().getCause().getMessage());
+      assertEquals(1, closeCalls.get());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void open_preservesNativeOpenFailureWhenCleanupCloseThrows() throws Exception {
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "open",
+            Path.class,
+            SqliteBookPassphrase.class,
+            SqliteNativeLibrary.OpenMode.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"));
+    method.setAccessible(true);
+    AtomicInteger closeCalls = new AtomicInteger();
+
+    try (Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "native open cleanup failure", TEST_BOOK_KEY.toCharArray())) {
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[1] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "failOpenWithDatabaseHandle",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          int.class,
+                          MemorySegment.class)),
+              0,
+              fakeDatabaseHandle);
+      sqliteApiArguments[2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "recordCloseCallThenThrow",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      sqliteApiArguments[20] = constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      Object sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  method.invoke(
+                      null,
+                      tempDirectory.resolve("open-native-failure.sqlite"),
+                      passphrase,
+                      SqliteNativeLibrary.OpenMode.READ_WRITE_CREATE,
+                      sqliteApi));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      assertEquals("SQLITE_CANTOPEN: open boom", exception.getCause().getMessage());
+      assertEquals(1, closeCalls.get());
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
+  void open_preservesNativeOpenFailureWhenNoHandleIsReturned() throws Exception {
+    Method method =
+        SqliteNativeLibrary.class.getDeclaredMethod(
+            "open",
+            Path.class,
+            SqliteBookPassphrase.class,
+            SqliteNativeLibrary.OpenMode.class,
+            Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi"));
+    method.setAccessible(true);
+    AtomicInteger closeCalls = new AtomicInteger();
+
+    try (Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "native open null handle failure", TEST_BOOK_KEY.toCharArray())) {
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[1] =
+          constantMethodHandle(
+              14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class);
+      sqliteApiArguments[2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeLibraryTest.class,
+                      "recordCloseCall",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      sqliteApiArguments[20] = constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      Object sqliteApi = buildSqliteApi(sqliteApiArguments);
+
+      InvocationTargetException exception =
+          assertThrows(
+              InvocationTargetException.class,
+              () ->
+                  method.invoke(
+                      null,
+                      tempDirectory.resolve("open-no-handle-failure.sqlite"),
+                      passphrase,
+                      SqliteNativeLibrary.OpenMode.READ_WRITE_CREATE,
+                      sqliteApi));
+
+      assertTrue(exception.getCause() instanceof SqliteNativeException);
+      assertEquals("SQLITE_CANTOPEN: open boom", exception.getCause().getMessage());
+      assertEquals(0, closeCalls.get());
+    }
+  }
+
+  @Test
+  void close_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-native-failure.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("close native failure", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, passphrase);
+    }
+
+    try {
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+              constantMethodHandle(14, MemorySegment.class))) {
+        SqliteNativeException exception =
+            assertThrows(SqliteNativeException.class, database::close);
+
+        assertEquals("SQLITE_CANTOPEN", exception.resultName());
+      }
+    } finally {
+      database.close();
+    }
+  }
+
+  @Test
+  void close_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-throwable.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("close throwable", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, passphrase);
+    }
+
+    try {
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+              throwingMethodHandle(
+                  new IllegalStateException("boom"), int.class, MemorySegment.class))) {
+        IllegalStateException exception =
+            assertThrows(IllegalStateException.class, database::close);
+
+        assertEquals("Failed to close the SQLite native library bridge.", exception.getMessage());
+        assertEquals("boom", exception.getCause().getMessage());
+      }
+    } finally {
+      database.close();
+    }
+  }
+
+  @Test
   void sqlite3MultipleCiphersVersion_wrapsUnexpectedLookupFailure() {
     IllegalStateException exception =
         assertThrows(
@@ -1160,11 +1472,10 @@ class SqliteNativeLibraryTest {
         Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
     Method method =
         SqliteNativeLibrary.class.getDeclaredMethod(
-            "requireOpenConfigurationSuccess", MemorySegment.class, int.class, sqliteApiClass);
+            "requireOpenConfigurationSuccess", int.class, sqliteApiClass);
     method.setAccessible(true);
 
     try (Arena arena = Arena.ofConfined()) {
-      MemorySegment databaseHandle = arena.allocate(1);
       Object sqliteApi =
           sqliteApi(
               constantMethodHandle(0, MemorySegment.class),
@@ -1173,9 +1484,7 @@ class SqliteNativeLibraryTest {
               constantMethodHandle(14, MemorySegment.class));
 
       InvocationTargetException exception =
-          assertThrows(
-              InvocationTargetException.class,
-              () -> method.invoke(null, databaseHandle, 14, sqliteApi));
+          assertThrows(InvocationTargetException.class, () -> method.invoke(null, 14, sqliteApi));
 
       assertTrue(exception.getCause() instanceof SqliteNativeException);
       SqliteNativeException sqliteException = (SqliteNativeException) exception.getCause();
@@ -1187,30 +1496,24 @@ class SqliteNativeLibraryTest {
 
   @Test
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void requireOpenConfigurationSuccess_preservesFailureWhenCloseAlsoThrows() throws Exception {
+  void requireOpenConfigurationSuccess_preservesNativeFailureMessage() throws Exception {
     Class<?> sqliteApiClass =
         Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
     Method method =
         SqliteNativeLibrary.class.getDeclaredMethod(
-            "requireOpenConfigurationSuccess", MemorySegment.class, int.class, sqliteApiClass);
+            "requireOpenConfigurationSuccess", int.class, sqliteApiClass);
     method.setAccessible(true);
 
     try (Arena arena = Arena.ofConfined()) {
-      MemorySegment databaseHandle = arena.allocate(1);
-      MethodHandle throwingCloseHandle =
-          MethodHandles.throwException(int.class, IllegalStateException.class)
-              .bindTo(new IllegalStateException("close boom"));
       Object sqliteApi =
           sqliteApi(
-              MethodHandles.dropArguments(throwingCloseHandle, 0, MemorySegment.class),
+              constantMethodHandle(0, MemorySegment.class),
               constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
               constantMethodHandle(arena.allocateFrom("boom"), int.class),
               constantMethodHandle(14, MemorySegment.class));
 
       InvocationTargetException exception =
-          assertThrows(
-              InvocationTargetException.class,
-              () -> method.invoke(null, databaseHandle, 14, sqliteApi));
+          assertThrows(InvocationTargetException.class, () -> method.invoke(null, 14, sqliteApi));
 
       assertTrue(exception.getCause() instanceof SqliteNativeException);
       assertEquals("SQLITE_CANTOPEN: boom", exception.getCause().getMessage());
@@ -1224,11 +1527,10 @@ class SqliteNativeLibraryTest {
         Class.forName("dev.erst.fingrind.sqlite.SqliteNativeLibrary$SqliteApi");
     Method method =
         SqliteNativeLibrary.class.getDeclaredMethod(
-            "requireOpenConfigurationSuccess", MemorySegment.class, int.class, sqliteApiClass);
+            "requireOpenConfigurationSuccess", int.class, sqliteApiClass);
     method.setAccessible(true);
 
     try (Arena arena = Arena.ofConfined()) {
-      MemorySegment databaseHandle = arena.allocate(1);
       Object sqliteApi =
           sqliteApi(
               constantMethodHandle(0, MemorySegment.class),
@@ -1237,9 +1539,7 @@ class SqliteNativeLibraryTest {
               constantMethodHandle(14, MemorySegment.class));
 
       InvocationTargetException exception =
-          assertThrows(
-              InvocationTargetException.class,
-              () -> method.invoke(null, databaseHandle, 14, sqliteApi));
+          assertThrows(InvocationTargetException.class, () -> method.invoke(null, 14, sqliteApi));
 
       assertTrue(exception.getCause() instanceof SqliteNativeException);
       assertEquals("SQLITE_CANTOPEN", exception.getCause().getMessage());
@@ -1382,6 +1682,9 @@ class SqliteNativeLibraryTest {
     if (operatingSystem.contains("linux")) {
       return "libsqlite3.so.0";
     }
+    if (operatingSystem.contains("windows")) {
+      return "sqlite3.dll";
+    }
     throw new IllegalStateException(
         "Unsupported test operating system: " + System.getProperty("os.name"));
   }
@@ -1403,10 +1706,48 @@ class SqliteNativeLibraryTest {
     return shutdownCalls.incrementAndGet();
   }
 
+  @SuppressWarnings("unused")
+  private static int recordCloseCall(AtomicInteger closeCalls, MemorySegment databaseHandle) {
+    return closeCalls.incrementAndGet() == 1 && !databaseHandle.equals(MemorySegment.NULL) ? 0 : 14;
+  }
+
+  @SuppressWarnings("unused")
+  private static int recordCloseCallThenThrow(
+      AtomicInteger closeCalls, MemorySegment databaseHandle) {
+    closeCalls.incrementAndGet();
+    throw new IllegalStateException(
+        "close boom for " + (databaseHandle.equals(MemorySegment.NULL) ? "null" : "handle"));
+  }
+
+  @SuppressWarnings("unused")
+  private static int openWithDatabaseHandle(
+      MemorySegment openedHandle,
+      MemorySegment filename,
+      MemorySegment databasePointer,
+      int flags,
+      MemorySegment vfs) {
+    databasePointer.set(ValueLayout.ADDRESS, 0, openedHandle);
+    return 0;
+  }
+
+  @SuppressWarnings("unused")
+  private static int failOpenWithDatabaseHandle(
+      MemorySegment openedHandle,
+      MemorySegment filename,
+      MemorySegment databasePointer,
+      int flags,
+      MemorySegment vfs) {
+    databasePointer.set(ValueLayout.ADDRESS, 0, openedHandle);
+    return 14;
+  }
+
   private static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {
+    if (Files.notExists(keyPath)) {
+      SqliteBookKeyFileGenerator.generate(keyPath);
+    } else {
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+    }
     Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
-    Files.setPosixFilePermissions(
-        keyPath, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
   }
 
   private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action)

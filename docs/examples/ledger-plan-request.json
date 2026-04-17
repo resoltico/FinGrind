@@ -1,0 +1,70 @@
+{
+  "planId": "plan-demo-1",
+  "executionPolicy": {
+    "journalLevel": "NORMAL",
+    "failurePolicy": "HALT_ON_FIRST_FAILURE",
+    "transactionMode": "ATOMIC"
+  },
+  "steps": [
+    {
+      "stepId": "initialize-book",
+      "kind": "open-book"
+    },
+    {
+      "stepId": "declare-cash",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "normalBalance": "DEBIT"
+      }
+    },
+    {
+      "stepId": "declare-revenue",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "2000",
+        "accountName": "Revenue",
+        "normalBalance": "CREDIT"
+      }
+    },
+    {
+      "stepId": "post-journal",
+      "kind": "post-entry",
+      "posting": {
+        "effectiveDate": "2026-04-17",
+        "lines": [
+          {
+            "accountCode": "1000",
+            "side": "DEBIT",
+            "currencyCode": "EUR",
+            "amount": "10.00"
+          },
+          {
+            "accountCode": "2000",
+            "side": "CREDIT",
+            "currencyCode": "EUR",
+            "amount": "10.00"
+          }
+        ],
+        "provenance": {
+          "actorId": "operator-1",
+          "actorType": "USER",
+          "commandId": "command-1",
+          "idempotencyKey": "idem-demo-1",
+          "causationId": "cause-1"
+        }
+      }
+    },
+    {
+      "stepId": "assert-cash-balance",
+      "kind": "assert-account-balance",
+      "assertion": {
+        "accountCode": "1000",
+        "currencyCode": "EUR",
+        "netAmount": "10.00",
+        "balanceSide": "DEBIT"
+      }
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "status": "committed",
+  "payload": {
+    "planId": "plan-demo-1",
+    "status": "SUCCEEDED",
+    "journal": {
+      "planId": "plan-demo-1",
+      "status": "SUCCEEDED",
+      "startedAt": "2026-04-17T05:57:48.222783Z",
+      "finishedAt": "2026-04-17T05:57:48.332914Z",
+      "steps": [
+        {
+          "stepId": "initialize-book",
+          "operationId": "OPEN_BOOK",
+          "status": "SUCCEEDED",
+          "startedAt": "2026-04-17T05:57:48.309595Z",
+          "finishedAt": "2026-04-17T05:57:48.313722Z",
+          "facts": [
+            {
+              "name": "initializedAt",
+              "value": "2026-04-17T05:57:48.310358Z"
+            }
+          ],
+          "failure": null
+        },
+        {
+          "stepId": "declare-cash",
+          "operationId": "DECLARE_ACCOUNT",
+          "status": "SUCCEEDED",
+          "startedAt": "2026-04-17T05:57:48.313739Z",
+          "finishedAt": "2026-04-17T05:57:48.315839Z",
+          "facts": [
+            {
+              "name": "accountCode",
+              "value": "1000"
+            },
+            {
+              "name": "normalBalance",
+              "value": "DEBIT"
+            },
+            {
+              "name": "active",
+              "value": "true"
+            }
+          ],
+          "failure": null
+        },
+        {
+          "stepId": "declare-revenue",
+          "operationId": "DECLARE_ACCOUNT",
+          "status": "SUCCEEDED",
+          "startedAt": "2026-04-17T05:57:48.315843Z",
+          "finishedAt": "2026-04-17T05:57:48.316320Z",
+          "facts": [
+            {
+              "name": "accountCode",
+              "value": "2000"
+            },
+            {
+              "name": "normalBalance",
+              "value": "CREDIT"
+            },
+            {
+              "name": "active",
+              "value": "true"
+            }
+          ],
+          "failure": null
+        },
+        {
+          "stepId": "post-journal",
+          "operationId": "POST_ENTRY",
+          "status": "SUCCEEDED",
+          "startedAt": "2026-04-17T05:57:48.316323Z",
+          "finishedAt": "2026-04-17T05:57:48.324512Z",
+          "facts": [
+            {
+              "name": "postingId",
+              "value": "019d9a04-54a1-7f82-a5a5-f3c9ec7fd0ca"
+            },
+            {
+              "name": "idempotencyKey",
+              "value": "idem-demo-1"
+            },
+            {
+              "name": "effectiveDate",
+              "value": "2026-04-17"
+            },
+            {
+              "name": "recordedAt",
+              "value": "2026-04-17T05:57:48.320223Z"
+            }
+          ],
+          "failure": null
+        },
+        {
+          "stepId": "assert-cash-balance",
+          "operationId": "EXECUTE_PLAN",
+          "status": "SUCCEEDED",
+          "startedAt": "2026-04-17T05:57:48.324517Z",
+          "finishedAt": "2026-04-17T05:57:48.331692Z",
+          "facts": [
+            {
+              "name": "accountCode",
+              "value": "1000"
+            },
+            {
+              "name": "bucketCount",
+              "value": "1"
+            },
+            {
+              "name": "currencyCode",
+              "value": "EUR"
+            },
+            {
+              "name": "debitTotal",
+              "value": "10"
+            },
+            {
+              "name": "creditTotal",
+              "value": "0"
+            },
+            {
+              "name": "netAmount",
+              "value": "10"
+            },
+            {
+              "name": "balanceSide",
+              "value": "DEBIT"
+            }
+          ],
+          "failure": null
+        }
+      ]
+    }
+  }
+}

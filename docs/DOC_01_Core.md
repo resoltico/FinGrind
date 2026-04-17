@@ -1,14 +1,154 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: CORE
-updated: "2026-04-13"
+updated: "2026-04-17"
 route:
-  keywords: [fingrind, core, journal, money, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
-  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind"]
+  keywords: [fingrind, core, protocol, operation-catalog, journal, money, positive-money, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
+  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind", "where do the core accounting invariants live"]
 ---
 
 # Core API Reference
+
+## `ProtocolCatalog`
+
+`ProtocolCatalog` is the contract-owned registry for public operation and model metadata.
+
+```java
+public final class ProtocolCatalog
+```
+
+- Purpose: own operation ids, aliases, display labels, execution modes, summaries, help usage,
+  quick-start examples, hard book-model facts, preflight facts, currency facts, and shared status
+  lists before executor or CLI rendering
+- Surface: `operations()`, `operation(...)`, `operationName(...)`, `findByToken(...)`,
+  `operationNames(...)`, and global fact accessors
+- Contract: CLI parsing, `help`, `capabilities`, rejection text, paging defaults, docs linting, and
+  Jazzer support consume this registry instead of reauthoring command ids
+
+## `ProtocolOperation`
+
+`ProtocolOperation` is one structured command descriptor in the contract protocol catalog.
+
+```java
+public record ProtocolOperation(
+    OperationId id,
+    OperationCategory category,
+    String displayLabel,
+    List<String> aliases,
+    List<String> options,
+    ExecutionMode executionMode,
+    String usage,
+    String analysisSummary,
+    List<String> examples)
+```
+
+- Purpose: keep operation metadata machine-readable before it is serialized by `MachineContract`
+- Validation: rejects `null` fields and defensively copies list fields
+
+## `OperationId`
+
+`OperationId` is the canonical enum of public FinGrind operation identifiers.
+
+```java
+public enum OperationId
+```
+
+- Members: `HELP`, `VERSION`, `CAPABILITIES`, `PRINT_REQUEST_TEMPLATE`, `PRINT_PLAN_TEMPLATE`,
+  `GENERATE_BOOK_KEY_FILE`, `OPEN_BOOK`, `REKEY_BOOK`, `DECLARE_ACCOUNT`, `INSPECT_BOOK`,
+  `LIST_ACCOUNTS`, `GET_POSTING`, `LIST_POSTINGS`, `ACCOUNT_BALANCE`, `EXECUTE_PLAN`,
+  `PREFLIGHT_ENTRY`, `POST_ENTRY`
+- Surface: `wireName()` returns the stable CLI and wire identifier
+
+## `OperationCategory`
+
+`OperationCategory` groups public operations for the capabilities surface.
+
+```java
+public enum OperationCategory {
+  DISCOVERY,
+  ADMINISTRATION,
+  QUERY,
+  WRITE
+}
+```
+
+- Purpose: drive `capabilities.discoveryCommands`, `administrationCommands`, `queryCommands`, and
+  `writeCommands` from one enum-backed catalog
+
+## `ExecutionMode`
+
+`ExecutionMode` describes the public output mode for one operation.
+
+```java
+public enum ExecutionMode
+```
+
+- Members: `JSON_ENVELOPE`, `RAW_JSON`
+- Surface: `wireValue()` returns values such as `json-envelope` and `raw-json`
+
+## `ProtocolLimits`
+
+`ProtocolLimits` owns shared public query limits.
+
+```java
+public final class ProtocolLimits
+```
+
+- Constants: `PAGE_LIMIT_MIN = 1`, `PAGE_LIMIT_MAX = 200`, `DEFAULT_PAGE_LIMIT = 50`,
+  `PAGE_OFFSET_MIN = 0`, `DEFAULT_PAGE_OFFSET = 0`
+- Consumers: contract query models, CLI argument defaults, help rendering, and Jazzer support
+
+## `ProtocolOptions`
+
+`ProtocolOptions` owns canonical public CLI option spellings.
+
+```java
+public final class ProtocolOptions
+```
+
+- Purpose: prevent parser, help, request-input descriptors, and passphrase-source models from
+  carrying divergent option strings
+- Surface: constants for book, passphrase, request, posting, account, date, limit, and offset
+  options plus helpers for rendered passphrase and pagination syntax
+
+## `BookModelFacts`
+
+`BookModelFacts` is the structured contract-owned description of the protected-book model.
+
+```java
+public record BookModelFacts(
+    String boundary,
+    String entityScope,
+    String filesystem,
+    String credential,
+    String initialization,
+    String accountRegistry,
+    String migration,
+    String currencyScope)
+```
+
+- Purpose: keep hard book-model limitations in core before `help` or `capabilities` render them
+
+## `CurrencyFacts`
+
+`CurrencyFacts` is the structured contract-owned description of currency support.
+
+```java
+public record CurrencyFacts(String scope, String multiCurrencyStatus, String description)
+```
+
+- Purpose: publish the current single-currency-per-entry model without duplicating text in CLI code
+
+## `PreflightFacts`
+
+`PreflightFacts` is the structured contract-owned description of preflight semantics.
+
+```java
+public record PreflightFacts(String semantics, boolean commitGuarantee, String description)
+```
+
+- Purpose: publish advisory preflight behavior once for help, capabilities, and user-facing docs
 
 ## `AccountCode`
 
@@ -129,7 +269,7 @@ public record IdempotencyKey(String value)
 
 ## `JournalEntry`
 
-`JournalEntry` is the balanced journal grammar that crosses the application write boundary.
+`JournalEntry` is the balanced journal grammar that crosses the contract write boundary.
 
 ```java
 public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
@@ -137,7 +277,8 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
 
 - Purpose: carry the accounting body of one posting request
 - Normalization: defensively copies `lines`
-- Validation: rejects `null` effective date, empty lines, mixed currencies, and unbalanced totals
+- Validation: rejects `null` effective date, empty lines, entries that do not contain both a debit
+  and a credit side, mixed currencies, and unbalanced totals
 - Contract impact: the CLI machine contract advertises this invariant as
   `currencyModel.scope = single-currency-per-entry`
 
@@ -146,11 +287,13 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
 `JournalLine` is one debit or credit line inside a journal entry.
 
 ```java
-public record JournalLine(AccountCode accountCode, EntrySide side, Money amount)
+public record JournalLine(AccountCode accountCode, EntrySide side, PositiveMoney amount)
 ```
 
 - Purpose: keep account, side, and amount explicit on every line
-- Validation: rejects `null` fields and zero monetary amount
+- Compatibility: accepts a general `Money` value through a convenience overload, then upgrades it
+  into `PositiveMoney`
+- Validation: rejects `null` fields and requires a strictly positive amount
 
 ## `JournalLine.EntrySide`
 
@@ -167,7 +310,7 @@ public enum EntrySide {
 
 ## `Money`
 
-`Money` is an exact decimal amount in one declared currency.
+`Money` is an exact non-negative decimal amount in one declared currency.
 
 ```java
 public record Money(CurrencyCode currencyCode, BigDecimal amount)
@@ -176,6 +319,20 @@ public record Money(CurrencyCode currencyCode, BigDecimal amount)
 - Purpose: preserve exact decimal semantics without floating-point behavior
 - Normalization: strips trailing zeroes and normalizes negative scale to zero
 - Validation: rejects `null` fields and negative amounts
+- Usage: reused by balance and reporting surfaces that legitimately need zero-valued totals
+
+## `PositiveMoney`
+
+`PositiveMoney` is an exact strictly positive amount in one declared currency.
+
+```java
+public record PositiveMoney(Money value)
+```
+
+- Purpose: make the journal-line positivity invariant structural instead of splitting it between
+  `Money` and `JournalLine`
+- Construction: accepts either a fully formed `Money` value or direct currency-and-amount inputs
+- Validation: rejects zero-valued amounts with the canonical journal-line error
 
 ## `NormalBalance`
 

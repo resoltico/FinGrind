@@ -1,26 +1,90 @@
 ---
 afad: "3.5"
-version: "0.14.0"
-domain: APPLICATION
-updated: "2026-04-14"
+version: "0.15.0"
+domain: CONTRACT_EXECUTOR
+updated: "2026-04-17"
 route:
-  keywords: [fingrind, application, open-book, declare-account, list-accounts, post-entry, preflight, rejection, committed, uuid-v7]
-  questions: ["how does the application boundary work in fingrind", "what results can posting return in fingrind", "how are posting ids generated in fingrind"]
+  keywords: [fingrind, contract, executor, open-book, declare-account, inspect-book, list-postings, account-balance, preflight, rejection, uuid-v7, machine-contract, protocol-catalog, ledger-plan]
+  questions: ["how does the contract boundary work in fingrind", "what query models exist in fingrind", "how are posting ids generated in fingrind", "where does execute-plan live in fingrind"]
 ---
 
-# Application API Reference
+# Contract And Executor API Reference
+
+This file documents the public `contract` module plus the `executor` services that consume those
+types. `contract` owns public request/result models, protocol metadata, machine contract
+descriptors, ledger plans, and journals. `executor` owns the services and narrow seams that act on
+those public types.
+
+## `ProtocolCatalog`
+
+`ProtocolCatalog` is the contract-owned registry for public FinGrind operation metadata and hard
+book-model facts.
+
+```java
+public final class ProtocolCatalog
+```
+
+- Purpose: keep operation ids, aliases, display labels, usage lines, execution modes, summaries,
+  examples, paging limits, and hard bookkeeping limitations in one typed owner
+- Consumers: CLI parsing, `help`, `capabilities`, `MachineContract`, contract lint tests, docs, and
+  AI-agent templates
+
+## `ProtocolOperation`
+
+`ProtocolOperation` is one structured public operation descriptor.
+
+```java
+public record ProtocolOperation(...)
+```
+
+- Purpose: keep command metadata machine-readable before any renderer serializes it
+
+## `OperationId`
+
+`OperationId` is the canonical enum of public FinGrind operation identifiers.
+
+```java
+public enum OperationId
+```
+
+- Members include discovery (`PRINT_REQUEST_TEMPLATE`, `PRINT_PLAN_TEMPLATE`), administration
+  (`OPEN_BOOK`, `REKEY_BOOK`, `DECLARE_ACCOUNT`), query (`INSPECT_BOOK`, `LIST_ACCOUNTS`,
+  `GET_POSTING`, `LIST_POSTINGS`, `ACCOUNT_BALANCE`), and write (`EXECUTE_PLAN`,
+  `PREFLIGHT_ENTRY`, `POST_ENTRY`) operations
+
+## `ProtocolLimits` And `ProtocolOptions`
+
+`ProtocolLimits` and `ProtocolOptions` keep shared paging bounds and canonical CLI option strings
+out of ad hoc renderers.
+
+```java
+public final class ProtocolLimits
+public final class ProtocolOptions
+```
 
 ## `BookAdministrationService`
 
-`BookAdministrationService` owns explicit book initialization and account-registry commands.
+`BookAdministrationService` owns explicit book initialization and account-registry writes.
 
 ```java
 public final class BookAdministrationService
 ```
 
-- Constructor: requires `BookSession` and `Clock`
-- Surface: `openBook()`, `declareAccount(DeclareAccountCommand)`, `listAccounts()`
+- Constructor: requires `BookAdministrationSession` and `Clock`
+- Surface: `openBook()`, `declareAccount(DeclareAccountCommand)`
 - Policy: stamps `initializedAt` and `declaredAt` from the application clock instead of trusting caller input
+
+## `BookQueryService`
+
+`BookQueryService` owns read-only inspection, listing, posting-history, and balance workflows.
+
+```java
+public final class BookQueryService
+```
+
+- Constructor: requires `BookQuerySession`
+- Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`, `accountBalance(...)`
+- Policy: maps unopened books, unknown query accounts, and missing posting ids into explicit query rejections
 
 ## `DeclareAccountCommand`
 
@@ -33,12 +97,12 @@ public record DeclareAccountCommand(
     NormalBalance normalBalance)
 ```
 
-- Purpose: keep account-registry writes typed at the application boundary
+- Purpose: keep account-registry writes typed at the contract boundary
 - Validation: rejects `null` fields
 
 ## `DeclaredAccount`
 
-`DeclaredAccount` is the durable account-registry projection returned by Phase 2 surfaces.
+`DeclaredAccount` is the durable account-registry projection returned by administration and query surfaces.
 
 ```java
 public record DeclaredAccount(
@@ -74,6 +138,59 @@ public sealed interface DeclareAccountResult
 - Variants: `Declared`, `Rejected`
 - Purpose: return the current declared-account shape or a deterministic refusal
 
+## `RekeyBookResult`
+
+`RekeyBookResult` is the closed result family for explicit book-passphrase rotation.
+
+```java
+public sealed interface RekeyBookResult
+```
+
+- Variants: `Rekeyed`, `Rejected`
+- Purpose: keep passphrase rotation explicit at the contract boundary instead of leaking SQLite-local types
+
+## `BookInspection`
+
+`BookInspection` is the machine-readable lifecycle and compatibility snapshot returned by `inspect-book`.
+
+```java
+public record BookInspection(
+    Status status,
+    boolean initialized,
+    boolean compatibleWithCurrentBinary,
+    boolean canInitializeWithOpenBook,
+    @Nullable Integer applicationId,
+    @Nullable Integer detectedBookFormatVersion,
+    int supportedBookFormatVersion,
+    String migrationPolicy,
+    @Nullable Instant initializedAt)
+```
+
+- Purpose: let callers distinguish missing, blank, initialized, foreign, unsupported-version, and incomplete books before mutating them
+- Policy: exposes current hard-break compatibility state without implying a migration layer exists
+
+## `ListAccountsQuery`
+
+`ListAccountsQuery` is the paginated read model for the declared-account registry.
+
+```java
+public record ListAccountsQuery(int limit, int offset)
+```
+
+- Purpose: make account-registry paging explicit instead of leaving `list-accounts` unbounded
+- Validation: requires `limit` between `1` and `200`, and non-negative `offset`
+
+## `AccountPage`
+
+`AccountPage` is one stable page of declared accounts.
+
+```java
+public record AccountPage(List<DeclaredAccount> accounts, int limit, int offset, boolean hasMore)
+```
+
+- Purpose: keep paging metadata coupled to the returned account slice
+- Validation: defensively copies `accounts`, requires positive `limit`, and requires non-negative `offset`
+
 ## `ListAccountsResult`
 
 `ListAccountsResult` is the closed result family for `list-accounts`.
@@ -83,7 +200,111 @@ public sealed interface ListAccountsResult
 ```
 
 - Variants: `Listed`, `Rejected`
-- Purpose: keep the account-registry read surface explicit at the application layer
+- Purpose: keep paged account-registry reads explicit at the contract layer
+
+## `GetPostingResult`
+
+`GetPostingResult` is the closed result family for committed-posting lookup.
+
+```java
+public sealed interface GetPostingResult
+```
+
+- Variants: `Found`, `Rejected`
+- Purpose: distinguish a found committed posting from query-side deterministic rejection
+
+## `ListPostingsQuery`
+
+`ListPostingsQuery` is the filtered paging model for committed posting history.
+
+```java
+public record ListPostingsQuery(
+    Optional<AccountCode> accountCode,
+    Optional<LocalDate> effectiveDateFrom,
+    Optional<LocalDate> effectiveDateTo,
+    int limit,
+    int offset)
+```
+
+- Purpose: keep history filtering and pagination typed at the contract boundary
+- Validation: requires a sensible date range plus `limit` and `offset` bounds
+
+## `PostingPage`
+
+`PostingPage` is one stable page of committed postings.
+
+```java
+public record PostingPage(List<PostingFact> postings, int limit, int offset, boolean hasMore)
+```
+
+- Purpose: couple paging metadata to one posting-history slice
+- Validation: defensively copies `postings` and validates paging bounds
+
+## `ListPostingsResult`
+
+`ListPostingsResult` is the closed result family for posting-history queries.
+
+```java
+public sealed interface ListPostingsResult
+```
+
+- Variants: `Listed`, `Rejected`
+- Purpose: keep posting-history reads explicit instead of overloading `null` or exceptions
+
+## `AccountBalanceQuery`
+
+`AccountBalanceQuery` is the grouped-balance request for one declared account.
+
+```java
+public record AccountBalanceQuery(
+    AccountCode accountCode,
+    Optional<LocalDate> effectiveDateFrom,
+    Optional<LocalDate> effectiveDateTo)
+```
+
+- Purpose: request grouped per-currency totals for one account, optionally within an effective-date window
+- Validation: rejects `null` fields and invalid date-range order
+
+## `CurrencyBalance`
+
+`CurrencyBalance` is one per-currency grouped balance bucket.
+
+```java
+public record CurrencyBalance(
+    Money debitTotal,
+    Money creditTotal,
+    Money netAmount,
+    NormalBalance balanceSide)
+```
+
+- Purpose: report grouped debit, credit, and net totals while preserving zero-valued totals as `Money`
+- Validation: rejects `null` fields
+
+## `AccountBalanceSnapshot`
+
+`AccountBalanceSnapshot` is the read-model payload for `account-balance`.
+
+```java
+public record AccountBalanceSnapshot(
+    DeclaredAccount account,
+    Optional<LocalDate> effectiveDateFrom,
+    Optional<LocalDate> effectiveDateTo,
+    List<CurrencyBalance> balances)
+```
+
+- Purpose: keep account identity, optional date filters, and grouped balances together in one response payload
+- Validation: rejects `null` fields and defensively copies `balances`
+
+## `AccountBalanceResult`
+
+`AccountBalanceResult` is the closed result family for grouped-balance queries.
+
+```java
+public sealed interface AccountBalanceResult
+```
+
+- Variants: `Reported`, `Rejected`
+- Purpose: keep grouped-balance reads explicit at the contract boundary
 
 ## `BookAdministrationRejection`
 
@@ -96,28 +317,93 @@ public sealed interface BookAdministrationRejection
 - Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`, `NormalBalanceConflict`
 - Purpose: distinguish lifecycle and registry-state refusals from malformed requests or runtime failure
 
+## `BookQueryRejection`
+
+`BookQueryRejection` is the closed family of deterministic query-side refusals.
+
+```java
+public sealed interface BookQueryRejection
+```
+
+- Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
+- Purpose: keep query-side misses distinct from malformed input and runtime failure
+
 ## `MachineContract`
 
-`MachineContract` owns the canonical typed machine descriptors for the CLI discovery surface.
+`MachineContract` assembles the public discovery DTOs from contract-owned protocol metadata.
 
 ```java
 public final class MachineContract
 ```
 
-- Purpose: keep `help`, `version`, `capabilities`, and `print-request-template` sourced from one
-  application-owned contract instead of CLI-local map assembly
-- Surface: `help(...)`, `capabilities(...)`, `version(...)`, and `requestTemplate(Clock)`
-- Shared constants: exports canonical request-field names so `CliRequestReader` and the
-  `capabilities` payload stay aligned
-- Live vocabularies: derives enum vocabularies from `JournalLine.EntrySide`, `ActorType`, and
-  `NormalBalance`
-- Live rejections: derives rejection descriptors from the sealed `BookAdministrationRejection` and
-  `PostingRejection` families instead of a hand-maintained CLI list
-- Explicit policy: publishes `preflightSemantics = advisory` plus
-  `currencyModel.scope = single-currency-per-entry`
-- Distribution contract: publishes `runtimeDistribution`, `publicCliDistribution`,
-  `supportedPublicCliBundleTargets`, and `unsupportedPublicCliOperatingSystems` so agents can
-  discover the real public runtime surface from `capabilities`
+- Purpose: render `help`, `version`, `capabilities`, and `print-request-template` from typed
+  contract state plus `ProtocolCatalog` operation, model, preflight, currency, status, and limit
+  facts
+- Live vocabularies: derives enum vocabularies from `JournalLine.EntrySide`, `ActorType`, and `NormalBalance`
+- Live rejections: derives rejection descriptors from administration, query, and posting sealed families
+- Explicit policy: CLI code renders this payload but does not reauthor operation ids, summaries,
+  display labels, execution modes, or hard book-model limitation text
+
+## `LedgerExecutionPolicy`
+
+`LedgerExecutionPolicy` is the explicit execution contract carried by every ledger plan.
+
+```java
+public record LedgerExecutionPolicy(
+    LedgerJournalLevel journalLevel,
+    LedgerFailurePolicy failurePolicy,
+    LedgerTransactionMode transactionMode)
+```
+
+- Purpose: keep plan execution rules machine-readable before the executor runs them
+
+## `LedgerPlan`
+
+`LedgerPlan` is the canonical AI-agent workflow document executed by `execute-plan`.
+
+```java
+public record LedgerPlan(
+    String planId, LedgerExecutionPolicy executionPolicy, List<LedgerStep> steps)
+```
+
+- Purpose: bundle one ordered workflow with stable per-step ids and one explicit execution policy
+- Validation: rejects blank `planId`, empty step lists, and duplicate `stepId` values
+
+## `LedgerStep`
+
+`LedgerStep` is the sealed family of executable plan steps.
+
+```java
+public sealed interface LedgerStep
+```
+
+- Families: `OpenBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
+  `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, and `Assert`
+- Purpose: keep plan execution exhaustively typed instead of routing through unstructured maps
+
+## `LedgerAssertion`
+
+`LedgerAssertion` is the sealed family of first-class postcondition checks for AI-agent workflows.
+
+```java
+public sealed interface LedgerAssertion
+```
+
+- Families: `AccountDeclared`, `AccountActive`, `PostingExists`, `AccountBalanceEquals`
+- Purpose: let one plan assert intended outcomes without inventing CLI-local test commands
+
+## `LedgerJournalEntry`, `LedgerExecutionJournal`, And `LedgerPlanResult`
+
+These contract types carry the durable execution record returned by `execute-plan`.
+
+```java
+public record LedgerJournalEntry(...)
+public record LedgerExecutionJournal(...)
+public record LedgerPlanResult(...)
+```
+
+- Purpose: return one plan-level result plus one per-step journal that an agent can inspect safely
+- Status model: plan and step statuses are sealed through enums instead of free-form strings
 
 ## `PostEntryCommand`
 
@@ -135,9 +421,34 @@ public record PostEntryCommand(
 - Normalization: `null` reversal becomes `Optional.empty()`
 - Validation: rejects `null` journal entry, request provenance, and source channel
 
+## `PostingRequest`
+
+`PostingRequest` is the minimal posting shape shared by preflight commands and durable commit drafts.
+
+```java
+public interface PostingRequest
+```
+
+- Surface: `journalEntry()`, `reversalReference()`, `requestProvenance()`
+- Purpose: let application preflight and transactional commit validation share the same rules without duplicating request-shape assumptions
+
+## `PostingDraft`
+
+`PostingDraft` is the commit-ready posting model that defers `postingId` allocation until the store accepts the write.
+
+```java
+public record PostingDraft(
+    JournalEntry journalEntry,
+    Optional<ReversalReference> reversalReference,
+    CommittedProvenance provenance)
+```
+
+- Purpose: separate accepted commit metadata from durable id assignment
+- Surface: `materialize(PostingId)` creates the final `PostingFact`
+
 ## `PostEntryResult`
 
-`PostEntryResult` is the closed result family returned by the application write boundary.
+`PostEntryResult` is the closed result family returned by the contract write boundary.
 
 ```java
 public sealed interface PostEntryResult
@@ -145,50 +456,6 @@ public sealed interface PostEntryResult
 
 - Variants: `PreflightAccepted`, `Committed`, `Rejected`
 - Purpose: keep preflight success, commit success, and deterministic rejection explicit
-
-## `PostEntryResult.PreflightAccepted`
-
-`PreflightAccepted` is the success variant for a validated request that has not been committed yet.
-
-```java
-public record PreflightAccepted(
-    IdempotencyKey idempotencyKey,
-    LocalDate effectiveDate)
-    implements PostEntryResult
-```
-
-- Purpose: confirm that a later commit attempt is admissible against current state
-- Validation: rejects `null` fields
-
-## `PostEntryResult.Committed`
-
-`Committed` is the success variant for one durably stored posting fact.
-
-```java
-public record Committed(
-    PostingId postingId,
-    IdempotencyKey idempotencyKey,
-    LocalDate effectiveDate,
-    Instant recordedAt)
-    implements PostEntryResult
-```
-
-- Purpose: report durable write success with posting identity and commit timestamp
-- Validation: rejects `null` fields
-
-## `PostEntryResult.Rejected`
-
-`Rejected` is the variant for a request that did not cross the durable write boundary.
-
-```java
-public record Rejected(
-    IdempotencyKey idempotencyKey,
-    PostingRejection rejection)
-    implements PostEntryResult
-```
-
-- Purpose: return a deterministic domain rejection without throwing
-- Validation: rejects `null` idempotency key and rejection
 
 ## `PostingApplicationService`
 
@@ -198,10 +465,25 @@ public record Rejected(
 public final class PostingApplicationService
 ```
 
-- Constructor: requires `BookSession`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `PostingBookSession`, `PostingIdGenerator`, and `Clock`
 - Surface: exposes `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
-- Policy: rejects unopened books, unknown accounts, inactive accounts, duplicate idempotency, missing reversal targets, duplicate reversals, and non-negating reversals deterministically
-- Commit path: creates one committed `PostingFact`, stamps `CommittedProvenance`, generates a fresh `PostingId`, and maps `BookSession` commit outcomes into `PostEntryResult`
+- Policy: reuses shared posting validation for lifecycle, account-state, idempotency, and reversal-lineage checks
+- Commit path: stamps `CommittedProvenance`, builds a `PostingDraft`, and lets the store allocate `postingId` only after commit acceptance
+
+## `LedgerPlanService`
+
+`LedgerPlanService` owns atomic multi-step execution for `execute-plan`.
+
+```java
+public final class LedgerPlanService
+```
+
+- Constructor: requires `LedgerPlanSession`, `PostingIdGenerator`, and `Clock`
+- Surface: `execute(LedgerPlan)`
+- Policy: runs the whole plan inside one durable transaction, rolls back on the first rejected
+  step or failed assertion, and returns the resulting `LedgerPlanResult`
+- Step model: reuses the same administration, query, posting, and assertion logic as the
+  single-command surface instead of inventing a second rules engine
 
 ## `PostingIdGenerator`
 
@@ -213,7 +495,7 @@ public interface PostingIdGenerator {
 }
 ```
 
-- Purpose: keep posting-id generation explicit and injectable at the application boundary
+- Purpose: keep posting-id generation explicit and injectable at the executor boundary
 
 ## `UuidV7PostingIdGenerator`
 
@@ -224,8 +506,6 @@ public final class UuidV7PostingIdGenerator implements PostingIdGenerator
 ```
 
 - Purpose: generate time-ordered UUID v7 posting identities without adding an external dependency
-- Timestamp source: uses millisecond wall-clock time for the 48-bit UUID v7 timestamp prefix
-- Randomness: fills the remaining UUID bits from a cryptographically secure random source in production
 - Production default: the CLI's default SQLite workflow uses this generator for committed `postingId` values
 
 ## `PostingRejection`
@@ -236,5 +516,7 @@ public final class UuidV7PostingIdGenerator implements PostingIdGenerator
 public sealed interface PostingRejection
 ```
 
-- Variants: `BookNotInitialized`, `UnknownAccount`, `InactiveAccount`, `DuplicateIdempotencyKey`, `ReversalReasonRequired`, `ReversalReasonForbidden`, `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
-- Purpose: keep validly parsed but inadmissible requests machine-distinguishable
+- Variants: `BookNotInitialized`, `AccountStateViolations`, `DuplicateIdempotencyKey`,
+  `ReversalReasonRequired`, `ReversalReasonForbidden`, `ReversalTargetNotFound`,
+  `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
+- Purpose: keep validly parsed but inadmissible posting requests machine-distinguishable

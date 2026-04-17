@@ -1,18 +1,22 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.application.BookAdministrationService;
-import dev.erst.fingrind.application.BookSession;
-import dev.erst.fingrind.application.DeclareAccountCommand;
-import dev.erst.fingrind.application.DeclareAccountResult;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.ListAccountsResult;
-import dev.erst.fingrind.application.OpenBookResult;
-import dev.erst.fingrind.application.PostEntryCommand;
-import dev.erst.fingrind.application.PostingIdGenerator;
+import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.BookAdministrationSession;
+import dev.erst.fingrind.executor.BookQueryService;
+import dev.erst.fingrind.executor.BookQuerySession;
+import dev.erst.fingrind.contract.DeclareAccountCommand;
+import dev.erst.fingrind.contract.DeclareAccountResult;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.ListAccountsResult;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.executor.PostingIdGenerator;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -49,7 +53,8 @@ public final class CliFuzzSupport {
   }
 
   /** Creates the fixed-clock administration service used by lifecycle-aware harnesses. */
-  public static BookAdministrationService administrationService(BookSession bookSession) {
+  public static BookAdministrationService administrationService(
+      BookAdministrationSession bookSession) {
     Objects.requireNonNull(bookSession, "bookSession must not be null");
     return new BookAdministrationService(bookSession, fixedClock());
   }
@@ -114,13 +119,23 @@ public final class CliFuzzSupport {
   }
 
   /** Lists accounts and fails fast if the registry surface is not in the expected state. */
-  public static List<DeclaredAccount> listAccounts(BookAdministrationService administrationService) {
-    Objects.requireNonNull(administrationService, "administrationService must not be null");
-    ListAccountsResult result = administrationService.listAccounts();
-    if (!(result instanceof ListAccountsResult.Listed listed)) {
-      throw new IllegalStateException("Lifecycle setup failed to list declared accounts.");
+  public static List<DeclaredAccount> listAccounts(BookQuerySession bookSession) {
+    Objects.requireNonNull(bookSession, "bookSession must not be null");
+    List<DeclaredAccount> accounts = new java.util.ArrayList<>();
+    int offset = 0;
+    while (true) {
+      ListAccountsResult result =
+          new BookQueryService(bookSession)
+              .listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, offset));
+      if (!(result instanceof ListAccountsResult.Listed listed)) {
+        throw new IllegalStateException("Lifecycle setup failed to list declared accounts.");
+      }
+      accounts.addAll(listed.page().accounts());
+      if (!listed.page().hasMore()) {
+        return List.copyOf(accounts);
+      }
+      offset += listed.page().accounts().size();
     }
-    return listed.accounts();
   }
 
   private static DeclaredAccount requireDeclaredAccount(DeclareAccountResult result) {

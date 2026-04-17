@@ -1,6 +1,7 @@
 package dev.erst.fingrind.buildlogic
 
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.diffplug.spotless.LineEnding
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
@@ -30,6 +31,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             }
 
             configure<SpotlessExtension> {
+                lineEndings = LineEnding.UNIX
                 format("projectFiles") {
                     target(
                         ".gitattributes",

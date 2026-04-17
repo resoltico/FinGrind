@@ -1,12 +1,16 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import dev.erst.fingrind.buildlogic.CreateTarGzArchiveTask
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
 import dev.erst.fingrind.buildlogic.DistributionSupport
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
+import org.gradle.api.GradleException
+import org.gradle.api.attributes.LibraryElements
+import org.gradle.api.attributes.Usage
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.application.CreateStartScripts
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 
@@ -16,11 +20,12 @@ plugins {
     alias(libs.plugins.shadow)
 }
 
-description = "CLI transport adapter for the FinGrind application boundary"
+description = "CLI transport adapter for the FinGrind execution boundary"
 
 dependencies {
-    implementation(project(":application"))
+    implementation(project(":contract"))
     implementation(project(":core"))
+    implementation(project(":executor"))
     implementation(project(":sqlite"))
     implementation(libs.jackson.databind)
     testImplementation(libs.junit.jupiter)
@@ -38,6 +43,17 @@ val bundleClassifier =
     )
 val bundleName = bundleClassifier.map { classifier -> "fingrind-${project.version}-$classifier" }
 val currentJavaHomeDirectory = layout.dir(providers.provider { file(System.getProperty("java.home")) })
+val compileOnlyConfiguration = configurations.named("compileOnly")
+val jdepsSupportConfiguration =
+    configurations.create("jdepsSupport") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        extendsFrom(compileOnlyConfiguration.get())
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.JAR))
+        }
+    }
 val shadowJarTask = tasks.named<ShadowJar>("shadowJar")
 val shadowJarArchiveFile = shadowJarTask.flatMap { it.archiveFile }
 val managedSqliteLibraryPath =
@@ -46,22 +62,34 @@ val managedSqliteLibraryPath =
             "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}"
         },
     )
+val dockerJdepsSupportDirectory = layout.buildDirectory.dir("docker/jdeps")
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
 val distributionDirectory = layout.buildDirectory.dir("distributions")
-val bundleArchiveFileName = bundleName.map { name -> "$name.tar.gz" }
-val bundleSha256File =
-    bundleName.flatMap { name -> layout.buildDirectory.file("distributions/$name.tar.gz.sha256") }
 val bundleClassifierValue = bundleClassifier.get()
 val bundleOperatingSystem = bundleClassifierValue.substringBefore('-')
 val bundleArchitecture = bundleClassifierValue.substringAfter('-')
+val bundleArchiveExtension =
+    providers.provider { DistributionSupport.archiveExtensionForOperatingSystemId(bundleOperatingSystem) }
+val bundleArchiveFileName = bundleName.zip(bundleArchiveExtension) { name, extension -> "$name.$extension" }
+val bundleSha256File =
+    bundleArchiveFileName.flatMap { fileName -> layout.buildDirectory.file("distributions/$fileName.sha256") }
+val hostBundleClassifier = DistributionSupport.hostClassifier()
+val bundleLauncherPath =
+    providers.provider { DistributionSupport.launcherPathForOperatingSystemId(bundleOperatingSystem) }
+val bundleLauncherCommand =
+    providers.provider { DistributionSupport.launcherCommandForOperatingSystemId(bundleOperatingSystem) }
 val bundleTemplateProperties =
     mapOf(
         "version" to project.version.toString(),
         "bundleClassifier" to bundleClassifierValue,
+        "bundleArchiveFormat" to bundleArchiveExtension.get(),
         "bundleOperatingSystem" to bundleOperatingSystem,
         "bundleArchitecture" to bundleArchitecture,
+        "bundleLauncherPath" to bundleLauncherPath.get(),
+        "bundleLauncherCommand" to bundleLauncherCommand.get(),
+        "bundleLauncherCommandJson" to DistributionSupport.jsonString(bundleLauncherCommand.get()),
         "publicBundleTargetsJson" to
             DistributionSupport.jsonStringArray(DistributionSupport.PUBLIC_CLI_BUNDLE_TARGETS),
         "unsupportedPublicOperatingSystemsJson" to
@@ -75,6 +103,14 @@ val bundleTemplateProperties =
                 DistributionSupport.UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS,
             ),
     )
+
+if (bundleClassifierValue != hostBundleClassifier) {
+    throw GradleException(
+        "FinGrind bundle builds are host-native only. Requested classifier $bundleClassifierValue " +
+            "but the current host can only build $hostBundleClassifier because the private runtime " +
+            "image and managed SQLite library are produced for the active host platform.",
+    )
+}
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
@@ -112,6 +148,19 @@ tasks.named<ShadowJar>("shadowJar") {
             "Implementation-License" to "MIT",
         )
     }
+}
+
+val stageDockerJdepsSupport =
+    tasks.register<Sync>("stageDockerJdepsSupport") {
+        group = "distribution"
+        description =
+            "Stages compile-only dependency jars required to analyze the Docker assembly input."
+        from(jdepsSupportConfiguration)
+        into(dockerJdepsSupportDirectory)
+    }
+
+tasks.named<ShadowJar>("shadowJar") {
+    finalizedBy(stageDockerJdepsSupport)
 }
 
 tasks.named<ProcessResources>("processResources") {
@@ -157,6 +206,7 @@ val writeRuntimeModuleList =
         javaHomeDirectory.set(currentJavaHomeDirectory)
         applicationJar.set(shadowJarArchiveFile)
         javaVersion.set(fingrindJavaVersion)
+        dependencyClasspath.from(jdepsSupportConfiguration)
         outputFile.set(runtimeModuleListOutputFile)
     }
 
@@ -188,7 +238,7 @@ val stageCliBundle =
         into(bundleRootDirectory)
         inputs.properties(bundleTemplateProperties)
 
-        from(layout.projectDirectory.file("src/bundle/bin/fingrind")) {
+        from(layout.projectDirectory.dir("src/bundle/bin")) {
             into("bin")
         }
         from(layout.projectDirectory.dir("src/bundle/root")) {
@@ -211,21 +261,68 @@ val stageCliBundle =
         from(rootProject.file("PATENTS.md"))
     }
 
-val bundleCliTarGz =
-    tasks.register<CreateTarGzArchiveTask>("bundleCliTarGz") {
-        group = "distribution"
-        description = "Builds the compressed self-contained FinGrind CLI bundle archive."
-        dependsOn(stageCliBundle)
-        sourceDirectory.set(bundleRootDirectory)
-        archiveFile.set(bundleName.flatMap { name -> layout.buildDirectory.file("distributions/$name.tar.gz") })
+val bundleArchiveTask: org.gradle.api.tasks.TaskProvider<out AbstractArchiveTask> =
+    if (bundleOperatingSystem == "windows") {
+        tasks.register<Zip>("bundleCliZip") {
+            group = "distribution"
+            description = "Builds the compressed self-contained FinGrind CLI bundle archive."
+            dependsOn(stageCliBundle)
+            destinationDirectory.set(distributionDirectory)
+            archiveFileName.set(bundleArchiveFileName)
+            isPreserveFileTimestamps = false
+            isReproducibleFileOrder = true
+            dirPermissions {
+                unix(493)
+            }
+            filePermissions {
+                unix(420)
+            }
+            from(bundleRootDirectory) {
+                into(bundleName)
+                eachFile {
+                    if (file.canExecute()) {
+                        permissions {
+                            unix(493)
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        tasks.register<Tar>("bundleCliTarGz") {
+            group = "distribution"
+            description = "Builds the compressed self-contained FinGrind CLI bundle archive."
+            dependsOn(stageCliBundle)
+            destinationDirectory.set(distributionDirectory)
+            archiveFileName.set(bundleArchiveFileName)
+            compression = Compression.GZIP
+            isPreserveFileTimestamps = false
+            isReproducibleFileOrder = true
+            dirPermissions {
+                unix(493)
+            }
+            filePermissions {
+                unix(420)
+            }
+            from(bundleRootDirectory) {
+                into(bundleName)
+                eachFile {
+                    if (file.canExecute()) {
+                        permissions {
+                            unix(493)
+                        }
+                    }
+                }
+            }
+        }
     }
 
 val bundleCliSha256 =
     tasks.register<WriteSha256FileTask>("bundleCliSha256") {
         group = "distribution"
         description = "Writes the SHA-256 checksum file for the FinGrind CLI bundle archive."
-        dependsOn(bundleCliTarGz)
-        inputFile.set(bundleCliTarGz.flatMap { it.archiveFile })
+        dependsOn(bundleArchiveTask)
+        inputFile.set(bundleArchiveTask.flatMap { it.archiveFile })
         outputFile.set(bundleSha256File)
     }
 
@@ -233,7 +330,7 @@ tasks.register("bundleCliArchive") {
     group = "distribution"
     description =
         "Builds the self-contained FinGrind CLI bundle archive together with its SHA-256 checksum."
-    dependsOn(bundleCliTarGz)
+    dependsOn(bundleArchiveTask)
     dependsOn(bundleCliSha256)
 }
 

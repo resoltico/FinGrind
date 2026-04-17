@@ -4,8 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -98,6 +104,545 @@ class CliArgumentsTest {
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
+    assertEquals(new ListAccountsQuery(50, 0), command.query());
+  }
+
+  @Test
+  void parse_returnsListAccountsWithPagingOptions() {
+    CliCommand.ListAccounts command =
+        assertInstanceOf(
+            CliCommand.ListAccounts.class,
+            CliArguments.parse(
+                new String[] {
+                  "list-accounts",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--limit",
+                  "25",
+                  "--offset",
+                  "75"
+                }));
+
+    assertEquals(new ListAccountsQuery(25, 75), command.query());
+  }
+
+  @Test
+  void parse_returnsInspectBookAndGetPostingForValidBookOnlyCommands() {
+    CliCommand.InspectBook inspectBook =
+        assertInstanceOf(
+            CliCommand.InspectBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "inspect-book", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                }));
+    CliCommand.GetPosting getPosting =
+        assertInstanceOf(
+            CliCommand.GetPosting.class,
+            CliArguments.parse(
+                new String[] {
+                  "get-posting",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--posting-id",
+                  "posting-1"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), inspectBook.bookAccess().bookFilePath());
+    assertEquals(new PostingId("posting-1"), getPosting.postingId());
+  }
+
+  @Test
+  void parse_returnsListPostingsWithFiltersAndPagingOptions() {
+    CliCommand.ListPostings command =
+        assertInstanceOf(
+            CliCommand.ListPostings.class,
+            CliArguments.parse(
+                new String[] {
+                  "list-postings",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--limit",
+                  "10",
+                  "--offset",
+                  "20"
+                }));
+
+    assertEquals(
+        new ListPostingsQuery(
+            java.util.Optional.of(new AccountCode("1000")),
+            java.util.Optional.of(LocalDate.parse("2026-04-01")),
+            java.util.Optional.of(LocalDate.parse("2026-04-30")),
+            10,
+            20),
+        command.query());
+  }
+
+  @Test
+  void parse_returnsAccountBalanceWithDateFilters() {
+    CliCommand.AccountBalance command =
+        assertInstanceOf(
+            CliCommand.AccountBalance.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30"
+                }));
+
+    assertEquals(
+        new AccountBalanceQuery(
+            new AccountCode("1000"),
+            java.util.Optional.of(LocalDate.parse("2026-04-01")),
+            java.util.Optional.of(LocalDate.parse("2026-04-30"))),
+        command.query());
+  }
+
+  @Test
+  void parse_rejectsMissingAndDuplicatePostingIdForGetPosting() {
+    CliArgumentsException missing =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "get-posting", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                    }));
+    CliArgumentsException duplicate =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "get-posting",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--posting-id",
+                      "posting-1",
+                      "--posting-id",
+                      "posting-2"
+                    }));
+
+    assertEquals("--posting-id", missing.argument());
+    assertEquals("A --posting-id argument is required.", missing.getMessage());
+    assertEquals("--posting-id", duplicate.argument());
+    assertEquals("Duplicate argument: --posting-id", duplicate.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedGetPostingArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "get-posting",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--extra",
+                      "value",
+                      "--posting-id",
+                      "posting-1"
+                    }));
+
+    assertEquals("--extra", exception.argument());
+    assertEquals("Unsupported argument: --extra", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsInvalidQueryOptionValues() {
+    CliArgumentsException invalidLimit =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--limit",
+                      "nope"
+                    }));
+    CliArgumentsException invalidDate =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--effective-date-from",
+                      "not-a-date"
+                    }));
+
+    assertEquals("--limit", invalidLimit.argument());
+    assertInstanceOf(NumberFormatException.class, invalidLimit.getCause());
+    assertEquals("--effective-date-from", invalidDate.argument());
+    assertInstanceOf(java.time.DateTimeException.class, invalidDate.getCause());
+  }
+
+  @Test
+  void parse_rejectsDuplicateQueryOptionsAndMissingAccountBalanceAccountCode() {
+    CliArgumentsException duplicatePostingAccountCode =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--account-code",
+                      "2000"
+                    }));
+    CliArgumentsException missingBalanceAccountCode =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                    }));
+
+    assertEquals("--account-code", duplicatePostingAccountCode.argument());
+    assertEquals("Duplicate argument: --account-code", duplicatePostingAccountCode.getMessage());
+    assertEquals("--account-code", missingBalanceAccountCode.argument());
+    assertEquals("A --account-code argument is required.", missingBalanceAccountCode.getMessage());
+  }
+
+  @Test
+  void parse_returnsListPostingsWithDefaultPagingWhenOmitted() {
+    CliCommand.ListPostings command =
+        assertInstanceOf(
+            CliCommand.ListPostings.class,
+            CliArguments.parse(
+                new String[] {
+                  "list-postings", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                }));
+
+    assertEquals(
+        new ListPostingsQuery(
+            java.util.Optional.empty(),
+            java.util.Optional.empty(),
+            java.util.Optional.empty(),
+            50,
+            0),
+        command.query());
+  }
+
+  @Test
+  void parse_rejectsListAccountsDuplicateAndUnsupportedArguments() {
+    CliArgumentsException duplicateLimit =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--limit",
+                      "10",
+                      "--limit",
+                      "20"
+                    }));
+    CliArgumentsException duplicateOffset =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--offset",
+                      "10",
+                      "--offset",
+                      "20"
+                    }));
+    CliArgumentsException unsupported =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--extra",
+                      "value"
+                    }));
+
+    assertEquals("--limit", duplicateLimit.argument());
+    assertEquals("Duplicate argument: --limit", duplicateLimit.getMessage());
+    assertEquals("--offset", duplicateOffset.argument());
+    assertEquals("Duplicate argument: --offset", duplicateOffset.getMessage());
+    assertEquals("--extra", unsupported.argument());
+    assertEquals("Unsupported argument: --extra", unsupported.getMessage());
+  }
+
+  @Test
+  void parse_rejectsListPostingsDuplicateAndUnsupportedArguments() {
+    CliArgumentsException duplicateDateFrom =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--effective-date-from",
+                      "2026-04-01",
+                      "--effective-date-from",
+                      "2026-04-02"
+                    }));
+    CliArgumentsException duplicateDateTo =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--effective-date-to",
+                      "2026-04-30",
+                      "--effective-date-to",
+                      "2026-05-01"
+                    }));
+    CliArgumentsException duplicateLimit =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--limit",
+                      "10",
+                      "--limit",
+                      "20"
+                    }));
+    CliArgumentsException duplicateOffset =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--offset",
+                      "10",
+                      "--offset",
+                      "20"
+                    }));
+    CliArgumentsException unsupportedWithValue =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--extra",
+                      "value"
+                    }));
+    CliArgumentsException unsupportedBeforeOption =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--extra",
+                      "--limit",
+                      "5"
+                    }));
+    CliArgumentsException positional =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "unexpected-token"
+                    }));
+
+    assertEquals("--effective-date-from", duplicateDateFrom.argument());
+    assertEquals("Duplicate argument: --effective-date-from", duplicateDateFrom.getMessage());
+    assertEquals("--effective-date-to", duplicateDateTo.argument());
+    assertEquals("Duplicate argument: --effective-date-to", duplicateDateTo.getMessage());
+    assertEquals("--limit", duplicateLimit.argument());
+    assertEquals("Duplicate argument: --limit", duplicateLimit.getMessage());
+    assertEquals("--offset", duplicateOffset.argument());
+    assertEquals("Duplicate argument: --offset", duplicateOffset.getMessage());
+    assertEquals("--extra", unsupportedWithValue.argument());
+    assertEquals("Unsupported argument: --extra", unsupportedWithValue.getMessage());
+    assertEquals("--extra", unsupportedBeforeOption.argument());
+    assertEquals("Unsupported argument: --extra", unsupportedBeforeOption.getMessage());
+    assertEquals("unexpected-token", positional.argument());
+    assertEquals("Unsupported argument: unexpected-token", positional.getMessage());
+  }
+
+  @Test
+  void parse_rejectsAccountBalanceDuplicateAndUnsupportedArguments() {
+    CliArgumentsException duplicateAccountCode =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--account-code",
+                      "2000"
+                    }));
+    CliArgumentsException duplicateDateFrom =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--effective-date-from",
+                      "2026-04-01",
+                      "--effective-date-from",
+                      "2026-04-02"
+                    }));
+    CliArgumentsException duplicateDateTo =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--effective-date-to",
+                      "2026-04-30",
+                      "--effective-date-to",
+                      "2026-05-01"
+                    }));
+    CliArgumentsException unsupported =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--extra"
+                    }));
+
+    assertEquals("--account-code", duplicateAccountCode.argument());
+    assertEquals("Duplicate argument: --account-code", duplicateAccountCode.getMessage());
+    assertEquals("--effective-date-from", duplicateDateFrom.argument());
+    assertEquals("Duplicate argument: --effective-date-from", duplicateDateFrom.getMessage());
+    assertEquals("--effective-date-to", duplicateDateTo.argument());
+    assertEquals("Duplicate argument: --effective-date-to", duplicateDateTo.getMessage());
+    assertEquals("--extra", unsupported.argument());
+    assertEquals("Unsupported argument: --extra", unsupported.getMessage());
+  }
+
+  @Test
+  void cliArgumentsException_buildsCliFailureWithMetadataAndCause() {
+    CliArgumentsException exception =
+        new CliArgumentsException(
+            "invalid-request",
+            "--limit",
+            "Option must be an integer: --limit",
+            "Run 'fingrind help' to inspect the supported command syntax.",
+            new NumberFormatException("boom"));
+
+    CliFailure failure = exception.failure();
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--limit", exception.argument());
+    assertEquals("Run 'fingrind help' to inspect the supported command syntax.", exception.hint());
+    assertEquals("invalid-request", failure.code());
+    assertEquals("--limit", failure.argument());
+    assertEquals("Option must be an integer: --limit", failure.message());
   }
 
   @Test

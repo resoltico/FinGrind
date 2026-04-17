@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.BookAccess;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /** Minimal Java FFM binding layer over the configured SQLite C library. */
 final class SqliteNativeLibrary {
@@ -38,6 +39,8 @@ final class SqliteNativeLibrary {
   private static final AtomicInteger ACTIVE_CONNECTIONS = new AtomicInteger();
   private static final AtomicReference<MethodHandle> SQLITE3_OPEN_V2_OVERRIDE =
       new AtomicReference<>();
+  private static final AtomicReference<MethodHandle> SQLITE3_CLOSE_V2_OVERRIDE =
+      new AtomicReference<>();
   private static final AtomicReference<MethodHandle> SQLITE3_REKEY_OVERRIDE =
       new AtomicReference<>();
   private static final MethodHandle STRLEN =
@@ -55,10 +58,9 @@ final class SqliteNativeLibrary {
       throw new IllegalArgumentException(
           "SQLite same-package file-backed open requires a --book-key-file access selection.");
     }
-    return open(
-        bookAccess.bookFilePath(),
-        SqliteBookKeyFile.load(keyFile.bookKeyFilePath()),
-        OpenMode.READ_WRITE_CREATE);
+    try (SqliteBookPassphrase bookPassphrase = SqliteBookKeyFile.load(keyFile.bookKeyFilePath())) {
+      return open(bookAccess.bookFilePath(), bookPassphrase, OpenMode.READ_WRITE_CREATE);
+    }
   }
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase)
@@ -83,30 +85,54 @@ final class SqliteNativeLibrary {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
-      int resultCode =
-          (int)
-              effectiveSqlite3OpenV2(sqliteApi)
-                  .invokeExact(filename, databasePointer, openMode.flags(), MemorySegment.NULL);
+      int resultCode = openNativeDatabase(filename, databasePointer, openMode, sqliteApi);
       MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
       if (resultCode != SQLITE_OK) {
-        SqliteNativeException exception = failure(resultCode, sqliteApi);
         closeQuietly(databaseHandle, sqliteApi);
-        throw exception;
+        throw failure(resultCode, sqliteApi);
       }
+      return configureOpenedDatabase(databaseHandle, bookPassphrase, sqliteApi, arena);
+    }
+  }
+
+  private static int openNativeDatabase(
+      MemorySegment filename,
+      MemorySegment databasePointer,
+      OpenMode openMode,
+      SqliteApi sqliteApi) {
+    try {
+      return (int)
+          effectiveSqlite3OpenV2(sqliteApi)
+              .invokeExact(filename, databasePointer, openMode.flags(), MemorySegment.NULL);
+    } catch (Throwable throwable) {
+      throw new IllegalStateException(
+          "Failed to open the SQLite native library bridge.", throwable);
+    }
+  }
+
+  private static SqliteNativeDatabase configureOpenedDatabase(
+      MemorySegment databaseHandle,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteApi sqliteApi,
+      Arena arena)
+      throws SqliteNativeException {
+    try {
       applyKey(databaseHandle, bookPassphrase, sqliteApi, arena);
       int timeoutResult =
           (int)
               sqliteApi.sqlite3BusyTimeout.invokeExact(databaseHandle, SQLITE_BUSY_TIMEOUT_MILLIS);
-      requireOpenConfigurationSuccess(databaseHandle, timeoutResult, sqliteApi);
+      requireOpenConfigurationSuccess(timeoutResult, sqliteApi);
       int extendedCodeResult =
           (int) sqliteApi.sqlite3ExtendedResultCodes.invokeExact(databaseHandle, 1);
-      requireOpenConfigurationSuccess(databaseHandle, extendedCodeResult, sqliteApi);
-      validateConfiguredKey(databaseHandle);
+      requireOpenConfigurationSuccess(extendedCodeResult, sqliteApi);
+      validateConfiguredKey(databaseHandle, sqliteApi);
       ACTIVE_CONNECTIONS.incrementAndGet();
       return new SqliteNativeDatabase(databaseHandle);
     } catch (SqliteNativeException exception) {
+      closeQuietly(databaseHandle, sqliteApi);
       throw exception;
     } catch (Throwable throwable) {
+      closeQuietly(databaseHandle, sqliteApi);
       throw new IllegalStateException(
           "Failed to open the SQLite native library bridge.", throwable);
     }
@@ -115,7 +141,7 @@ final class SqliteNativeLibrary {
   static void close(MemorySegment databaseHandle) throws SqliteNativeException {
     SqliteApi sqliteApi = api();
     try {
-      int resultCode = (int) sqliteApi.sqlite3CloseV2.invokeExact(databaseHandle);
+      int resultCode = (int) effectiveSqlite3CloseV2(sqliteApi).invokeExact(databaseHandle);
       if (resultCode != SQLITE_OK) {
         throw failure(resultCode, sqliteApi);
       }
@@ -142,7 +168,7 @@ final class SqliteNativeLibrary {
       if (resultCode != SQLITE_OK) {
         throw failure(resultCode, sqliteApi);
       }
-      validateConfiguredKey(database.handle());
+      validateConfiguredKey(database.handle(), sqliteApi);
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
@@ -168,9 +194,21 @@ final class SqliteNativeLibrary {
     return () -> SQLITE3_OPEN_V2_OVERRIDE.set(previousHandle);
   }
 
+  /** Overrides the native `sqlite3_close_v2` handle for one test scope and restores it on close. */
+  static AutoCloseable overrideSqlite3CloseV2HandleForTesting(MethodHandle sqlite3CloseV2Handle) {
+    Objects.requireNonNull(sqlite3CloseV2Handle, "sqlite3CloseV2Handle");
+    MethodHandle previousHandle = SQLITE3_CLOSE_V2_OVERRIDE.getAndSet(sqlite3CloseV2Handle);
+    return () -> SQLITE3_CLOSE_V2_OVERRIDE.set(previousHandle);
+  }
+
   private static MethodHandle effectiveSqlite3OpenV2(SqliteApi sqliteApi) {
     return Objects.requireNonNullElseGet(
         SQLITE3_OPEN_V2_OVERRIDE.get(), () -> sqliteApi.sqlite3OpenV2);
+  }
+
+  private static MethodHandle effectiveSqlite3CloseV2(SqliteApi sqliteApi) {
+    return Objects.requireNonNullElseGet(
+        SQLITE3_CLOSE_V2_OVERRIDE.get(), () -> sqliteApi.sqlite3CloseV2);
   }
 
   private static MethodHandle effectiveSqlite3Rekey(SqliteApi sqliteApi) {
@@ -185,7 +223,12 @@ final class SqliteNativeLibrary {
 
   static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer)
       throws SqliteNativeException {
-    SqliteApi sqliteApi = api();
+    executeScript(databaseHandle, sqlPointer, api());
+  }
+
+  private static void executeScript(
+      MemorySegment databaseHandle, MemorySegment sqlPointer, SqliteApi sqliteApi)
+      throws SqliteNativeException {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPointer = arena.allocate(ValueLayout.ADDRESS);
       int resultCode =
@@ -305,7 +348,7 @@ final class SqliteNativeLibrary {
     }
   }
 
-  static String columnText(MemorySegment statementHandle, int columnIndex) {
+  static @Nullable String columnText(MemorySegment statementHandle, int columnIndex) {
     SqliteApi sqliteApi = api();
     try {
       MemorySegment textPointer =
@@ -338,7 +381,7 @@ final class SqliteNativeLibrary {
     }
   }
 
-  static String errorMessage(MemorySegment databaseHandle) {
+  static String errorMessage(@Nullable MemorySegment databaseHandle) {
     if (databaseHandle == null || databaseHandle.equals(MemorySegment.NULL)) {
       return "SQLite native failure.";
     }
@@ -346,12 +389,15 @@ final class SqliteNativeLibrary {
     return errorMessage(databaseHandle, sqliteApi.sqlite3Errmsg, STRLEN);
   }
 
-  static String errorMessage(MemorySegment databaseHandle, MethodHandle errorMessageHandle) {
+  static String errorMessage(
+      @Nullable MemorySegment databaseHandle, MethodHandle errorMessageHandle) {
     return errorMessage(databaseHandle, errorMessageHandle, STRLEN);
   }
 
   static String errorMessage(
-      MemorySegment databaseHandle, MethodHandle errorMessageHandle, MethodHandle strlenHandle) {
+      @Nullable MemorySegment databaseHandle,
+      MethodHandle errorMessageHandle,
+      MethodHandle strlenHandle) {
     try {
       if (databaseHandle == null) {
         return "SQLite native failure.";
@@ -396,7 +442,7 @@ final class SqliteNativeLibrary {
 
   static String scriptErrorMessage(
       int resultCode,
-      MemorySegment execErrorPointer,
+      @Nullable MemorySegment execErrorPointer,
       MethodHandle errorStringHandle,
       MethodHandle strlenHandle) {
     if (execErrorPointer != null && !execErrorPointer.equals(MemorySegment.NULL)) {
@@ -407,7 +453,7 @@ final class SqliteNativeLibrary {
 
   static String scriptErrorMessage(
       MemorySegment databaseHandle,
-      MemorySegment execErrorPointer,
+      @Nullable MemorySegment execErrorPointer,
       MethodHandle errorMessageHandle,
       MethodHandle strlenHandle) {
     if (execErrorPointer != null && !execErrorPointer.equals(MemorySegment.NULL)) {
@@ -730,13 +776,13 @@ final class SqliteNativeLibrary {
     return LINKER.downcallHandle(symbol, functionDescriptor);
   }
 
-  static SqliteLibraryTarget configuredLibraryTarget(String configuredLibraryPath) {
+  static SqliteLibraryTarget configuredLibraryTarget(@Nullable String configuredLibraryPath) {
     return new SqliteLibraryTarget(
         SqliteRuntime.LIBRARY_MODE, normalizeConfiguredLibraryPath(configuredLibraryPath));
   }
 
   static SqliteLibraryTarget configuredLibraryTarget(
-      String configuredLibraryPath, String bundleHomePath) {
+      @Nullable String configuredLibraryPath, @Nullable String bundleHomePath) {
     String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
     if (normalizedConfiguredPath != null) {
       return new SqliteLibraryTarget(SqliteRuntime.LIBRARY_MODE, normalizedConfiguredPath);
@@ -748,7 +794,7 @@ final class SqliteNativeLibrary {
     throw missingLibraryTargetFailure();
   }
 
-  private static String normalizeConfiguredLibraryPath(String configuredLibraryPath) {
+  private static String normalizeConfiguredLibraryPath(@Nullable String configuredLibraryPath) {
     if (configuredLibraryPath == null) {
       throw missingLibraryTargetFailure();
     }
@@ -760,7 +806,8 @@ final class SqliteNativeLibrary {
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
   }
 
-  private static String normalizeNullableConfiguredLibraryPath(String configuredLibraryPath) {
+  private static @Nullable String normalizeNullableConfiguredLibraryPath(
+      @Nullable String configuredLibraryPath) {
     if (configuredLibraryPath == null) {
       return null;
     }
@@ -771,7 +818,7 @@ final class SqliteNativeLibrary {
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
   }
 
-  private static String normalizeNullablePath(String path) {
+  private static @Nullable String normalizeNullablePath(@Nullable String path) {
     if (path == null) {
       return null;
     }
@@ -794,7 +841,7 @@ final class SqliteNativeLibrary {
               + normalizedBundleHomePath
               + " does not contain the managed SQLite library at "
               + bundleLibraryPath
-              + ". Use the published FinGrind bundle as extracted, or for a local source checkout set "
+              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout set "
               + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
               + " to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
     }
@@ -803,7 +850,7 @@ final class SqliteNativeLibrary {
 
   private static IllegalStateException missingLibraryTargetFailure() {
     return new IllegalStateException(
-        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle via bin/fingrind, or for a local source checkout set "
+        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout set "
             + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
             + " to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
   }
@@ -816,8 +863,11 @@ final class SqliteNativeLibrary {
     if (operatingSystem.contains("linux")) {
       return "libsqlite3.so.0";
     }
+    if (operatingSystem.contains("windows")) {
+      return "sqlite3.dll";
+    }
     throw new IllegalStateException(
-        "FinGrind bundles currently support managed SQLite on macOS and Linux only. Detected: "
+        "FinGrind bundles currently support managed SQLite on macOS, Linux, and Windows only. Detected: "
             + System.getProperty("os.name"));
   }
 
@@ -850,16 +900,17 @@ final class SqliteNativeLibrary {
     }
   }
 
-  static void requireOpenConfigurationSuccess(
-      MemorySegment databaseHandle, int resultCode, SqliteApi sqliteApi)
+  private static void requireOpenConfigurationSuccess(int resultCode, SqliteApi sqliteApi)
       throws SqliteNativeException {
     if (resultCode != SQLITE_OK) {
-      closeQuietly(databaseHandle, sqliteApi);
       throw failure(resultCode, sqliteApi);
     }
   }
 
   private static void closeQuietly(MemorySegment databaseHandle, SqliteApi sqliteApi) {
+    if (databaseHandle.equals(MemorySegment.NULL)) {
+      return;
+    }
     try {
       int ignored = (int) sqliteApi.sqlite3CloseV2.invokeExact(databaseHandle);
     } catch (Throwable ignored) {
@@ -879,7 +930,7 @@ final class SqliteNativeLibrary {
           (int)
               sqliteApi.sqlite3Key.invokeExact(
                   databaseHandle, keyPointer, bookPassphrase.byteLength());
-      requireOpenConfigurationSuccess(databaseHandle, resultCode, sqliteApi);
+      requireOpenConfigurationSuccess(resultCode, sqliteApi);
     } catch (SqliteNativeException exception) {
       throw exception;
     } catch (Throwable throwable) {
@@ -891,10 +942,10 @@ final class SqliteNativeLibrary {
     }
   }
 
-  private static void validateConfiguredKey(MemorySegment databaseHandle)
+  private static void validateConfiguredKey(MemorySegment databaseHandle, SqliteApi sqliteApi)
       throws SqliteNativeException {
     try (Arena arena = Arena.ofConfined()) {
-      executeScript(databaseHandle, arena.allocateFrom(KEY_VALIDATION_QUERY));
+      executeScript(databaseHandle, arena.allocateFrom(KEY_VALIDATION_QUERY), sqliteApi);
     }
   }
 

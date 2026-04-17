@@ -15,6 +15,7 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
       throw new IllegalArgumentException("Journal entry must contain at least one line.");
     }
     ensureSingleCurrency(lines);
+    ensureBothSidesPresent(lines);
     ensureBalanced(lines);
   }
 
@@ -34,6 +35,16 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
     BigDecimal creditTotal = totalFor(lines, JournalLine.EntrySide.CREDIT);
     if (debitTotal.compareTo(creditTotal) != 0) {
       throw new IllegalArgumentException("Journal entry must balance debits and credits.");
+    }
+  }
+
+  private static void ensureBothSidesPresent(List<JournalLine> lines) {
+    boolean hasDebit = lines.stream().anyMatch(line -> line.side() == JournalLine.EntrySide.DEBIT);
+    boolean hasCredit =
+        lines.stream().anyMatch(line -> line.side() == JournalLine.EntrySide.CREDIT);
+    if (!hasDebit || !hasCredit) {
+      throw new IllegalArgumentException(
+          "Journal entry must contain at least one debit line and one credit line.");
     }
   }
 

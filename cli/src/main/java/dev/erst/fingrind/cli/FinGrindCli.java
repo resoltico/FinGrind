@@ -1,18 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.application.BookAccess;
-import dev.erst.fingrind.application.BookAdministrationService;
-import dev.erst.fingrind.application.BookSession;
-import dev.erst.fingrind.application.DeclareAccountCommand;
-import dev.erst.fingrind.application.DeclareAccountResult;
-import dev.erst.fingrind.application.ListAccountsResult;
-import dev.erst.fingrind.application.MachineContract;
-import dev.erst.fingrind.application.OpenBookResult;
-import dev.erst.fingrind.application.PostEntryCommand;
-import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostingApplicationService;
-import dev.erst.fingrind.application.UuidV7PostingIdGenerator;
-import dev.erst.fingrind.sqlite.RekeyBookResult;
+import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.executor.*;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
@@ -25,7 +14,11 @@ import java.util.Objects;
 
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
-  private static final String HELP_HINT = "Run 'fingrind help' to inspect the supported commands.";
+  private static final String HELP_HINT =
+      "Run 'fingrind "
+          + dev.erst.fingrind.contract.protocol.ProtocolCatalog.operationName(
+              dev.erst.fingrind.contract.protocol.OperationId.HELP)
+          + "' to inspect the supported commands.";
   static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
   static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION = "direct-java-invocation";
   static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION = "source-checkout-gradle";
@@ -81,6 +74,7 @@ final class FinGrindCli {
         case CliCommand.Capabilities _ -> writeCapabilities();
         case CliCommand.Version _ -> writeVersion();
         case CliCommand.PrintRequestTemplate _ -> writeRequestTemplate();
+        case CliCommand.PrintPlanTemplate _ -> writePlanTemplate();
         case CliCommand.GenerateBookKeyFile command ->
             runGenerateBookKeyFileCommand(command.bookKeyFilePath());
         case CliCommand.OpenBook command -> runOpenBookCommand(command.bookAccess());
@@ -88,7 +82,17 @@ final class FinGrindCli {
             runRekeyBookCommand(command.bookAccess(), command.replacementPassphraseSource());
         case CliCommand.DeclareAccount command ->
             runDeclareAccountCommand(command.bookAccess(), command.requestFile());
-        case CliCommand.ListAccounts command -> runListAccountsCommand(command.bookAccess());
+        case CliCommand.InspectBook command -> runInspectBookCommand(command.bookAccess());
+        case CliCommand.ListAccounts command ->
+            runListAccountsCommand(command.bookAccess(), command.query());
+        case CliCommand.GetPosting command ->
+            runGetPostingCommand(command.bookAccess(), command.postingId());
+        case CliCommand.ListPostings command ->
+            runListPostingsCommand(command.bookAccess(), command.query());
+        case CliCommand.AccountBalance command ->
+            runAccountBalanceCommand(command.bookAccess(), command.query());
+        case CliCommand.ExecutePlan command ->
+            runExecutePlanCommand(command.bookAccess(), command.requestFile());
         case CliCommand.PreflightEntry command ->
             runEntryCommand(command.bookAccess(), command.requestFile(), bookWorkflow::preflight);
         case CliCommand.PostEntry command ->
@@ -132,6 +136,11 @@ final class FinGrindCli {
     return 0;
   }
 
+  private int writePlanTemplate() {
+    responseWriter.writePlanTemplate(MachineContract.planTemplate(clock));
+    return 0;
+  }
+
   private int runGenerateBookKeyFileCommand(Path bookKeyFilePath) {
     responseWriter.writeGenerateBookKeyFileResult(
         SqliteBookKeyFileGenerator.generate(bookKeyFilePath));
@@ -158,9 +167,41 @@ final class FinGrindCli {
     return exitCodeFor(result);
   }
 
-  private int runListAccountsCommand(BookAccess bookAccess) {
-    ListAccountsResult result = bookWorkflow.listAccounts(bookAccess);
+  private int runInspectBookCommand(BookAccess bookAccess) {
+    BookInspection inspection = bookWorkflow.inspectBook(bookAccess);
+    responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection);
+    return 0;
+  }
+
+  private int runListAccountsCommand(BookAccess bookAccess, ListAccountsQuery query) {
+    ListAccountsResult result = bookWorkflow.listAccounts(bookAccess, query);
     responseWriter.writeListAccountsResult(result);
+    return exitCodeFor(result);
+  }
+
+  private int runGetPostingCommand(
+      BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
+    GetPostingResult result = bookWorkflow.getPosting(bookAccess, postingId);
+    responseWriter.writeGetPostingResult(result);
+    return exitCodeFor(result);
+  }
+
+  private int runListPostingsCommand(BookAccess bookAccess, ListPostingsQuery query) {
+    ListPostingsResult result = bookWorkflow.listPostings(bookAccess, query);
+    responseWriter.writeListPostingsResult(result);
+    return exitCodeFor(result);
+  }
+
+  private int runAccountBalanceCommand(BookAccess bookAccess, AccountBalanceQuery query) {
+    AccountBalanceResult result = bookWorkflow.accountBalance(bookAccess, query);
+    responseWriter.writeAccountBalanceResult(result);
+    return exitCodeFor(result);
+  }
+
+  private int runExecutePlanCommand(BookAccess bookAccess, Path requestFile) {
+    LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
+    LedgerPlanResult result = bookWorkflow.executePlan(bookAccess, plan);
+    responseWriter.writeLedgerPlanResult(result);
     return exitCodeFor(result);
   }
 
@@ -201,10 +242,38 @@ final class FinGrindCli {
     };
   }
 
+  private static int exitCodeFor(GetPostingResult result) {
+    return switch (result) {
+      case GetPostingResult.Found _ -> 0;
+      case GetPostingResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(ListPostingsResult result) {
+    return switch (result) {
+      case ListPostingsResult.Listed _ -> 0;
+      case ListPostingsResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(AccountBalanceResult result) {
+    return switch (result) {
+      case AccountBalanceResult.Reported _ -> 0;
+      case AccountBalanceResult.Rejected _ -> 2;
+    };
+  }
+
   private static int exitCodeFor(RekeyBookResult result) {
     return switch (result) {
       case RekeyBookResult.Rekeyed _ -> 0;
       case RekeyBookResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(LedgerPlanResult result) {
+    return switch (result.status()) {
+      case SUCCEEDED -> 0;
+      case REJECTED, ASSERTION_FAILED -> 2;
     };
   }
 
@@ -252,7 +321,8 @@ final class FinGrindCli {
         message.contains("FINGRIND_SQLITE_LIBRARY")
                 || message.contains("fingrind.bundle.home")
                 || message.contains("bin/fingrind")
-            ? "Run the published FinGrind bundle via bin/fingrind, or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning."
+                || message.contains("bin\\fingrind.cmd")
+            ? "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning."
             : message.contains("SQLite")
                 ? "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
                 : "Inspect the message and rerun after fixing the underlying runtime problem.";
@@ -275,8 +345,23 @@ final class FinGrindCli {
     /** Declares or reactivates one account inside the selected book. */
     DeclareAccountResult declareAccount(BookAccess bookAccess, DeclareAccountCommand command);
 
+    /** Inspects one selected book for lifecycle and compatibility state. */
+    BookInspection inspectBook(BookAccess bookAccess);
+
     /** Lists the declared accounts currently stored in the selected book. */
-    ListAccountsResult listAccounts(BookAccess bookAccess);
+    ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query);
+
+    /** Returns one committed posting by durable posting identity. */
+    GetPostingResult getPosting(BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId);
+
+    /** Lists one filtered page of committed postings. */
+    ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query);
+
+    /** Computes per-currency balances for one declared account. */
+    AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query);
+
+    /** Executes one ordered AI-agent ledger plan atomically. */
+    LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan);
 
     /** Validates a posting request without mutating the selected book. */
     PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command);
@@ -297,7 +382,7 @@ final class FinGrindCli {
 
     @Override
     public OpenBookResult openBook(BookAccess bookAccess) {
-      try (BookSession bookSession =
+      try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE,
@@ -328,7 +413,7 @@ final class FinGrindCli {
     @Override
     public DeclareAccountResult declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
-      try (BookSession bookSession =
+      try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
@@ -338,19 +423,83 @@ final class FinGrindCli {
     }
 
     @Override
-    public ListAccountsResult listAccounts(BookAccess bookAccess) {
-      try (BookSession bookSession =
+    public BookInspection inspectBook(BookAccess bookAccess) {
+      try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookAdministrationService(bookSession, clock).listAccounts();
+        return new BookQueryService(bookSession).inspectBook();
+      }
+    }
+
+    @Override
+    public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+      try (SqlitePostingFactStore bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_ONLY,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
+        return new BookQueryService(bookSession).listAccounts(query);
+      }
+    }
+
+    @Override
+    public GetPostingResult getPosting(
+        BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
+      try (SqlitePostingFactStore bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_ONLY,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
+        return new BookQueryService(bookSession).getPosting(postingId);
+      }
+    }
+
+    @Override
+    public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
+      try (SqlitePostingFactStore bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_ONLY,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
+        return new BookQueryService(bookSession).listPostings(query);
+      }
+    }
+
+    @Override
+    public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
+      try (SqlitePostingFactStore bookSession =
+          openBookSession(
+              bookAccess,
+              SqlitePostingFactStore.AccessMode.READ_ONLY,
+              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
+        return new BookQueryService(bookSession).accountBalance(query);
+      }
+    }
+
+    @Override
+    public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+      boolean initializesBook =
+          plan.steps().stream()
+              .anyMatch(step -> step instanceof dev.erst.fingrind.contract.LedgerStep.OpenBook);
+      try (SqlitePostingFactStore bookSession =
+          openBookSession(
+              bookAccess,
+              initializesBook
+                  ? SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE
+                  : SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+              initializesBook
+                  ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
+                  : CliBookPassphraseResolver.PromptStyle.SINGLE)) {
+        return new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
+            .execute(plan);
       }
     }
 
     @Override
     public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
-      try (BookSession bookSession =
+      try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
@@ -361,7 +510,7 @@ final class FinGrindCli {
 
     @Override
     public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
-      try (BookSession bookSession =
+      try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
@@ -370,7 +519,7 @@ final class FinGrindCli {
       }
     }
 
-    private BookSession openBookSession(
+    private SqlitePostingFactStore openBookSession(
         BookAccess bookAccess,
         SqlitePostingFactStore.AccessMode accessMode,
         CliBookPassphraseResolver.PromptStyle promptStyle) {
@@ -381,7 +530,7 @@ final class FinGrindCli {
     }
 
     private static PostingApplicationService postingApplicationService(
-        BookSession bookSession, Clock clock) {
+        SqlitePostingFactStore bookSession, Clock clock) {
       return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
     }
   }

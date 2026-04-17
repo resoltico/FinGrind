@@ -52,6 +52,52 @@ jobs:
       - name: Smoke test the self-contained CLI bundle
         run: ./scripts/bundle-smoke.sh
 
+  windows-bundle-smoke:
+    name: Windows bundle smoke
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '26'
+          distribution: 'zulu'
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        with:
+          arch: x64
+
+      - name: Check and enforce coverage on Windows
+        shell: pwsh
+        run: .\gradlew.bat check --no-daemon --console=plain
+
+      - name: Verify managed SQLite CLI runtime on Windows
+        shell: pwsh
+        run: |
+          $output = .\gradlew.bat :cli:run --args='capabilities' --no-daemon --console=plain | Out-String
+          Write-Host $output
+          if ($output -notmatch '"sqliteLibraryMode"\s*:\s*"managed-only"') { throw "missing managed-only sqlite library mode" }
+          if ($output -notmatch '"requiredMinimumSqliteVersion"\s*:\s*"3\.53\.0"') { throw "missing required minimum SQLite version" }
+          if ($output -notmatch '"sqliteRuntimeStatus"\s*:\s*"ready"') { throw "missing ready sqlite runtime status" }
+          if ($output -notmatch '"loadedSqliteVersion"\s*:\s*"3\.53\.0"') { throw "missing loaded SQLite version" }
+
+      - name: Build self-contained Windows CLI bundle
+        shell: pwsh
+        run: .\gradlew.bat :cli:bundleCliArchive -PfingrindBundleClassifier=windows-x86_64 --no-daemon --console=plain
+
+      - name: Smoke test the Windows CLI bundle
+        shell: pwsh
+        run: .\scripts\bundle-smoke.ps1
+
   docker-smoke:
     name: Docker smoke
     runs-on: ubuntu-latest

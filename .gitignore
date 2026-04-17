@@ -11,6 +11,8 @@ bin/
 !cli/src/bundle/
 !cli/src/bundle/bin/
 !cli/src/bundle/bin/fingrind
+!/jazzer/bin/
+!/jazzer/bin/**
 
 # Kotlin daemon sessions (buildSrc)
 .kotlin/

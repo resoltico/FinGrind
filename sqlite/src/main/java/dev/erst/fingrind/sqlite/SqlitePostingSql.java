@@ -83,10 +83,16 @@ final class SqlitePostingSql {
       limit 1
       """;
 
+  static final String FIND_BOOK_INITIALIZED_AT =
+      """
+      select value
+      from book_meta
+      where key = ?
+      limit 1
+      """;
+
   static final String FIND_ACCOUNT_BY_CODE =
       BASE_ACCOUNT_SELECT + " where account_code = ? limit 1";
-
-  static final String LIST_ACCOUNTS = BASE_ACCOUNT_SELECT + " order by account_code";
 
   static final String FIND_POSTING_BY_IDEMPOTENCY =
       BASE_POSTING_SELECT + " where idempotency_key = ? limit 1";
@@ -108,6 +114,14 @@ final class SqlitePostingSql {
       from journal_line
       where posting_id = ?
       order by line_order
+      """;
+
+  static final String LOAD_ACCOUNT_LINES_FOR_BALANCE =
+      """
+      select journal_line.entry_side, journal_line.currency_code, journal_line.amount
+      from journal_line
+      join posting_fact on posting_fact.posting_id = journal_line.posting_id
+      where journal_line.account_code = ?
       """;
 
   static final String INSERT_POSTING_FACT =
@@ -161,6 +175,53 @@ final class SqlitePostingSql {
           active = excluded.active,
           declared_at = excluded.declared_at
       """;
+
+  static String listAccounts() {
+    return BASE_ACCOUNT_SELECT + " order by account_code limit ? offset ?";
+  }
+
+  static String listPostings(
+      boolean filterAccount, boolean filterEffectiveDateFrom, boolean filterEffectiveDateTo) {
+    StringBuilder sql =
+        new StringBuilder(BASE_POSTING_SELECT.length() + 256)
+            .append(BASE_POSTING_SELECT)
+            .append(" where 1 = 1");
+    if (filterAccount) {
+      sql.append(
+          """
+           and exists (
+               select 1
+               from journal_line
+               where journal_line.posting_id = posting_fact.posting_id
+                 and journal_line.account_code = ?
+           )
+          """);
+    }
+    if (filterEffectiveDateFrom) {
+      sql.append(" and effective_date >= ?");
+    }
+    if (filterEffectiveDateTo) {
+      sql.append(" and effective_date <= ?");
+    }
+    sql.append(" order by effective_date desc, recorded_at desc, posting_id desc limit ? offset ?");
+    return sql.toString();
+  }
+
+  static String loadAccountLinesForBalance(
+      boolean filterEffectiveDateFrom, boolean filterEffectiveDateTo) {
+    StringBuilder sql =
+        new StringBuilder(LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
+            .append(LOAD_ACCOUNT_LINES_FOR_BALANCE);
+    if (filterEffectiveDateFrom) {
+      sql.append(" and posting_fact.effective_date >= ?");
+    }
+    if (filterEffectiveDateTo) {
+      sql.append(" and posting_fact.effective_date <= ?");
+    }
+    sql.append(
+        " order by posting_fact.effective_date, posting_fact.recorded_at, journal_line.line_order");
+    return sql.toString();
+  }
 
   private SqlitePostingSql() {}
 }

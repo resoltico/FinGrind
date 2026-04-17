@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-14"
+updated: "2026-04-17"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -48,8 +48,8 @@ Surface:
 What it asserts:
 - fresh valid requests preflight successfully
 - fresh unopened books reject with `book-not-initialized`
-- opened books with undeclared accounts reject with `unknown-account`
-- declared accounts that are later deactivated reject with `inactive-account`
+- opened books with undeclared accounts reject under `account-state-violations`
+- declared accounts that are later deactivated reject under `account-state-violations`
 - a first commit persists one `PostingFact`
 - a duplicate commit returns `duplicate-idempotency-key`
 - missing reversal reason and missing reversal target reject deterministically on both preflight and commit
@@ -67,8 +67,8 @@ Surface:
 
 What it asserts:
 - unopened books reject with `book-not-initialized`
-- opened books with undeclared accounts reject with `unknown-account`
-- deactivated accounts reject with `inactive-account`
+- opened books with undeclared accounts reject under `account-state-violations`
+- deactivated accounts reject under `account-state-violations`
 - one valid request commits durably into one selected initialized book file
 - the durable book file is opened through SQLite3 Multiple Ciphers rather than plain SQLite
 - reloading by idempotency returns the same fact shape
@@ -111,5 +111,6 @@ What it asserts:
 Not yet fuzzed:
 - concurrent access between multiple writers
 - CLI response rendering and envelope serialization
+- inspect-book, get-posting, list-postings, and account-balance query surfaces
 - corrupt or directory-backed pre-existing book paths before any valid schema exists
 - large-scale corpus growth around reversal policy edge cases such as reversal-shape near misses
