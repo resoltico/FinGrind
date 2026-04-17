@@ -69,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made contract lint and key-file fixture tests platform-deterministic on Windows by removing
   slash-sensitive source exclusions and by creating secure test key files through the production
   generator path.
+- Covered both POSIX permission and Windows ACL key-file security branches through platform-neutral
+  fixture filesystems, keeping the strict coverage gate meaningful on every runner.
 - Made native-library path assertions platform-native, so Windows CI verifies managed SQLite
   lookup without relying on POSIX path separators.
 - Pinned Spotless-managed source and project-file verification to LF line endings so

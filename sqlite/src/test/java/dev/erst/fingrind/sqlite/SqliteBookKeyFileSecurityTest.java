@@ -32,10 +32,15 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
+import java.nio.file.attribute.GroupPrincipal;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +70,58 @@ class SqliteBookKeyFileSecurityTest {
           keyPath.aclView.getAcl().getFirst().permissions().contains(AclEntryPermission.READ_DATA));
       assertTrue(
           keyPath.aclView.getAcl().getFirst().permissions().contains(AclEntryPermission.DELETE));
+    }
+  }
+
+  @Test
+  void posixFilesystemBranchesUseOwnerOnlyDescriptorsAndGeneration() throws Exception {
+    try (FakeAclFileSystem fileSystem = FakeAclFileSystem.withViews(Set.of("posix"))) {
+      FakeAclPath keyPath = fileSystem.path("\\keys\\acme.book-key");
+
+      assertEquals("0600", SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
+      SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
+      SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
+      SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+
+      assertTrue(keyPath.exists);
+      assertTrue(keyPath.regularFile);
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          keyPath.posixPermissions);
+    }
+  }
+
+  @Test
+  void posixFilesystemRejectsOwnerUnreadableAndGroupReadableKeyFiles() {
+    try (FakeAclFileSystem fileSystem = FakeAclFileSystem.withViews(Set.of("posix"))) {
+      FakeAclPath ownerUnreadable = fileSystem.path("\\keys\\owner-unreadable.book-key");
+      ownerUnreadable.exists = true;
+      ownerUnreadable.regularFile = true;
+      ownerUnreadable.posixPermissions = Set.of(PosixFilePermission.OWNER_WRITE);
+
+      IllegalStateException ownerUnreadableException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(ownerUnreadable));
+
+      assertTrue(ownerUnreadableException.getMessage().contains("owner-readable"));
+
+      FakeAclPath groupReadable = fileSystem.path("\\keys\\group-readable.book-key");
+      groupReadable.exists = true;
+      groupReadable.regularFile = true;
+      groupReadable.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.GROUP_READ);
+
+      IllegalStateException groupReadableException =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(groupReadable));
+
+      assertTrue(groupReadableException.getMessage().contains("owner-only permissions"));
     }
   }
 
@@ -109,6 +166,7 @@ class SqliteBookKeyFileSecurityTest {
     private final FakeAclFileSystemProvider provider;
     private final Set<String> views;
     private final UserPrincipal owner = new FakePrincipal("owner");
+    private final GroupPrincipal group = new FakeGroup("group");
     private boolean open = true;
 
     private FakeAclFileSystem(Set<String> views) {
@@ -231,6 +289,7 @@ class SqliteBookKeyFileSecurityTest {
       }
       fakePath.exists = true;
       fakePath.regularFile = true;
+      fakePath.posixPermissions = findPosixPermissions(attrs);
       return new FakeSeekableByteChannel();
     }
 
@@ -253,6 +312,7 @@ class SqliteBookKeyFileSecurityTest {
       FakeAclPath fakePath = fakePath(dir);
       fakePath.exists = true;
       fakePath.regularFile = false;
+      fakePath.posixPermissions = findPosixPermissions(attrs);
     }
 
     @Override
@@ -306,16 +366,23 @@ class SqliteBookKeyFileSecurityTest {
       if (type == FileOwnerAttributeView.class) {
         return type.cast(fakePath.aclView);
       }
+      if (type == PosixFileAttributeView.class) {
+        return type.cast(new FakePosixView(fakePath));
+      }
       return null;
     }
 
     @Override
     public <A extends BasicFileAttributes> A readAttributes(
         Path path, Class<A> type, LinkOption... options) {
-      if (type != BasicFileAttributes.class) {
-        throw new UnsupportedOperationException("only basic attributes are used by these tests");
+      if (type == BasicFileAttributes.class) {
+        return type.cast(new FakeBasicFileAttributes(fakePath(path)));
       }
-      return type.cast(new FakeBasicFileAttributes(fakePath(path)));
+      if (type == PosixFileAttributes.class) {
+        return type.cast(new FakePosixFileAttributes(fakePath(path)));
+      }
+      throw new UnsupportedOperationException(
+          "only basic and POSIX attributes are used by these tests");
     }
 
     @Override
@@ -332,6 +399,19 @@ class SqliteBookKeyFileSecurityTest {
     private FakeAclPath fakePath(Path path) {
       return (FakeAclPath) path;
     }
+
+    private static Set<PosixFilePermission> findPosixPermissions(FileAttribute<?>... attrs) {
+      for (FileAttribute<?> attribute : attrs) {
+        if ("posix:permissions".equals(attribute.name())) {
+          Set<PosixFilePermission> permissions = EnumSet.noneOf(PosixFilePermission.class);
+          for (Object permission : (Set<?>) attribute.value()) {
+            permissions.add((PosixFilePermission) permission);
+          }
+          return Set.copyOf(permissions);
+        }
+      }
+      return Set.of();
+    }
   }
 
   /** Minimal path implementation for the fake ACL filesystem. */
@@ -341,6 +421,7 @@ class SqliteBookKeyFileSecurityTest {
     private boolean exists;
     private boolean regularFile;
     private FakeAclView aclView;
+    private Set<PosixFilePermission> posixPermissions = Set.of();
 
     private FakeAclPath(FakeAclFileSystem fileSystem, String value) {
       this.fileSystem = fileSystem;
@@ -538,6 +619,47 @@ class SqliteBookKeyFileSecurityTest {
     }
   }
 
+  /** Minimal POSIX view for exercising owner-only mode writes and reads on every host OS. */
+  private static final class FakePosixView implements PosixFileAttributeView {
+    private final FakeAclPath path;
+
+    private FakePosixView(FakeAclPath path) {
+      this.path = path;
+    }
+
+    @Override
+    public String name() {
+      return "posix";
+    }
+
+    @Override
+    public PosixFileAttributes readAttributes() {
+      return new FakePosixFileAttributes(path);
+    }
+
+    @Override
+    public void setPermissions(Set<PosixFilePermission> permissions) {
+      path.posixPermissions = Set.copyOf(permissions);
+    }
+
+    @Override
+    public void setGroup(GroupPrincipal group) {}
+
+    @Override
+    public UserPrincipal getOwner() {
+      return path.fileSystem.owner;
+    }
+
+    @Override
+    public void setOwner(UserPrincipal owner) {}
+
+    @Override
+    public void setTimes(
+        java.nio.file.attribute.FileTime lastModifiedTime,
+        java.nio.file.attribute.FileTime lastAccessTime,
+        java.nio.file.attribute.FileTime createTime) {}
+  }
+
   /** Minimal basic attributes for the fake ACL filesystem. */
   private record FakeBasicFileAttributes(FakeAclPath path) implements BasicFileAttributes {
     @Override
@@ -583,6 +705,69 @@ class SqliteBookKeyFileSecurityTest {
     @Override
     public Object fileKey() {
       return path;
+    }
+  }
+
+  /** Minimal POSIX attributes for Files.getPosixFilePermissions on the fake filesystem. */
+  private record FakePosixFileAttributes(FakeAclPath path) implements PosixFileAttributes {
+    @Override
+    public java.nio.file.attribute.FileTime lastModifiedTime() {
+      return java.nio.file.attribute.FileTime.fromMillis(0);
+    }
+
+    @Override
+    public java.nio.file.attribute.FileTime lastAccessTime() {
+      return java.nio.file.attribute.FileTime.fromMillis(0);
+    }
+
+    @Override
+    public java.nio.file.attribute.FileTime creationTime() {
+      return java.nio.file.attribute.FileTime.fromMillis(0);
+    }
+
+    @Override
+    public boolean isRegularFile() {
+      return path.regularFile;
+    }
+
+    @Override
+    public boolean isDirectory() {
+      return !path.regularFile;
+    }
+
+    @Override
+    public boolean isSymbolicLink() {
+      return false;
+    }
+
+    @Override
+    public boolean isOther() {
+      return false;
+    }
+
+    @Override
+    public long size() {
+      return 0;
+    }
+
+    @Override
+    public Object fileKey() {
+      return path;
+    }
+
+    @Override
+    public UserPrincipal owner() {
+      return path.fileSystem.owner;
+    }
+
+    @Override
+    public GroupPrincipal group() {
+      return path.fileSystem.group;
+    }
+
+    @Override
+    public Set<PosixFilePermission> permissions() {
+      return path.posixPermissions;
     }
   }
 
@@ -635,6 +820,14 @@ class SqliteBookKeyFileSecurityTest {
 
   /** User principal identified solely by name. */
   private record FakePrincipal(String name) implements UserPrincipal {
+    @Override
+    public String getName() {
+      return name;
+    }
+  }
+
+  /** Group principal identified solely by name. */
+  private record FakeGroup(String name) implements GroupPrincipal {
     @Override
     public String getName() {
       return name;
