@@ -115,6 +115,8 @@ docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the 
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 [[ -f "${repo_root}/cli/build/libs/fingrind.jar" ]] || die \
     "missing internal application JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
+[[ -d "${repo_root}/cli/build/docker/jdeps" ]] || die \
+    "missing Docker JDeps support inputs at ${repo_root}/cli/build/docker/jdeps; run ./gradlew :cli:shadowJar first"
 
 docker_endpoint="${DOCKER_HOST:-}"
 if [[ -z "${docker_endpoint}" ]]; then
@@ -227,10 +229,10 @@ require_match "${capabilities_output}" '"runtimeDistribution"[[:space:]]*:[[:spa
     "capabilities output did not report the container runtime distribution"
 require_match "${capabilities_output}" '"publicCliDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
     "capabilities output did not report the public bundle distribution contract"
-require_match "${capabilities_output}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"macos-x86_64"' \
+require_match "${capabilities_output}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"windows-x86_64"' \
     "capabilities output did not report the supported public bundle targets"
-require_match "${capabilities_output}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[^]]*"windows"' \
-    "capabilities output did not report unsupported public operating systems"
+require_match "${capabilities_output}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[[:space:]]*\]' \
+    "capabilities output did not report the current unsupported public operating systems"
 require_match "${capabilities_output}" '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"' \
     "capabilities output did not report the managed-only SQLite runtime mode"
 require_match "${capabilities_output}" '"storageDriver"[[:space:]]*:[[:space:]]*"sqlite-ffm-sqlite3mc"' \

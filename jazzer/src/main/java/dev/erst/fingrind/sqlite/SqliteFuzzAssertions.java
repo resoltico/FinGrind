@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.PostingFact;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;

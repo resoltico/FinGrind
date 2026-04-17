@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.IOException;
@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /** Resolves one CLI-visible passphrase source into one zeroizable UTF-8 passphrase payload. */
 final class CliBookPassphraseResolver {
@@ -104,7 +105,7 @@ final class CliBookPassphraseResolver {
     return systemConsoleReader(System.console());
   }
 
-  static Optional<Terminal> systemConsoleReader(Object consoleHandle) {
+  static Optional<Terminal> systemConsoleReader(@Nullable Object consoleHandle) {
     return Optional.ofNullable(consoleHandle).map(ReflectiveConsoleTerminal::new);
   }
 

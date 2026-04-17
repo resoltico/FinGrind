@@ -4,13 +4,11 @@ import java.nio.file.Files
 import java.util.Comparator
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.LocalState
 import org.gradle.api.tasks.TaskAction
 
 abstract class CleanLocalCorpusTask : DefaultTask() {
-    @get:InputDirectory
-    @get:Optional
+    @get:LocalState
     abstract val localDirectory: DirectoryProperty
 
     @TaskAction

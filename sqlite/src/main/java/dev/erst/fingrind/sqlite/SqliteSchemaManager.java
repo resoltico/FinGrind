@@ -8,10 +8,12 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /** Initializes the canonical FinGrind book schema when a durable commit needs it. */
 final class SqliteSchemaManager {
-  private static final AtomicReference<String> canonicalSchemaSql = new AtomicReference<>();
+  private static final AtomicReference<@Nullable String> canonicalSchemaSql =
+      new AtomicReference<>();
 
   private SqliteSchemaManager() {}
 
@@ -50,7 +52,7 @@ final class SqliteSchemaManager {
     return cachedValue(canonicalSchemaSql, () -> readSchema(SqliteSchemaManager::openSchemaStream));
   }
 
-  static String cachedValue(AtomicReference<String> cache, Supplier<String> loader) {
+  static String cachedValue(AtomicReference<@Nullable String> cache, Supplier<String> loader) {
     String cachedSchema = cache.get();
     if (cachedSchema != null) {
       return cachedSchema;
@@ -61,7 +63,7 @@ final class SqliteSchemaManager {
     if (cache.compareAndSet(null, loadedSchema)) {
       return loadedSchema;
     }
-    return cache.get();
+    return Objects.requireNonNull(cache.get(), "SQLite schema cache lost its loaded value.");
   }
 
   private static InputStream openSchemaStream() {

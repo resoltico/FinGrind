@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.BookAccess;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -318,7 +318,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget(null));
 
-    assertTrue(exception.getMessage().contains("bin/fingrind"));
+    assertTrue(exception.getMessage().contains("bundle launcher"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
   }
 
@@ -400,14 +400,14 @@ class SqliteNativeLibraryTest {
             IllegalStateException.class,
             () -> SqliteNativeLibrary.configuredLibraryTarget(null, "   "));
 
-    assertTrue(missingEverywhere.getMessage().contains("bin/fingrind"));
+    assertTrue(missingEverywhere.getMessage().contains("bundle launcher"));
     assertTrue(blankConfiguredPath.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
-    assertTrue(blankBundleHome.getMessage().contains("bin/fingrind"));
+    assertTrue(blankBundleHome.getMessage().contains("bundle launcher"));
   }
 
   @Test
   @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void supportedNativeLibraryFileName_supportsMacOsLinuxAndRejectsUnsupportedHosts()
+  void supportedNativeLibraryFileName_supportsMacOsLinuxWindowsAndRejectsUnsupportedHosts()
       throws Exception {
     Method method = SqliteNativeLibrary.class.getDeclaredMethod("supportedNativeLibraryFileName");
     method.setAccessible(true);
@@ -420,12 +420,15 @@ class SqliteNativeLibraryTest {
       System.setProperty("os.name", "Linux");
       assertEquals("libsqlite3.so.0", method.invoke(null));
 
+      System.setProperty("os.name", "Windows 11");
+      assertEquals("sqlite3.dll", method.invoke(null));
+
       System.setProperty("os.name", "FreeBSD");
       InvocationTargetException exception =
           assertThrows(InvocationTargetException.class, () -> method.invoke(null));
 
       assertTrue(exception.getCause() instanceof IllegalStateException);
-      assertTrue(exception.getCause().getMessage().contains("macOS and Linux only"));
+      assertTrue(exception.getCause().getMessage().contains("macOS, Linux, and Windows only"));
       assertTrue(exception.getCause().getMessage().contains("FreeBSD"));
     } finally {
       restoreSystemProperty("os.name", originalOsName);
@@ -1069,6 +1072,56 @@ class SqliteNativeLibraryTest {
   }
 
   @Test
+  void close_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-native-failure.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("close native failure", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, passphrase);
+    }
+
+    try {
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+              constantMethodHandle(14, MemorySegment.class))) {
+        SqliteNativeException exception =
+            assertThrows(SqliteNativeException.class, database::close);
+
+        assertEquals("SQLITE_CANTOPEN", exception.resultName());
+      }
+    } finally {
+      database.close();
+    }
+  }
+
+  @Test
+  void close_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-throwable.sqlite");
+    SqliteNativeDatabase database;
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("close throwable", TEST_BOOK_KEY.toCharArray())) {
+      database = SqliteNativeLibrary.open(bookPath, passphrase);
+    }
+
+    try {
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+              throwingMethodHandle(
+                  new IllegalStateException("boom"), int.class, MemorySegment.class))) {
+        IllegalStateException exception =
+            assertThrows(IllegalStateException.class, database::close);
+
+        assertEquals("Failed to close the SQLite native library bridge.", exception.getMessage());
+        assertEquals("boom", exception.getCause().getMessage());
+      }
+    } finally {
+      database.close();
+    }
+  }
+
+  @Test
   void sqlite3MultipleCiphersVersion_wrapsUnexpectedLookupFailure() {
     IllegalStateException exception =
         assertThrows(
@@ -1381,6 +1434,9 @@ class SqliteNativeLibraryTest {
     }
     if (operatingSystem.contains("linux")) {
       return "libsqlite3.so.0";
+    }
+    if (operatingSystem.contains("windows")) {
+      return "sqlite3.dll";
     }
     throw new IllegalStateException(
         "Unsupported test operating system: " + System.getProperty("os.name"));

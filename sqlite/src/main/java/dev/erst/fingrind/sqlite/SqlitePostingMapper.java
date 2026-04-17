@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.PostingFact;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;

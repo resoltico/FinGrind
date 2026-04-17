@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-14"
+updated: "2026-04-17"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -50,7 +50,7 @@ FinGrind's durable adapter is
 Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
 - express book access explicitly as
-  [`BookAccess`](../application/src/main/java/dev/erst/fingrind/application/BookAccess.java)
+  [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/BookAccess.java)
 - resolve passphrase sources into
   [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java)
   before the storage adapter opens SQLite
@@ -121,15 +121,15 @@ License and attribution stance:
 ## Adapter Composition
 
 The SQLite adapter is split into focused collaborators:
-- [`BookAccess`](../application/src/main/java/dev/erst/fingrind/application/BookAccess.java):
+- [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/BookAccess.java):
   durable book file plus one explicit passphrase-source selection
 - [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
   normalized zeroizable UTF-8 passphrase bytes after CLI-side source resolution
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
-  owns one thread-confined protected-book session, lookup paths, transaction-scoped duplicate
-  checks, and durable commit outcomes
-- [`RekeyBookResult`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/RekeyBookResult.java):
-  explicit result family for SQLite-specific passphrase rotation
+  owns one thread-confined protected-book session, lifecycle inspection, paged query paths,
+  transaction-scoped validation, and durable commit outcomes
+- [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/RekeyBookResult.java):
+  explicit result family for passphrase rotation outcomes
 - [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java):
   minimal FFM binding surface to the SQLite C API, including configured-library selection, version
   and compile-option enforcement, key/rekey application, key validation, and `sqlite3_exec` for canonical schema
@@ -154,12 +154,15 @@ The SQLite adapter is split into focused collaborators:
 ## Runtime Behavior
 
 - reads and preflight against a missing book return empty state and do not create a file
+- `inspect-book` exposes missing, blank, initialized, foreign, unsupported-version, and incomplete
+  states before mutating commands proceed
 - `open-book` creates parent directories if needed, applies the canonical schema, inserts the
   authoritative `book_meta.initialized_at` marker, and initializes a protected SQLite3MC book file
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
   `BookNotInitialized`
-- read-oriented sessions (`list-accounts` and `preflight-entry`) open SQLite through
-  `SQLITE_OPEN_READONLY` and then enforce `pragma query_only = on`
+- read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
+  `account-balance`, and `preflight-entry`) open SQLite through `SQLITE_OPEN_READONLY` and then
+  enforce `pragma query_only = on`
 - opening an existing plaintext SQLite file or using the wrong passphrase source fails during key
   validation, typically surfacing `SQLITE_NOTADB`
 - initialized FinGrind books are stamped with a fixed `pragma application_id` and
@@ -167,8 +170,9 @@ The SQLite adapter is split into focused collaborators:
   reads proceed
 - `rekey-book` rotates the passphrase through the native SQLite rekey path, reopens the book, and
   revalidates the replacement passphrase before the command reports success
-- posting lines are validated against the declared-account registry before ordinary duplicate
-  checks proceed
+- posting validation is shared between application preflight and transactional SQLite commit, so
+  book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
+  between the two paths
 - opened book handles keep `foreign_keys = on`, `trusted_schema = off`, and the expected
   `query_only` setting for the current access mode
 - schema bootstrap is intentionally separate from the posting transaction because it is idempotent
@@ -183,9 +187,9 @@ The SQLite adapter is split into focused collaborators:
   `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher`
   through `capabilities`
 
-The book-session seam distinguishes ordinary duplicate outcomes from true runtime failures:
-- duplicate idempotency returns `PostingCommitResult.DuplicateIdempotency`
-- duplicate reversal target returns `PostingCommitResult.DuplicateReversalTarget`
+The posting seam distinguishes ordinary domain outcomes from true runtime failures:
+- accepted commits return `PostingCommitResult.Committed`
+- ordinary write refusals return `PostingCommitResult.Rejected(...)`
 - other SQLite-native, bridge, filesystem, passphrase-source, or cipher failures stay
   `IllegalStateException` and become CLI `runtime-failure`
 

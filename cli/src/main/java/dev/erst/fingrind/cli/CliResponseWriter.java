@@ -1,29 +1,23 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.application.BookAdministrationRejection;
-import dev.erst.fingrind.application.DeclareAccountResult;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.ListAccountsResult;
-import dev.erst.fingrind.application.MachineContract;
-import dev.erst.fingrind.application.OpenBookResult;
-import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostingRejection;
-import dev.erst.fingrind.sqlite.RekeyBookResult;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.contract.*;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import tools.jackson.databind.JsonNode;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ArrayNode;
-import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Writes deterministic JSON envelopes for FinGrind CLI responses. */
 final class CliResponseWriter {
+  private static final String OPEN_BOOK_OPERATION =
+      dev.erst.fingrind.contract.protocol.ProtocolCatalog.operationName(
+          dev.erst.fingrind.contract.protocol.OperationId.OPEN_BOOK);
+
   private final ObjectMapper objectMapper = configuredObjectMapper();
   private final PrintStream outputStream;
 
@@ -51,6 +45,11 @@ final class CliResponseWriter {
     writeJson(requestTemplate, true);
   }
 
+  /** Writes the canonical ledger-plan template descriptor as raw JSON. */
+  void writePlanTemplate(MachineContract.LedgerPlanTemplateDescriptor planTemplate) {
+    writeJson(planTemplate, true);
+  }
+
   /** Writes one deterministic failure envelope. */
   void writeFailure(CliFailure failure) {
     writeEnvelope(
@@ -70,7 +69,7 @@ final class CliResponseWriter {
         switch (result) {
           case PostEntryResult.PreflightAccepted accepted -> preflightEnvelope(accepted);
           case PostEntryResult.Committed committed -> committedEnvelope(committed);
-          case PostEntryResult.Rejected rejected -> rejectedEnvelope(rejected);
+          case PostEntryResult.Rejected rejected -> postingRejectedEnvelope(rejected);
         };
     writeEnvelope(envelope, false);
   }
@@ -126,26 +125,88 @@ final class CliResponseWriter {
     writeEnvelope(envelope, false);
   }
 
+  /** Writes one book-inspection snapshot as a deterministic JSON envelope. */
+  void writeBookInspection(Path bookFilePath, BookInspection inspection) {
+    writeEnvelope(
+        successEnvelope(
+            new BookInspectionPayload(
+                absolutePath(bookFilePath),
+                inspection.status().name(),
+                inspection.initialized(),
+                inspection.compatibleWithCurrentBinary(),
+                inspection.canInitializeWithOpenBook(),
+                inspection.applicationId(),
+                inspection.detectedBookFormatVersion(),
+                inspection.supportedBookFormatVersion(),
+                inspection.migrationPolicy(),
+                stringOrNull(inspection.initializedAt()))),
+        false);
+  }
+
   /** Writes one account-listing result as a deterministic JSON envelope. */
   void writeListAccountsResult(ListAccountsResult result) {
     Object envelope =
         switch (result) {
           case ListAccountsResult.Listed listed ->
-              successEnvelope(
-                  listed.accounts().stream().map(CliResponseWriter::accountPayload).toList());
-          case ListAccountsResult.Rejected rejected ->
-              administrationRejectedEnvelope(rejected.rejection());
+              successEnvelope(accountPagePayload(listed.page()));
+          case ListAccountsResult.Rejected rejected -> queryRejectedEnvelope(rejected.rejection());
         };
     writeEnvelope(envelope, false);
   }
 
+  /** Writes one committed-posting lookup result as a deterministic JSON envelope. */
+  void writeGetPostingResult(GetPostingResult result) {
+    Object envelope =
+        switch (result) {
+          case GetPostingResult.Found found -> successEnvelope(postingPayload(found.postingFact()));
+          case GetPostingResult.Rejected rejected -> queryRejectedEnvelope(rejected.rejection());
+        };
+    writeEnvelope(envelope, false);
+  }
+
+  /** Writes one committed-posting page result as a deterministic JSON envelope. */
+  void writeListPostingsResult(ListPostingsResult result) {
+    Object envelope =
+        switch (result) {
+          case ListPostingsResult.Listed listed ->
+              successEnvelope(postingPagePayload(listed.page()));
+          case ListPostingsResult.Rejected rejected -> queryRejectedEnvelope(rejected.rejection());
+        };
+    writeEnvelope(envelope, false);
+  }
+
+  /** Writes one account-balance result as a deterministic JSON envelope. */
+  void writeAccountBalanceResult(AccountBalanceResult result) {
+    Object envelope =
+        switch (result) {
+          case AccountBalanceResult.Reported reported ->
+              successEnvelope(accountBalancePayload(reported.snapshot()));
+          case AccountBalanceResult.Rejected rejected ->
+              queryRejectedEnvelope(rejected.rejection());
+        };
+    writeEnvelope(envelope, false);
+  }
+
+  /** Writes one ledger-plan execution result as a deterministic JSON envelope. */
+  void writeLedgerPlanResult(LedgerPlanResult result) {
+    if (result.status() == dev.erst.fingrind.contract.LedgerPlanStatus.SUCCEEDED) {
+      writeEnvelope(new SuccessEnvelope("committed", result), false);
+      return;
+    }
+    LedgerJournalEntry failedStep = result.journal().steps().getLast();
+    dev.erst.fingrind.contract.LedgerStepFailure failure = failedStep.failure().orElseThrow();
+    writeEnvelope(
+        new RejectedEnvelope(
+            "rejected", failure.code(), failure.message(), null, Map.of("plan", result)),
+        false);
+  }
+
   /** Writes one raw JSON document, optionally pretty-printed. */
   void writeJson(Object value, boolean pretty) {
-    JsonNode node = withoutNulls(objectMapper.valueToTree(value));
     if (pretty) {
-      objectMapper.writerWithDefaultPrettyPrinter().writeValue(outputStream, node);
+      objectMapper.writerWithDefaultPrettyPrinter().writeValue(outputStream, value);
     } else {
-      objectMapper.writeValue(outputStream, node);
+      objectMapper.writeValue(outputStream, value);
     }
     outputStream.println();
     outputStream.flush();
@@ -171,24 +232,26 @@ final class CliResponseWriter {
         committed.recordedAt().toString());
   }
 
-  private RejectedEnvelope rejectedEnvelope(PostEntryResult.Rejected rejected) {
+  private RejectedEnvelope postingRejectedEnvelope(PostEntryResult.Rejected rejected) {
     return new RejectedEnvelope(
         "rejected",
         PostingRejection.wireCode(rejected.rejection()),
         postingRejectionMessage(rejected.rejection()),
         rejected.idempotencyKey().value(),
-        postingRejectionDetails(rejected.rejection()).orElse(null));
+        postingRejectionDetails(rejected.rejection()));
   }
 
   private static String postingRejectionMessage(PostingRejection rejection) {
     return switch (rejection) {
       case PostingRejection.BookNotInitialized _ ->
-          "The selected book does not exist or has not been initialized with open-book.";
-      case PostingRejection.UnknownAccount unknownAccount ->
-          "Account '%s' is not declared in this book."
-              .formatted(unknownAccount.accountCode().value());
-      case PostingRejection.InactiveAccount inactiveAccount ->
-          "Account '%s' is inactive in this book.".formatted(inactiveAccount.accountCode().value());
+          "The selected book does not exist or has not been initialized with "
+              + OPEN_BOOK_OPERATION
+              + ".";
+      case PostingRejection.AccountStateViolations violations ->
+          "Posting references undeclared or inactive accounts."
+              + " Fix every issue in details.violations before retrying."
+              + " Reported issues: "
+              + violations.violations().size();
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "A posting with the same idempotency key already exists in this book.";
       case PostingRejection.ReversalReasonRequired _ ->
@@ -207,25 +270,35 @@ final class CliResponseWriter {
     };
   }
 
-  private static Optional<Map<String, Object>> postingRejectionDetails(PostingRejection rejection) {
-    if (rejection instanceof PostingRejection.UnknownAccount unknownAccount) {
-      return Optional.of(Map.of("accountCode", unknownAccount.accountCode().value()));
-    }
-    if (rejection instanceof PostingRejection.InactiveAccount inactiveAccount) {
-      return Optional.of(Map.of("accountCode", inactiveAccount.accountCode().value()));
-    }
-    if (rejection instanceof PostingRejection.ReversalTargetNotFound reversalTargetNotFound) {
-      return Optional.of(Map.of("priorPostingId", reversalTargetNotFound.priorPostingId().value()));
-    }
-    if (rejection instanceof PostingRejection.ReversalAlreadyExists reversalAlreadyExists) {
-      return Optional.of(Map.of("priorPostingId", reversalAlreadyExists.priorPostingId().value()));
-    }
-    if (rejection
-        instanceof PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget) {
-      return Optional.of(
-          Map.of("priorPostingId", reversalDoesNotNegateTarget.priorPostingId().value()));
-    }
-    return Optional.empty();
+  private static @Nullable Object postingRejectionDetails(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.BookNotInitialized _ -> null;
+      case PostingRejection.AccountStateViolations violations ->
+          Map.of(
+              "violations",
+              violations.violations().stream()
+                  .map(CliResponseWriter::accountStateViolationPayload)
+                  .toList());
+      case PostingRejection.DuplicateIdempotencyKey _ -> null;
+      case PostingRejection.ReversalReasonRequired _ -> null;
+      case PostingRejection.ReversalReasonForbidden _ -> null;
+      case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
+          Map.of("priorPostingId", reversalTargetNotFound.priorPostingId().value());
+      case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
+          Map.of("priorPostingId", reversalAlreadyExists.priorPostingId().value());
+      case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
+          Map.of("priorPostingId", reversalDoesNotNegateTarget.priorPostingId().value());
+    };
+  }
+
+  private static Map<String, Object> accountStateViolationPayload(
+      PostingRejection.AccountStateViolation violation) {
+    return switch (violation) {
+      case PostingRejection.UnknownAccount unknownAccount ->
+          Map.of("code", "unknown-account", "accountCode", unknownAccount.accountCode().value());
+      case PostingRejection.InactiveAccount inactiveAccount ->
+          Map.of("code", "inactive-account", "accountCode", inactiveAccount.accountCode().value());
+    };
   }
 
   private static RejectedEnvelope administrationRejectedEnvelope(
@@ -235,7 +308,7 @@ final class CliResponseWriter {
         BookAdministrationRejection.wireCode(rejection),
         administrationRejectionMessage(rejection),
         null,
-        administrationRejectionDetails(rejection).orElse(null));
+        administrationRejectionDetails(rejection));
   }
 
   private static String administrationRejectionMessage(BookAdministrationRejection rejection) {
@@ -243,7 +316,9 @@ final class CliResponseWriter {
       case BookAdministrationRejection.BookAlreadyInitialized _ ->
           "The selected book is already initialized.";
       case BookAdministrationRejection.BookNotInitialized _ ->
-          "The selected book does not exist or has not been initialized with open-book.";
+          "The selected book does not exist or has not been initialized with "
+              + OPEN_BOOK_OPERATION
+              + ".";
       case BookAdministrationRejection.BookContainsSchema _ ->
           "The selected SQLite file already contains schema objects and cannot be initialized as a new book.";
       case BookAdministrationRejection.NormalBalanceConflict normalBalanceConflict ->
@@ -255,19 +330,55 @@ final class CliResponseWriter {
     };
   }
 
-  private static Optional<Map<String, Object>> administrationRejectionDetails(
+  private static @Nullable Object administrationRejectionDetails(
       BookAdministrationRejection rejection) {
-    if (rejection instanceof BookAdministrationRejection.NormalBalanceConflict conflict) {
-      return Optional.of(
+    return switch (rejection) {
+      case BookAdministrationRejection.BookAlreadyInitialized _ -> null;
+      case BookAdministrationRejection.BookNotInitialized _ -> null;
+      case BookAdministrationRejection.BookContainsSchema _ -> null;
+      case BookAdministrationRejection.NormalBalanceConflict conflict ->
           Map.of(
               "accountCode",
               conflict.accountCode().value(),
               "existingNormalBalance",
               conflict.existingNormalBalance().name(),
               "requestedNormalBalance",
-              conflict.requestedNormalBalance().name()));
-    }
-    return Optional.empty();
+              conflict.requestedNormalBalance().name());
+    };
+  }
+
+  private static RejectedEnvelope queryRejectedEnvelope(BookQueryRejection rejection) {
+    return new RejectedEnvelope(
+        "rejected",
+        BookQueryRejection.wireCode(rejection),
+        queryRejectionMessage(rejection),
+        null,
+        queryRejectionDetails(rejection));
+  }
+
+  private static String queryRejectionMessage(BookQueryRejection rejection) {
+    return switch (rejection) {
+      case BookQueryRejection.BookNotInitialized _ ->
+          "The selected book does not exist or has not been initialized with "
+              + OPEN_BOOK_OPERATION
+              + ".";
+      case BookQueryRejection.UnknownAccount unknownAccount ->
+          "Account '%s' is not declared in this book."
+              .formatted(unknownAccount.accountCode().value());
+      case BookQueryRejection.PostingNotFound postingNotFound ->
+          "Posting '%s' does not exist in this book."
+              .formatted(postingNotFound.postingId().value());
+    };
+  }
+
+  private static @Nullable Object queryRejectionDetails(BookQueryRejection rejection) {
+    return switch (rejection) {
+      case BookQueryRejection.BookNotInitialized _ -> null;
+      case BookQueryRejection.UnknownAccount unknownAccount ->
+          Map.of("accountCode", unknownAccount.accountCode().value());
+      case BookQueryRejection.PostingNotFound postingNotFound ->
+          Map.of("postingId", postingNotFound.postingId().value());
+    };
   }
 
   private static DeclaredAccountPayload accountPayload(DeclaredAccount account) {
@@ -277,6 +388,81 @@ final class CliResponseWriter {
         account.normalBalance().name(),
         account.active(),
         account.declaredAt().toString());
+  }
+
+  private static PostingPayload postingPayload(PostingFact postingFact) {
+    return new PostingPayload(
+        postingFact.postingId().value(),
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.provenance().requestProvenance().actorId().value(),
+        postingFact.provenance().requestProvenance().actorType().name(),
+        postingFact.provenance().requestProvenance().commandId().value(),
+        postingFact.provenance().requestProvenance().idempotencyKey().value(),
+        postingFact.provenance().requestProvenance().causationId().value(),
+        postingFact
+            .provenance()
+            .requestProvenance()
+            .correlationId()
+            .map(value -> value.value())
+            .orElse(null),
+        postingFact
+            .provenance()
+            .requestProvenance()
+            .reason()
+            .map(value -> value.value())
+            .orElse(null),
+        postingFact.provenance().sourceChannel().name(),
+        postingFact
+            .reversalReference()
+            .map(reference -> new ReversalPayload(reference.priorPostingId().value()))
+            .orElse(null),
+        postingFact.journalEntry().lines().stream().map(CliResponseWriter::linePayload).toList());
+  }
+
+  private static JournalLinePayload linePayload(dev.erst.fingrind.core.JournalLine line) {
+    return new JournalLinePayload(
+        line.accountCode().value(),
+        line.side().name(),
+        line.amount().currencyCode().value(),
+        line.amount().amount().toPlainString());
+  }
+
+  private static PostingListPayload postingPagePayload(PostingPage page) {
+    return new PostingListPayload(
+        page.limit(),
+        page.offset(),
+        page.hasMore(),
+        page.postings().stream().map(CliResponseWriter::postingPayload).toList());
+  }
+
+  private static AccountListPayload accountPagePayload(AccountPage page) {
+    return new AccountListPayload(
+        page.limit(),
+        page.offset(),
+        page.hasMore(),
+        page.accounts().stream().map(CliResponseWriter::accountPayload).toList());
+  }
+
+  private static AccountBalancePayload accountBalancePayload(AccountBalanceSnapshot snapshot) {
+    return new AccountBalancePayload(
+        snapshot.account().accountCode().value(),
+        snapshot.account().accountName().value(),
+        snapshot.account().normalBalance().name(),
+        snapshot.account().active(),
+        snapshot.account().declaredAt().toString(),
+        snapshot.effectiveDateFrom().map(Object::toString).orElse(null),
+        snapshot.effectiveDateTo().map(Object::toString).orElse(null),
+        snapshot.balances().stream().map(CliResponseWriter::balancePayload).toList());
+  }
+
+  private static BalanceBucketPayload balancePayload(CurrencyBalance balance) {
+    return new BalanceBucketPayload(
+        balance.debitTotal().currencyCode().value(),
+        balance.debitTotal().amount().toPlainString(),
+        balance.creditTotal().amount().toPlainString(),
+        balance.netAmount().amount().toPlainString(),
+        balance.balanceSide().name());
   }
 
   private static SuccessEnvelope successEnvelope(Object payload) {
@@ -292,46 +478,24 @@ final class CliResponseWriter {
   }
 
   private static ObjectMapper configuredObjectMapper() {
-    return new ObjectMapper();
+    return JsonMapper.builder()
+        .changeDefaultPropertyInclusion(
+            value -> value.withValueInclusion(JsonInclude.Include.NON_NULL))
+        .build();
   }
 
-  private static JsonNode withoutNulls(JsonNode node) {
-    if (node.isNull()) {
-      return node;
-    }
-    if (node.isObject()) {
-      ObjectNode objectNode = (ObjectNode) node;
-      List<String> nullFields = new ArrayList<>();
-      objectNode
-          .propertyStream()
-          .forEach(
-              entry -> {
-                JsonNode value = entry.getValue();
-                if (value.isNull()) {
-                  nullFields.add(entry.getKey());
-                } else {
-                  objectNode.set(entry.getKey(), withoutNulls(value));
-                }
-              });
-      objectNode.remove(nullFields);
-      return objectNode;
-    }
-    if (node.isArray()) {
-      ArrayNode arrayNode = (ArrayNode) node;
-      for (int index = 0; index < arrayNode.size(); index++) {
-        JsonNode value = arrayNode.get(index);
-        if (!value.isNull()) {
-          arrayNode.set(index, withoutNulls(value));
-        }
-      }
-    }
-    return node;
+  private static @Nullable String stringOrNull(@Nullable Object value) {
+    return value == null ? null : value.toString();
   }
 
   private record SuccessEnvelope(String status, Object payload) {}
 
   private record FailureEnvelope(
-      String status, String code, String message, String hint, String argument) {}
+      String status,
+      String code,
+      String message,
+      @Nullable String hint,
+      @Nullable String argument) {}
 
   private record PreflightAcceptedEnvelope(
       String status, String idempotencyKey, String effectiveDate) {}
@@ -344,7 +508,11 @@ final class CliResponseWriter {
       String recordedAt) {}
 
   private record RejectedEnvelope(
-      String status, String code, String message, String idempotencyKey, Object details) {}
+      String status,
+      String code,
+      String message,
+      @Nullable String idempotencyKey,
+      @Nullable Object details) {}
 
   private record OpenBookPayload(String bookFile, String initializedAt) {}
 
@@ -359,4 +527,59 @@ final class CliResponseWriter {
       String normalBalance,
       boolean active,
       String declaredAt) {}
+
+  private record BookInspectionPayload(
+      String bookFile,
+      String state,
+      boolean initialized,
+      boolean compatibleWithCurrentBinary,
+      boolean canInitializeWithOpenBook,
+      @Nullable Integer applicationId,
+      @Nullable Integer detectedBookFormatVersion,
+      int supportedBookFormatVersion,
+      String migrationPolicy,
+      @Nullable String initializedAt) {}
+
+  private record PostingPayload(
+      String postingId,
+      String effectiveDate,
+      String recordedAt,
+      String actorId,
+      String actorType,
+      String commandId,
+      String idempotencyKey,
+      String causationId,
+      @Nullable String correlationId,
+      @Nullable String reason,
+      String sourceChannel,
+      @Nullable ReversalPayload reversal,
+      List<JournalLinePayload> lines) {}
+
+  private record ReversalPayload(String priorPostingId) {}
+
+  private record JournalLinePayload(
+      String accountCode, String side, String currencyCode, String amount) {}
+
+  private record PostingListPayload(
+      int limit, int offset, boolean hasMore, List<PostingPayload> postings) {}
+
+  private record AccountListPayload(
+      int limit, int offset, boolean hasMore, List<DeclaredAccountPayload> accounts) {}
+
+  private record AccountBalancePayload(
+      String accountCode,
+      String accountName,
+      String normalBalance,
+      boolean active,
+      String declaredAt,
+      @Nullable String effectiveDateFrom,
+      @Nullable String effectiveDateTo,
+      List<BalanceBucketPayload> balances) {}
+
+  private record BalanceBucketPayload(
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      String balanceSide) {}
 }

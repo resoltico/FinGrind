@@ -89,20 +89,29 @@ jobs:
         include:
           - runner: ubuntu-latest
             classifier: linux-x86_64
+            archive_extension: tar.gz
             expected_os: Linux
             expected_arch: x86_64
           - runner: ubuntu-24.04-arm
             classifier: linux-aarch64
+            archive_extension: tar.gz
             expected_os: Linux
             expected_arch: aarch64
           - runner: macos-latest
             classifier: macos-aarch64
+            archive_extension: tar.gz
             expected_os: Darwin
             expected_arch: arm64
           - runner: macos-15-intel
             classifier: macos-x86_64
+            archive_extension: tar.gz
             expected_os: Darwin
             expected_arch: x86_64
+          - runner: windows-latest
+            classifier: windows-x86_64
+            archive_extension: zip
+            expected_os: Windows
+            expected_arch: X64
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -117,7 +126,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
-      - name: Verify runner identity matches bundle target
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+
+      - name: Verify Unix runner identity matches bundle target
+        if: runner.os != 'Windows'
         run: |
           set -euo pipefail
           actual_os="$(uname -s)"
@@ -131,26 +146,56 @@ jobs:
             exit 1
           }
 
-      - name: Build self-contained CLI bundle
+      - name: Verify Windows runner identity matches bundle target
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not $IsWindows) {
+            throw "Expected a Windows runner"
+          }
+          $actualArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+          if ($actualArch -ne '${{ matrix.expected_arch }}') {
+            throw "Expected arch ${{ matrix.expected_arch }} but runner reported $actualArch"
+          }
+
+      - name: Build Unix self-contained CLI bundle
+        if: runner.os != 'Windows'
         run: |
           ./gradlew :cli:bundleCliArchive \
             -PfingrindBundleClassifier=${{ matrix.classifier }} \
             --no-daemon \
             --console=plain
 
-      - name: Smoke test the self-contained CLI bundle
+      - name: Build Windows self-contained CLI bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\gradlew.bat :cli:bundleCliArchive `
+            -PfingrindBundleClassifier=${{ matrix.classifier }} `
+            --no-daemon `
+            --console=plain
+
+      - name: Smoke test the Unix self-contained CLI bundle
+        if: runner.os != 'Windows'
         run: |
           ./scripts/bundle-smoke.sh \
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.tar.gz"
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}"
+
+      - name: Smoke test the Windows self-contained CLI bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\scripts\bundle-smoke.ps1 `
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}"
 
       - name: Publish bundle assets to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
         run: |
-          ./scripts/publish-github-release.sh \
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.tar.gz" \
-            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.tar.gz.sha256"
+          bash ./scripts/publish-github-release.sh \
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}" \
+            "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}.sha256"
 
   verify-release:
     name: Verify GitHub release assets
@@ -182,4 +227,6 @@ jobs:
             "fingrind-${{ needs.prepare-release.outputs.version }}-macos-x86_64.tar.gz" \
             "fingrind-${{ needs.prepare-release.outputs.version }}-macos-x86_64.tar.gz.sha256" \
             "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz" \
-            "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz.sha256"
+            "fingrind-${{ needs.prepare-release.outputs.version }}-macos-aarch64.tar.gz.sha256" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-windows-x86_64.zip" \
+            "fingrind-${{ needs.prepare-release.outputs.version }}-windows-x86_64.zip.sha256"

@@ -4,26 +4,48 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.application.BookAdministrationRejection;
-import dev.erst.fingrind.application.DeclareAccountResult;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.ListAccountsResult;
-import dev.erst.fingrind.application.MachineContract;
-import dev.erst.fingrind.application.OpenBookResult;
-import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostingRejection;
+import dev.erst.fingrind.contract.AccountBalanceResult;
+import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.BookAdministrationRejection;
+import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.BookQueryRejection;
+import dev.erst.fingrind.contract.CurrencyBalance;
+import dev.erst.fingrind.contract.DeclareAccountResult;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.GetPostingResult;
+import dev.erst.fingrind.contract.ListAccountsResult;
+import dev.erst.fingrind.contract.ListPostingsResult;
+import dev.erst.fingrind.contract.MachineContract;
+import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingPage;
+import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.CausationId;
+import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.JournalEntry;
+import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.sqlite.RekeyBookResult;
+import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.core.SourceChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -32,8 +54,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.ArrayNode;
-import tools.jackson.databind.node.ObjectNode;
 
 /** Unit tests for {@link CliResponseWriter}. */
 class CliResponseWriterTest {
@@ -67,8 +87,13 @@ class CliResponseWriterTest {
             new MachineContract.EnvironmentDescriptor(
                 "container-image",
                 "self-contained-bundle",
-                List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64"),
-                List.of("windows"),
+                List.of(
+                    "macos-aarch64",
+                    "macos-x86_64",
+                    "linux-x86_64",
+                    "linux-aarch64",
+                    "windows-x86_64"),
+                List.of(),
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -97,10 +122,9 @@ class CliResponseWriterTest {
     assertEquals("container-image", environment.path("runtimeDistribution").asString());
     assertEquals("self-contained-bundle", environment.path("publicCliDistribution").asString());
     assertEquals(
-        "[\"macos-aarch64\",\"macos-x86_64\",\"linux-x86_64\",\"linux-aarch64\"]",
+        "[\"macos-aarch64\",\"macos-x86_64\",\"linux-x86_64\",\"linux-aarch64\",\"windows-x86_64\"]",
         environment.path("supportedPublicCliBundleTargets").toString());
-    assertEquals(
-        "[\"windows\"]", environment.path("unsupportedPublicCliOperatingSystems").toString());
+    assertEquals("[]", environment.path("unsupportedPublicCliOperatingSystems").toString());
     assertFalse(environment.has("loadedSqliteVersion"));
     assertFalse(environment.has("loadedSqlite3mcVersion"));
   }
@@ -228,13 +252,17 @@ class CliResponseWriterTest {
   @Test
   void writePostEntryResult_writesBookInitializationAndAccountRejections() {
     String bookJson = rejectedJson(new PostingRejection.BookNotInitialized());
-    String unknownJson = rejectedJson(new PostingRejection.UnknownAccount(new AccountCode("1000")));
-    String inactiveJson =
-        rejectedJson(new PostingRejection.InactiveAccount(new AccountCode("1000")));
+    String accountStateJson =
+        rejectedJson(
+            new PostingRejection.AccountStateViolations(
+                List.of(
+                    new PostingRejection.UnknownAccount(new AccountCode("1000")),
+                    new PostingRejection.InactiveAccount(new AccountCode("2000")))));
 
     assertTrue(bookJson.contains("\"code\":\"book-not-initialized\""));
-    assertTrue(unknownJson.contains("\"accountCode\":\"1000\""));
-    assertTrue(inactiveJson.contains("\"code\":\"inactive-account\""));
+    assertTrue(accountStateJson.contains("\"code\":\"account-state-violations\""));
+    assertTrue(accountStateJson.contains("\"accountCode\":\"1000\""));
+    assertTrue(accountStateJson.contains("\"code\":\"inactive-account\""));
   }
 
   @Test
@@ -289,8 +317,6 @@ class CliResponseWriterTest {
 
   @Test
   void writeDeclareAccountAndListAccountsResults_writeSuccessAndRejectionEnvelopes() {
-    ByteArrayOutputStream successOutput = new ByteArrayOutputStream();
-    CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
     DeclaredAccount declaredAccount =
         new DeclaredAccount(
             new AccountCode("1000"),
@@ -299,70 +325,205 @@ class CliResponseWriterTest {
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
 
-    successWriter.writeDeclareAccountResult(new DeclareAccountResult.Declared(declaredAccount));
-    successWriter.writeListAccountsResult(
-        new ListAccountsResult.Listed(java.util.List.of(declaredAccount)));
+    ByteArrayOutputStream declareSuccessOutput = new ByteArrayOutputStream();
+    CliResponseWriter declareSuccessWriter =
+        new CliResponseWriter(utf8PrintStream(declareSuccessOutput));
+    declareSuccessWriter.writeDeclareAccountResult(
+        new DeclareAccountResult.Declared(declaredAccount));
 
-    String successJson = successOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(successJson.contains("\"accountName\":\"Cash\""));
-    assertTrue(successJson.contains("\"declaredAt\":\"2026-04-07T10:15:30Z\""));
+    ByteArrayOutputStream listSuccessOutput = new ByteArrayOutputStream();
+    CliResponseWriter listSuccessWriter = new CliResponseWriter(utf8PrintStream(listSuccessOutput));
+    listSuccessWriter.writeListAccountsResult(
+        new ListAccountsResult.Listed(
+            new AccountPage(java.util.List.of(declaredAccount), 50, 0, false)));
+
+    String declareSuccessJson = declareSuccessOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(declareSuccessJson.contains("\"accountName\":\"Cash\""));
+    assertTrue(declareSuccessJson.contains("\"declaredAt\":\"2026-04-07T10:15:30Z\""));
+
+    String listSuccessJson = listSuccessOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(listSuccessJson.contains("\"limit\":50"));
+    assertTrue(listSuccessJson.contains("\"offset\":0"));
+    assertTrue(listSuccessJson.contains("\"hasMore\":false"));
+    assertTrue(listSuccessJson.contains("\"accountName\":\"Cash\""));
 
     ByteArrayOutputStream declareRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter declareRejectionWriter =
         new CliResponseWriter(utf8PrintStream(declareRejectionOutput));
     declareRejectionWriter.writeDeclareAccountResult(
         new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()));
+    ByteArrayOutputStream declareConflictOutput = new ByteArrayOutputStream();
+    CliResponseWriter declareConflictWriter =
+        new CliResponseWriter(utf8PrintStream(declareConflictOutput));
+    declareConflictWriter.writeDeclareAccountResult(
+        new DeclareAccountResult.Rejected(
+            new BookAdministrationRejection.NormalBalanceConflict(
+                new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)));
 
     ByteArrayOutputStream listRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter listRejectionWriter =
         new CliResponseWriter(utf8PrintStream(listRejectionOutput));
     listRejectionWriter.writeListAccountsResult(
-        new ListAccountsResult.Rejected(
-            new BookAdministrationRejection.NormalBalanceConflict(
-                new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)));
+        new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()));
 
     assertTrue(
         declareRejectionOutput
             .toString(StandardCharsets.UTF_8)
             .contains("\"code\":\"book-not-initialized\""));
+    String declareConflictJson = declareConflictOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(declareConflictJson.contains("\"code\":\"account-normal-balance-conflict\""));
+    assertTrue(declareConflictJson.contains("\"accountCode\":\"1000\""));
+    assertTrue(declareConflictJson.contains("\"existingNormalBalance\":\"DEBIT\""));
+    assertTrue(declareConflictJson.contains("\"requestedNormalBalance\":\"CREDIT\""));
+    assertTrue(declareConflictJson.contains("already exists with normal balance"));
     assertTrue(
         listRejectionOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"account-normal-balance-conflict\""));
+            .contains("\"code\":\"book-not-initialized\""));
   }
 
   @Test
-  void withoutNulls_handlesJsonNullsObjectNullFieldsAndNullArrayEntries()
-      throws NoSuchMethodException, IllegalAccessException {
-    MethodHandle withoutNulls =
-        MethodHandles.privateLookupIn(CliResponseWriter.class, MethodHandles.lookup())
-            .findStatic(
-                CliResponseWriter.class,
-                "withoutNulls",
-                MethodType.methodType(JsonNode.class, JsonNode.class));
-    ObjectMapper objectMapper = new ObjectMapper();
+  void writeQueryResults_writeSuccessAndRejectionEnvelopes() {
+    PostingFact postingFact = postingFact();
+    AccountBalanceSnapshot balanceSnapshot =
+        new AccountBalanceSnapshot(
+            new DeclaredAccount(
+                new AccountCode("1000"),
+                new AccountName("Cash"),
+                NormalBalance.DEBIT,
+                true,
+                Instant.parse("2026-04-07T10:15:30Z")),
+            java.util.Optional.of(LocalDate.parse("2026-04-01")),
+            java.util.Optional.of(LocalDate.parse("2026-04-30")),
+            List.of(
+                new CurrencyBalance(
+                    money("EUR", "10.00"),
+                    money("EUR", "4.00"),
+                    money("EUR", "6.00"),
+                    NormalBalance.DEBIT)));
 
-    assertTrue(invokeWithoutNulls(withoutNulls, objectMapper.valueToTree(null)).isNull());
+    ByteArrayOutputStream inspectionOutput = new ByteArrayOutputStream();
+    CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
+    inspectionWriter.writeBookInspection(
+        Path.of("book.sqlite"),
+        new BookInspection(
+            BookInspection.Status.INITIALIZED,
+            true,
+            true,
+            false,
+            1_179_079_236,
+            1,
+            1,
+            "hard-break-no-migration",
+            Instant.parse("2026-04-07T10:15:30Z")));
+    ByteArrayOutputStream missingInspectionOutput = new ByteArrayOutputStream();
+    CliResponseWriter missingInspectionWriter =
+        new CliResponseWriter(utf8PrintStream(missingInspectionOutput));
+    missingInspectionWriter.writeBookInspection(
+        Path.of("missing.sqlite"),
+        new BookInspection(
+            BookInspection.Status.MISSING,
+            false,
+            true,
+            true,
+            null,
+            null,
+            1,
+            "hard-break-no-migration",
+            null));
+    ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
+    CliResponseWriter getPostingWriter = new CliResponseWriter(utf8PrintStream(getPostingOutput));
+    getPostingWriter.writeGetPostingResult(new GetPostingResult.Found(postingFact));
+    ByteArrayOutputStream getPostingRejectionOutput = new ByteArrayOutputStream();
+    CliResponseWriter getPostingRejectionWriter =
+        new CliResponseWriter(utf8PrintStream(getPostingRejectionOutput));
+    getPostingRejectionWriter.writeGetPostingResult(
+        new GetPostingResult.Rejected(
+            new BookQueryRejection.PostingNotFound(new PostingId("posting-9"))));
 
-    ObjectNode objectNode = objectMapper.createObjectNode();
-    objectNode.put("kept", "value");
-    objectNode.putNull("jsonNull");
-    ObjectNode nestedObject = objectMapper.createObjectNode();
-    nestedObject.put("nestedKept", "nested-value");
-    nestedObject.putNull("nestedNull");
-    objectNode.set("nested", nestedObject);
-    ArrayNode arrayNode = objectMapper.createArrayNode();
-    arrayNode.add("entry");
-    arrayNode.addNull();
-    objectNode.set("array", arrayNode);
+    ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
+    CliResponseWriter listPostingsWriter =
+        new CliResponseWriter(utf8PrintStream(listPostingsOutput));
+    listPostingsWriter.writeListPostingsResult(
+        new ListPostingsResult.Listed(new PostingPage(List.of(postingFact), 10, 0, false)));
+    ByteArrayOutputStream listPostingsRejectionOutput = new ByteArrayOutputStream();
+    CliResponseWriter listPostingsRejectionWriter =
+        new CliResponseWriter(utf8PrintStream(listPostingsRejectionOutput));
+    listPostingsRejectionWriter.writeListPostingsResult(
+        new ListPostingsResult.Rejected(
+            new BookQueryRejection.UnknownAccount(new AccountCode("9999"))));
 
-    JsonNode sanitized = invokeWithoutNulls(withoutNulls, objectNode);
-    assertEquals("value", sanitized.path("kept").asString());
-    assertFalse(sanitized.has("jsonNull"));
-    assertFalse(sanitized.path("nested").has("nestedNull"));
-    assertEquals("nested-value", sanitized.path("nested").path("nestedKept").asString());
-    assertEquals("entry", sanitized.path("array").get(0).asString());
-    assertTrue(sanitized.path("array").get(1).isNull());
+    ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
+    CliResponseWriter balanceWriter = new CliResponseWriter(utf8PrintStream(balanceOutput));
+    balanceWriter.writeAccountBalanceResult(new AccountBalanceResult.Reported(balanceSnapshot));
+    ByteArrayOutputStream balanceRejectionOutput = new ByteArrayOutputStream();
+    CliResponseWriter balanceRejectionWriter =
+        new CliResponseWriter(utf8PrintStream(balanceRejectionOutput));
+    balanceRejectionWriter.writeAccountBalanceResult(
+        new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()));
+
+    assertTrue(inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
+    assertTrue(
+        inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"INITIALIZED\""));
+    assertFalse(
+        missingInspectionOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
+    assertTrue(
+        getPostingOutput.toString(StandardCharsets.UTF_8).contains("\"reason\":\"full reversal\""));
+    assertTrue(
+        getPostingOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"priorPostingId\":\"posting-0\""));
+    assertTrue(
+        getPostingRejectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"code\":\"posting-not-found\""));
+    assertTrue(
+        getPostingRejectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"postingId\":\"posting-9\""));
+    assertTrue(listPostingsOutput.toString(StandardCharsets.UTF_8).contains("\"postings\":["));
+    assertTrue(
+        listPostingsRejectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"accountCode\":\"9999\""));
+    assertTrue(
+        balanceOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"effectiveDateFrom\":\"2026-04-01\""));
+    assertTrue(
+        balanceOutput.toString(StandardCharsets.UTF_8).contains("\"balanceSide\":\"DEBIT\""));
+    assertTrue(
+        balanceRejectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"code\":\"book-not-initialized\""));
+  }
+
+  private static PostingFact postingFact() {
+    return new PostingFact(
+        new PostingId("posting-1"),
+        new JournalEntry(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"), JournalLine.EntrySide.DEBIT, money("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
+        java.util.Optional.of(new ReversalReference(new PostingId("posting-0"))),
+        new CommittedProvenance(
+            new RequestProvenance(
+                new ActorId("actor-1"),
+                ActorType.AGENT,
+                new CommandId("command-1"),
+                new IdempotencyKey("idem-1"),
+                new CausationId("cause-1"),
+                java.util.Optional.of(new CorrelationId("corr-1")),
+                java.util.Optional.of(new ReversalReason("full reversal"))),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            SourceChannel.CLI));
+  }
+
+  private static Money money(String currencyCode, String amount) {
+    return new Money(new CurrencyCode(currencyCode), new BigDecimal(amount));
   }
 
   private static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {
@@ -391,13 +552,5 @@ class CliResponseWriterTest {
 
   private static JsonNode readJson(ByteArrayOutputStream outputStream) throws IOException {
     return new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
-  }
-
-  private static JsonNode invokeWithoutNulls(MethodHandle withoutNulls, JsonNode node) {
-    try {
-      return (JsonNode) withoutNulls.invoke(node);
-    } catch (Throwable throwable) {
-      throw new AssertionError("withoutNulls invocation failed", throwable);
-    }
   }
 }

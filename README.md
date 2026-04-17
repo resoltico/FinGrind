@@ -17,36 +17,57 @@ The current model is intentionally strict:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
 - one book belongs to one entity
 - books are initialized explicitly with `open-book`
+- public operation metadata is owned by the contract protocol catalog and rendered by the CLI
 - accounts must be declared before posting
 - posting lines must reference declared active accounts
 - one canonical current schema defines new books
 - new books use SQLite `STRICT` tables
 - there is no migration or backward-compatibility layer
 - every journal entry is single-currency
+- every journal-line amount is strictly positive
 - journal entries must balance before they can cross the write boundary
 - caller-supplied request provenance is separate from committed audit metadata
 - reversals are additive links to earlier postings, not in-place mutation
 
 ## What You Can Do Today
 
-FinGrind currently exposes nine CLI commands:
+FinGrind currently exposes seventeen CLI commands:
 - `help`
 - `version`
 - `capabilities`
 - `print-request-template`
+- `print-plan-template`
+- `generate-book-key-file`
 - `open-book`
+- `rekey-book`
 - `declare-account`
+- `inspect-book`
 - `list-accounts`
+- `get-posting`
+- `list-postings`
+- `account-balance`
+- `execute-plan`
 - `preflight-entry`
 - `post-entry`
 
 The book lifecycle is explicit:
+- `generate-book-key-file` creates one owner-only key file without printing the generated secret
 - `open-book` creates one new initialized book
+- `print-plan-template` prints a runnable AI-agent plan scaffold with `open-book`, account
+  declarations, one posting step, and one balance assertion
+- `inspect-book` reports lifecycle, compatibility, and book-format metadata before mutation
 - `declare-account` inserts or reactivates one account in that book
-- `list-accounts` returns the current account registry
+- `list-accounts` returns a paged account registry with `limit`, `offset`, and `hasMore`
+- `get-posting`, `list-postings`, and `account-balance` expose committed history and balances
+- `execute-plan` runs one ordered ledger plan atomically and returns a per-step execution journal
 - `preflight-entry` and `post-entry` reject a missing or unopened book with `book-not-initialized`
-- `preflight-entry` and `post-entry` reject undeclared or inactive accounts deterministically
+- `preflight-entry` and `post-entry` report undeclared or inactive accounts under `account-state-violations`
 - `preflight-entry` is advisory and not a durable commit guarantee
+
+The command catalog is generated from contract-owned protocol metadata. Operation ids, display labels,
+execution modes, summaries, hard book-model limitations, and pagination limits are not hand-copied
+inside CLI help; contract lint tests fail the build when user-facing command references drift from
+the registered catalog.
 
 ## Quick Start
 
@@ -56,20 +77,30 @@ Current bundle targets are:
 - `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
+- `windows-x86_64`
 
-One public bundle flow:
+One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.14.0-macos-aarch64.tar.gz
-./fingrind-0.14.0-macos-aarch64/bin/fingrind help
+tar -xzf fingrind-0.15.0-macos-aarch64.tar.gz
+./fingrind-0.15.0-macos-aarch64/bin/fingrind help
+```
+
+One public Windows bundle flow:
+
+```powershell
+Expand-Archive fingrind-0.15.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd help
 ```
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
-Windows is not part of the current public bundle contract.
+Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
+published as `.zip` archives with the `bin\fingrind.cmd` launcher.
 
 Each extracted archive includes:
 - `bin/fingrind`
+- `bin/fingrind.cmd`
 - `runtime/`
 - `lib/`
 - top-level `README.md`
@@ -82,7 +113,7 @@ Controlled FinGrind surfaces pin a managed SQLite 3.53.0 / SQLite3 Multiple Ciph
 runtime:
 - public bundle archives
 - `./gradlew test`, `./gradlew check`, and `./gradlew :cli:run`
-- `./gradlew :cli:bundleCliArchive` and `./scripts/bundle-smoke.sh`
+- `./gradlew :cli:bundleCliArchive`, `./scripts/bundle-smoke.sh`, and `./scripts/bundle-smoke.ps1`
 - `./gradlew -p jazzer check` and local `jazzer/bin/*` fuzzing commands
 - GitHub Actions verification and release workflows
 - the published container image
@@ -110,6 +141,8 @@ FinGrind does not support arbitrary host `libsqlite3` fallback.
 The `find .../build/managed-sqlite` export above is the supported local source-checkout path
 because it keeps developer-only raw-JAR verification on the same managed native library contract
 as Gradle, Jazzer, CI, and Docker.
+Running `:cli:shadowJar` also stages the compile-only JDeps support jars used by Docker image
+assembly under `cli/build/docker/jdeps/`, so no separate Docker preparation task is required.
 
 For full contributor verification, keep the checkout on the Mac's local filesystem.
 Mounted external volumes are outside the supported setup because Gradle project-cache and JaCoCo
@@ -202,6 +235,13 @@ fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
+Generate a runnable AI-agent plan scaffold:
+
+```bash
+fingrind \
+  print-plan-template > /tmp/fingrind-plan.json
+```
+
 Preflight and then commit that request:
 
 ```bash
@@ -218,13 +258,53 @@ fingrind \
   --request-file /tmp/fingrind-request.json
 ```
 
+Or execute one whole workflow atomically through the ledger-plan surface:
+
+```bash
+fingrind \
+  execute-plan \
+  --book-file /tmp/acme-plan-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --request-file docs/examples/ledger-plan-request.json
+```
+
 Inspect the declared account registry at any time:
 
 ```bash
 fingrind \
-  list-accounts \
+  inspect-book \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key
+
+fingrind \
+  list-accounts \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --limit 50 \
+  --offset 0
+```
+
+Query the committed history after posting:
+
+```bash
+fingrind \
+  get-posting \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --posting-id 01963c70-8d65-7b56-8a64-3c92745d8f72
+
+fingrind \
+  list-postings \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --account-code 1000 \
+  --limit 25
+
+fingrind \
+  account-balance \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --account-code 1000
 ```
 
 ## Request Shape
@@ -252,6 +332,7 @@ audit metadata itself when `post-entry` succeeds.
 `lines[].amount` must be a plain decimal string such as `10.00`. Exponent notation such as
 `1e6` is rejected.
 Every line inside one entry must share the same `currencyCode`. Mixed-currency entries are rejected.
+Every entry must contain at least one debit line and one credit line.
 
 Successful commits return a FinGrind-generated `postingId`. The default production generator emits
 UUID v7 values.
@@ -268,8 +349,9 @@ Current deterministic rejection codes include:
 - `book-contains-schema`
 - `book-not-initialized`
 - `account-normal-balance-conflict`
+- `posting-not-found`
+- `account-state-violations`
 - `unknown-account`
-- `inactive-account`
 - `duplicate-idempotency-key`
 - `reversal-reason-required`
 - `reversal-reason-forbidden`
@@ -301,9 +383,11 @@ Current deterministic rejection codes include:
   Run `./gradlew prepareManagedSqlite` as well before validating that developer-only raw-JAR path
   against the managed native library under `build/managed-sqlite/`.
 - `help`, `version`, and `capabilities` return JSON envelopes for discovery.
-- `print-request-template` returns raw JSON so it can be piped straight into a file.
-- `open-book`, `rekey-book`, `declare-account`, `list-accounts`, `preflight-entry`, and
-  `post-entry` require `--book-file` plus exactly one explicit passphrase source.
+- `print-request-template` and `print-plan-template` return raw JSON so they can be piped straight
+  into a file.
+- `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`,
+  `list-postings`, `account-balance`, `execute-plan`, `preflight-entry`, and `post-entry` require
+  `--book-file` plus exactly one explicit passphrase source.
 - `rekey-book` also requires exactly one replacement passphrase source through
   `--new-book-key-file`, `--new-book-passphrase-stdin`, or `--new-book-passphrase-prompt`.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file on a POSIX
@@ -314,8 +398,16 @@ Current deterministic rejection codes include:
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
   object level.
-- `list-accounts` and `preflight-entry` now reopen books through an explicit read-only SQLite
-  session that also enforces `pragma query_only = on`.
+- `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, and
+  `preflight-entry` reopen books through an explicit read-only SQLite session that also enforces
+  `pragma query_only = on`.
+- `inspect-book` is the best machine-readable compatibility probe before mutating commands because
+  it reports initialization state, detected format version, supported format version, and
+  compatibility with the current binary.
+- `list-accounts` and `list-postings` return paginated payloads with `limit`, `offset`, and
+  `hasMore`.
+- `execute-plan` returns `status: "committed"` on success and includes the durable plan journal in
+  `payload.journal`.
 - FinGrind does not assume a default database location.
 - FinGrind does not accept SQLite URI `key=` or `hexkey=` transport, plaintext CLI passphrase
   arguments, or environment-variable passphrase transport; protected books always use the upstream
@@ -324,12 +416,17 @@ Current deterministic rejection codes include:
   `user_version`, and the runtime rejects external libraries that miss the required SQLite3MC
   compile-option hardening.
 - `postingId` in committed responses is generated as a UUID v7 value.
+- posting-side account failures are returned as `account-state-violations` with one or more
+  detailed issue objects under `details.violations`.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
 - Using the wrong key file or wrong non-file passphrase source fails the runtime open with a
   structured `runtime-failure`, typically including `SQLITE_NOTADB`.
 - `capabilities` is the best machine-readable contract surface for commands, request fields,
   account-registry rules, rejection descriptors, advisory preflight semantics, the
   single-currency entry model, and the current protected-book runtime metadata.
+- Command ids, display labels, output modes, help usage, quick-start examples, and shared query
+  limits are rendered from the contract protocol catalog, and repository contract lint tests check
+  docs and production Java for unregistered operation references.
 
 ## More User Docs
 

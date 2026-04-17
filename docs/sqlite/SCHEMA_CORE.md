@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-11"
+updated: "2026-04-17"
 route:
   keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book"]

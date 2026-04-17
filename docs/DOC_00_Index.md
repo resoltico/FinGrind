@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.14.0"
+version: "0.15.0"
 domain: INDEX
-updated: "2026-04-13"
+updated: "2026-04-17"
 route:
-  keywords: [fingrind, index, routing, api, symbols, core, application, machine-contract, book-session, adapters]
-  questions: ["where is the fingrind api documented", "which doc file covers BookSession", "which doc file covers RequestProvenance"]
+  keywords: [fingrind, index, routing, api, symbols, core, protocol-catalog, contract, executor, machine-contract, query-session, adapters]
+  questions: ["where is the fingrind api documented", "which doc file covers BookQuerySession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers LedgerPlanService"]
 ---
 
 # API Index
@@ -16,14 +16,24 @@ route:
 
 | File | Scope |
 |:-----|:------|
-| `DOC_01_Core.md` | accounting value objects, account-registry vocabulary, journal grammar, reversal linkage, request and committed provenance |
-| `DOC_02_Application.md` | book-lifecycle commands, write-boundary commands, results, rejection taxonomy, machine contract, services |
-| `DOC_03_BookSessionsAndAdapters.md` | committed facts, book-session seam, SQLite adapter, CLI entrypoint |
+| `DOC_01_Core.md` | accounting value objects, positive journal-line money, journal grammar, reversal linkage, request and committed provenance |
+| `DOC_02_Application.md` | contract-owned protocol metadata, public request/result models, ledger plans, machine contract, and executor services |
+| `DOC_03_BookSessionsAndAdapters.md` | committed facts, executor-owned seams, SQLite adapter, CLI entrypoint |
 
 ## Symbol Routing
 
 | Symbol | File | Section |
 |:-------|:-----|:--------|
+| `ProtocolCatalog` | `DOC_02_Application.md` | `ProtocolCatalog` |
+| `ProtocolOperation` | `DOC_02_Application.md` | `ProtocolOperation` |
+| `OperationId` | `DOC_02_Application.md` | `OperationId` |
+| `OperationCategory` | `DOC_02_Application.md` | `OperationCategory` |
+| `ExecutionMode` | `DOC_02_Application.md` | `ExecutionMode` |
+| `ProtocolLimits` | `DOC_02_Application.md` | `ProtocolLimits` |
+| `ProtocolOptions` | `DOC_02_Application.md` | `ProtocolOptions` |
+| `BookModelFacts` | `DOC_02_Application.md` | `BookModelFacts` |
+| `CurrencyFacts` | `DOC_02_Application.md` | `CurrencyFacts` |
+| `PreflightFacts` | `DOC_02_Application.md` | `PreflightFacts` |
 | `AccountCode` | `DOC_01_Core.md` | `AccountCode` |
 | `AccountName` | `DOC_01_Core.md` | `AccountName` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
@@ -40,6 +50,7 @@ route:
 | `JournalLine` | `DOC_01_Core.md` | `JournalLine` |
 | `JournalLine.EntrySide` | `DOC_01_Core.md` | `JournalLine.EntrySide` |
 | `Money` | `DOC_01_Core.md` | `Money` |
+| `PositiveMoney` | `DOC_01_Core.md` | `PositiveMoney` |
 | `NormalBalance` | `DOC_01_Core.md` | `NormalBalance` |
 | `PostingId` | `DOC_01_Core.md` | `PostingId` |
 | `RequestProvenance` | `DOC_01_Core.md` | `RequestProvenance` |
@@ -49,36 +60,48 @@ route:
 | `DeclaredAccount` | `DOC_02_Application.md` | `DeclaredAccount` |
 | `OpenBookResult` | `DOC_02_Application.md` | `OpenBookResult` |
 | `DeclareAccountResult` | `DOC_02_Application.md` | `DeclareAccountResult` |
+| `RekeyBookResult` | `DOC_02_Application.md` | `RekeyBookResult` |
+| `BookInspection` | `DOC_02_Application.md` | `BookInspection` |
+| `BookQueryService` | `DOC_02_Application.md` | `BookQueryService` |
+| `ListAccountsQuery` | `DOC_02_Application.md` | `ListAccountsQuery` |
+| `AccountPage` | `DOC_02_Application.md` | `AccountPage` |
 | `ListAccountsResult` | `DOC_02_Application.md` | `ListAccountsResult` |
+| `GetPostingResult` | `DOC_02_Application.md` | `GetPostingResult` |
+| `ListPostingsQuery` | `DOC_02_Application.md` | `ListPostingsQuery` |
+| `PostingPage` | `DOC_02_Application.md` | `PostingPage` |
+| `ListPostingsResult` | `DOC_02_Application.md` | `ListPostingsResult` |
+| `AccountBalanceQuery` | `DOC_02_Application.md` | `AccountBalanceQuery` |
+| `CurrencyBalance` | `DOC_02_Application.md` | `CurrencyBalance` |
+| `AccountBalanceSnapshot` | `DOC_02_Application.md` | `AccountBalanceSnapshot` |
+| `AccountBalanceResult` | `DOC_02_Application.md` | `AccountBalanceResult` |
 | `BookAdministrationRejection` | `DOC_02_Application.md` | `BookAdministrationRejection` |
+| `BookQueryRejection` | `DOC_02_Application.md` | `BookQueryRejection` |
 | `PostEntryCommand` | `DOC_02_Application.md` | `PostEntryCommand` |
+| `PostingRequest` | `DOC_02_Application.md` | `PostingRequest` |
+| `PostingDraft` | `DOC_02_Application.md` | `PostingDraft` |
 | `PostEntryResult` | `DOC_02_Application.md` | `PostEntryResult` |
-| `PostEntryResult.PreflightAccepted` | `DOC_02_Application.md` | `PostEntryResult.PreflightAccepted` |
-| `PostEntryResult.Committed` | `DOC_02_Application.md` | `PostEntryResult.Committed` |
-| `PostEntryResult.Rejected` | `DOC_02_Application.md` | `PostEntryResult.Rejected` |
 | `MachineContract` | `DOC_02_Application.md` | `MachineContract` |
+| `LedgerExecutionPolicy` | `DOC_02_Application.md` | `LedgerExecutionPolicy` |
+| `LedgerPlan` | `DOC_02_Application.md` | `LedgerPlan` |
+| `LedgerStep` | `DOC_02_Application.md` | `LedgerStep` |
+| `LedgerAssertion` | `DOC_02_Application.md` | `LedgerAssertion` |
+| `LedgerJournalEntry` | `DOC_02_Application.md` | `LedgerJournalEntry` |
+| `LedgerExecutionJournal` | `DOC_02_Application.md` | `LedgerExecutionJournal` |
+| `LedgerPlanResult` | `DOC_02_Application.md` | `LedgerPlanResult` |
 | `PostingApplicationService` | `DOC_02_Application.md` | `PostingApplicationService` |
+| `LedgerPlanService` | `DOC_02_Application.md` | `LedgerPlanService` |
 | `PostingIdGenerator` | `DOC_02_Application.md` | `PostingIdGenerator` |
 | `PostingRejection` | `DOC_02_Application.md` | `PostingRejection` |
-| `PostingRejection.BookNotInitialized` | `DOC_02_Application.md` | `PostingRejection` |
-| `PostingRejection.UnknownAccount` | `DOC_02_Application.md` | `PostingRejection` |
-| `PostingRejection.InactiveAccount` | `DOC_02_Application.md` | `PostingRejection` |
-| `PostingRejection.ReversalReasonForbidden` | `DOC_02_Application.md` | `PostingRejection.ReversalReasonForbidden` |
-| `PostingRejection.ReversalReasonRequired` | `DOC_02_Application.md` | `PostingRejection.ReversalReasonRequired` |
-| `PostingRejection.ReversalTargetNotFound` | `DOC_02_Application.md` | `PostingRejection.ReversalTargetNotFound` |
-| `PostingRejection.DuplicateIdempotencyKey` | `DOC_02_Application.md` | `PostingRejection.DuplicateIdempotencyKey` |
-| `PostingRejection.ReversalAlreadyExists` | `DOC_02_Application.md` | `PostingRejection.ReversalAlreadyExists` |
-| `PostingRejection.ReversalDoesNotNegateTarget` | `DOC_02_Application.md` | `PostingRejection.ReversalDoesNotNegateTarget` |
 | `UuidV7PostingIdGenerator` | `DOC_02_Application.md` | `UuidV7PostingIdGenerator` |
 | `App` | `DOC_03_BookSessionsAndAdapters.md` | `App` |
-| `BookSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookSession` |
+| `BookAccess` | `DOC_03_BookSessionsAndAdapters.md` | `BookAccess` |
+| `BookAdministrationSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookAdministrationSession` |
+| `PostingValidationBook` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidationBook` |
+| `PostingBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `PostingBookSession` |
+| `BookQuerySession` | `DOC_03_BookSessionsAndAdapters.md` | `BookQuerySession` |
+| `LedgerPlanSession` | `DOC_03_BookSessionsAndAdapters.md` | `LedgerPlanSession` |
 | `InMemoryBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `InMemoryBookSession` |
 | `PostingCommitResult` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |
-| `PostingCommitResult.Committed` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult.Committed` |
-| `PostingCommitResult.BookNotInitialized` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |
-| `PostingCommitResult.UnknownAccount` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |
-| `PostingCommitResult.InactiveAccount` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |
-| `PostingCommitResult.DuplicateIdempotency` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult.DuplicateIdempotency` |
-| `PostingCommitResult.DuplicateReversalTarget` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult.DuplicateReversalTarget` |
 | `PostingFact` | `DOC_03_BookSessionsAndAdapters.md` | `PostingFact` |
+| `SqliteBookPassphrase` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookPassphrase` |
 | `SqlitePostingFactStore` | `DOC_03_BookSessionsAndAdapters.md` | `SqlitePostingFactStore` |

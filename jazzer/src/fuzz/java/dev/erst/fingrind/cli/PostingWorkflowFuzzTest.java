@@ -2,17 +2,17 @@ package dev.erst.fingrind.cli;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
-import dev.erst.fingrind.application.BookAdministrationService;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.PostEntryCommand;
-import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostEntryResult.Committed;
-import dev.erst.fingrind.application.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.application.PostEntryResult.Rejected;
-import dev.erst.fingrind.application.InMemoryBookSession;
-import dev.erst.fingrind.application.PostingApplicationService;
-import dev.erst.fingrind.application.PostingFact;
-import dev.erst.fingrind.application.PostingRejection;
+import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.PostEntryResult.Rejected;
+import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingRejection;
 import java.util.Optional;
 
 /** Fuzzes posting workflow invariants above the book-session seam using an in-memory book. */
@@ -37,24 +37,26 @@ public class PostingWorkflowFuzzTest {
 
       CliFuzzSupport.openBook(administrationService);
 
-      assertRejected(
+      assertAccountStateRejected(
           applicationService.preflight(command), PostingRejection.UnknownAccount.class);
-      assertRejected(applicationService.commit(command), PostingRejection.UnknownAccount.class);
+      assertAccountStateRejected(
+          applicationService.commit(command), PostingRejection.UnknownAccount.class);
 
       var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
-      if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+      if (CliFuzzSupport.listAccounts(bookSession).size() != declaredAccounts.size()) {
         throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
       }
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       bookSession.deactivateAccount(primaryAccount.accountCode());
 
-      assertRejected(
+      assertAccountStateRejected(
           applicationService.preflight(command), PostingRejection.InactiveAccount.class);
-      assertRejected(applicationService.commit(command), PostingRejection.InactiveAccount.class);
+      assertAccountStateRejected(
+          applicationService.commit(command), PostingRejection.InactiveAccount.class);
 
       CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
       if (!CliFuzzSupport
-          .listAccounts(administrationService)
+          .listAccounts(bookSession)
           .stream()
           .anyMatch(account -> account.accountCode().equals(primaryAccount.accountCode()) && account.active())) {
         throw new IllegalStateException("Account reactivation did not persist in the registry.");
@@ -74,7 +76,7 @@ public class PostingWorkflowFuzzTest {
         }
 
         Optional<PostingFact> storedPosting =
-            bookSession.findByIdempotency(command.requestProvenance().idempotencyKey());
+            bookSession.findExistingPosting(command.requestProvenance().idempotencyKey());
         if (storedPosting.isEmpty()) {
           throw new IllegalStateException("Committed posting fact was not persisted.");
         }
@@ -114,7 +116,9 @@ public class PostingWorkflowFuzzTest {
         if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
           throw new IllegalStateException("Commit changed the deterministic rejection.");
         }
-        if (bookSession.findByIdempotency(command.requestProvenance().idempotencyKey()).isPresent()) {
+        if (bookSession
+            .findExistingPosting(command.requestProvenance().idempotencyKey())
+            .isPresent()) {
           throw new IllegalStateException("Rejected command must not persist a posting fact.");
         }
       } else {
@@ -133,6 +137,25 @@ public class PostingWorkflowFuzzTest {
     if (!rejectionType.isInstance(rejected.rejection())) {
       throw new IllegalStateException(
           "Lifecycle setup returned the wrong rejection type: " + rejected.rejection());
+    }
+  }
+
+  private static void assertAccountStateRejected(
+      PostEntryResult result,
+      Class<? extends PostingRejection.AccountStateViolation> violationType) {
+    if (!(result instanceof Rejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during lifecycle setup.");
+    }
+    if (!(rejected.rejection() instanceof PostingRejection.AccountStateViolations violations)) {
+      throw new IllegalStateException(
+          "Expected account-state violations during lifecycle setup but got: "
+              + rejected.rejection());
+    }
+    if (violations.violations().isEmpty()
+        || violations.violations().stream().anyMatch(violation -> !violationType.isInstance(violation))) {
+      throw new IllegalStateException(
+          "Lifecycle setup returned the wrong account-state violations: "
+              + violations.violations());
     }
   }
 }

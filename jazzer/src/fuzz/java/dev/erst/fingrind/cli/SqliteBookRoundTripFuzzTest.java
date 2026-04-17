@@ -2,15 +2,15 @@ package dev.erst.fingrind.cli;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
-import dev.erst.fingrind.application.BookAdministrationService;
-import dev.erst.fingrind.application.DeclaredAccount;
-import dev.erst.fingrind.application.PostEntryCommand;
-import dev.erst.fingrind.application.PostEntryResult;
-import dev.erst.fingrind.application.PostEntryResult.Committed;
-import dev.erst.fingrind.application.PostEntryResult.Rejected;
-import dev.erst.fingrind.application.PostingApplicationService;
-import dev.erst.fingrind.application.PostingFact;
-import dev.erst.fingrind.application.PostingRejection;
+import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.PostEntryResult.Rejected;
+import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import java.io.IOException;
@@ -43,10 +43,11 @@ public class SqliteBookRoundTripFuzzTest {
 
         CliFuzzSupport.openBook(administrationService);
 
-        assertRejected(applicationService.commit(command), PostingRejection.UnknownAccount.class);
+        assertAccountStateRejected(
+            applicationService.commit(command), PostingRejection.UnknownAccount.class);
 
         var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
-        if (CliFuzzSupport.listAccounts(administrationService).size() != declaredAccounts.size()) {
+        if (CliFuzzSupport.listAccounts(postingFactStore).size() != declaredAccounts.size()) {
           throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
         }
         DeclaredAccount primaryAccount = declaredAccounts.getFirst();
@@ -55,7 +56,8 @@ public class SqliteBookRoundTripFuzzTest {
         }
         deactivateAccount(bookPath, primaryAccount.accountCode().value());
 
-        assertRejected(applicationService.commit(command), PostingRejection.InactiveAccount.class);
+        assertAccountStateRejected(
+            applicationService.commit(command), PostingRejection.InactiveAccount.class);
 
         CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
         if (!(postingFactStore.findAccount(primaryAccount.accountCode()).orElseThrow().active())) {
@@ -67,7 +69,7 @@ public class SqliteBookRoundTripFuzzTest {
           SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
           try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
             Optional<PostingFact> storedPosting =
-                reloadedStore.findByIdempotency(command.requestProvenance().idempotencyKey());
+                reloadedStore.findExistingPosting(command.requestProvenance().idempotencyKey());
             SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);
             if (storedPosting.isEmpty()) {
               throw new IllegalStateException("Committed posting fact was not persisted to SQLite.");
@@ -115,7 +117,9 @@ public class SqliteBookRoundTripFuzzTest {
             }
           }
         } else if (committedResult instanceof Rejected rejected) {
-          if (postingFactStore.findByIdempotency(command.requestProvenance().idempotencyKey()).isPresent()) {
+          if (postingFactStore
+              .findExistingPosting(command.requestProvenance().idempotencyKey())
+              .isPresent()) {
             throw new IllegalStateException("Rejected SQLite command must not persist a posting fact.");
           }
           PostEntryResult repeatedResult = applicationService.commit(command);
@@ -142,6 +146,25 @@ public class SqliteBookRoundTripFuzzTest {
     if (!rejectionType.isInstance(rejected.rejection())) {
       throw new IllegalStateException(
           "SQLite lifecycle setup returned the wrong rejection type: " + rejected.rejection());
+    }
+  }
+
+  private static void assertAccountStateRejected(
+      PostEntryResult result,
+      Class<? extends PostingRejection.AccountStateViolation> violationType) {
+    if (!(result instanceof Rejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during SQLite lifecycle setup.");
+    }
+    if (!(rejected.rejection() instanceof PostingRejection.AccountStateViolations violations)) {
+      throw new IllegalStateException(
+          "Expected account-state violations during SQLite lifecycle setup but got: "
+              + rejected.rejection());
+    }
+    if (violations.violations().isEmpty()
+        || violations.violations().stream().anyMatch(violation -> !violationType.isInstance(violation))) {
+      throw new IllegalStateException(
+          "SQLite lifecycle setup returned the wrong account-state violations: "
+              + violations.violations());
     }
   }
 

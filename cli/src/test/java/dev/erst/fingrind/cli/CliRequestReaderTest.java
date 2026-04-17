@@ -3,8 +3,11 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.application.DeclareAccountCommand;
-import dev.erst.fingrind.application.PostEntryCommand;
+import dev.erst.fingrind.contract.DeclareAccountCommand;
+import dev.erst.fingrind.contract.LedgerAssertion;
+import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
@@ -1223,6 +1226,187 @@ class CliRequestReaderTest {
     assertEquals(Optional.empty(), command.requestProvenance().reason());
   }
 
+  @Test
+  void readLedgerPlan_readsEverySupportedStepKindFromStandardInput() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(validLedgerPlanJson().getBytes(StandardCharsets.UTF_8)));
+
+    LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
+
+    assertEquals("plan-1", plan.planId());
+    assertEquals(13, plan.steps().size());
+    assertEquals(LedgerStep.OpenBook.class, plan.steps().get(0).getClass());
+    assertEquals(LedgerStep.DeclareAccount.class, plan.steps().get(1).getClass());
+    assertEquals(LedgerStep.PreflightEntry.class, plan.steps().get(2).getClass());
+    assertEquals(LedgerStep.PostEntry.class, plan.steps().get(3).getClass());
+    assertEquals(LedgerStep.InspectBook.class, plan.steps().get(4).getClass());
+    assertEquals(LedgerStep.ListAccounts.class, plan.steps().get(5).getClass());
+    assertEquals(LedgerStep.GetPosting.class, plan.steps().get(6).getClass());
+    assertEquals(LedgerStep.ListPostings.class, plan.steps().get(7).getClass());
+    assertEquals(LedgerStep.AccountBalance.class, plan.steps().get(8).getClass());
+    assertEquals(LedgerAssertion.AccountDeclared.class, assertionAt(plan, 9).getClass());
+    assertEquals(LedgerAssertion.AccountActive.class, assertionAt(plan, 10).getClass());
+    assertEquals(LedgerAssertion.PostingExists.class, assertionAt(plan, 11).getClass());
+    assertEquals(LedgerAssertion.AccountBalanceEquals.class, assertionAt(plan, 12).getClass());
+  }
+
+  @Test
+  void readLedgerPlan_defaultsOptionalQueryObjects() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "executionPolicy": {
+                    "journalLevel": "NORMAL",
+                    "failurePolicy": "HALT_ON_FIRST_FAILURE",
+                    "transactionMode": "ATOMIC"
+                  },
+                  "steps": [
+                    {
+                      "stepId": "list-accounts",
+                      "kind": "list-accounts"
+                    },
+                    {
+                      "stepId": "list-postings",
+                      "kind": "list-postings"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
+
+    assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
+    assertEquals(0, ((LedgerStep.ListPostings) plan.steps().get(1)).query().offset());
+  }
+
+  @Test
+  void readLedgerPlan_rethrowsJsonReadFailures() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "planId": "plan-2",
+                  "executionPolicy": {},
+                  "steps": []
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Request JSON must not contain duplicate object keys. Duplicate key: planId",
+        exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_reportsInvalidDateValues() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validLedgerPlanJson()
+                    .replace(
+                        "\"effectiveDateFrom\": \"2026-04-01\"",
+                        "\"effectiveDateFrom\": \"2026-02-30\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Ledger plan contains an invalid date/time value.", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_reportsInvalidShapeValues() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validLedgerPlanJson()
+                    .replace("\"kind\": \"open-book\"", "\"kind\": \"unsupported-step\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Missing required field: assertion", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsWrongOptionalIntegerType() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validLedgerPlanJson()
+                    .replace("\"limit\": 25", "\"limit\": \"25\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Field must be an integer when present: limit", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsUnsupportedAssertionKind() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validLedgerPlanJson()
+                    .replace(
+                        "\"kind\": \"assert-account-balance\"", "\"kind\": \"assert-sideways\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unsupported ledger plan step kind: assert-sideways", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_treatsExplicitNullOptionalQueryFieldsAsMissing() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "executionPolicy": {
+                    "journalLevel": "NORMAL",
+                    "failurePolicy": "HALT_ON_FIRST_FAILURE",
+                    "transactionMode": "ATOMIC"
+                  },
+                  "steps": [
+                    {
+                      "stepId": "list-accounts",
+                      "kind": "list-accounts",
+                      "query": {
+                        "offset": null
+                      }
+                    },
+                    {
+                      "stepId": "list-postings",
+                      "kind": "list-postings",
+                      "query": null
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
+
+    assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
+    assertEquals(0, ((LedgerStep.ListPostings) plan.steps().get(1)).query().offset());
+  }
+
   private Path writeRequest(String payload) throws IOException {
     return writeNamedRequest("request.json", payload);
   }
@@ -1312,5 +1496,118 @@ class CliRequestReaderTest {
           }
         }
         """;
+  }
+
+  private static LedgerAssertion assertionAt(LedgerPlan plan, int index) {
+    return ((LedgerStep.Assert) plan.steps().get(index)).assertion();
+  }
+
+  private static String validLedgerPlanJson() {
+    return """
+        {
+          "planId": "plan-1",
+          "executionPolicy": {
+            "journalLevel": "NORMAL",
+            "failurePolicy": "HALT_ON_FIRST_FAILURE",
+            "transactionMode": "ATOMIC"
+          },
+          "steps": [
+            {
+              "stepId": "open",
+              "kind": "open-book"
+            },
+            {
+              "stepId": "declare",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "1000",
+                "accountName": "Cash",
+                "normalBalance": "DEBIT"
+              }
+            },
+            {
+              "stepId": "preflight",
+              "kind": "preflight-entry",
+              "posting": %s
+            },
+            {
+              "stepId": "post",
+              "kind": "post-entry",
+              "posting": %s
+            },
+            {
+              "stepId": "inspect",
+              "kind": "inspect-book"
+            },
+            {
+              "stepId": "list-accounts",
+              "kind": "list-accounts",
+              "query": {
+                "limit": 25,
+                "offset": 5
+              }
+            },
+            {
+              "stepId": "get-posting",
+              "kind": "get-posting",
+              "postingId": "posting-1"
+            },
+            {
+              "stepId": "list-postings",
+              "kind": "list-postings",
+              "query": {
+                "accountCode": "1000",
+                "effectiveDateFrom": "2026-04-01",
+                "effectiveDateTo": "2026-04-30",
+                "limit": 25,
+                "offset": 5
+              }
+            },
+            {
+              "stepId": "account-balance",
+              "kind": "account-balance",
+              "query": {
+                "accountCode": "1000",
+                "effectiveDateFrom": "2026-04-01",
+                "effectiveDateTo": "2026-04-30"
+              }
+            },
+            {
+              "stepId": "assert-declared",
+              "kind": "assert-account-declared",
+              "assertion": {
+                "accountCode": "1000"
+              }
+            },
+            {
+              "stepId": "assert-active",
+              "kind": "assert-account-active",
+              "assertion": {
+                "accountCode": "1000"
+              }
+            },
+            {
+              "stepId": "assert-posting",
+              "kind": "assert-posting-exists",
+              "assertion": {
+                "postingId": "posting-1"
+              }
+            },
+            {
+              "stepId": "assert-balance",
+              "kind": "assert-account-balance",
+              "assertion": {
+                "accountCode": "1000",
+                "effectiveDateFrom": "2026-04-01",
+                "effectiveDateTo": "2026-04-30",
+                "currencyCode": "EUR",
+                "netAmount": "10.00",
+                "balanceSide": "DEBIT"
+              }
+            }
+          ]
+        }
+        """
+        .formatted(validRequestJson(false), validRequestJson(false));
   }
 }

@@ -1,15 +1,20 @@
-# Exclude everything — the Docker image only needs the pre-built fat JAR.
-# Build the JAR first: ./gradlew :cli:shadowJar
+# Exclude everything. The Docker image consumes only the pre-built internal application JAR,
+# the staged JDeps support jars produced alongside it, the vendored SQLite amalgamation source,
+# and the Docker smoke helper scripts.
+# Build the assembly inputs first: ./gradlew :cli:shadowJar
 **
 
-# Allow only the fat JAR produced by the Shadow plugin.
+# Allow the Docker build inputs staged by the CLI assembly flow.
 !gradle.properties
 !scripts/
 !cli/build/libs/
 !cli/build/libs/*.jar
+!cli/build/docker/
+!cli/build/docker/jdeps/
+!cli/build/docker/jdeps/*.jar
+
+# Allow the vendored SQLite3 Multiple Ciphers amalgamation source compiled inside the builder.
 !third_party/
 !third_party/sqlite/
-!third_party/sqlite/sqlite-amalgamation-3530000/
-!third_party/sqlite/sqlite-amalgamation-3530000/sqlite3.c
-!third_party/sqlite/sqlite-amalgamation-3530000/sqlite3.h
-!third_party/sqlite/sqlite-amalgamation-3530000/sqlite3ext.h
+!third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/
+!third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/sqlite3mc_amalgamation.c

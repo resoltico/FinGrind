@@ -45,11 +45,21 @@ abstract class PrepareManagedSqliteTask
         fun compile() {
             val outputLibraryFile = outputFile.get().asFile
             outputLibraryFile.parentFile.mkdirs()
+            outputLibraryFile.delete()
+            val activeOperatingSystemId = operatingSystemId.get()
+            if (activeOperatingSystemId == "windows") {
+                compileWindowsLibrary(
+                    compiler = compiler.get(),
+                    sourceFilePath = sourceFile.get().asFile.absolutePath,
+                    outputLibraryFile = outputLibraryFile,
+                )
+                return
+            }
             execOperations.exec {
                 commandLine(
-                    buildCommandLine(
+                    buildUnixCommandLine(
                         compiler = compiler.get(),
-                        operatingSystemId = operatingSystemId.get(),
+                        operatingSystemId = activeOperatingSystemId,
                         sqliteVersion = sqliteVersion.get(),
                         sourceFilePath = sourceFile.get().asFile.absolutePath,
                         outputFilePath = outputLibraryFile.absolutePath,
@@ -58,7 +68,32 @@ abstract class PrepareManagedSqliteTask
             }
         }
 
-        private fun buildCommandLine(
+        private fun compileWindowsLibrary(
+            compiler: String,
+            sourceFilePath: String,
+            outputLibraryFile: java.io.File,
+        ) {
+            val buildDirectory = temporaryDir.resolve("windows-shared-library")
+            buildDirectory.deleteRecursively()
+            buildDirectory.mkdirs()
+            val compiledLibraryFile = buildDirectory.resolve(outputLibraryFile.name)
+            val importLibraryFile = buildDirectory.resolve("sqlite3.lib")
+            val objectFile = buildDirectory.resolve("sqlite3.obj")
+            execOperations.exec {
+                commandLine(
+                    buildWindowsCommandLine(
+                        compiler = compiler,
+                        sourceFilePath = sourceFilePath,
+                        outputFilePath = compiledLibraryFile.absolutePath,
+                        importLibraryFilePath = importLibraryFile.absolutePath,
+                        objectFilePath = objectFile.absolutePath,
+                    ),
+                )
+            }
+            compiledLibraryFile.copyTo(outputLibraryFile, overwrite = true)
+        }
+
+        private fun buildUnixCommandLine(
             compiler: String,
             operatingSystemId: String,
             sqliteVersion: String,
@@ -91,4 +126,30 @@ abstract class PrepareManagedSqliteTask
                     add("-lpthread")
                 }
             }
+
+        private fun buildWindowsCommandLine(
+            compiler: String,
+            sourceFilePath: String,
+            outputFilePath: String,
+            importLibraryFilePath: String,
+            objectFilePath: String,
+        ): List<String> =
+            listOf(
+                compiler,
+                "/nologo",
+                "/O2",
+                "/LD",
+                "/DSQLITE_THREADSAFE=1",
+                "/DSQLITE_OMIT_LOAD_EXTENSION=1",
+                "/DSQLITE_TEMP_STORE=3",
+                "/DSQLITE_SECURE_DELETE=1",
+                "/DSQLITE_API=__declspec(dllexport)",
+                "/Fo\"$objectFilePath\"",
+                sourceFilePath,
+                "/link",
+                "/NOLOGO",
+                "/INCREMENTAL:NO",
+                "/OUT:\"$outputFilePath\"",
+                "/IMPLIB:\"$importLibraryFilePath\"",
+            )
     }

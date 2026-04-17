@@ -44,6 +44,12 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             dependencies.add("errorprone", libs.library("errorprone-core"))
+            dependencies.add("errorprone", libs.library("nullaway"))
+            dependencies.add("compileOnly", libs.library("jspecify"))
+            dependencies.add("testCompileOnly", libs.library("jspecify"))
+            pluginManager.withPlugin("java-test-fixtures") {
+                dependencies.add("testFixturesCompileOnly", libs.library("jspecify"))
+            }
 
             extensions.configure<SpotlessExtension> {
                 java {
@@ -77,17 +83,36 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
 
             tasks.withType<JavaCompile>().configureEach {
                 options.errorprone.disableWarningsInGeneratedCode.set(true)
-                options.errorprone.error(
-                    "BadImport",
-                    "BoxedPrimitiveConstructor",
-                    "CheckReturnValue",
-                    "EqualsIncompatibleType",
-                    "JavaLangClash",
-                    "MissingCasesInEnumSwitch",
-                    "MissingOverride",
-                    "ReferenceEquality",
-                    "StringCaseLocaleUsage"
-                )
+                options.errorprone.option("NullAway:OnlyNullMarked", "true")
+                options.errorprone.option("NullAway:JSpecifyMode", "true")
+                if (name == "compileJava") {
+                    options.errorprone.error(
+                        "BadImport",
+                        "BoxedPrimitiveConstructor",
+                        "CheckReturnValue",
+                        "EqualsIncompatibleType",
+                        "JavaLangClash",
+                        "MissingCasesInEnumSwitch",
+                        "MissingOverride",
+                        "NullAway",
+                        "ReferenceEquality",
+                        "RequireExplicitNullMarking",
+                        "StringCaseLocaleUsage"
+                    )
+                } else {
+                    options.errorprone.error(
+                        "BadImport",
+                        "BoxedPrimitiveConstructor",
+                        "CheckReturnValue",
+                        "EqualsIncompatibleType",
+                        "JavaLangClash",
+                        "MissingCasesInEnumSwitch",
+                        "MissingOverride",
+                        "ReferenceEquality",
+                        "StringCaseLocaleUsage"
+                    )
+                    options.errorprone.disable("NullAway", "RequireExplicitNullMarking")
+                }
             }
 
             tasks.withType<Pmd>().configureEach {

@@ -1,10 +1,23 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.application.BookAccess;
+import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
+import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Parses raw command-line arguments into a typed FinGrind CLI command. */
 final class CliArguments {
@@ -17,20 +30,28 @@ final class CliArguments {
     if (arguments.isEmpty()) {
       return new CliCommand.Help();
     }
-    return switch (arguments.getFirst()) {
-      case "help", "--help", "-h" -> parseSingleToken(arguments, new CliCommand.Help());
-      case "version", "--version" -> parseSingleToken(arguments, new CliCommand.Version());
-      case "capabilities" -> parseSingleToken(arguments, new CliCommand.Capabilities());
-      case "print-request-template", "--print-request-template" ->
+    ProtocolOperation operation =
+        ProtocolCatalog.findByToken(arguments.getFirst())
+            .orElseThrow(() -> unknownCommand(arguments.getFirst()));
+    return switch (operation.id()) {
+      case HELP -> parseSingleToken(arguments, new CliCommand.Help());
+      case VERSION -> parseSingleToken(arguments, new CliCommand.Version());
+      case CAPABILITIES -> parseSingleToken(arguments, new CliCommand.Capabilities());
+      case PRINT_REQUEST_TEMPLATE ->
           parseSingleToken(arguments, new CliCommand.PrintRequestTemplate());
-      case "generate-book-key-file" -> parseGenerateBookKeyFileCommand(arguments);
-      case "open-book" -> parseBookOnlyCommand(arguments, CliCommand.OpenBook::new);
-      case "rekey-book" -> parseRekeyBookCommand(arguments);
-      case "declare-account" -> parseRequestBoundCommand(arguments, CliCommand.DeclareAccount::new);
-      case "list-accounts" -> parseBookOnlyCommand(arguments, CliCommand.ListAccounts::new);
-      case "preflight-entry" -> parseRequestBoundCommand(arguments, CliCommand.PreflightEntry::new);
-      case "post-entry" -> parseRequestBoundCommand(arguments, CliCommand.PostEntry::new);
-      default -> throw unknownCommand(arguments.getFirst());
+      case PRINT_PLAN_TEMPLATE -> parseSingleToken(arguments, new CliCommand.PrintPlanTemplate());
+      case GENERATE_BOOK_KEY_FILE -> parseGenerateBookKeyFileCommand(arguments);
+      case OPEN_BOOK -> parseBookOnlyCommand(arguments, CliCommand.OpenBook::new);
+      case REKEY_BOOK -> parseRekeyBookCommand(arguments);
+      case DECLARE_ACCOUNT -> parseRequestBoundCommand(arguments, CliCommand.DeclareAccount::new);
+      case INSPECT_BOOK -> parseBookOnlyCommand(arguments, CliCommand.InspectBook::new);
+      case LIST_ACCOUNTS -> parseListAccountsCommand(arguments);
+      case GET_POSTING -> parseGetPostingCommand(arguments);
+      case LIST_POSTINGS -> parseListPostingsCommand(arguments);
+      case ACCOUNT_BALANCE -> parseAccountBalanceCommand(arguments);
+      case EXECUTE_PLAN -> parseRequestBoundCommand(arguments, CliCommand.ExecutePlan::new);
+      case PREFLIGHT_ENTRY -> parseRequestBoundCommand(arguments, CliCommand.PreflightEntry::new);
+      case POST_ENTRY -> parseRequestBoundCommand(arguments, CliCommand.PostEntry::new);
     };
   }
 
@@ -43,7 +64,7 @@ final class CliArguments {
 
   private static CliCommand parseBookOnlyCommand(
       List<String> arguments, BookOnlyCommandFactory commandFactory) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false);
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, false);
     return commandFactory.create(parsedArguments.bookAccess());
   }
 
@@ -52,25 +73,228 @@ final class CliArguments {
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (!"--book-key-file".equals(argument)) {
+      if (!ProtocolOptions.BOOK_KEY_FILE.equals(argument)) {
         throw invalid(argument, "Unsupported argument: " + argument);
       }
       if (bookKeyFilePath != null) {
-        throw invalid("--book-key-file", "Duplicate argument: --book-key-file");
+        throw invalid(
+            ProtocolOptions.BOOK_KEY_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_KEY_FILE);
       }
-      bookKeyFilePath = Path.of(requireValue(argumentIterator, "--book-key-file"));
+      bookKeyFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE));
     }
     if (bookKeyFilePath == null) {
-      throw invalid("--book-key-file", "A --book-key-file argument is required.");
+      throw invalid(
+          ProtocolOptions.BOOK_KEY_FILE,
+          "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
     }
     return new CliCommand.GenerateBookKeyFile(bookKeyFilePath);
   }
 
   private static CliCommand parseRequestBoundCommand(
       List<String> arguments, RequestBoundCommandFactory commandFactory) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, true);
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, true, false);
     return commandFactory.create(
         parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
+  }
+
+  private static CliCommand parseGetPostingCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    String postingIdValue = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (isBookArgument(argument)) {
+        skipBookArgumentValue(argument, argumentIterator);
+        continue;
+      }
+      if (!ProtocolOptions.POSTING_ID.equals(argument)) {
+        throw invalid(argument, "Unsupported argument: " + argument);
+      }
+      if (postingIdValue != null) {
+        throw invalid(
+            ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
+      }
+      postingIdValue = requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
+    }
+    if (postingIdValue == null) {
+      throw invalid(
+          ProtocolOptions.POSTING_ID, "A " + ProtocolOptions.POSTING_ID + " argument is required.");
+    }
+    return new CliCommand.GetPosting(parsedArguments.bookAccess(), new PostingId(postingIdValue));
+  }
+
+  private static CliCommand parseListAccountsCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    Integer limit = null;
+    Integer offset = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (isBookArgument(argument)) {
+        skipBookArgumentValue(argument, argumentIterator);
+        continue;
+      }
+      switch (argument) {
+        case ProtocolOptions.LIMIT -> {
+          if (limit != null) {
+            throw invalid(ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
+          }
+          limit =
+              parseIntegerOption(
+                  requireValue(argumentIterator, ProtocolOptions.LIMIT), ProtocolOptions.LIMIT);
+        }
+        case ProtocolOptions.OFFSET -> {
+          if (offset != null) {
+            throw invalid(ProtocolOptions.OFFSET, "Duplicate argument: " + ProtocolOptions.OFFSET);
+          }
+          offset =
+              parseIntegerOption(
+                  requireValue(argumentIterator, ProtocolOptions.OFFSET), ProtocolOptions.OFFSET);
+        }
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    return new CliCommand.ListAccounts(
+        parsedArguments.bookAccess(),
+        new ListAccountsQuery(
+            limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit,
+            offset == null ? ProtocolLimits.DEFAULT_PAGE_OFFSET : offset));
+  }
+
+  private static CliCommand parseListPostingsCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    Optional<String> accountCodeValue = Optional.empty();
+    Optional<LocalDate> effectiveDateFrom = Optional.empty();
+    Optional<LocalDate> effectiveDateTo = Optional.empty();
+    Integer limit = null;
+    Integer offset = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (isBookArgument(argument)) {
+        skipBookArgumentValue(argument, argumentIterator);
+        continue;
+      }
+      switch (argument) {
+        case ProtocolOptions.ACCOUNT_CODE -> {
+          if (accountCodeValue.isPresent()) {
+            throw invalid(
+                ProtocolOptions.ACCOUNT_CODE,
+                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
+          }
+          accountCodeValue =
+              Optional.of(requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE));
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
+          if (effectiveDateFrom.isPresent()) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
+          }
+          effectiveDateFrom =
+              Optional.of(
+                  parseLocalDateOption(
+                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                      ProtocolOptions.EFFECTIVE_DATE_FROM));
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
+          if (effectiveDateTo.isPresent()) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_TO,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+          }
+          effectiveDateTo =
+              Optional.of(
+                  parseLocalDateOption(
+                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                      ProtocolOptions.EFFECTIVE_DATE_TO));
+        }
+        case ProtocolOptions.LIMIT -> {
+          if (limit != null) {
+            throw invalid(ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
+          }
+          limit =
+              parseIntegerOption(
+                  requireValue(argumentIterator, ProtocolOptions.LIMIT), ProtocolOptions.LIMIT);
+        }
+        case ProtocolOptions.OFFSET -> {
+          if (offset != null) {
+            throw invalid(ProtocolOptions.OFFSET, "Duplicate argument: " + ProtocolOptions.OFFSET);
+          }
+          offset =
+              parseIntegerOption(
+                  requireValue(argumentIterator, ProtocolOptions.OFFSET), ProtocolOptions.OFFSET);
+        }
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    return new CliCommand.ListPostings(
+        parsedArguments.bookAccess(),
+        new ListPostingsQuery(
+            accountCodeValue.map(AccountCode::new),
+            effectiveDateFrom,
+            effectiveDateTo,
+            limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit,
+            offset == null ? ProtocolLimits.DEFAULT_PAGE_OFFSET : offset));
+  }
+
+  private static CliCommand parseAccountBalanceCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    String accountCodeValue = null;
+    Optional<LocalDate> effectiveDateFrom = Optional.empty();
+    Optional<LocalDate> effectiveDateTo = Optional.empty();
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (isBookArgument(argument)) {
+        skipBookArgumentValue(argument, argumentIterator);
+        continue;
+      }
+      switch (argument) {
+        case ProtocolOptions.ACCOUNT_CODE -> {
+          if (accountCodeValue != null) {
+            throw invalid(
+                ProtocolOptions.ACCOUNT_CODE,
+                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
+          }
+          accountCodeValue = requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
+          if (effectiveDateFrom.isPresent()) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
+          }
+          effectiveDateFrom =
+              Optional.of(
+                  parseLocalDateOption(
+                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                      ProtocolOptions.EFFECTIVE_DATE_FROM));
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
+          if (effectiveDateTo.isPresent()) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_TO,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+          }
+          effectiveDateTo =
+              Optional.of(
+                  parseLocalDateOption(
+                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                      ProtocolOptions.EFFECTIVE_DATE_TO));
+        }
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    if (accountCodeValue == null) {
+      throw invalid(
+          ProtocolOptions.ACCOUNT_CODE,
+          "A " + ProtocolOptions.ACCOUNT_CODE + " argument is required.");
+    }
+    return new CliCommand.AccountBalance(
+        parsedArguments.bookAccess(),
+        new AccountBalanceQuery(
+            new AccountCode(accountCodeValue), effectiveDateFrom, effectiveDateTo));
   }
 
   private static CliCommand parseRekeyBookCommand(List<String> arguments) {
@@ -83,41 +307,43 @@ final class CliArguments {
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       switch (argument) {
-        case "--book-file" -> {
+        case ProtocolOptions.BOOK_FILE -> {
           if (bookFilePath != null) {
-            throw invalid("--book-file", "Duplicate argument: --book-file");
+            throw invalid(
+                ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
           }
-          bookFilePath = Path.of(requireValue(argumentIterator, "--book-file"));
+          bookFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_FILE));
         }
-        case "--book-key-file" -> {
+        case ProtocolOptions.BOOK_KEY_FILE -> {
           currentPassphraseSourceKind =
               requireSinglePassphraseSource(
                   currentPassphraseSourceKind, PassphraseSourceKind.KEY_FILE);
-          currentBookKeyFilePath = Path.of(requireValue(argumentIterator, "--book-key-file"));
+          currentBookKeyFilePath =
+              Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE));
         }
-        case "--book-passphrase-stdin" -> {
+        case ProtocolOptions.BOOK_PASSPHRASE_STDIN -> {
           currentPassphraseSourceKind =
               requireSinglePassphraseSource(
                   currentPassphraseSourceKind, PassphraseSourceKind.STANDARD_INPUT);
         }
-        case "--book-passphrase-prompt" -> {
+        case ProtocolOptions.BOOK_PASSPHRASE_PROMPT -> {
           currentPassphraseSourceKind =
               requireSinglePassphraseSource(
                   currentPassphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
-        case "--new-book-key-file" -> {
+        case ProtocolOptions.NEW_BOOK_KEY_FILE -> {
           replacementPassphraseSourceKind =
               requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind, PassphraseSourceKind.KEY_FILE);
           replacementBookKeyFilePath =
-              Path.of(requireValue(argumentIterator, "--new-book-key-file"));
+              Path.of(requireValue(argumentIterator, ProtocolOptions.NEW_BOOK_KEY_FILE));
         }
-        case "--new-book-passphrase-stdin" -> {
+        case ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN -> {
           replacementPassphraseSourceKind =
               requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind, PassphraseSourceKind.STANDARD_INPUT);
         }
-        case "--new-book-passphrase-prompt" -> {
+        case ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT -> {
           replacementPassphraseSourceKind =
               requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
@@ -126,19 +352,30 @@ final class CliArguments {
       }
     }
     if (bookFilePath == null) {
-      throw invalid("--book-file", "A --book-file argument is required.");
+      throw invalid(
+          ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
     }
     if (currentPassphraseSourceKind == null) {
       throw invalid(
-          "--book-key-file",
-          "Exactly one current book passphrase source is required: --book-key-file <path>,"
-              + " --book-passphrase-stdin, or --book-passphrase-prompt.");
+          ProtocolOptions.BOOK_KEY_FILE,
+          "Exactly one current book passphrase source is required: "
+              + ProtocolOptions.BOOK_KEY_FILE
+              + " <path>, "
+              + ProtocolOptions.BOOK_PASSPHRASE_STDIN
+              + ", or "
+              + ProtocolOptions.BOOK_PASSPHRASE_PROMPT
+              + ".");
     }
     if (replacementPassphraseSourceKind == null) {
       throw invalid(
-          "--new-book-key-file",
-          "Exactly one replacement book passphrase source is required: --new-book-key-file <path>,"
-              + " --new-book-passphrase-stdin, or --new-book-passphrase-prompt.");
+          ProtocolOptions.NEW_BOOK_KEY_FILE,
+          "Exactly one replacement book passphrase source is required: "
+              + ProtocolOptions.NEW_BOOK_KEY_FILE
+              + " <path>, "
+              + ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN
+              + ", or "
+              + ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT
+              + ".");
     }
     BookAccess.PassphraseSource currentPassphraseSource =
         passphraseSource(currentPassphraseSourceKind, currentBookKeyFilePath);
@@ -151,7 +388,7 @@ final class CliArguments {
   }
 
   private static ParsedBookArguments parseBookArguments(
-      List<String> arguments, boolean requestRequired) {
+      List<String> arguments, boolean requestRequired, boolean allowExtraArguments) {
     Path bookFilePath = null;
     Path bookKeyFilePath = null;
     PassphraseSourceKind passphraseSourceKind = null;
@@ -160,50 +397,66 @@ final class CliArguments {
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       switch (argument) {
-        case "--book-file" -> {
+        case ProtocolOptions.BOOK_FILE -> {
           if (bookFilePath != null) {
-            throw invalid("--book-file", "Duplicate argument: --book-file");
+            throw invalid(
+                ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
           }
-          bookFilePath = Path.of(requireValue(argumentIterator, "--book-file"));
+          bookFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_FILE));
         }
-        case "--book-key-file" -> {
+        case ProtocolOptions.BOOK_KEY_FILE -> {
           passphraseSourceKind =
               requireSinglePassphraseSource(passphraseSourceKind, PassphraseSourceKind.KEY_FILE);
-          bookKeyFilePath = Path.of(requireValue(argumentIterator, "--book-key-file"));
+          bookKeyFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE));
         }
-        case "--book-passphrase-stdin" -> {
+        case ProtocolOptions.BOOK_PASSPHRASE_STDIN -> {
           passphraseSourceKind =
               requireSinglePassphraseSource(
                   passphraseSourceKind, PassphraseSourceKind.STANDARD_INPUT);
         }
-        case "--book-passphrase-prompt" -> {
+        case ProtocolOptions.BOOK_PASSPHRASE_PROMPT -> {
           passphraseSourceKind =
               requireSinglePassphraseSource(
                   passphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
-        case "--request-file" -> {
+        case ProtocolOptions.REQUEST_FILE -> {
           if (!requestRequired) {
             throw invalid(argument, "Unsupported argument: " + argument);
           }
           if (requestFile != null) {
-            throw invalid("--request-file", "Duplicate argument: --request-file");
+            throw invalid(
+                ProtocolOptions.REQUEST_FILE,
+                "Duplicate argument: " + ProtocolOptions.REQUEST_FILE);
           }
-          requestFile = Path.of(requireValue(argumentIterator, "--request-file"));
+          requestFile = Path.of(requireValue(argumentIterator, ProtocolOptions.REQUEST_FILE));
         }
-        default -> throw invalid(argument, "Unsupported argument: " + argument);
+        default -> {
+          if (!allowExtraArguments) {
+            throw invalid(argument, "Unsupported argument: " + argument);
+          }
+          skipOptionValueIfPresent(argument, argumentIterator);
+        }
       }
     }
     if (bookFilePath == null) {
-      throw invalid("--book-file", "A --book-file argument is required.");
+      throw invalid(
+          ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
     }
     if (passphraseSourceKind == null) {
       throw invalid(
-          "--book-key-file",
-          "Exactly one book passphrase source is required: --book-key-file <path>,"
-              + " --book-passphrase-stdin, or --book-passphrase-prompt.");
+          ProtocolOptions.BOOK_KEY_FILE,
+          "Exactly one book passphrase source is required: "
+              + ProtocolOptions.BOOK_KEY_FILE
+              + " <path>, "
+              + ProtocolOptions.BOOK_PASSPHRASE_STDIN
+              + ", or "
+              + ProtocolOptions.BOOK_PASSPHRASE_PROMPT
+              + ".");
     }
     if (requestRequired && requestFile == null) {
-      throw invalid("--request-file", "A --request-file argument is required.");
+      throw invalid(
+          ProtocolOptions.REQUEST_FILE,
+          "A " + ProtocolOptions.REQUEST_FILE + " argument is required.");
     }
     BookAccess.PassphraseSource passphraseSource =
         passphraseSource(passphraseSourceKind, bookKeyFilePath);
@@ -213,7 +466,7 @@ final class CliArguments {
   }
 
   private static PassphraseSourceKind requireSinglePassphraseSource(
-      PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
+      @Nullable PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
     Objects.requireNonNull(candidateSource, "candidateSource");
     if (currentSource != null) {
       throw invalid(
@@ -224,7 +477,7 @@ final class CliArguments {
   }
 
   private static PassphraseSourceKind requireSingleReplacementPassphraseSource(
-      PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
+      @Nullable PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
     Objects.requireNonNull(candidateSource, "candidateSource");
     if (currentSource != null) {
       throw invalid(
@@ -235,7 +488,7 @@ final class CliArguments {
   }
 
   private static BookAccess.PassphraseSource passphraseSource(
-      PassphraseSourceKind passphraseSourceKind, Path bookKeyFilePath) {
+      @Nullable PassphraseSourceKind passphraseSourceKind, @Nullable Path bookKeyFilePath) {
     return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
       case KEY_FILE ->
           new BookAccess.PassphraseSource.KeyFile(
@@ -246,31 +499,44 @@ final class CliArguments {
   }
 
   private static void validateDistinctPaths(
-      Path bookFilePath, BookAccess.PassphraseSource passphraseSource, Path requestFile) {
-    if (passphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile
-        && bookFilePath.toAbsolutePath().equals(keyFile.bookKeyFilePath().toAbsolutePath())) {
+      Path bookFilePath, BookAccess.PassphraseSource passphraseSource, @Nullable Path requestFile) {
+    Optional<Path> keyFilePath = keyFilePath(passphraseSource);
+    if (keyFilePath.isPresent()
+        && bookFilePath.toAbsolutePath().equals(keyFilePath.orElseThrow().toAbsolutePath())) {
       throw invalid(
-          "--book-key-file", "--book-file and --book-key-file must not point to the same path.");
+          ProtocolOptions.BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_FILE
+              + " and "
+              + ProtocolOptions.BOOK_KEY_FILE
+              + " must not point to the same path.");
     }
     if (requestFile != null && bookFilePath.toAbsolutePath().equals(requestFile.toAbsolutePath())) {
       throw invalid(
-          "--request-file", "--book-file and --request-file must not point to the same path.");
+          ProtocolOptions.REQUEST_FILE,
+          ProtocolOptions.BOOK_FILE
+              + " and "
+              + ProtocolOptions.REQUEST_FILE
+              + " must not point to the same path.");
     }
     if (requestFile != null
-        && passphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile
-        && keyFile.bookKeyFilePath().toAbsolutePath().equals(requestFile.toAbsolutePath())) {
+        && keyFilePath.isPresent()
+        && keyFilePath.orElseThrow().toAbsolutePath().equals(requestFile.toAbsolutePath())) {
       throw invalid(
-          "--book-key-file", "--book-key-file and --request-file must not point to the same path.");
+          ProtocolOptions.BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_KEY_FILE
+              + " and "
+              + ProtocolOptions.REQUEST_FILE
+              + " must not point to the same path.");
     }
   }
 
   private static void validateStandardInputUsage(
-      BookAccess.PassphraseSource passphraseSource, Path requestFile) {
+      BookAccess.PassphraseSource passphraseSource, @Nullable Path requestFile) {
     if (requestFile != null
-        && "-".equals(requestFile.toString())
-        && passphraseSource instanceof BookAccess.PassphraseSource.StandardInput) {
+        && ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())
+        && isStandardInput(passphraseSource)) {
       throw invalid(
-          "--book-passphrase-stdin",
+          ProtocolOptions.BOOK_PASSPHRASE_STDIN,
           "Standard input cannot supply both the book passphrase and the request JSON.");
     }
   }
@@ -281,27 +547,88 @@ final class CliArguments {
       BookAccess.PassphraseSource replacementPassphraseSource) {
     validateDistinctPaths(bookFilePath, currentPassphraseSource, null);
     validateDistinctPaths(bookFilePath, replacementPassphraseSource, null);
-    if (currentPassphraseSource instanceof BookAccess.PassphraseSource.KeyFile currentKeyFile
-        && replacementPassphraseSource
-            instanceof BookAccess.PassphraseSource.KeyFile replacementKeyFile
-        && currentKeyFile
-            .bookKeyFilePath()
+    Optional<Path> currentKeyFilePath = keyFilePath(currentPassphraseSource);
+    Optional<Path> replacementKeyFilePath = keyFilePath(replacementPassphraseSource);
+    if (currentKeyFilePath.isPresent()
+        && replacementKeyFilePath.isPresent()
+        && currentKeyFilePath
+            .orElseThrow()
             .toAbsolutePath()
-            .equals(replacementKeyFile.bookKeyFilePath().toAbsolutePath())) {
+            .equals(replacementKeyFilePath.orElseThrow().toAbsolutePath())) {
       throw invalid(
-          "--new-book-key-file",
-          "--book-key-file and --new-book-key-file must not point to the same path.");
+          ProtocolOptions.NEW_BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_KEY_FILE
+              + " and "
+              + ProtocolOptions.NEW_BOOK_KEY_FILE
+              + " must not point to the same path.");
     }
   }
 
   private static void validateRekeyStandardInputUsage(
       BookAccess.PassphraseSource currentPassphraseSource,
       BookAccess.PassphraseSource replacementPassphraseSource) {
-    if (currentPassphraseSource instanceof BookAccess.PassphraseSource.StandardInput
-        && replacementPassphraseSource instanceof BookAccess.PassphraseSource.StandardInput) {
+    if (isStandardInput(currentPassphraseSource) && isStandardInput(replacementPassphraseSource)) {
       throw invalid(
-          "--new-book-passphrase-stdin",
+          ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN,
           "Standard input cannot supply both the current and replacement book passphrases.");
+    }
+  }
+
+  private static Optional<Path> keyFilePath(BookAccess.PassphraseSource passphraseSource) {
+    return switch (passphraseSource) {
+      case BookAccess.PassphraseSource.KeyFile keyFile -> Optional.of(keyFile.bookKeyFilePath());
+      case BookAccess.PassphraseSource.StandardInput _ -> Optional.empty();
+      case BookAccess.PassphraseSource.InteractivePrompt _ -> Optional.empty();
+    };
+  }
+
+  private static boolean isStandardInput(BookAccess.PassphraseSource passphraseSource) {
+    return switch (passphraseSource) {
+      case BookAccess.PassphraseSource.KeyFile _ -> false;
+      case BookAccess.PassphraseSource.StandardInput _ -> true;
+      case BookAccess.PassphraseSource.InteractivePrompt _ -> false;
+    };
+  }
+
+  private static boolean isBookArgument(String argument) {
+    return ProtocolOptions.BOOK_FILE.equals(argument)
+        || ProtocolOptions.BOOK_KEY_FILE.equals(argument)
+        || ProtocolOptions.BOOK_PASSPHRASE_STDIN.equals(argument)
+        || ProtocolOptions.BOOK_PASSPHRASE_PROMPT.equals(argument);
+  }
+
+  private static void skipBookArgumentValue(
+      String argument, ListIterator<String> argumentIterator) {
+    if (ProtocolOptions.BOOK_FILE.equals(argument)
+        || ProtocolOptions.BOOK_KEY_FILE.equals(argument)) {
+      requireValue(argumentIterator, argument);
+    }
+  }
+
+  private static void skipOptionValueIfPresent(
+      String argument, ListIterator<String> argumentIterator) {
+    if (!argument.startsWith("--") || !argumentIterator.hasNext()) {
+      return;
+    }
+    String next = argumentIterator.next();
+    if (next.startsWith("--")) {
+      argumentIterator.previous();
+    }
+  }
+
+  private static int parseIntegerOption(String rawValue, String optionName) {
+    try {
+      return Integer.parseInt(rawValue);
+    } catch (NumberFormatException exception) {
+      throw invalid(optionName, "Option must be an integer: " + optionName, exception);
+    }
+  }
+
+  private static LocalDate parseLocalDateOption(String rawValue, String optionName) {
+    try {
+      return LocalDate.parse(rawValue);
+    } catch (java.time.DateTimeException exception) {
+      throw invalid(optionName, "Option must be an ISO-8601 local date: " + optionName, exception);
     }
   }
 
@@ -317,14 +644,27 @@ final class CliArguments {
         "invalid-request",
         argument,
         message,
-        "Run 'fingrind help' to inspect the supported command syntax.");
+        "Run 'fingrind "
+            + ProtocolCatalog.operationName(OperationId.HELP)
+            + "' to inspect the supported command syntax.");
+  }
+
+  private static CliArgumentsException invalid(String argument, String message, Throwable cause) {
+    return new CliArgumentsException(
+        "invalid-request",
+        argument,
+        message,
+        "Run 'fingrind "
+            + ProtocolCatalog.operationName(OperationId.HELP)
+            + "' to inspect the supported command syntax.",
+        cause);
   }
 
   /** Canonical passphrase-source selections accepted by the CLI parser. */
   private enum PassphraseSourceKind {
-    KEY_FILE("--book-key-file"),
-    STANDARD_INPUT("--book-passphrase-stdin"),
-    INTERACTIVE_PROMPT("--book-passphrase-prompt");
+    KEY_FILE(ProtocolOptions.BOOK_KEY_FILE),
+    STANDARD_INPUT(ProtocolOptions.BOOK_PASSPHRASE_STDIN),
+    INTERACTIVE_PROMPT(ProtocolOptions.BOOK_PASSPHRASE_PROMPT);
 
     private final String optionName;
 
@@ -339,9 +679,9 @@ final class CliArguments {
 
   private static String replacementOptionName(PassphraseSourceKind passphraseSourceKind) {
     return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
-      case KEY_FILE -> "--new-book-key-file";
-      case STANDARD_INPUT -> "--new-book-passphrase-stdin";
-      case INTERACTIVE_PROMPT -> "--new-book-passphrase-prompt";
+      case KEY_FILE -> ProtocolOptions.NEW_BOOK_KEY_FILE;
+      case STANDARD_INPUT -> ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN;
+      case INTERACTIVE_PROMPT -> ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT;
     };
   }
 
@@ -350,11 +690,13 @@ final class CliArguments {
         "unknown-command",
         commandName,
         "Unsupported command: " + commandName,
-        "Run 'fingrind help' to inspect the supported commands and examples.");
+        "Run 'fingrind "
+            + ProtocolCatalog.operationName(OperationId.HELP)
+            + "' to inspect the supported commands and examples.");
   }
 
   /** Parsed path arguments shared by commands that address one book file. */
-  private record ParsedBookArguments(BookAccess bookAccess, Path requestFile) {
+  private record ParsedBookArguments(BookAccess bookAccess, @Nullable Path requestFile) {
     private ParsedBookArguments {
       Objects.requireNonNull(bookAccess, "bookAccess");
     }

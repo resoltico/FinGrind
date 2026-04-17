@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /** Public runtime metadata for the packaged SQLite adapter. */
 public final class SqliteRuntime {
@@ -111,9 +112,9 @@ public final class SqliteRuntime {
       String requiredMinimumSqliteVersion,
       String requiredSqlite3mcVersion,
       Status status,
-      String loadedSqliteVersion,
-      String loadedSqlite3mcVersion,
-      String issue) {
+      @Nullable String loadedSqliteVersion,
+      @Nullable String loadedSqlite3mcVersion,
+      @Nullable String issue) {
     public Probe {
       libraryMode = requireText(libraryMode, "libraryMode");
       requiredMinimumSqliteVersion =
@@ -165,7 +166,7 @@ public final class SqliteRuntime {
       }
     }
 
-    private static String requireText(String value, String fieldName) {
+    private static String requireText(@Nullable String value, String fieldName) {
       String normalized = normalizeNullableText(value);
       if (normalized == null) {
         throw new IllegalArgumentException(fieldName + " must not be blank.");
@@ -173,7 +174,7 @@ public final class SqliteRuntime {
       return normalized;
     }
 
-    private static String normalizeNullableText(String value) {
+    private static @Nullable String normalizeNullableText(@Nullable String value) {
       if (value == null) {
         return null;
       }

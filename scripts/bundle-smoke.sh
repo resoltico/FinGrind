@@ -189,10 +189,10 @@ require_match "${bundle_manifest}" '"runtimeDistribution"[[:space:]]*:[[:space:]
     "bundle manifest did not report the self-contained runtime distribution"
 require_match "${bundle_manifest}" "\"classifier\"[[:space:]]*:[[:space:]]*\"$(host_bundle_classifier)\"" \
     "bundle manifest did not report the current host classifier"
-require_match "${bundle_manifest}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"macos-x86_64"' \
+require_match "${bundle_manifest}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"windows-x86_64"' \
     "bundle manifest did not report the supported public bundle targets"
-require_match "${bundle_manifest}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[^]]*"windows"' \
-    "bundle manifest did not report unsupported public operating systems"
+require_match "${bundle_manifest}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[[:space:]]*\]' \
+    "bundle manifest did not report the current unsupported public operating systems"
 
 runtime_version_output="$("${bundle_root}/runtime/bin/java" --version | tr -d '\r')"
 require_match "${runtime_version_output}" '^openjdk 26 ' \
@@ -275,10 +275,10 @@ require_match "${capabilities_output}" '"runtimeDistribution"[[:space:]]*:[[:spa
     "capabilities output did not report the self-contained bundle runtime"
 require_match "${capabilities_output}" '"publicCliDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
     "capabilities output did not report the self-contained bundle distribution"
-require_match "${capabilities_output}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"macos-x86_64"' \
+require_match "${capabilities_output}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"windows-x86_64"' \
     "capabilities output did not report the supported public bundle targets"
-require_match "${capabilities_output}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[^]]*"windows"' \
-    "capabilities output did not report unsupported public operating systems"
+require_match "${capabilities_output}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[[:space:]]*\]' \
+    "capabilities output did not report the current unsupported public operating systems"
 require_match "${capabilities_output}" '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"' \
     "capabilities output did not report the managed-only SQLite runtime mode"
 require_match "${capabilities_output}" '"sqliteLibraryBundleHomeSystemProperty"[[:space:]]*:[[:space:]]*"fingrind\.bundle\.home"' \

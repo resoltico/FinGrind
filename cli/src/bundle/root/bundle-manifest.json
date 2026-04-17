@@ -2,6 +2,7 @@
   "application": "FinGrind",
   "version": "${version}",
   "artifactType": "self-contained-cli-bundle",
+  "archiveFormat": "${bundleArchiveFormat}",
   "runtimeDistribution": "self-contained-bundle",
   "publicCliDistribution": "self-contained-bundle",
   "bundleTarget": {
@@ -11,7 +12,7 @@
   },
   "supportedPublicCliBundleTargets": ${publicBundleTargetsJson},
   "unsupportedPublicCliOperatingSystems": ${unsupportedPublicOperatingSystemsJson},
-  "launcher": "./bin/fingrind",
+  "launcher": "${bundleLauncherPath}",
   "noExternalJavaRequired": true,
   "requiresFingrindSqliteLibraryEnvironmentVariable": false,
   "managedSqlite": {
@@ -23,18 +24,19 @@
   },
   "bootstrap": {
     "recommendedFirstCommand": [
-      "./bin/fingrind",
+      ${bundleLauncherCommandJson},
       "help"
     ],
     "machineReadableContractCommand": [
-      "./bin/fingrind",
+      ${bundleLauncherCommandJson},
       "capabilities"
     ],
     "discoveryCommands": [
       "help",
       "version",
       "capabilities",
-      "print-request-template"
+      "print-request-template",
+      "print-plan-template"
     ],
     "administrationCommands": [
       "generate-book-key-file",
@@ -43,11 +45,16 @@
       "declare-account"
     ],
     "queryCommands": [
-      "list-accounts"
+      "list-accounts",
+      "inspect-book",
+      "get-posting",
+      "list-postings",
+      "account-balance"
     ],
     "writeCommands": [
       "preflight-entry",
-      "post-entry"
+      "post-entry",
+      "execute-plan"
     ]
   },
   "documentationFiles": [

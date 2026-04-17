@@ -2,9 +2,11 @@ package dev.erst.fingrind.buildlogic
 
 import java.io.File
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
@@ -26,6 +28,9 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
     @get:Input
     abstract val javaVersion: org.gradle.api.provider.Property<Int>
 
+    @get:Classpath
+    abstract val dependencyClasspath: ConfigurableFileCollection
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -35,16 +40,21 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
         outputPath.parentFile.mkdirs()
 
         val jdepsExecutable = executable(javaHomeDirectory.get().asFile, "jdeps")
+        val command =
+            mutableListOf(
+                jdepsExecutable.absolutePath,
+                "--multi-release",
+                javaVersion.get().toString(),
+            )
+        val classpathEntries = dependencyClasspath.files
+        if (classpathEntries.isNotEmpty()) {
+            command += "--class-path"
+            command += classpathEntries.joinToString(File.pathSeparator) { file -> file.absolutePath }
+        }
+        command += "--print-module-deps"
+        command += applicationJar.get().asFile.absolutePath
         val moduleList =
-            CommandLineSupport.run(
-                    listOf(
-                        jdepsExecutable.absolutePath,
-                        "--multi-release",
-                        javaVersion.get().toString(),
-                        "--print-module-deps",
-                        applicationJar.get().asFile.absolutePath,
-                    ),
-                )
+            CommandLineSupport.run(command)
                 .trim()
         if (moduleList.isEmpty()) {
             throw IllegalStateException(

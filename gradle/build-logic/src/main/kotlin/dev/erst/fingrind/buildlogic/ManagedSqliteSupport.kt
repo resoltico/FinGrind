@@ -36,10 +36,18 @@ internal object ManagedSqliteSupport {
         val headerFile = sourceDirectory.file("sqlite3mc_amalgamation.h")
         val sqliteHeaderFile = sourceDirectory.file("sqlite3.h")
         val extensionHeaderFile = sourceDirectory.file("sqlite3ext.h")
+        val defaultCompiler =
+            if (managedSqliteOperatingSystemId == "windows") {
+                "cl"
+            } else {
+                "cc"
+            }
         val sqliteCompiler =
             project.providers.environmentVariable("CC").orNull
-                ?.takeIf { candidate -> !candidate.contains("/") || File(candidate).isFile }
-                ?: "cc"
+                ?.takeIf { candidate ->
+                    (!candidate.contains("/") && !candidate.contains("\\")) || File(candidate).isFile
+                }
+                ?: defaultCompiler
         val libraryPath =
             project.layout.buildDirectory.file("managed-sqlite/$classifier/$libraryFileName")
 
@@ -91,7 +99,7 @@ internal object ManagedSqliteSupport {
             DistributionSupport.operatingSystemId()
         } catch (_: IllegalStateException) {
             throw GradleException(
-                "FinGrind's managed SQLite build currently supports macOS and Linux only. Detected: ${System.getProperty("os.name")}",
+                "FinGrind's managed SQLite build currently supports macOS, Linux, and Windows only. Detected: ${System.getProperty("os.name")}",
             )
         }
     }
