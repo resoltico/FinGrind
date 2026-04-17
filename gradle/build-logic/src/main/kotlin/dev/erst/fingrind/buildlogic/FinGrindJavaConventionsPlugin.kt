@@ -1,6 +1,7 @@
 package dev.erst.fingrind.buildlogic
 
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.diffplug.spotless.LineEnding
 import java.math.BigDecimal
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.Action
@@ -52,6 +53,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             extensions.configure<SpotlessExtension> {
+                lineEndings = LineEnding.UNIX
                 java {
                     target("src/*/java/**/*.java")
                     googleJavaFormat(libs.findVersion("google-java-format").get().requiredVersion)

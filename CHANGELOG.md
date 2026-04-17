@@ -62,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a native Windows managed-SQLite build path using MSVC, updated runtime lookup to resolve
   `sqlite3.dll`, and added Windows-specific smoke verification plus CI coverage for the published
   Windows bundle.
+- Pinned Spotless-managed source and project-file verification to LF line endings so
+  configuration-cache-enabled Windows CI does not depend on Spotless' platform-default
+  line-ending provider.
 
 ### Documentation
 - Updated README, user guides, examples, developer references, and API parity docs for the
