@@ -151,6 +151,12 @@ class SqliteBookKeyFileGeneratorTest {
               .contains("supports POSIX owner-only permissions or Windows owner-only ACLs"));
     }
 
+    Path nonEmptyDirectory =
+        Files.createDirectory(tempDirectory.resolve("non-empty-delete-target"));
+    Files.writeString(nonEmptyDirectory.resolve("child.txt"), "keep", StandardCharsets.UTF_8);
+    assertDoesNotThrow(() -> deleteQuietly.invoke(null, nonEmptyDirectory));
+    assertTrue(Files.exists(nonEmptyDirectory));
+
     if (supportsPosix(tempDirectory)) {
       Path lockedDirectory = tempDirectory.resolve("locked");
       Files.createDirectory(lockedDirectory);
