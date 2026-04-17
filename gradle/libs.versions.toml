@@ -2,7 +2,7 @@
 junit-bom = "6.0.3"
 junit-jupiter = "6.0.3"
 junit-platform-launcher = "6.0.3"
-jackson-databind = "3.1.1"
+jackson-databind = "3.1.2"
 jazzer = "0.30.0"
 errorprone = "2.49.0"
 errorprone-plugin = "5.1.0"
