@@ -30,6 +30,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
             val jazzerMaxDuration = providers.gradleProperty("jazzerMaxDuration").orNull
             val jazzerMaxExecutions = providers.gradleProperty("jazzerMaxExecutions").orNull
+            val sourcePolicyTask = registerJavaSourcePolicyTask()
+            val jacksonDependencyPolicyTask = registerJacksonDependencyPolicyTask()
             val repoRootDirectory = layout.projectDirectory.dir("..")
             val sharedGradleProperties =
                 Properties().apply {
@@ -199,6 +201,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
             tasks.named("check") {
                 dependsOn(jazzerRegression)
+                dependsOn(sourcePolicyTask)
+                dependsOn(jacksonDependencyPolicyTask)
             }
 
             tasks.register("fuzzAllLocal") {

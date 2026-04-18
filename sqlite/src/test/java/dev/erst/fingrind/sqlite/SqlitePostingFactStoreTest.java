@@ -277,6 +277,67 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  void queryView_requiresInitializedBookForDirectQueryCalls() throws Exception {
+    ListPostingsQuery postingsQuery =
+        new ListPostingsQuery(
+            Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty());
+    AccountBalanceQuery balanceQuery =
+        new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty());
+
+    Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(bookAccess(missingBookPath));
+        var queryView = postingFactStore.querySession()) {
+      assertFalse(queryView.isInitialized());
+      assertInitializedQueryViewFailure(
+          () -> queryView.listAccounts(firstAccountPage()),
+          () -> queryView.findAccount(new AccountCode("1000")),
+          () -> queryView.findPosting(new PostingId("posting-1")),
+          () -> queryView.listPostings(postingsQuery),
+          () -> queryView.accountBalance(balanceQuery));
+    }
+
+    Path rawSqlitePath = tempDirectory.resolve("query-view-uninitialized.sqlite");
+    createEmptySqliteFile(rawSqlitePath);
+    try (SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(bookAccess(rawSqlitePath));
+        var queryView = postingFactStore.querySession()) {
+      assertFalse(queryView.isInitialized());
+      assertInitializedQueryViewFailure(
+          () -> queryView.listAccounts(firstAccountPage()),
+          () -> queryView.findAccount(new AccountCode("1000")),
+          () -> queryView.findPosting(new PostingId("posting-1")),
+          () -> queryView.listPostings(postingsQuery),
+          () -> queryView.accountBalance(balanceQuery));
+    }
+  }
+
+  @Test
+  void queryView_wrapsNativeFailuresFromDirectQueryCalls() throws Exception {
+    Path databasePath = tempDirectory.resolve("query-view-native-failure.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(bookAccess(databasePath));
+        var queryView = postingFactStore.querySession()) {
+      setStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath));
+
+      assertWrappedQueryViewNativeFailure(
+          () -> queryView.listAccounts(firstAccountPage()),
+          () -> queryView.findAccount(new AccountCode("1000")),
+          () -> queryView.findPosting(new PostingId("posting-1")),
+          () ->
+              queryView.listPostings(
+                  new ListPostingsQuery(
+                      Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty())),
+          () ->
+              queryView.accountBalance(
+                  new AccountBalanceQuery(
+                      new AccountCode("1000"), Optional.empty(), Optional.empty())));
+      setStoreDatabase(postingFactStore, null);
+    }
+  }
+
+  @Test
   void ledgerPlanTransaction_commitsOuterTransactionAndPersistsNestedMutations()
       throws SqliteNativeException {
     Path databasePath = tempDirectory.resolve("ledger-plan-commit.sqlite");
@@ -362,6 +423,7 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  @SuppressWarnings("PMD.CloseResource")
   void ledgerPlanTransaction_defersExistingHandleValidationUntilDatabaseWork() throws Exception {
     Path beginFailurePath = tempDirectory.resolve("ledger-plan-deferred-begin.sqlite");
 
@@ -496,6 +558,50 @@ class SqlitePostingFactStoreTest {
 
       assertDoesNotThrow(postingFactStore::rollbackLedgerPlanTransaction);
     }
+  }
+
+  @Test
+  @SuppressWarnings({"PMD.CloseResource", "PMD.UseTryWithResources"})
+  void close_retainsDatabaseHandleUntilCloseEventuallySucceeds() throws Exception {
+    Path databasePath = tempDirectory.resolve("close-retry.sqlite");
+    SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookAccess(databasePath));
+
+    try {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      SqliteNativeDatabase activeDatabase = storeDatabase(postingFactStore);
+
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+              constantMethodHandle(14, MemorySegment.class))) {
+        IllegalStateException exception =
+            assertThrows(IllegalStateException.class, postingFactStore::close);
+
+        assertTrue(exception.getMessage().contains("Failed to close SQLite book connection."));
+        assertSame(activeDatabase, storeDatabase(postingFactStore));
+        assertFalse(storeBooleanField(postingFactStore, "closed"));
+      }
+
+      assertDoesNotThrow(postingFactStore::close);
+      assertNull(storeDatabase(postingFactStore));
+      assertTrue(storeBooleanField(postingFactStore, "closed"));
+    } finally {
+      if (!storeBooleanField(postingFactStore, "closed")) {
+        postingFactStore.close();
+      }
+    }
+  }
+
+  @Test
+  @SuppressWarnings("PMD.CloseResource")
+  void closeReopenedDatabaseQuietly_toleratesNullAndNativeCloseFailures() {
+    ClosingSqliteNativeDatabase closingDatabase = new ClosingSqliteNativeDatabase();
+    ThrowingSqliteNativeDatabase database = new ThrowingSqliteNativeDatabase();
+
+    assertDoesNotThrow(() -> SqlitePostingFactStore.closeReopenedDatabaseQuietly(closingDatabase));
+    assertTrue(closingDatabase.closeAttempted());
+    assertDoesNotThrow(() -> SqlitePostingFactStore.closeReopenedDatabaseQuietly(database));
+    assertTrue(database.closeAttempted());
+    assertDoesNotThrow(() -> SqlitePostingFactStore.closeReopenedDatabaseQuietly(null));
   }
 
   @Test
@@ -652,6 +758,20 @@ class SqlitePostingFactStoreTest {
       assertEquals(
           new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
           postingFactStore.openBook(Instant.parse("2026-04-08T10:15:30Z")));
+    }
+  }
+
+  @Test
+  void openBook_initializesBlankSqliteFile() throws SqliteNativeException {
+    Path databasePath = tempDirectory.resolve("blank-before-open.sqlite");
+    createEmptySqliteFile(databasePath);
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      assertEquals(
+          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+      assertTrue(postingFactStore.isInitialized());
     }
   }
 
@@ -2592,6 +2712,7 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  @SuppressWarnings("PMD.CloseResource")
   void closeAfterConfigurationFailure_closesOpenDatabase() throws Exception {
     Path bookPath = tempDirectory.resolve("configured-close.sqlite");
     SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath));
@@ -3134,7 +3255,27 @@ class SqlitePostingFactStoreTest {
   }
 
   /** Same-package deterministic native-failure double that never touches freed SQLite memory. */
+  private static final class ClosingSqliteNativeDatabase extends SqliteNativeDatabase {
+    private boolean closeAttempted;
+
+    private ClosingSqliteNativeDatabase() {
+      super(MemorySegment.NULL);
+    }
+
+    @Override
+    public void close() {
+      closeAttempted = true;
+    }
+
+    private boolean closeAttempted() {
+      return closeAttempted;
+    }
+  }
+
+  /** Same-package deterministic native-failure double that never touches freed SQLite memory. */
   private static final class ThrowingSqliteNativeDatabase extends SqliteNativeDatabase {
+    private boolean closeAttempted;
+
     private ThrowingSqliteNativeDatabase() {
       super(MemorySegment.NULL);
     }
@@ -3155,8 +3296,13 @@ class SqlitePostingFactStoreTest {
     }
 
     @Override
-    void close() throws SqliteNativeException {
+    public void close() throws SqliteNativeException {
+      closeAttempted = true;
       throw simulatedNativeFailure("close a SQLite database");
+    }
+
+    private boolean closeAttempted() {
+      return closeAttempted;
     }
 
     private static SqliteNativeException simulatedNativeFailure(String operation) {
@@ -3361,11 +3507,6 @@ class SqlitePostingFactStoreTest {
     return ((byte[]) field.get(passphrase)).clone();
   }
 
-  private static void closeStandaloneDatabase(SqliteNativeDatabase database)
-      throws SqliteNativeException {
-    database.close();
-  }
-
   private static MethodHandle constantMethodHandle(Object value, Class<?>... parameterTypes) {
     return MethodHandles.dropArguments(
         MethodHandles.constant(constantType(value), value), 0, parameterTypes);
@@ -3385,11 +3526,10 @@ class SqlitePostingFactStoreTest {
       throws ReflectiveOperationException, SqliteNativeException {
     Path bookPath =
         tempDirectory.resolve(expectedMessage.replace(' ', '-').replace('.', '_') + ".sqlite");
-    SqliteNativeDatabase database =
+    try (SqliteNativeDatabase database =
         SqliteConnectionSupport.configureOpenedDatabase(
             SqliteNativeLibrary.open(bookAccess(bookPath)),
-            SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE);
-    try {
+            SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE)) {
       database.executeScript(driftSql + ";");
 
       InvocationTargetException exception =
@@ -3400,18 +3540,13 @@ class SqlitePostingFactStoreTest {
                       null, database, SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE));
 
       assertEquals(expectedMessage, exception.getCause().getMessage());
-    } finally {
-      database.close();
     }
   }
 
   private static void withStandaloneDatabase(BookAccess bookAccess, SqliteDatabaseAction action)
       throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess);
-    try {
+    try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess)) {
       action.run(database);
-    } finally {
-      closeStandaloneDatabase(database);
     }
   }
 
@@ -3471,6 +3606,25 @@ class SqlitePostingFactStoreTest {
     return new ListAccountsQuery(50, 0);
   }
 
+  @SafeVarargs
+  private static void assertInitializedQueryViewFailure(ThrowingRunnable... invocations) {
+    for (ThrowingRunnable invocation : invocations) {
+      IllegalStateException exception = assertThrows(IllegalStateException.class, invocation::run);
+      assertEquals(
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          exception.getMessage());
+    }
+  }
+
+  @SafeVarargs
+  private static void assertWrappedQueryViewNativeFailure(ThrowingRunnable... invocations) {
+    for (ThrowingRunnable invocation : invocations) {
+      IllegalStateException exception = assertThrows(IllegalStateException.class, invocation::run);
+      assertTrue(exception.getMessage().contains("Failed to query SQLite book."));
+      assertTrue(exception.getMessage().contains("SQLITE_CANTOPEN"));
+    }
+  }
+
   private static List<DeclaredAccount> listAccounts(SqlitePostingFactStore postingFactStore) {
     return postingFactStore.listAccounts(firstAccountPage()).accounts();
   }
@@ -3488,5 +3642,11 @@ class SqlitePostingFactStoreTest {
   @FunctionalInterface
   private interface SqliteDatabaseAction {
     void run(SqliteNativeDatabase database) throws SqliteNativeException;
+  }
+
+  /** Performs one assertion helper call that may surface reflective or native checked failures. */
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws ReflectiveOperationException, SqliteNativeException;
   }
 }

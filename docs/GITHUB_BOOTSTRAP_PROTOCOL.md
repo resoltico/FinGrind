@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.16.0"
+version: "0.17.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
 updated: "2026-04-17"
 route:

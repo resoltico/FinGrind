@@ -19,6 +19,11 @@ public sealed interface BookQueryRejection
     return descriptorFor(rejection).code();
   }
 
+  /** Returns the stable wire code for the missing-book query rejection. */
+  static String bookNotInitializedCode() {
+    return Descriptor.BOOK_NOT_INITIALIZED.code();
+  }
+
   /** Returns the canonical machine descriptors for every permitted query rejection. */
   static List<ContractResponse.RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();

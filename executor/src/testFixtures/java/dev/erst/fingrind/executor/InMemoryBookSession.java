@@ -1,7 +1,23 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.*;
-import dev.erst.fingrind.core.*;
+import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.BookAdministrationRejection;
+import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.DeclareAccountResult;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingPage;
+import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingId;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
@@ -46,10 +62,15 @@ public final class InMemoryBookSession
     return withLock(
         () -> {
           if (!initialized) {
-            return new BookInspection.Missing(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
+            return new BookInspection.Missing(
+                1, dev.erst.fingrind.contract.BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
           }
           return new BookInspection.Initialized(
-              1_179_079_236, 1, 1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE, initializedAt);
+              1_179_079_236,
+              1,
+              1,
+              dev.erst.fingrind.contract.BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
+              initializedAt);
         });
   }
 
@@ -59,16 +80,16 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public OpenBookResult openBook(Instant initializedAt) {
+  public dev.erst.fingrind.contract.OpenBookResult openBook(Instant initializedAt) {
     return withLock(
         () -> {
           if (initialized) {
-            return new OpenBookResult.Rejected(
+            return new dev.erst.fingrind.contract.OpenBookResult.Rejected(
                 new BookAdministrationRejection.BookAlreadyInitialized());
           }
           initialized = true;
           this.initializedAt = initializedAt;
-          return new OpenBookResult.Opened(initializedAt);
+          return new dev.erst.fingrind.contract.OpenBookResult.Opened(initializedAt);
         });
   }
 
@@ -124,7 +145,7 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public AccountPage listAccounts(ListAccountsQuery query) {
+  public dev.erst.fingrind.contract.AccountPage listAccounts(ListAccountsQuery query) {
     return withLock(
         () -> {
           List<DeclaredAccount> accounts =
@@ -133,7 +154,7 @@ public final class InMemoryBookSession
                   .toList();
           int start = Math.min(query.offset(), accounts.size());
           int end = Math.min(start + query.limit(), accounts.size());
-          return new AccountPage(
+          return new dev.erst.fingrind.contract.AccountPage(
               accounts.subList(start, end), query.limit(), query.offset(), end < accounts.size());
         });
   }
@@ -172,10 +193,11 @@ public final class InMemoryBookSession
           }
           postingsByPostingId.put(postingFact.postingId(), postingFact);
 
-          Optional<ReversalReference> reversalReference =
+          Optional<dev.erst.fingrind.core.ReversalReference> reversalReference =
               postingFact.postingLineage().reversalReference();
           if (reversalReference.isPresent()) {
-            ReversalReference postedReversal = reversalReference.orElseThrow();
+            dev.erst.fingrind.core.ReversalReference postedReversal =
+                reversalReference.orElseThrow();
             PostingId priorPostingId = postedReversal.priorPostingId();
             PostingFact existingReversal =
                 reversalsByPriorPostingId.putIfAbsent(priorPostingId, postingFact);
@@ -218,13 +240,15 @@ public final class InMemoryBookSession
               pageItems,
               query.limit(),
               end < matchingPostings.size()
-                  ? Optional.of(PostingPageCursor.fromPosting(pageItems.getLast()))
+                  ? Optional.of(
+                      dev.erst.fingrind.contract.PostingPageCursor.fromPosting(pageItems.getLast()))
                   : Optional.empty());
         });
   }
 
   @Override
-  public Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
+  public Optional<dev.erst.fingrind.contract.AccountBalanceSnapshot> accountBalance(
+      AccountBalanceQuery query) {
     return withLock(
         () -> {
           DeclaredAccount account = accountsByCode.get(query.accountCode());
@@ -239,13 +263,13 @@ public final class InMemoryBookSession
               .flatMap(posting -> posting.journalEntry().lines().stream())
               .filter(line -> line.accountCode().equals(query.accountCode()))
               .forEach(line -> accumulate(totalsByCurrency, line));
-          List<CurrencyBalance> balances =
+          List<dev.erst.fingrind.contract.CurrencyBalance> balances =
               totalsByCurrency.entrySet().stream()
                   .sorted(Comparator.comparing(entry -> entry.getKey().value()))
                   .map(entry -> balance(entry.getKey(), entry.getValue(), account.normalBalance()))
                   .toList();
           return Optional.of(
-              new AccountBalanceSnapshot(
+              new dev.erst.fingrind.contract.AccountBalanceSnapshot(
                   account, query.effectiveDateFrom(), query.effectiveDateTo(), balances));
         });
   }
@@ -342,11 +366,11 @@ public final class InMemoryBookSession
   }
 
   private static boolean matchesCursor(
-      PostingFact postingFact, Optional<PostingPageCursor> cursor) {
+      PostingFact postingFact, Optional<dev.erst.fingrind.contract.PostingPageCursor> cursor) {
     if (cursor.isEmpty()) {
       return true;
     }
-    PostingPageCursor pageCursor = cursor.orElseThrow();
+    dev.erst.fingrind.contract.PostingPageCursor pageCursor = cursor.orElseThrow();
     java.time.LocalDate effectiveDate = postingFact.journalEntry().effectiveDate();
     Instant recordedAt = postingFact.provenance().recordedAt();
     String postingId = postingFact.postingId().value();
@@ -369,7 +393,7 @@ public final class InMemoryBookSession
     totals.credit = totals.credit.add(line.amount().amount());
   }
 
-  private static CurrencyBalance balance(
+  private static dev.erst.fingrind.contract.CurrencyBalance balance(
       CurrencyCode currencyCode, Totals totals, NormalBalance accountNormalBalance) {
     BigDecimal net = totals.debit.subtract(totals.credit);
     BigDecimal absoluteNet = net.abs();
@@ -377,7 +401,7 @@ public final class InMemoryBookSession
     if (absoluteNet.signum() == 0) {
       balanceSide = accountNormalBalance;
     }
-    return new CurrencyBalance(
+    return new dev.erst.fingrind.contract.CurrencyBalance(
         new Money(currencyCode, totals.debit),
         new Money(currencyCode, totals.credit),
         new Money(currencyCode, absoluteNet),

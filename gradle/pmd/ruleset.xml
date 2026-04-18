@@ -37,6 +37,10 @@
         <!-- Boundary services legitimately reference multiple request/response and domain types
              when translating between the CLI contract and the application layer. -->
         <exclude name="CouplingBetweenObjects"/>
+        <!-- FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining
+             ExcessiveImports here would push developers back toward forbidden wildcard imports
+             instead of enforcing the real rule we care about. -->
+        <exclude name="ExcessiveImports"/>
         <!-- withExceptionData() takes 3-4 nullable Strings representing distinct exception
              location fields. A wrapper record would add ceremony for no semantic gain. -->
         <exclude name="UseObjectForClearerAPI"/>

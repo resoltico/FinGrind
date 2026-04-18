@@ -41,4 +41,11 @@ class BookAdministrationRejectionTest {
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());
   }
+
+  @Test
+  void bookNotInitializedCode_matchesTheCanonicalDescriptor() {
+    assertEquals(
+        BookAdministrationRejection.wireCode(new BookAdministrationRejection.BookNotInitialized()),
+        BookAdministrationRejection.bookNotInitializedCode());
+  }
 }

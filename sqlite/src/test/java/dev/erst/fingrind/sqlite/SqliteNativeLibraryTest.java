@@ -803,15 +803,11 @@ class SqliteNativeLibraryTest {
   @Test
   void openOverloadAndRekey_rotateBookPassphrase() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-native.sqlite");
-    SqliteNativeDatabase database;
 
     try (SqliteBookPassphrase initialPassphrase =
-        SqliteBookPassphrase.fromCharacters(
-            "initial native passphrase", TEST_BOOK_KEY.toCharArray())) {
-      database = SqliteNativeLibrary.open(bookPath, initialPassphrase);
-    }
-
-    try {
+            SqliteBookPassphrase.fromCharacters(
+                "initial native passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, initialPassphrase)) {
       database.executeStatement("create table sample (id integer primary key, note text not null)");
       database.executeStatement("insert into sample (id, note) values (1, 'ok')");
 
@@ -820,22 +816,16 @@ class SqliteNativeLibraryTest {
               "replacement native passphrase", "rotated-key".toCharArray())) {
         SqliteNativeLibrary.rekey(database, replacementPassphrase);
       }
-    } finally {
-      database.close();
     }
 
     try (SqliteBookPassphrase replacementPassphrase =
-        SqliteBookPassphrase.fromCharacters(
-            "replacement native passphrase", "rotated-key".toCharArray())) {
-      SqliteNativeDatabase reopened = SqliteNativeLibrary.open(bookPath, replacementPassphrase);
-      try {
-        try (SqliteNativeStatement statement =
-            SqliteNativeLibrary.prepare(reopened, "select count(*) from sample")) {
-          assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
-          assertEquals(1, statement.columnInt(0));
-        }
-      } finally {
-        reopened.close();
+            SqliteBookPassphrase.fromCharacters(
+                "replacement native passphrase", "rotated-key".toCharArray());
+        SqliteNativeDatabase reopened = SqliteNativeLibrary.open(bookPath, replacementPassphrase)) {
+      try (SqliteNativeStatement statement =
+          SqliteNativeLibrary.prepare(reopened, "select count(*) from sample")) {
+        assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+        assertEquals(1, statement.columnInt(0));
       }
     }
 
@@ -856,30 +846,24 @@ class SqliteNativeLibraryTest {
 
     assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(null, null));
     try (SqliteBookPassphrase passphrase =
-        SqliteBookPassphrase.fromCharacters("rekey null passphrase", TEST_BOOK_KEY.toCharArray())) {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
-      try {
-        assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(database, null));
-      } finally {
-        database.close();
-      }
+            SqliteBookPassphrase.fromCharacters(
+                "rekey null passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
+      assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(database, null));
     }
   }
 
   @Test
   void rekey_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-native-failure.sqlite");
-    SqliteNativeDatabase database;
 
     try (SqliteBookPassphrase passphrase =
-        SqliteBookPassphrase.fromCharacters(
-            "native failure passphrase", TEST_BOOK_KEY.toCharArray())) {
-      database = SqliteNativeLibrary.open(bookPath, passphrase);
-    }
-
-    try (AutoCloseable ignored =
-        SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
-            constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))) {
+            SqliteBookPassphrase.fromCharacters(
+                "native failure passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
+        AutoCloseable ignored =
+            SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+                constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))) {
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "native failure replacement", "rotated-key".toCharArray())) {
@@ -890,29 +874,25 @@ class SqliteNativeLibraryTest {
 
         assertEquals("SQLITE_CANTOPEN", exception.resultName());
       }
-    } finally {
-      database.close();
     }
   }
 
   @Test
   void rekey_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-throwable.sqlite");
-    SqliteNativeDatabase database;
 
     try (SqliteBookPassphrase passphrase =
-        SqliteBookPassphrase.fromCharacters("throwable passphrase", TEST_BOOK_KEY.toCharArray())) {
-      database = SqliteNativeLibrary.open(bookPath, passphrase);
-    }
-
-    try (AutoCloseable ignored =
-        SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
-            throwingMethodHandle(
-                new IllegalStateException("boom"),
-                int.class,
-                MemorySegment.class,
-                MemorySegment.class,
-                int.class))) {
+            SqliteBookPassphrase.fromCharacters(
+                "throwable passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
+        AutoCloseable ignored =
+            SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+                throwingMethodHandle(
+                    new IllegalStateException("boom"),
+                    int.class,
+                    MemorySegment.class,
+                    MemorySegment.class,
+                    int.class))) {
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "throwable replacement", "rotated-key".toCharArray())) {
@@ -928,8 +908,6 @@ class SqliteNativeLibraryTest {
                     "Failed to rekey the FinGrind SQLite book with passphrase material from"));
         assertEquals("boom", exception.getCause().getMessage());
       }
-    } finally {
-      database.close();
     }
   }
 
@@ -1333,14 +1311,10 @@ class SqliteNativeLibraryTest {
   @Test
   void close_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("close-native-failure.sqlite");
-    SqliteNativeDatabase database;
-
     try (SqliteBookPassphrase passphrase =
-        SqliteBookPassphrase.fromCharacters("close native failure", TEST_BOOK_KEY.toCharArray())) {
-      database = SqliteNativeLibrary.open(bookPath, passphrase);
-    }
-
-    try {
+            SqliteBookPassphrase.fromCharacters(
+                "close native failure", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
       try (AutoCloseable ignored =
           SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
               constantMethodHandle(14, MemorySegment.class))) {
@@ -1349,22 +1323,38 @@ class SqliteNativeLibraryTest {
 
         assertEquals("SQLITE_CANTOPEN", exception.resultName());
       }
-    } finally {
-      database.close();
     }
+  }
+
+  @Test
+  void close_keepsActiveConnectionCountUntilSuccessfulRetry() throws Exception {
+    Path bookPath = tempDirectory.resolve("close-active-count.sqlite");
+    int initialActiveConnections = SqliteNativeLibrary.activeConnectionCount();
+
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters("close active count", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
+      assertEquals(initialActiveConnections + 1, SqliteNativeLibrary.activeConnectionCount());
+
+      try (AutoCloseable ignored =
+          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+              constantMethodHandle(14, MemorySegment.class))) {
+        assertThrows(SqliteNativeException.class, database::close);
+        assertEquals(initialActiveConnections + 1, SqliteNativeLibrary.activeConnectionCount());
+      }
+
+      assertEquals(initialActiveConnections + 1, SqliteNativeLibrary.activeConnectionCount());
+    }
+
+    assertEquals(initialActiveConnections, SqliteNativeLibrary.activeConnectionCount());
   }
 
   @Test
   void close_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
     Path bookPath = tempDirectory.resolve("close-throwable.sqlite");
-    SqliteNativeDatabase database;
-
     try (SqliteBookPassphrase passphrase =
-        SqliteBookPassphrase.fromCharacters("close throwable", TEST_BOOK_KEY.toCharArray())) {
-      database = SqliteNativeLibrary.open(bookPath, passphrase);
-    }
-
-    try {
+            SqliteBookPassphrase.fromCharacters("close throwable", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
       try (AutoCloseable ignored =
           SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
               throwingMethodHandle(
@@ -1375,8 +1365,6 @@ class SqliteNativeLibraryTest {
         assertEquals("Failed to close the SQLite native library bridge.", exception.getMessage());
         assertEquals("boom", exception.getCause().getMessage());
       }
-    } finally {
-      database.close();
     }
   }
 
@@ -1697,10 +1685,6 @@ class SqliteNativeLibraryTest {
     System.setProperty(key, value);
   }
 
-  private static void closeDatabase(SqliteNativeDatabase database) throws SqliteNativeException {
-    database.close();
-  }
-
   @SuppressWarnings("unused")
   private static int recordShutdownCall(AtomicInteger shutdownCalls) {
     return shutdownCalls.incrementAndGet();
@@ -1752,11 +1736,8 @@ class SqliteNativeLibraryTest {
 
   private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action)
       throws SqliteNativeException {
-    SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess);
-    try {
+    try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess)) {
       action.run(database);
-    } finally {
-      closeDatabase(database);
     }
   }
 

@@ -88,15 +88,15 @@ The canonical machine-readable source for that matrix is
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.16.0-macos-aarch64.tar.gz
-./fingrind-0.16.0-macos-aarch64/bin/fingrind help
+tar -xzf fingrind-0.17.0-macos-aarch64.tar.gz
+./fingrind-0.17.0-macos-aarch64/bin/fingrind help
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.16.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.16.0-windows-x86_64\bin\fingrind.cmd help
+Expand-Archive fingrind-0.17.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.17.0-windows-x86_64\bin\fingrind.cmd help
 ```
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux

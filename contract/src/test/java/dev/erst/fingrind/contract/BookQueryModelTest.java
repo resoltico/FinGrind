@@ -313,6 +313,9 @@ class BookQueryModelTest {
         BookQueryRejection.descriptors().stream()
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());
+    assertEquals(
+        BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+        BookQueryRejection.bookNotInitializedCode());
     assertThrows(NullPointerException.class, () -> new BookQueryRejection.UnknownAccount(null));
     assertThrows(NullPointerException.class, () -> new BookQueryRejection.PostingNotFound(null));
   }

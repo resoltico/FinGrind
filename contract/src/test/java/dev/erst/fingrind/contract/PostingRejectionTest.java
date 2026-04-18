@@ -57,4 +57,11 @@ class PostingRejectionTest {
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());
   }
+
+  @Test
+  void bookNotInitializedCode_matchesTheCanonicalDescriptor() {
+    assertEquals(
+        PostingRejection.wireCode(new PostingRejection.BookNotInitialized()),
+        PostingRejection.bookNotInitializedCode());
+  }
 }

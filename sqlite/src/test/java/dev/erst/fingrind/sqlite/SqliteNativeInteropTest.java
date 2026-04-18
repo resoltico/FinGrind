@@ -49,9 +49,8 @@ class SqliteNativeInteropTest {
 
   @Test
   void invalidSqlAndConstraintFailures_mapToSQLiteFailures() throws Exception {
-    SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("interop.sqlite")));
-    try {
+    try (SqliteNativeDatabase database =
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("interop.sqlite")))) {
       database.executeStatement("create table sample (id integer primary key)");
 
       try (Arena arena = Arena.ofConfined()) {
@@ -98,16 +97,13 @@ class SqliteNativeInteropTest {
             SqliteNativeLibrary.extendedErrorCode(database.handle()));
         assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", exception.resultName());
       }
-    } finally {
-      database.close();
     }
   }
 
   @Test
   void executeScript_surfacesTypedSqliteFailureForInvalidSql() throws Exception {
-    SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("script-failure.sqlite")));
-    try {
+    try (SqliteNativeDatabase database =
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("script-failure.sqlite")))) {
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
@@ -120,31 +116,25 @@ class SqliteNativeInteropTest {
 
       assertEquals(1, exception.resultCode());
       assertEquals("SQLITE_1", exception.resultName());
-    } finally {
-      database.close();
     }
   }
 
   @Test
   void executeStatement_rejectsRowProducingSql() throws Exception {
-    SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("row-producing.sqlite")));
-    try {
+    try (SqliteNativeDatabase database =
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("row-producing.sqlite")))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, () -> database.executeStatement("select 1"));
 
       assertEquals(
           "SQLite control statement must not produce rows: select 1", exception.getMessage());
-    } finally {
-      database.close();
     }
   }
 
   @Test
   void mapper_readsPostingLineageOnlyFromCoupledPriorPostingIdAndReasonColumns() throws Exception {
-    SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("mapper.sqlite")));
-    try {
+    try (SqliteNativeDatabase database =
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("mapper.sqlite")))) {
       try (SqliteNativeStatement missingPrior =
           SqliteNativeLibrary.prepare(
               database,
@@ -218,8 +208,6 @@ class SqliteNativeInteropTest {
             "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.",
             exception.getMessage());
       }
-    } finally {
-      database.close();
     }
   }
 
