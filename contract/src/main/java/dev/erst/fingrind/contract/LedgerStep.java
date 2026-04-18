@@ -1,8 +1,10 @@
 package dev.erst.fingrind.contract;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
+import java.util.Optional;
 
 /** One executable step inside an AI-agent-authored ledger plan. */
 public sealed interface LedgerStep
@@ -19,8 +21,13 @@ public sealed interface LedgerStep
   /** Stable caller-supplied step identifier used for journal correlation. */
   String stepId();
 
-  /** Canonical operation represented by this step. */
-  OperationId operationId();
+  /** Canonical request and journal kind represented by this step. */
+  LedgerStepKind kind();
+
+  /** Optional detail kind emitted alongside the step kind in execution journals. */
+  default Optional<LedgerAssertionKind> detailKind() {
+    return Optional.empty();
+  }
 
   /** Validates a step identifier. */
   static void requireStepId(String stepId) {
@@ -38,8 +45,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.OPEN_BOOK;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.OPEN_BOOK;
     }
   }
 
@@ -52,8 +59,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.DECLARE_ACCOUNT;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.DECLARE_ACCOUNT;
     }
   }
 
@@ -66,8 +73,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.PREFLIGHT_ENTRY;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.PREFLIGHT_ENTRY;
     }
   }
 
@@ -80,8 +87,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.POST_ENTRY;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.POST_ENTRY;
     }
   }
 
@@ -93,8 +100,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.INSPECT_BOOK;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.INSPECT_BOOK;
     }
   }
 
@@ -107,8 +114,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.LIST_ACCOUNTS;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.LIST_ACCOUNTS;
     }
   }
 
@@ -121,8 +128,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.GET_POSTING;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.GET_POSTING;
     }
   }
 
@@ -135,8 +142,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.LIST_POSTINGS;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.LIST_POSTINGS;
     }
   }
 
@@ -149,8 +156,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.ACCOUNT_BALANCE;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.ACCOUNT_BALANCE;
     }
   }
 
@@ -163,8 +170,13 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public OperationId operationId() {
-      return OperationId.EXECUTE_PLAN;
+    public LedgerStepKind kind() {
+      return LedgerStepKind.ASSERT;
+    }
+
+    @Override
+    public Optional<LedgerAssertionKind> detailKind() {
+      return Optional.of(assertion.kind());
     }
   }
 }

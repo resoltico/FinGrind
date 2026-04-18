@@ -1,0 +1,18 @@
+{
+  "targetKey" : "ledger-plan-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/basic_valid.json",
+  "expectation" : {
+    "outcomeKind" : "SUCCESS",
+    "details" : {
+      "type" : "LEDGER_PLAN_REQUEST",
+      "requestStatus" : "PARSED",
+      "planId" : "plan-1",
+      "stepCount" : 5,
+      "firstStepKind" : "open-book",
+      "lastStepKind" : "assert",
+      "assertionStepCount" : 1,
+      "beginsWithOpenBook" : true,
+      "failureMessage" : "NONE"
+    }
+  }
+}

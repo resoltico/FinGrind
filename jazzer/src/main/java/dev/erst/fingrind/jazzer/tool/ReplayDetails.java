@@ -7,8 +7,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = CliRequestReplayDetails.class, name = "CLI_REQUEST"),
+  @JsonSubTypes.Type(value = LedgerPlanReplayDetails.class, name = "LEDGER_PLAN_REQUEST"),
   @JsonSubTypes.Type(value = PostingWorkflowReplayDetails.class, name = "POSTING_WORKFLOW"),
   @JsonSubTypes.Type(value = SqliteBookRoundTripReplayDetails.class, name = "SQLITE_BOOK_ROUND_TRIP")
 })
 public sealed interface ReplayDetails
-    permits CliRequestReplayDetails, PostingWorkflowReplayDetails, SqliteBookRoundTripReplayDetails {}
+    permits CliRequestReplayDetails,
+        LedgerPlanReplayDetails,
+        PostingWorkflowReplayDetails,
+        SqliteBookRoundTripReplayDetails {}

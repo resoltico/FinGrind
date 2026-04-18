@@ -20,10 +20,10 @@
     "commandId": "command-reversal-1",
     "idempotencyKey": "idem-reversal-1",
     "causationId": "cause-reversal-1",
-    "correlationId": "corr-reversal-1",
-    "reason": "Invoice reversal"
+    "correlationId": "corr-reversal-1"
   },
   "reversal": {
-    "priorPostingId": "replace-with-posting-id-from-same-book"
+    "priorPostingId": "replace-with-posting-id-from-same-book",
+    "reason": "Invoice reversal"
   }
 }

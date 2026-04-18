@@ -7,6 +7,12 @@
       "methodName": "readPostEntryCommand"
     },
     {
+      "key": "ledger-plan-request",
+      "displayName": "Ledger Plan Request",
+      "className": "dev.erst.fingrind.cli.LedgerPlanRequestFuzzTest",
+      "methodName": "readLedgerPlan"
+    },
+    {
       "key": "posting-workflow",
       "displayName": "Posting Workflow",
       "className": "dev.erst.fingrind.cli.PostingWorkflowFuzzTest",
@@ -28,6 +34,7 @@
       "activeFuzzing": false,
       "harnessKeys": [
         "cli-request",
+        "ledger-plan-request",
         "posting-workflow",
         "sqlite-book-roundtrip"
       ]
@@ -40,6 +47,16 @@
       "activeFuzzing": true,
       "harnessKeys": [
         "cli-request"
+      ]
+    },
+    {
+      "key": "ledger-plan-request",
+      "displayName": "Ledger Plan Request",
+      "taskName": "fuzzLedgerPlanRequest",
+      "workingDirectory": ".local/runs/ledger-plan-request",
+      "activeFuzzing": true,
+      "harnessKeys": [
+        "ledger-plan-request"
       ]
     },
     {

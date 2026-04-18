@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.PostingLineage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -140,7 +141,7 @@ class SqliteNativeInteropTest {
   }
 
   @Test
-  void mapper_readsReversalReferenceOnlyFromPriorPostingIdColumn() throws Exception {
+  void mapper_readsPostingLineageOnlyFromCoupledPriorPostingIdAndReasonColumns() throws Exception {
     SqliteNativeDatabase database =
         SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("mapper.sqlite")));
     try {
@@ -152,8 +153,20 @@ class SqliteNativeInteropTest {
                   null, null, null, null, null, null, null, null, null, null, null, null
               """)) {
         assertEquals(SqliteNativeLibrary.SQLITE_ROW, missingPrior.step());
+        assertEquals(PostingLineage.direct(), SqlitePostingMapper.readPostingLineage(missingPrior));
+      }
+
+      try (SqliteNativeStatement missingPriorForWrapper =
+          SqliteNativeLibrary.prepare(
+              database,
+              """
+              select
+                  null, null, null, null, null, null, null, null, null, null, null, null
+              """)) {
+        assertEquals(SqliteNativeLibrary.SQLITE_ROW, missingPriorForWrapper.step());
         assertEquals(
-            java.util.Optional.empty(), SqlitePostingMapper.readReversalReference(missingPrior));
+            java.util.Optional.empty(),
+            SqlitePostingMapper.readReversalReference(missingPriorForWrapper));
       }
 
       try (SqliteNativeStatement presentPriorPostingId =
@@ -161,14 +174,49 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
+                  null, null, null, null, null, null, null, null, null, 'operator reversal', null, 'posting-1'
               """)) {
         assertEquals(SqliteNativeLibrary.SQLITE_ROW, presentPriorPostingId.step());
         assertEquals(
-            java.util.Optional.of(
+            PostingLineage.reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-1"))),
-            SqlitePostingMapper.readReversalReference(presentPriorPostingId));
+                    new dev.erst.fingrind.core.PostingId("posting-1")),
+                new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+            SqlitePostingMapper.readPostingLineage(presentPriorPostingId));
+      }
+
+      try (SqliteNativeStatement missingReason =
+          SqliteNativeLibrary.prepare(
+              database,
+              """
+              select
+                  null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
+              """)) {
+        assertEquals(SqliteNativeLibrary.SQLITE_ROW, missingReason.step());
+        IllegalStateException exception =
+            assertThrows(
+                IllegalStateException.class,
+                () -> SqlitePostingMapper.readPostingLineage(missingReason));
+        assertEquals(
+            "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.",
+            exception.getMessage());
+      }
+
+      try (SqliteNativeStatement missingPriorPostingId =
+          SqliteNativeLibrary.prepare(
+              database,
+              """
+              select
+                  null, null, null, null, null, null, null, null, null, 'operator reversal', null, null
+              """)) {
+        assertEquals(SqliteNativeLibrary.SQLITE_ROW, missingPriorPostingId.step());
+        IllegalStateException exception =
+            assertThrows(
+                IllegalStateException.class,
+                () -> SqlitePostingMapper.readPostingLineage(missingPriorPostingId));
+        assertEquals(
+            "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.",
+            exception.getMessage());
       }
     } finally {
       database.close();

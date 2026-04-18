@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: DEVELOPER
 updated: "2026-04-17"
 route:
@@ -39,7 +39,10 @@ core/         Accounting vocabulary and invariants:
 
 contract/     Public request, result, metadata, and machine-contract surface:
               ProtocolCatalog, OperationId, ProtocolOperation, ProtocolLimits, ProtocolOptions,
-              MachineContract, administration/query/write DTOs, rejections, committed facts,
+              ProtocolPostEntryFields, ProtocolDeclareAccountFields,
+              MachineContract plus ContractDiscovery / ContractTemplates /
+              ContractRequestShapes / ContractResponse descriptor namespaces,
+              administration/query/write DTOs, rejections, committed facts,
               ledger plans, assertions, plan journals.
 
 executor/     Execution services plus storage seams:
@@ -55,7 +58,8 @@ sqlite/       Durable single-book adapter:
               adapter backed by Java 26 FFM and a managed SQLite 3.53.0 / SQLite3 Multiple
               Ciphers 2.3.3 runtime on controlled surfaces, implementing the executor-owned
               administration, posting, query, and ledger-plan seams over the canonical strict-table
-              `book_schema.sql`.
+              `book_schema.sql` through focused helpers for connection setup, book-state reading,
+              single-row query support, posting reads, and durable writes.
 
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus print-request-template, print-plan-template,
@@ -88,7 +92,7 @@ The AI-agent-first workflow is now first-class:
 - assertions are part of the public contract rather than ad hoc CLI behavior
 - every plan returns a durable per-step journal for agent continuation
 
-FinGrind is intentionally hard-break oriented right now:
+FinGrind's current public model is:
 - one SQLite file is one book for one entity
 - every book-bound command requires exactly one explicit passphrase source:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
@@ -100,7 +104,8 @@ FinGrind is intentionally hard-break oriented right now:
 - one journal entry is exactly one currency
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- no migration framework or backward-compatibility layer exists yet
+- the published book migration policy is sequential in-place migration, and the current supported
+  on-disk format is `1`
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - contributor verification belongs on the local filesystem; mounted external volumes are outside the
@@ -113,8 +118,8 @@ FinGrind is intentionally hard-break oriented right now:
 | Java | 26 |
 | Gradle Wrapper | 9.4.1 |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build |
-| Jackson Databind | 3.1.1 |
+| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build plus `--enable-native-access=ALL-UNNAMED` on the Java command line |
+| Jackson Databind | 3.1.2 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
 | PMD | 7.23.0 |
@@ -161,6 +166,7 @@ Nested Jazzer verification:
 ./gradlew -p jazzer jazzerRegression
 ./gradlew -p jazzer check
 jazzer/bin/fuzz-cli-request -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/fuzz-ledger-plan-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-all -PjazzerMaxDuration=30s --console=plain
@@ -198,7 +204,7 @@ Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a
 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library from
 `third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/`, inject that library through
 `FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI surfaces on the same
-`Enable-Native-Access: ALL-UNNAMED` runtime contract.
+`--enable-native-access=ALL-UNNAMED` runtime contract.
 
 Public release verification now centers on the self-contained bundle archive, not the raw JAR.
 `./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` on
@@ -213,7 +219,7 @@ the resulting file under `build/managed-sqlite/`, for example:
 
 ```bash
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java -jar cli/build/libs/fingrind.jar capabilities
+java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar capabilities
 ```
 
 `./check.sh` is the local full-stack gate. It runs:
@@ -296,7 +302,8 @@ FinGrind deliberately keeps several boundaries sharp:
   plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
   `key=` / `hexkey=` secret transport.
 - There is no generic database-independence layer.
-- There is one canonical current SQLite schema and no migration layer.
+- There is one canonical current SQLite schema, with the supported format version and migration
+  policy owned by the SQLite migration planner.
 - The CLI never bypasses the contract and executor boundary.
 - Caller-supplied request provenance is distinct from committed audit metadata.
 - Deterministic rejections stay separate from malformed requests and runtime failures.

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: USER_CLI
 updated: "2026-04-17"
 route:
@@ -15,7 +15,7 @@ route:
 No separate Java install is required for that path. For source-driven local runs,
 `./gradlew :cli:run` manages SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically.
 The raw `java -jar` route remains developer-only and requires `./gradlew prepareManagedSqlite`
-plus `FINGRIND_SQLITE_LIBRARY`.
+plus `FINGRIND_SQLITE_LIBRARY` and `--enable-native-access=ALL-UNNAMED`.
 
 ## Overview
 
@@ -95,18 +95,18 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.15.0-macos-aarch64.tar.gz
-./fingrind-0.15.0-macos-aarch64/bin/fingrind help
-./fingrind-0.15.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.16.0-macos-aarch64.tar.gz
+./fingrind-0.16.0-macos-aarch64/bin/fingrind help
+./fingrind-0.16.0-macos-aarch64/bin/fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.15.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd help
-.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd `
+Expand-Archive fingrind-0.16.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.16.0-windows-x86_64\bin\fingrind.cmd help
+.\fingrind-0.16.0-windows-x86_64\bin\fingrind.cmd `
   print-request-template > $env:TEMP\fingrind-request.json
 ```
 
@@ -132,7 +132,7 @@ public FinGrind download contract:
 ./gradlew :cli:shadowJar
 ./gradlew prepareManagedSqlite
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java -jar cli/build/libs/fingrind.jar help
+java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar help
 ```
 
 `--request-file -` means read the request JSON from standard input.
@@ -164,7 +164,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | same path used for both files | `2` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `2` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
 | malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
-| book is missing or never opened | `2` | `book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
+| book is missing or never opened | `2` | `administration-book-not-initialized`, `query-book-not-initialized`, or `posting-book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
 | posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
@@ -212,7 +212,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   nested `assertion` object for assertion steps.
 - `execute-plan` reuses the same posting and query rules as the single-command surface, but runs
   the whole plan inside one atomic transaction and returns the resulting journal in
-  `payload.journal`.
+  `payload.journal` with `status: "plan-committed"` on success, or in `details.plan.journal` with
+  `status: "plan-rejected"` / `status: "plan-assertion-failed"` on deterministic plan failure.
+  Journal facts are typed objects with `kind`, `name`, and either `value` or nested grouped `facts`.
 - `capabilities` reports `publicCliDistribution`, `sourceCheckoutJava`,
   `runtimeDistribution`, `supportedPublicCliBundleTargets`,
   `unsupportedPublicCliOperatingSystems`,
@@ -226,7 +228,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - Gradle-driven local runs and the container image use a managed SQLite 3.53.0 / SQLite3 Multiple
   Ciphers 2.3.3 shared library.
 - The developer-only `java -jar` path relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
-  SQLite3MC library produced by `prepareManagedSqlite`.
+  SQLite3MC library produced by `prepareManagedSqlite` and `--enable-native-access=ALL-UNNAMED`
+  on the `java` command line.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.commands`, command groups, usage lines, aliases, output modes, and summaries are
   rendered from the contract protocol catalog rather than copied into the CLI renderer.

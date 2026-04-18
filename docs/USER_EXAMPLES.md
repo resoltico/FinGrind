@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: USER_EXAMPLES
 updated: "2026-04-17"
 route:
@@ -10,11 +10,11 @@ route:
 
 # Example Workflows
 
-**Purpose**: Provide copy-paste FinGrind CLI flows that work against the current hard-break surface.
+**Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.15.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd` on Windows. For source-driven local work,
+`./fingrind-0.16.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.16.0-windows-x86_64\bin\fingrind.cmd` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -200,6 +200,7 @@ Checked-in plan examples:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
+- [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
 
 ## Query The Committed History
 
@@ -243,7 +244,7 @@ fingrind \
 One deterministic rejection:
 
 ```json
-{"status":"rejected","code":"book-not-initialized","message":"The selected book does not exist or has not been initialized with open-book.","idempotencyKey":"idem-basic-1"}
+{"status":"rejected","code":"posting-book-not-initialized","message":"The selected book does not exist or has not been initialized with open-book.","idempotencyKey":"idem-basic-1"}
 ```
 
 ## Accounts Must Be Declared First

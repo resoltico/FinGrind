@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: INDEX
 updated: "2026-04-17"
 route:
@@ -34,6 +34,9 @@ route:
 | `BookModelFacts` | `DOC_02_Application.md` | `BookModelFacts` |
 | `CurrencyFacts` | `DOC_02_Application.md` | `CurrencyFacts` |
 | `PreflightFacts` | `DOC_02_Application.md` | `PreflightFacts` |
+| `PlanExecutionFacts` | `DOC_02_Application.md` | `PlanExecutionFacts` |
+| `ProtocolStatuses` | `DOC_02_Application.md` | `ProtocolStatuses` |
+| `ProtocolLedgerPlanFields` | `DOC_02_Application.md` | `ProtocolLedgerPlanFields` |
 | `AccountCode` | `DOC_01_Core.md` | `AccountCode` |
 | `AccountName` | `DOC_01_Core.md` | `AccountName` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
@@ -76,12 +79,14 @@ route:
 | `AccountBalanceResult` | `DOC_02_Application.md` | `AccountBalanceResult` |
 | `BookAdministrationRejection` | `DOC_02_Application.md` | `BookAdministrationRejection` |
 | `BookQueryRejection` | `DOC_02_Application.md` | `BookQueryRejection` |
+| `RejectionNarrative` | `DOC_02_Application.md` | `RejectionNarrative` |
 | `PostEntryCommand` | `DOC_02_Application.md` | `PostEntryCommand` |
 | `PostingRequest` | `DOC_02_Application.md` | `PostingRequest` |
 | `PostingDraft` | `DOC_02_Application.md` | `PostingDraft` |
 | `PostEntryResult` | `DOC_02_Application.md` | `PostEntryResult` |
+| `PreflightEntryResult` | `DOC_02_Application.md` | `PreflightEntryResult` |
+| `CommitEntryResult` | `DOC_02_Application.md` | `CommitEntryResult` |
 | `MachineContract` | `DOC_02_Application.md` | `MachineContract` |
-| `LedgerExecutionPolicy` | `DOC_02_Application.md` | `LedgerExecutionPolicy` |
 | `LedgerPlan` | `DOC_02_Application.md` | `LedgerPlan` |
 | `LedgerStep` | `DOC_02_Application.md` | `LedgerStep` |
 | `LedgerAssertion` | `DOC_02_Application.md` | `LedgerAssertion` |

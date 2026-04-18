@@ -10,8 +10,7 @@ public record RequestProvenance(
     CommandId commandId,
     IdempotencyKey idempotencyKey,
     CausationId causationId,
-    Optional<CorrelationId> correlationId,
-    Optional<ReversalReason> reason) {
+    Optional<CorrelationId> correlationId) {
   /** Validates and normalizes request provenance before it reaches the commit path. */
   public RequestProvenance {
     Objects.requireNonNull(actorId, "actorId");
@@ -19,7 +18,6 @@ public record RequestProvenance(
     Objects.requireNonNull(commandId, "commandId");
     Objects.requireNonNull(idempotencyKey, "idempotencyKey");
     Objects.requireNonNull(causationId, "causationId");
-    correlationId = correlationId == null ? Optional.empty() : correlationId;
-    reason = reason == null ? Optional.empty() : reason;
+    Objects.requireNonNull(correlationId, "correlationId");
   }
 }

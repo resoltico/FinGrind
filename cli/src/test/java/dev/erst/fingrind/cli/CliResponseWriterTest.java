@@ -2,27 +2,40 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
+import dev.erst.fingrind.contract.ContractDiscovery;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.GetPostingResult;
+import dev.erst.fingrind.contract.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.LedgerFact;
+import dev.erst.fingrind.contract.LedgerJournalEntry;
+import dev.erst.fingrind.contract.LedgerPlanResult;
+import dev.erst.fingrind.contract.LedgerPlanStatus;
+import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.MachineContract;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -58,12 +71,147 @@ import tools.jackson.databind.ObjectMapper;
 /** Unit tests for {@link CliResponseWriter}. */
 class CliResponseWriterTest {
   @Test
+  void planRejectionStatus_rejectsSucceededPlansAndMapsFailures() {
+    assertEquals("plan-rejected", CliResponseWriter.planRejectionStatus(LedgerPlanStatus.REJECTED));
+    assertEquals(
+        "plan-assertion-failed",
+        CliResponseWriter.planRejectionStatus(LedgerPlanStatus.ASSERTION_FAILED));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> CliResponseWriter.planRejectionStatus(LedgerPlanStatus.SUCCEEDED));
+  }
+
+  @Test
+  void writeLedgerPlanResult_emitsTypedAndGroupedFacts() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Succeeded balanceEntry =
+        new LedgerJournalEntry.Succeeded(
+            "balance",
+            LedgerStepKind.ACCOUNT_BALANCE,
+            java.util.Optional.empty(),
+            startedAt,
+            finishedAt,
+            List.of(
+                LedgerFact.text("accountCode", "1000"),
+                LedgerFact.count("bucketCount", 1),
+                LedgerFact.group(
+                    "balance",
+                    List.of(
+                        LedgerFact.text("currencyCode", "EUR"),
+                        LedgerFact.text("netAmount", "10.00"),
+                        LedgerFact.text("balanceSide", "DEBIT")))));
+
+    responseWriter.writeLedgerPlanResult(
+        new LedgerPlanResult.Succeeded(
+            "plan-1",
+            new LedgerExecutionJournal(
+                "plan-1",
+                LedgerPlanStatus.SUCCEEDED,
+                startedAt,
+                finishedAt,
+                List.of(balanceEntry))));
+
+    JsonNode facts =
+        readJson(outputStream).path("payload").path("journal").path("steps").get(0).path("facts");
+
+    assertEquals("text", facts.get(0).path("kind").asText());
+    assertEquals("accountCode", facts.get(0).path("name").asText());
+    assertEquals("1000", facts.get(0).path("value").asText());
+    assertEquals("count", facts.get(1).path("kind").asText());
+    assertEquals(1, facts.get(1).path("value").asInt());
+    assertEquals("group", facts.get(2).path("kind").asText());
+    assertEquals("balance", facts.get(2).path("name").asText());
+    assertEquals("currencyCode", facts.get(2).path("facts").get(0).path("name").asText());
+    assertEquals("EUR", facts.get(2).path("facts").get(0).path("value").asText());
+  }
+
+  @Test
+  void writeLedgerPlanResult_writesRejectedEnvelopeForRejectedPlans() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Rejected rejectedEntry =
+        new LedgerJournalEntry.Rejected(
+            "declare-cash",
+            LedgerStepKind.DECLARE_ACCOUNT,
+            java.util.Optional.empty(),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure(
+                "administration-book-not-initialized", "Book is not initialized.", List.of()));
+
+    responseWriter.writeLedgerPlanResult(
+        new LedgerPlanResult.Rejected(
+            "plan-1",
+            new LedgerExecutionJournal(
+                "plan-1",
+                LedgerPlanStatus.REJECTED,
+                startedAt,
+                finishedAt,
+                List.of(rejectedEntry))));
+
+    JsonNode json = readJson(outputStream);
+
+    assertEquals("plan-rejected", json.path("status").asText());
+    assertEquals("administration-book-not-initialized", json.path("code").asText());
+    assertEquals("rejected", json.path("details").path("plan").path("status").asText());
+  }
+
+  @Test
+  void writeLedgerPlanResult_writesRejectedEnvelopeForAssertionFailedPlans() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.AssertionFailed assertionFailedEntry =
+        new LedgerJournalEntry.AssertionFailed(
+            "assert-balance",
+            LedgerStepKind.ASSERT,
+            java.util.Optional.empty(),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure("assertion-failed", "Balance mismatch.", List.of()));
+
+    responseWriter.writeLedgerPlanResult(
+        new LedgerPlanResult.AssertionFailed(
+            "plan-1",
+            new LedgerExecutionJournal(
+                "plan-1",
+                LedgerPlanStatus.ASSERTION_FAILED,
+                startedAt,
+                finishedAt,
+                List.of(assertionFailedEntry))));
+
+    JsonNode json = readJson(outputStream);
+
+    assertEquals("plan-assertion-failed", json.path("status").asText());
+    assertEquals("assertion-failed", json.path("code").asText());
+    assertEquals("assertion-failed", json.path("details").path("plan").path("status").asText());
+  }
+
+  @Test
+  void writeJson_serializationFailureDoesNotEmitPartialOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    SelfReferentialValue cyclic = new SelfReferentialValue();
+
+    assertThrows(RuntimeException.class, () -> responseWriter.writeJson(cyclic, false));
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+  }
+
+  @Test
   void writeVersion_writesOkEnvelope() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
     responseWriter.writeVersion(
-        new MachineContract.VersionDescriptor(
+        new ContractDiscovery.VersionDescriptor(
             "FinGrind",
             "0.9.0",
             "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"));
@@ -80,20 +228,15 @@ class CliResponseWriterTest {
 
     responseWriter.writeCapabilities(
         MachineContract.capabilities(
-            new MachineContract.ApplicationIdentity(
+            new ContractDiscovery.ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
-            new MachineContract.EnvironmentDescriptor(
+            new ContractDiscovery.EnvironmentDescriptor(
                 "container-image",
                 "self-contained-bundle",
-                List.of(
-                    "macos-aarch64",
-                    "macos-x86_64",
-                    "linux-x86_64",
-                    "linux-aarch64",
-                    "windows-x86_64"),
-                List.of(),
+                ProtocolCatalog.supportedPublicCliBundleTargets(),
+                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -122,9 +265,11 @@ class CliResponseWriterTest {
     assertEquals("container-image", environment.path("runtimeDistribution").asString());
     assertEquals("self-contained-bundle", environment.path("publicCliDistribution").asString());
     assertEquals(
-        "[\"macos-aarch64\",\"macos-x86_64\",\"linux-x86_64\",\"linux-aarch64\",\"windows-x86_64\"]",
-        environment.path("supportedPublicCliBundleTargets").toString());
-    assertEquals("[]", environment.path("unsupportedPublicCliOperatingSystems").toString());
+        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        readTextArray(environment.path("supportedPublicCliBundleTargets")));
+    assertEquals(
+        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+        readTextArray(environment.path("unsupportedPublicCliOperatingSystems")));
     assertFalse(environment.has("loadedSqliteVersion"));
     assertFalse(environment.has("loadedSqlite3mcVersion"));
   }
@@ -194,7 +339,7 @@ class CliResponseWriterTest {
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
     responseWriter.writePostEntryResult(
-        new PostEntryResult.Rejected(
+        new PostEntryResult.CommitRejected(
             new IdempotencyKey("idem-1"),
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
 
@@ -211,22 +356,6 @@ class CliResponseWriterTest {
     assertTrue(json.contains("\"code\":\"duplicate-idempotency-key\""));
     assertTrue(json.contains("same idempotency key"));
     assertFalse(json.contains("\"details\""));
-  }
-
-  @Test
-  void writePostEntryResult_writesReversalReasonRequiredRejection() {
-    String json = rejectedJson(new PostingRejection.ReversalReasonRequired());
-
-    assertTrue(json.contains("\"code\":\"reversal-reason-required\""));
-    assertTrue(json.contains("must include a human-readable reason"));
-  }
-
-  @Test
-  void writePostEntryResult_writesReversalReasonForbiddenRejection() {
-    String json = rejectedJson(new PostingRejection.ReversalReasonForbidden());
-
-    assertTrue(json.contains("\"code\":\"reversal-reason-forbidden\""));
-    assertTrue(json.contains("only permitted when a reversal target is present"));
   }
 
   @Test
@@ -259,7 +388,7 @@ class CliResponseWriterTest {
                     new PostingRejection.UnknownAccount(new AccountCode("1000")),
                     new PostingRejection.InactiveAccount(new AccountCode("2000")))));
 
-    assertTrue(bookJson.contains("\"code\":\"book-not-initialized\""));
+    assertTrue(bookJson.contains("\"code\":\"posting-book-not-initialized\""));
     assertTrue(accountStateJson.contains("\"code\":\"account-state-violations\""));
     assertTrue(accountStateJson.contains("\"accountCode\":\"1000\""));
     assertTrue(accountStateJson.contains("\"code\":\"inactive-account\""));
@@ -312,7 +441,7 @@ class CliResponseWriterTest {
 
     String rejectionJson = rejectionOutput.toString(StandardCharsets.UTF_8);
     assertTrue(rejectionJson.contains("\"status\":\"rejected\""));
-    assertTrue(rejectionJson.contains("\"code\":\"book-not-initialized\""));
+    assertTrue(rejectionJson.contains("\"code\":\"administration-book-not-initialized\""));
   }
 
   @Test
@@ -369,7 +498,7 @@ class CliResponseWriterTest {
     assertTrue(
         declareRejectionOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"book-not-initialized\""));
+            .contains("\"code\":\"administration-book-not-initialized\""));
     String declareConflictJson = declareConflictOutput.toString(StandardCharsets.UTF_8);
     assertTrue(declareConflictJson.contains("\"code\":\"account-normal-balance-conflict\""));
     assertTrue(declareConflictJson.contains("\"accountCode\":\"1000\""));
@@ -379,7 +508,7 @@ class CliResponseWriterTest {
     assertTrue(
         listRejectionOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"book-not-initialized\""));
+            .contains("\"code\":\"query-book-not-initialized\""));
   }
 
   @Test
@@ -406,31 +535,18 @@ class CliResponseWriterTest {
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
     inspectionWriter.writeBookInspection(
         Path.of("book.sqlite"),
-        new BookInspection(
-            BookInspection.Status.INITIALIZED,
-            true,
-            true,
-            false,
+        new BookInspection.Initialized(
             1_179_079_236,
             1,
             1,
-            "hard-break-no-migration",
+            BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
             Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream missingInspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter missingInspectionWriter =
         new CliResponseWriter(utf8PrintStream(missingInspectionOutput));
     missingInspectionWriter.writeBookInspection(
         Path.of("missing.sqlite"),
-        new BookInspection(
-            BookInspection.Status.MISSING,
-            false,
-            true,
-            true,
-            null,
-            null,
-            1,
-            "hard-break-no-migration",
-            null));
+        new BookInspection.Missing(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     CliResponseWriter getPostingWriter = new CliResponseWriter(utf8PrintStream(getPostingOutput));
     getPostingWriter.writeGetPostingResult(new GetPostingResult.Found(postingFact));
@@ -464,7 +580,7 @@ class CliResponseWriterTest {
 
     assertTrue(inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
     assertTrue(
-        inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"INITIALIZED\""));
+        inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
     assertFalse(
         missingInspectionOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
     assertTrue(
@@ -495,7 +611,50 @@ class CliResponseWriterTest {
     assertTrue(
         balanceRejectionOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"book-not-initialized\""));
+            .contains("\"code\":\"query-book-not-initialized\""));
+  }
+
+  @Test
+  void writeBookInspection_writesEveryExistingBookVariant() throws IOException {
+    List<BookInspection> inspections =
+        List.of(
+            new BookInspection.Existing(
+                BookInspection.Status.BLANK_SQLITE,
+                1_179_079_236,
+                0,
+                1,
+                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+            new BookInspection.Existing(
+                BookInspection.Status.FOREIGN_SQLITE,
+                1_179_079_236,
+                0,
+                1,
+                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+            new BookInspection.Existing(
+                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+                1_179_079_236,
+                2,
+                1,
+                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+            new BookInspection.Existing(
+                BookInspection.Status.INCOMPLETE_FINGRIND,
+                1_179_079_236,
+                1,
+                1,
+                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+    List<String> states =
+        List.of(
+            "blank-sqlite", "foreign-sqlite", "unsupported-format-version", "incomplete-fingrind");
+
+    for (int index = 0; index < inspections.size(); index++) {
+      JsonNode payload = writeInspection(inspections.get(index));
+
+      assertEquals(states.get(index), payload.path("state").asString());
+      assertEquals(1_179_079_236, payload.path("applicationId").asInt());
+      assertEquals(1, payload.path("supportedBookFormatVersion").asInt());
+      assertEquals("sequential-in-place", payload.path("migrationPolicy").asString());
+      assertFalse(payload.has("initializedAt"));
+    }
   }
 
   private static PostingFact postingFact() {
@@ -508,7 +667,8 @@ class CliResponseWriterTest {
                     new AccountCode("1000"), JournalLine.EntrySide.DEBIT, money("EUR", "10.00")),
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
-        java.util.Optional.of(new ReversalReference(new PostingId("posting-0"))),
+        PostingLineage.reversal(
+            new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -516,8 +676,7 @@ class CliResponseWriterTest {
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
-                java.util.Optional.of(new CorrelationId("corr-1")),
-                java.util.Optional.of(new ReversalReason("full reversal"))),
+                java.util.Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));
   }
@@ -535,7 +694,7 @@ class CliResponseWriterTest {
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
     responseWriter.writePostEntryResult(
-        new PostEntryResult.Rejected(new IdempotencyKey("idem-1"), rejection));
+        new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), rejection));
 
     return outputStream.toString(StandardCharsets.UTF_8);
   }
@@ -552,5 +711,26 @@ class CliResponseWriterTest {
 
   private static JsonNode readJson(ByteArrayOutputStream outputStream) throws IOException {
     return new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+  }
+
+  private static JsonNode writeInspection(BookInspection inspection) throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    responseWriter.writeBookInspection(Path.of("book.sqlite"), inspection);
+    return readJson(outputStream).path("payload");
+  }
+
+  private static List<String> readTextArray(JsonNode node) {
+    List<String> values = new java.util.ArrayList<>();
+    node.forEach(element -> values.add(element.asText()));
+    return List.copyOf(values);
+  }
+
+  /** Deliberately self-referential value used to force a serializer failure. */
+  private static final class SelfReferentialValue {
+    @JsonProperty("self")
+    Object self() {
+      return this;
+    }
   }
 }

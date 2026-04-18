@@ -4,6 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import org.junit.jupiter.api.Test;
 
@@ -148,6 +149,64 @@ class JazzerReplaySupportTest {
   }
 
   @Test
+  void replay_returnsSuccessForValidLedgerPlanRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.ledgerPlanRequest(), basicValidLedgerPlan().getBytes(UTF_8));
+
+    ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
+    assertEquals(
+        new LedgerPlanReplayDetails(
+            "PARSED", "plan-1", 2, "open-book", "assert", 1, true, "NONE"),
+        success.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForExecutionPolicyLedgerPlanRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.ledgerPlanRequest(),
+            invalidExecutionPolicyLedgerPlan().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new LedgerPlanReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            0,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "Unexpected field: executionPolicy"),
+        invalid.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForUnknownKindLedgerPlanRequestSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.ledgerPlanRequest(), invalidUnknownKindLedgerPlan().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new LedgerPlanReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            0,
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "Unsupported value for kind: post_entry. Accepted values: "
+                + String.join(", ", LedgerStepKind.wireValues())
+                + "."),
+        invalid.details());
+  }
+
+  @Test
   void replay_returnsSuccessForValidPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
@@ -202,6 +261,35 @@ class JazzerReplaySupportTest {
             false,
             "NONE"),
         success.details());
+  }
+
+  @Test
+  void replay_returnsExpectedInvalidForMissingReversalReasonPostingWorkflowSeedShape() {
+    ReplayOutcome outcome =
+        JazzerReplaySupport.replay(
+            JazzerHarness.postingWorkflow(), missingReversalReasonRequest().getBytes(UTF_8));
+
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(
+        new PostingWorkflowReplayDetails(
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
+            false,
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            false,
+            "Missing required field: reason"),
+        invalid.details());
   }
 
   @Test
@@ -288,29 +376,29 @@ class JazzerReplaySupportTest {
   }
 
   @Test
-  void replay_returnsSuccessForReversalReasonRequiredSqliteRoundTripSeedShape() {
+  void replay_returnsExpectedInvalidForMissingReversalReasonSqliteRoundTripSeedShape() {
     ReplayOutcome outcome =
         JazzerReplaySupport.replay(
-            JazzerHarness.sqliteBookRoundTrip(),
-            reversalReasonRequiredRequest().getBytes(UTF_8));
+            JazzerHarness.sqliteBookRoundTrip(), missingReversalReasonRequest().getBytes(UTF_8));
 
-    ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
+    ReplayOutcome.ExpectedInvalid invalid =
+        assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(
         new SqliteBookRoundTripReplayDetails(
-            "PARSED",
-            "2026-04-08",
-            "idem-6",
-            2,
-            true,
-            "REJECTED_BOOK_NOT_INITIALIZED",
-            "REJECTED_UNKNOWN_ACCOUNT",
-            "REJECTED_INACTIVE_ACCOUNT",
-            "REJECTED_REVERSAL_REASON_REQUIRED",
-            "NOT_RUN",
-            "REJECTED_REVERSAL_REASON_REQUIRED",
+            "INVALID_REQUEST",
+            "NOT_PARSED",
+            "NOT_PARSED",
+            0,
             false,
-            "NONE"),
-        success.details());
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            "NOT_RUN",
+            false,
+            "Missing required field: reason"),
+        invalid.details());
   }
 
   @Test
@@ -535,6 +623,59 @@ class JazzerReplaySupportTest {
         """;
   }
 
+  private static String basicValidLedgerPlan() {
+    return """
+        {
+          "planId": "plan-1",
+          "steps": [
+            {
+              "stepId": "open",
+              "kind": "open-book"
+            },
+            {
+              "stepId": "assert-cash",
+              "kind": "assert",
+              "assertion": {
+                "kind": "assert-account-declared",
+                "accountCode": "1000"
+              }
+            }
+          ]
+        }
+        """;
+  }
+
+  private static String invalidExecutionPolicyLedgerPlan() {
+    return """
+        {
+          "planId": "plan-policy",
+          "executionPolicy": {
+            "journalLevel": "VERBOSE"
+          },
+          "steps": [
+            {
+              "stepId": "inspect",
+              "kind": "inspect-book"
+            }
+          ]
+        }
+        """;
+  }
+
+  private static String invalidUnknownKindLedgerPlan() {
+    return """
+        {
+          "planId": "plan-typo",
+          "steps": [
+            {
+              "stepId": "bad-kind",
+              "kind": "post_entry"
+            }
+          ]
+        }
+        """;
+  }
+
   private static String invalidForbiddenSourceChannelRequest() {
     return """
         {
@@ -613,21 +754,21 @@ class JazzerReplaySupportTest {
             }
           ],
           "reversal": {
-            "priorPostingId": "posting-missing"
+            "priorPostingId": "posting-missing",
+            "reason": "operator reversal"
           },
           "provenance": {
             "actorId": "actor-5",
             "actorType": "USER",
             "commandId": "command-5",
             "idempotencyKey": "idem-5",
-            "causationId": "cause-5",
-            "reason": "operator reversal"
+            "causationId": "cause-5"
           }
         }
         """;
   }
 
-  private static String reversalReasonRequiredRequest() {
+  private static String missingReversalReasonRequest() {
     return """
         {
           "effectiveDate": "2026-04-08",

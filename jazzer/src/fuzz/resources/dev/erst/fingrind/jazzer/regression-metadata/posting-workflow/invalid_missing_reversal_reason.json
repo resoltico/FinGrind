@@ -1,0 +1,26 @@
+{
+  "targetKey" : "posting-workflow",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_missing_reversal_reason.json",
+  "expectation" : {
+    "outcomeKind" : "EXPECTED_INVALID",
+    "details" : {
+      "type" : "POSTING_WORKFLOW",
+      "requestStatus" : "INVALID_REQUEST",
+      "effectiveDate" : "NOT_PARSED",
+      "idempotencyKey" : "NOT_PARSED",
+      "lineCount" : 0,
+      "reversalPresent" : false,
+      "uninitializedPreflightStatus" : "NOT_RUN",
+      "uninitializedCommitStatus" : "NOT_RUN",
+      "undeclaredPreflightStatus" : "NOT_RUN",
+      "undeclaredCommitStatus" : "NOT_RUN",
+      "inactivePreflightStatus" : "NOT_RUN",
+      "inactiveCommitStatus" : "NOT_RUN",
+      "finalPreflightStatus" : "NOT_RUN",
+      "finalCommitStatus" : "NOT_RUN",
+      "duplicateStatus" : "NOT_RUN",
+      "storedFactPresent" : false,
+      "failureMessage" : "Missing required field: reason"
+    }
+  }
+}

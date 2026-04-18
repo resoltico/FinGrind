@@ -17,5 +17,8 @@ public final class ProtocolLimits {
   /** Default page offset used when a paginated query omits an explicit offset. */
   public static final int DEFAULT_PAGE_OFFSET = 0;
 
+  /** Largest accepted number of steps in one atomic ledger plan. */
+  public static final int LEDGER_PLAN_STEP_MAX = 100;
+
   private ProtocolLimits() {}
 }

@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -49,7 +50,7 @@ class PostingApplicationServiceTest {
       PostEntryResult result = applicationService.preflight(command("idem-1"));
 
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
           result);
     }
@@ -62,7 +63,7 @@ class PostingApplicationServiceTest {
 
       PostEntryResult unknownAccountResult = applicationService.preflight(command("idem-1"));
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-1"),
               new PostingRejection.AccountStateViolations(
                   List.of(
@@ -75,7 +76,7 @@ class PostingApplicationServiceTest {
 
       PostEntryResult inactiveAccountResult = applicationService.preflight(command("idem-2"));
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-2"),
               new PostingRejection.AccountStateViolations(
                   List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))),
@@ -108,48 +109,8 @@ class PostingApplicationServiceTest {
       PostEntryResult result = applicationService.preflight(command("idem-1"));
 
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
-          result);
-    }
-  }
-
-  @Test
-  void preflight_rejectsReversalWithoutReason() {
-    try (InMemoryBookSession bookSession = initializedBook()) {
-      declareDefaultAccounts(bookSession);
-      PostingApplicationService applicationService = applicationService(bookSession);
-
-      PostEntryResult result =
-          applicationService.preflight(
-              command(
-                  "idem-1",
-                  Optional.of(new ReversalReference(new PostingId("posting-1"))),
-                  Optional.empty()));
-
-      assertEquals(
-          new PostEntryResult.Rejected(
-              new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonRequired()),
-          result);
-    }
-  }
-
-  @Test
-  void preflight_rejectsReasonWithoutReversal() {
-    try (InMemoryBookSession bookSession = initializedBook()) {
-      declareDefaultAccounts(bookSession);
-      PostingApplicationService applicationService = applicationService(bookSession);
-
-      PostEntryResult result =
-          applicationService.preflight(
-              command(
-                  "idem-1",
-                  Optional.empty(),
-                  Optional.of(new ReversalReason("operator reversal"))));
-
-      assertEquals(
-          new PostEntryResult.Rejected(
-              new IdempotencyKey("idem-1"), new PostingRejection.ReversalReasonForbidden()),
           result);
     }
   }
@@ -168,7 +129,7 @@ class PostingApplicationServiceTest {
                   Optional.of(new ReversalReason("operator reversal"))));
 
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-1"),
               new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
           result);
@@ -213,7 +174,7 @@ class PostingApplicationServiceTest {
                   mismatchedReversalJournalEntry()));
 
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-1"),
               new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))),
           result);
@@ -252,8 +213,7 @@ class PostingApplicationServiceTest {
       PostEntryResult result = applicationService.commit(command("idem-1"));
 
       assertEquals(
-          new PostEntryResult.Rejected(
-              new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
+          commitRejected(new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
           result);
     }
   }
@@ -305,7 +265,7 @@ class PostingApplicationServiceTest {
                   reversalJournalEntry()));
 
       assertEquals(
-          new PostEntryResult.Rejected(
+          preflightRejected(
               new IdempotencyKey("idem-1"),
               new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
           result);
@@ -319,28 +279,28 @@ class PostingApplicationServiceTest {
       PostingApplicationService applicationService = applicationService(bookSession);
 
       assertEquals(
-          new PostEntryResult.Rejected(
+          commitRejected(
               new IdempotencyKey("idem-book-not-initialized"),
               new PostingRejection.BookNotInitialized()),
           applicationService.commit(command("idem-book-not-initialized")));
       assertEquals(
-          new PostEntryResult.Rejected(
+          commitRejected(
               new IdempotencyKey("idem-unknown-account"),
               new PostingRejection.AccountStateViolations(
                   List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
           applicationService.commit(command("idem-unknown-account")));
       assertEquals(
-          new PostEntryResult.Rejected(
+          commitRejected(
               new IdempotencyKey("idem-inactive-account"),
               new PostingRejection.AccountStateViolations(
                   List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))),
           applicationService.commit(command("idem-inactive-account")));
       assertEquals(
-          new PostEntryResult.Rejected(
+          commitRejected(
               new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
           applicationService.commit(command("idem-duplicate")));
       assertEquals(
-          new PostEntryResult.Rejected(
+          commitRejected(
               new IdempotencyKey("idem-reversal-duplicate"),
               new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
           applicationService.commit(
@@ -416,6 +376,16 @@ class PostingApplicationServiceTest {
     return command(idempotencyKey, Optional.empty(), Optional.empty(), journalEntry());
   }
 
+  private static PostEntryResult.PreflightRejected preflightRejected(
+      IdempotencyKey idempotencyKey, PostingRejection rejection) {
+    return new PostEntryResult.PreflightRejected(idempotencyKey, rejection);
+  }
+
+  private static PostEntryResult.CommitRejected commitRejected(
+      IdempotencyKey idempotencyKey, PostingRejection rejection) {
+    return new PostEntryResult.CommitRejected(idempotencyKey, rejection);
+  }
+
   private static PostEntryCommand command(
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
@@ -430,8 +400,8 @@ class PostingApplicationServiceTest {
       JournalEntry journalEntry) {
     return new PostEntryCommand(
         journalEntry,
-        reversalReference,
-        requestProvenance(idempotencyKey, reason),
+        postingLineage(reversalReference, reason),
+        requestProvenance(idempotencyKey),
         SourceChannel.CLI);
   }
 
@@ -443,26 +413,31 @@ class PostingApplicationServiceTest {
     return new PostingFact(
         new PostingId(postingId),
         journalEntry(),
-        Optional.empty(),
-        committedProvenance(idempotencyKey, Optional.empty()));
+        PostingLineage.direct(),
+        committedProvenance(idempotencyKey));
   }
 
-  private static CommittedProvenance committedProvenance(
-      String idempotencyKey, Optional<ReversalReason> reason) {
+  private static CommittedProvenance committedProvenance(String idempotencyKey) {
     return new CommittedProvenance(
-        requestProvenance(idempotencyKey, reason), FIXED_CLOCK.instant(), SourceChannel.CLI);
+        requestProvenance(idempotencyKey), FIXED_CLOCK.instant(), SourceChannel.CLI);
   }
 
-  private static RequestProvenance requestProvenance(
-      String idempotencyKey, Optional<ReversalReason> reason) {
+  private static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
         new ActorId("actor-1"),
         ActorType.AGENT,
         new CommandId("command-1"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
-        Optional.of(new CorrelationId("corr-1")),
-        reason);
+        Optional.of(new CorrelationId("corr-1")));
+  }
+
+  private static PostingLineage postingLineage(
+      Optional<ReversalReference> reversalReference, Optional<ReversalReason> reason) {
+    if (reversalReference.isEmpty()) {
+      return PostingLineage.direct();
+    }
+    return PostingLineage.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
   }
 
   private static JournalEntry journalEntry() {

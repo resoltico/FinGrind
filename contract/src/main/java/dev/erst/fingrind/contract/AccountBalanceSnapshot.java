@@ -14,8 +14,8 @@ public record AccountBalanceSnapshot(
   /** Validates one account-balance snapshot. */
   public AccountBalanceSnapshot {
     Objects.requireNonNull(account, "account");
-    effectiveDateFrom = effectiveDateFrom == null ? Optional.empty() : effectiveDateFrom;
-    effectiveDateTo = effectiveDateTo == null ? Optional.empty() : effectiveDateTo;
+    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
+    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
     balances = List.copyOf(Objects.requireNonNull(balances, "balances"));
   }
 }

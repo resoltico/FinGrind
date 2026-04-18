@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -37,7 +38,7 @@ final class SqlitePostingMapper {
     return new DeclaredAccount(
         new AccountCode(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_CODE)),
         new AccountName(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NAME)),
-        NormalBalance.valueOf(
+        NormalBalance.fromWireValue(
             requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NORMAL_BALANCE)),
         requiredInt(accountRow, SqlitePostingSql.COL_ACCOUNT_ACTIVE) == 1,
         Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
@@ -51,18 +52,18 @@ final class SqlitePostingMapper {
     RequestProvenance requestProvenance =
         new RequestProvenance(
             new ActorId(requiredText(postingRow, SqlitePostingSql.COL_ACTOR_ID)),
-            ActorType.valueOf(requiredText(postingRow, SqlitePostingSql.COL_ACTOR_TYPE)),
+            ActorType.fromWireValue(requiredText(postingRow, SqlitePostingSql.COL_ACTOR_TYPE)),
             new CommandId(requiredText(postingRow, SqlitePostingSql.COL_COMMAND_ID)),
             new IdempotencyKey(requiredText(postingRow, SqlitePostingSql.COL_IDEMPOTENCY_KEY)),
             new CausationId(requiredText(postingRow, SqlitePostingSql.COL_CAUSATION_ID)),
-            optionalText(postingRow, SqlitePostingSql.COL_CORRELATION_ID).map(CorrelationId::new),
-            optionalText(postingRow, SqlitePostingSql.COL_REASON).map(ReversalReason::new));
+            optionalText(postingRow, SqlitePostingSql.COL_CORRELATION_ID).map(CorrelationId::new));
     CommittedProvenance provenance =
         new CommittedProvenance(
             requestProvenance,
             Instant.parse(requiredText(postingRow, SqlitePostingSql.COL_RECORDED_AT)),
-            SourceChannel.valueOf(requiredText(postingRow, SqlitePostingSql.COL_SOURCE_CHANNEL)));
-    return new PostingFact(postingId, journalEntry, readReversalReference(postingRow), provenance);
+            SourceChannel.fromWireValue(
+                requiredText(postingRow, SqlitePostingSql.COL_SOURCE_CHANNEL)));
+    return new PostingFact(postingId, journalEntry, readPostingLineage(postingRow), provenance);
   }
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows)
@@ -72,7 +73,7 @@ final class SqlitePostingMapper {
       lines.add(
           new JournalLine(
               new AccountCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_ACCOUNT_CODE)),
-              JournalLine.EntrySide.valueOf(
+              JournalLine.EntrySide.fromWireValue(
                   requiredText(lineRows, SqlitePostingSql.COL_LINE_ENTRY_SIDE)),
               new Money(
                   new CurrencyCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_CURRENCY_CODE)),
@@ -81,13 +82,24 @@ final class SqlitePostingMapper {
     return lines;
   }
 
-  static Optional<ReversalReference> readReversalReference(SqliteNativeStatement postingRow) {
+  static PostingLineage readPostingLineage(SqliteNativeStatement postingRow) {
     Optional<String> priorPostingId =
         optionalText(postingRow, SqlitePostingSql.COL_PRIOR_POSTING_ID);
-    if (priorPostingId.isEmpty()) {
-      return Optional.empty();
+    Optional<String> reason = optionalText(postingRow, SqlitePostingSql.COL_REASON);
+    if (priorPostingId.isEmpty() && reason.isEmpty()) {
+      return PostingLineage.direct();
     }
-    return Optional.of(new ReversalReference(new PostingId(priorPostingId.orElseThrow())));
+    if (priorPostingId.isEmpty() || reason.isEmpty()) {
+      throw new IllegalStateException(
+          "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.");
+    }
+    return PostingLineage.reversal(
+        new ReversalReference(new PostingId(priorPostingId.orElseThrow())),
+        new ReversalReason(reason.orElseThrow()));
+  }
+
+  static Optional<ReversalReference> readReversalReference(SqliteNativeStatement postingRow) {
+    return readPostingLineage(postingRow).reversalReference();
   }
 
   static String requiredText(SqliteNativeStatement row, int columnIndex) {

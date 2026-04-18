@@ -64,7 +64,7 @@ final class CliArguments {
 
   private static CliCommand parseBookOnlyCommand(
       List<String> arguments, BookOnlyCommandFactory commandFactory) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, false);
+    ParsedBookArguments parsedArguments = parseBookOnlyArguments(arguments);
     return commandFactory.create(parsedArguments.bookAccess());
   }
 
@@ -92,21 +92,17 @@ final class CliArguments {
 
   private static CliCommand parseRequestBoundCommand(
       List<String> arguments, RequestBoundCommandFactory commandFactory) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, true, false);
+    ParsedBookArguments parsedArguments = parseRequestBoundArguments(arguments);
     return commandFactory.create(
         parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
   }
 
   private static CliCommand parseGetPostingCommand(List<String> arguments) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
     String postingIdValue = null;
-    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (isBookArgument(argument)) {
-        skipBookArgumentValue(argument, argumentIterator);
-        continue;
-      }
       if (!ProtocolOptions.POSTING_ID.equals(argument)) {
         throw invalid(argument, "Unsupported argument: " + argument);
       }
@@ -124,16 +120,12 @@ final class CliArguments {
   }
 
   private static CliCommand parseListAccountsCommand(List<String> arguments) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
     Integer limit = null;
     Integer offset = null;
-    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (isBookArgument(argument)) {
-        skipBookArgumentValue(argument, argumentIterator);
-        continue;
-      }
       switch (argument) {
         case ProtocolOptions.LIMIT -> {
           if (limit != null) {
@@ -162,19 +154,15 @@ final class CliArguments {
   }
 
   private static CliCommand parseListPostingsCommand(List<String> arguments) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
     Optional<String> accountCodeValue = Optional.empty();
     Optional<LocalDate> effectiveDateFrom = Optional.empty();
     Optional<LocalDate> effectiveDateTo = Optional.empty();
     Integer limit = null;
     Integer offset = null;
-    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (isBookArgument(argument)) {
-        skipBookArgumentValue(argument, argumentIterator);
-        continue;
-      }
       switch (argument) {
         case ProtocolOptions.ACCOUNT_CODE -> {
           if (accountCodeValue.isPresent()) {
@@ -239,17 +227,13 @@ final class CliArguments {
   }
 
   private static CliCommand parseAccountBalanceCommand(List<String> arguments) {
-    ParsedBookArguments parsedArguments = parseBookArguments(arguments, false, true);
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
     String accountCodeValue = null;
     Optional<LocalDate> effectiveDateFrom = Optional.empty();
     Optional<LocalDate> effectiveDateTo = Optional.empty();
-    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (isBookArgument(argument)) {
-        skipBookArgumentValue(argument, argumentIterator);
-        continue;
-      }
       switch (argument) {
         case ProtocolOptions.ACCOUNT_CODE -> {
           if (accountCodeValue != null) {
@@ -387,12 +371,25 @@ final class CliArguments {
         new BookAccess(bookFilePath, currentPassphraseSource), replacementPassphraseSource);
   }
 
+  private static ParsedBookArguments parseBookOnlyArguments(List<String> arguments) {
+    return parseBookArguments(arguments, BookArgumentMode.BOOK_ONLY);
+  }
+
+  private static ParsedBookArguments parseRequestBoundArguments(List<String> arguments) {
+    return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND);
+  }
+
+  private static ParsedBookArguments parseBookAndCommandArguments(List<String> arguments) {
+    return parseBookArguments(arguments, BookArgumentMode.BOOK_WITH_COMMAND_ARGUMENTS);
+  }
+
   private static ParsedBookArguments parseBookArguments(
-      List<String> arguments, boolean requestRequired, boolean allowExtraArguments) {
+      List<String> arguments, BookArgumentMode mode) {
     Path bookFilePath = null;
     Path bookKeyFilePath = null;
     PassphraseSourceKind passphraseSourceKind = null;
     Path requestFile = null;
+    List<String> commandArguments = new java.util.ArrayList<>();
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -420,7 +417,7 @@ final class CliArguments {
                   passphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
         case ProtocolOptions.REQUEST_FILE -> {
-          if (!requestRequired) {
+          if (!mode.acceptsRequestFile()) {
             throw invalid(argument, "Unsupported argument: " + argument);
           }
           if (requestFile != null) {
@@ -431,10 +428,10 @@ final class CliArguments {
           requestFile = Path.of(requireValue(argumentIterator, ProtocolOptions.REQUEST_FILE));
         }
         default -> {
-          if (!allowExtraArguments) {
+          if (!mode.collectsCommandArguments()) {
             throw invalid(argument, "Unsupported argument: " + argument);
           }
-          skipOptionValueIfPresent(argument, argumentIterator);
+          commandArguments.add(argument);
         }
       }
     }
@@ -453,7 +450,7 @@ final class CliArguments {
               + ProtocolOptions.BOOK_PASSPHRASE_PROMPT
               + ".");
     }
-    if (requestRequired && requestFile == null) {
+    if (mode.acceptsRequestFile() && requestFile == null) {
       throw invalid(
           ProtocolOptions.REQUEST_FILE,
           "A " + ProtocolOptions.REQUEST_FILE + " argument is required.");
@@ -462,7 +459,8 @@ final class CliArguments {
         passphraseSource(passphraseSourceKind, bookKeyFilePath);
     validateDistinctPaths(bookFilePath, passphraseSource, requestFile);
     validateStandardInputUsage(passphraseSource, requestFile);
-    return new ParsedBookArguments(new BookAccess(bookFilePath, passphraseSource), requestFile);
+    return new ParsedBookArguments(
+        new BookAccess(bookFilePath, passphraseSource), requestFile, commandArguments);
   }
 
   private static PassphraseSourceKind requireSinglePassphraseSource(
@@ -590,32 +588,6 @@ final class CliArguments {
     };
   }
 
-  private static boolean isBookArgument(String argument) {
-    return ProtocolOptions.BOOK_FILE.equals(argument)
-        || ProtocolOptions.BOOK_KEY_FILE.equals(argument)
-        || ProtocolOptions.BOOK_PASSPHRASE_STDIN.equals(argument)
-        || ProtocolOptions.BOOK_PASSPHRASE_PROMPT.equals(argument);
-  }
-
-  private static void skipBookArgumentValue(
-      String argument, ListIterator<String> argumentIterator) {
-    if (ProtocolOptions.BOOK_FILE.equals(argument)
-        || ProtocolOptions.BOOK_KEY_FILE.equals(argument)) {
-      requireValue(argumentIterator, argument);
-    }
-  }
-
-  private static void skipOptionValueIfPresent(
-      String argument, ListIterator<String> argumentIterator) {
-    if (!argument.startsWith("--") || !argumentIterator.hasNext()) {
-      return;
-    }
-    String next = argumentIterator.next();
-    if (next.startsWith("--")) {
-      argumentIterator.previous();
-    }
-  }
-
   private static int parseIntegerOption(String rawValue, String optionName) {
     try {
       return Integer.parseInt(rawValue);
@@ -677,6 +649,29 @@ final class CliArguments {
     }
   }
 
+  /** Supported parser shapes for commands that address one selected book file. */
+  private enum BookArgumentMode {
+    BOOK_ONLY(false, false),
+    REQUEST_BOUND(true, false),
+    BOOK_WITH_COMMAND_ARGUMENTS(false, true);
+
+    private final boolean acceptsRequestFile;
+    private final boolean collectsCommandArguments;
+
+    BookArgumentMode(boolean acceptsRequestFile, boolean collectsCommandArguments) {
+      this.acceptsRequestFile = acceptsRequestFile;
+      this.collectsCommandArguments = collectsCommandArguments;
+    }
+
+    private boolean acceptsRequestFile() {
+      return acceptsRequestFile;
+    }
+
+    private boolean collectsCommandArguments() {
+      return collectsCommandArguments;
+    }
+  }
+
   private static String replacementOptionName(PassphraseSourceKind passphraseSourceKind) {
     return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
       case KEY_FILE -> ProtocolOptions.NEW_BOOK_KEY_FILE;
@@ -696,9 +691,11 @@ final class CliArguments {
   }
 
   /** Parsed path arguments shared by commands that address one book file. */
-  private record ParsedBookArguments(BookAccess bookAccess, @Nullable Path requestFile) {
+  private record ParsedBookArguments(
+      BookAccess bookAccess, @Nullable Path requestFile, List<String> commandArguments) {
     private ParsedBookArguments {
       Objects.requireNonNull(bookAccess, "bookAccess");
+      commandArguments = List.copyOf(Objects.requireNonNull(commandArguments, "commandArguments"));
     }
 
     /** Returns the optional request file when the command expects one. */

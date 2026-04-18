@@ -4,11 +4,13 @@ import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookQueryRejection;
+import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.GetPostingResult;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.ListPostingsResult;
+import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
@@ -26,6 +28,11 @@ public final class BookQueryService {
   /** Inspects the selected book file without mutating it. */
   public BookInspection inspectBook() {
     return bookQuerySession.inspectBook();
+  }
+
+  /** Reports whether the selected book is initialized for read/write workflows. */
+  public boolean isInitialized() {
+    return bookQuerySession.isInitialized();
   }
 
   /** Lists one paginated slice of the current account registry for the selected book. */
@@ -50,6 +57,18 @@ public final class BookQueryService {
             () -> new GetPostingResult.Rejected(new BookQueryRejection.PostingNotFound(postingId)));
   }
 
+  /** Looks up one declared account without translating the result into a rejection envelope. */
+  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+    Objects.requireNonNull(accountCode, "accountCode");
+    return bookQuerySession.findAccount(accountCode);
+  }
+
+  /** Looks up one committed posting without translating the result into a rejection envelope. */
+  public Optional<PostingFact> findPosting(PostingId postingId) {
+    Objects.requireNonNull(postingId, "postingId");
+    return bookQuerySession.findPosting(postingId);
+  }
+
   /** Returns one filtered page of committed postings. */
   public ListPostingsResult listPostings(ListPostingsQuery query) {
     Objects.requireNonNull(query, "query");
@@ -69,12 +88,13 @@ public final class BookQueryService {
     if (!bookQuerySession.isInitialized()) {
       return new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
     }
-    Optional<BookQueryRejection> accountRejection =
-        accountRejection(Optional.of(query.accountCode()));
-    if (accountRejection.isPresent()) {
-      return new AccountBalanceResult.Rejected(accountRejection.orElseThrow());
-    }
-    return new AccountBalanceResult.Reported(bookQuerySession.accountBalance(query));
+    return bookQuerySession
+        .accountBalance(query)
+        .<AccountBalanceResult>map(AccountBalanceResult.Reported::new)
+        .orElseGet(
+            () ->
+                new AccountBalanceResult.Rejected(
+                    new BookQueryRejection.UnknownAccount(query.accountCode())));
   }
 
   private Optional<BookQueryRejection> accountRejection(Optional<AccountCode> accountCode) {

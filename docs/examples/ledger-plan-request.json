@@ -1,10 +1,5 @@
 {
   "planId": "plan-demo-1",
-  "executionPolicy": {
-    "journalLevel": "NORMAL",
-    "failurePolicy": "HALT_ON_FIRST_FAILURE",
-    "transactionMode": "ATOMIC"
-  },
   "steps": [
     {
       "stepId": "initialize-book",
@@ -58,8 +53,9 @@
     },
     {
       "stepId": "assert-cash-balance",
-      "kind": "assert-account-balance",
+      "kind": "assert",
       "assertion": {
+        "kind": "assert-account-balance",
         "accountCode": "1000",
         "currencyCode": "EUR",
         "netAmount": "10.00",

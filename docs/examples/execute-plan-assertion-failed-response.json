@@ -1,0 +1,95 @@
+{
+  "status": "plan-assertion-failed",
+  "code": "assertion-failed",
+  "message": "Account balance does not match expected value.",
+  "details": {
+    "plan": {
+      "planId": "plan-demo-1",
+      "status": "assertion-failed",
+      "journal": {
+        "planId": "plan-demo-1",
+        "status": "assertion-failed",
+        "startedAt": "2026-04-17T05:57:48.222783Z",
+        "finishedAt": "2026-04-17T05:57:48.332914Z",
+        "steps": [
+          {
+            "stepId": "assert-cash-balance",
+            "kind": "assert",
+            "detailKind": "assert-account-balance",
+            "status": "assertion-failed",
+            "startedAt": "2026-04-17T05:57:48.324517Z",
+            "finishedAt": "2026-04-17T05:57:48.331692Z",
+            "facts": [
+              {
+                "kind": "text",
+                "name": "accountCode",
+                "value": "1000"
+              },
+              {
+                "kind": "text",
+                "name": "currencyCode",
+                "value": "EUR"
+              },
+              {
+                "kind": "text",
+                "name": "expectedNetAmount",
+                "value": "10.00"
+              },
+              {
+                "kind": "text",
+                "name": "actualNetAmount",
+                "value": "9.00"
+              },
+              {
+                "kind": "text",
+                "name": "expectedBalanceSide",
+                "value": "DEBIT"
+              },
+              {
+                "kind": "text",
+                "name": "actualBalanceSide",
+                "value": "DEBIT"
+              }
+            ],
+            "failure": {
+              "code": "assertion-failed",
+              "message": "Account balance does not match expected value.",
+              "facts": [
+                {
+                  "kind": "text",
+                  "name": "accountCode",
+                  "value": "1000"
+                },
+                {
+                  "kind": "text",
+                  "name": "currencyCode",
+                  "value": "EUR"
+                },
+                {
+                  "kind": "text",
+                  "name": "expectedNetAmount",
+                  "value": "10.00"
+                },
+                {
+                  "kind": "text",
+                  "name": "actualNetAmount",
+                  "value": "9.00"
+                },
+                {
+                  "kind": "text",
+                  "name": "expectedBalanceSide",
+                  "value": "DEBIT"
+                },
+                {
+                  "kind": "text",
+                  "name": "actualBalanceSide",
+                  "value": "DEBIT"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: USER_REQUESTS
 updated: "2026-04-17"
 route:
@@ -44,10 +44,10 @@ Current posting-request rules:
 - every line inside one entry must share the same `currencyCode`
 - `reversal` is optional
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
-- optional provenance fields are `correlationId` and `reason`
-- `provenance.reason` is required when `reversal` is present, and forbidden otherwise
+- optional provenance field is `correlationId`
+- `reversal.priorPostingId` and `reversal.reason` are both required when `reversal` is present
 - `provenance.recordedAt` and `provenance.sourceChannel` are not accepted
-- optional fields may be omitted; `null` is accepted for `reversal`, `correlationId`, and `reason`
+- optional fields may be omitted; `null` is accepted for `reversal` and `correlationId`
 - `reversal.priorPostingId` must already exist in the selected book
 - a reversal requires an exact line-by-line negation of the target posting and only one reversal is allowed per target
 - legacy `correction` and `reversal.kind` fields are rejected
@@ -88,10 +88,10 @@ cat docs/examples/ledger-plan-request.json
 ```
 
 Current ledger-plan rules:
-- top-level fields are `planId`, `executionPolicy`, and `steps`
+- top-level fields are `planId` and `steps`
 - `planId` must be a non-blank string
-- `executionPolicy.journalLevel`, `failurePolicy`, and `transactionMode` are required enum strings
 - `steps` must contain at least one object and every `stepId` must be unique
+- `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
 - `open-book` takes no nested payload
 - `declare-account` uses nested `declareAccount`
@@ -99,13 +99,16 @@ Current ledger-plan rules:
   posting request
 - `list-accounts`, `list-postings`, and `account-balance` use nested `query`
 - `get-posting` uses `postingId`
-- assertion steps use nested `assertion`
+- assertion steps use `kind: "assert"` plus a nested `assertion` object
 - supported assertion kinds are `assert-account-declared`, `assert-account-active`,
   `assert-posting-exists`, and `assert-account-balance`
-- `assert-account-balance.assertion` accepts `accountCode`, optional `effectiveDateFrom`,
+- `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, `currencyCode`, `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
 - `print-plan-template` emits the accepted `execute-plan` request shape directly
+- execution semantics are not request knobs: plans are atomic, halt on first failed step, and
+  return a complete per-step journal with canonical `kind` plus optional `detailKind`
+- plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
 
 ## Accepted Values
 
@@ -122,8 +125,11 @@ Current ledger-plan rules:
 | success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance` | `status`, `payload` |
 | raw request document | `print-request-template`, `print-plan-template` | minimal valid posting request JSON or runnable ledger-plan JSON |
 | `preflight-accepted` | successful `preflight-entry` | `status`, `idempotencyKey`, `effectiveDate` |
-| `committed` | successful `post-entry`, successful `execute-plan` | posting commit fields, or `payload.planId`, `payload.status`, and `payload.journal` for plans |
-| `rejected` | deterministic business rejection | `status`, `code`, `message`, optional `idempotencyKey`, optional `details` |
+| `committed` | successful `post-entry` | `status`, `postingId`, `idempotencyKey`, `effectiveDate`, `recordedAt` |
+| `plan-committed` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, and `payload.journal` |
+| `plan-rejected` | deterministic `execute-plan` step rejection | `status`, `code`, `message`, `details.plan` |
+| `plan-assertion-failed` | failed `execute-plan` assertion | `status`, `code`, `message`, `details.plan` |
+| `rejected` | deterministic single-command business rejection | `status`, `code`, `message`, optional `idempotencyKey`, optional `details` |
 | `error` | malformed input or runtime failure | `status`, `code`, `message`, optional `hint`, optional `argument` |
 
 Dynamic fields:
@@ -135,8 +141,11 @@ Dynamic fields:
 - paged query responses expose `limit`, `offset`, and `hasMore`
 - `committed.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
-- `execute-plan.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
+- `plan-committed.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock
+- plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
+  facts nest their child observations under `facts`
+- `execute-plan` accepts at most 100 steps, so returned plan journals are complete but bounded
 
 `preflight-accepted` is advisory. It confirms that the current request passed validation against
 the current book state, but it is not a durable commit guarantee: `post-entry` still performs its
@@ -181,6 +190,9 @@ rendered:
 - `payload.migrationPolicy`
 - optional `payload.initializedAt`
 
+`payload.state` uses the stable lower-case vocabulary `missing`, `blank-sqlite`, `initialized`,
+`foreign-sqlite`, `unsupported-format-version`, or `incomplete-fingrind`.
+
 `list-accounts` success returns:
 - `payload.limit`
 - `payload.offset`
@@ -212,6 +224,7 @@ Checked-in examples for the ledger-plan surface:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
+- [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
 
 ## Deterministic Rejections
 
@@ -219,14 +232,15 @@ Checked-in examples for the ledger-plan surface:
 |:-----|:--------|:----------------|
 | `book-already-initialized` | `open-book` targeted a book that is already initialized | none |
 | `book-contains-schema` | `open-book` targeted a pre-existing SQLite file that already has schema objects | none |
-| `book-not-initialized` | the selected book does not exist or has not been opened yet | none |
+| `administration-book-not-initialized` | an administration command targeted a book that does not exist or has not been opened yet | none |
+| `query-book-not-initialized` | a query command targeted a book that does not exist or has not been opened yet | none |
+| `posting-book-not-initialized` | a posting command targeted a book that does not exist or has not been opened yet | none |
 | `account-normal-balance-conflict` | `declare-account` attempted to amend an existing account's normal balance | `accountCode`, `existingNormalBalance`, `requestedNormalBalance` |
 | `unknown-account` | a query named an undeclared account | `accountCode` |
 | `posting-not-found` | `get-posting` targeted a posting id that does not exist in the selected book | `postingId` |
 | `account-state-violations` | `preflight-entry` or `post-entry` found one or more undeclared or inactive accounts | `violations[]`, where each item includes `code` and `accountCode` |
+| `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `accountCode` |
 | `duplicate-idempotency-key` | the selected book already contains the same `idempotencyKey` | none |
-| `reversal-reason-required` | a reversal posting omitted `provenance.reason` | none |
-| `reversal-reason-forbidden` | a non-reversal posting supplied `provenance.reason` | none |
 | `reversal-target-not-found` | `reversal.priorPostingId` does not exist in the selected book | `priorPostingId` |
 | `reversal-already-exists` | the target posting already has a full reversal | `priorPostingId` |
 | `reversal-does-not-negate-target` | a reversal request does not negate the target posting exactly | `priorPostingId` |

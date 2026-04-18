@@ -1,0 +1,13 @@
+{
+  "planId": "plan-open-late",
+  "steps": [
+    {
+      "stepId": "inspect",
+      "kind": "inspect-book"
+    },
+    {
+      "stepId": "open",
+      "kind": "open-book"
+    }
+  ]
+}

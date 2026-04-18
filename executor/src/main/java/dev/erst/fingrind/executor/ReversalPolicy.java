@@ -1,12 +1,12 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PostingRequest;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ReversalReference;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,25 +21,17 @@ final class ReversalPolicy {
       PostingRequest postingRequest, PostingValidationBook book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
-    Optional<ReversalReference> reversalReference = postingRequest.reversalReference();
-    boolean reversalReasonPresent = postingRequest.requestProvenance().reason().isPresent();
-    if (reversalReference.isEmpty()) {
-      return reversalReasonPresent
-          ? Optional.of(new PostingRejection.ReversalReasonForbidden())
-          : Optional.empty();
-    }
-    if (!reversalReasonPresent) {
-      return Optional.of(new PostingRejection.ReversalReasonRequired());
-    }
-
-    ReversalReference requestedReversal = reversalReference.orElseThrow();
-    PostingId priorPostingId = requestedReversal.priorPostingId();
-    Optional<PostingFact> priorPosting = book.findPosting(priorPostingId);
-    if (priorPosting.isEmpty()) {
-      return Optional.of(new PostingRejection.ReversalTargetNotFound(priorPostingId));
-    }
-
-    return reversalRejection(postingRequest.journalEntry(), priorPosting.orElseThrow(), book);
+    return switch (postingRequest.postingLineage()) {
+      case PostingLineage.Direct _ -> Optional.empty();
+      case PostingLineage.Reversal reversal -> {
+        PostingId priorPostingId = reversal.reference().priorPostingId();
+        Optional<PostingFact> priorPosting = book.findPosting(priorPostingId);
+        if (priorPosting.isEmpty()) {
+          yield Optional.of(new PostingRejection.ReversalTargetNotFound(priorPostingId));
+        }
+        yield reversalRejection(postingRequest.journalEntry(), priorPosting.orElseThrow(), book);
+      }
+    };
   }
 
   private static Optional<PostingRejection> reversalRejection(

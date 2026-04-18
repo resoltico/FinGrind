@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
 updated: "2026-04-17"
 route:
@@ -23,9 +23,10 @@ route:
 | `./gradlew -p jazzer check` | run support tests plus regression replay |
 | `jazzer/bin/regression` | replay the committed seed floor through the supported wrapper surface |
 | `jazzer/bin/fuzz-cli-request` | fuzz raw request parsing |
+| `jazzer/bin/fuzz-ledger-plan-request` | fuzz ledger-plan request parsing |
 | `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
 | `jazzer/bin/fuzz-sqlite-book-roundtrip` | fuzz durable SQLite single-book round-trips |
-| `jazzer/bin/fuzz-all` | run all three active fuzz tasks sequentially |
+| `jazzer/bin/fuzz-all` | run all active fuzz tasks sequentially |
 | `jazzer/bin/clean-local-findings` | delete crash files and non-corpus run state |
 | `jazzer/bin/clean-local-corpus` | delete generated local corpora |
 

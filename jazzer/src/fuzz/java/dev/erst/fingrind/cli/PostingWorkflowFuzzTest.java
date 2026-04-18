@@ -3,12 +3,14 @@ package dev.erst.fingrind.cli;
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PreflightEntryResult;
+import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostEntryResult.Rejected;
+import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.contract.PostingFact;
@@ -62,8 +64,8 @@ public class PostingWorkflowFuzzTest {
         throw new IllegalStateException("Account reactivation did not persist in the registry.");
       }
 
-      PostEntryResult preflight = applicationService.preflight(command);
-      PostEntryResult committedResult = applicationService.commit(command);
+      PreflightEntryResult preflight = applicationService.preflight(command);
+      CommitEntryResult committedResult = applicationService.commit(command);
       if (preflight instanceof PreflightAccepted accepted) {
         if (!accepted.idempotencyKey().equals(command.requestProvenance().idempotencyKey())) {
           throw new IllegalStateException("Preflight changed the idempotency key.");
@@ -102,15 +104,15 @@ public class PostingWorkflowFuzzTest {
           throw new IllegalStateException("Stored source channel differs from the parsed command.");
         }
 
-        PostEntryResult duplicateResult = applicationService.commit(command);
-        if (!(duplicateResult instanceof Rejected rejected)) {
+        CommitEntryResult duplicateResult = applicationService.commit(command);
+        if (!(duplicateResult instanceof CommitRejected rejected)) {
           throw new IllegalStateException("Duplicate commit should be rejected.");
         }
         if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
           throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
         }
-      } else if (preflight instanceof Rejected preflightRejected) {
-        if (!(committedResult instanceof Rejected commitRejected)) {
+      } else if (preflight instanceof PreflightRejected preflightRejected) {
+        if (!(committedResult instanceof CommitRejected commitRejected)) {
           throw new IllegalStateException("Rejected preflight should remain rejected on commit.");
         }
         if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
@@ -130,8 +132,19 @@ public class PostingWorkflowFuzzTest {
   }
 
   private static void assertRejected(
-      PostEntryResult result, Class<? extends PostingRejection> rejectionType) {
-    if (!(result instanceof Rejected rejected)) {
+      PreflightEntryResult result, Class<? extends PostingRejection> rejectionType) {
+    if (!(result instanceof PreflightRejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during lifecycle setup.");
+    }
+    if (!rejectionType.isInstance(rejected.rejection())) {
+      throw new IllegalStateException(
+          "Lifecycle setup returned the wrong rejection type: " + rejected.rejection());
+    }
+  }
+
+  private static void assertRejected(
+      CommitEntryResult result, Class<? extends PostingRejection> rejectionType) {
+    if (!(result instanceof CommitRejected rejected)) {
       throw new IllegalStateException("Expected deterministic rejection during lifecycle setup.");
     }
     if (!rejectionType.isInstance(rejected.rejection())) {
@@ -141,9 +154,28 @@ public class PostingWorkflowFuzzTest {
   }
 
   private static void assertAccountStateRejected(
-      PostEntryResult result,
+      PreflightEntryResult result,
       Class<? extends PostingRejection.AccountStateViolation> violationType) {
-    if (!(result instanceof Rejected rejected)) {
+    if (!(result instanceof PreflightRejected rejected)) {
+      throw new IllegalStateException("Expected deterministic rejection during lifecycle setup.");
+    }
+    if (!(rejected.rejection() instanceof PostingRejection.AccountStateViolations violations)) {
+      throw new IllegalStateException(
+          "Expected account-state violations during lifecycle setup but got: "
+              + rejected.rejection());
+    }
+    if (violations.violations().isEmpty()
+        || violations.violations().stream().anyMatch(violation -> !violationType.isInstance(violation))) {
+      throw new IllegalStateException(
+          "Lifecycle setup returned the wrong account-state violations: "
+              + violations.violations());
+    }
+  }
+
+  private static void assertAccountStateRejected(
+      CommitEntryResult result,
+      Class<? extends PostingRejection.AccountStateViolation> violationType) {
+    if (!(result instanceof CommitRejected rejected)) {
       throw new IllegalStateException("Expected deterministic rejection during lifecycle setup.");
     }
     if (!(rejected.rejection() instanceof PostingRejection.AccountStateViolations violations)) {

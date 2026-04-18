@@ -2,11 +2,13 @@ package dev.erst.fingrind.contract.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.BookInspection;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,48 +22,7 @@ class ProtocolContractLintTest {
       Pattern.compile("\\bfingrind\\s+([a-z][a-z0-9-]*)");
   private static final Pattern BACKTICKED_HYPHEN_ID_PATTERN =
       Pattern.compile("`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`");
-  private static final Set<String> NON_OPERATION_BACKTICK_IDS =
-      Stream.concat(
-              Set.of(
-                  "account-normal-balance-conflict",
-                  "account-state-violations",
-                  "assertion-failed",
-                  "book-already-initialized",
-                  "book-contains-schema",
-                  "book-not-initialized",
-                  "build-logic",
-                  "class-complete",
-                  "class-start",
-                  "cli-request",
-                  "desktop-linux",
-                  "docker-buildx",
-                  "duplicate-idempotency-key",
-                  "invalid-request",
-                  "json-envelope",
-                  "linux-aarch64",
-                  "macos-aarch64",
-                  "owner-only-acl",
-                  "windows-x86_64",
-                  "posting-not-found",
-                  "posting-workflow",
-                  "preflight-accepted",
-                  "regression-input",
-                  "raw-json",
-                  "reversal-already-exists",
-                  "reversal-does-not-negate-target",
-                  "reversal-reason-forbidden",
-                  "reversal-reason-required",
-                  "reversal-target-not-found",
-                  "runtime-failure",
-                  "sqlite-book-roundtrip",
-                  "sqlite-jdbc",
-                  "test-complete",
-                  "test-progress",
-                  "unknown-account",
-                  "unknown-command")
-                  .stream(),
-              ProtocolPlanKinds.all().stream())
-          .collect(java.util.stream.Collectors.toUnmodifiableSet());
+  private static final Set<String> NON_OPERATION_BACKTICK_IDS = nonOperationBacktickIds();
 
   @Test
   void productionJavaDoesNotReauthorHyphenatedOperationIdsOutsideContractProtocol()
@@ -155,6 +116,34 @@ class ProtocolContractLintTest {
         violations.isEmpty(), () -> "Catalog operation reference drift:\n" + sorted(violations));
   }
 
+  @Test
+  void catalogOperationIdsAndTokensAreUnique() {
+    Set<OperationId> ids = EnumSet.noneOf(OperationId.class);
+    Set<String> duplicateIds = new HashSet<>();
+    Set<String> tokens = new HashSet<>();
+    Set<String> duplicateTokens = new HashSet<>();
+
+    ProtocolCatalog.operations()
+        .forEach(
+            operation -> {
+              if (!ids.add(operation.id())) {
+                duplicateIds.add(operation.id().wireName());
+              }
+              if (!tokens.add(operation.id().wireName())) {
+                duplicateTokens.add(operation.id().wireName());
+              }
+              operation.aliases().stream()
+                  .filter(alias -> !tokens.add(alias))
+                  .forEach(duplicateTokens::add);
+            });
+
+    assertTrue(
+        duplicateIds.isEmpty(), () -> "Duplicate catalog operation ids:\n" + sorted(duplicateIds));
+    assertTrue(
+        duplicateTokens.isEmpty(),
+        () -> "Duplicate catalog operation tokens:\n" + sorted(duplicateTokens));
+  }
+
   private static Set<String> registeredOperationIds() {
     return ProtocolCatalog.operations().stream()
         .map(operation -> operation.id().wireName())
@@ -166,6 +155,53 @@ class ProtocolContractLintTest {
         .map(operation -> operation.id().wireName())
         .filter(operationId -> operationId.contains("-"))
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
+  }
+
+  private static Set<String> nonOperationBacktickIds() {
+    Set<String> ids =
+        new HashSet<>(
+            Set.of(
+                "account-normal-balance-conflict",
+                "account-state-violations",
+                "administration-book-not-initialized",
+                "assertion-failed",
+                "book-already-initialized",
+                "book-contains-schema",
+                "build-logic",
+                "class-complete",
+                "class-start",
+                "cli-request",
+                "desktop-linux",
+                "docker-buildx",
+                "duplicate-idempotency-key",
+                "inactive-account",
+                "invalid-request",
+                "json-envelope",
+                "ledger-plan-request",
+                "owner-only-acl",
+                "posting-not-found",
+                "posting-book-not-initialized",
+                "query-book-not-initialized",
+                "posting-workflow",
+                "regression-input",
+                "raw-json",
+                "reversal-already-exists",
+                "reversal-does-not-negate-target",
+                "reversal-target-not-found",
+                "runtime-failure",
+                "sqlite-book-roundtrip",
+                "sqlite-jdbc",
+                "test-complete",
+                "test-progress",
+                "unknown-account",
+                "unknown-command"));
+    ids.addAll(BookInspection.Status.wireValues());
+    ids.addAll(LedgerAssertionKind.wireValues());
+    ids.addAll(ProtocolCatalog.successStatuses());
+    ids.addAll(ProtocolCatalog.rejectionStatuses());
+    ids.addAll(ProtocolCatalog.supportedPublicCliBundleTargets());
+    ids.addAll(ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+    return Set.copyOf(ids);
   }
 
   private static List<Path> productionJavaFiles() throws IOException {

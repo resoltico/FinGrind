@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
@@ -17,19 +18,14 @@ import org.junit.jupiter.api.Test;
 class MachineContractTest {
   @Test
   void capabilities_areDerivedFromLiveEnumsAndRejectionCatalogs() {
-    MachineContract.CapabilitiesDescriptor capabilities =
+    ContractDiscovery.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
-            new MachineContract.EnvironmentDescriptor(
+            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
+            new ContractDiscovery.EnvironmentDescriptor(
                 "self-contained-bundle",
                 "self-contained-bundle",
-                List.of(
-                    "macos-aarch64",
-                    "macos-x86_64",
-                    "linux-x86_64",
-                    "linux-aarch64",
-                    "windows-x86_64"),
-                List.of(),
+                ProtocolCatalog.supportedPublicCliBundleTargets(),
+                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
                 "26+",
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
@@ -74,9 +70,11 @@ class MachineContractTest {
 
     List<String> rejectionCodes =
         capabilities.responseModel().rejections().stream()
-            .map(MachineContract.RejectionDescriptor::code)
+            .map(ContractResponse.RejectionDescriptor::code)
             .toList();
-    assertTrue(rejectionCodes.contains("book-not-initialized"));
+    assertTrue(rejectionCodes.contains("administration-book-not-initialized"));
+    assertTrue(rejectionCodes.contains("query-book-not-initialized"));
+    assertTrue(rejectionCodes.contains("posting-book-not-initialized"));
     assertTrue(rejectionCodes.contains("account-normal-balance-conflict"));
     assertTrue(rejectionCodes.contains("posting-not-found"));
     assertTrue(rejectionCodes.contains("reversal-does-not-negate-target"));
@@ -98,15 +96,14 @@ class MachineContractTest {
 
   @Test
   void helpVersionAndRequestTemplate_publishCanonicalDiscoveryMetadata() {
-    MachineContract.ApplicationIdentity identity =
-        new MachineContract.ApplicationIdentity("FinGrind", "0.9.0", "desc");
-    MachineContract.EnvironmentDescriptor environment =
-        new MachineContract.EnvironmentDescriptor(
+    ContractDiscovery.ApplicationIdentity identity =
+        new ContractDiscovery.ApplicationIdentity("FinGrind", "0.9.0", "desc");
+    ContractDiscovery.EnvironmentDescriptor environment =
+        new ContractDiscovery.EnvironmentDescriptor(
             "self-contained-bundle",
             "self-contained-bundle",
-            List.of(
-                "macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64", "windows-x86_64"),
-            List.of(),
+            ProtocolCatalog.supportedPublicCliBundleTargets(),
+            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
             "26+",
             "sqlite-ffm-sqlite3mc",
             "sqlite",
@@ -124,13 +121,13 @@ class MachineContractTest {
             "2.3.3",
             null);
 
-    MachineContract.HelpDescriptor help = MachineContract.help(identity, environment);
-    MachineContract.VersionDescriptor version = MachineContract.version(identity);
-    MachineContract.PostingRequestTemplateDescriptor template =
+    ContractDiscovery.HelpDescriptor help = MachineContract.help(identity, environment);
+    ContractDiscovery.VersionDescriptor version = MachineContract.version(identity);
+    ContractTemplates.PostingRequestTemplateDescriptor template =
         MachineContract.requestTemplate(
             Clock.fixed(Instant.parse("2026-04-13T12:00:00Z"), java.time.ZoneOffset.UTC));
-    MachineContract.ReversalTemplateDescriptor reversalTemplate =
-        new MachineContract.ReversalTemplateDescriptor("posting-1");
+    ContractTemplates.ReversalTemplateDescriptor reversalTemplate =
+        new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal");
 
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
@@ -141,15 +138,15 @@ class MachineContractTest {
     assertEquals("inspect-book", help.commands().get(9).name());
     assertEquals("account-balance", help.commands().get(13).name());
     assertTrue(help.commands().get(7).options().get(2).contains("--new-book-passphrase-prompt"));
-    assertEquals(3, help.exitCodes().size());
+    assertEquals(4, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());
 
     assertEquals("0.9.0", version.version());
     assertEquals(
-        List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64", "windows-x86_64"),
-        MachineContract.supportedPublicCliBundleTargets());
-    assertEquals(List.of(), MachineContract.unsupportedPublicCliOperatingSystems());
+        environment.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.supportedPublicCliBundleTargets());
+    assertEquals(List.of(), ProtocolCatalog.unsupportedPublicCliOperatingSystems());
     assertEquals("2026-04-13", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals("USER", template.provenance().actorType());
@@ -161,7 +158,7 @@ class MachineContractTest {
   }
 
   private static List<String> vocabularyValues(
-      List<MachineContract.EnumVocabularyDescriptor> vocabularies, String name) {
+      List<ContractRequestShapes.EnumVocabularyDescriptor> vocabularies, String name) {
     return vocabularies.stream()
         .filter(vocabulary -> vocabulary.name().equals(name))
         .findFirst()

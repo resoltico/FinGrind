@@ -59,6 +59,11 @@ public record JazzerHarness(String key, String displayName, String className, St
     return fromKey("cli-request");
   }
 
+  /** Returns the canonical ledger-plan request harness. */
+  public static JazzerHarness ledgerPlanRequest() {
+    return fromKey("ledger-plan-request");
+  }
+
   /** Returns the canonical posting workflow harness. */
   public static JazzerHarness postingWorkflow() {
     return fromKey("posting-workflow");

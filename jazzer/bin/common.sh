@@ -64,6 +64,7 @@ fg_run_active_command() {
 fg_run_all_active_commands() {
     fg_acquire_lock
     fg_run_active_command_unlocked "cli-request" "fuzzCliRequest" "$@"
+    fg_run_active_command_unlocked "ledger-plan-request" "fuzzLedgerPlanRequest" "$@"
     fg_run_active_command_unlocked "posting-workflow" "fuzzPostingWorkflow" "$@"
     fg_run_active_command_unlocked "sqlite-book-roundtrip" "fuzzSqliteBookRoundTrip" "$@"
 }

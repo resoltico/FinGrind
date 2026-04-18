@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: CORE
 updated: "2026-04-17"
 route:
@@ -370,13 +370,12 @@ public record RequestProvenance(
     CommandId commandId,
     IdempotencyKey idempotencyKey,
     CausationId causationId,
-    Optional<CorrelationId> correlationId,
-    Optional<ReversalReason> reason)
+    Optional<CorrelationId> correlationId)
 ```
 
-- Purpose: carry the accepted request identity and reversal reason without commit-time audit fields
-- Normalization: `null` optional fields become `Optional.empty()`
-- Validation: rejects `null` required fields
+- Purpose: carry the accepted request identity without commit-time audit fields
+- Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
+- Validation: rejects `null` required fields and `null` optionals
 
 ## `ReversalReason`
 
@@ -386,7 +385,7 @@ public record RequestProvenance(
 public record ReversalReason(String value)
 ```
 
-- Purpose: preserve the operator-supplied reason for a reversal
+- Purpose: preserve the operator-supplied reason carried by reversal posting lineage
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `ReversalReference`
@@ -411,4 +410,4 @@ public enum SourceChannel {
 ```
 
 - Purpose: record the committed ingress channel explicitly
-- Current scope: only `CLI` is supported in the current hard-break phase
+- Current scope: only `CLI` is currently supported

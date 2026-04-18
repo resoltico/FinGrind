@@ -1,0 +1,85 @@
+{
+  "planId": "plan-1",
+  "steps": [
+    {
+      "stepId": "open",
+      "kind": "open-book"
+    },
+    {
+      "stepId": "declare-cash",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "normalBalance": "DEBIT"
+      }
+    },
+    {
+      "stepId": "preflight-sale",
+      "kind": "preflight-entry",
+      "posting": {
+        "effectiveDate": "2026-04-07",
+        "lines": [
+          {
+            "accountCode": "1000",
+            "side": "DEBIT",
+            "currencyCode": "EUR",
+            "amount": "10.00"
+          },
+          {
+            "accountCode": "4000",
+            "side": "CREDIT",
+            "currencyCode": "EUR",
+            "amount": "10.00"
+          }
+        ],
+        "provenance": {
+          "actorId": "agent-1",
+          "actorType": "AGENT",
+          "commandId": "command-1",
+          "idempotencyKey": "idem-plan-1",
+          "causationId": "cause-1"
+        }
+      }
+    },
+    {
+      "stepId": "post-sale",
+      "kind": "post-entry",
+      "posting": {
+        "effectiveDate": "2026-04-07",
+        "lines": [
+          {
+            "accountCode": "1000",
+            "side": "DEBIT",
+            "currencyCode": "EUR",
+            "amount": "10.00"
+          },
+          {
+            "accountCode": "4000",
+            "side": "CREDIT",
+            "currencyCode": "EUR",
+            "amount": "10.00"
+          }
+        ],
+        "provenance": {
+          "actorId": "agent-1",
+          "actorType": "AGENT",
+          "commandId": "command-2",
+          "idempotencyKey": "idem-plan-2",
+          "causationId": "cause-1"
+        }
+      }
+    },
+    {
+      "stepId": "assert-cash",
+      "kind": "assert",
+      "assertion": {
+        "kind": "assert-account-balance",
+        "accountCode": "1000",
+        "currencyCode": "EUR",
+        "netAmount": "10.00",
+        "balanceSide": "DEBIT"
+      }
+    }
+  ]
+}

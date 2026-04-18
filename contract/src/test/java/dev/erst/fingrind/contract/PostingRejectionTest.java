@@ -13,11 +13,9 @@ class PostingRejectionTest {
   void wireCode_isStableForEverySubtype() {
     assertEquals(
         List.of(
-            "book-not-initialized",
+            "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
-            "reversal-reason-required",
-            "reversal-reason-forbidden",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
@@ -27,8 +25,6 @@ class PostingRejectionTest {
                 new PostingRejection.AccountStateViolations(
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.DuplicateIdempotencyKey()),
-            PostingRejection.wireCode(new PostingRejection.ReversalReasonRequired()),
-            PostingRejection.wireCode(new PostingRejection.ReversalReasonForbidden()),
             PostingRejection.wireCode(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
             PostingRejection.wireCode(
@@ -38,19 +34,27 @@ class PostingRejectionTest {
   }
 
   @Test
+  void accountStateViolationWireCode_isStableForEverySubtype() {
+    assertEquals(
+        List.of("unknown-account", "inactive-account"),
+        List.of(
+            PostingRejection.wireCode(new PostingRejection.UnknownAccount(new AccountCode("1000"))),
+            PostingRejection.wireCode(
+                new PostingRejection.InactiveAccount(new AccountCode("2000")))));
+  }
+
+  @Test
   void descriptors_areStableAndComplete() {
     assertEquals(
         List.of(
-            "book-not-initialized",
+            "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
-            "reversal-reason-required",
-            "reversal-reason-forbidden",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
         PostingRejection.descriptors().stream()
-            .map(MachineContract.RejectionDescriptor::code)
+            .map(ContractResponse.RejectionDescriptor::code)
             .toList());
   }
 }

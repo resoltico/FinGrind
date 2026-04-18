@@ -1,9 +1,11 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.core.CommittedProvenance;
 import java.time.Clock;
 import java.util.Objects;
@@ -24,34 +26,29 @@ public final class PostingApplicationService {
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
-  public PostEntryResult preflight(PostEntryCommand command) {
+  public PreflightEntryResult preflight(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
     Optional<PostingRejection> rejection = PostingValidation.rejectionFor(command, bookSession);
     if (rejection.isPresent()) {
-      return rejected(command, rejection.orElseThrow());
+      return rejectedPreflight(command, rejection.orElseThrow());
     }
     return new PostEntryResult.PreflightAccepted(
         command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
-  public PostEntryResult commit(PostEntryCommand command) {
+  public CommitEntryResult commit(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<PostingRejection> rejection = PostingValidation.rejectionFor(command, bookSession);
-    if (rejection.isPresent()) {
-      return rejected(command, rejection.orElseThrow());
-    }
-
     PostingDraft postingDraft =
         new PostingDraft(
             command.journalEntry(),
-            command.reversalReference(),
+            command.postingLineage(),
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));
 
     return switch (bookSession.commit(postingDraft, postingIdGenerator)) {
       case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
-      case PostingCommitResult.Rejected rejected -> rejected(command, rejected.rejection());
+      case PostingCommitResult.Rejected rejected -> rejectedCommit(command, rejected.rejection());
     };
   }
 
@@ -63,8 +60,15 @@ public final class PostingApplicationService {
         committedPosting.provenance().recordedAt());
   }
 
-  private static PostEntryResult.Rejected rejected(
+  private static PostEntryResult.PreflightRejected rejectedPreflight(
       PostEntryCommand command, PostingRejection rejection) {
-    return new PostEntryResult.Rejected(command.requestProvenance().idempotencyKey(), rejection);
+    return new PostEntryResult.PreflightRejected(
+        command.requestProvenance().idempotencyKey(), rejection);
+  }
+
+  private static PostEntryResult.CommitRejected rejectedCommit(
+      PostEntryCommand command, PostingRejection rejection) {
+    return new PostEntryResult.CommitRejected(
+        command.requestProvenance().idempotencyKey(), rejection);
   }
 }

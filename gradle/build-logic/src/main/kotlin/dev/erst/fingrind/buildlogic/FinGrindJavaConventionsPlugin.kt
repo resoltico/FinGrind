@@ -78,7 +78,6 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                         "Implementation-Version" to project.version,
                         "Implementation-Vendor" to "Ervins Strauhmanis",
                         "Implementation-License" to "MIT",
-                        "Enable-Native-Access" to "ALL-UNNAMED",
                     ),
                 )
             }

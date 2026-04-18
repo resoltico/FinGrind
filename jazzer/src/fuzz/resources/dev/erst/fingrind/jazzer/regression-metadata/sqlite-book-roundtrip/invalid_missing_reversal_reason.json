@@ -1,0 +1,23 @@
+{
+  "targetKey" : "sqlite-book-roundtrip",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_missing_reversal_reason.json",
+  "expectation" : {
+    "outcomeKind" : "EXPECTED_INVALID",
+    "details" : {
+      "type" : "SQLITE_BOOK_ROUND_TRIP",
+      "requestStatus" : "INVALID_REQUEST",
+      "effectiveDate" : "NOT_PARSED",
+      "idempotencyKey" : "NOT_PARSED",
+      "lineCount" : 0,
+      "reversalPresent" : false,
+      "uninitializedCommitStatus" : "NOT_RUN",
+      "undeclaredCommitStatus" : "NOT_RUN",
+      "inactiveCommitStatus" : "NOT_RUN",
+      "finalCommitStatus" : "NOT_RUN",
+      "reloadStatus" : "NOT_RUN",
+      "duplicateStatus" : "NOT_RUN",
+      "storedFactPresent" : false,
+      "failureMessage" : "Missing required field: reason"
+    }
+  }
+}

@@ -10,21 +10,22 @@ import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerAssertion;
-import dev.erst.fingrind.contract.LedgerExecutionPolicy;
-import dev.erst.fingrind.contract.LedgerFailurePolicy;
-import dev.erst.fingrind.contract.LedgerJournalLevel;
+import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.LedgerStepStatus;
-import dev.erst.fingrind.contract.LedgerTransactionMode;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -40,7 +41,6 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -64,7 +64,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-1",
-                      policy(),
                       List.of(
                           new LedgerStep.OpenBook("open"),
                           new LedgerStep.DeclareAccount(
@@ -107,6 +106,11 @@ class LedgerPlanServiceTest {
       assertTrue(
           result.journal().steps().stream()
               .allMatch(step -> step.status() == LedgerStepStatus.SUCCEEDED));
+      assertEquals(LedgerStepKind.OPEN_BOOK, result.journal().steps().getFirst().kind());
+      assertEquals(LedgerStepKind.ASSERT, result.journal().steps().getLast().kind());
+      assertEquals(
+          Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+          result.journal().steps().getLast().detailKind());
       assertTrue(bookSession.findPosting(new PostingId("posting-1")).isPresent());
     }
   }
@@ -119,16 +123,74 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-1",
-                      policy(),
                       List.of(
                           new LedgerStep.DeclareAccount(
                               "cash", account("1000", "Cash", NormalBalance.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
-          "book-not-initialized",
-          result.journal().steps().getFirst().failure().orElseThrow().code());
+          "administration-book-not-initialized",
+          result.journal().steps().getFirst().requiredFailure().code());
       assertFalse(bookSession.isInitialized());
+    }
+  }
+
+  @Test
+  void execute_rejectsUninitializedPlansWithFamilySpecificCodes() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      LedgerPlanResult preflightResult =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      "plan-preflight",
+                      List.of(
+                          new LedgerStep.PreflightEntry("preflight", postEntryCommand("idem-1")))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, preflightResult.status());
+      assertEquals(
+          "posting-book-not-initialized",
+          preflightResult.journal().steps().getFirst().requiredFailure().code());
+    }
+
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      LedgerPlanResult queryResult =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      "plan-query",
+                      List.of(
+                          new LedgerStep.AccountBalance(
+                              "balance",
+                              new AccountBalanceQuery(
+                                  new AccountCode("1000"), Optional.empty(), Optional.empty())))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, queryResult.status());
+      assertEquals(
+          "query-book-not-initialized",
+          queryResult.journal().steps().getFirst().requiredFailure().code());
+    }
+  }
+
+  @Test
+  void execute_rejectsUninitializedAssertionPlansWithQueryFamilyCode() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      LedgerPlanResult result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      "plan-query",
+                      List.of(
+                          new LedgerStep.Assert(
+                              "assert-posting",
+                              new LedgerAssertion.PostingExists(new PostingId("posting-1"))))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          result.journal().steps().getFirst().requiredFailure().code());
+      assertEquals(
+          LedgerAssertionKind.POSTING_EXISTS,
+          result.journal().steps().getFirst().detailKind().orElseThrow());
     }
   }
 
@@ -140,7 +202,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-1",
-                      policy(),
                       List.of(
                           new LedgerStep.OpenBook("open"),
                           new LedgerStep.DeclareAccount(
@@ -148,11 +209,19 @@ class LedgerPlanServiceTest {
                           new LedgerStep.PostEntry("post", postEntryCommand("idem-1")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      LedgerStepFailure failure = result.journal().steps().getLast().requiredFailure();
       assertEquals(
           PostingRejection.wireCode(
               new PostingRejection.AccountStateViolations(
                   List.of(new PostingRejection.UnknownAccount(new AccountCode("2000"))))),
-          result.journal().steps().getLast().failure().orElseThrow().code());
+          failure.code());
+      assertTrue(failure.message().contains("undeclared or inactive accounts"));
+      assertTrue(
+          failure.facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact, "violation", "code", "unknown-account", "accountCode", "2000")));
       assertFalse(bookSession.isInitialized());
     }
   }
@@ -165,7 +234,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-1",
-                      policy(),
                       List.of(
                           new LedgerStep.OpenBook("open"),
                           new LedgerStep.DeclareAccount(
@@ -176,8 +244,7 @@ class LedgerPlanServiceTest {
                                   new PostingId("posting-missing"))))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
-      assertEquals(
-          "assertion-failed", result.journal().steps().getLast().failure().orElseThrow().code());
+      assertEquals("assertion-failed", result.journal().steps().getLast().requiredFailure().code());
       assertFalse(bookSession.isInitialized());
     }
   }
@@ -187,14 +254,13 @@ class LedgerPlanServiceTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       LedgerPlanResult openBookResult =
           service(bookSession)
-              .execute(
-                  new LedgerPlan("plan-open", policy(), List.of(new LedgerStep.OpenBook("open"))));
+              .execute(new LedgerPlan("plan-open", List.of(new LedgerStep.OpenBook("open"))));
 
       assertEquals(LedgerPlanStatus.REJECTED, openBookResult.status());
       assertEquals(
           BookAdministrationRejection.wireCode(
               new BookAdministrationRejection.BookAlreadyInitialized()),
-          openBookResult.journal().steps().getLast().failure().orElseThrow().code());
+          openBookResult.journal().steps().getLast().requiredFailure().code());
     }
 
     try (InMemoryBookSession bookSession = initializedBook()) {
@@ -209,7 +275,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-declare",
-                      policy(),
                       List.of(
                           new LedgerStep.DeclareAccount(
                               "cash", account("1000", "Cash", NormalBalance.CREDIT)))));
@@ -219,7 +284,7 @@ class LedgerPlanServiceTest {
           BookAdministrationRejection.wireCode(
               new BookAdministrationRejection.NormalBalanceConflict(
                   new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
-          redeclareResult.journal().steps().getLast().failure().orElseThrow().code());
+          redeclareResult.journal().steps().getLast().requiredFailure().code());
     }
   }
 
@@ -237,7 +302,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-preflight",
-                      policy(),
                       List.of(
                           new LedgerStep.PreflightEntry("preflight", postEntryCommand("idem-2")))));
 
@@ -246,7 +310,7 @@ class LedgerPlanServiceTest {
           PostingRejection.wireCode(
               new PostingRejection.AccountStateViolations(
                   List.of(new PostingRejection.UnknownAccount(new AccountCode("2000"))))),
-          preflightResult.journal().steps().getLast().failure().orElseThrow().code());
+          preflightResult.journal().steps().getLast().requiredFailure().code());
     }
 
     try (InMemoryBookSession bookSession = initializedBook()) {
@@ -255,14 +319,13 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-get",
-                      policy(),
                       List.of(new LedgerStep.GetPosting("get", new PostingId("posting-missing")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, getPostingResult.status());
       assertEquals(
           BookQueryRejection.wireCode(
               new BookQueryRejection.PostingNotFound(new PostingId("posting-missing"))),
-          getPostingResult.journal().steps().getLast().failure().orElseThrow().code());
+          getPostingResult.journal().steps().getLast().requiredFailure().code());
     }
 
     try (InMemoryBookSession bookSession = initializedBook()) {
@@ -271,7 +334,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-list-postings",
-                      policy(),
                       List.of(
                           new LedgerStep.ListPostings(
                               "postings",
@@ -286,7 +348,7 @@ class LedgerPlanServiceTest {
       assertEquals(
           BookQueryRejection.wireCode(
               new BookQueryRejection.UnknownAccount(new AccountCode("9999"))),
-          listPostingsResult.journal().steps().getLast().failure().orElseThrow().code());
+          listPostingsResult.journal().steps().getLast().requiredFailure().code());
     }
 
     try (InMemoryBookSession bookSession = initializedBook()) {
@@ -295,7 +357,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-balance",
-                      policy(),
                       List.of(
                           new LedgerStep.AccountBalance(
                               "balance",
@@ -306,7 +367,27 @@ class LedgerPlanServiceTest {
       assertEquals(
           BookQueryRejection.wireCode(
               new BookQueryRejection.UnknownAccount(new AccountCode("9999"))),
-          balanceResult.journal().steps().getLast().failure().orElseThrow().code());
+          balanceResult.journal().steps().getLast().requiredFailure().code());
+    }
+  }
+
+  @Test
+  void execute_reportsListAccountsRejectionFromQuerySeam() {
+    try (ListAccountsRejectingLedgerPlanSession bookSession =
+        new ListAccountsRejectingLedgerPlanSession()) {
+      LedgerPlanResult result =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
+              .execute(
+                  new LedgerPlan(
+                      "plan-list-accounts",
+                      List.of(
+                          new LedgerStep.OpenBook("open"),
+                          new LedgerStep.ListAccounts("accounts", new ListAccountsQuery(50, 0)))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          result.journal().steps().getLast().requiredFailure().code());
     }
   }
 
@@ -345,7 +426,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-assert-query",
-                      policy(),
                       List.of(
                           new LedgerStep.Assert(
                               "assert-balance",
@@ -360,7 +440,7 @@ class LedgerPlanServiceTest {
       assertEquals(
           BookQueryRejection.wireCode(
               new BookQueryRejection.UnknownAccount(new AccountCode("9999"))),
-          rejectedQueryResult.journal().steps().getLast().failure().orElseThrow().code());
+          rejectedQueryResult.journal().steps().getLast().requiredFailure().code());
     }
 
     try (InMemoryBookSession bookSession = bookWithCommittedPosting()) {
@@ -369,7 +449,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-assert-mismatch",
-                      policy(),
                       List.of(
                           new LedgerStep.Assert(
                               "assert-balance",
@@ -382,17 +461,13 @@ class LedgerPlanServiceTest {
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, mismatchResult.status());
       assertEquals(
-          "assertion-failed",
-          mismatchResult.journal().steps().getLast().failure().orElseThrow().code());
+          "assertion-failed", mismatchResult.journal().steps().getLast().requiredFailure().code());
       assertTrue(
-          mismatchResult.journal().steps().getLast().failure().orElseThrow().facts().stream()
-              .anyMatch(
-                  fact -> "expectedNetAmount".equals(fact.name()) && "10".equals(fact.value())));
+          mismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "expectedNetAmount", "10")));
       assertTrue(
-          mismatchResult.journal().steps().getLast().failure().orElseThrow().facts().stream()
-              .anyMatch(
-                  fact ->
-                      "expectedBalanceSide".equals(fact.name()) && "CREDIT".equals(fact.value())));
+          mismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "expectedBalanceSide", "CREDIT")));
     }
 
     try (InMemoryBookSession bookSession = bookWithCommittedPosting()) {
@@ -401,7 +476,6 @@ class LedgerPlanServiceTest {
               .execute(
                   new LedgerPlan(
                       "plan-assert-amount-mismatch",
-                      policy(),
                       List.of(
                           new LedgerStep.Assert(
                               "assert-balance",
@@ -414,9 +488,8 @@ class LedgerPlanServiceTest {
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, amountMismatchResult.status());
       assertTrue(
-          amountMismatchResult.journal().steps().getLast().failure().orElseThrow().facts().stream()
-              .anyMatch(
-                  fact -> "actualNetAmount".equals(fact.name()) && "10".equals(fact.value())));
+          amountMismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "actualNetAmount", "10")));
     }
   }
 
@@ -429,8 +502,7 @@ class LedgerPlanServiceTest {
       assertThrows(
           IllegalStateException.class,
           () ->
-              service.execute(
-                  new LedgerPlan("plan-1", policy(), List.of(new LedgerStep.OpenBook("open")))));
+              service.execute(new LedgerPlan("plan-1", List.of(new LedgerStep.OpenBook("open")))));
       assertTrue(bookSession.rollbackCalled());
     }
   }
@@ -440,8 +512,7 @@ class LedgerPlanServiceTest {
     LedgerPlanResult result =
         service(bookSession)
             .execute(
-                new LedgerPlan(
-                    "plan-assert", policy(), List.of(new LedgerStep.Assert("assert", assertion))));
+                new LedgerPlan("plan-assert", List.of(new LedgerStep.Assert("assert", assertion))));
 
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
   }
@@ -471,15 +542,27 @@ class LedgerPlanServiceTest {
     return bookSession;
   }
 
-  private static LedgerPlanService service(InMemoryBookSession bookSession) {
+  private static LedgerPlanService service(LedgerPlanSession bookSession) {
     return new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
   }
 
-  private static LedgerExecutionPolicy policy() {
-    return new LedgerExecutionPolicy(
-        LedgerJournalLevel.NORMAL,
-        LedgerFailurePolicy.HALT_ON_FIRST_FAILURE,
-        LedgerTransactionMode.ATOMIC);
+  private static boolean textFact(LedgerFact fact, String name, String value) {
+    return fact instanceof LedgerFact.Text text
+        && name.equals(text.name())
+        && value.equals(text.value());
+  }
+
+  private static boolean groupFact(
+      LedgerFact fact,
+      String groupName,
+      String firstName,
+      String firstValue,
+      String secondName,
+      String secondValue) {
+    return fact instanceof LedgerFact.Group group
+        && groupName.equals(group.name())
+        && group.facts().stream().anyMatch(child -> textFact(child, firstName, firstValue))
+        && group.facts().stream().anyMatch(child -> textFact(child, secondName, secondValue));
   }
 
   private static DeclareAccountCommand account(
@@ -501,35 +584,166 @@ class LedgerPlanServiceTest {
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
                     new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))))),
-        Optional.empty(),
+        PostingLineage.direct(),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,
             new CommandId("command-1"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
-            Optional.of(new CorrelationId("corr-1")),
-            Optional.<ReversalReason>empty()),
+            Optional.of(new CorrelationId("corr-1"))),
         SourceChannel.CLI);
   }
 
   /** In-memory session that throws during open-book to exercise rollback-on-runtime-failure. */
-  private static final class ThrowingLedgerPlanSession extends InMemoryBookSession {
+  private static final class ThrowingLedgerPlanSession implements LedgerPlanSession, AutoCloseable {
+    private final InMemoryBookSession delegate = new InMemoryBookSession();
+    private final BookAdministrationSession throwingAdministrationSession =
+        new BookAdministrationSession() {
+          @Override
+          public OpenBookResult openBook(Instant initializedAt) {
+            throw new IllegalStateException("boom");
+          }
+
+          @Override
+          public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+              AccountCode accountCode,
+              AccountName accountName,
+              NormalBalance normalBalance,
+              Instant declaredAt) {
+            return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+          }
+
+          @Override
+          public void close() {
+            // Parent wrapper owns lifecycle.
+          }
+        };
     private boolean rollbackCalled;
 
     @Override
-    public OpenBookResult openBook(Instant initializedAt) {
-      throw new IllegalStateException("boom");
+    public BookAdministrationSession administrationSession() {
+      return throwingAdministrationSession;
+    }
+
+    @Override
+    public PostingBookSession postingSession() {
+      return delegate.postingSession();
+    }
+
+    @Override
+    public BookQuerySession querySession() {
+      return delegate.querySession();
+    }
+
+    @Override
+    public void beginLedgerPlanTransaction() {
+      delegate.beginLedgerPlanTransaction();
+    }
+
+    @Override
+    public void commitLedgerPlanTransaction() {
+      delegate.commitLedgerPlanTransaction();
     }
 
     @Override
     public void rollbackLedgerPlanTransaction() {
       rollbackCalled = true;
-      super.rollbackLedgerPlanTransaction();
+      delegate.rollbackLedgerPlanTransaction();
     }
 
     private boolean rollbackCalled() {
       return rollbackCalled;
+    }
+
+    @Override
+    public void close() {
+      delegate.close();
+    }
+  }
+
+  /** Test-only seam split that keeps queries uninitialized after a successful open-book step. */
+  private static final class ListAccountsRejectingLedgerPlanSession
+      implements LedgerPlanSession, AutoCloseable {
+    private final InMemoryBookSession delegate = new InMemoryBookSession();
+    private final BookQuerySession rejectingQuerySession =
+        new BookQuerySession() {
+          @Override
+          public dev.erst.fingrind.contract.BookInspection inspectBook() {
+            return delegate.inspectBook();
+          }
+
+          @Override
+          public boolean isInitialized() {
+            return false;
+          }
+
+          @Override
+          public dev.erst.fingrind.contract.AccountPage listAccounts(ListAccountsQuery query) {
+            return delegate.listAccounts(query);
+          }
+
+          @Override
+          public Optional<dev.erst.fingrind.contract.DeclaredAccount> findAccount(
+              AccountCode accountCode) {
+            return delegate.findAccount(accountCode);
+          }
+
+          @Override
+          public Optional<dev.erst.fingrind.contract.PostingFact> findPosting(PostingId postingId) {
+            return delegate.findPosting(postingId);
+          }
+
+          @Override
+          public dev.erst.fingrind.contract.PostingPage listPostings(ListPostingsQuery query) {
+            return delegate.listPostings(query);
+          }
+
+          @Override
+          public Optional<dev.erst.fingrind.contract.AccountBalanceSnapshot> accountBalance(
+              AccountBalanceQuery query) {
+            return delegate.accountBalance(query);
+          }
+
+          @Override
+          public void close() {
+            // Parent test fixture owns lifecycle.
+          }
+        };
+
+    @Override
+    public BookAdministrationSession administrationSession() {
+      return delegate.administrationSession();
+    }
+
+    @Override
+    public PostingBookSession postingSession() {
+      return delegate.postingSession();
+    }
+
+    @Override
+    public BookQuerySession querySession() {
+      return rejectingQuerySession;
+    }
+
+    @Override
+    public void beginLedgerPlanTransaction() {
+      delegate.beginLedgerPlanTransaction();
+    }
+
+    @Override
+    public void commitLedgerPlanTransaction() {
+      delegate.commitLedgerPlanTransaction();
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    @Override
+    public void close() {
+      delegate.close();
     }
   }
 }

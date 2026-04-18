@@ -1,0 +1,9 @@
+{
+  "planId": "plan-typo",
+  "steps": [
+    {
+      "stepId": "bad-kind",
+      "kind": "post_entry"
+    }
+  ]
+}

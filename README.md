@@ -22,7 +22,8 @@ The current model is intentionally strict:
 - posting lines must reference declared active accounts
 - one canonical current schema defines new books
 - new books use SQLite `STRICT` tables
-- there is no migration or backward-compatibility layer
+- FinGrind publishes sequential in-place migration as the book policy, and the current supported
+  on-disk format is `1`
 - every journal entry is single-currency
 - every journal-line amount is strictly positive
 - journal entries must balance before they can cross the write boundary
@@ -60,7 +61,7 @@ The book lifecycle is explicit:
 - `list-accounts` returns a paged account registry with `limit`, `offset`, and `hasMore`
 - `get-posting`, `list-postings`, and `account-balance` expose committed history and balances
 - `execute-plan` runs one ordered ledger plan atomically and returns a per-step execution journal
-- `preflight-entry` and `post-entry` reject a missing or unopened book with `book-not-initialized`
+- `preflight-entry` and `post-entry` reject a missing or unopened book with `posting-book-not-initialized`
 - `preflight-entry` and `post-entry` report undeclared or inactive accounts under `account-state-violations`
 - `preflight-entry` is advisory and not a durable commit guarantee
 
@@ -79,18 +80,21 @@ Current bundle targets are:
 - `linux-aarch64`
 - `windows-x86_64`
 
+The canonical machine-readable source for that matrix is
+`capabilities.environment.supportedPublicCliBundleTargets`.
+
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.15.0-macos-aarch64.tar.gz
-./fingrind-0.15.0-macos-aarch64/bin/fingrind help
+tar -xzf fingrind-0.16.0-macos-aarch64.tar.gz
+./fingrind-0.16.0-macos-aarch64/bin/fingrind help
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.15.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.15.0-windows-x86_64\bin\fingrind.cmd help
+Expand-Archive fingrind-0.16.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.16.0-windows-x86_64\bin\fingrind.cmd help
 ```
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
@@ -134,7 +138,7 @@ FinGrind download contract:
 ./gradlew :cli:shadowJar
 ./gradlew prepareManagedSqlite
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java -jar cli/build/libs/fingrind.jar help
+java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar help
 ```
 
 FinGrind does not support arbitrary host `libsqlite3` fallback.
@@ -319,13 +323,14 @@ Optional reversal links go in:
 
 ```json
 "reversal": {
-  "priorPostingId": "posting-previous"
+  "priorPostingId": "posting-previous",
+  "reason": "operator reversal"
 }
 ```
 
 `provenance` accepts:
 - required: `actorId`, `actorType`, `commandId`, `idempotencyKey`, `causationId`
-- optional: `correlationId`, `reason`
+- optional: `correlationId`
 
 `provenance.recordedAt` and `provenance.sourceChannel` are not accepted. FinGrind stamps committed
 audit metadata itself when `post-entry` succeeds.
@@ -339,7 +344,7 @@ Successful commits return a FinGrind-generated `postingId`. The default producti
 UUID v7 values.
 
 If `reversal` is present:
-- `provenance.reason` is required
+- `reversal.reason` is required
 - `priorPostingId` must already exist in the selected book
 - the reversal must negate the target posting exactly
 - only one reversal is allowed per target posting
@@ -348,14 +353,15 @@ If `reversal` is present:
 Current deterministic rejection codes include:
 - `book-already-initialized`
 - `book-contains-schema`
-- `book-not-initialized`
+- `administration-book-not-initialized`
+- `query-book-not-initialized`
+- `posting-book-not-initialized`
 - `account-normal-balance-conflict`
 - `posting-not-found`
 - `account-state-violations`
 - `unknown-account`
+- `inactive-account`
 - `duplicate-idempotency-key`
-- `reversal-reason-required`
-- `reversal-reason-forbidden`
 - `reversal-target-not-found`
 - `reversal-already-exists`
 - `reversal-does-not-negate-target`
@@ -380,7 +386,8 @@ Current deterministic rejection codes include:
   `trusted_schema=OFF`, `secure_delete=ON`, and `temp_store=MEMORY`.
 - The public bundle launcher resolves the managed SQLite library from its extracted bundle home.
 - The developer-only `java -jar ...` path requires `FINGRIND_SQLITE_LIBRARY` pointing at the
-  managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 library built by `prepareManagedSqlite`.
+  managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 library built by `prepareManagedSqlite`
+  and `--enable-native-access=ALL-UNNAMED` on the `java` command line.
 - For a local source checkout, `:cli:shadowJar` packages only the Java application surface.
   Run `./gradlew prepareManagedSqlite` as well before validating that developer-only raw-JAR path
   against the managed native library under `build/managed-sqlite/`.
@@ -409,8 +416,12 @@ Current deterministic rejection codes include:
   compatibility with the current binary.
 - `list-accounts` and `list-postings` return paginated payloads with `limit`, `offset`, and
   `hasMore`.
-- `execute-plan` returns `status: "committed"` on success and includes the durable plan journal in
-  `payload.journal`.
+- `execute-plan` returns `status: "plan-committed"` on success, `status: "plan-rejected"` for
+  deterministic step rejections, and `status: "plan-assertion-failed"` for failed assertions;
+  the bounded durable plan journal is included under `payload.journal` or `details.plan.journal`,
+  and single-posting commits keep `status: "committed"`. Plan-journal facts now carry explicit
+  `kind` metadata plus nested grouped `facts` for repeatable structures such as per-currency
+  balances.
 - FinGrind does not assume a default database location.
 - FinGrind does not accept SQLite URI `key=` or `hexkey=` transport, plaintext CLI passphrase
   arguments, or environment-variable passphrase transport; protected books always use the upstream
@@ -425,8 +436,9 @@ Current deterministic rejection codes include:
 - Using the wrong key file or wrong non-file passphrase source fails the runtime open with a
   structured `runtime-failure`, typically including `SQLITE_NOTADB`.
 - `capabilities` is the best machine-readable contract surface for commands, request fields,
-  account-registry rules, rejection descriptors, advisory preflight semantics, the
-  single-currency entry model, and the current protected-book runtime metadata.
+  ledger-plan execution semantics, account-registry rules, rejection descriptors, advisory
+  preflight semantics, the single-currency entry model, and the current protected-book runtime
+  metadata.
 - Command ids, display labels, output modes, help usage, quick-start examples, and shared query
   limits are rendered from the contract protocol catalog, and repository contract lint tests check
   docs and production Java for unregistered operation references.

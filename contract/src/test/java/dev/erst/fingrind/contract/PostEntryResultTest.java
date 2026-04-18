@@ -33,18 +33,18 @@ class PostEntryResultTest {
   }
 
   @Test
-  void rejected_holdsTypedRejection() {
-    PostEntryResult.Rejected result =
-        new PostEntryResult.Rejected(
+  void preflightRejected_holdsTypedRejection() {
+    PostEntryResult.PreflightRejected result =
+        new PostEntryResult.PreflightRejected(
             new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey());
 
     assertEquals(new PostingRejection.DuplicateIdempotencyKey(), result.rejection());
   }
 
   @Test
-  void rejected_rejectsNullRejection() {
+  void commitRejected_rejectsNullRejection() {
     assertThrows(
         NullPointerException.class,
-        () -> new PostEntryResult.Rejected(new IdempotencyKey("idem-1"), null));
+        () -> new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), null));
   }
 }
