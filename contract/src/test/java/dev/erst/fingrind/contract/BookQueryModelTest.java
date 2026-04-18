@@ -22,9 +22,12 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -77,19 +80,25 @@ class BookQueryModelTest {
   @SuppressWarnings("NullOptional")
   void listPostingsQuery_rejectsNullOptionalsAndValidatesBounds() {
     ListPostingsQuery query =
-        new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 50, 0);
+        new ListPostingsQuery(
+            Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty());
     ListPostingsQuery lowerBoundedQuery =
         new ListPostingsQuery(
-            Optional.empty(), Optional.of(LocalDate.parse("2026-04-08")), Optional.empty(), 50, 0);
+            Optional.empty(),
+            Optional.of(LocalDate.parse("2026-04-08")),
+            Optional.empty(),
+            50,
+            Optional.empty());
     ListPostingsQuery orderedRangeQuery =
         new ListPostingsQuery(
             Optional.empty(),
             Optional.of(LocalDate.parse("2026-04-08")),
             Optional.of(LocalDate.parse("2026-04-09")),
             50,
-            0);
+            Optional.empty());
 
     assertTrue(query.accountCode().isEmpty());
+    assertTrue(query.cursor().isEmpty());
     assertTrue(query.effectiveDateFrom().isEmpty());
     assertTrue(query.effectiveDateTo().isEmpty());
     assertEquals(Optional.of(LocalDate.parse("2026-04-08")), lowerBoundedQuery.effectiveDateFrom());
@@ -98,22 +107,26 @@ class BookQueryModelTest {
     assertEquals(200, ListPostingsQuery.maxLimit());
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(null, Optional.empty(), Optional.empty(), 1, 0));
+        () -> new ListPostingsQuery(null, Optional.empty(), Optional.empty(), 1, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(Optional.empty(), null, Optional.empty(), 1, 0));
+        () -> new ListPostingsQuery(Optional.empty(), null, Optional.empty(), 1, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), null, 1, 0));
+        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), null, 1, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 0, 0));
+        () ->
+            new ListPostingsQuery(
+                Optional.empty(), Optional.empty(), Optional.empty(), 0, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 201, 0));
+        () ->
+            new ListPostingsQuery(
+                Optional.empty(), Optional.empty(), Optional.empty(), 201, Optional.empty()));
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 1, -1));
+        NullPointerException.class,
+        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 1, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -122,7 +135,7 @@ class BookQueryModelTest {
                 Optional.of(LocalDate.parse("2026-04-09")),
                 Optional.of(LocalDate.parse("2026-04-08")),
                 1,
-                0));
+                Optional.empty()));
   }
 
   @Test
@@ -135,11 +148,71 @@ class BookQueryModelTest {
     assertThrows(IllegalArgumentException.class, () -> new AccountPage(List.of(), 1, -1, false));
 
     List<PostingFact> postings = new ArrayList<>(List.of(postingFact("posting-1", "idem-1")));
-    PostingPage postingPage = new PostingPage(postings, 50, 0, false);
+    PostingPage postingPage = new PostingPage(postings, 50, Optional.empty());
     postings.clear();
     assertEquals(1, postingPage.postings().size());
-    assertThrows(IllegalArgumentException.class, () -> new PostingPage(List.of(), 0, 0, false));
-    assertThrows(IllegalArgumentException.class, () -> new PostingPage(List.of(), 1, -1, false));
+    assertFalse(postingPage.hasMore());
+    assertThrows(
+        IllegalArgumentException.class, () -> new PostingPage(List.of(), 0, Optional.empty()));
+    assertThrows(NullPointerException.class, () -> new PostingPage(List.of(), 1, null));
+  }
+
+  @Test
+  void postingPageCursor_roundTripsStableWireValues() {
+    PostingFact postingFact = postingFact("posting-1", "idem-1");
+    PostingFact multilinePostingFact = postingFact("posting\n1", "idem-2");
+
+    PostingPageCursor cursor = PostingPageCursor.fromPosting(postingFact);
+    PostingPageCursor multilineCursor = PostingPageCursor.fromPosting(multilinePostingFact);
+
+    assertEquals(cursor, PostingPageCursor.fromWireValue(cursor.wireValue()));
+    assertEquals(multilineCursor, PostingPageCursor.fromWireValue(multilineCursor.wireValue()));
+    assertThrows(NullPointerException.class, () -> PostingPageCursor.fromWireValue(null));
+    assertThrows(IllegalArgumentException.class, () -> PostingPageCursor.fromWireValue("%"));
+    assertThrows(
+        IllegalArgumentException.class, () -> PostingPageCursor.fromWireValue("not-a-cursor"));
+    byte[] validBytes = Base64.getUrlDecoder().decode(cursor.wireValue());
+    byte[] unsupportedVersion = Arrays.copyOf(validBytes, validBytes.length);
+    unsupportedVersion[0] = 2;
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PostingPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(unsupportedVersion)));
+    byte[] truncated = Arrays.copyOf(validBytes, 20);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PostingPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(truncated)));
+    byte[] mismatchedLength = Arrays.copyOf(validBytes, validBytes.length);
+    ByteBuffer.wrap(mismatchedLength).putInt(21, 999);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PostingPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(mismatchedLength)));
+    byte[] negativeLength = Arrays.copyOf(validBytes, validBytes.length);
+    ByteBuffer.wrap(negativeLength).putInt(21, -1);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PostingPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(negativeLength)));
+    byte[] invalidEpochDay = Arrays.copyOf(validBytes, validBytes.length);
+    ByteBuffer.wrap(invalidEpochDay).putLong(1, Long.MAX_VALUE);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PostingPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(invalidEpochDay)));
+    byte[] invalidInstant = Arrays.copyOf(validBytes, validBytes.length);
+    ByteBuffer.wrap(invalidInstant).putLong(9, Long.MAX_VALUE);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PostingPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(invalidInstant)));
   }
 
   @Test
@@ -240,6 +313,9 @@ class BookQueryModelTest {
         BookQueryRejection.descriptors().stream()
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());
+    assertEquals(
+        BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+        BookQueryRejection.bookNotInitializedCode());
     assertThrows(NullPointerException.class, () -> new BookQueryRejection.UnknownAccount(null));
     assertThrows(NullPointerException.class, () -> new BookQueryRejection.PostingNotFound(null));
   }

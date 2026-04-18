@@ -478,7 +478,7 @@ public final class JazzerReplaySupport {
       LedgerPlan plan, String requestStatus, String failureMessage) {
     return new LedgerPlanReplayDetails(
         requestStatus,
-        plan.planId(),
+        plan.planId().value(),
         plan.steps().size(),
         plan.steps().getFirst().kind().wireValue(),
         plan.steps().getLast().kind().wireValue(),

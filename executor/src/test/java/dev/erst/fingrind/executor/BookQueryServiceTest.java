@@ -127,7 +127,7 @@ class BookQueryServiceTest {
                   Optional.empty(),
                   Optional.empty(),
                   20,
-                  0)));
+                  Optional.empty())));
     }
   }
 
@@ -139,7 +139,8 @@ class BookQueryServiceTest {
       assertEquals(
           new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.listPostings(
-              new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 20, 0)));
+              new ListPostingsQuery(
+                  Optional.empty(), Optional.empty(), Optional.empty(), 20, Optional.empty())));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -148,18 +149,21 @@ class BookQueryServiceTest {
       BookQueryService service = new BookQueryService(bookSession);
 
       assertEquals(
-          new ListPostingsResult.Listed(new PostingPage(List.of(postingFact), 20, 0, false)),
+          new ListPostingsResult.Listed(
+              new PostingPage(List.of(postingFact), 20, Optional.empty())),
           service.listPostings(
-              new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 20, 0)));
+              new ListPostingsQuery(
+                  Optional.empty(), Optional.empty(), Optional.empty(), 20, Optional.empty())));
       assertEquals(
-          new ListPostingsResult.Listed(new PostingPage(List.of(postingFact), 20, 0, false)),
+          new ListPostingsResult.Listed(
+              new PostingPage(List.of(postingFact), 20, Optional.empty())),
           service.listPostings(
               new ListPostingsQuery(
                   Optional.of(new AccountCode("1000")),
                   Optional.empty(),
                   Optional.empty(),
                   20,
-                  0)));
+                  Optional.empty())));
     }
   }
 

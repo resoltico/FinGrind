@@ -16,7 +16,7 @@ public class LedgerPlanRequestFuzzTest {
       if (plan == null) {
         throw new IllegalStateException("readLedgerPlan returned null");
       }
-      if (plan.planId().isBlank()) {
+      if (plan.planId().value().isBlank()) {
         throw new IllegalStateException("Parsed ledger plan retained a blank plan id.");
       }
       if (plan.steps().isEmpty()) {

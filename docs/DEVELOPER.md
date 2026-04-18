@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.16.0"
+version: "0.17.0"
 domain: DEVELOPER
 updated: "2026-04-17"
 route:
@@ -143,6 +143,15 @@ Current stance:
 - stable Java 26 features are preferred immediately
 - preview or incubator JDK 26 features stay off until there is a concrete architecture win worth
   the extra lifecycle cost
+
+Jackson dependency policy:
+- declare only tools.jackson.core:jackson-databind directly
+- do not add a separate direct jackson-annotations dependency
+- Jackson 3 intentionally still resolves the annotation artifact and source namespace from
+  com.fasterxml.jackson.annotation through its BOM, so those imports are expected here
+- the current annotation namespace used in source is inherited from the approved databind
+  entrypoint and is enforced by the Gradle verification policy plus round-trip regression tests,
+  not by ad hoc per-module choices
 
 ## Commands
 

@@ -3,7 +3,6 @@ junit-bom = "6.0.3"
 junit-jupiter = "6.0.3"
 junit-platform-launcher = "6.0.3"
 jackson-databind = "3.1.2"
-jackson-annotations = "2.21"
 jazzer = "0.30.0"
 errorprone = "2.49.0"
 errorprone-plugin = "5.1.0"
@@ -18,7 +17,6 @@ spotless = "8.4.0"
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson-databind" }
-jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson-annotations" }
 jazzer = { module = "com.code-intelligence:jazzer", version.ref = "jazzer" }
 jazzer-api = { module = "com.code-intelligence:jazzer-api", version.ref = "jazzer" }
 jazzer-junit = { module = "com.code-intelligence:jazzer-junit", version.ref = "jazzer" }

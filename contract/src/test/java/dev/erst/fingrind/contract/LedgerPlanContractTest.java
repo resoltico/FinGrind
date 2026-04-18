@@ -24,36 +24,39 @@ import org.junit.jupiter.api.Test;
 class LedgerPlanContractTest {
   @Test
   void ledgerPlan_validatesMandatoryShape() {
-    LedgerStep step = new LedgerStep.OpenBook("open");
-    LedgerPlan plan = new LedgerPlan("plan-1", List.of(step));
+    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    LedgerPlan plan = new LedgerPlan(planId("plan-1"), List.of(step));
 
-    assertEquals("plan-1", plan.planId());
+    assertEquals(planId("plan-1"), plan.planId());
     assertTrue(plan.beginsWithOpenBook());
-    assertThrows(IllegalArgumentException.class, () -> new LedgerPlan("", List.of(step)));
-    assertThrows(IllegalArgumentException.class, () -> new LedgerPlan("plan-1", List.of()));
+    assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId(""), List.of(step)));
+    assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId("plan-1"), List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new LedgerPlan(
-                "plan-1",
+                planId("plan-1"),
                 List.of(
-                    new LedgerStep.InspectBook("duplicate"),
-                    new LedgerStep.ListAccounts("duplicate", new ListAccountsQuery(50, 0)))));
+                    new LedgerStep.InspectBook(stepId("duplicate")),
+                    new LedgerStep.ListAccounts(
+                        stepId("duplicate"), new ListAccountsQuery(50, 0)))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new LedgerPlan(
-                "plan-1",
-                List.of(new LedgerStep.InspectBook("inspect"), new LedgerStep.OpenBook("open"))));
+                planId("plan-1"),
+                List.of(
+                    new LedgerStep.InspectBook(stepId("inspect")),
+                    new LedgerStep.OpenBook(stepId("open")))));
   }
 
   @Test
   void stepRecords_publishCanonicalKindsAndRejectInvalidShape() {
-    assertEquals(LedgerStepKind.OPEN_BOOK, new LedgerStep.OpenBook("open").kind());
+    assertEquals(LedgerStepKind.OPEN_BOOK, new LedgerStep.OpenBook(stepId("open")).kind());
     assertEquals(
         LedgerStepKind.DECLARE_ACCOUNT,
         new LedgerStep.DeclareAccount(
-                "declare",
+                stepId("declare"),
                 new DeclareAccountCommand(
                     new AccountCode("1000"),
                     new dev.erst.fingrind.core.AccountName("Cash"),
@@ -61,38 +64,39 @@ class LedgerPlanContractTest {
             .kind());
     assertEquals(LedgerStepKind.PREFLIGHT_ENTRY, postingStep(true).kind());
     assertEquals(LedgerStepKind.POST_ENTRY, postingStep(false).kind());
-    assertEquals(LedgerStepKind.INSPECT_BOOK, new LedgerStep.InspectBook("inspect").kind());
+    assertEquals(LedgerStepKind.INSPECT_BOOK, new LedgerStep.InspectBook(stepId("inspect")).kind());
     assertEquals(
         LedgerStepKind.LIST_ACCOUNTS,
-        new LedgerStep.ListAccounts("accounts", new ListAccountsQuery(50, 0)).kind());
+        new LedgerStep.ListAccounts(stepId("accounts"), new ListAccountsQuery(50, 0)).kind());
     assertEquals(
         LedgerStepKind.GET_POSTING,
-        new LedgerStep.GetPosting("get", new PostingId("posting-1")).kind());
+        new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")).kind());
     assertEquals(
         LedgerStepKind.LIST_POSTINGS,
         new LedgerStep.ListPostings(
-                "postings",
-                new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 50, 0))
+                stepId("postings"),
+                new ListPostingsQuery(
+                    Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty()))
             .kind());
     assertEquals(
         LedgerStepKind.ACCOUNT_BALANCE,
         new LedgerStep.AccountBalance(
-                "balance",
+                stepId("balance"),
                 new AccountBalanceQuery(
                     new AccountCode("1000"), Optional.empty(), Optional.empty()))
             .kind());
     assertEquals(
         LedgerStepKind.ASSERT,
         new LedgerStep.Assert(
-                "assert", new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
+                stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .kind());
     assertEquals(
-        Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
+        LedgerAssertionKind.ACCOUNT_DECLARED,
         new LedgerStep.Assert(
-                "assert", new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
+                stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .detailKind());
-    assertThrows(IllegalArgumentException.class, () -> new LedgerStep.OpenBook(" "));
-    assertThrows(NullPointerException.class, () -> new LedgerStep.Assert("assert", null));
+    assertThrows(IllegalArgumentException.class, () -> new LedgerStep.OpenBook(stepId(" ")));
+    assertThrows(NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), null));
   }
 
   @Test
@@ -136,50 +140,39 @@ class LedgerPlanContractTest {
     LedgerStepFailure failure = new LedgerStepFailure("rejected", "Rejected.", List.of(fact));
     LedgerJournalEntry success =
         new LedgerJournalEntry.Succeeded(
-            "post",
-            LedgerStepKind.POST_ENTRY,
-            Optional.empty(),
-            startedAt,
-            finishedAt,
-            List.of(fact));
+            stepId("post"), LedgerStepKind.POST_ENTRY, null, startedAt, finishedAt, List.of(fact));
     LedgerJournalEntry rejected =
         new LedgerJournalEntry.Rejected(
-            "post",
+            stepId("post"),
             LedgerStepKind.ASSERT,
-            Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
             startedAt,
             finishedAt,
             List.of(),
             failure);
     LedgerJournalEntry assertionFailed =
         new LedgerJournalEntry.AssertionFailed(
-            "assert",
+            stepId("assert"),
             LedgerStepKind.ASSERT,
-            Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
+            LedgerAssertionKind.ACCOUNT_DECLARED,
             startedAt,
             finishedAt,
             List.of(),
             new LedgerStepFailure("assertion-failed", "Assertion failed.", List.of()));
     LedgerExecutionJournal journal =
-        new LedgerExecutionJournal(
-            "plan-1", LedgerPlanStatus.SUCCEEDED, startedAt, finishedAt, List.of(success));
+        new LedgerExecutionJournal(startedAt, finishedAt, List.of(success));
     LedgerExecutionJournal rejectedJournal =
-        new LedgerExecutionJournal(
-            "plan-1", LedgerPlanStatus.REJECTED, startedAt, finishedAt, List.of(rejected));
+        new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejected));
     LedgerExecutionJournal assertionFailedJournal =
-        new LedgerExecutionJournal(
-            "plan-1",
-            LedgerPlanStatus.ASSERTION_FAILED,
-            startedAt,
-            finishedAt,
-            List.of(assertionFailed));
+        new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionFailed));
 
     assertEquals(List.of(fact), success.facts());
     assertEquals(failure, ((LedgerJournalEntry.Rejected) rejected).failure());
     assertEquals(LedgerPlanStatus.REJECTED, rejectedJournal.status());
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, assertionFailedJournal.status());
-    assertEquals(Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS), rejected.detailKind());
-    assertEquals("plan-1", new LedgerPlanResult.Succeeded("plan-1", journal).planId());
+    assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, rejected.detailKind());
+    assertEquals(
+        planId("plan-1"), new LedgerPlanResult.Succeeded(planId("plan-1"), journal).planId());
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("", "value"));
     assertThrows(NullPointerException.class, () -> LedgerFact.text("count", null));
     assertThrows(
@@ -188,47 +181,36 @@ class LedgerPlanContractTest {
         IllegalArgumentException.class, () -> new LedgerStepFailure("code", "", List.of()));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new LedgerExecutionJournal(
-                "plan-1", LedgerPlanStatus.SUCCEEDED, finishedAt, startedAt, List.of(success)));
+        () -> new LedgerExecutionJournal(finishedAt, startedAt, List.of(success)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LedgerExecutionJournal(startedAt, finishedAt, List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejected, success)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new LedgerExecutionJournal(
-                "plan-1", LedgerPlanStatus.REJECTED, startedAt, finishedAt, List.of()));
+                startedAt, finishedAt, List.of(success, rejected, assertionFailed)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new LedgerExecutionJournal(
-                "plan-1", LedgerPlanStatus.SUCCEEDED, startedAt, finishedAt, List.of(rejected)));
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionFailed, rejected)));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new LedgerExecutionJournal(
-                "plan-1", LedgerPlanStatus.REJECTED, startedAt, finishedAt, List.of(success)));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new LedgerExecutionJournal(
-                "plan-1",
-                LedgerPlanStatus.ASSERTION_FAILED,
-                startedAt,
-                finishedAt,
-                List.of(rejected)));
-    assertThrows(
-        IllegalArgumentException.class, () -> new LedgerPlanResult.Succeeded("other", journal));
-    assertThrows(
-        IllegalArgumentException.class, () -> new LedgerPlanResult.Rejected("plan-1", journal));
+        () -> new LedgerPlanResult.Rejected(planId("plan-1"), journal));
   }
 
   @Test
   void ledgerPlan_rejectsMoreThanTheProtocolStepLimit() {
     List<LedgerStep> steps =
         IntStream.rangeClosed(0, ProtocolLimits.LEDGER_PLAN_STEP_MAX)
-            .mapToObj(index -> (LedgerStep) new LedgerStep.InspectBook("inspect-" + index))
+            .mapToObj(index -> (LedgerStep) new LedgerStep.InspectBook(stepId("inspect-" + index)))
             .toList();
 
-    assertThrows(IllegalArgumentException.class, () -> new LedgerPlan("plan-too-large", steps));
+    assertThrows(
+        IllegalArgumentException.class, () -> new LedgerPlan(planId("plan-too-large"), steps));
   }
 
   @Test
@@ -273,7 +255,15 @@ class LedgerPlanContractTest {
   private static LedgerStep postingStep(boolean preflight) {
     PostEntryCommand command = ContractFixtures.postEntryCommand("idem-1");
     return preflight
-        ? new LedgerStep.PreflightEntry("preflight", command)
-        : new LedgerStep.PostEntry("post", command);
+        ? new LedgerStep.PreflightEntry(stepId("preflight"), command)
+        : new LedgerStep.PostEntry(stepId("post"), command);
+  }
+
+  private static LedgerPlanId planId(String value) {
+    return new LedgerPlanId(value);
+  }
+
+  private static LedgerStepId stepId(String value) {
+    return new LedgerStepId(value);
   }
 }

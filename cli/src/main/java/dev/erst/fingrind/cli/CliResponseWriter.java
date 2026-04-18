@@ -1,7 +1,19 @@
 package dev.erst.fingrind.cli;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.contract.AccountBalanceResult;
+import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.ContractTemplates;
+import dev.erst.fingrind.contract.DeclareAccountResult;
+import dev.erst.fingrind.contract.GetPostingResult;
+import dev.erst.fingrind.contract.LedgerPlanResult;
+import dev.erst.fingrind.contract.LedgerPlanStatus;
+import dev.erst.fingrind.contract.ListAccountsResult;
+import dev.erst.fingrind.contract.ListPostingsResult;
+import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;

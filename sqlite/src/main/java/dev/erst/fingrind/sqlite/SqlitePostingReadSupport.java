@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
+import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
@@ -44,19 +45,29 @@ final class SqlitePostingReadSupport {
     boolean filterAccount = query.accountCode().isPresent();
     boolean filterEffectiveDateFrom = query.effectiveDateFrom().isPresent();
     boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
+    boolean filterCursor = query.cursor().isPresent();
     String sql =
         SqlitePostingSql.listPostings(
-            filterAccount, filterEffectiveDateFrom, filterEffectiveDateTo);
+            filterAccount, filterEffectiveDateFrom, filterEffectiveDateTo, filterCursor);
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindPostingPageQuery(
-          statement, query, filterAccount, filterEffectiveDateFrom, filterEffectiveDateTo);
+          statement,
+          query,
+          filterAccount,
+          filterEffectiveDateFrom,
+          filterEffectiveDateTo,
+          filterCursor);
       while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
         postings.add(loadPostingRow(activeDatabase, statement));
       }
     }
     boolean hasMore = postings.size() > query.limit();
     List<PostingFact> pageItems = hasMore ? postings.subList(0, query.limit()) : postings;
-    return new PostingPage(pageItems, query.limit(), query.offset(), hasMore);
+    Optional<PostingPageCursor> nextCursor =
+        hasMore
+            ? Optional.of(PostingPageCursor.fromPosting(pageItems.getLast()))
+            : Optional.empty();
+    return new PostingPage(pageItems, query.limit(), nextCursor);
   }
 
   Optional<PostingFact> findOnePosting(
@@ -120,7 +131,8 @@ final class SqlitePostingReadSupport {
       ListPostingsQuery query,
       boolean filterAccount,
       boolean filterEffectiveDateFrom,
-      boolean filterEffectiveDateTo)
+      boolean filterEffectiveDateTo,
+      boolean filterCursor)
       throws SqliteNativeException {
     int bindIndex = 1;
     if (filterAccount) {
@@ -135,9 +147,22 @@ final class SqlitePostingReadSupport {
       statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
       bindIndex++;
     }
+    if (filterCursor) {
+      PostingPageCursor cursor = query.cursor().orElseThrow();
+      statement.bindText(bindIndex, cursor.effectiveDate().toString());
+      bindIndex++;
+      statement.bindText(bindIndex, cursor.effectiveDate().toString());
+      bindIndex++;
+      statement.bindText(bindIndex, cursor.recordedAt().toString());
+      bindIndex++;
+      statement.bindText(bindIndex, cursor.effectiveDate().toString());
+      bindIndex++;
+      statement.bindText(bindIndex, cursor.recordedAt().toString());
+      bindIndex++;
+      statement.bindText(bindIndex, cursor.postingId().value());
+      bindIndex++;
+    }
     statement.bindInt(bindIndex, query.limit() + 1);
-    bindIndex++;
-    statement.bindInt(bindIndex, query.offset());
   }
 
   private static Totals totalsFor(

@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
@@ -155,82 +156,11 @@ final class CliArguments {
 
   private static CliCommand parseListPostingsCommand(List<String> arguments) {
     ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
-    Optional<String> accountCodeValue = Optional.empty();
-    Optional<LocalDate> effectiveDateFrom = Optional.empty();
-    Optional<LocalDate> effectiveDateTo = Optional.empty();
+    @Nullable String accountCodeValue = null;
+    @Nullable LocalDate effectiveDateFrom = null;
+    @Nullable LocalDate effectiveDateTo = null;
     Integer limit = null;
-    Integer offset = null;
-    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
-    while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.ACCOUNT_CODE -> {
-          if (accountCodeValue.isPresent()) {
-            throw invalid(
-                ProtocolOptions.ACCOUNT_CODE,
-                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
-          }
-          accountCodeValue =
-              Optional.of(requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE));
-        }
-        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
-          if (effectiveDateFrom.isPresent()) {
-            throw invalid(
-                ProtocolOptions.EFFECTIVE_DATE_FROM,
-                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
-          }
-          effectiveDateFrom =
-              Optional.of(
-                  parseLocalDateOption(
-                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
-                      ProtocolOptions.EFFECTIVE_DATE_FROM));
-        }
-        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
-          if (effectiveDateTo.isPresent()) {
-            throw invalid(
-                ProtocolOptions.EFFECTIVE_DATE_TO,
-                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
-          }
-          effectiveDateTo =
-              Optional.of(
-                  parseLocalDateOption(
-                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
-                      ProtocolOptions.EFFECTIVE_DATE_TO));
-        }
-        case ProtocolOptions.LIMIT -> {
-          if (limit != null) {
-            throw invalid(ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
-          }
-          limit =
-              parseIntegerOption(
-                  requireValue(argumentIterator, ProtocolOptions.LIMIT), ProtocolOptions.LIMIT);
-        }
-        case ProtocolOptions.OFFSET -> {
-          if (offset != null) {
-            throw invalid(ProtocolOptions.OFFSET, "Duplicate argument: " + ProtocolOptions.OFFSET);
-          }
-          offset =
-              parseIntegerOption(
-                  requireValue(argumentIterator, ProtocolOptions.OFFSET), ProtocolOptions.OFFSET);
-        }
-        default -> throw invalid(argument, "Unsupported argument: " + argument);
-      }
-    }
-    return new CliCommand.ListPostings(
-        parsedArguments.bookAccess(),
-        new ListPostingsQuery(
-            accountCodeValue.map(AccountCode::new),
-            effectiveDateFrom,
-            effectiveDateTo,
-            limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit,
-            offset == null ? ProtocolLimits.DEFAULT_PAGE_OFFSET : offset));
-  }
-
-  private static CliCommand parseAccountBalanceCommand(List<String> arguments) {
-    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
-    String accountCodeValue = null;
-    Optional<LocalDate> effectiveDateFrom = Optional.empty();
-    Optional<LocalDate> effectiveDateTo = Optional.empty();
+    @Nullable String cursor = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -244,28 +174,92 @@ final class CliArguments {
           accountCodeValue = requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
         }
         case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
-          if (effectiveDateFrom.isPresent()) {
+          if (effectiveDateFrom != null) {
             throw invalid(
                 ProtocolOptions.EFFECTIVE_DATE_FROM,
                 "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
           }
           effectiveDateFrom =
-              Optional.of(
-                  parseLocalDateOption(
-                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
-                      ProtocolOptions.EFFECTIVE_DATE_FROM));
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                  ProtocolOptions.EFFECTIVE_DATE_FROM);
         }
         case ProtocolOptions.EFFECTIVE_DATE_TO -> {
-          if (effectiveDateTo.isPresent()) {
+          if (effectiveDateTo != null) {
             throw invalid(
                 ProtocolOptions.EFFECTIVE_DATE_TO,
                 "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
           }
           effectiveDateTo =
-              Optional.of(
-                  parseLocalDateOption(
-                      requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
-                      ProtocolOptions.EFFECTIVE_DATE_TO));
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                  ProtocolOptions.EFFECTIVE_DATE_TO);
+        }
+        case ProtocolOptions.LIMIT -> {
+          if (limit != null) {
+            throw invalid(ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
+          }
+          limit =
+              parseIntegerOption(
+                  requireValue(argumentIterator, ProtocolOptions.LIMIT), ProtocolOptions.LIMIT);
+        }
+        case ProtocolOptions.CURSOR -> {
+          if (cursor != null) {
+            throw invalid(ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
+          }
+          cursor = requireValue(argumentIterator, ProtocolOptions.CURSOR);
+        }
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    return new CliCommand.ListPostings(
+        parsedArguments.bookAccess(),
+        new ListPostingsQuery(
+            Optional.ofNullable(accountCodeValue).map(AccountCode::new),
+            Optional.ofNullable(effectiveDateFrom),
+            Optional.ofNullable(effectiveDateTo),
+            limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit,
+            Optional.ofNullable(cursor).map(PostingPageCursor::fromWireValue)));
+  }
+
+  private static CliCommand parseAccountBalanceCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    String accountCodeValue = null;
+    @Nullable LocalDate effectiveDateFrom = null;
+    @Nullable LocalDate effectiveDateTo = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.ACCOUNT_CODE -> {
+          if (accountCodeValue != null) {
+            throw invalid(
+                ProtocolOptions.ACCOUNT_CODE,
+                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
+          }
+          accountCodeValue = requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
+          if (effectiveDateFrom != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
+          }
+          effectiveDateFrom =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                  ProtocolOptions.EFFECTIVE_DATE_FROM);
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
+          if (effectiveDateTo != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_TO,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+          }
+          effectiveDateTo =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                  ProtocolOptions.EFFECTIVE_DATE_TO);
         }
         default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
@@ -278,7 +272,9 @@ final class CliArguments {
     return new CliCommand.AccountBalance(
         parsedArguments.bookAccess(),
         new AccountBalanceQuery(
-            new AccountCode(accountCodeValue), effectiveDateFrom, effectiveDateTo));
+            new AccountCode(accountCodeValue),
+            Optional.ofNullable(effectiveDateFrom),
+            Optional.ofNullable(effectiveDateTo)));
   }
 
   private static CliCommand parseRekeyBookCommand(List<String> arguments) {

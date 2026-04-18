@@ -96,7 +96,7 @@ interface CliResponseJsonModels {
   record JournalLinePayload(String accountCode, String side, String currencyCode, String amount) {}
 
   record PostingListPayload(
-      int limit, int offset, boolean hasMore, List<PostingPayload> postings) {}
+      int limit, @Nullable String nextCursor, List<PostingPayload> postings) {}
 
   record AccountListPayload(
       int limit, int offset, boolean hasMore, List<DeclaredAccountPayload> accounts) {}
@@ -136,11 +136,7 @@ interface CliResponseJsonModels {
   record LedgerPlanPayload(String planId, String status, LedgerExecutionJournalPayload journal) {}
 
   record LedgerExecutionJournalPayload(
-      String planId,
-      String status,
-      String startedAt,
-      String finishedAt,
-      List<LedgerJournalEntryPayload> steps) {}
+      String startedAt, String finishedAt, List<LedgerJournalEntryPayload> steps) {}
 
   record LedgerJournalEntryPayload(
       String stepId,

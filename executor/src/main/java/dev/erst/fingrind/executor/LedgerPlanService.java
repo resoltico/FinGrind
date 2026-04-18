@@ -1,6 +1,28 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.contract.AccountBalanceResult;
+import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.CurrencyBalance;
+import dev.erst.fingrind.contract.DeclareAccountResult;
+import dev.erst.fingrind.contract.LedgerAssertion;
+import dev.erst.fingrind.contract.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.LedgerFact;
+import dev.erst.fingrind.contract.LedgerJournalEntry;
+import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.LedgerPlanId;
+import dev.erst.fingrind.contract.LedgerPlanResult;
+import dev.erst.fingrind.contract.LedgerPlanStatus;
+import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.contract.LedgerStepStatus;
+import dev.erst.fingrind.contract.ListAccountsResult;
+import dev.erst.fingrind.contract.ListPostingsResult;
+import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.RejectionNarrative;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,8 +32,6 @@ import java.util.Optional;
 
 /** Executes canonical AI-agent ledger plans against one atomic book session. */
 public final class LedgerPlanService {
-  private static final String ASSERTION_FAILED = "assertion-failed";
-
   private final LedgerPlanSession planSession;
   private final Clock clock;
   private final BookAdministrationService bookAdministrationService;
@@ -180,9 +200,10 @@ public final class LedgerPlanService {
 
   private StepOutcome getPostingOutcome(LedgerStep.GetPosting step) {
     return switch (bookQueryService.getPosting(step.postingId())) {
-      case GetPostingResult.Found found ->
+      case dev.erst.fingrind.contract.GetPostingResult.Found found ->
           stepSucceeded(postingFacts(found.postingFact()).toArray(LedgerFact[]::new));
-      case GetPostingResult.Rejected rejected -> queryRejection(rejected.rejection());
+      case dev.erst.fingrind.contract.GetPostingResult.Rejected rejected ->
+          queryRejection(rejected.rejection());
     };
   }
 
@@ -312,16 +333,18 @@ public final class LedgerPlanService {
         LedgerFact.text("recordedAt", postingFact.provenance().recordedAt().toString()));
   }
 
-  private static StepOutcome administrationRejection(BookAdministrationRejection rejection) {
+  private static StepOutcome administrationRejection(
+      dev.erst.fingrind.contract.BookAdministrationRejection rejection) {
     return stepRejected(
-        BookAdministrationRejection.wireCode(rejection),
+        dev.erst.fingrind.contract.BookAdministrationRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         RejectionNarrative.facts(rejection));
   }
 
-  private static StepOutcome queryRejection(BookQueryRejection rejection) {
+  private static StepOutcome queryRejection(
+      dev.erst.fingrind.contract.BookQueryRejection rejection) {
     return stepRejected(
-        BookQueryRejection.wireCode(rejection),
+        dev.erst.fingrind.contract.BookQueryRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         RejectionNarrative.facts(rejection));
   }
@@ -334,26 +357,28 @@ public final class LedgerPlanService {
   }
 
   private static StepOutcome assertionFailure(String message, LedgerFact... facts) {
-    return stepAssertionFailed(new LedgerStepFailure(ASSERTION_FAILED, message, List.of(facts)));
+    return stepAssertionFailed(
+        new LedgerStepFailure(
+            LedgerStepStatus.ASSERTION_FAILED.wireValue(), message, List.of(facts)));
   }
 
   private static String missingBookCode(LedgerStep firstStep) {
     return switch (firstStep.kind()) {
       case OPEN_BOOK, DECLARE_ACCOUNT ->
-          BookAdministrationRejection.wireCode(
-              new BookAdministrationRejection.BookNotInitialized());
-      case PREFLIGHT_ENTRY, POST_ENTRY ->
-          PostingRejection.wireCode(new PostingRejection.BookNotInitialized());
+          dev.erst.fingrind.contract.BookAdministrationRejection.bookNotInitializedCode();
+      case PREFLIGHT_ENTRY, POST_ENTRY -> PostingRejection.bookNotInitializedCode();
       case INSPECT_BOOK, LIST_ACCOUNTS, GET_POSTING, LIST_POSTINGS, ACCOUNT_BALANCE, ASSERT ->
-          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized());
+          dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode();
     };
   }
 
   private LedgerPlanResult result(
-      String planId, LedgerPlanStatus status, Instant startedAt, List<LedgerJournalEntry> entries) {
+      LedgerPlanId planId,
+      LedgerPlanStatus status,
+      Instant startedAt,
+      List<LedgerJournalEntry> entries) {
     LedgerExecutionJournal journal =
-        new LedgerExecutionJournal(
-            planId, status, startedAt, Instant.now(clock), List.copyOf(entries));
+        new LedgerExecutionJournal(startedAt, Instant.now(clock), List.copyOf(entries));
     return switch (status) {
       case SUCCEEDED -> new LedgerPlanResult.Succeeded(planId, journal);
       case REJECTED -> new LedgerPlanResult.Rejected(planId, journal);

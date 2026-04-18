@@ -11,11 +11,12 @@ public record ListPostingsQuery(
     Optional<AccountCode> accountCode,
     EffectiveDateRange effectiveDateRange,
     int limit,
-    int offset) {
+    Optional<PostingPageCursor> cursor) {
   /** Validates one posting-list query. */
   public ListPostingsQuery {
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    Objects.requireNonNull(cursor, "cursor");
     if (limit < ProtocolLimits.PAGE_LIMIT_MIN || limit > ProtocolLimits.PAGE_LIMIT_MAX) {
       throw new IllegalArgumentException(
           "Posting list limit must be between "
@@ -23,9 +24,6 @@ public record ListPostingsQuery(
               + " and "
               + ProtocolLimits.PAGE_LIMIT_MAX
               + ".");
-    }
-    if (offset < ProtocolLimits.PAGE_OFFSET_MIN) {
-      throw new IllegalArgumentException("Posting list offset must not be negative.");
     }
   }
 
@@ -35,8 +33,8 @@ public record ListPostingsQuery(
       Optional<LocalDate> effectiveDateFrom,
       Optional<LocalDate> effectiveDateTo,
       int limit,
-      int offset) {
-    this(accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo), limit, offset);
+      Optional<PostingPageCursor> cursor) {
+    this(accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo), limit, cursor);
   }
 
   /** Returns the optional lower effective-date bound carried by this query. */

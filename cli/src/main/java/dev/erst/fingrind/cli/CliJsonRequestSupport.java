@@ -179,12 +179,12 @@ final class CliJsonRequestSupport {
     return OptionalInt.of(fieldNode.intValue());
   }
 
-  static Optional<ObjectNode> optionalObject(ObjectNode rootNode, String fieldName) {
+  static @Nullable ObjectNode optionalObject(ObjectNode rootNode, String fieldName) {
     JsonNode fieldNode = rootNode.get(fieldName);
     if (fieldNode == null || fieldNode.isNull()) {
-      return Optional.empty();
+      return null;
     }
-    return Optional.of(requireObjectNode(fieldNode, fieldName));
+    return requireObjectNode(fieldNode, fieldName);
   }
 
   static BigDecimal parseAmount(String amountText) {

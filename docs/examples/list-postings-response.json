@@ -1,9 +1,8 @@
 {
   "status": "ok",
   "payload": {
-    "limit": 25,
-    "offset": 0,
-    "hasMore": false,
+    "limit": 1,
+    "nextCursor": "AQAAAAAAAFBHAAAAAGnWQ0AAAAAAAAAAJDAxOTYzYzcwLThkNjUtN2I1Ni04YTY0LTNjOTI3NDVkOGY3Mg",
     "postings": [
       {
         "postingId": "01963c70-8d65-7b56-8a64-3c92745d8f72",

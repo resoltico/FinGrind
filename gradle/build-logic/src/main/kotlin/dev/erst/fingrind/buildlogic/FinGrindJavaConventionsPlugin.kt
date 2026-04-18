@@ -51,6 +51,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             pluginManager.withPlugin("java-test-fixtures") {
                 dependencies.add("testFixturesCompileOnly", libs.library("jspecify"))
             }
+            val sourcePolicyTask = registerJavaSourcePolicyTask()
+            val jacksonDependencyPolicyTask = registerJacksonDependencyPolicyTask()
 
             extensions.configure<SpotlessExtension> {
                 lineEndings = LineEnding.UNIX
@@ -202,6 +204,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             tasks.named("check") {
                 dependsOn("spotlessCheck")
                 dependsOn("jacocoTestCoverageVerification")
+                dependsOn(sourcePolicyTask)
+                dependsOn(jacksonDependencyPolicyTask)
             }
         }
     }

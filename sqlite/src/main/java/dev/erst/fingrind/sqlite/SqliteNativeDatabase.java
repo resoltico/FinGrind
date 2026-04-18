@@ -5,7 +5,7 @@ import java.lang.foreign.MemorySegment;
 import java.util.Objects;
 
 /** Open in-process SQLite database handle backed by the configured SQLite C library. */
-class SqliteNativeDatabase {
+class SqliteNativeDatabase implements AutoCloseable {
   private final MemorySegment databaseHandle;
 
   private boolean closed;
@@ -43,7 +43,8 @@ class SqliteNativeDatabase {
     }
   }
 
-  void close() throws SqliteNativeException {
+  @Override
+  public void close() throws SqliteNativeException {
     if (closed) {
       return;
     }

@@ -22,6 +22,11 @@ public sealed interface PostingRejection
     return descriptorFor(rejection).code();
   }
 
+  /** Returns the stable wire code for the missing-book posting rejection. */
+  static String bookNotInitializedCode() {
+    return Descriptor.BOOK_NOT_INITIALIZED.code();
+  }
+
   /** Returns the stable wire code for one account-state violation detail. */
   static String wireCode(AccountStateViolation violation) {
     return detailDescriptorFor(violation).code();

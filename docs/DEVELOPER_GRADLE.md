@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.16.0"
+version: "0.17.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-17"
 route:
@@ -218,6 +218,35 @@ Why this rule exists:
   on one command vocabulary
 - adding or renaming a command should fail fast unless the contract protocol registry, docs, and
   renderers stay in sync
+
+### Source and dependency policy
+
+FinGrind now treats import style and Jackson dependency ownership as first-class build invariants,
+not review-time preferences.
+
+Rules:
+- Java source files under any `src/*/java` tree must not use wildcard imports
+- direct Jackson dependencies may only enter through tools.jackson.core:jackson-databind
+- direct `com.fasterxml.jackson.core:*` declarations are forbidden even in tests or the nested
+  Jazzer build
+- do not add a separate repo-owned jackson-annotations version pin; FinGrind inherits the
+  annotation artifact selected by the approved Jackson databind entrypoint
+- source imports from `com.fasterxml.jackson.annotation` are still correct here because the
+  approved Jackson 3 databind entrypoint intentionally keeps using that upstream annotation
+  namespace
+
+Why this rule exists:
+- wildcard imports hide real source dependencies and make architectural review harder
+- the repeated Jackson 2.x vs 3.x review churn came from leaving the repo without an explicit
+  ownership rule, even though the runtime behavior was already exercised by tests
+- one direct Jackson entrypoint means upgrades happen in one place, while source and replay tests
+  keep null omission and polymorphic replay behavior honest
+
+Repository-specific note:
+- `verifyJavaSourcePolicies` now fails `check` when wildcard imports appear in Java source sets
+- `verifyJacksonDependencyPolicy` now fails `check` for any direct Jackson dependency declaration
+  outside tools.jackson.core:jackson-databind
+- these checks run in both the root product build and the nested Jazzer build
 
 ---
 

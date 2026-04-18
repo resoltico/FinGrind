@@ -20,6 +20,11 @@ public sealed interface BookAdministrationRejection
     return descriptorFor(rejection).code();
   }
 
+  /** Returns the stable wire code for the missing-book administration rejection. */
+  static String bookNotInitializedCode() {
+    return Descriptor.BOOK_NOT_INITIALIZED.code();
+  }
+
   /** Returns the canonical machine descriptors for every permitted administration rejection. */
   static List<ContractResponse.RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();

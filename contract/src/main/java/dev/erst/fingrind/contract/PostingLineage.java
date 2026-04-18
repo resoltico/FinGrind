@@ -20,7 +20,7 @@ public sealed interface PostingLineage permits PostingLineage.Direct, PostingLin
 
   /** Builds a direct posting lineage with no reversal target. */
   static PostingLineage direct() {
-    return Direct.INSTANCE;
+    return new Direct();
   }
 
   /** Builds one reversal lineage for the supplied prior posting and reason. */
@@ -29,9 +29,7 @@ public sealed interface PostingLineage permits PostingLineage.Direct, PostingLin
   }
 
   /** Direct posting with no reversal target. */
-  enum Direct implements PostingLineage {
-    INSTANCE;
-
+  record Direct() implements PostingLineage {
     @Override
     public Optional<ReversalReference> reversalReference() {
       return Optional.empty();

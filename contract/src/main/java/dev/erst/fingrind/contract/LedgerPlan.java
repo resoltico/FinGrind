@@ -5,14 +5,11 @@ import java.util.List;
 import java.util.Objects;
 
 /** Canonical AI-agent-first plan containing ordered ledger steps. */
-public record LedgerPlan(String planId, List<LedgerStep> steps) {
+public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps) {
   /** Validates one ledger plan. */
   public LedgerPlan {
     Objects.requireNonNull(planId, "planId");
     steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
-    if (planId.isBlank()) {
-      throw new IllegalArgumentException("Ledger planId must not be blank.");
-    }
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Ledger plan must contain at least one step.");
     }

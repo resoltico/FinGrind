@@ -143,6 +143,8 @@ final class SqliteNativeLibrary {
     try {
       int resultCode = (int) effectiveSqlite3CloseV2(sqliteApi).invokeExact(databaseHandle);
       if (resultCode != SQLITE_OK) {
+        // sqlite3_close_v2 refused to release the handle, so the native connection remains active
+        // and must continue to count as open until a later close attempt succeeds.
         throw failure(resultCode, sqliteApi);
       }
       ACTIVE_CONNECTIONS.decrementAndGet();

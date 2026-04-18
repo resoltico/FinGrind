@@ -5,6 +5,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-04-18
+
+### Changed
+- Changed `list-postings` pagination from offset scans to opaque cursor-based keyset paging, so
+  posting-history reads now return `nextCursor` instead of `offset` / `hasMore` and can resume
+  without rescanning earlier history pages.
+- Restored `BookMigrationPolicy` to a closed enum vocabulary with explicit wire-value helpers, so
+  the migration-policy contract remains exhaustively switchable while preserving the same stable
+  sequential-in-place public value.
+- Tightened repository verification so every Java source set now fails on wildcard imports and
+  every product or Jazzer build fails on direct Jackson dependencies outside the single approved
+  tools.jackson.core:jackson-databind entrypoint.
+- Clarified the repository-wide Jackson rule: FinGrind uses the upstream Jackson 3 databind
+  entrypoint while intentionally keeping the `com.fasterxml.jackson.annotation` source namespace
+  that Jackson 3 still resolves through its BOM, and regression tests now pin that behavior.
+
+### Fixed
+- Added the durable `posting_fact_by_effective_recorded_posting` SQLite index and tightened the
+  account upsert SQL so posting-history keyset scans are index-backed and account redeclarations can
+  no longer overwrite immutable `normalBalance` or original declaration timestamps at the storage
+  layer.
+- Added the durable `journal_line_by_account_code` SQLite index and bulk account lookups for
+  posting validation, reducing repeated scans for account-balance reads and multi-line posting
+  admission checks.
+- Cached interpreted SQLite book-state metadata inside one opened store session so repeated
+  inspection, validation, and query calls no longer re-run the same PRAGMA and schema probes.
+- Updated the SQLite schema reference, user docs, examples, and application API docs to reflect
+  the full current schema, cursor-based posting-history pagination, and the current machine-facing
+  response shapes.
+- Normalized direct posting lineage onto the same record-based sealed-family style as reversal
+  lineage, made direct query-session reads consistently require initialized books, and hardened the
+  SQLite close/rekey paths so native close failures preserve retryable handles instead of silently
+  discarding session state.
+- Exposed canonical missing-book rejection codes without dummy record allocation, and documented
+  the Jackson dependency-entrypoint policy so the build, docs, and source tree all enforce the same
+  no-ambiguity rule.
+
 ## [0.16.0] - 2026-04-18
 
 ### Changed
@@ -488,7 +525,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.17.0
 [0.16.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.16.0
 [0.15.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.15.0
 [0.14.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.14.0

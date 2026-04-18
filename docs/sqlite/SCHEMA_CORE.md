@@ -1,21 +1,34 @@
 ---
 afad: "3.5"
-version: "0.16.0"
+version: "0.17.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-17"
+updated: "2026-04-18"
 route:
-  keywords: [fingrind, sqlite, schema, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
-  questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book"]
+  keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
+  questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
 ---
 
 # SQLite Core Schema
 
 **Purpose**: Current durable schema for one FinGrind book file.
-**Source of truth**: [`book_schema.sql`](/Users/erst/Tools/FinGrind/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
+**Source of truth**: [`book_schema.sql`](../../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
 
 ## Canonical SQL
 
 ```sql
+create table if not exists book_meta (
+    key text primary key,
+    value text not null
+) strict;
+
+create table if not exists account (
+    account_code text primary key,
+    account_name text not null,
+    normal_balance text not null check (normal_balance in ('DEBIT', 'CREDIT')),
+    active integer not null check (active in (0, 1)),
+    declared_at text not null
+) strict;
+
 create table if not exists posting_fact (
     posting_id text primary key,
     effective_date text not null,
@@ -46,11 +59,18 @@ create table if not exists journal_line (
     currency_code text not null,
     amount text not null,
     primary key (posting_id, line_order),
-    foreign key (posting_id) references posting_fact(posting_id)
+    foreign key (posting_id) references posting_fact(posting_id),
+    foreign key (account_code) references account(account_code)
 ) strict;
 
 create index if not exists posting_fact_by_prior_posting_id
     on posting_fact (prior_posting_id);
+
+create index if not exists posting_fact_by_effective_recorded_posting
+    on posting_fact (effective_date desc, recorded_at desc, posting_id desc);
+
+create index if not exists journal_line_by_account_code
+    on journal_line (account_code, posting_id, line_order);
 
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
@@ -58,6 +78,25 @@ create unique index if not exists posting_fact_one_reversal_per_target
 ```
 
 ## Table Responsibilities
+
+### `book_meta`
+
+`book_meta` stores singleton book-level metadata values keyed by stable string names.
+
+Important rules:
+- `initializedAt` is stored here when `open-book` creates one initialized FinGrind book
+- the table is `STRICT`, so SQLite rejects non-lossless type mismatches at the storage layer
+
+### `account`
+
+`account` stores the declared account registry for one book.
+
+Important rules:
+- `account_code` is the durable primary key for one declared account
+- `normal_balance` is constrained to `DEBIT` or `CREDIT`
+- `active` is constrained to `0` or `1`
+- `declared_at` records the original declaration instant
+- the table is `STRICT`, so SQLite rejects non-lossless type mismatches at the storage layer
 
 ### `posting_fact`
 
@@ -86,21 +125,33 @@ Important rules:
 - rows are ordered by `line_order`
 - the composite primary key is `(posting_id, line_order)`
 - `posting_id` must exist in `posting_fact`
+- `account_code` must exist in `account`
 - `entry_side` is constrained to `DEBIT` or `CREDIT`
 - `line_order` must be zero or greater
 - balancing is enforced in the domain model before persistence, not by SQL triggers
 - the table is `STRICT`, so SQLite rejects non-lossless type mismatches at the storage layer
 
+## Indexes
+
+- `posting_fact_by_prior_posting_id` accelerates reversal-target lookups
+- `posting_fact_by_effective_recorded_posting` accelerates reverse-chronological posting-history
+  pages, including cursor-resume reads bounded by effective date, recorded-at, and posting id
+- `journal_line_by_account_code` accelerates account-balance reads and account-filtered posting-history scans
+- `posting_fact_one_reversal_per_target` enforces the one-reversal-per-target rule
+
 ## Schema Invariants
 
 - One SQLite file is one book.
 - One `posting_fact` row is one committed posting fact.
+- One `account` row is one declared account.
+- One `book_meta` row is one keyed book-level metadata fact.
 - Request provenance and committed audit metadata are both durable.
 - Reversal linkage is additive and optional.
 - Journal lines are children of one committed posting fact.
+- Journal lines must reference declared accounts.
 - Book-local idempotency is durable through the unique constraint on `idempotency_key`.
 - Reversal uniqueness is durable through a partial unique index on `prior_posting_id`.
-- Both durable tables are SQLite `STRICT` tables.
+- All durable tables are SQLite `STRICT` tables.
 
 ## Connection Hardening
 

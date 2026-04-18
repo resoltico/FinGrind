@@ -3,9 +3,11 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PostingRequest;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -22,27 +24,32 @@ public final class PostingValidation {
     if (!book.isInitialized()) {
       return Optional.of(new PostingRejection.BookNotInitialized());
     }
+    if (book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey()).isPresent()) {
+      return Optional.of(new PostingRejection.DuplicateIdempotencyKey());
+    }
     Optional<PostingRejection> accountRejection = accountRejection(postingRequest, book);
     if (accountRejection.isPresent()) {
       return accountRejection;
-    }
-    if (book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey()).isPresent()) {
-      return Optional.of(new PostingRejection.DuplicateIdempotencyKey());
     }
     return ReversalPolicy.rejectionFor(postingRequest, book);
   }
 
   private static Optional<PostingRejection> accountRejection(
       PostingRequest postingRequest, PostingValidationBook book) {
-    Set<PostingRejection.AccountStateViolation> violations = new LinkedHashSet<>();
+    Set<AccountCode> requestedAccounts = new LinkedHashSet<>();
     for (JournalLine line : postingRequest.journalEntry().lines()) {
-      Optional<DeclaredAccount> account = book.findAccount(line.accountCode());
-      if (account.isEmpty()) {
-        violations.add(new PostingRejection.UnknownAccount(line.accountCode()));
+      requestedAccounts.add(line.accountCode());
+    }
+    Map<AccountCode, DeclaredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
+    Set<PostingRejection.AccountStateViolation> violations = new LinkedHashSet<>();
+    for (AccountCode accountCode : requestedAccounts) {
+      DeclaredAccount account = declaredAccounts.get(accountCode);
+      if (account == null) {
+        violations.add(new PostingRejection.UnknownAccount(accountCode));
         continue;
       }
-      if (!account.orElseThrow().active()) {
-        violations.add(new PostingRejection.InactiveAccount(line.accountCode()));
+      if (!account.active()) {
+        violations.add(new PostingRejection.InactiveAccount(accountCode));
       }
     }
     if (violations.isEmpty()) {

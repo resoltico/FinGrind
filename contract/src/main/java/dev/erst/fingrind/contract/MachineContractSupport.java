@@ -211,7 +211,11 @@ final class MachineContractSupport {
                 ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO,
                 "Inclusive ISO-8601 effective-date upper bound."),
             optionalField(ProtocolLedgerPlanFields.Query.LIMIT, "Page size for list steps."),
-            optionalField(ProtocolLedgerPlanFields.Query.OFFSET, "Page offset for list steps.")),
+            optionalField(
+                ProtocolLedgerPlanFields.Query.CURSOR,
+                "Opaque cursor for continuing list-postings from the prior page."),
+            optionalField(
+                ProtocolLedgerPlanFields.Query.OFFSET, "Page offset for list-accounts steps.")),
         List.of(
             requiredField(
                 ProtocolLedgerPlanFields.Assertion.KIND,

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.16.0"
+version: "0.17.0"
 domain: USER_EXAMPLES
-updated: "2026-04-17"
+updated: "2026-04-18"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.16.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.16.0-windows-x86_64\bin\fingrind.cmd` on Windows. For source-driven local work,
+`./fingrind-0.17.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.17.0-windows-x86_64\bin\fingrind.cmd` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -216,8 +216,7 @@ fingrind \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --account-code 1000 \
-  --limit 25 \
-  --offset 0
+  --limit 25
 
 fingrind \
   account-balance \
@@ -230,6 +229,19 @@ Checked-in example responses:
 - [examples/get-posting-response.json](./examples/get-posting-response.json)
 - [examples/list-postings-response.json](./examples/list-postings-response.json)
 - [examples/account-balance-response.json](./examples/account-balance-response.json)
+
+If the posting-history response includes `payload.nextCursor`, pass that opaque value back through
+`--cursor` to continue from the prior page without using offset scans:
+
+```bash
+fingrind \
+  list-postings \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --account-code 1000 \
+  --limit 25 \
+  --cursor "<nextCursor-from-the-prior-page>"
+```
 
 ## Book Must Exist And Be Opened
 

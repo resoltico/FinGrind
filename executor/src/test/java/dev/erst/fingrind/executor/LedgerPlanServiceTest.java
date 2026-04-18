@@ -12,10 +12,12 @@ import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.LedgerPlanId;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
@@ -63,37 +65,43 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-1",
+                      planId("plan-1"),
                       List.of(
-                          new LedgerStep.OpenBook("open"),
+                          new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.DeclareAccount(
-                              "cash", account("1000", "Cash", NormalBalance.DEBIT)),
+                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)),
                           new LedgerStep.DeclareAccount(
-                              "revenue", account("2000", "Revenue", NormalBalance.CREDIT)),
-                          new LedgerStep.PreflightEntry("preflight", postEntryCommand("idem-1")),
-                          new LedgerStep.PostEntry("post", postEntryCommand("idem-1")),
-                          new LedgerStep.InspectBook("inspect"),
-                          new LedgerStep.ListAccounts("accounts", new ListAccountsQuery(50, 0)),
-                          new LedgerStep.GetPosting("get", new PostingId("posting-1")),
+                              stepId("revenue"), account("2000", "Revenue", NormalBalance.CREDIT)),
+                          new LedgerStep.PreflightEntry(
+                              stepId("preflight"), postEntryCommand("idem-1")),
+                          new LedgerStep.PostEntry(stepId("post"), postEntryCommand("idem-1")),
+                          new LedgerStep.InspectBook(stepId("inspect")),
+                          new LedgerStep.ListAccounts(
+                              stepId("accounts"), new ListAccountsQuery(50, 0)),
+                          new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")),
                           new LedgerStep.ListPostings(
-                              "postings",
+                              stepId("postings"),
                               new ListPostingsQuery(
-                                  Optional.empty(), Optional.empty(), Optional.empty(), 50, 0)),
+                                  Optional.empty(),
+                                  Optional.empty(),
+                                  Optional.empty(),
+                                  50,
+                                  Optional.empty())),
                           new LedgerStep.AccountBalance(
-                              "balance",
+                              stepId("balance"),
                               new AccountBalanceQuery(
                                   new AccountCode("1000"), Optional.empty(), Optional.empty())),
                           new LedgerStep.Assert(
-                              "assert-declared",
+                              stepId("assert-declared"),
                               new LedgerAssertion.AccountDeclared(new AccountCode("1000"))),
                           new LedgerStep.Assert(
-                              "assert-active",
+                              stepId("assert-active"),
                               new LedgerAssertion.AccountActive(new AccountCode("1000"))),
                           new LedgerStep.Assert(
-                              "assert-posting",
+                              stepId("assert-posting"),
                               new LedgerAssertion.PostingExists(new PostingId("posting-1"))),
                           new LedgerStep.Assert(
-                              "assert-balance",
+                              stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("1000"),
                                   Optional.empty(),
@@ -109,7 +117,7 @@ class LedgerPlanServiceTest {
       assertEquals(LedgerStepKind.OPEN_BOOK, result.journal().steps().getFirst().kind());
       assertEquals(LedgerStepKind.ASSERT, result.journal().steps().getLast().kind());
       assertEquals(
-          Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+          LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
           result.journal().steps().getLast().detailKind());
       assertTrue(bookSession.findPosting(new PostingId("posting-1")).isPresent());
     }
@@ -122,10 +130,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-1",
+                      planId("plan-1"),
                       List.of(
                           new LedgerStep.DeclareAccount(
-                              "cash", account("1000", "Cash", NormalBalance.DEBIT)))));
+                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -142,9 +150,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-preflight",
+                      planId("plan-preflight"),
                       List.of(
-                          new LedgerStep.PreflightEntry("preflight", postEntryCommand("idem-1")))));
+                          new LedgerStep.PreflightEntry(
+                              stepId("preflight"), postEntryCommand("idem-1")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, preflightResult.status());
       assertEquals(
@@ -157,10 +166,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-query",
+                      planId("plan-query"),
                       List.of(
                           new LedgerStep.AccountBalance(
-                              "balance",
+                              stepId("balance"),
                               new AccountBalanceQuery(
                                   new AccountCode("1000"), Optional.empty(), Optional.empty())))));
 
@@ -178,10 +187,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-query",
+                      planId("plan-query"),
                       List.of(
                           new LedgerStep.Assert(
-                              "assert-posting",
+                              stepId("assert-posting"),
                               new LedgerAssertion.PostingExists(new PostingId("posting-1"))))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
@@ -189,8 +198,7 @@ class LedgerPlanServiceTest {
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
           result.journal().steps().getFirst().requiredFailure().code());
       assertEquals(
-          LedgerAssertionKind.POSTING_EXISTS,
-          result.journal().steps().getFirst().detailKind().orElseThrow());
+          LedgerAssertionKind.POSTING_EXISTS, result.journal().steps().getFirst().detailKind());
     }
   }
 
@@ -201,12 +209,12 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-1",
+                      planId("plan-1"),
                       List.of(
-                          new LedgerStep.OpenBook("open"),
+                          new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.DeclareAccount(
-                              "cash", account("1000", "Cash", NormalBalance.DEBIT)),
-                          new LedgerStep.PostEntry("post", postEntryCommand("idem-1")))));
+                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)),
+                          new LedgerStep.PostEntry(stepId("post"), postEntryCommand("idem-1")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       LedgerStepFailure failure = result.journal().steps().getLast().requiredFailure();
@@ -233,13 +241,13 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-1",
+                      planId("plan-1"),
                       List.of(
-                          new LedgerStep.OpenBook("open"),
+                          new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.DeclareAccount(
-                              "cash", account("1000", "Cash", NormalBalance.DEBIT)),
+                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)),
                           new LedgerStep.Assert(
-                              "missing-posting",
+                              stepId("missing-posting"),
                               new LedgerAssertion.PostingExists(
                                   new PostingId("posting-missing"))))));
 
@@ -254,7 +262,9 @@ class LedgerPlanServiceTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       LedgerPlanResult openBookResult =
           service(bookSession)
-              .execute(new LedgerPlan("plan-open", List.of(new LedgerStep.OpenBook("open"))));
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-open"), List.of(new LedgerStep.OpenBook(stepId("open")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, openBookResult.status());
       assertEquals(
@@ -274,10 +284,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-declare",
+                      planId("plan-declare"),
                       List.of(
                           new LedgerStep.DeclareAccount(
-                              "cash", account("1000", "Cash", NormalBalance.CREDIT)))));
+                              stepId("cash"), account("1000", "Cash", NormalBalance.CREDIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, redeclareResult.status());
       assertEquals(
@@ -301,9 +311,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-preflight",
+                      planId("plan-preflight"),
                       List.of(
-                          new LedgerStep.PreflightEntry("preflight", postEntryCommand("idem-2")))));
+                          new LedgerStep.PreflightEntry(
+                              stepId("preflight"), postEntryCommand("idem-2")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, preflightResult.status());
       assertEquals(
@@ -318,8 +329,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-get",
-                      List.of(new LedgerStep.GetPosting("get", new PostingId("posting-missing")))));
+                      planId("plan-get"),
+                      List.of(
+                          new LedgerStep.GetPosting(
+                              stepId("get"), new PostingId("posting-missing")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, getPostingResult.status());
       assertEquals(
@@ -329,20 +342,20 @@ class LedgerPlanServiceTest {
     }
 
     try (InMemoryBookSession bookSession = initializedBook()) {
+      ListPostingsQuery missingAccountQuery =
+          new ListPostingsQuery(
+              Optional.of(new AccountCode("9999")),
+              Optional.empty(),
+              Optional.empty(),
+              50,
+              Optional.empty());
       LedgerPlanResult listPostingsResult =
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-list-postings",
+                      planId("plan-list-postings"),
                       List.of(
-                          new LedgerStep.ListPostings(
-                              "postings",
-                              new ListPostingsQuery(
-                                  Optional.of(new AccountCode("9999")),
-                                  Optional.empty(),
-                                  Optional.empty(),
-                                  50,
-                                  0)))));
+                          new LedgerStep.ListPostings(stepId("postings"), missingAccountQuery))));
 
       assertEquals(LedgerPlanStatus.REJECTED, listPostingsResult.status());
       assertEquals(
@@ -356,10 +369,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-balance",
+                      planId("plan-balance"),
                       List.of(
                           new LedgerStep.AccountBalance(
-                              "balance",
+                              stepId("balance"),
                               new AccountBalanceQuery(
                                   new AccountCode("9999"), Optional.empty(), Optional.empty())))));
 
@@ -379,10 +392,11 @@ class LedgerPlanServiceTest {
           new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
               .execute(
                   new LedgerPlan(
-                      "plan-list-accounts",
+                      planId("plan-list-accounts"),
                       List.of(
-                          new LedgerStep.OpenBook("open"),
-                          new LedgerStep.ListAccounts("accounts", new ListAccountsQuery(50, 0)))));
+                          new LedgerStep.OpenBook(stepId("open")),
+                          new LedgerStep.ListAccounts(
+                              stepId("accounts"), new ListAccountsQuery(50, 0)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -425,10 +439,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-assert-query",
+                      planId("plan-assert-query"),
                       List.of(
                           new LedgerStep.Assert(
-                              "assert-balance",
+                              stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("9999"),
                                   Optional.empty(),
@@ -448,10 +462,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-assert-mismatch",
+                      planId("plan-assert-mismatch"),
                       List.of(
                           new LedgerStep.Assert(
-                              "assert-balance",
+                              stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("1000"),
                                   Optional.empty(),
@@ -475,10 +489,10 @@ class LedgerPlanServiceTest {
           service(bookSession)
               .execute(
                   new LedgerPlan(
-                      "plan-assert-amount-mismatch",
+                      planId("plan-assert-amount-mismatch"),
                       List.of(
                           new LedgerStep.Assert(
-                              "assert-balance",
+                              stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("1000"),
                                   Optional.empty(),
@@ -502,7 +516,9 @@ class LedgerPlanServiceTest {
       assertThrows(
           IllegalStateException.class,
           () ->
-              service.execute(new LedgerPlan("plan-1", List.of(new LedgerStep.OpenBook("open")))));
+              service.execute(
+                  new LedgerPlan(
+                      planId("plan-1"), List.of(new LedgerStep.OpenBook(stepId("open"))))));
       assertTrue(bookSession.rollbackCalled());
     }
   }
@@ -512,7 +528,9 @@ class LedgerPlanServiceTest {
     LedgerPlanResult result =
         service(bookSession)
             .execute(
-                new LedgerPlan("plan-assert", List.of(new LedgerStep.Assert("assert", assertion))));
+                new LedgerPlan(
+                    planId("plan-assert"),
+                    List.of(new LedgerStep.Assert(stepId("assert"), assertion))));
 
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
   }
@@ -544,6 +562,14 @@ class LedgerPlanServiceTest {
 
   private static LedgerPlanService service(LedgerPlanSession bookSession) {
     return new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+  }
+
+  private static LedgerPlanId planId(String value) {
+    return new LedgerPlanId(value);
+  }
+
+  private static LedgerStepId stepId(String value) {
+    return new LedgerStepId(value);
   }
 
   private static boolean textFact(LedgerFact fact, String name, String value) {

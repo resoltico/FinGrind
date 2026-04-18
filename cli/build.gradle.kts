@@ -27,7 +27,6 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":executor"))
     implementation(project(":sqlite"))
-    implementation(libs.jackson.annotations)
     implementation(libs.jackson.databind)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

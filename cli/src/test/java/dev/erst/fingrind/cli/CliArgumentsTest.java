@@ -8,10 +8,13 @@ import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -157,6 +160,11 @@ class CliArgumentsTest {
 
   @Test
   void parse_returnsListPostingsWithFiltersAndPagingOptions() {
+    PostingPageCursor cursor =
+        new PostingPageCursor(
+            LocalDate.parse("2026-04-15"),
+            Instant.parse("2026-04-15T10:15:30Z"),
+            new PostingId("posting-20"));
     CliCommand.ListPostings command =
         assertInstanceOf(
             CliCommand.ListPostings.class,
@@ -175,17 +183,17 @@ class CliArgumentsTest {
                   "2026-04-30",
                   "--limit",
                   "10",
-                  "--offset",
-                  "20"
+                  "--cursor",
+                  cursor.wireValue()
                 }));
 
     assertEquals(
         new ListPostingsQuery(
-            java.util.Optional.of(new AccountCode("1000")),
-            java.util.Optional.of(LocalDate.parse("2026-04-01")),
-            java.util.Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(new AccountCode("1000")),
+            Optional.of(LocalDate.parse("2026-04-01")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             10,
-            20),
+            Optional.of(cursor)),
         command.query());
   }
 
@@ -355,11 +363,7 @@ class CliArgumentsTest {
 
     assertEquals(
         new ListPostingsQuery(
-            java.util.Optional.empty(),
-            java.util.Optional.empty(),
-            java.util.Optional.empty(),
-            50,
-            0),
+            Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty()),
         command.query());
   }
 
@@ -470,7 +474,7 @@ class CliArgumentsTest {
                       "--limit",
                       "20"
                     }));
-    CliArgumentsException duplicateOffset =
+    CliArgumentsException duplicateCursor =
         assertThrows(
             CliArgumentsException.class,
             () ->
@@ -481,10 +485,10 @@ class CliArgumentsTest {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--offset",
-                      "10",
-                      "--offset",
-                      "20"
+                      "--cursor",
+                      "cursor-1",
+                      "--cursor",
+                      "cursor-2"
                     }));
     CliArgumentsException unsupportedWithValue =
         assertThrows(
@@ -535,8 +539,8 @@ class CliArgumentsTest {
     assertEquals("Duplicate argument: --effective-date-to", duplicateDateTo.getMessage());
     assertEquals("--limit", duplicateLimit.argument());
     assertEquals("Duplicate argument: --limit", duplicateLimit.getMessage());
-    assertEquals("--offset", duplicateOffset.argument());
-    assertEquals("Duplicate argument: --offset", duplicateOffset.getMessage());
+    assertEquals("--cursor", duplicateCursor.argument());
+    assertEquals("Duplicate argument: --cursor", duplicateCursor.getMessage());
     assertEquals("--extra", unsupportedWithValue.argument());
     assertEquals("Unsupported argument: --extra", unsupportedWithValue.getMessage());
     assertEquals("--extra", unsupportedBeforeOption.argument());

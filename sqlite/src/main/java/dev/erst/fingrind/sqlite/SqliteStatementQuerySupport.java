@@ -9,10 +9,13 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 
 /** Shared SQLite statement helpers for single-row lookups and pragma reads. */
 final class SqliteStatementQuerySupport {
@@ -68,6 +71,29 @@ final class SqliteStatementQuerySupport {
             return Optional.empty();
           }
           return Optional.of(SqlitePostingMapper.declaredAccount(statement));
+        });
+  }
+
+  @SuppressWarnings("PMD.UseConcurrentHashMap")
+  static Map<AccountCode, DeclaredAccount> findAccounts(
+      SqliteNativeDatabase activeDatabase, Set<AccountCode> accountCodes)
+      throws SqliteNativeException {
+    List<AccountCode> orderedCodes = List.copyOf(accountCodes);
+    return withStatement(
+        activeDatabase,
+        SqlitePostingSql.findAccountsByCodeCount(orderedCodes.size()),
+        statement -> {
+          int bindIndex = 1;
+          for (AccountCode accountCode : orderedCodes) {
+            statement.bindText(bindIndex, accountCode.value());
+            bindIndex++;
+          }
+          Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
+          while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+            DeclaredAccount account = SqlitePostingMapper.declaredAccount(statement);
+            accounts.put(account.accountCode(), account);
+          }
+          return Map.copyOf(accounts);
         });
   }
 

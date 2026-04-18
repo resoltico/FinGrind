@@ -11,16 +11,29 @@ import static dev.erst.fingrind.cli.CliJsonRequestSupport.requiredArray;
 import static dev.erst.fingrind.cli.CliJsonRequestSupport.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonRequestSupport.requiredText;
 
-import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.LedgerAssertion;
+import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.LedgerPlanId;
+import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.LedgerStepId;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
-import dev.erst.fingrind.core.*;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -31,7 +44,7 @@ final class CliLedgerPlanParser {
   static LedgerPlan readLedgerPlan(ObjectNode rootNode) {
     rejectUnexpectedFields(rootNode, null, CliJsonRequestSupport.LEDGER_PLAN_FIELDS);
     return new LedgerPlan(
-        requiredText(rootNode, ProtocolLedgerPlanFields.Plan.PLAN_ID),
+        new LedgerPlanId(requiredText(rootNode, ProtocolLedgerPlanFields.Plan.PLAN_ID)),
         readLedgerSteps(requiredArray(rootNode, ProtocolLedgerPlanFields.Plan.STEPS)));
   }
 
@@ -47,7 +60,8 @@ final class CliLedgerPlanParser {
 
   private static LedgerStep readLedgerStep(ObjectNode stepNode) {
     rejectUnexpectedFields(stepNode, null, CliJsonRequestSupport.LEDGER_STEP_FIELDS);
-    String stepId = requiredText(stepNode, ProtocolLedgerPlanFields.Step.STEP_ID);
+    LedgerStepId stepId =
+        new LedgerStepId(requiredText(stepNode, ProtocolLedgerPlanFields.Step.STEP_ID));
     LedgerStepKind kind =
         parseWireValue(
             requiredText(stepNode, ProtocolLedgerPlanFields.Step.KIND),
@@ -141,40 +155,39 @@ final class CliLedgerPlanParser {
     };
   }
 
-  private static ListAccountsQuery readListAccountsQuery(Optional<ObjectNode> queryNode) {
-    if (queryNode.isEmpty()) {
+  private static ListAccountsQuery readListAccountsQuery(@Nullable ObjectNode queryNode) {
+    if (queryNode == null) {
       return new ListAccountsQuery(
           ProtocolLimits.DEFAULT_PAGE_LIMIT, ProtocolLimits.DEFAULT_PAGE_OFFSET);
     }
-    ObjectNode query = queryNode.orElseThrow();
-    rejectUnexpectedFields(query, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
+    rejectUnexpectedFields(queryNode, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
     return new ListAccountsQuery(
-        optionalInt(query, ProtocolLedgerPlanFields.Query.LIMIT)
+        optionalInt(queryNode, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
-        optionalInt(query, ProtocolLedgerPlanFields.Query.OFFSET)
+        optionalInt(queryNode, ProtocolLedgerPlanFields.Query.OFFSET)
             .orElse(ProtocolLimits.DEFAULT_PAGE_OFFSET));
   }
 
-  private static ListPostingsQuery readListPostingsQuery(Optional<ObjectNode> queryNode) {
-    if (queryNode.isEmpty()) {
+  private static ListPostingsQuery readListPostingsQuery(@Nullable ObjectNode queryNode) {
+    if (queryNode == null) {
       return new ListPostingsQuery(
           Optional.empty(),
           Optional.empty(),
           Optional.empty(),
           ProtocolLimits.DEFAULT_PAGE_LIMIT,
-          ProtocolLimits.DEFAULT_PAGE_OFFSET);
+          Optional.empty());
     }
-    ObjectNode query = queryNode.orElseThrow();
-    rejectUnexpectedFields(query, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
+    rejectUnexpectedFields(queryNode, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
     return new ListPostingsQuery(
-        optionalText(query, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE).map(AccountCode::new),
-        optionalText(query, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)
+        optionalText(queryNode, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE).map(AccountCode::new),
+        optionalText(queryNode, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)
             .map(LocalDate::parse),
-        optionalText(query, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO).map(LocalDate::parse),
-        optionalInt(query, ProtocolLedgerPlanFields.Query.LIMIT)
+        optionalText(queryNode, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO)
+            .map(LocalDate::parse),
+        optionalInt(queryNode, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
-        optionalInt(query, ProtocolLedgerPlanFields.Query.OFFSET)
-            .orElse(ProtocolLimits.DEFAULT_PAGE_OFFSET));
+        optionalText(queryNode, ProtocolLedgerPlanFields.Query.CURSOR)
+            .map(PostingPageCursor::fromWireValue));
   }
 
   private static AccountBalanceQuery readAccountBalanceQuery(ObjectNode query) {
