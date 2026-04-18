@@ -29,10 +29,9 @@ class JournalEntryTest {
   }
 
   @Test
-  void constructor_rejectsNullLinesAfterNormalizingThemToEmpty() {
+  void constructor_rejectsNullLines() {
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new JournalEntry(LocalDate.parse("2026-04-07"), null));
+        NullPointerException.class, () -> new JournalEntry(LocalDate.parse("2026-04-07"), null));
   }
 
   @Test

@@ -17,8 +17,6 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.core.ReversalReason;
-import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -33,7 +31,10 @@ class PostingFactTest {
   void constructor_acceptsValidFact() {
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-1"), journalEntry(), Optional.empty(), provenance("idem-1"));
+            new PostingId("posting-1"),
+            journalEntry(),
+            PostingLineage.direct(),
+            provenance("idem-1"));
 
     assertEquals("posting-1", postingFact.postingId().value());
   }
@@ -42,19 +43,16 @@ class PostingFactTest {
   void constructor_rejectsNullPostingId() {
     assertThrows(
         NullPointerException.class,
-        () -> new PostingFact(null, journalEntry(), Optional.empty(), provenance("idem-1")));
+        () -> new PostingFact(null, journalEntry(), PostingLineage.direct(), provenance("idem-1")));
   }
 
   @Test
-  void constructor_normalizesNullReversalReferenceToEmpty() {
-    PostingFact postingFact =
-        new PostingFact(
-            new PostingId("posting-1"),
-            journalEntry(),
-            nullReversalReference(),
-            provenance("idem-1"));
-
-    assertEquals(Optional.empty(), postingFact.reversalReference());
+  void constructor_rejectsNullPostingLineage() {
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new PostingFact(
+                new PostingId("posting-1"), journalEntry(), null, provenance("idem-1")));
   }
 
   private static JournalEntry journalEntry() {
@@ -79,13 +77,8 @@ class PostingFactTest {
             new CommandId("command-1"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
-            Optional.of(new CorrelationId("corr-1")),
-            Optional.of(new ReversalReason("operator reversal"))),
+            Optional.of(new CorrelationId("corr-1"))),
         Instant.parse("2026-04-07T10:15:30Z"),
         SourceChannel.CLI);
-  }
-
-  private static Optional<ReversalReference> nullReversalReference() {
-    return null;
   }
 }

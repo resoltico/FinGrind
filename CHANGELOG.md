@@ -5,9 +5,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-04-18
+
+### Changed
+- Removed the unused ledger-plan `executionPolicy` request block; plan execution is now advertised
+  through core-owned capability metadata as atomic, halt-on-first-failure, and complete-journal.
+- Changed successful `execute-plan` envelopes to use `status: "plan-committed"` and changed plan
+  journals to emit canonical step `kind` values plus assertion `detailKind`, and moved
+  assertion requests to the explicit `kind: "assert"` plus nested assertion `kind` shape.
+- Changed plan rejection envelopes to use `status: "plan-rejected"` or
+  `status: "plan-assertion-failed"` and map plan journals through explicit CLI wire payloads
+  instead of Jackson-serializing domain records directly.
+- Changed book-inspection states and plan/step journal statuses to explicit stable wire
+  vocabularies, and made plan facts a sealed text/flag/count family while keeping JSON fact
+  values typed as strings, booleans, or integers.
+- Changed plan-journal facts again to emit explicit wire `kind` metadata plus nested grouped facts,
+  so repeated machine observations such as per-currency balances and account-state violations no
+  longer depend on positional interpretation.
+- Tightened record invariants across posting/query/plan contracts so `Optional<T>` components no
+  longer silently accept `null`; callers must pass explicit `Optional.empty()` for absence.
+- Added a dedicated ledger-plan Jazzer harness, wrapper, and committed seed floor covering valid
+  plan parsing, removed execution-policy rejection, open-book ordering, and unknown step-kind
+  error shaping, plus an oversize-plan seed for the 100-step protocol limit.
+- Split machine-contract discovery DTOs into focused `ContractDiscovery`, `ContractTemplates`,
+  `ContractRequestShapes`, and `ContractResponse` namespaces, leaving `MachineContract` as a pure
+  assembler over protocol-owned metadata.
+- Promoted public bundle targets and unsupported operating systems into one shared
+  `PublicDistributionContract` consumed by both build logic and capabilities metadata, and updated
+  tests to assert against the protocol-owned distribution contract instead of local copies.
+- Moved reversal reasons out of `provenance` and into typed reversal lineage, so direct postings no
+  longer carry reversal-only data and reversal requests now require `reversal.reason` at the
+  request boundary.
+
 ### Fixed
+- Centralized rejection prose for CLI envelopes and plan journals so failed plan steps now report
+  actionable messages and compact facts instead of Java class names.
+- Aligned book-creation detection around `LedgerPlan.beginsWithOpenBook()` and made `open-book`
+  valid only as the first step in a plan.
+- Fixed missing-book `execute-plan` runs without an initial `open-book` step to return the same
+  deterministic plan rejection shape and exit code whether the selected SQLite file is absent or
+  merely uninitialized.
+- Removed the duplicate account lookup from account-balance queries by making the query seam return
+  an optional balance snapshot for undeclared accounts.
+- Buffered CLI JSON rendering before writing to stdout so serialization failures cannot corrupt the
+  output stream with partial JSON followed by a second envelope.
+- Split the concrete SQLite store off the narrow administration/posting/query seam interfaces by
+  returning dedicated session views instead of having one adapter type masquerade as every seam at
+  once.
+- Removed plan-session inheritance across administration, posting, and query concerns; the atomic
+  plan seam now exposes narrow operation views plus explicit transaction methods.
+- Bounded `execute-plan` to 100 steps so complete plan-journal responses remain structurally
+  limited, and added catalog linting for duplicate operation ids and aliases.
 - Made the GitHub Release workflow publish step explicitly run under Bash so Windows bundle assets
   use the same release-upload script semantics as macOS and Linux assets.
+- Replaced the SQLite adapter monolith's inlined statement, state, read, write, and open-config
+  internals with focused collaborators, removing coverage-shaped manual close helpers from the
+  production store implementation while keeping the same durable behavior.
+- Updated public docs, examples, and Jazzer regression assets to describe the sequential in-place
+  book migration policy and the current reversal request shape without stale rejection codes.
 
 ## [0.15.0] - 2026-04-17
 
@@ -58,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `account-state-violations`, so callers now receive every undeclared or inactive account issue in
   one deterministic rejection.
 - Hardened machine-facing discovery and help metadata to advertise paged account reads,
-  compatibility inspection, and the current hard-break format policy explicitly instead of
+  compatibility inspection, and the current sequential in-place book-format policy explicitly instead of
   implying an unbounded or migration-backed surface.
 - Restored the documented `jazzer/bin/*` operator surface, including wrapper-owned lock, log,
   cleanup, and timeout behavior, fixed cleanup tasks so they also succeed on a fresh checkout with
@@ -421,7 +476,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and one-reversal-per-target enforcement.
 
 ### Fixed
-- Aligned the Docker smoke request payload with the current hard-break request contract so the
+- Aligned the Docker smoke request payload with the current request contract so the
   containerized release-surface check exercises real `post-entry` success instead of a stale
   caller shape.
 - Container publication verification now accepts the formatted JSON emitted by the `version`
@@ -433,7 +488,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.16.0
 [0.15.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.15.0
 [0.14.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.14.0
 [0.13.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.13.0

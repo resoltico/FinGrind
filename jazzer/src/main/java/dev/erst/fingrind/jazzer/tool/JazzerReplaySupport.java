@@ -1,10 +1,15 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.CommitEntryResult;
+import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostEntryResult.Rejected;
+import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
+import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.executor.InMemoryBookSession;
@@ -43,6 +48,7 @@ public final class JazzerReplaySupport {
     Objects.requireNonNull(input, "input must not be null");
     return switch (harness.key()) {
       case "cli-request" -> replayCliRequest(input);
+      case "ledger-plan-request" -> replayLedgerPlanRequest(input);
       case "posting-workflow" -> replayPostingWorkflow(input);
       case "sqlite-book-roundtrip" -> replaySqliteBookRoundTrip(input);
       default -> throw new IllegalArgumentException("Unknown Jazzer harness: " + harness.key());
@@ -79,6 +85,26 @@ public final class JazzerReplaySupport {
     }
   }
 
+  private static ReplayOutcome replayLedgerPlanRequest(byte[] input) {
+    try {
+      LedgerPlan plan = CliFuzzSupport.readLedgerPlan(input);
+      return new ReplayOutcome.Success(
+          JazzerHarness.ledgerPlanRequest().key(),
+          ledgerPlanDetails(plan, "PARSED", normalizedMessage(null)));
+    } catch (IllegalArgumentException expected) {
+      return new ReplayOutcome.ExpectedInvalid(
+          JazzerHarness.ledgerPlanRequest().key(),
+          expected.getClass().getSimpleName(),
+          normalizedMessage(expected),
+          ledgerPlanFailureDetails("INVALID_REQUEST", expected));
+    } catch (RuntimeException unexpected) {
+      return unexpectedFailure(
+          JazzerHarness.ledgerPlanRequest(),
+          unexpected,
+          ledgerPlanFailureDetails("UNEXPECTED_FAILURE", unexpected));
+    }
+  }
+
   private static ReplayOutcome replayPostingWorkflow(byte[] input) {
     PostEntryCommand command = null;
     String uninitializedPreflightStatus = "NOT_RUN";
@@ -103,16 +129,18 @@ public final class JazzerReplaySupport {
               CliFuzzSupport.fixedClock());
 
       uninitializedPreflightStatus =
-          rejectionStatus(rejectedResult(applicationService.preflight(command)).rejection());
+          rejectionStatus(
+              requiredPreflightRejected(applicationService.preflight(command)).rejection());
       uninitializedCommitStatus =
-          rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+          rejectionStatus(requiredCommitRejected(applicationService.commit(command)).rejection());
 
       CliFuzzSupport.openBook(administrationService);
 
       undeclaredPreflightStatus =
-          rejectionStatus(rejectedResult(applicationService.preflight(command)).rejection());
+          rejectionStatus(
+              requiredPreflightRejected(applicationService.preflight(command)).rejection());
       undeclaredCommitStatus =
-          rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+          rejectionStatus(requiredCommitRejected(applicationService.commit(command)).rejection());
 
       List<DeclaredAccount> declaredAccounts =
           CliFuzzSupport.declarePostingAccounts(administrationService, command);
@@ -122,14 +150,15 @@ public final class JazzerReplaySupport {
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       bookSession.deactivateAccount(primaryAccount.accountCode());
       inactivePreflightStatus =
-          rejectionStatus(rejectedResult(applicationService.preflight(command)).rejection());
+          rejectionStatus(
+              requiredPreflightRejected(applicationService.preflight(command)).rejection());
       inactiveCommitStatus =
-          rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+          rejectionStatus(requiredCommitRejected(applicationService.commit(command)).rejection());
 
       CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
 
-      PostEntryResult preflight = applicationService.preflight(command);
-      PostEntryResult committedResult = applicationService.commit(command);
+      PreflightEntryResult preflight = applicationService.preflight(command);
+      CommitEntryResult committedResult = applicationService.commit(command);
       if (preflight instanceof PreflightAccepted accepted) {
         if (!accepted.idempotencyKey().equals(command.requestProvenance().idempotencyKey())) {
           throw new IllegalStateException("Preflight changed the idempotency key.");
@@ -171,17 +200,17 @@ public final class JazzerReplaySupport {
         }
         storedFactPresent = true;
 
-        PostEntryResult duplicateResult = applicationService.commit(command);
-        if (!(duplicateResult instanceof Rejected rejected)) {
+        CommitEntryResult duplicateResult = applicationService.commit(command);
+        if (!(duplicateResult instanceof CommitRejected rejected)) {
           throw new IllegalStateException("Duplicate commit should be rejected.");
         }
         if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
           throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
         }
         duplicateStatus = rejectionStatus(rejected.rejection());
-      } else if (preflight instanceof Rejected preflightRejected) {
+      } else if (preflight instanceof PreflightRejected preflightRejected) {
         finalPreflightStatus = rejectionStatus(preflightRejected.rejection());
-        if (!(committedResult instanceof Rejected commitRejected)) {
+        if (!(committedResult instanceof CommitRejected commitRejected)) {
           throw new IllegalStateException("Rejected preflight should remain rejected on commit.");
         }
         if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
@@ -265,34 +294,35 @@ public final class JazzerReplaySupport {
 
       try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
         BookAdministrationService administrationService =
-            CliFuzzSupport.administrationService(postingFactStore);
+            CliFuzzSupport.administrationService(postingFactStore.administrationSession());
         PostingApplicationService applicationService =
             new PostingApplicationService(
-                postingFactStore,
+                postingFactStore.postingSession(),
                 CliFuzzSupport.postingIdGenerator(input),
                 CliFuzzSupport.fixedClock());
 
         uninitializedCommitStatus =
-            rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+            rejectionStatus(requiredCommitRejected(applicationService.commit(command)).rejection());
 
         CliFuzzSupport.openBook(administrationService);
 
         undeclaredCommitStatus =
-            rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+            rejectionStatus(requiredCommitRejected(applicationService.commit(command)).rejection());
 
         List<DeclaredAccount> declaredAccounts =
             CliFuzzSupport.declarePostingAccounts(administrationService, command);
-        if (CliFuzzSupport.listAccounts(postingFactStore).size() != declaredAccounts.size()) {
+        if (CliFuzzSupport.listAccounts(postingFactStore.querySession()).size()
+            != declaredAccounts.size()) {
           throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
         }
         DeclaredAccount primaryAccount = declaredAccounts.getFirst();
         SqliteFuzzAssertions.updateAccountActiveFlag(bookPath, primaryAccount.accountCode().value(), false);
         inactiveCommitStatus =
-            rejectionStatus(rejectedResult(applicationService.commit(command)).rejection());
+            rejectionStatus(requiredCommitRejected(applicationService.commit(command)).rejection());
 
         CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
 
-        PostEntryResult committedResult = applicationService.commit(command);
+        CommitEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
           finalCommitStatus = "COMMITTED";
           try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
@@ -333,11 +363,11 @@ public final class JazzerReplaySupport {
 
             PostingApplicationService duplicateService =
                 new PostingApplicationService(
-                    reloadedStore,
+                    reloadedStore.postingSession(),
                     CliFuzzSupport.postingIdGenerator(input),
                     CliFuzzSupport.fixedClock());
-            PostEntryResult duplicateResult = duplicateService.commit(command);
-            if (!(duplicateResult instanceof Rejected rejected)) {
+            CommitEntryResult duplicateResult = duplicateService.commit(command);
+            if (!(duplicateResult instanceof CommitRejected rejected)) {
               throw new IllegalStateException("Duplicate SQLite commit should be rejected.");
             }
             if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
@@ -346,10 +376,10 @@ public final class JazzerReplaySupport {
             }
             duplicateStatus = rejectionStatus(rejected.rejection());
           }
-        } else if (committedResult instanceof Rejected rejected) {
+        } else if (committedResult instanceof CommitRejected rejected) {
           finalCommitStatus = rejectionStatus(rejected.rejection());
-          PostEntryResult repeatedResult = applicationService.commit(command);
-          if (!(repeatedResult instanceof Rejected repeatedRejected)) {
+          CommitEntryResult repeatedResult = applicationService.commit(command);
+          if (!(repeatedResult instanceof CommitRejected repeatedRejected)) {
             throw new IllegalStateException("Rejected SQLite command should remain rejected.");
           }
           if (!repeatedRejected.rejection().equals(rejected.rejection())) {
@@ -442,6 +472,25 @@ public final class JazzerReplaySupport {
       String requestStatus, Throwable error) {
     return new CliRequestReplayDetails(
         requestStatus, NOT_PARSED, NOT_PARSED, 0, false, NOT_PARSED, NOT_PARSED, normalizedMessage(error));
+  }
+
+  private static LedgerPlanReplayDetails ledgerPlanDetails(
+      LedgerPlan plan, String requestStatus, String failureMessage) {
+    return new LedgerPlanReplayDetails(
+        requestStatus,
+        plan.planId(),
+        plan.steps().size(),
+        plan.steps().getFirst().kind().wireValue(),
+        plan.steps().getLast().kind().wireValue(),
+        assertionStepCount(plan),
+        plan.beginsWithOpenBook(),
+        failureMessage);
+  }
+
+  private static LedgerPlanReplayDetails ledgerPlanFailureDetails(
+      String requestStatus, Throwable error) {
+    return new LedgerPlanReplayDetails(
+        requestStatus, NOT_PARSED, 0, NOT_PARSED, NOT_PARSED, 0, false, normalizedMessage(error));
   }
 
   private static PostingWorkflowReplayDetails postingWorkflowDetails(
@@ -553,12 +602,16 @@ public final class JazzerReplaySupport {
     return command != null && command.reversalReference().isPresent();
   }
 
+  private static int assertionStepCount(LedgerPlan plan) {
+    return (int) plan.steps().stream().filter(LedgerStep.Assert.class::isInstance).count();
+  }
+
   private static String actorType(PostEntryCommand command) {
-    return command == null ? NOT_PARSED : command.requestProvenance().actorType().name();
+    return command == null ? NOT_PARSED : command.requestProvenance().actorType().wireValue();
   }
 
   private static String sourceChannel(PostEntryCommand command) {
-    return command == null ? NOT_PARSED : command.sourceChannel().name();
+    return command == null ? NOT_PARSED : command.sourceChannel().wireValue();
   }
 
   private static String rejectionStatus(PostingRejection rejection) {
@@ -567,8 +620,6 @@ public final class JazzerReplaySupport {
       case PostingRejection.AccountStateViolations accountStateViolations ->
           accountStateViolationStatus(accountStateViolations);
       case PostingRejection.DuplicateIdempotencyKey _ -> "REJECTED_DUPLICATE_IDEMPOTENCY_KEY";
-      case PostingRejection.ReversalReasonRequired _ -> "REJECTED_REVERSAL_REASON_REQUIRED";
-      case PostingRejection.ReversalReasonForbidden _ -> "REJECTED_REVERSAL_REASON_FORBIDDEN";
       case PostingRejection.ReversalTargetNotFound _ -> "REJECTED_REVERSAL_TARGET_NOT_FOUND";
       case PostingRejection.ReversalAlreadyExists _ -> "REJECTED_REVERSAL_ALREADY_EXISTS";
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
@@ -593,9 +644,18 @@ public final class JazzerReplaySupport {
     return "REJECTED_ACCOUNT_STATE_VIOLATIONS";
   }
 
-  private static Rejected rejectedResult(PostEntryResult result) {
-    if (!(result instanceof Rejected rejected)) {
-      throw new IllegalStateException("Expected deterministic rejection during replay lifecycle setup.");
+  private static PreflightRejected requiredPreflightRejected(PreflightEntryResult result) {
+    if (!(result instanceof PreflightRejected rejected)) {
+      throw new IllegalStateException(
+          "Expected deterministic preflight rejection during replay lifecycle setup.");
+    }
+    return rejected;
+  }
+
+  private static CommitRejected requiredCommitRejected(CommitEntryResult result) {
+    if (!(result instanceof CommitRejected rejected)) {
+      throw new IllegalStateException(
+          "Expected deterministic commit rejection during replay lifecycle setup.");
     }
     return rejected;
   }

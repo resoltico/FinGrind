@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerAssertion;
@@ -85,7 +86,8 @@ class CliRequestReaderTest {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "No enum constant dev.erst.fingrind.core.NormalBalance.SIDEWAYS", exception.getMessage());
+        "Unsupported value for normalBalance: SIDEWAYS. Accepted values: DEBIT, CREDIT.",
+        exception.getMessage());
   }
 
   @Test
@@ -108,6 +110,29 @@ class CliRequestReaderTest {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals("Unexpected field: ignored", exception.getMessage());
+  }
+
+  @Test
+  void readDeclareAccountCommand_reportsEveryUnexpectedTopLevelFieldTogether() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "accountCode": "1000",
+                  "accountName": "Cash",
+                  "normalBalance": "DEBIT",
+                  "ignored": true,
+                  "alsoIgnored": true
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
+
+    assertEquals("Unexpected fields: ignored, alsoIgnored", exception.getMessage());
   }
 
   @Test
@@ -144,8 +169,7 @@ class CliRequestReaderTest {
     assertEquals(
         Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-0"))),
         command.reversalReference());
-    assertEquals(
-        Optional.of(new ReversalReason("operator reversal")), command.requestProvenance().reason());
+    assertEquals(Optional.of(new ReversalReason("operator reversal")), command.reversalReason());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -158,7 +182,7 @@ class CliRequestReaderTest {
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
     assertEquals(Optional.empty(), command.reversalReference());
-    assertEquals(Optional.empty(), command.requestProvenance().reason());
+    assertEquals(Optional.empty(), command.reversalReason());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -228,8 +252,7 @@ class CliRequestReaderTest {
                     "actorType": "AGENT",
                     "commandId": "command-1",
                     "idempotencyKey": "idem-1",
-                    "causationId": "cause-1",
-                    "reason": "operator reversal"
+                    "causationId": "cause-1"
                   },
                   "reversal": "posting-0"
                 }
@@ -475,8 +498,7 @@ class CliRequestReaderTest {
                     "actorType": "AGENT",
                     "commandId": "command-1",
                     "idempotencyKey": "idem-1",
-                    "causationId": "cause-1",
-                    "reason": "operator reversal"
+                    "causationId": "cause-1"
                   }
                 }
                 """
@@ -1105,7 +1127,10 @@ class CliRequestReaderTest {
                     "actorType": "AGENT",
                     "commandId": "command-1",
                     "idempotencyKey": "idem-1",
-                    "causationId": "cause-1",
+                    "causationId": "cause-1"
+                  },
+                  "reversal": {
+                    "priorPostingId": "posting-0",
                     "reason": 1
                   }
                 }
@@ -1116,7 +1141,48 @@ class CliRequestReaderTest {
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("Field must be a string when present: reason", exception.getMessage());
+    assertEquals("Field must be a string: reason", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsWrongOptionalProvenanceTextType() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "lines": [
+                    {
+                      "accountCode": "1000",
+                      "side": "DEBIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    },
+                    {
+                      "accountCode": "2000",
+                      "side": "CREDIT",
+                      "currencyCode": "EUR",
+                      "amount": "10.00"
+                    }
+                  ],
+                  "provenance": {
+                    "actorId": "actor-1",
+                    "actorType": "AGENT",
+                    "commandId": "command-1",
+                    "idempotencyKey": "idem-1",
+                    "causationId": "cause-1",
+                    "correlationId": 1
+                  }
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals("Field must be a string when present: correlationId", exception.getMessage());
   }
 
   @Test
@@ -1213,8 +1279,7 @@ class CliRequestReaderTest {
                     "commandId": "command-1",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
-                    "correlationId": null,
-                    "reason": null
+                    "correlationId": null
                   }
                 }
                 """
@@ -1223,7 +1288,7 @@ class CliRequestReaderTest {
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
 
     assertEquals(Optional.empty(), command.requestProvenance().correlationId());
-    assertEquals(Optional.empty(), command.requestProvenance().reason());
+    assertEquals(Optional.empty(), command.reversalReason());
   }
 
   @Test
@@ -1259,11 +1324,6 @@ class CliRequestReaderTest {
                 """
                 {
                   "planId": "plan-1",
-                  "executionPolicy": {
-                    "journalLevel": "NORMAL",
-                    "failurePolicy": "HALT_ON_FIRST_FAILURE",
-                    "transactionMode": "ATOMIC"
-                  },
                   "steps": [
                     {
                       "stepId": "list-accounts",
@@ -1285,6 +1345,33 @@ class CliRequestReaderTest {
   }
 
   @Test
+  void readLedgerPlan_rejectsExecutionPolicyBecauseExecutionSemanticsAreCoreOwned() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "executionPolicy": {
+                    "journalLevel": "VERBOSE"
+                  },
+                  "steps": [
+                    {
+                      "stepId": "inspect",
+                      "kind": "inspect-book"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: executionPolicy", exception.getMessage());
+  }
+
+  @Test
   void readLedgerPlan_rethrowsJsonReadFailures() {
     CliRequestReader requestReader =
         new CliRequestReader(
@@ -1293,7 +1380,6 @@ class CliRequestReaderTest {
                 {
                   "planId": "plan-1",
                   "planId": "plan-2",
-                  "executionPolicy": {},
                   "steps": []
                 }
                 """
@@ -1336,7 +1422,7 @@ class CliRequestReaderTest {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Missing required field: assertion", exception.getMessage());
+    assertTrue(exception.getMessage().startsWith("Unsupported value for kind: unsupported-step."));
   }
 
   @Test
@@ -1367,7 +1453,10 @@ class CliRequestReaderTest {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Unsupported ledger plan step kind: assert-sideways", exception.getMessage());
+    assertTrue(
+        exception
+            .getMessage()
+            .startsWith("Unsupported value for assertion.kind: assert-sideways."));
   }
 
   @Test
@@ -1378,11 +1467,6 @@ class CliRequestReaderTest {
                 """
                 {
                   "planId": "plan-1",
-                  "executionPolicy": {
-                    "journalLevel": "NORMAL",
-                    "failurePolicy": "HALT_ON_FIRST_FAILURE",
-                    "transactionMode": "ATOMIC"
-                  },
                   "steps": [
                     {
                       "stepId": "list-accounts",
@@ -1421,16 +1505,11 @@ class CliRequestReaderTest {
     String reversalBlock =
         includeReversal
             ? """
-              ,
-              "reversal": {
-                "priorPostingId": "posting-0"
-              }
-              """
-            : "";
-    String reasonField =
-        includeReversal
-            ? """
-                "reason": "operator reversal",
+                ,
+                "reversal": {
+                  "priorPostingId": "posting-0",
+                  "reason": "operator reversal"
+                }
               """
             : "";
     return """
@@ -1456,12 +1535,12 @@ class CliRequestReaderTest {
                 "commandId": "command-1",
                 "idempotencyKey": "idem-1",
                 "causationId": "cause-1",
-            %s    "correlationId": "corr-1"
+                "correlationId": "corr-1"
               }
             %s
             }
             """
-        .formatted(reasonField, reversalBlock);
+        .formatted(reversalBlock);
   }
 
   private static String validLegacyCorrectionRequestJson() {
@@ -1506,11 +1585,6 @@ class CliRequestReaderTest {
     return """
         {
           "planId": "plan-1",
-          "executionPolicy": {
-            "journalLevel": "NORMAL",
-            "failurePolicy": "HALT_ON_FIRST_FAILURE",
-            "transactionMode": "ATOMIC"
-          },
           "steps": [
             {
               "stepId": "open",
@@ -1574,29 +1648,33 @@ class CliRequestReaderTest {
             },
             {
               "stepId": "assert-declared",
-              "kind": "assert-account-declared",
+              "kind": "assert",
               "assertion": {
+                "kind": "assert-account-declared",
                 "accountCode": "1000"
               }
             },
             {
               "stepId": "assert-active",
-              "kind": "assert-account-active",
+              "kind": "assert",
               "assertion": {
+                "kind": "assert-account-active",
                 "accountCode": "1000"
               }
             },
             {
               "stepId": "assert-posting",
-              "kind": "assert-posting-exists",
+              "kind": "assert",
               "assertion": {
+                "kind": "assert-posting-exists",
                 "postingId": "posting-1"
               }
             },
             {
               "stepId": "assert-balance",
-              "kind": "assert-account-balance",
+              "kind": "assert",
               "assertion": {
+                "kind": "assert-account-balance",
                 "accountCode": "1000",
                 "effectiveDateFrom": "2026-04-01",
                 "effectiveDateTo": "2026-04-30",

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: SQLITE_SCHEMA_CORE
 updated: "2026-04-17"
 route:
@@ -67,7 +67,7 @@ Field groups:
 - posting identity: `posting_id`
 - financial date: `effective_date`
 - audit time: `recorded_at`
-- request provenance: `actor_*`, `command_id`, `idempotency_key`, `causation_id`, `correlation_id`, `reason`
+- request provenance: `actor_*`, `command_id`, `idempotency_key`, `causation_id`, `correlation_id`
 - committed audit channel: `source_channel`
 - reversal linkage: `prior_posting_id` plus the coupled `reason`
 
@@ -116,4 +116,5 @@ Important rules:
 - This is the only current schema file for new books.
 - There is no schema version table.
 - There are no migration files.
-- There is no backward-compatibility layer for older book shapes during the current hard-break phase.
+- FinGrind publishes sequential in-place migration as the book policy. The current supported book
+  format is `1`, so there are no historical upgrade steps bundled yet.

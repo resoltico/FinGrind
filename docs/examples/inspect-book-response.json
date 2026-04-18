@@ -2,14 +2,14 @@
   "status": "ok",
   "payload": {
     "bookFile": "/tmp/fingrind/books/acme/acme.sqlite",
-    "state": "INITIALIZED",
+    "state": "initialized",
     "initialized": true,
     "compatibleWithCurrentBinary": true,
     "canInitializeWithOpenBook": false,
     "applicationId": 1179079236,
     "detectedBookFormatVersion": 1,
     "supportedBookFormatVersion": 1,
-    "migrationPolicy": "hard-break-no-migration",
+    "migrationPolicy": "sequential-in-place",
     "initializedAt": "2026-04-13T11:58:35.532739Z"
   }
 }

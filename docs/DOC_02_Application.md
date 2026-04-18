@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: CONTRACT_EXECUTOR
 updated: "2026-04-17"
 route:
@@ -61,6 +61,41 @@ out of ad hoc renderers.
 public final class ProtocolLimits
 public final class ProtocolOptions
 ```
+
+## `ProtocolStatuses`
+
+`ProtocolStatuses` is the canonical owner for public JSON envelope status tokens.
+
+```java
+public final class ProtocolStatuses
+```
+
+- Purpose: distinguish generic success, posting commit, plan commit, rejection, and error envelopes
+- Current split: `committed` is single-posting success; `plan-committed` is ledger-plan success
+
+## `ProtocolLedgerPlanFields`
+
+`ProtocolLedgerPlanFields` is the canonical owner for ledger-plan JSON field-name constants.
+
+```java
+public final class ProtocolLedgerPlanFields
+```
+
+- Purpose: keep `planId`, `steps`, `kind`, `posting`, `query`, and assertion field names out of
+  parser-local string registries
+- Consumers: `MachineContract` request-shape descriptors and `CliRequestReader` validation
+
+## `PlanExecutionFacts`
+
+`PlanExecutionFacts` is the core-owned descriptor for fixed ledger-plan execution semantics.
+
+```java
+public record PlanExecutionFacts(
+    String transactionMode, String failurePolicy, String journal, List<String> hardLimitations)
+```
+
+- Purpose: advertise atomic execution, halt-on-first-failure behavior, journal shape, and hard
+  plan limitations without accepting no-op request knobs
 
 ## `BookAdministrationService`
 
@@ -153,21 +188,13 @@ public sealed interface RekeyBookResult
 
 `BookInspection` is the machine-readable lifecycle and compatibility snapshot returned by `inspect-book`.
 
-```java
-public record BookInspection(
-    Status status,
-    boolean initialized,
-    boolean compatibleWithCurrentBinary,
-    boolean canInitializeWithOpenBook,
-    @Nullable Integer applicationId,
-    @Nullable Integer detectedBookFormatVersion,
-    int supportedBookFormatVersion,
-    String migrationPolicy,
-    @Nullable Instant initializedAt)
-```
-
+- Type: sealed interface with explicit variants for missing, blank SQLite, initialized, foreign
+  SQLite, unsupported format, and incomplete FinGrind books
+- Wire state: `status().wireValue()` is the public lower-case/hyphenated vocabulary used by CLI
+  `payload.state`
 - Purpose: let callers distinguish missing, blank, initialized, foreign, unsupported-version, and incomplete books before mutating them
-- Policy: exposes current hard-break compatibility state without implying a migration layer exists
+- Policy: exposes the current sequential in-place migration policy and the detected versus
+  supported book format versions before mutation
 
 ## `ListAccountsQuery`
 
@@ -330,44 +357,38 @@ public sealed interface BookQueryRejection
 
 ## `MachineContract`
 
-`MachineContract` assembles the public discovery DTOs from contract-owned protocol metadata.
+`MachineContract` now acts as the public discovery assembler only. Typed descriptor payloads live in
+focused namespaces and `MachineContract` renders them from contract-owned protocol metadata.
 
 ```java
 public final class MachineContract
 ```
 
-- Purpose: render `help`, `version`, `capabilities`, and `print-request-template` from typed
-  contract state plus `ProtocolCatalog` operation, model, preflight, currency, status, and limit
-  facts
+- Purpose: render `help`, `version`, `capabilities`, `print-request-template`, and
+  `print-plan-template` from typed contract state plus `ProtocolCatalog` operation, model,
+  plan-execution, preflight, currency, status, and limit facts
+- Descriptor namespaces:
+  `ContractDiscovery`, `ContractTemplates`, `ContractRequestShapes`, and `ContractResponse`
+- Request-field ownership:
+  `ProtocolPostEntryFields`, `ProtocolDeclareAccountFields`, and `ProtocolLedgerPlanFields`
 - Live vocabularies: derives enum vocabularies from `JournalLine.EntrySide`, `ActorType`, and `NormalBalance`
 - Live rejections: derives rejection descriptors from administration, query, and posting sealed families
 - Explicit policy: CLI code renders this payload but does not reauthor operation ids, summaries,
   display labels, execution modes, or hard book-model limitation text
-
-## `LedgerExecutionPolicy`
-
-`LedgerExecutionPolicy` is the explicit execution contract carried by every ledger plan.
-
-```java
-public record LedgerExecutionPolicy(
-    LedgerJournalLevel journalLevel,
-    LedgerFailurePolicy failurePolicy,
-    LedgerTransactionMode transactionMode)
-```
-
-- Purpose: keep plan execution rules machine-readable before the executor runs them
 
 ## `LedgerPlan`
 
 `LedgerPlan` is the canonical AI-agent workflow document executed by `execute-plan`.
 
 ```java
-public record LedgerPlan(
-    String planId, LedgerExecutionPolicy executionPolicy, List<LedgerStep> steps)
+public record LedgerPlan(String planId, List<LedgerStep> steps)
 ```
 
-- Purpose: bundle one ordered workflow with stable per-step ids and one explicit execution policy
-- Validation: rejects blank `planId`, empty step lists, and duplicate `stepId` values
+- Purpose: bundle one ordered workflow with stable per-step ids
+- Validation: rejects blank `planId`, empty step lists, duplicate `stepId` values, and `open-book`
+  outside the first step
+- Derived behavior: `beginsWithOpenBook()` is the single source used by CLI storage access and the
+  executor initialization guard
 
 ## `LedgerStep`
 
@@ -380,6 +401,8 @@ public sealed interface LedgerStep
 - Families: `OpenBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
   `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, and `Assert`
 - Purpose: keep plan execution exhaustively typed instead of routing through unstructured maps
+- Journal key: `kind()` returns the canonical operation or assertion token emitted in request and
+  journal payloads
 
 ## `LedgerAssertion`
 
@@ -391,6 +414,9 @@ public sealed interface LedgerAssertion
 
 - Families: `AccountDeclared`, `AccountActive`, `PostingExists`, `AccountBalanceEquals`
 - Purpose: let one plan assert intended outcomes without inventing CLI-local test commands
+- Journal key: `kind()` returns `assert`, while `detailKind()` exposes
+  `assert-account-declared`, `assert-account-active`, `assert-posting-exists`, or
+  `assert-account-balance`
 
 ## `LedgerJournalEntry`, `LedgerExecutionJournal`, And `LedgerPlanResult`
 
@@ -404,22 +430,53 @@ public record LedgerPlanResult(...)
 
 - Purpose: return one plan-level result plus one per-step journal that an agent can inspect safely
 - Status model: plan and step statuses are sealed through enums instead of free-form strings
+- Journal shape: each `LedgerJournalEntry` carries typed `LedgerStepKind` plus optional typed
+  `LedgerAssertionKind`; the CLI maps them to canonical wire strings at the renderer boundary
+- Bound: `LedgerPlan` accepts at most 100 steps, which bounds complete plan-journal responses
+
+## `RejectionNarrative`
+
+`RejectionNarrative` owns user-facing rejection prose shared by CLI envelopes and plan journals.
+
+```java
+public final class RejectionNarrative
+```
+
+- Purpose: prevent plan execution from leaking Java class names as rejection messages
+- Facts: exposes compact sealed `LedgerFact.Text`, `LedgerFact.Flag`, and `LedgerFact.Count`
+  values for plan step failures without coupling CLI `details` shape to executor internals
 
 ## `PostEntryCommand`
 
 `PostEntryCommand` is the application-layer request to preflight or commit one journal entry.
 
+## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
+
+These result families separate posting preflight from posting commit while preserving one shared
+CLI response writer surface.
+
+```java
+public sealed interface PostEntryResult
+public sealed interface PreflightEntryResult extends PostEntryResult
+public sealed interface CommitEntryResult extends PostEntryResult
+```
+
+- Purpose: make `preflight-entry` unable to return `Committed` and `post-entry` unable to return
+  `PreflightAccepted` at compile time
+- Variants: `PreflightAccepted` and `PreflightRejected` belong to preflight, while `Committed`
+  and `CommitRejected` belong to commit
+
 ```java
 public record PostEntryCommand(
     JournalEntry journalEntry,
-    Optional<ReversalReference> reversalReference,
+    PostingLineage postingLineage,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel)
 ```
 
-- Purpose: carry the balanced journal body, reversal linkage, accepted request provenance, and ingress channel into the write boundary
-- Normalization: `null` reversal becomes `Optional.empty()`
-- Validation: rejects `null` journal entry, request provenance, and source channel
+- Purpose: carry the balanced journal body, typed direct-versus-reversal lineage, accepted request
+  provenance, and ingress channel into the write boundary
+- Validation: rejects `null` journal entry, posting lineage, request provenance, and source channel
 
 ## `PostingRequest`
 
@@ -429,7 +486,7 @@ public record PostEntryCommand(
 public interface PostingRequest
 ```
 
-- Surface: `journalEntry()`, `reversalReference()`, `requestProvenance()`
+- Surface: `journalEntry()`, `postingLineage()`, `requestProvenance()`
 - Purpose: let application preflight and transactional commit validation share the same rules without duplicating request-shape assumptions
 
 ## `PostingDraft`
@@ -439,23 +496,12 @@ public interface PostingRequest
 ```java
 public record PostingDraft(
     JournalEntry journalEntry,
-    Optional<ReversalReference> reversalReference,
+    PostingLineage postingLineage,
     CommittedProvenance provenance)
 ```
 
 - Purpose: separate accepted commit metadata from durable id assignment
 - Surface: `materialize(PostingId)` creates the final `PostingFact`
-
-## `PostEntryResult`
-
-`PostEntryResult` is the closed result family returned by the contract write boundary.
-
-```java
-public sealed interface PostEntryResult
-```
-
-- Variants: `PreflightAccepted`, `Committed`, `Rejected`
-- Purpose: keep preflight success, commit success, and deterministic rejection explicit
 
 ## `PostingApplicationService`
 
@@ -517,6 +563,5 @@ public sealed interface PostingRejection
 ```
 
 - Variants: `BookNotInitialized`, `AccountStateViolations`, `DuplicateIdempotencyKey`,
-  `ReversalReasonRequired`, `ReversalReasonForbidden`, `ReversalTargetNotFound`,
-  `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
+  `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
 - Purpose: keep validly parsed but inadmissible posting requests machine-distinguishable

@@ -7,12 +7,11 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 /** Closed result family for the entry write boundary. */
-public sealed interface PostEntryResult
-    permits PostEntryResult.PreflightAccepted, PostEntryResult.Committed, PostEntryResult.Rejected {
+public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntryResult {
 
   /** Preflight-only success variant for a validated but not yet committed request. */
   record PreflightAccepted(IdempotencyKey idempotencyKey, LocalDate effectiveDate)
-      implements PostEntryResult {
+      implements PreflightEntryResult {
 
     /** Validates the preflight-only success shape. */
     public PreflightAccepted {
@@ -27,7 +26,7 @@ public sealed interface PostEntryResult
       IdempotencyKey idempotencyKey,
       LocalDate effectiveDate,
       Instant recordedAt)
-      implements PostEntryResult {
+      implements CommitEntryResult {
 
     /** Validates the committed success shape. */
     public Committed {
@@ -38,13 +37,23 @@ public sealed interface PostEntryResult
     }
   }
 
-  /** Rejection variant for a request that does not cross the durable write boundary. */
-  record Rejected(IdempotencyKey idempotencyKey, PostingRejection rejection)
-      implements PostEntryResult {
+  /** Preflight rejection variant for a request that remains fully advisory. */
+  record PreflightRejected(IdempotencyKey requestIdempotencyKey, PostingRejection rejection)
+      implements PreflightEntryResult {
+    /** Validates the preflight rejection payload returned to operating surfaces. */
+    public PreflightRejected {
+      Objects.requireNonNull(requestIdempotencyKey, "requestIdempotencyKey");
+      Objects.requireNonNull(rejection, "rejection");
+    }
+  }
 
-    /** Validates the rejection payload returned to operating surfaces. */
-    public Rejected {
-      Objects.requireNonNull(idempotencyKey, "idempotencyKey");
+  /** Commit rejection variant for a request that did not cross the durable write boundary. */
+  record CommitRejected(IdempotencyKey requestIdempotencyKey, PostingRejection rejection)
+      implements CommitEntryResult {
+
+    /** Validates the commit rejection payload returned to operating surfaces. */
+    public CommitRejected {
+      Objects.requireNonNull(requestIdempotencyKey, "requestIdempotencyKey");
       Objects.requireNonNull(rejection, "rejection");
     }
   }

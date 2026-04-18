@@ -13,6 +13,7 @@ Those are the deterministic nested-build commands.
 For active fuzzing, use only:
 
 - `jazzer/bin/fuzz-cli-request`
+- `jazzer/bin/fuzz-ledger-plan-request`
 - `jazzer/bin/fuzz-posting-workflow`
 - `jazzer/bin/fuzz-sqlite-book-roundtrip`
 - `jazzer/bin/fuzz-all`

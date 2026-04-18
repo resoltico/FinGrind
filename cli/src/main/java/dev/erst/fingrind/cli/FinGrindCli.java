@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.*;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.executor.*;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
@@ -14,11 +16,6 @@ import java.util.Objects;
 
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
-  private static final String HELP_HINT =
-      "Run 'fingrind "
-          + dev.erst.fingrind.contract.protocol.ProtocolCatalog.operationName(
-              dev.erst.fingrind.contract.protocol.OperationId.HELP)
-          + "' to inspect the supported commands.";
   static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
   static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION = "direct-java-invocation";
   static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION = "source-checkout-gradle";
@@ -94,21 +91,14 @@ final class FinGrindCli {
         case CliCommand.ExecutePlan command ->
             runExecutePlanCommand(command.bookAccess(), command.requestFile());
         case CliCommand.PreflightEntry command ->
-            runEntryCommand(command.bookAccess(), command.requestFile(), bookWorkflow::preflight);
+            runPreflightEntryCommand(command.bookAccess(), command.requestFile());
         case CliCommand.PostEntry command ->
-            runEntryCommand(command.bookAccess(), command.requestFile(), bookWorkflow::commit);
+            runPostEntryCommand(command.bookAccess(), command.requestFile());
       };
-    } catch (CliArgumentsException exception) {
-      responseWriter.writeFailure(exception.failure());
+    } catch (CliArgumentsException | CliRequestException exception) {
+      responseWriter.writeFailure(cliFailure(exception));
       return 2;
-    } catch (CliRequestException exception) {
-      responseWriter.writeFailure(exception.failure());
-      return 2;
-    } catch (IllegalArgumentException exception) {
-      responseWriter.writeFailure(
-          new CliFailure("invalid-request", message(exception), HELP_HINT, null));
-      return 2;
-    } catch (IllegalStateException exception) {
+    } catch (RuntimeException exception) {
       responseWriter.writeFailure(runtimeFailure(exception));
       return 1;
     }
@@ -205,19 +195,31 @@ final class FinGrindCli {
     return exitCodeFor(result);
   }
 
-  private int runEntryCommand(
-      BookAccess bookAccess, Path requestFile, EntryOperation entryOperation) {
+  private int runPreflightEntryCommand(BookAccess bookAccess, Path requestFile) {
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
-    PostEntryResult result = entryOperation.execute(bookAccess, command);
+    PreflightEntryResult result = bookWorkflow.preflight(bookAccess, command);
     responseWriter.writePostEntryResult(result);
     return exitCodeFor(result);
   }
 
-  private static int exitCodeFor(PostEntryResult result) {
+  private int runPostEntryCommand(BookAccess bookAccess, Path requestFile) {
+    PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
+    CommitEntryResult result = bookWorkflow.commit(bookAccess, command);
+    responseWriter.writePostEntryResult(result);
+    return exitCodeFor(result);
+  }
+
+  private static int exitCodeFor(PreflightEntryResult result) {
     return switch (result) {
       case PostEntryResult.PreflightAccepted _ -> 0;
+      case PostEntryResult.PreflightRejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(CommitEntryResult result) {
+    return switch (result) {
       case PostEntryResult.Committed _ -> 0;
-      case PostEntryResult.Rejected _ -> 2;
+      case PostEntryResult.CommitRejected _ -> 2;
     };
   }
 
@@ -271,28 +273,29 @@ final class FinGrindCli {
   }
 
   private static int exitCodeFor(LedgerPlanResult result) {
-    return switch (result.status()) {
-      case SUCCEEDED -> 0;
-      case REJECTED, ASSERTION_FAILED -> 2;
+    return switch (result) {
+      case LedgerPlanResult.Succeeded _ -> 0;
+      case LedgerPlanResult.Rejected _ -> 2;
+      case LedgerPlanResult.AssertionFailed _ -> 3;
     };
   }
 
-  private MachineContract.ApplicationIdentity applicationIdentity() {
-    return new MachineContract.ApplicationIdentity(
+  private ContractDiscovery.ApplicationIdentity applicationIdentity() {
+    return new ContractDiscovery.ApplicationIdentity(
         metadata.applicationName(), metadata.version(), metadata.description());
   }
 
-  private MachineContract.EnvironmentDescriptor environmentDescriptor() {
+  private ContractDiscovery.EnvironmentDescriptor environmentDescriptor() {
     return environmentDescriptor(SqliteRuntime.probe(), runtimeDistribution());
   }
 
-  static MachineContract.EnvironmentDescriptor environmentDescriptor(
+  static ContractDiscovery.EnvironmentDescriptor environmentDescriptor(
       SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
-    return new MachineContract.EnvironmentDescriptor(
+    return new ContractDiscovery.EnvironmentDescriptor(
         runtimeDistribution,
         "self-contained-bundle",
-        MachineContract.supportedPublicCliBundleTargets(),
-        MachineContract.unsupportedPublicCliOperatingSystems(),
+        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
         "26+",
         SqliteRuntime.STORAGE_DRIVER,
         SqliteRuntime.STORAGE_ENGINE,
@@ -315,17 +318,25 @@ final class FinGrindCli {
     return System.getProperty(RUNTIME_DISTRIBUTION_PROPERTY, DIRECT_JAVA_RUNTIME_DISTRIBUTION);
   }
 
-  private CliFailure runtimeFailure(IllegalStateException exception) {
+  private static CliFailure cliFailure(Exception exception) {
+    return switch (Objects.requireNonNull(exception, "exception")) {
+      case CliArgumentsException cliArgumentsException -> cliArgumentsException.failure();
+      case CliRequestException cliRequestException -> cliRequestException.failure();
+      default -> throw new IllegalArgumentException("Unsupported CLI failure type.");
+    };
+  }
+
+  private CliFailure runtimeFailure(RuntimeException exception) {
     String message = message(exception);
     String hint =
-        message.contains("FINGRIND_SQLITE_LIBRARY")
-                || message.contains("fingrind.bundle.home")
-                || message.contains("bin/fingrind")
-                || message.contains("bin\\fingrind.cmd")
-            ? "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning."
-            : message.contains("SQLite")
-                ? "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem."
-                : "Inspect the message and rerun after fixing the underlying runtime problem.";
+        switch (SqliteFailureClassifier.classify(exception)) {
+          case MANAGED_RUNTIME ->
+              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning.";
+          case STORAGE ->
+              "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem.";
+          case OTHER ->
+              "Inspect the message and rerun after fixing the underlying runtime problem.";
+        };
     return new CliFailure("runtime-failure", message, hint, null);
   }
 
@@ -364,10 +375,10 @@ final class FinGrindCli {
     LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan);
 
     /** Validates a posting request without mutating the selected book. */
-    PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command);
+    PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command);
 
     /** Commits a posting request into the selected book. */
-    PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command);
+    CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command);
   }
 
   /** Default workflow that opens one SQLite-backed book file per command. */
@@ -387,20 +398,18 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE,
               CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
-        return new BookAdministrationService(bookSession, clock).openBook();
+        return new BookAdministrationService(bookSession.administrationSession(), clock).openBook();
       }
     }
 
     @Override
     public RekeyBookResult rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
-      CliBookPassphraseResolver.PromptStyle currentPromptStyle =
-          CliBookPassphraseResolver.PromptStyle.SINGLE;
       try (SqlitePostingFactStore bookSession =
-              new SqlitePostingFactStore(
-                  bookAccess.bookFilePath(),
-                  passphraseResolver.resolve(bookAccess, currentPromptStyle),
-                  SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING);
+              openBookSession(
+                  bookAccess,
+                  SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+                  CliBookPassphraseResolver.PromptStyle.SINGLE);
           var replacementPassphrase =
               passphraseResolver.resolve(
                   bookAccess.bookFilePath(),
@@ -418,7 +427,8 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookAdministrationService(bookSession, clock).declareAccount(command);
+        return new BookAdministrationService(bookSession.administrationSession(), clock)
+            .declareAccount(command);
       }
     }
 
@@ -429,7 +439,7 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession).inspectBook();
+        return new BookQueryService(bookSession.querySession()).inspectBook();
       }
     }
 
@@ -440,7 +450,7 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession).listAccounts(query);
+        return new BookQueryService(bookSession.querySession()).listAccounts(query);
       }
     }
 
@@ -452,7 +462,7 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession).getPosting(postingId);
+        return new BookQueryService(bookSession.querySession()).getPosting(postingId);
       }
     }
 
@@ -463,7 +473,7 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession).listPostings(query);
+        return new BookQueryService(bookSession.querySession()).listPostings(query);
       }
     }
 
@@ -474,21 +484,17 @@ final class FinGrindCli {
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession).accountBalance(query);
+        return new BookQueryService(bookSession.querySession()).accountBalance(query);
       }
     }
 
     @Override
     public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
-      boolean initializesBook =
-          plan.steps().stream()
-              .anyMatch(step -> step instanceof dev.erst.fingrind.contract.LedgerStep.OpenBook);
+      boolean initializesBook = plan.beginsWithOpenBook();
       try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
-              initializesBook
-                  ? SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE
-                  : SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+              SqlitePostingFactStore.AccessMode.PLAN_EXECUTION,
               initializesBook
                   ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
                   : CliBookPassphraseResolver.PromptStyle.SINGLE)) {
@@ -498,24 +504,24 @@ final class FinGrindCli {
     }
 
     @Override
-    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
       try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_ONLY,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return postingApplicationService(bookSession, clock).preflight(command);
+        return postingApplicationService(bookSession.postingSession(), clock).preflight(command);
       }
     }
 
     @Override
-    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
       try (SqlitePostingFactStore bookSession =
           openBookSession(
               bookAccess,
               SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
               CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return postingApplicationService(bookSession, clock).commit(command);
+        return postingApplicationService(bookSession.postingSession(), clock).commit(command);
       }
     }
 
@@ -530,15 +536,8 @@ final class FinGrindCli {
     }
 
     private static PostingApplicationService postingApplicationService(
-        SqlitePostingFactStore bookSession, Clock clock) {
+        PostingBookSession bookSession, Clock clock) {
       return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
     }
-  }
-
-  /** Executes one write-boundary command against the selected book file. */
-  @FunctionalInterface
-  private interface EntryOperation {
-    /** Executes the selected write-boundary command. */
-    PostEntryResult execute(BookAccess bookAccess, PostEntryCommand command);
   }
 }

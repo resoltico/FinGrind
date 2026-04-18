@@ -33,8 +33,8 @@ public interface BookQuerySession extends AutoCloseable {
   /** Returns one filtered page of postings in a stable order. */
   PostingPage listPostings(ListPostingsQuery query);
 
-  /** Computes grouped per-currency balances for one declared account. */
-  AccountBalanceSnapshot accountBalance(AccountBalanceQuery query);
+  /** Computes grouped per-currency balances for one declared account when that account exists. */
+  Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query);
 
   @Override
   void close();

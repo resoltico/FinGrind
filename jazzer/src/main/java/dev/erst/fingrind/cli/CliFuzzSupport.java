@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.executor.PostingIdGenerator;
@@ -38,6 +39,12 @@ public final class CliFuzzSupport {
   public static PostEntryCommand readPostEntryCommand(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
     return new CliRequestReader(new ByteArrayInputStream(input)).readPostEntryCommand(Path.of("-"));
+  }
+
+  /** Parses one ledger-plan payload from bytes using the production CLI request reader. */
+  public static LedgerPlan readLedgerPlan(byte[] input) {
+    Objects.requireNonNull(input, "input must not be null");
+    return new CliRequestReader(new ByteArrayInputStream(input)).readLedgerPlan(Path.of("-"));
   }
 
   /** Returns a deterministic posting-id generator for one fuzz iteration. */

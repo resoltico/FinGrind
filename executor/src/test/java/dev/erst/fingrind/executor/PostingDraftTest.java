@@ -1,9 +1,11 @@
 package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -28,10 +30,9 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for the executor-owned posting draft. */
 class PostingDraftTest {
   @Test
-  void postingDraft_normalizesMissingReversalAndMaterializesPostingFacts() {
-    Optional<dev.erst.fingrind.core.ReversalReference> missingReversal = null;
+  void postingDraft_keepsExplicitMissingReversalAndMaterializesPostingFacts() {
     PostingDraft postingDraft =
-        new PostingDraft(journalEntry(), missingReversal, committedProvenance("idem-1"));
+        new PostingDraft(journalEntry(), PostingLineage.direct(), committedProvenance("idem-1"));
     PostingFact postingFact = postingDraft.materialize(new PostingId("posting-1"));
 
     assertTrue(postingDraft.reversalReference().isEmpty());
@@ -40,6 +41,13 @@ class PostingDraftTest {
     assertEquals(postingDraft.journalEntry(), postingFact.journalEntry());
     assertTrue(postingFact.reversalReference().isEmpty());
     assertEquals(postingDraft.provenance(), postingFact.provenance());
+  }
+
+  @Test
+  void postingDraft_rejectsNullPostingLineage() {
+    assertThrows(
+        NullPointerException.class,
+        () -> new PostingDraft(journalEntry(), null, committedProvenance("idem-1")));
   }
 
   private static JournalEntry journalEntry() {
@@ -64,7 +72,6 @@ class PostingDraftTest {
             new CommandId("command-1"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
-            Optional.empty(),
             Optional.empty()),
         Instant.parse("2026-04-07T10:15:30Z"),
         SourceChannel.CLI);

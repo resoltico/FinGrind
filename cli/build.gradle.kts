@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":executor"))
     implementation(project(":sqlite"))
+    implementation(libs.jackson.annotations)
     implementation(libs.jackson.databind)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
@@ -37,6 +38,10 @@ application {
 }
 
 val fingrindJavaVersion = providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
+val repositoryRootDirectory = rootProject.projectDir.toPath()
+val publicCliBundleTargets = DistributionSupport.publicCliBundleTargets(repositoryRootDirectory)
+val unsupportedPublicCliOperatingSystems =
+    DistributionSupport.unsupportedPublicCliOperatingSystems(repositoryRootDirectory)
 val bundleClassifier =
     providers.gradleProperty("fingrindBundleClassifier").orElse(
         providers.provider { DistributionSupport.hostClassifier() },
@@ -91,17 +96,13 @@ val bundleTemplateProperties =
         "bundleLauncherCommand" to bundleLauncherCommand.get(),
         "bundleLauncherCommandJson" to DistributionSupport.jsonString(bundleLauncherCommand.get()),
         "publicBundleTargetsJson" to
-            DistributionSupport.jsonStringArray(DistributionSupport.PUBLIC_CLI_BUNDLE_TARGETS),
+            DistributionSupport.jsonStringArray(publicCliBundleTargets),
         "unsupportedPublicOperatingSystemsJson" to
-            DistributionSupport.jsonStringArray(
-                DistributionSupport.UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS,
-            ),
+            DistributionSupport.jsonStringArray(unsupportedPublicCliOperatingSystems),
         "publicBundleTargetsMarkdown" to
-            DistributionSupport.markdownBulletList(DistributionSupport.PUBLIC_CLI_BUNDLE_TARGETS),
+            DistributionSupport.markdownBulletList(publicCliBundleTargets),
         "unsupportedPublicOperatingSystemsMarkdown" to
-            DistributionSupport.markdownBulletList(
-                DistributionSupport.UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS,
-            ),
+            DistributionSupport.markdownBulletList(unsupportedPublicCliOperatingSystems),
     )
 
 if (bundleClassifierValue != hostBundleClassifier) {

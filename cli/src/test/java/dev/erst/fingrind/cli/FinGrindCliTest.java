@@ -11,43 +11,53 @@ import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
+import dev.erst.fingrind.contract.CommitEntryResult;
+import dev.erst.fingrind.contract.ContractDiscovery;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.GetPostingResult;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
-import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.MachineContract;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
+import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -107,7 +117,9 @@ class FinGrindCliTest {
     JsonNode payload = new ObjectMapper().readTree(json).path("payload");
     assertTrue(json.contains("\"administrationCommands\""));
     assertTrue(json.contains("\"queryCommands\""));
-    assertTrue(json.contains("\"book-not-initialized\""));
+    assertTrue(json.contains("\"administration-book-not-initialized\""));
+    assertTrue(json.contains("\"query-book-not-initialized\""));
+    assertTrue(json.contains("\"posting-book-not-initialized\""));
     assertTrue(json.contains("\"account-normal-balance-conflict\""));
     assertTrue(json.contains("\"posting-not-found\""));
     assertEquals(
@@ -157,10 +169,11 @@ class FinGrindCliTest {
         "direct-java-invocation",
         payload.path("environment").path("runtimeDistribution").asString());
     assertEquals(
-        "[\"macos-aarch64\",\"macos-x86_64\",\"linux-x86_64\",\"linux-aarch64\",\"windows-x86_64\"]",
-        payload.path("environment").path("supportedPublicCliBundleTargets").toString());
+        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        readTextArray(payload.path("environment").path("supportedPublicCliBundleTargets")));
     assertEquals(
-        "[]", payload.path("environment").path("unsupportedPublicCliOperatingSystems").toString());
+        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+        readTextArray(payload.path("environment").path("unsupportedPublicCliOperatingSystems")));
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY",
         payload.path("environment").path("sqliteLibraryEnvironmentVariable").asString());
@@ -200,7 +213,7 @@ class FinGrindCliTest {
 
   @Test
   void environmentDescriptor_reportsUnavailableRuntimeWhenSqliteProbeFails() {
-    MachineContract.EnvironmentDescriptor environmentDescriptor =
+    ContractDiscovery.EnvironmentDescriptor environmentDescriptor =
         FinGrindCli.environmentDescriptor(
             new SqliteRuntime.Probe(
                 "managed-only",
@@ -220,9 +233,11 @@ class FinGrindCliTest {
     assertEquals("managed-only", environmentDescriptor.sqliteLibraryMode());
     assertEquals("self-contained-bundle", environmentDescriptor.publicCliDistribution());
     assertEquals(
-        List.of("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64", "windows-x86_64"),
+        ProtocolCatalog.supportedPublicCliBundleTargets(),
         environmentDescriptor.supportedPublicCliBundleTargets());
-    assertEquals(List.of(), environmentDescriptor.unsupportedPublicCliOperatingSystems());
+    assertEquals(
+        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+        environmentDescriptor.unsupportedPublicCliOperatingSystems());
     assertEquals("26+", environmentDescriptor.sourceCheckoutJava());
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqliteLibraryEnvironmentVariable());
@@ -293,7 +308,7 @@ class FinGrindCliTest {
     assertEquals(0, exitCode);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"planId\""));
-    assertTrue(json.contains("\"executionPolicy\""));
+    assertFalse(json.contains("\"executionPolicy\""));
     assertTrue(json.contains("\"initialize-book\""));
     assertTrue(json.contains("\"assert-account-balance\""));
     assertTrue(json.contains("\"assertion\""));
@@ -323,8 +338,54 @@ class FinGrindCliTest {
             });
 
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"committed\""));
+    assertTrue(
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-committed\""));
     assertTrue(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_executesNonOpeningPlanAgainstExistingBookThroughDefaultSqliteWorkflow()
+      throws IOException {
+    Path planFile = writeNamedRequest("declare-plan.json", validPlanJson());
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("existing-book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    FinGrindCli openCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(new ByteArrayOutputStream()),
+            fixedClock());
+
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli executeCli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        executeCli.run(
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              planFile.toString()
+            });
+
+    assertEquals(0, exitCode);
+    assertTrue(
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-committed\""));
   }
 
   @Test
@@ -352,9 +413,28 @@ class FinGrindCliTest {
 
     assertEquals(2, exitCode);
     assertTrue(
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-rejected\""));
+    assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"book-not-initialized\""));
+            .contains("\"code\":\"administration-book-not-initialized\""));
+  }
+
+  @Test
+  void cliFailure_rejectsUnsupportedExceptionTypes() throws Exception {
+    MethodHandle cliFailure =
+        MethodHandles.privateLookupIn(FinGrindCli.class, MethodHandles.lookup())
+            .findStatic(
+                FinGrindCli.class,
+                "cliFailure",
+                MethodType.methodType(CliFailure.class, Exception.class));
+
+    IllegalArgumentException thrown =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> cliFailure.invokeWithArguments(new IllegalStateException("boom")));
+
+    assertEquals("Unsupported CLI failure type.", thrown.getMessage());
   }
 
   @Test
@@ -384,7 +464,7 @@ class FinGrindCliTest {
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"book-not-initialized\""));
+            .contains("\"code\":\"posting-book-not-initialized\""));
     assertFalse(Files.exists(bookFilePath));
   }
 
@@ -782,7 +862,7 @@ class FinGrindCliTest {
                   bookKeyFilePath.toString()
                 }));
     assertTrue(
-        inspectOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"INITIALIZED\""));
+        inspectOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
 
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     assertEquals(
@@ -974,7 +1054,7 @@ class FinGrindCliTest {
   }
 
   @Test
-  void run_mapsAssertionFailedPlansToExitCodeTwo() throws IOException {
+  void run_mapsAssertionFailedPlansToExitCodeThree() throws IOException {
     Path planFile = writeNamedRequest("assertion-plan.json", validPlanJson());
     Path bookFilePath = tempDirectory.resolve("books").resolve("assertion.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -1017,7 +1097,11 @@ class FinGrindCliTest {
                   planFile.toString()
                 });
 
-    assertEquals(2, exitCode);
+    assertEquals(3, exitCode);
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"status\":\"plan-assertion-failed\""));
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"assertion-failed\""));
   }
@@ -1086,9 +1170,9 @@ class FinGrindCliTest {
             new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
             new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
             new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-            new PostEntryResult.Rejected(
+            new PostEntryResult.PreflightRejected(
                 new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
-            new PostEntryResult.Rejected(
+            new PostEntryResult.CommitRejected(
                 new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()));
     Path bookFilePath = tempDirectory.resolve("reject.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -1219,15 +1303,11 @@ class FinGrindCliTest {
 
           @Override
           public BookInspection inspectBook(BookAccess bookAccess) {
-            return new BookInspection(
-                BookInspection.Status.INITIALIZED,
-                true,
-                true,
-                false,
+            return new BookInspection.Initialized(
                 1_179_079_236,
                 1,
                 1,
-                "hard-break-no-migration",
+                BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
                 Instant.parse("2026-04-07T10:15:30Z"));
           }
 
@@ -1259,12 +1339,12 @@ class FinGrindCliTest {
           }
 
           @Override
-          public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+          public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
             throw new AssertionError("preflight should not be called in this test");
           }
 
           @Override
-          public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+          public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
             throw new AssertionError("commit should not be called in this test");
           }
         };
@@ -1334,7 +1414,7 @@ class FinGrindCliTest {
     assertTrue(
         balanceOutput
             .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"book-not-initialized\""));
+            .contains("\"code\":\"query-book-not-initialized\""));
   }
 
   @Test
@@ -1362,7 +1442,8 @@ class FinGrindCliTest {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
-            new ExplodingWorkflow("Failed to open SQLite book connection."));
+            new ExplodingWorkflow(
+                new SqliteStorageFailureException("Failed to open SQLite book connection.")));
 
     int exitCode =
         cli.run(
@@ -1392,7 +1473,9 @@ class FinGrindCliTest {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
-            new ExplodingWorkflow("FINGRIND_SQLITE_LIBRARY is not configured."));
+            new ExplodingWorkflow(
+                new ManagedSqliteRuntimeUnavailableException(
+                    "FINGRIND_SQLITE_LIBRARY is not configured.")));
 
     int exitCode =
         cli.run(
@@ -1428,7 +1511,8 @@ class FinGrindCliTest {
             utf8PrintStream(outputStream),
             fixedClock(),
             new ExplodingWorkflow(
-                "fingrind.bundle.home did not resolve a bundled SQLite library."));
+                new ManagedSqliteRuntimeUnavailableException(
+                    "fingrind.bundle.home did not resolve a bundled SQLite library.")));
 
     int exitCode =
         cli.run(
@@ -1462,7 +1546,9 @@ class FinGrindCliTest {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
-            new ExplodingWorkflow("bin/fingrind must be used from the extracted bundle root."));
+            new ExplodingWorkflow(
+                new ManagedSqliteRuntimeUnavailableException(
+                    "bin/fingrind must be used from the extracted bundle root.")));
 
     int exitCode =
         cli.run(
@@ -1497,7 +1583,8 @@ class FinGrindCliTest {
             utf8PrintStream(outputStream),
             fixedClock(),
             new ExplodingWorkflow(
-                "bin\\fingrind.cmd must be used from the extracted bundle root."));
+                new ManagedSqliteRuntimeUnavailableException(
+                    "bin\\fingrind.cmd must be used from the extracted bundle root.")));
 
     int exitCode =
         cli.run(
@@ -1531,7 +1618,7 @@ class FinGrindCliTest {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
-            new ExplodingWorkflow("boom"));
+            new ExplodingWorkflow(new IllegalStateException("boom")));
 
     int exitCode =
         cli.run(
@@ -1556,7 +1643,7 @@ class FinGrindCliTest {
   }
 
   @Test
-  void run_mapsGenericIllegalArgumentExceptionToInvalidRequest() throws IOException {
+  void run_mapsGenericIllegalArgumentExceptionToRuntimeFailure() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -1580,9 +1667,9 @@ class FinGrindCliTest {
               requestFile.toString()
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
   }
 
@@ -1760,6 +1847,12 @@ class FinGrindCliTest {
     return Clock.fixed(Instant.parse("2026-04-07T12:00:00Z"), ZoneOffset.UTC);
   }
 
+  private static List<String> readTextArray(JsonNode node) {
+    List<String> values = new java.util.ArrayList<>();
+    node.forEach(element -> values.add(element.asText()));
+    return List.copyOf(values);
+  }
+
   private static String validRequestJson() {
     return """
             {
@@ -1793,11 +1886,6 @@ class FinGrindCliTest {
     return """
             {
               "planId": "plan-1",
-              "executionPolicy": {
-                "journalLevel": "NORMAL",
-                "failurePolicy": "HALT_ON_FIRST_FAILURE",
-                "transactionMode": "ATOMIC"
-              },
               "steps": [
                 {
                   "stepId": "declare-cash",
@@ -1817,11 +1905,6 @@ class FinGrindCliTest {
     return """
             {
               "planId": "plan-1",
-              "executionPolicy": {
-                "journalLevel": "NORMAL",
-                "failurePolicy": "HALT_ON_FIRST_FAILURE",
-                "transactionMode": "ATOMIC"
-              },
               "steps": [
                 {
                   "stepId": "open",
@@ -1864,8 +1947,8 @@ class FinGrindCliTest {
     private final RekeyBookResult rekeyBookResult;
     private final DeclareAccountResult declareAccountResult;
     private final ListAccountsResult listAccountsResult;
-    private final PostEntryResult preflightResult;
-    private final PostEntryResult commitResult;
+    private final PreflightEntryResult preflightResult;
+    private final CommitEntryResult commitResult;
     private LedgerPlanResult executePlanResult;
 
     private RecordingWorkflow(
@@ -1873,8 +1956,8 @@ class FinGrindCliTest {
         RekeyBookResult rekeyBookResult,
         DeclareAccountResult declareAccountResult,
         ListAccountsResult listAccountsResult,
-        PostEntryResult preflightResult,
-        PostEntryResult commitResult) {
+        PreflightEntryResult preflightResult,
+        CommitEntryResult commitResult) {
       this.openBookResult = openBookResult;
       this.rekeyBookResult = rekeyBookResult;
       this.declareAccountResult = declareAccountResult;
@@ -1938,13 +2021,13 @@ class FinGrindCliTest {
     }
 
     @Override
-    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
       preflightAccesses.add(bookAccess);
       return preflightResult;
     }
 
     @Override
-    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
       commitAccesses.add(bookAccess);
       return commitResult;
     }
@@ -2002,67 +2085,67 @@ class FinGrindCliTest {
 
   /** Workflow stub that always throws the same runtime failure. */
   private static final class ExplodingWorkflow implements FinGrindCli.BookWorkflow {
-    private final String message;
+    private final RuntimeException failure;
 
-    private ExplodingWorkflow(String message) {
-      this.message = message;
+    private ExplodingWorkflow(RuntimeException failure) {
+      this.failure = failure;
     }
 
     @Override
     public OpenBookResult openBook(BookAccess bookAccess) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public RekeyBookResult rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public DeclareAccountResult declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public BookInspection inspectBook(BookAccess bookAccess) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
     public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
-      throw new IllegalStateException(message);
+      throw failure;
     }
 
     @Override
-    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
-      throw new IllegalStateException(message);
+    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+      throw failure;
     }
 
     @Override
-    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
-      throw new IllegalStateException(message);
+    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+      throw failure;
     }
   }
 
@@ -2116,12 +2199,12 @@ class FinGrindCliTest {
     }
 
     @Override
-    public PostEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public PostEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
   }
@@ -2132,33 +2215,42 @@ class FinGrindCliTest {
 
   private static LedgerPlanResult successfulPlanResult(String planId) {
     Instant timestamp = fixedClock().instant();
-    return new LedgerPlanResult(
+    return new LedgerPlanResult.Succeeded(
         planId,
-        LedgerPlanStatus.SUCCEEDED,
         new LedgerExecutionJournal(
-            planId, LedgerPlanStatus.SUCCEEDED, timestamp, timestamp, List.of()));
+            planId,
+            LedgerPlanStatus.SUCCEEDED,
+            timestamp,
+            timestamp,
+            List.of(
+                new LedgerJournalEntry.Succeeded(
+                    "inspect",
+                    LedgerStepKind.INSPECT_BOOK,
+                    Optional.empty(),
+                    timestamp,
+                    timestamp,
+                    List.of(LedgerFact.flag("ok", true), LedgerFact.count("count", 1))))));
   }
 
   private static LedgerPlanResult assertionFailedPlanResult(String planId) {
     Instant timestamp = fixedClock().instant();
     LedgerStepFailure failure =
         new LedgerStepFailure("assertion-failed", "Assertion failed.", List.of());
-    return new LedgerPlanResult(
+    return new LedgerPlanResult.AssertionFailed(
         planId,
-        LedgerPlanStatus.ASSERTION_FAILED,
         new LedgerExecutionJournal(
             planId,
             LedgerPlanStatus.ASSERTION_FAILED,
             timestamp,
             timestamp,
             List.of(
-                new LedgerJournalEntry(
+                new LedgerJournalEntry.AssertionFailed(
                     "assert",
-                    OperationId.EXECUTE_PLAN,
-                    LedgerStepStatus.ASSERTION_FAILED,
+                    LedgerStepKind.ASSERT,
+                    Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
                     timestamp,
                     timestamp,
                     List.of(),
-                    Optional.of(failure)))));
+                    failure))));
   }
 }

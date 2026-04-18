@@ -15,14 +15,14 @@
     }
   ],
   "reversal": {
-    "priorPostingId": "posting-missing"
+    "priorPostingId": "posting-missing",
+    "reason": "operator reversal"
   },
   "provenance": {
     "actorId": "actor-5",
     "actorType": "USER",
     "commandId": "command-5",
     "idempotencyKey": "idem-5",
-    "causationId": "cause-5",
-    "reason": "operator reversal"
+    "causationId": "cause-5"
   }
 }

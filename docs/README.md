@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: DOCUMENTATION_INDEX
 updated: "2026-04-17"
 route:
@@ -37,6 +37,7 @@ Then choose one of the user, developer, or reference tracks below.
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): canonical `print-plan-template` output
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with a per-step journal
+- [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with a bounded per-step journal
 - [examples/reversal-request.json](./examples/reversal-request.json): reversal request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 

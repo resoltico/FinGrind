@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: ADAPTERS
 updated: "2026-04-17"
 route:
@@ -92,7 +92,8 @@ public interface BookQuerySession extends AutoCloseable
 public interface LedgerPlanSession
 ```
 
-- Extends: `BookAdministrationSession`, `PostingBookSession`, `BookQuerySession`
+- Views: exposes `administrationSession()`, `postingSession()`, and `querySession()` as narrow
+  operation seams bound to the same transaction boundary
 - Surface: `beginLedgerPlanTransaction()`, `commitLedgerPlanTransaction()`,
   `rollbackLedgerPlanTransaction()`
 - Purpose: let one ledger plan reuse the ordinary administration, query, and posting seams inside
@@ -115,7 +116,7 @@ public sealed interface PostingCommitResult
 query, and ledger-plan seams.
 
 ```java
-public final class InMemoryBookSession implements LedgerPlanSession
+public final class InMemoryBookSession implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookQuerySession
 ```
 
 - Classpath: lives in application test fixtures rather than the production runtime surface
@@ -136,10 +137,11 @@ public final class SqliteBookPassphrase implements AutoCloseable
 ## `SqlitePostingFactStore`
 
 `SqlitePostingFactStore` is the durable SQLite-backed implementation of FinGrind's administration,
-posting, query, and ledger-plan seams.
+posting, query, and ledger-plan seams, with focused collaborators handling the lower-level SQLite
+read/write/configuration details.
 
 ```java
-public final class SqlitePostingFactStore implements LedgerPlanSession
+public final class SqlitePostingFactStore implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookQuerySession
 ```
 
 - Purpose: persist one protected entity book into one selected SQLite file
@@ -154,6 +156,9 @@ public final class SqlitePostingFactStore implements LedgerPlanSession
   transactional SQLite commit
 - Rekey: also exposes `rekeyBook(...)` so one existing protected book can rotate onto replacement
   passphrase material
+- Helper split:
+  `SqliteConnectionSupport`, `SqliteBookStateReader`, `SqliteStatementQuerySupport`,
+  `SqlitePostingReadSupport`, and `SqliteMutationWriter`
 
 ## `App`
 

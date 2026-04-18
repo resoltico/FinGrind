@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-04-17"
 route:
@@ -155,7 +155,7 @@ Developer-only raw JAR entrypoints:
 ./gradlew :cli:shadowJar
 ./gradlew prepareManagedSqlite
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java -jar cli/build/libs/fingrind.jar help
+java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar help
 ```
 
 The raw JAR route remains useful for:

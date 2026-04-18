@@ -1,10 +1,20 @@
 package dev.erst.fingrind.buildlogic
 
-object DistributionSupport {
-    val PUBLIC_CLI_BUNDLE_TARGETS =
-        listOf("macos-aarch64", "macos-x86_64", "linux-x86_64", "linux-aarch64", "windows-x86_64")
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Properties
 
-    val UNSUPPORTED_PUBLIC_CLI_OPERATING_SYSTEMS = emptyList<String>()
+object DistributionSupport {
+    private const val PUBLIC_DISTRIBUTION_CONTRACT_PATH =
+        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.properties"
+    private const val SUPPORTED_BUNDLE_TARGETS_KEY = "supportedPublicCliBundleTargets"
+    private const val UNSUPPORTED_OPERATING_SYSTEMS_KEY = "unsupportedPublicCliOperatingSystems"
+
+    fun publicCliBundleTargets(projectRootDirectory: Path): List<String> =
+        loadPublicDistributionContract(projectRootDirectory).supportedPublicCliBundleTargets
+
+    fun unsupportedPublicCliOperatingSystems(projectRootDirectory: Path): List<String> =
+        loadPublicDistributionContract(projectRootDirectory).unsupportedOperatingSystems
 
     fun operatingSystemId(osName: String = System.getProperty("os.name", "")): String {
         val operatingSystem = osName.lowercase()
@@ -88,4 +98,30 @@ object DistributionSupport {
         } else {
             values.joinToString(separator = System.lineSeparator()) { value -> "- `$value`" }
         }
+
+    private fun loadPublicDistributionContract(projectRootDirectory: Path): PublicDistributionContract {
+        val properties = Properties()
+        Files.newInputStream(projectRootDirectory.resolve(PUBLIC_DISTRIBUTION_CONTRACT_PATH)).use { stream ->
+            properties.load(stream)
+        }
+        return PublicDistributionContract(
+            supportedPublicCliBundleTargets =
+                parseList(properties.getProperty(SUPPORTED_BUNDLE_TARGETS_KEY)),
+            unsupportedOperatingSystems =
+                parseList(properties.getProperty(UNSUPPORTED_OPERATING_SYSTEMS_KEY)),
+        )
+    }
+
+    private fun parseList(rawValue: String?): List<String> =
+        rawValue
+            ?.split(',')
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            ?.distinct()
+            ?: emptyList()
 }
+
+private data class PublicDistributionContract(
+    val supportedPublicCliBundleTargets: List<String>,
+    val unsupportedOperatingSystems: List<String>,
+)

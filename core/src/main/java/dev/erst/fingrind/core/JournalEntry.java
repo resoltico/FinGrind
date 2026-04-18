@@ -10,7 +10,7 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
   /** Validates the journal grammar and enforces balanced entry discipline. */
   public JournalEntry {
     Objects.requireNonNull(effectiveDate, "effectiveDate");
-    lines = List.copyOf(lines == null ? List.of() : lines);
+    lines = List.copyOf(Objects.requireNonNull(lines, "lines"));
     if (lines.isEmpty()) {
       throw new IllegalArgumentException("Journal entry must contain at least one line.");
     }

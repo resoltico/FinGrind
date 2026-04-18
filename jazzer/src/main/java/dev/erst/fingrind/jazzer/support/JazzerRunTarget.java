@@ -80,6 +80,11 @@ public record JazzerRunTarget(
     return fromKey("cli-request");
   }
 
+  /** Returns the active ledger-plan request fuzz target. */
+  public static JazzerRunTarget ledgerPlanRequest() {
+    return fromKey("ledger-plan-request");
+  }
+
   /** Returns the active posting workflow fuzz target. */
   public static JazzerRunTarget postingWorkflow() {
     return fromKey("posting-workflow");

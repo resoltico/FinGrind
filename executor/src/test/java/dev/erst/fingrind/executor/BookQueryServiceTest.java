@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -150,15 +151,25 @@ class BookQueryServiceTest {
           new ListPostingsResult.Listed(new PostingPage(List.of(postingFact), 20, 0, false)),
           service.listPostings(
               new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 20, 0)));
+      assertEquals(
+          new ListPostingsResult.Listed(new PostingPage(List.of(postingFact), 20, 0, false)),
+          service.listPostings(
+              new ListPostingsQuery(
+                  Optional.of(new AccountCode("1000")),
+                  Optional.empty(),
+                  Optional.empty(),
+                  20,
+                  0)));
     }
   }
 
   @Test
   void getPostingAndAccountBalance_returnCommittedSnapshots() {
-    try (InMemoryBookSession bookSession = initializedBook()) {
-      declareDefaultAccounts(bookSession);
+    try (CountingFindAccountBookSession bookSession = initializedCountingBook()) {
+      declareDefaultAccounts(bookSession.delegate());
       PostingFact postingFact = postingFact("posting-1", "idem-1");
       bookSession.commit(postingFact);
+      bookSession.resetFindAccountCalls();
       BookQueryService service = new BookQueryService(bookSession);
 
       assertEquals(
@@ -183,6 +194,7 @@ class BookQueryServiceTest {
           service.accountBalance(
               new AccountBalanceQuery(
                   new AccountCode("1000"), Optional.empty(), Optional.empty())));
+      assertEquals(0, bookSession.findAccountCalls());
     }
   }
 
@@ -227,6 +239,12 @@ class BookQueryServiceTest {
     return bookSession;
   }
 
+  private static CountingFindAccountBookSession initializedCountingBook() {
+    CountingFindAccountBookSession bookSession = new CountingFindAccountBookSession();
+    bookSession.openBook(FIXED_INSTANT);
+    return bookSession;
+  }
+
   private static void declareDefaultAccounts(InMemoryBookSession bookSession) {
     bookSession.declareAccount(
         new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
@@ -242,7 +260,7 @@ class BookQueryServiceTest {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
-        Optional.empty(),
+        PostingLineage.direct(),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -250,7 +268,6 @@ class BookQueryServiceTest {
                 new CommandId("command-1"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
-                Optional.empty(),
                 Optional.empty()),
             FIXED_INSTANT,
             SourceChannel.CLI));
@@ -261,5 +278,75 @@ class BookQueryServiceTest {
         new AccountCode(accountCode),
         side,
         new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+  }
+
+  /**
+   * Counts account lookups so account-balance tests can assert the query seam stays single-read.
+   */
+  private static final class CountingFindAccountBookSession implements BookQuerySession {
+    private final InMemoryBookSession delegate = new InMemoryBookSession();
+    private int findAccountCalls;
+
+    private void openBook(Instant initializedAt) {
+      delegate.openBook(initializedAt);
+    }
+
+    private void commit(PostingFact postingFact) {
+      delegate.commit(postingFact);
+    }
+
+    private InMemoryBookSession delegate() {
+      return delegate;
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.BookInspection inspectBook() {
+      return delegate.inspectBook();
+    }
+
+    @Override
+    public boolean isInitialized() {
+      return delegate.isInitialized();
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.AccountPage listAccounts(ListAccountsQuery query) {
+      return delegate.listAccounts(query);
+    }
+
+    @Override
+    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+      findAccountCalls++;
+      return delegate.findAccount(accountCode);
+    }
+
+    @Override
+    public Optional<dev.erst.fingrind.contract.PostingFact> findPosting(PostingId postingId) {
+      return delegate.findPosting(postingId);
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.PostingPage listPostings(ListPostingsQuery query) {
+      return delegate.listPostings(query);
+    }
+
+    @Override
+    public Optional<dev.erst.fingrind.contract.AccountBalanceSnapshot> accountBalance(
+        AccountBalanceQuery query) {
+      return delegate.accountBalance(query);
+    }
+
+    private int findAccountCalls() {
+      return findAccountCalls;
+    }
+
+    private void resetFindAccountCalls() {
+      findAccountCalls = 0;
+    }
+
+    @Override
+    public void close() {
+      delegate.close();
+    }
   }
 }

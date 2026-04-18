@@ -12,7 +12,7 @@ class BookAdministrationRejectionTest {
     assertEquals(
         List.of(
             "book-already-initialized",
-            "book-not-initialized",
+            "administration-book-not-initialized",
             "book-contains-schema",
             "account-normal-balance-conflict"),
         List.of(
@@ -34,11 +34,11 @@ class BookAdministrationRejectionTest {
     assertEquals(
         List.of(
             "book-already-initialized",
-            "book-not-initialized",
+            "administration-book-not-initialized",
             "book-contains-schema",
             "account-normal-balance-conflict"),
         BookAdministrationRejection.descriptors().stream()
-            .map(MachineContract.RejectionDescriptor::code)
+            .map(ContractResponse.RejectionDescriptor::code)
             .toList());
   }
 }

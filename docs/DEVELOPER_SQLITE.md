@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.15.0"
+version: "0.16.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-17"
 route:
@@ -37,11 +37,13 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- there is no schema migration framework, version table, or compatibility layer
+- the current supported book format is `1`, owned by the SQLite migration planner
+- the published migration policy is sequential in-place migration
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
-Older book shapes are intentionally unsupported during this hard-break phase.
+Because current FinGrind books start at format `1`, there are no historical upgrade steps bundled
+yet.
 
 ## Current Adapter Choice
 
@@ -113,11 +115,13 @@ License and attribution stance:
 - public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
   runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
 - standalone `java -jar` execution remains developer-only and must receive
-  `FINGRIND_SQLITE_LIBRARY` pointing at the library produced by `prepareManagedSqlite`
+  `FINGRIND_SQLITE_LIBRARY` pointing at the library produced by `prepareManagedSqlite` plus
+  `--enable-native-access=ALL-UNNAMED` on the `java` command line
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
   wants the managed native library must also run `prepareManagedSqlite` first and point
-  `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`
+  `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`, then launch the
+  JAR with `--enable-native-access=ALL-UNNAMED`
 
 ## Adapter Composition
 
@@ -129,6 +133,13 @@ The SQLite adapter is split into focused collaborators:
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
   owns one thread-confined protected-book session, lifecycle inspection, paged query paths,
   transaction-scoped validation, and durable commit outcomes
+- [`SqliteConnectionSupport`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteConnectionSupport.java),
+  [`SqliteBookStateReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookStateReader.java),
+  [`SqliteStatementQuerySupport`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStatementQuerySupport.java),
+  [`SqlitePostingReadSupport`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingReadSupport.java),
+  and [`SqliteMutationWriter`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteMutationWriter.java):
+  focused collaborators for open-configuration hardening, lifecycle probing, single-row queries,
+  posting reads, and durable writes
 - [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
 - [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java):
@@ -237,9 +248,10 @@ text or re-querying after rollback.
 - the canonical schema uses SQLite `STRICT` tables for `book_meta`, `account`, `posting_fact`, and
   `journal_line`
 - there are no versioned migration file names such as `V1__...`
-- there is no migration step between old and new book shapes
-- if the schema changes again during this hard-break phase, new books are created from the new
-  canonical file
+- the migration planner is the canonical owner of the supported format version and the sequential
+  in-place migration policy
+- no upgrade step files are bundled yet because there are no earlier FinGrind on-disk versions
+  than the current format `1`
 
 ## Why FFM-Backed SQLite
 
@@ -254,11 +266,11 @@ Reasons for the current design:
   code into FinGrind itself
 
 Managed runtime targets currently build SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 from the
-vendored amalgamation on macOS and Linux. The CLI JAR declares
-`Enable-Native-Access: ALL-UNNAMED`, the public bundle launcher starts its private runtime with
-`--enable-native-access=ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with the
-same native-access flag, and controlled surfaces resolve the managed library either through
-`fingrind.bundle.home` or `FINGRIND_SQLITE_LIBRARY`.
+vendored amalgamation on macOS and Linux. The public bundle launcher starts its private runtime
+with `--enable-native-access=ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with
+the same native-access flag, the developer-only raw-JAR route must pass that flag explicitly, and
+controlled surfaces resolve the managed library either through `fingrind.bundle.home` or
+`FINGRIND_SQLITE_LIBRARY`.
 
 Distribution note:
 - public bundle archives and the public container image both package a private `jlink` runtime so
@@ -291,5 +303,5 @@ Native bridge notes:
   session-close paths have already released active handles, matching SQLite3MC's shutdown
   guidance for auto-extension and VFS cleanup
 
-This is a deliberate hard-break correction to the earlier shell-out design, not an accidental
+This is a deliberate architectural correction to the earlier shell-out design, not an accidental
 runtime experiment.

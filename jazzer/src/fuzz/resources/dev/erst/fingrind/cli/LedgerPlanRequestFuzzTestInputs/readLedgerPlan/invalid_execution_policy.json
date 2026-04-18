@@ -1,0 +1,12 @@
+{
+  "planId": "plan-policy",
+  "executionPolicy": {
+    "journalLevel": "VERBOSE"
+  },
+  "steps": [
+    {
+      "stepId": "inspect",
+      "kind": "inspect-book"
+    }
+  ]
+}

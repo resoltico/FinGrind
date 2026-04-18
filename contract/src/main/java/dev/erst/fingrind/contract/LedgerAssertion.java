@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -14,11 +15,19 @@ public sealed interface LedgerAssertion
         LedgerAssertion.AccountActive,
         LedgerAssertion.PostingExists,
         LedgerAssertion.AccountBalanceEquals {
+  /** Returns the canonical assertion kind nested inside an `assert` ledger-plan step. */
+  LedgerAssertionKind kind();
+
   /** Asserts that an account exists in the selected book. */
   record AccountDeclared(AccountCode accountCode) implements LedgerAssertion {
     /** Validates the assertion. */
     public AccountDeclared {
       Objects.requireNonNull(accountCode, "accountCode");
+    }
+
+    @Override
+    public LedgerAssertionKind kind() {
+      return LedgerAssertionKind.ACCOUNT_DECLARED;
     }
   }
 
@@ -28,6 +37,11 @@ public sealed interface LedgerAssertion
     public AccountActive {
       Objects.requireNonNull(accountCode, "accountCode");
     }
+
+    @Override
+    public LedgerAssertionKind kind() {
+      return LedgerAssertionKind.ACCOUNT_ACTIVE;
+    }
   }
 
   /** Asserts that a committed posting exists. */
@@ -36,34 +50,60 @@ public sealed interface LedgerAssertion
     public PostingExists {
       Objects.requireNonNull(postingId, "postingId");
     }
+
+    @Override
+    public LedgerAssertionKind kind() {
+      return LedgerAssertionKind.POSTING_EXISTS;
+    }
   }
 
   /** Asserts that one account balance bucket equals the expected net amount and side. */
   record AccountBalanceEquals(
       AccountCode accountCode,
-      Optional<LocalDate> effectiveDateFrom,
-      Optional<LocalDate> effectiveDateTo,
+      EffectiveDateRange effectiveDateRange,
       Money netAmount,
       NormalBalance balanceSide)
       implements LedgerAssertion {
     /** Validates the assertion. */
     public AccountBalanceEquals {
       Objects.requireNonNull(accountCode, "accountCode");
-      effectiveDateFrom = effectiveDateFrom == null ? Optional.empty() : effectiveDateFrom;
-      effectiveDateTo = effectiveDateTo == null ? Optional.empty() : effectiveDateTo;
+      Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
       Objects.requireNonNull(netAmount, "netAmount");
       Objects.requireNonNull(balanceSide, "balanceSide");
-      if (effectiveDateFrom.isPresent()
-          && effectiveDateTo.isPresent()
-          && effectiveDateFrom.orElseThrow().isAfter(effectiveDateTo.orElseThrow())) {
-        throw new IllegalArgumentException(
-            "Ledger assertion effectiveDateFrom must be on or before effectiveDateTo.");
-      }
+    }
+
+    /** Compatibility constructor that lifts optional bounds into a typed range. */
+    public AccountBalanceEquals(
+        AccountCode accountCode,
+        Optional<LocalDate> effectiveDateFrom,
+        Optional<LocalDate> effectiveDateTo,
+        Money netAmount,
+        NormalBalance balanceSide) {
+      this(
+          accountCode,
+          EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo),
+          netAmount,
+          balanceSide);
+    }
+
+    @Override
+    public LedgerAssertionKind kind() {
+      return LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS;
+    }
+
+    /** Returns the optional lower effective-date bound carried by this assertion. */
+    public Optional<LocalDate> effectiveDateFrom() {
+      return effectiveDateRange.effectiveDateFrom();
+    }
+
+    /** Returns the optional upper effective-date bound carried by this assertion. */
+    public Optional<LocalDate> effectiveDateTo() {
+      return effectiveDateRange.effectiveDateTo();
     }
 
     /** Converts this assertion to the query required to evaluate it. */
     public AccountBalanceQuery query() {
-      return new AccountBalanceQuery(accountCode, effectiveDateFrom, effectiveDateTo);
+      return new AccountBalanceQuery(accountCode, effectiveDateRange);
     }
   }
 }

@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -247,21 +248,21 @@ class InMemoryBookSessionTest {
     return new PostingFact(
         new PostingId("posting-" + idempotencyKey),
         journalEntry(),
-        Optional.empty(),
-        committedProvenance(idempotencyKey, Optional.empty()));
+        PostingLineage.direct(),
+        committedProvenance(idempotencyKey));
   }
 
   private static PostingFact reversalFact(String idempotencyKey, String priorPostingId) {
     return new PostingFact(
         new PostingId("posting-" + idempotencyKey),
         reversalJournalEntry(),
-        Optional.of(new ReversalReference(new PostingId(priorPostingId))),
-        committedProvenance(
-            idempotencyKey, Optional.of(new ReversalReason("historical full reversal"))));
+        PostingLineage.reversal(
+            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReason("historical full reversal")),
+        committedProvenance(idempotencyKey));
   }
 
-  private static CommittedProvenance committedProvenance(
-      String idempotencyKey, Optional<ReversalReason> reason) {
+  private static CommittedProvenance committedProvenance(String idempotencyKey) {
     return new CommittedProvenance(
         new RequestProvenance(
             new ActorId("actor-1"),
@@ -269,8 +270,7 @@ class InMemoryBookSessionTest {
             new CommandId("command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
-            Optional.empty(),
-            reason),
+            Optional.empty()),
         FIXED_INSTANT,
         SourceChannel.CLI);
   }

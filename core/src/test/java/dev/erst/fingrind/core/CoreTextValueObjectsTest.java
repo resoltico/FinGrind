@@ -44,8 +44,33 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void normalBalance_exposesDebitAndCredit() {
-    assertEquals(NormalBalance.DEBIT, NormalBalance.valueOf("DEBIT"));
-    assertEquals(NormalBalance.CREDIT, NormalBalance.valueOf("CREDIT"));
+  void finiteWireVocabulariesParseStableValuesAndRejectUnknownValues() {
+    assertEquals("DEBIT", NormalBalance.DEBIT.wireValue());
+    assertEquals("CREDIT", NormalBalance.CREDIT.wireValue());
+    assertEquals(NormalBalance.DEBIT, NormalBalance.fromWireValue("DEBIT"));
+    assertEquals(NormalBalance.CREDIT, NormalBalance.fromWireValue("CREDIT"));
+    assertEquals(java.util.List.of("DEBIT", "CREDIT"), NormalBalance.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> NormalBalance.fromWireValue("debit"));
+
+    assertEquals("USER", ActorType.USER.wireValue());
+    assertEquals("SYSTEM", ActorType.SYSTEM.wireValue());
+    assertEquals("AGENT", ActorType.AGENT.wireValue());
+    assertEquals(java.util.List.of("USER", "SYSTEM", "AGENT"), ActorType.wireValues());
+    assertEquals(ActorType.USER, ActorType.fromWireValue("USER"));
+    assertEquals(ActorType.SYSTEM, ActorType.fromWireValue("SYSTEM"));
+    assertEquals(ActorType.AGENT, ActorType.fromWireValue("AGENT"));
+    assertThrows(IllegalArgumentException.class, () -> ActorType.fromWireValue("ROBOT"));
+
+    assertEquals("CLI", SourceChannel.CLI.wireValue());
+    assertEquals(java.util.List.of("CLI"), SourceChannel.wireValues());
+    assertEquals(SourceChannel.CLI, SourceChannel.fromWireValue("CLI"));
+    assertThrows(IllegalArgumentException.class, () -> SourceChannel.fromWireValue("API"));
+
+    assertEquals("DEBIT", JournalLine.EntrySide.DEBIT.wireValue());
+    assertEquals("CREDIT", JournalLine.EntrySide.CREDIT.wireValue());
+    assertEquals(JournalLine.EntrySide.DEBIT, JournalLine.EntrySide.fromWireValue("DEBIT"));
+    assertEquals(JournalLine.EntrySide.CREDIT, JournalLine.EntrySide.fromWireValue("CREDIT"));
+    assertEquals(java.util.List.of("DEBIT", "CREDIT"), JournalLine.EntrySide.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> JournalLine.EntrySide.fromWireValue("LEFT"));
   }
 }

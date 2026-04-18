@@ -19,7 +19,7 @@ public interface PostingBookSession extends PostingValidationBook, AutoCloseable
     Objects.requireNonNull(postingFact, "postingFact");
     return commit(
         new PostingDraft(
-            postingFact.journalEntry(), postingFact.reversalReference(), postingFact.provenance()),
+            postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
         postingFact::postingId);
   }
 

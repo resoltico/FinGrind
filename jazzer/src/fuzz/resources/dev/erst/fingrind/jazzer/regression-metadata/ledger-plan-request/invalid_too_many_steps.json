@@ -1,0 +1,18 @@
+{
+  "targetKey" : "ledger-plan-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/invalid_too_many_steps.json",
+  "expectation" : {
+    "outcomeKind" : "EXPECTED_INVALID",
+    "details" : {
+      "type" : "LEDGER_PLAN_REQUEST",
+      "requestStatus" : "INVALID_REQUEST",
+      "planId" : "NOT_PARSED",
+      "stepCount" : 0,
+      "firstStepKind" : "NOT_PARSED",
+      "lastStepKind" : "NOT_PARSED",
+      "assertionStepCount" : 0,
+      "beginsWithOpenBook" : false,
+      "failureMessage" : "Ledger plan must not contain more than 100 steps."
+    }
+  }
+}

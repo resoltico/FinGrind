@@ -1,135 +1,155 @@
 {
-  "status": "committed",
+  "status": "plan-committed",
   "payload": {
     "planId": "plan-demo-1",
-    "status": "SUCCEEDED",
+    "status": "succeeded",
     "journal": {
       "planId": "plan-demo-1",
-      "status": "SUCCEEDED",
+      "status": "succeeded",
       "startedAt": "2026-04-17T05:57:48.222783Z",
       "finishedAt": "2026-04-17T05:57:48.332914Z",
       "steps": [
         {
           "stepId": "initialize-book",
-          "operationId": "OPEN_BOOK",
-          "status": "SUCCEEDED",
+          "kind": "open-book",
+          "status": "succeeded",
           "startedAt": "2026-04-17T05:57:48.309595Z",
           "finishedAt": "2026-04-17T05:57:48.313722Z",
           "facts": [
             {
+              "kind": "text",
               "name": "initializedAt",
               "value": "2026-04-17T05:57:48.310358Z"
             }
-          ],
-          "failure": null
+          ]
         },
         {
           "stepId": "declare-cash",
-          "operationId": "DECLARE_ACCOUNT",
-          "status": "SUCCEEDED",
+          "kind": "declare-account",
+          "status": "succeeded",
           "startedAt": "2026-04-17T05:57:48.313739Z",
           "finishedAt": "2026-04-17T05:57:48.315839Z",
           "facts": [
             {
+              "kind": "text",
               "name": "accountCode",
               "value": "1000"
             },
             {
+              "kind": "text",
               "name": "normalBalance",
               "value": "DEBIT"
             },
             {
+              "kind": "flag",
               "name": "active",
-              "value": "true"
+              "value": true
             }
-          ],
-          "failure": null
+          ]
         },
         {
           "stepId": "declare-revenue",
-          "operationId": "DECLARE_ACCOUNT",
-          "status": "SUCCEEDED",
+          "kind": "declare-account",
+          "status": "succeeded",
           "startedAt": "2026-04-17T05:57:48.315843Z",
           "finishedAt": "2026-04-17T05:57:48.316320Z",
           "facts": [
             {
+              "kind": "text",
               "name": "accountCode",
               "value": "2000"
             },
             {
+              "kind": "text",
               "name": "normalBalance",
               "value": "CREDIT"
             },
             {
+              "kind": "flag",
               "name": "active",
-              "value": "true"
+              "value": true
             }
-          ],
-          "failure": null
+          ]
         },
         {
           "stepId": "post-journal",
-          "operationId": "POST_ENTRY",
-          "status": "SUCCEEDED",
+          "kind": "post-entry",
+          "status": "succeeded",
           "startedAt": "2026-04-17T05:57:48.316323Z",
           "finishedAt": "2026-04-17T05:57:48.324512Z",
           "facts": [
             {
+              "kind": "text",
               "name": "postingId",
               "value": "019d9a04-54a1-7f82-a5a5-f3c9ec7fd0ca"
             },
             {
+              "kind": "text",
               "name": "idempotencyKey",
               "value": "idem-demo-1"
             },
             {
+              "kind": "text",
               "name": "effectiveDate",
               "value": "2026-04-17"
             },
             {
+              "kind": "text",
               "name": "recordedAt",
               "value": "2026-04-17T05:57:48.320223Z"
             }
-          ],
-          "failure": null
+          ]
         },
         {
           "stepId": "assert-cash-balance",
-          "operationId": "EXECUTE_PLAN",
-          "status": "SUCCEEDED",
+          "kind": "assert",
+          "detailKind": "assert-account-balance",
+          "status": "succeeded",
           "startedAt": "2026-04-17T05:57:48.324517Z",
           "finishedAt": "2026-04-17T05:57:48.331692Z",
           "facts": [
             {
+              "kind": "text",
               "name": "accountCode",
               "value": "1000"
             },
             {
+              "kind": "count",
               "name": "bucketCount",
-              "value": "1"
+              "value": 1
             },
             {
-              "name": "currencyCode",
-              "value": "EUR"
-            },
-            {
-              "name": "debitTotal",
-              "value": "10"
-            },
-            {
-              "name": "creditTotal",
-              "value": "0"
-            },
-            {
-              "name": "netAmount",
-              "value": "10"
-            },
-            {
-              "name": "balanceSide",
-              "value": "DEBIT"
+              "kind": "group",
+              "name": "balance",
+              "facts": [
+                {
+                  "kind": "text",
+                  "name": "currencyCode",
+                  "value": "EUR"
+                },
+                {
+                  "kind": "text",
+                  "name": "debitTotal",
+                  "value": "10"
+                },
+                {
+                  "kind": "text",
+                  "name": "creditTotal",
+                  "value": "0"
+                },
+                {
+                  "kind": "text",
+                  "name": "netAmount",
+                  "value": "10"
+                },
+                {
+                  "kind": "text",
+                  "name": "balanceSide",
+                  "value": "DEBIT"
+                }
+              ]
             }
-          ],
-          "failure": null
+          ]
         }
       ]
     }

@@ -800,7 +800,7 @@ final class SqliteNativeLibrary {
     }
     String normalizedPath = configuredLibraryPath.trim();
     if (normalizedPath.isEmpty()) {
-      throw new IllegalStateException(
+      throw new ManagedSqliteRuntimeUnavailableException(
           SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE + " must not be blank.");
     }
     return Path.of(normalizedPath).toAbsolutePath().normalize().toString();
@@ -836,7 +836,7 @@ final class SqliteNativeLibrary {
             .resolve("native")
             .resolve(supportedNativeLibraryFileName());
     if (!Files.isRegularFile(bundleLibraryPath)) {
-      throw new IllegalStateException(
+      throw new ManagedSqliteRuntimeUnavailableException(
           "FinGrind bundle home at "
               + normalizedBundleHomePath
               + " does not contain the managed SQLite library at "
@@ -848,8 +848,8 @@ final class SqliteNativeLibrary {
     return new SqliteLibraryTarget(SqliteRuntime.LIBRARY_MODE, bundleLibraryPath.toString());
   }
 
-  private static IllegalStateException missingLibraryTargetFailure() {
-    return new IllegalStateException(
+  private static ManagedSqliteRuntimeUnavailableException missingLibraryTargetFailure() {
+    return new ManagedSqliteRuntimeUnavailableException(
         "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout set "
             + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
             + " to the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library produced by ./gradlew prepareManagedSqlite.");
@@ -866,7 +866,7 @@ final class SqliteNativeLibrary {
     if (operatingSystem.contains("windows")) {
       return "sqlite3.dll";
     }
-    throw new IllegalStateException(
+    throw new ManagedSqliteRuntimeUnavailableException(
         "FinGrind bundles currently support managed SQLite on macOS, Linux, and Windows only. Detected: "
             + System.getProperty("os.name"));
   }

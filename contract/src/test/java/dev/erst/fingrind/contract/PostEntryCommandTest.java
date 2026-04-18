@@ -32,8 +32,10 @@ class PostEntryCommandTest {
     PostEntryCommand command =
         new PostEntryCommand(
             journalEntry(),
-            Optional.of(new ReversalReference(new PostingId("posting-1"))),
-            requestProvenance("idem-1", Optional.of(new ReversalReason("operator reversal"))),
+            PostingLineage.reversal(
+                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReason("operator reversal")),
+            requestProvenance("idem-1"),
             SourceChannel.CLI);
 
     assertEquals(LocalDate.parse("2026-04-07"), command.journalEntry().effectiveDate());
@@ -46,19 +48,16 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                null, Optional.empty(), requestProvenance("idem-1"), SourceChannel.CLI));
+                null, PostingLineage.direct(), requestProvenance("idem-1"), SourceChannel.CLI));
   }
 
   @Test
-  void constructor_defaultsNullReversalReferenceToEmpty() {
-    PostEntryCommand command =
-        new PostEntryCommand(
-            journalEntry(),
-            nullReversalReference(),
-            requestProvenance("idem-1"),
-            SourceChannel.CLI);
-
-    assertEquals(Optional.empty(), command.reversalReference());
+  void constructor_rejectsNullPostingLineage() {
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new PostEntryCommand(
+                journalEntry(), null, requestProvenance("idem-1"), SourceChannel.CLI));
   }
 
   private static JournalEntry journalEntry() {
@@ -76,23 +75,12 @@ class PostEntryCommandTest {
   }
 
   private static RequestProvenance requestProvenance(String idempotencyKey) {
-    return requestProvenance(idempotencyKey, Optional.empty());
-  }
-
-  private static RequestProvenance requestProvenance(
-      String idempotencyKey, Optional<ReversalReason> reason) {
     return new RequestProvenance(
         new ActorId("actor-1"),
         ActorType.AGENT,
         new CommandId("command-1"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
-        Optional.of(new CorrelationId("corr-1")),
-        reason);
-  }
-
-  @SuppressWarnings("NullOptional")
-  private static Optional<ReversalReference> nullReversalReference() {
-    return null;
+        Optional.of(new CorrelationId("corr-1")));
   }
 }
