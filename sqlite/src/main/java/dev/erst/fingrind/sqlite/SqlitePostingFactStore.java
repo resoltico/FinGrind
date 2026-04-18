@@ -7,8 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -47,6 +49,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   private @Nullable SqliteBookPassphrase bookPassphrase;
 
   private @Nullable SqliteNativeDatabase database;
+  private @Nullable SqliteBookStateSnapshot cachedBookState;
   private boolean closed;
   private boolean ledgerPlanTransactionActive;
   private boolean ledgerPlanTransactionBegunInDatabase;
@@ -65,6 +68,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
     this.postingReadSupport = new SqlitePostingReadSupport();
     this.database = null;
+    this.cachedBookState = null;
     this.terminalFailure = null;
   }
 
@@ -99,45 +103,41 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      int applicationId =
-          SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma application_id");
-      int userVersion =
-          SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma user_version");
-      SqliteBookState state = BOOK_STATE_READER.bookState(activeDatabase);
-      return switch (state) {
+      SqliteBookStateSnapshot snapshot = stateSnapshot(activeDatabase);
+      return switch (snapshot.state()) {
         case BLANK_SQLITE ->
             new BookInspection.Existing(
                 BookInspection.Status.BLANK_SQLITE,
-                applicationId,
-                userVersion,
+                snapshot.applicationId(),
+                snapshot.userVersion(),
                 BOOK_FORMAT_VERSION,
                 BOOK_MIGRATION_POLICY);
         case INITIALIZED_FINGRIND ->
             new BookInspection.Initialized(
-                applicationId,
-                userVersion,
+                snapshot.applicationId(),
+                snapshot.userVersion(),
                 BOOK_FORMAT_VERSION,
                 BOOK_MIGRATION_POLICY,
                 SqliteStatementQuerySupport.loadInitializedAt(activeDatabase).orElseThrow());
         case FOREIGN_SQLITE ->
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
-                applicationId,
-                userVersion,
+                snapshot.applicationId(),
+                snapshot.userVersion(),
                 BOOK_FORMAT_VERSION,
                 BOOK_MIGRATION_POLICY);
         case UNSUPPORTED_FINGRIND_VERSION ->
             new BookInspection.Existing(
                 BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
-                applicationId,
-                userVersion,
+                snapshot.applicationId(),
+                snapshot.userVersion(),
                 BOOK_FORMAT_VERSION,
                 BOOK_MIGRATION_POLICY);
         case INCOMPLETE_FINGRIND ->
             new BookInspection.Existing(
                 BookInspection.Status.INCOMPLETE_FINGRIND,
-                applicationId,
-                userVersion,
+                snapshot.applicationId(),
+                snapshot.userVersion(),
                 BOOK_FORMAT_VERSION,
                 BOOK_MIGRATION_POLICY);
       };
@@ -154,11 +154,13 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      return switch (BOOK_STATE_READER.bookState(activeDatabase)) {
+      SqliteBookStateSnapshot snapshot = stateSnapshot(activeDatabase);
+      return switch (snapshot.state()) {
         case BLANK_SQLITE -> false;
         case INITIALIZED_FINGRIND -> true;
         case FOREIGN_SQLITE -> throw foreignBookFailure();
-        case UNSUPPORTED_FINGRIND_VERSION -> throw unsupportedBookVersionFailure(activeDatabase);
+        case UNSUPPORTED_FINGRIND_VERSION ->
+            throw unsupportedBookVersionFailure(snapshot.userVersion());
         case INCOMPLETE_FINGRIND -> throw incompleteBookFailure();
       };
     } catch (SqliteNativeException exception) {
@@ -174,7 +176,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     SqliteNativeDatabase activeDatabase = database();
     boolean ownsTransaction = false;
     try {
-      SqliteBookState state = BOOK_STATE_READER.bookState(activeDatabase);
+      SqliteBookState state = stateSnapshot(activeDatabase).state();
       if (state == SqliteBookState.INITIALIZED_FINGRIND) {
         return new OpenBookResult.Rejected(
             new BookAdministrationRejection.BookAlreadyInitialized());
@@ -183,7 +185,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
         return new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema());
       }
       if (state == SqliteBookState.UNSUPPORTED_FINGRIND_VERSION) {
-        throw unsupportedBookVersionFailure(activeDatabase);
+        throw unsupportedBookVersionFailure(stateSnapshot(activeDatabase).userVersion());
       }
       if (state == SqliteBookState.INCOMPLETE_FINGRIND) {
         throw incompleteBookFailure();
@@ -193,6 +195,9 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
       SqliteSchemaManager.initializeBook(activeDatabase);
       SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
       commitIfOwned(activeDatabase, ownsTransaction);
+      cachedBookState =
+          new SqliteBookStateSnapshot(
+              BOOK_APPLICATION_ID, BOOK_FORMAT_VERSION, SqliteBookState.INITIALIZED_FINGRIND);
       return new OpenBookResult.Opened(initializedAt);
     } catch (SqliteNativeException exception) {
       rollbackIfOwned(activeDatabase, ownsTransaction);
@@ -208,11 +213,31 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (BOOK_STATE_READER.bookState(activeDatabase) == SqliteBookState.BLANK_SQLITE) {
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
         return Optional.empty();
       }
       requireInitializedBook(activeDatabase);
       return SqliteStatementQuerySupport.findOneAccount(activeDatabase, accountCode);
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  /** Finds the supplied declared accounts by code when the selected book is initialized. */
+  public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+    ensureOpen();
+    Set<AccountCode> requestedAccounts =
+        new java.util.LinkedHashSet<>(Objects.requireNonNull(accountCodes, "accountCodes"));
+    if (requestedAccounts.isEmpty() || Files.notExists(bookPath)) {
+      return Map.of();
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
+        return Map.of();
+      }
+      requireInitializedBook(activeDatabase);
+      return SqliteStatementQuerySupport.findAccounts(activeDatabase, requestedAccounts);
     } catch (SqliteNativeException exception) {
       throw sqliteFailure("Failed to query SQLite book.", exception);
     }
@@ -280,7 +305,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (BOOK_STATE_READER.bookState(activeDatabase) == SqliteBookState.BLANK_SQLITE) {
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
         return new AccountPage(List.of(), query.limit(), query.offset(), false);
       }
       requireInitializedBook(activeDatabase);
@@ -298,7 +323,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (BOOK_STATE_READER.bookState(activeDatabase) == SqliteBookState.BLANK_SQLITE) {
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
         return Optional.empty();
       }
       requireInitializedBook(activeDatabase);
@@ -319,7 +344,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (BOOK_STATE_READER.bookState(activeDatabase) == SqliteBookState.BLANK_SQLITE) {
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
         return Optional.empty();
       }
       requireInitializedBook(activeDatabase);
@@ -340,7 +365,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (BOOK_STATE_READER.bookState(activeDatabase) == SqliteBookState.BLANK_SQLITE) {
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
         return Optional.empty();
       }
       requireInitializedBook(activeDatabase);
@@ -357,12 +382,12 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   public PostingPage listPostings(ListPostingsQuery query) {
     ensureOpen();
     if (Files.notExists(bookPath)) {
-      return new PostingPage(List.of(), query.limit(), query.offset(), false);
+      return new PostingPage(List.of(), query.limit(), Optional.empty());
     }
     try {
       SqliteNativeDatabase activeDatabase = database();
-      if (BOOK_STATE_READER.bookState(activeDatabase) == SqliteBookState.BLANK_SQLITE) {
-        return new PostingPage(List.of(), query.limit(), query.offset(), false);
+      if (stateSnapshot(activeDatabase).state() == SqliteBookState.BLANK_SQLITE) {
+        return new PostingPage(List.of(), query.limit(), Optional.empty());
       }
       requireInitializedBook(activeDatabase);
       return postingReadSupport.loadPostingPage(activeDatabase, query);
@@ -490,6 +515,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     closed = true;
     SqliteNativeDatabase activeDatabase = database;
     database = null;
+    cachedBookState = null;
     try {
       if (activeDatabase == null) {
         return;
@@ -548,12 +574,13 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
 
   private boolean isInitializedBook(SqliteNativeDatabase activeDatabase)
       throws SqliteNativeException {
-    return BOOK_STATE_READER.isInitializedBook(activeDatabase);
+    return stateSnapshot(activeDatabase).state() == SqliteBookState.INITIALIZED_FINGRIND;
   }
 
   private void requireInitializedBook(SqliteNativeDatabase activeDatabase)
       throws SqliteNativeException {
-    SqliteBookState state = BOOK_STATE_READER.bookState(activeDatabase);
+    SqliteBookStateSnapshot snapshot = stateSnapshot(activeDatabase);
+    SqliteBookState state = snapshot.state();
     if (state == SqliteBookState.INITIALIZED_FINGRIND) {
       return;
     }
@@ -564,9 +591,20 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
       throw foreignBookFailure();
     }
     if (state == SqliteBookState.UNSUPPORTED_FINGRIND_VERSION) {
-      throw unsupportedBookVersionFailure(activeDatabase);
+      throw unsupportedBookVersionFailure(snapshot.userVersion());
     }
     throw incompleteBookFailure();
+  }
+
+  private SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
+    SqliteBookStateSnapshot snapshot = cachedBookState;
+    if (snapshot != null) {
+      return snapshot;
+    }
+    snapshot = BOOK_STATE_READER.snapshot(activeDatabase);
+    cachedBookState = snapshot;
+    return snapshot;
   }
 
   private SqliteNativeDatabase database() {
@@ -683,6 +721,11 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
 
     @Override
+    public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+      return SqlitePostingFactStore.this.findAccounts(accountCodes);
+    }
+
+    @Override
     public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
       return SqlitePostingFactStore.this.findExistingPosting(idempotencyKey);
     }
@@ -771,8 +814,13 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
 
     @Override
     public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+      return Optional.ofNullable(findAccounts(Set.of(accountCode)).get(accountCode));
+    }
+
+    @Override
+    public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
       try {
-        return SqliteStatementQuerySupport.findOneAccount(activeDatabase, accountCode);
+        return SqliteStatementQuerySupport.findAccounts(activeDatabase, accountCodes);
       } catch (SqliteNativeException exception) {
         throw sqliteFailure("Failed to query SQLite book.", exception);
       }
@@ -853,10 +901,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
   }
 
-  private static IllegalStateException unsupportedBookVersionFailure(
-      SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
-    int loadedUserVersion =
-        SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma user_version");
+  private static IllegalStateException unsupportedBookVersionFailure(int loadedUserVersion) {
     return new IllegalStateException(
         "The selected FinGrind book format version "
             + loadedUserVersion

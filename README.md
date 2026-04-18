@@ -59,7 +59,9 @@ The book lifecycle is explicit:
 - `inspect-book` reports lifecycle, compatibility, and book-format metadata before mutation
 - `declare-account` inserts or reactivates one account in that book
 - `list-accounts` returns a paged account registry with `limit`, `offset`, and `hasMore`
-- `get-posting`, `list-postings`, and `account-balance` expose committed history and balances
+- `list-postings` returns reverse-chronological pages with `limit`, `postings`, and an optional
+  opaque `nextCursor`
+- `get-posting` and `account-balance` expose committed history and grouped balances
 - `execute-plan` runs one ordered ledger plan atomically and returns a per-step execution journal
 - `preflight-entry` and `post-entry` reject a missing or unopened book with `posting-book-not-initialized`
 - `preflight-entry` and `post-entry` report undeclared or inactive accounts under `account-state-violations`
@@ -414,8 +416,9 @@ Current deterministic rejection codes include:
 - `inspect-book` is the best machine-readable compatibility probe before mutating commands because
   it reports initialization state, detected format version, supported format version, and
   compatibility with the current binary.
-- `list-accounts` and `list-postings` return paginated payloads with `limit`, `offset`, and
-  `hasMore`.
+- `list-accounts` returns paginated payloads with `limit`, `offset`, and `hasMore`.
+- `list-postings` returns `limit`, `postings`, and an optional opaque `nextCursor` for keyset
+  pagination.
 - `execute-plan` returns `status: "plan-committed"` on success, `status: "plan-rejected"` for
   deterministic step rejections, and `status: "plan-assertion-failed"` for failed assertions;
   the bounded durable plan journal is included under `payload.journal` or `details.plan.journal`,

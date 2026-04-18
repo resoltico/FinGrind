@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.16.0"
 domain: CONTRACT_EXECUTOR
-updated: "2026-04-17"
+updated: "2026-04-18"
 route:
   keywords: [fingrind, contract, executor, open-book, declare-account, inspect-book, list-postings, account-balance, preflight, rejection, uuid-v7, machine-contract, protocol-catalog, ledger-plan]
   questions: ["how does the contract boundary work in fingrind", "what query models exist in fingrind", "how are posting ids generated in fingrind", "where does execute-plan live in fingrind"]
@@ -247,25 +247,28 @@ public sealed interface GetPostingResult
 ```java
 public record ListPostingsQuery(
     Optional<AccountCode> accountCode,
-    Optional<LocalDate> effectiveDateFrom,
-    Optional<LocalDate> effectiveDateTo,
+    EffectiveDateRange effectiveDateRange,
     int limit,
-    int offset)
+    Optional<PostingPageCursor> cursor)
 ```
 
 - Purpose: keep history filtering and pagination typed at the contract boundary
-- Validation: requires a sensible date range plus `limit` and `offset` bounds
+- Validation: requires a sensible date range, a positive `limit`, and an explicit `Optional` cursor
 
 ## `PostingPage`
 
 `PostingPage` is one stable page of committed postings.
 
 ```java
-public record PostingPage(List<PostingFact> postings, int limit, int offset, boolean hasMore)
+public record PostingPage(
+    List<PostingFact> postings,
+    int limit,
+    Optional<PostingPageCursor> nextCursor)
 ```
 
-- Purpose: couple paging metadata to one posting-history slice
-- Validation: defensively copies `postings` and validates paging bounds
+- Purpose: couple one posting-history slice to the opaque cursor needed for the next keyset page
+- Validation: defensively copies `postings`, requires a positive `limit`, and rejects `null`
+  cursors
 
 ## `ListPostingsResult`
 
@@ -423,15 +426,16 @@ public sealed interface LedgerAssertion
 These contract types carry the durable execution record returned by `execute-plan`.
 
 ```java
-public record LedgerJournalEntry(...)
+public sealed interface LedgerJournalEntry
 public record LedgerExecutionJournal(...)
-public record LedgerPlanResult(...)
+public sealed interface LedgerPlanResult
 ```
 
 - Purpose: return one plan-level result plus one per-step journal that an agent can inspect safely
 - Status model: plan and step statuses are sealed through enums instead of free-form strings
-- Journal shape: each `LedgerJournalEntry` carries typed `LedgerStepKind` plus optional typed
-  `LedgerAssertionKind`; the CLI maps them to canonical wire strings at the renderer boundary
+- Journal shape: each `LedgerJournalEntry` variant carries typed `LedgerStepKind` plus a nullable
+  typed `LedgerAssertionKind` only for assertion steps; the CLI maps them to canonical wire
+  strings at the renderer boundary
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds complete plan-journal responses
 
 ## `RejectionNarrative`

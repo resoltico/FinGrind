@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.*;
-import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
 import java.nio.file.Path;
 import java.util.List;
@@ -152,8 +151,7 @@ final class CliResponsePayloadMapper {
   static CliResponseJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
     return new CliResponseJsonModels.PostingListPayload(
         page.limit(),
-        page.offset(),
-        page.hasMore(),
+        page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
         page.postings().stream().map(CliResponsePayloadMapper::postingPayload).toList());
   }
 
@@ -180,7 +178,7 @@ final class CliResponsePayloadMapper {
 
   static CliResponseJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
     return new CliResponseJsonModels.LedgerPlanPayload(
-        result.planId(),
+        result.planId().value(),
         result.status().wireValue(),
         ledgerExecutionJournalPayload(result.journal()));
   }
@@ -285,8 +283,6 @@ final class CliResponsePayloadMapper {
   private static CliResponseJsonModels.LedgerExecutionJournalPayload ledgerExecutionJournalPayload(
       LedgerExecutionJournal journal) {
     return new CliResponseJsonModels.LedgerExecutionJournalPayload(
-        journal.planId(),
-        journal.status().wireValue(),
         journal.startedAt().toString(),
         journal.finishedAt().toString(),
         journal.steps().stream().map(CliResponsePayloadMapper::ledgerJournalEntryPayload).toList());
@@ -295,9 +291,9 @@ final class CliResponsePayloadMapper {
   private static CliResponseJsonModels.LedgerJournalEntryPayload ledgerJournalEntryPayload(
       LedgerJournalEntry entry) {
     return new CliResponseJsonModels.LedgerJournalEntryPayload(
-        entry.stepId(),
+        entry.stepId().value(),
         entry.kind().wireValue(),
-        entry.detailKind().map(LedgerAssertionKind::wireValue).orElse(null),
+        entry.detailKind() == null ? null : entry.detailKind().wireValue(),
         entry.status().wireValue(),
         entry.startedAt().toString(),
         entry.finishedAt().toString(),

@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.16.0"
 domain: USER_EXAMPLES
-updated: "2026-04-17"
+updated: "2026-04-18"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -216,8 +216,7 @@ fingrind \
   --book-file /tmp/fingrind/books/acme/acme.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --account-code 1000 \
-  --limit 25 \
-  --offset 0
+  --limit 25
 
 fingrind \
   account-balance \
@@ -230,6 +229,19 @@ Checked-in example responses:
 - [examples/get-posting-response.json](./examples/get-posting-response.json)
 - [examples/list-postings-response.json](./examples/list-postings-response.json)
 - [examples/account-balance-response.json](./examples/account-balance-response.json)
+
+If the posting-history response includes `payload.nextCursor`, pass that opaque value back through
+`--cursor` to continue from the prior page without using offset scans:
+
+```bash
+fingrind \
+  list-postings \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --account-code 1000 \
+  --limit 25 \
+  --cursor "<nextCursor-from-the-prior-page>"
+```
 
 ## Book Must Exist And Be Opened
 

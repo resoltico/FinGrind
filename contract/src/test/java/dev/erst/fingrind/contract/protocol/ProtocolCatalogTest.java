@@ -154,7 +154,7 @@ class ProtocolCatalogTest {
         List.of("stepId", "kind", "posting", "declareAccount", "query", "assertion", "postingId"),
         ProtocolLedgerPlanFields.stepFields());
     assertEquals(
-        List.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "offset"),
+        List.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "cursor", "offset"),
         ProtocolLedgerPlanFields.queryFields());
     assertEquals(
         List.of(

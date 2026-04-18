@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.16.0"
 domain: USER_CLI
-updated: "2026-04-17"
+updated: "2026-04-18"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-postings, account-balance, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -67,7 +67,7 @@ so CLI help, parser aliases, output modes, summaries, and query limits share one
 | `inspect-book` | none | `--book-file`, exactly one passphrase source | returns lifecycle state, compatibility, and book-format metadata for the selected book |
 | `list-accounts` | none | `--book-file`, exactly one passphrase source, optional `--limit`, optional `--offset` | returns one paginated slice of the selected book's declared account registry |
 | `get-posting` | none | `--book-file`, exactly one passphrase source, `--posting-id` | returns one committed posting by durable posting id |
-| `list-postings` | none | `--book-file`, exactly one passphrase source, optional account/date filters, optional `--limit`, optional `--offset` | returns one paginated slice of committed posting history |
+| `list-postings` | none | `--book-file`, exactly one passphrase source, optional account/date filters, optional `--limit`, optional `--cursor` | returns one reverse-chronological page of committed posting history |
 | `account-balance` | none | `--book-file`, exactly one passphrase source, `--account-code`, optional date filters | returns grouped per-currency balances for one declared account |
 | `execute-plan` | none | `--book-file`, exactly one passphrase source, `--request-file` | executes one ordered ledger plan atomically and returns a durable per-step journal |
 | `preflight-entry` | none | `--book-file`, exactly one passphrase source, `--request-file` | validates one posting request without committing it |
@@ -146,8 +146,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | Exit Code | Meaning | Typical Output |
 |:----------|:--------|:---------------|
 | `0` | successful command | `ok`, raw request or plan template JSON, `preflight-accepted`, `committed` |
-| `2` | invalid request or deterministic rejection | `error`, `rejected` |
 | `1` | runtime or environment failure | `error` with code `runtime-failure` |
+| `2` | invalid request or deterministic rejection | `error`, `rejected`, `plan-rejected` |
+| `3` | valid `execute-plan` request whose assertion step failed | `plan-assertion-failed` |
 
 ## Common Failures
 
@@ -206,8 +207,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or
   `post-entry`, because it reports initialization state, detected book-format version, supported
   book-format version, and compatibility with the current binary.
-- `list-accounts` and `list-postings` return paginated payloads with `limit`, `offset`, and
-  `hasMore`.
+- `list-accounts` returns paginated payloads with `limit`, `offset`, and `hasMore`.
+- `list-postings` returns paginated payloads with `limit`, `postings`, and an optional opaque
+  `nextCursor` that can be passed back through `--cursor`.
 - `print-plan-template` emits the accepted `execute-plan` request shape, including the generic
   nested `assertion` object for assertion steps.
 - `execute-plan` reuses the same posting and query rules as the single-command surface, but runs

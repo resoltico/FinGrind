@@ -21,9 +21,11 @@ import dev.erst.fingrind.contract.GetPostingResult;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
+import dev.erst.fingrind.contract.LedgerPlanId;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.MachineContract;
@@ -34,6 +36,7 @@ import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
@@ -89,9 +92,9 @@ class CliResponseWriterTest {
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
     LedgerJournalEntry.Succeeded balanceEntry =
         new LedgerJournalEntry.Succeeded(
-            "balance",
+            stepId("balance"),
             LedgerStepKind.ACCOUNT_BALANCE,
-            java.util.Optional.empty(),
+            null,
             startedAt,
             finishedAt,
             List.of(
@@ -106,13 +109,8 @@ class CliResponseWriterTest {
 
     responseWriter.writeLedgerPlanResult(
         new LedgerPlanResult.Succeeded(
-            "plan-1",
-            new LedgerExecutionJournal(
-                "plan-1",
-                LedgerPlanStatus.SUCCEEDED,
-                startedAt,
-                finishedAt,
-                List.of(balanceEntry))));
+            planId("plan-1"),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(balanceEntry))));
 
     JsonNode facts =
         readJson(outputStream).path("payload").path("journal").path("steps").get(0).path("facts");
@@ -136,9 +134,9 @@ class CliResponseWriterTest {
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
     LedgerJournalEntry.Rejected rejectedEntry =
         new LedgerJournalEntry.Rejected(
-            "declare-cash",
+            stepId("declare-cash"),
             LedgerStepKind.DECLARE_ACCOUNT,
-            java.util.Optional.empty(),
+            null,
             startedAt,
             finishedAt,
             List.of(),
@@ -147,13 +145,8 @@ class CliResponseWriterTest {
 
     responseWriter.writeLedgerPlanResult(
         new LedgerPlanResult.Rejected(
-            "plan-1",
-            new LedgerExecutionJournal(
-                "plan-1",
-                LedgerPlanStatus.REJECTED,
-                startedAt,
-                finishedAt,
-                List.of(rejectedEntry))));
+            planId("plan-1"),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejectedEntry))));
 
     JsonNode json = readJson(outputStream);
 
@@ -170,9 +163,9 @@ class CliResponseWriterTest {
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
     LedgerJournalEntry.AssertionFailed assertionFailedEntry =
         new LedgerJournalEntry.AssertionFailed(
-            "assert-balance",
+            stepId("assert-balance"),
             LedgerStepKind.ASSERT,
-            java.util.Optional.empty(),
+            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
             startedAt,
             finishedAt,
             List.of(),
@@ -180,13 +173,8 @@ class CliResponseWriterTest {
 
     responseWriter.writeLedgerPlanResult(
         new LedgerPlanResult.AssertionFailed(
-            "plan-1",
-            new LedgerExecutionJournal(
-                "plan-1",
-                LedgerPlanStatus.ASSERTION_FAILED,
-                startedAt,
-                finishedAt,
-                List.of(assertionFailedEntry))));
+            planId("plan-1"),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionFailedEntry))));
 
     JsonNode json = readJson(outputStream);
 
@@ -561,7 +549,8 @@ class CliResponseWriterTest {
     CliResponseWriter listPostingsWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsOutput));
     listPostingsWriter.writeListPostingsResult(
-        new ListPostingsResult.Listed(new PostingPage(List.of(postingFact), 10, 0, false)));
+        new ListPostingsResult.Listed(
+            new PostingPage(List.of(postingFact), 10, java.util.Optional.empty())));
     ByteArrayOutputStream listPostingsRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter listPostingsRejectionWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsRejectionOutput));
@@ -711,6 +700,14 @@ class CliResponseWriterTest {
 
   private static JsonNode readJson(ByteArrayOutputStream outputStream) throws IOException {
     return new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+  }
+
+  private static LedgerPlanId planId(String value) {
+    return new LedgerPlanId(value);
+  }
+
+  private static LedgerStepId stepId(String value) {
+    return new LedgerStepId(value);
   }
 
   private static JsonNode writeInspection(BookInspection inspection) throws IOException {

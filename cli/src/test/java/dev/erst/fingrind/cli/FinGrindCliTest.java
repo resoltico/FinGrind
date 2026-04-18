@@ -23,9 +23,10 @@ import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.LedgerPlanId;
 import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsQuery;
@@ -73,7 +74,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -2213,44 +2213,52 @@ class FinGrindCliTest {
     return new BookAccess(bookFilePath, new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath));
   }
 
-  private static LedgerPlanResult successfulPlanResult(String planId) {
+  private static LedgerPlanResult successfulPlanResult(LedgerPlanId planId) {
     Instant timestamp = fixedClock().instant();
     return new LedgerPlanResult.Succeeded(
         planId,
         new LedgerExecutionJournal(
-            planId,
-            LedgerPlanStatus.SUCCEEDED,
             timestamp,
             timestamp,
             List.of(
                 new LedgerJournalEntry.Succeeded(
-                    "inspect",
+                    stepId("inspect"),
                     LedgerStepKind.INSPECT_BOOK,
-                    Optional.empty(),
+                    null,
                     timestamp,
                     timestamp,
                     List.of(LedgerFact.flag("ok", true), LedgerFact.count("count", 1))))));
   }
 
   private static LedgerPlanResult assertionFailedPlanResult(String planId) {
+    return assertionFailedPlanResult(planId(planId));
+  }
+
+  private static LedgerPlanResult assertionFailedPlanResult(LedgerPlanId planId) {
     Instant timestamp = fixedClock().instant();
     LedgerStepFailure failure =
         new LedgerStepFailure("assertion-failed", "Assertion failed.", List.of());
     return new LedgerPlanResult.AssertionFailed(
         planId,
         new LedgerExecutionJournal(
-            planId,
-            LedgerPlanStatus.ASSERTION_FAILED,
             timestamp,
             timestamp,
             List.of(
                 new LedgerJournalEntry.AssertionFailed(
-                    "assert",
+                    stepId("assert"),
                     LedgerStepKind.ASSERT,
-                    Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                     timestamp,
                     timestamp,
                     List.of(),
                     failure))));
+  }
+
+  private static LedgerPlanId planId(String value) {
+    return new LedgerPlanId(value);
+  }
+
+  private static LedgerStepId stepId(String value) {
+    return new LedgerStepId(value);
   }
 }

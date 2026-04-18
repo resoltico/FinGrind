@@ -51,6 +51,12 @@ create table if not exists journal_line (
 create index if not exists posting_fact_by_prior_posting_id
     on posting_fact (prior_posting_id);
 
+create index if not exists posting_fact_by_effective_recorded_posting
+    on posting_fact (effective_date desc, recorded_at desc, posting_id desc);
+
+create index if not exists journal_line_by_account_code
+    on journal_line (account_code, posting_id, line_order);
+
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
     where prior_posting_id is not null;

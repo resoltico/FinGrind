@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.16.0"
 domain: USER_REQUESTS
-updated: "2026-04-17"
+updated: "2026-04-18"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -98,6 +98,10 @@ Current ledger-plan rules:
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request
 - `list-accounts`, `list-postings`, and `account-balance` use nested `query`
+- `list-accounts.query` accepts `limit` plus optional `offset`
+- `list-postings.query` accepts optional `accountCode`, optional effective-date bounds, required
+  `limit`, and optional opaque `cursor`
+- `account-balance.query` accepts `accountCode` plus optional effective-date bounds
 - `get-posting` uses `postingId`
 - assertion steps use `kind: "assert"` plus a nested `assertion` object
 - supported assertion kinds are `assert-account-declared`, `assert-account-active`,
@@ -138,7 +142,8 @@ Dynamic fields:
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
-- paged query responses expose `limit`, `offset`, and `hasMore`
+- `list-accounts` exposes `limit`, `offset`, and `hasMore`
+- `list-postings` exposes `limit` plus an optional opaque `nextCursor`
 - `committed.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
 - `plan-committed.payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
@@ -204,8 +209,7 @@ rendered:
 
 `list-postings` success returns:
 - `payload.limit`
-- `payload.offset`
-- `payload.hasMore`
+- optional `payload.nextCursor`
 - `payload.postings[]`, where each posting has the same shape as `get-posting`
 
 `account-balance` success returns:

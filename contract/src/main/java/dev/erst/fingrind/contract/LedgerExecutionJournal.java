@@ -6,37 +6,26 @@ import java.util.Objects;
 
 /** Structured execution journal emitted for every ledger-plan run. */
 public record LedgerExecutionJournal(
-    String planId,
-    LedgerPlanStatus status,
-    Instant startedAt,
-    Instant finishedAt,
-    List<LedgerJournalEntry> steps) {
+    Instant startedAt, Instant finishedAt, List<LedgerJournalEntry> steps) {
   /** Validates one plan execution journal. */
   public LedgerExecutionJournal {
-    Objects.requireNonNull(planId, "planId");
-    Objects.requireNonNull(status, "status");
     Objects.requireNonNull(startedAt, "startedAt");
     Objects.requireNonNull(finishedAt, "finishedAt");
     steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
-    if (planId.isBlank()) {
-      throw new IllegalArgumentException("Ledger journal planId must not be blank.");
-    }
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Ledger journal must contain at least one step.");
     }
-    if (status == LedgerPlanStatus.SUCCEEDED
+    LedgerJournalEntry terminalStep = steps.getLast();
+    List<LedgerJournalEntry> priorSteps = steps.subList(0, steps.size() - 1);
+    if (terminalStep instanceof LedgerJournalEntry.Succeeded
         && steps.stream().anyMatch(step -> !(step instanceof LedgerJournalEntry.Succeeded))) {
       throw new IllegalArgumentException(
           "Succeeded ledger journals may contain only succeeded steps.");
     }
-    if (status == LedgerPlanStatus.REJECTED
-        && !(steps.getLast() instanceof LedgerJournalEntry.Rejected)) {
-      throw new IllegalArgumentException("Rejected ledger journals must end on a rejected step.");
-    }
-    if (status == LedgerPlanStatus.ASSERTION_FAILED
-        && !(steps.getLast() instanceof LedgerJournalEntry.AssertionFailed)) {
+    if (terminalStep instanceof LedgerJournalEntry.Failed
+        && priorSteps.stream().anyMatch(step -> !(step instanceof LedgerJournalEntry.Succeeded))) {
       throw new IllegalArgumentException(
-          "Assertion-failed ledger journals must end on an assertion-failed step.");
+          "Failed ledger journals may contain succeeded steps only before the terminal failure.");
     }
     if (finishedAt.isBefore(startedAt)) {
       throw new IllegalArgumentException("Ledger journal finishedAt must not precede startedAt.");
@@ -48,11 +37,21 @@ public record LedgerExecutionJournal(
     return steps.getLast();
   }
 
+  /** Returns the stable public plan status derived from the terminal journal step. */
+  public LedgerPlanStatus status() {
+    return switch (terminalStep()) {
+      case LedgerJournalEntry.Succeeded _ -> LedgerPlanStatus.SUCCEEDED;
+      case LedgerJournalEntry.Rejected _ -> LedgerPlanStatus.REJECTED;
+      case LedgerJournalEntry.AssertionFailed _ -> LedgerPlanStatus.ASSERTION_FAILED;
+    };
+  }
+
   /** Returns the required failed terminal step for rejected or assertion-failed plans. */
   public LedgerJournalEntry.Failed requiredFailedStep() {
-    if (status == LedgerPlanStatus.SUCCEEDED) {
-      throw new IllegalStateException("Succeeded ledger journals do not have a failed step.");
-    }
-    return (LedgerJournalEntry.Failed) terminalStep();
+    return switch (terminalStep()) {
+      case LedgerJournalEntry.Succeeded _ ->
+          throw new IllegalStateException("Succeeded ledger journals do not have a failed step.");
+      case LedgerJournalEntry.Failed failed -> failed;
+    };
   }
 }

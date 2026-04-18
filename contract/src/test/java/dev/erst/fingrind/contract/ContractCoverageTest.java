@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,7 +42,7 @@ class ContractCoverageTest {
     DeclaredAccount declaredAccount = declaredAccount("1000");
     PostingFact postingFact = postingFact("posting-1", "idem-1");
     AccountPage accountPage = new AccountPage(List.of(declaredAccount), 50, 0, false);
-    PostingPage postingPage = new PostingPage(List.of(postingFact), 50, 0, false);
+    PostingPage postingPage = new PostingPage(List.of(postingFact), 50, Optional.empty());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             declaredAccount,
@@ -351,50 +352,44 @@ class ContractCoverageTest {
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
     LedgerPlanResult succeededResult =
         new LedgerPlanResult.Succeeded(
-            "plan-succeeded",
+            planId("plan-succeeded"),
             new LedgerExecutionJournal(
-                "plan-succeeded",
-                LedgerPlanStatus.SUCCEEDED,
                 startedAt,
                 finishedAt,
                 List.of(
                     new LedgerJournalEntry.Succeeded(
-                        "open",
+                        stepId("open"),
                         LedgerStepKind.OPEN_BOOK,
-                        Optional.empty(),
+                        null,
                         startedAt,
                         finishedAt,
                         List.of()))));
     LedgerPlanResult rejectedResult =
         new LedgerPlanResult.Rejected(
-            "plan-rejected",
+            planId("plan-rejected"),
             new LedgerExecutionJournal(
-                "plan-rejected",
-                LedgerPlanStatus.REJECTED,
                 startedAt,
                 finishedAt,
                 List.of(
                     new LedgerJournalEntry.Rejected(
-                        "post",
+                        stepId("post"),
                         LedgerStepKind.POST_ENTRY,
-                        Optional.empty(),
+                        null,
                         startedAt,
                         finishedAt,
                         List.of(),
                         new LedgerStepFailure("rejected", "Rejected.", List.of())))));
     LedgerPlanResult assertionFailedResult =
         new LedgerPlanResult.AssertionFailed(
-            "plan-assertion",
+            planId("plan-assertion"),
             new LedgerExecutionJournal(
-                "plan-assertion",
-                LedgerPlanStatus.ASSERTION_FAILED,
                 startedAt,
                 finishedAt,
                 List.of(
                     new LedgerJournalEntry.AssertionFailed(
-                        "assert",
+                        stepId("assert"),
                         LedgerStepKind.ASSERT,
-                        Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+                        LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                         startedAt,
                         finishedAt,
                         List.of(),
@@ -446,7 +441,14 @@ class ContractCoverageTest {
     assertEquals(
         BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
         BookMigrationPolicy.fromWireValue("sequential-in-place"));
+    assertEquals(List.of("sequential-in-place"), BookMigrationPolicy.wireValues());
     assertEquals("sequential-in-place", BookMigrationPolicy.SEQUENTIAL_IN_PLACE.wireValue());
+    assertEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
+    assertEquals("sequential-in-place", BookMigrationPolicy.SEQUENTIAL_IN_PLACE.toString());
+    assertNotEquals(null, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
+    assertNotEquals("sequential-in-place", BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
+    assertNotEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, null);
+    assertNotEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, "sequential-in-place");
     assertEquals(
         List.of(
             "assert-account-declared",
@@ -505,29 +507,29 @@ class ContractCoverageTest {
 
     LedgerJournalEntry detailed =
         new LedgerJournalEntry.Rejected(
-            "assert",
+            stepId("assert"),
             LedgerStepKind.ASSERT,
-            Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
+            LedgerAssertionKind.ACCOUNT_DECLARED,
             startedAt,
             finishedAt,
             List.of(LedgerFact.flag("active", false)),
             failure);
     LedgerJournalEntry nullableOptionals =
         new LedgerJournalEntry.Succeeded(
-            "post", LedgerStepKind.POST_ENTRY, Optional.empty(), startedAt, finishedAt, List.of());
+            stepId("post"), LedgerStepKind.POST_ENTRY, null, startedAt, finishedAt, List.of());
     LedgerJournalEntry assertionFailed =
         new LedgerJournalEntry.AssertionFailed(
-            "assert-balance",
+            stepId("assert-balance"),
             LedgerStepKind.ASSERT,
-            Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
             startedAt,
             finishedAt,
             List.of(LedgerFact.text("currencyCode", "EUR")),
             failure);
 
-    assertEquals(Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED), detailed.detailKind());
-    assertEquals(Optional.empty(), nullableOptionals.detailKind());
-    assertEquals(Optional.empty(), new LedgerStep.OpenBook("open").detailKind());
+    assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, detailed.detailKind());
+    assertEquals(null, nullableOptionals.detailKind());
+    assertEquals(null, new LedgerStep.OpenBook(stepId("open")).detailKind());
     assertEquals(Optional.of(failure), detailed.optionalFailure());
     assertEquals(Optional.empty(), nullableOptionals.optionalFailure());
     assertEquals(Optional.of(failure), assertionFailed.optionalFailure());
@@ -541,13 +543,34 @@ class ContractCoverageTest {
         NullPointerException.class,
         () ->
             new LedgerJournalEntry.Rejected(
-                "assert",
+                stepId("assert"),
                 null,
-                Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
+                LedgerAssertionKind.ACCOUNT_DECLARED,
                 startedAt,
                 finishedAt,
                 List.of(),
                 failure));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LedgerJournalEntry.AssertionFailed(
+                stepId("assert"),
+                LedgerStepKind.ASSERT,
+                null,
+                startedAt,
+                finishedAt,
+                List.of(),
+                failure));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LedgerJournalEntry.Succeeded(
+                stepId("post"),
+                LedgerStepKind.POST_ENTRY,
+                LedgerAssertionKind.ACCOUNT_DECLARED,
+                startedAt,
+                finishedAt,
+                List.of()));
   }
 
   @Test
@@ -558,43 +581,36 @@ class ContractCoverageTest {
     LedgerStepFailure failure = new LedgerStepFailure("rejected", "Rejected.", List.of());
     LedgerJournalEntry succeededWithoutFailure =
         new LedgerJournalEntry.Succeeded(
-            "post", LedgerStepKind.POST_ENTRY, Optional.empty(), startedAt, finishedAt, List.of());
+            stepId("post"), LedgerStepKind.POST_ENTRY, null, startedAt, finishedAt, List.of());
     LedgerExecutionJournal rejectedJournal =
         new LedgerExecutionJournal(
-            "plan-1",
-            LedgerPlanStatus.REJECTED,
             startedAt,
             finishedAt,
             List.of(
                 new LedgerJournalEntry.Rejected(
-                    "post",
+                    stepId("post"),
                     LedgerStepKind.POST_ENTRY,
-                    Optional.empty(),
+                    null,
                     startedAt,
                     finishedAt,
                     List.of(),
                     failure)));
 
     assertTrue(succeededWithoutFailure instanceof LedgerJournalEntry.Succeeded);
-    assertEquals("post", rejectedJournal.terminalStep().stepId());
-    assertEquals("post", rejectedJournal.requiredFailedStep().stepId());
+    assertEquals(stepId("post"), rejectedJournal.terminalStep().stepId());
+    assertEquals(stepId("post"), rejectedJournal.requiredFailedStep().stepId());
     assertThrows(
         IllegalStateException.class,
         () ->
-            new LedgerExecutionJournal(
-                    "plan-2",
-                    LedgerPlanStatus.SUCCEEDED,
-                    startedAt,
-                    finishedAt,
-                    List.of(succeededWithoutFailure))
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(succeededWithoutFailure))
                 .requiredFailedStep());
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new LedgerJournalEntry.Rejected(
-                " ",
+                stepId(" "),
                 LedgerStepKind.POST_ENTRY,
-                Optional.empty(),
+                null,
                 startedAt,
                 finishedAt,
                 List.of(),
@@ -603,18 +619,24 @@ class ContractCoverageTest {
         IllegalArgumentException.class,
         () ->
             new LedgerJournalEntry.Rejected(
-                "post",
+                stepId("post"),
                 LedgerStepKind.POST_ENTRY,
-                Optional.empty(),
+                null,
                 finishedAt,
                 startedAt,
                 List.of(),
                 failure));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new LedgerExecutionJournal(
-                " ", LedgerPlanStatus.REJECTED, startedAt, finishedAt, List.of()));
+        () -> new LedgerExecutionJournal(startedAt, finishedAt, List.of()));
+  }
+
+  private static LedgerPlanId planId(String value) {
+    return new LedgerPlanId(value);
+  }
+
+  private static LedgerStepId stepId(String value) {
+    return new LedgerStepId(value);
   }
 
   private static DeclaredAccount declaredAccount(String accountCode) {

@@ -25,27 +25,31 @@ final class SqliteBookStateReader {
   }
 
   SqliteBookState bookState(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+    return snapshot(activeDatabase).state();
+  }
+
+  SqliteBookStateSnapshot snapshot(SqliteNativeDatabase activeDatabase)
+      throws SqliteNativeException {
     int applicationId =
         SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma application_id");
     int userVersion =
         SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma user_version");
     if (applicationId == 0 && userVersion == 0 && !hasUserSchemaObjects(activeDatabase)) {
-      return SqliteBookState.BLANK_SQLITE;
+      return new SqliteBookStateSnapshot(applicationId, userVersion, SqliteBookState.BLANK_SQLITE);
     }
     if (applicationId == bookApplicationId) {
       if (userVersion != bookFormatVersion) {
-        return SqliteBookState.UNSUPPORTED_FINGRIND_VERSION;
+        return new SqliteBookStateSnapshot(
+            applicationId, userVersion, SqliteBookState.UNSUPPORTED_FINGRIND_VERSION);
       }
       if (hasCanonicalTables(activeDatabase) && hasInitializedMarker(activeDatabase)) {
-        return SqliteBookState.INITIALIZED_FINGRIND;
+        return new SqliteBookStateSnapshot(
+            applicationId, userVersion, SqliteBookState.INITIALIZED_FINGRIND);
       }
-      return SqliteBookState.INCOMPLETE_FINGRIND;
+      return new SqliteBookStateSnapshot(
+          applicationId, userVersion, SqliteBookState.INCOMPLETE_FINGRIND);
     }
-    return SqliteBookState.FOREIGN_SQLITE;
-  }
-
-  boolean isInitializedBook(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
-    return bookState(activeDatabase) == SqliteBookState.INITIALIZED_FINGRIND;
+    return new SqliteBookStateSnapshot(applicationId, userVersion, SqliteBookState.FOREIGN_SQLITE);
   }
 
   private boolean hasUserSchemaObjects(SqliteNativeDatabase activeDatabase)

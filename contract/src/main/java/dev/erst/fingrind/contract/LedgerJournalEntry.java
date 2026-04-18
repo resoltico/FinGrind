@@ -6,18 +6,19 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** One per-step journal entry emitted by ledger-plan execution. */
 public sealed interface LedgerJournalEntry
     permits LedgerJournalEntry.Succeeded, LedgerJournalEntry.Failed {
   /** Returns the caller-visible step identifier for this journal entry. */
-  String stepId();
+  LedgerStepId stepId();
 
   /** Returns the canonical step kind executed for this journal entry. */
   LedgerStepKind kind();
 
-  /** Returns the optional nested assertion kind for assertion steps only. */
-  Optional<LedgerAssertionKind> detailKind();
+  /** Returns the nullable nested assertion kind for assertion steps only. */
+  @Nullable LedgerAssertionKind detailKind();
 
   /** Returns the step start instant. */
   Instant startedAt();
@@ -47,14 +48,15 @@ public sealed interface LedgerJournalEntry
         .orElseThrow(
             () ->
                 new IllegalStateException(
-                    "Ledger journal entry '%s' does not carry a failure.".formatted(stepId())));
+                    "Ledger journal entry '%s' does not carry a failure."
+                        .formatted(stepId().value())));
   }
 
   /** Successful journal entry with facts and no failure payload. */
   record Succeeded(
-      String stepId,
+      LedgerStepId stepId,
       LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      @Nullable LedgerAssertionKind detailKind,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts)
@@ -77,9 +79,9 @@ public sealed interface LedgerJournalEntry
 
   /** Deterministically rejected journal entry with a required failure payload. */
   record Rejected(
-      String stepId,
+      LedgerStepId stepId,
       LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      @Nullable LedgerAssertionKind detailKind,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts,
@@ -100,9 +102,9 @@ public sealed interface LedgerJournalEntry
 
   /** Assertion-failed journal entry with a required failure payload. */
   record AssertionFailed(
-      String stepId,
+      LedgerStepId stepId,
       LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      @Nullable LedgerAssertionKind detailKind,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts,
@@ -122,20 +124,23 @@ public sealed interface LedgerJournalEntry
   }
 
   private static void requireCommon(
-      String stepId,
+      LedgerStepId stepId,
       LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      @Nullable LedgerAssertionKind detailKind,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts) {
     Objects.requireNonNull(stepId, "stepId");
     Objects.requireNonNull(kind, "kind");
-    Objects.requireNonNull(detailKind, "detailKind");
     Objects.requireNonNull(startedAt, "startedAt");
     Objects.requireNonNull(finishedAt, "finishedAt");
-    List.copyOf(Objects.requireNonNull(facts, "facts"));
-    if (stepId.isBlank()) {
-      throw new IllegalArgumentException("Ledger journal stepId must not be blank.");
+    Objects.requireNonNull(facts, "facts");
+    if (kind == LedgerStepKind.ASSERT && detailKind == null) {
+      throw new IllegalArgumentException("Assert ledger journal steps must carry a detail kind.");
+    }
+    if (kind != LedgerStepKind.ASSERT && detailKind != null) {
+      throw new IllegalArgumentException(
+          "Only assert ledger journal steps may carry a detail kind.");
     }
     if (finishedAt.isBefore(startedAt)) {
       throw new IllegalArgumentException(

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -9,8 +10,8 @@ import org.junit.jupiter.api.Test;
 class SqlitePostingSqlTest {
   @Test
   void listPostings_includesOnlyRequestedFilters() {
-    String unfiltered = SqlitePostingSql.listPostings(false, false, false);
-    String fullyFiltered = SqlitePostingSql.listPostings(true, true, true);
+    String unfiltered = SqlitePostingSql.listPostings(false, false, false, false);
+    String fullyFiltered = SqlitePostingSql.listPostings(true, true, true, true);
 
     assertFalse(unfiltered.contains("journal_line.account_code = ?"));
     assertFalse(unfiltered.contains("effective_date >= ?"));
@@ -27,6 +28,8 @@ class SqlitePostingSqlTest {
             """));
     assertTrue(fullyFiltered.contains(" and effective_date >= ?"));
     assertTrue(fullyFiltered.contains(" and effective_date <= ?"));
+    assertTrue(fullyFiltered.contains(" effective_date < ?"));
+    assertFalse(unfiltered.contains(" effective_date < ?"));
   }
 
   @Test
@@ -38,5 +41,10 @@ class SqlitePostingSqlTest {
     assertFalse(unfiltered.contains("posting_fact.effective_date <= ?"));
     assertTrue(fullyFiltered.contains(" and posting_fact.effective_date >= ?"));
     assertTrue(fullyFiltered.contains(" and posting_fact.effective_date <= ?"));
+  }
+
+  @Test
+  void findAccountsByCodeCount_rejectsNonPositiveCounts() {
+    assertThrows(IllegalArgumentException.class, () -> SqlitePostingSql.findAccountsByCodeCount(0));
   }
 }

@@ -74,9 +74,9 @@ final class ProtocolQueryOperations {
                 "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
                 "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
                 ProtocolOptions.optionalLimitSyntax(),
-                ProtocolOptions.optionalOffsetSyntax()),
+                ProtocolOptions.optionalCursorSyntax()),
             ExecutionMode.JSON_ENVELOPE,
-            "List one filtered page of committed postings in stable reverse-chronological order.",
+            "List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 25"
                     .formatted(

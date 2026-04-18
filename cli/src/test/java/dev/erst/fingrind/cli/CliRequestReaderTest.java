@@ -9,6 +9,8 @@ import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
@@ -1299,7 +1301,7 @@ class CliRequestReaderTest {
 
     LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
 
-    assertEquals("plan-1", plan.planId());
+    assertEquals("plan-1", plan.planId().value());
     assertEquals(13, plan.steps().size());
     assertEquals(LedgerStep.OpenBook.class, plan.steps().get(0).getClass());
     assertEquals(LedgerStep.DeclareAccount.class, plan.steps().get(1).getClass());
@@ -1341,7 +1343,7 @@ class CliRequestReaderTest {
     LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
 
     assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
-    assertEquals(0, ((LedgerStep.ListPostings) plan.steps().get(1)).query().offset());
+    assertTrue(((LedgerStep.ListPostings) plan.steps().get(1)).query().cursor().isEmpty());
   }
 
   @Test
@@ -1488,7 +1490,7 @@ class CliRequestReaderTest {
     LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
 
     assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
-    assertEquals(0, ((LedgerStep.ListPostings) plan.steps().get(1)).query().offset());
+    assertTrue(((LedgerStep.ListPostings) plan.steps().get(1)).query().cursor().isEmpty());
   }
 
   private Path writeRequest(String payload) throws IOException {
@@ -1634,7 +1636,7 @@ class CliRequestReaderTest {
                 "effectiveDateFrom": "2026-04-01",
                 "effectiveDateTo": "2026-04-30",
                 "limit": 25,
-                "offset": 5
+                "cursor": "%s"
               }
             },
             {
@@ -1686,6 +1688,14 @@ class CliRequestReaderTest {
           ]
         }
         """
-        .formatted(validRequestJson(false), validRequestJson(false));
+        .formatted(validRequestJson(false), validRequestJson(false), validPostingCursor());
+  }
+
+  private static String validPostingCursor() {
+    return new PostingPageCursor(
+            java.time.LocalDate.parse("2026-04-15"),
+            java.time.Instant.parse("2026-04-15T10:15:30Z"),
+            new PostingId("posting-5"))
+        .wireValue();
   }
 }

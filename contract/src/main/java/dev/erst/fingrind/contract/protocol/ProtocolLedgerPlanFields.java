@@ -30,6 +30,7 @@ public final class ProtocolLedgerPlanFields {
         Query.EFFECTIVE_DATE_FROM,
         Query.EFFECTIVE_DATE_TO,
         Query.LIMIT,
+        Query.CURSOR,
         Query.OFFSET);
   }
 
@@ -96,6 +97,9 @@ public final class ProtocolLedgerPlanFields {
 
     /** Page-size field. */
     public static final String LIMIT = "limit";
+
+    /** Opaque posting-page cursor field. */
+    public static final String CURSOR = "cursor";
 
     /** Page-offset field. */
     public static final String OFFSET = "offset";

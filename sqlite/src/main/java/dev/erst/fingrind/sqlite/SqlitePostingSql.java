@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import java.util.Collections;
+
 /** Canonical SQL statements for the SQLite posting adapter. */
 final class SqlitePostingSql {
   static final String INITIALIZED_AT_META_KEY = "initialized_at";
@@ -171,17 +173,28 @@ final class SqlitePostingSql {
       ) values (?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
-          normal_balance = excluded.normal_balance,
-          active = excluded.active,
-          declared_at = excluded.declared_at
+          active = excluded.active
       """;
 
   static String listAccounts() {
     return BASE_ACCOUNT_SELECT + " order by account_code limit ? offset ?";
   }
 
+  static String findAccountsByCodeCount(int accountCount) {
+    if (accountCount < 1) {
+      throw new IllegalArgumentException("Account lookup count must be at least one.");
+    }
+    return BASE_ACCOUNT_SELECT
+        + " where account_code in ("
+        + String.join(", ", Collections.nCopies(accountCount, "?"))
+        + ")";
+  }
+
   static String listPostings(
-      boolean filterAccount, boolean filterEffectiveDateFrom, boolean filterEffectiveDateTo) {
+      boolean filterAccount,
+      boolean filterEffectiveDateFrom,
+      boolean filterEffectiveDateTo,
+      boolean filterCursor) {
     StringBuilder sql =
         new StringBuilder(BASE_POSTING_SELECT.length() + 256)
             .append(BASE_POSTING_SELECT)
@@ -203,7 +216,17 @@ final class SqlitePostingSql {
     if (filterEffectiveDateTo) {
       sql.append(" and effective_date <= ?");
     }
-    sql.append(" order by effective_date desc, recorded_at desc, posting_id desc limit ? offset ?");
+    if (filterCursor) {
+      sql.append(
+          """
+           and (
+               effective_date < ?
+               or (effective_date = ? and recorded_at < ?)
+               or (effective_date = ? and recorded_at = ? and posting_id < ?)
+           )
+          """);
+    }
+    sql.append(" order by effective_date desc, recorded_at desc, posting_id desc limit ?");
     return sql.toString();
   }
 

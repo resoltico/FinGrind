@@ -6,9 +6,11 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -73,6 +75,22 @@ public final class InMemoryBookSession
   @Override
   public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
     return withLock(() -> Optional.ofNullable(accountsByCode.get(accountCode)));
+  }
+
+  @Override
+  @SuppressWarnings("PMD.UseConcurrentHashMap")
+  public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+    return withLock(
+        () -> {
+          Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
+          for (AccountCode accountCode : accountCodes) {
+            DeclaredAccount account = accountsByCode.get(accountCode);
+            if (account != null) {
+              accounts.put(accountCode, account);
+            }
+          }
+          return Map.copyOf(accounts);
+        });
   }
 
   @Override
@@ -183,6 +201,7 @@ public final class InMemoryBookSession
                       posting ->
                           matchesDateRange(
                               posting, query.effectiveDateFrom(), query.effectiveDateTo()))
+                  .filter(posting -> matchesCursor(posting, query.cursor()))
                   .sorted(
                       Comparator.comparing(
                               (PostingFact posting) -> posting.journalEntry().effectiveDate())
@@ -193,13 +212,14 @@ public final class InMemoryBookSession
                           .thenComparing(
                               posting -> posting.postingId().value(), Comparator.reverseOrder()))
                   .toList();
-          int start = Math.min(query.offset(), matchingPostings.size());
-          int end = Math.min(start + query.limit(), matchingPostings.size());
+          int end = Math.min(query.limit(), matchingPostings.size());
+          List<PostingFact> pageItems = matchingPostings.subList(0, end);
           return new PostingPage(
-              matchingPostings.subList(start, end),
+              pageItems,
               query.limit(),
-              query.offset(),
-              end < matchingPostings.size());
+              end < matchingPostings.size()
+                  ? Optional.of(PostingPageCursor.fromPosting(pageItems.getLast()))
+                  : Optional.empty());
         });
   }
 
@@ -319,6 +339,23 @@ public final class InMemoryBookSession
     java.time.LocalDate effectiveDate = postingFact.journalEntry().effectiveDate();
     return effectiveDateFrom.stream().allMatch(date -> !effectiveDate.isBefore(date))
         && effectiveDateTo.stream().allMatch(date -> !effectiveDate.isAfter(date));
+  }
+
+  private static boolean matchesCursor(
+      PostingFact postingFact, Optional<PostingPageCursor> cursor) {
+    if (cursor.isEmpty()) {
+      return true;
+    }
+    PostingPageCursor pageCursor = cursor.orElseThrow();
+    java.time.LocalDate effectiveDate = postingFact.journalEntry().effectiveDate();
+    Instant recordedAt = postingFact.provenance().recordedAt();
+    String postingId = postingFact.postingId().value();
+    return effectiveDate.isBefore(pageCursor.effectiveDate())
+        || (effectiveDate.equals(pageCursor.effectiveDate())
+            && recordedAt.isBefore(pageCursor.recordedAt()))
+        || (effectiveDate.equals(pageCursor.effectiveDate())
+            && recordedAt.equals(pageCursor.recordedAt())
+            && postingId.compareTo(pageCursor.postingId().value()) < 0);
   }
 
   private static void accumulate(Map<CurrencyCode, Totals> totalsByCurrency, JournalLine line) {

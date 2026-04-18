@@ -6,7 +6,6 @@ module dev.erst.fingrind.cli {
   requires dev.erst.fingrind.core;
   requires dev.erst.fingrind.executor;
   requires dev.erst.fingrind.sqlite;
-  requires com.fasterxml.jackson.annotation;
   requires tools.jackson.databind;
   requires static org.jspecify;
 }

@@ -5,6 +5,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Changed `list-postings` pagination from offset scans to opaque cursor-based keyset paging, so
+  posting-history reads now return `nextCursor` instead of `offset` / `hasMore` and can resume
+  without rescanning earlier history pages.
+- Restored `BookMigrationPolicy` to a closed enum vocabulary with explicit wire-value helpers, so
+  the migration-policy contract remains exhaustively switchable while preserving the same stable
+  sequential-in-place public value.
+
+### Fixed
+- Added the durable `posting_fact_by_effective_recorded_posting` SQLite index and tightened the
+  account upsert SQL so posting-history keyset scans are index-backed and account redeclarations can
+  no longer overwrite immutable `normalBalance` or original declaration timestamps at the storage
+  layer.
+- Added the durable `journal_line_by_account_code` SQLite index and bulk account lookups for
+  posting validation, reducing repeated scans for account-balance reads and multi-line posting
+  admission checks.
+- Cached interpreted SQLite book-state metadata inside one opened store session so repeated
+  inspection, validation, and query calls no longer re-run the same PRAGMA and schema probes.
+- Updated the SQLite schema reference, user docs, examples, and application API docs to reflect
+  the full current schema, cursor-based posting-history pagination, and the current machine-facing
+  response shapes.
+
 ## [0.16.0] - 2026-04-18
 
 ### Changed

@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
-import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** One executable step inside an AI-agent-authored ledger plan. */
 public sealed interface LedgerStep
@@ -19,26 +19,23 @@ public sealed interface LedgerStep
         LedgerStep.AccountBalance,
         LedgerStep.Assert {
   /** Stable caller-supplied step identifier used for journal correlation. */
-  String stepId();
+  LedgerStepId stepId();
 
   /** Canonical request and journal kind represented by this step. */
   LedgerStepKind kind();
 
-  /** Optional detail kind emitted alongside the step kind in execution journals. */
-  default Optional<LedgerAssertionKind> detailKind() {
-    return Optional.empty();
+  /** Nullable detail kind emitted alongside the step kind in execution journals. */
+  default @Nullable LedgerAssertionKind detailKind() {
+    return null;
   }
 
   /** Validates a step identifier. */
-  static void requireStepId(String stepId) {
+  static void requireStepId(LedgerStepId stepId) {
     Objects.requireNonNull(stepId, "stepId");
-    if (stepId.isBlank()) {
-      throw new IllegalArgumentException("Ledger stepId must not be blank.");
-    }
   }
 
   /** Initializes the selected book inside the plan transaction. */
-  record OpenBook(String stepId) implements LedgerStep {
+  record OpenBook(LedgerStepId stepId) implements LedgerStep {
     /** Validates the step. */
     public OpenBook {
       requireStepId(stepId);
@@ -51,7 +48,7 @@ public sealed interface LedgerStep
   }
 
   /** Declares or reactivates one account inside the plan transaction. */
-  record DeclareAccount(String stepId, DeclareAccountCommand command) implements LedgerStep {
+  record DeclareAccount(LedgerStepId stepId, DeclareAccountCommand command) implements LedgerStep {
     /** Validates the step. */
     public DeclareAccount {
       requireStepId(stepId);
@@ -65,7 +62,7 @@ public sealed interface LedgerStep
   }
 
   /** Validates one posting request without committing it. */
-  record PreflightEntry(String stepId, PostEntryCommand command) implements LedgerStep {
+  record PreflightEntry(LedgerStepId stepId, PostEntryCommand command) implements LedgerStep {
     /** Validates the step. */
     public PreflightEntry {
       requireStepId(stepId);
@@ -79,7 +76,7 @@ public sealed interface LedgerStep
   }
 
   /** Commits one posting request inside the plan transaction. */
-  record PostEntry(String stepId, PostEntryCommand command) implements LedgerStep {
+  record PostEntry(LedgerStepId stepId, PostEntryCommand command) implements LedgerStep {
     /** Validates the step. */
     public PostEntry {
       requireStepId(stepId);
@@ -93,7 +90,7 @@ public sealed interface LedgerStep
   }
 
   /** Inspects the selected book. */
-  record InspectBook(String stepId) implements LedgerStep {
+  record InspectBook(LedgerStepId stepId) implements LedgerStep {
     /** Validates the step. */
     public InspectBook {
       requireStepId(stepId);
@@ -106,7 +103,7 @@ public sealed interface LedgerStep
   }
 
   /** Lists declared accounts. */
-  record ListAccounts(String stepId, ListAccountsQuery query) implements LedgerStep {
+  record ListAccounts(LedgerStepId stepId, ListAccountsQuery query) implements LedgerStep {
     /** Validates the step. */
     public ListAccounts {
       requireStepId(stepId);
@@ -120,7 +117,7 @@ public sealed interface LedgerStep
   }
 
   /** Gets one committed posting. */
-  record GetPosting(String stepId, PostingId postingId) implements LedgerStep {
+  record GetPosting(LedgerStepId stepId, PostingId postingId) implements LedgerStep {
     /** Validates the step. */
     public GetPosting {
       requireStepId(stepId);
@@ -134,7 +131,7 @@ public sealed interface LedgerStep
   }
 
   /** Lists committed postings. */
-  record ListPostings(String stepId, ListPostingsQuery query) implements LedgerStep {
+  record ListPostings(LedgerStepId stepId, ListPostingsQuery query) implements LedgerStep {
     /** Validates the step. */
     public ListPostings {
       requireStepId(stepId);
@@ -148,7 +145,7 @@ public sealed interface LedgerStep
   }
 
   /** Computes one account balance. */
-  record AccountBalance(String stepId, AccountBalanceQuery query) implements LedgerStep {
+  record AccountBalance(LedgerStepId stepId, AccountBalanceQuery query) implements LedgerStep {
     /** Validates the step. */
     public AccountBalance {
       requireStepId(stepId);
@@ -162,7 +159,7 @@ public sealed interface LedgerStep
   }
 
   /** Evaluates one first-class ledger assertion. */
-  record Assert(String stepId, LedgerAssertion assertion) implements LedgerStep {
+  record Assert(LedgerStepId stepId, LedgerAssertion assertion) implements LedgerStep {
     /** Validates the step. */
     public Assert {
       requireStepId(stepId);
@@ -175,8 +172,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public Optional<LedgerAssertionKind> detailKind() {
-      return Optional.of(assertion.kind());
+    public LedgerAssertionKind detailKind() {
+      return assertion.kind();
     }
   }
 }

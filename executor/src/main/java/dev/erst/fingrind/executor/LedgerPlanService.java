@@ -10,8 +10,6 @@ import java.util.Optional;
 
 /** Executes canonical AI-agent ledger plans against one atomic book session. */
 public final class LedgerPlanService {
-  private static final String ASSERTION_FAILED = "assertion-failed";
-
   private final LedgerPlanSession planSession;
   private final Clock clock;
   private final BookAdministrationService bookAdministrationService;
@@ -334,7 +332,9 @@ public final class LedgerPlanService {
   }
 
   private static StepOutcome assertionFailure(String message, LedgerFact... facts) {
-    return stepAssertionFailed(new LedgerStepFailure(ASSERTION_FAILED, message, List.of(facts)));
+    return stepAssertionFailed(
+        new LedgerStepFailure(
+            LedgerStepStatus.ASSERTION_FAILED.wireValue(), message, List.of(facts)));
   }
 
   private static String missingBookCode(LedgerStep firstStep) {
@@ -350,10 +350,12 @@ public final class LedgerPlanService {
   }
 
   private LedgerPlanResult result(
-      String planId, LedgerPlanStatus status, Instant startedAt, List<LedgerJournalEntry> entries) {
+      LedgerPlanId planId,
+      LedgerPlanStatus status,
+      Instant startedAt,
+      List<LedgerJournalEntry> entries) {
     LedgerExecutionJournal journal =
-        new LedgerExecutionJournal(
-            planId, status, startedAt, Instant.now(clock), List.copyOf(entries));
+        new LedgerExecutionJournal(startedAt, Instant.now(clock), List.copyOf(entries));
     return switch (status) {
       case SUCCEEDED -> new LedgerPlanResult.Succeeded(planId, journal);
       case REJECTED -> new LedgerPlanResult.Rejected(planId, journal);
