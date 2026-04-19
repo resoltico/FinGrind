@@ -475,7 +475,7 @@ try {
                 "--cursor", $nextCursor,
                 "--limit", "25"
             )).Output | ConvertFrom-Json
-    $secondPageCommandIds = @($secondPostingPagePayload.payload.postings | ForEach-Object { $_.provenance.commandId })
+    $secondPageCommandIds = @($secondPostingPagePayload.payload.postings | ForEach-Object { $_.commandId })
     if ($secondPageCommandIds -notcontains "bundle-acceptance-sale") {
         Fail "list-postings did not round-trip the opaque nextCursor"
     }
