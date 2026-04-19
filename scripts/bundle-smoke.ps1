@@ -15,7 +15,10 @@ function Require-Match {
         [string] $Message
     )
 
-    if ($Text -notmatch $Pattern) {
+    if (-not [System.Text.RegularExpressions.Regex]::IsMatch(
+            $Text,
+            $Pattern,
+            [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
         Fail $Message
     }
 }
@@ -30,7 +33,10 @@ function Require-NoMatch {
         [string] $Message
     )
 
-    if ($Text -match $Pattern) {
+    if ([System.Text.RegularExpressions.Regex]::IsMatch(
+            $Text,
+            $Pattern,
+            [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
         Fail $Message
     }
 }
