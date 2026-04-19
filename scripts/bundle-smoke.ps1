@@ -77,9 +77,10 @@ function Invoke-BundleCommand {
             $quotedArgumentLine = ($Arguments | ForEach-Object {
                     '"' + $_.Replace('"', '\"') + '"'
                 }) -join ' '
+            $commandLine = '/d /c ""' + $script:BundleLauncher + '" ' + $quotedArgumentLine + '"'
             $process = Start-Process `
-                -FilePath $script:BundleLauncher `
-                -ArgumentList $quotedArgumentLine `
+                -FilePath $env:ComSpec `
+                -ArgumentList $commandLine `
                 -NoNewWindow `
                 -Wait `
                 -PassThru `
