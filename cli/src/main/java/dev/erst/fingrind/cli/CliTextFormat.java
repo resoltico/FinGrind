@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 
 /** Shared human-table, CSV, and money-display formatting for CLI query output. */
 final class CliTextFormat {
+  private static final String CSV_LINE_SEPARATOR = "\n";
+
   private CliTextFormat() {}
 
   static String renderKeyValueBlock(List<List<String>> rows) {
@@ -74,9 +76,9 @@ final class CliTextFormat {
     Objects.requireNonNull(headers, "headers");
     Objects.requireNonNull(rows, "rows");
     StringBuilder document = new StringBuilder();
-    document.append(csvRow(headers)).append(System.lineSeparator());
+    document.append(csvRow(headers)).append(CSV_LINE_SEPARATOR);
     for (List<String> row : rows) {
-      document.append(csvRow(row)).append(System.lineSeparator());
+      document.append(csvRow(row)).append(CSV_LINE_SEPARATOR);
     }
     return document.toString().stripTrailing();
   }
