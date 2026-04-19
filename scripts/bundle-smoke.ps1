@@ -128,7 +128,7 @@ if ($actualArchiveSha256 -ne $expectedArchiveSha256.ToLowerInvariant()) {
 
 $smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("fingrind-bundle-acceptance.{0}" -f [guid]::NewGuid().ToString("N"))
 $extractRoot = Join-Path $smokeRoot "extract"
-$workRoot = Join-Path $smokeRoot "workspace odd/Rīga büro/2026 Q2 close"
+$workRoot = Join-Path $smokeRoot "workspace odd/Riga buro/2026 Q2 close"
 $script:BundleLauncher = $null
 
 try {
