@@ -977,10 +977,7 @@ final class CliArguments {
     } catch (InvalidPathException exception) {
       throw invalid(
           optionName,
-          "Option must be a valid filesystem path for "
-              + optionName
-              + ": "
-              + rawValue,
+          "Option must be a valid filesystem path for " + optionName + ": " + rawValue,
           exception);
     }
   }
