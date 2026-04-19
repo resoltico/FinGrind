@@ -71,28 +71,28 @@ function Invoke-BundleCommand {
     try {
         Remove-Item Env:FINGRIND_SQLITE_LIBRARY -ErrorAction SilentlyContinue
         Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue
-        $stdoutPath = [System.IO.Path]::GetTempFileName()
-        $stderrPath = [System.IO.Path]::GetTempFileName()
-        try {
-            $quotedArgumentLine = ($Arguments | ForEach-Object {
-                    '"' + $_.Replace('"', '\"') + '"'
-                }) -join ' '
-            $commandLine = '/d /c ""' + $script:BundleLauncher + '" ' + $quotedArgumentLine + '"'
-            $process = Start-Process `
-                -FilePath $env:ComSpec `
-                -ArgumentList $commandLine `
-                -NoNewWindow `
-                -Wait `
-                -PassThru `
-                -RedirectStandardOutput $stdoutPath `
-                -RedirectStandardError $stderrPath
-            $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
-            $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
-            $output = ($stdout, $stderr | Where-Object { -not [string]::IsNullOrEmpty($_) }) -join "`n"
-            $exitCode = $process.ExitCode
-        } finally {
-            Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $env:ComSpec
+        $startInfo.UseShellExecute = $false
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $startInfo.ArgumentList.Add('/d')
+        $startInfo.ArgumentList.Add('/c')
+        $startInfo.ArgumentList.Add($script:BundleLauncher)
+        foreach ($argument in $Arguments) {
+            $startInfo.ArgumentList.Add($argument)
         }
+
+        $process = [System.Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) {
+            Fail "failed to start bundle launcher $script:BundleLauncher"
+        }
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+        $output = ($stdout, $stderr | Where-Object { -not [string]::IsNullOrEmpty($_) }) -join "`n"
+        $exitCode = $process.ExitCode
     } finally {
         if ($null -ne $originalSqliteLibrary) {
             $env:FINGRIND_SQLITE_LIBRARY = $originalSqliteLibrary
