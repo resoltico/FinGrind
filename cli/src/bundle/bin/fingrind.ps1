@@ -16,10 +16,13 @@ if (-not (Test-Path -LiteralPath $applicationJar -PathType Leaf)) {
     exit 1
 }
 
-& $runtimeJava `
-    --enable-native-access=ALL-UNNAMED `
-    "-Dfingrind.bundle.home=$appHome" `
-    -Dfingrind.runtime.distribution=self-contained-bundle `
-    -jar $applicationJar `
-    @args
+$javaArguments = @(
+    "--enable-native-access=ALL-UNNAMED",
+    "-Dfingrind.bundle.home=$appHome",
+    "-Dfingrind.runtime.distribution=self-contained-bundle",
+    "-jar",
+    $applicationJar
+) + $args
+
+& $runtimeJava @javaArguments
 exit $LASTEXITCODE
