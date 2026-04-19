@@ -205,17 +205,17 @@ try {
         }
     }
 
-    $requestSalePath = Join-Path $workRoot "requests odd\--sale [bundle #acceptance].json"
-    $requestAdjustmentPath = Join-Path $workRoot "requests odd\adjustment [bundle #acceptance].json"
-    $invalidRequestPath = Join-Path $workRoot "requests odd\bad fields [bundle #acceptance].json"
-    $declareCashPath = Join-Path $workRoot "requests odd\declare account cash [bundle #acceptance].json"
-    $declareRevenuePath = Join-Path $workRoot "requests odd\declare account revenue [bundle #acceptance].json"
-    $bookPath = Join-Path $workRoot "books odd\nested\-entity [bundle #acceptance].sqlite"
-    $bookKeyPath = Join-Path $workRoot "keys odd\nested\--entity [bundle #acceptance].key"
-    $replacementBookKeyPath = Join-Path $workRoot "keys odd\nested\--entity [bundle #acceptance]-replacement.key"
-    $wrongBookKeyPath = Join-Path $workRoot "keys odd\nested\--entity [bundle #acceptance]-wrong.key"
-    $promptFailureBookPath = Join-Path $workRoot "books odd\nested\prompt unavailable [bundle #acceptance].sqlite"
-    $trialBalancePdfPath = Join-Path $workRoot "reports odd\trial balance [bundle #acceptance].pdf"
+    $requestSalePath = Join-Path $workRoot "requests odd\-sale bundle acceptance.json"
+    $requestAdjustmentPath = Join-Path $workRoot "requests odd\adjustment bundle acceptance.json"
+    $invalidRequestPath = Join-Path $workRoot "requests odd\bad fields bundle acceptance.json"
+    $declareCashPath = Join-Path $workRoot "requests odd\declare account cash bundle acceptance.json"
+    $declareRevenuePath = Join-Path $workRoot "requests odd\declare account revenue bundle acceptance.json"
+    $bookPath = Join-Path $workRoot "books odd\nested\-entity bundle acceptance.sqlite"
+    $bookKeyPath = Join-Path $workRoot "keys odd\nested\-entity bundle acceptance.key"
+    $replacementBookKeyPath = Join-Path $workRoot "keys odd\nested\-entity bundle acceptance replacement.key"
+    $wrongBookKeyPath = Join-Path $workRoot "keys odd\nested\-entity bundle acceptance wrong.key"
+    $promptFailureBookPath = Join-Path $workRoot "books odd\nested\prompt unavailable bundle acceptance.sqlite"
+    $trialBalancePdfPath = Join-Path $workRoot "reports odd\trial balance bundle acceptance.pdf"
 
     foreach ($path in @(
         [System.IO.Path]::GetDirectoryName($requestSalePath),
