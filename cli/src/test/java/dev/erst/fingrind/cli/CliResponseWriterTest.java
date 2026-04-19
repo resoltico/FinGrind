@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountLedgerEntry;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
@@ -17,6 +19,7 @@ import dev.erst.fingrind.contract.ContractDiscovery;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.GetPostingResult;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
@@ -30,19 +33,27 @@ import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.MachineContract;
 import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -61,12 +72,16 @@ import dev.erst.fingrind.core.SourceChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -194,6 +209,211 @@ class CliResponseWriterTest {
   }
 
   @Test
+  void writeAdministrativeAndWriteSuccesses_supportHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeGenerateBookKeyFileResult(
+        new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+            Path.of("keys/book.key"), "base64url-no-padding", 256, "0600"),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Key File Generated"));
+
+    outputStream.reset();
+    responseWriter.writeOpenBookResult(
+        Path.of("books/book.sqlite"),
+        new OpenBookResult.Opened(Instant.parse("2026-04-17T10:15:30Z")),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Initialized"));
+
+    outputStream.reset();
+    responseWriter.writeRekeyBookResult(
+        new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")), OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Book Rekeyed"));
+
+    outputStream.reset();
+    responseWriter.writeDeclareAccountResult(
+        new DeclareAccountResult.Declared(
+            new DeclaredAccount(
+                new AccountCode("1000"),
+                new AccountName("Cash"),
+                NormalBalance.DEBIT,
+                true,
+                Instant.parse("2026-04-17T10:15:30Z"))),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Account Declared"));
+
+    outputStream.reset();
+    responseWriter.writePostEntryResult(
+        new PostEntryResult.PreflightAccepted(
+            new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-17")),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Preflight Accepted"));
+
+    outputStream.reset();
+    responseWriter.writePostEntryResult(
+        new PostEntryResult.Committed(
+            new PostingId("posting-1"),
+            new IdempotencyKey("idem-1"),
+            LocalDate.parse("2026-04-17"),
+            Instant.parse("2026-04-17T10:15:31Z")),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Committed"));
+  }
+
+  @Test
+  void writeAdministrativeAndWriteSuccesses_rejectCsvOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writeGenerateBookKeyFileResult(
+                new dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator.GeneratedKeyFile(
+                    Path.of("keys/book.key"), "base64url-no-padding", 256, "0600"),
+                OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writeOpenBookResult(
+                Path.of("books/book.sqlite"),
+                new OpenBookResult.Opened(Instant.parse("2026-04-17T10:15:30Z")),
+                OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writeRekeyBookResult(
+                new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")), OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writeDeclareAccountResult(
+                new DeclareAccountResult.Declared(
+                    new DeclaredAccount(
+                        new AccountCode("1000"),
+                        new AccountName("Cash"),
+                        NormalBalance.DEBIT,
+                        true,
+                        Instant.parse("2026-04-17T10:15:30Z"))),
+                OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writePostEntryResult(
+                new PostEntryResult.PreflightAccepted(
+                    new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-17")),
+                OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writePostEntryResult(
+                new PostEntryResult.Committed(
+                    new PostingId("posting-1"),
+                    new IdempotencyKey("idem-1"),
+                    LocalDate.parse("2026-04-17"),
+                    Instant.parse("2026-04-17T10:15:31Z")),
+                OutputMode.CSV));
+  }
+
+  @Test
+  void writeAdministrativeAndWriteRejections_supportHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeOpenBookResult(
+        Path.of("books/book.sqlite"),
+        new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("book-already-initialized"));
+
+    outputStream.reset();
+    responseWriter.writePostEntryResult(
+        new PostEntryResult.PreflightRejected(
+            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
+        OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Idempotency key"));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("duplicate-idempotency-key"));
+  }
+
+  @Test
+  void writeFailure_supportsHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeFailure(
+        new CliFailure("invalid-request", "Unsupported argument: --bogus", "Try help", "--bogus"),
+        OutputMode.HUMAN);
+
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Error"));
+    assertTrue(text.contains("invalid-request"));
+    assertTrue(text.contains("Unsupported argument: --bogus"));
+    assertTrue(text.contains("Try help"));
+  }
+
+  @Test
+  void writeQueryRejection_keepsJsonEnvelopeOutsideHumanMode() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeListAccountsResult(
+        new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+        OutputMode.JSON);
+
+    JsonNode json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").asText());
+    assertEquals("query-book-not-initialized", json.path("code").asText());
+  }
+
+  @Test
+  void writeQueryRejection_supportsHumanOutput() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeListAccountsResult(
+        new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+        OutputMode.HUMAN);
+
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Rejected"));
+    assertTrue(text.contains("query-book-not-initialized"));
+  }
+
+  @Test
+  void privateRejectionEnvelopeWriter_coversJsonAndHumanBranches() throws Throwable {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    MethodHandles.Lookup lookup =
+        MethodHandles.privateLookupIn(CliResponseWriter.class, MethodHandles.lookup());
+    MethodHandle writer =
+        lookup.findVirtual(
+            CliResponseWriter.class,
+            "writeEnvelopeOrHumanRejection",
+            MethodType.methodType(
+                void.class, OutputMode.class, CliResponseJsonModels.RejectedEnvelope.class));
+    CliResponseJsonModels.RejectedEnvelope envelope =
+        new CliResponseJsonModels.RejectedEnvelope(
+            "rejected", "query-book-not-initialized", "The book is not initialized.", null, null);
+
+    writer.invoke(responseWriter, OutputMode.HUMAN, envelope);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
+
+    outputStream.reset();
+    writer.invoke(responseWriter, OutputMode.JSON, envelope);
+    JsonNode json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").asText());
+    assertEquals("query-book-not-initialized", json.path("code").asText());
+
+    outputStream.reset();
+    writer.invoke(responseWriter, OutputMode.CSV, envelope);
+    json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").asText());
+    assertEquals("query-book-not-initialized", json.path("code").asText());
+  }
+
+  @Test
   void writeVersion_writesOkEnvelope() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
@@ -207,6 +427,52 @@ class CliResponseWriterTest {
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").asString());
     assertEquals("0.9.0", json.path("payload").path("version").asString());
+  }
+
+  @Test
+  void writeHelp_supportsJsonAndHumanButRejectsCsv() throws IOException {
+    ContractDiscovery.HelpDescriptor helpDescriptor =
+        MachineContract.help(
+            new ContractDiscovery.ApplicationIdentity(
+                "FinGrind",
+                "0.9.0",
+                "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
+            new ContractDiscovery.EnvironmentDescriptor(
+                "self-contained-bundle",
+                "self-contained-bundle",
+                ProtocolCatalog.supportedPublicCliBundleTargets(),
+                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+                "26+",
+                "sqlite-ffm-sqlite3mc",
+                "sqlite",
+                "required",
+                "chacha20",
+                "managed-only",
+                "FINGRIND_SQLITE_LIBRARY",
+                "fingrind.bundle.home",
+                List.of("THREADSAFE=1"),
+                true,
+                "3.53.0",
+                "2.3.3",
+                "loaded",
+                "3.53.0",
+                "2.3.3",
+                null));
+    ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
+    CliResponseWriter jsonWriter = new CliResponseWriter(utf8PrintStream(jsonOutput));
+
+    jsonWriter.writeHelp(helpDescriptor);
+    assertEquals("ok", readJson(jsonOutput).path("status").asText());
+
+    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
+    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
+    humanWriter.writeHelp(helpDescriptor, OutputMode.HUMAN);
+    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));
+
+    ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
+    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    assertThrows(
+        IllegalArgumentException.class, () -> csvWriter.writeHelp(helpDescriptor, OutputMode.CSV));
   }
 
   @Test
@@ -260,6 +526,69 @@ class CliResponseWriterTest {
         readTextArray(environment.path("unsupportedPublicCliOperatingSystems")));
     assertFalse(environment.has("loadedSqliteVersion"));
     assertFalse(environment.has("loadedSqlite3mcVersion"));
+  }
+
+  @Test
+  void writeCapabilities_supportsHumanButRejectsCsv() {
+    ContractDiscovery.CapabilitiesDescriptor capabilities =
+        MachineContract.capabilities(
+            new ContractDiscovery.ApplicationIdentity(
+                "FinGrind",
+                "0.9.0",
+                "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
+            new ContractDiscovery.EnvironmentDescriptor(
+                "self-contained-bundle",
+                "self-contained-bundle",
+                ProtocolCatalog.supportedPublicCliBundleTargets(),
+                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+                "26+",
+                "sqlite-ffm-sqlite3mc",
+                "sqlite",
+                "required",
+                "chacha20",
+                "managed-only",
+                "FINGRIND_SQLITE_LIBRARY",
+                "fingrind.bundle.home",
+                List.of("THREADSAFE=1"),
+                true,
+                "3.53.0",
+                "2.3.3",
+                "loaded",
+                "3.53.0",
+                "2.3.3",
+                null),
+            Instant.parse("2026-04-13T12:00:00Z"));
+    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
+    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
+
+    humanWriter.writeCapabilities(capabilities, OutputMode.HUMAN);
+    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Capabilities"));
+
+    ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
+    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> csvWriter.writeCapabilities(capabilities, OutputMode.CSV));
+  }
+
+  @Test
+  void writeVersion_supportsHumanButRejectsCsv() {
+    ContractDiscovery.VersionDescriptor versionDescriptor =
+        new ContractDiscovery.VersionDescriptor(
+            "FinGrind",
+            "0.9.0",
+            "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
+    ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
+    CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
+
+    humanWriter.writeVersion(versionDescriptor, OutputMode.HUMAN);
+    assertTrue(humanOutput.toString(StandardCharsets.UTF_8).contains("Version"));
+
+    ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
+    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> csvWriter.writeVersion(versionDescriptor, OutputMode.CSV));
   }
 
   @Test
@@ -517,7 +846,7 @@ class CliResponseWriterTest {
                     money("EUR", "10.00"),
                     money("EUR", "4.00"),
                     money("EUR", "6.00"),
-                    NormalBalance.DEBIT)));
+                    BalanceSide.DEBIT)));
 
     ByteArrayOutputStream inspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
@@ -604,6 +933,210 @@ class CliResponseWriterTest {
   }
 
   @Test
+  void writeQueryResults_supportHumanAndCsvOutputModes() {
+    PostingFact postingFact = postingFact();
+    AccountBalanceSnapshot balanceSnapshot =
+        new AccountBalanceSnapshot(
+            declaredCashAccount(),
+            Optional.of(LocalDate.parse("2026-04-01")),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            List.of(currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)));
+
+    ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
+        .writeListPostingsResult(
+            new ListPostingsResult.Listed(
+                new PostingPage(List.of(postingFact), 10, Optional.empty())),
+            OutputMode.HUMAN);
+    String postingRegisterHuman = postingRegisterHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(postingRegisterHuman.contains("Posting id"));
+    assertTrue(postingRegisterHuman.contains("10.00"));
+    assertTrue(postingRegisterHuman.contains("posting-1"));
+
+    ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
+        .writeListPostingsResult(
+            new ListPostingsResult.Listed(
+                new PostingPage(List.of(postingFact), 10, Optional.empty())),
+            OutputMode.CSV);
+    String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        postingRegisterCsv.startsWith(
+            "effectiveDate,recordedAt,postingId,currencyCode,totalAmount,accountCodes,reversalTarget"));
+    assertTrue(postingRegisterCsv.contains("2026-04-07,2026-04-07T10:15:30Z,posting-1,EUR,10.00"));
+
+    ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
+        .writeAccountBalanceResult(
+            new AccountBalanceResult.Reported(balanceSnapshot), OutputMode.HUMAN);
+    String balanceHuman = balanceHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(balanceHuman.contains("Account        : 1000"));
+    assertTrue(balanceHuman.contains("Debit total"));
+    assertTrue(balanceHuman.contains("10.00"));
+    assertTrue(balanceHuman.contains("6.00"));
+
+    ByteArrayOutputStream balanceCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(balanceCsvOutput))
+        .writeAccountBalanceResult(
+            new AccountBalanceResult.Reported(balanceSnapshot), OutputMode.CSV);
+    String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        balanceCsv.startsWith(
+            "accountCode,accountName,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+    assertTrue(
+        balanceCsv.contains("1000,Cash,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT"));
+  }
+
+  @Test
+  void writeReportResults_supportJsonHumanAndCsvOutputModes() throws IOException {
+    TrialBalanceReport trialBalanceReport =
+        new TrialBalanceReport(
+            Optional.of(LocalDate.parse("2026-04-30")),
+            List.of(
+                new TrialBalanceRow(
+                    declaredCashAccount(),
+                    currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))));
+    AccountLedgerReport accountLedgerReport =
+        new AccountLedgerReport(
+            declaredCashAccount(),
+            EffectiveDateRange.of(
+                Optional.of(LocalDate.parse("2026-04-01")),
+                Optional.of(LocalDate.parse("2026-04-30"))),
+            List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
+            List.of(
+                new AccountLedgerEntry(
+                    postingFact(),
+                    currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
+                    money("EUR", "10.00"),
+                    BalanceSide.DEBIT)),
+            List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)));
+    PeriodSummaryReport periodSummaryReport =
+        new PeriodSummaryReport(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            1,
+            2,
+            2,
+            List.of(
+                new PeriodCurrencySummary(
+                    currencyBalance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
+            List.of(
+                new PeriodAccountActivityRow(
+                    declaredCashAccount(),
+                    currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))));
+
+    ByteArrayOutputStream trialBalanceJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(trialBalanceJsonOutput))
+        .writeTrialBalanceResult(
+            new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.JSON);
+    JsonNode trialBalanceJson = readJson(trialBalanceJsonOutput);
+    assertEquals("ok", trialBalanceJson.path("status").asText());
+    assertEquals("2026-04-30", trialBalanceJson.path("payload").path("effectiveDateTo").asText());
+    assertEquals(
+        "1000", trialBalanceJson.path("payload").path("rows").get(0).path("accountCode").asText());
+    assertEquals(
+        "10", trialBalanceJson.path("payload").path("rows").get(0).path("debitTotal").asText());
+    assertFalse(trialBalanceJson.toString().contains("\"value\""));
+
+    ByteArrayOutputStream trialBalanceHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(trialBalanceHumanOutput))
+        .writeTrialBalanceResult(
+            new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.HUMAN);
+    String trialBalanceHuman = trialBalanceHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(trialBalanceHuman.contains("Effective date to : 2026-04-30"));
+    assertTrue(trialBalanceHuman.contains("Account"));
+    assertTrue(trialBalanceHuman.contains("6.00"));
+
+    ByteArrayOutputStream accountLedgerHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(accountLedgerHumanOutput))
+        .writeAccountLedgerResult(
+            new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
+            OutputMode.HUMAN);
+    String accountLedgerHuman = accountLedgerHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(accountLedgerHuman.contains("Opening balances : EUR 10.00 DEBIT"));
+    assertTrue(accountLedgerHuman.contains("Running balance"));
+    assertTrue(accountLedgerHuman.contains("posting-1"));
+
+    ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
+        .writeAccountLedgerResult(
+            new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
+            OutputMode.JSON);
+    JsonNode accountLedgerJson = readJson(accountLedgerJsonOutput);
+    assertEquals("1000", accountLedgerJson.path("payload").path("accountCode").asText());
+    assertEquals(
+        "2026-04-01", accountLedgerJson.path("payload").path("effectiveDateFrom").asText());
+    assertEquals(
+        "posting-1",
+        accountLedgerJson.path("payload").path("entries").get(0).path("postingId").asText());
+    assertEquals(
+        "2000",
+        accountLedgerJson
+            .path("payload")
+            .path("entries")
+            .get(0)
+            .path("counterpartAccounts")
+            .get(0)
+            .asText());
+    assertFalse(accountLedgerJson.toString().contains("\"postingFact\""));
+
+    ByteArrayOutputStream accountLedgerCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(accountLedgerCsvOutput))
+        .writeAccountLedgerResult(
+            new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
+            OutputMode.CSV);
+    String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        accountLedgerCsv.startsWith(
+            "accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "1000,Cash,2026-04-01,2026-04-30,posting-1,2026-04-07,2026-04-07T10:15:30Z,EUR,10.00,0.00,10.00,DEBIT,2000"));
+
+    ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
+        .writePeriodSummaryResult(
+            new dev.erst.fingrind.contract.PeriodSummaryResult.Reported(periodSummaryReport),
+            OutputMode.HUMAN);
+    String periodSummaryHuman = periodSummaryHumanOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(periodSummaryHuman.contains("Posting count"));
+    assertTrue(periodSummaryHuman.contains("Posting line count"));
+    assertTrue(periodSummaryHuman.contains("10.00"));
+
+    ByteArrayOutputStream periodSummaryJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(periodSummaryJsonOutput))
+        .writePeriodSummaryResult(
+            new dev.erst.fingrind.contract.PeriodSummaryResult.Reported(periodSummaryReport),
+            OutputMode.JSON);
+    JsonNode periodSummaryJson = readJson(periodSummaryJsonOutput);
+    assertEquals(
+        "2026-04-01", periodSummaryJson.path("payload").path("effectiveDateFrom").asText());
+    assertEquals(1, periodSummaryJson.path("payload").path("postingCount").asInt());
+    assertEquals(
+        "1000",
+        periodSummaryJson
+            .path("payload")
+            .path("accountActivity")
+            .get(0)
+            .path("accountCode")
+            .asText());
+    assertFalse(periodSummaryJson.toString().contains("\"account\":{\"accountCode\""));
+
+    ByteArrayOutputStream periodSummaryCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(periodSummaryCsvOutput))
+        .writePeriodSummaryResult(
+            new dev.erst.fingrind.contract.PeriodSummaryResult.Reported(periodSummaryReport),
+            OutputMode.CSV);
+    String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        periodSummaryCsv.startsWith(
+            "effectiveDateFrom,effectiveDateTo,postingCount,postingLineCount,accountsTouched,accountCode,accountName,normalBalance,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+    assertTrue(
+        periodSummaryCsv.contains(
+            "2026-04-01,2026-04-30,1,2,2,1000,Cash,DEBIT,EUR,10.00,4.00,6.00,DEBIT"));
+  }
+
+  @Test
   void writeBookInspection_writesEveryExistingBookVariant() throws IOException {
     List<BookInspection> inspections =
         List.of(
@@ -668,6 +1201,28 @@ class CliResponseWriterTest {
                 java.util.Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));
+  }
+
+  private static DeclaredAccount declaredCashAccount() {
+    return new DeclaredAccount(
+        new AccountCode("1000"),
+        new AccountName("Cash"),
+        NormalBalance.DEBIT,
+        true,
+        Instant.parse("2026-04-07T10:15:30Z"));
+  }
+
+  private static CurrencyBalance currencyBalance(
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      BalanceSide balanceSide) {
+    return new CurrencyBalance(
+        money(currencyCode, debitTotal),
+        money(currencyCode, creditTotal),
+        money(currencyCode, netAmount),
+        balanceSide);
   }
 
   private static Money money(String currencyCode, String amount) {

@@ -1,23 +1,31 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** Parses raw command-line arguments into a typed FinGrind CLI command. */
@@ -29,30 +37,35 @@ final class CliArguments {
     Objects.requireNonNull(args, "args must not be null");
     List<String> arguments = List.of(args);
     if (arguments.isEmpty()) {
-      return new CliCommand.Help();
+      return new CliCommand.Help(OutputMode.HUMAN);
     }
     ProtocolOperation operation =
         ProtocolCatalog.findByToken(arguments.getFirst())
             .orElseThrow(() -> unknownCommand(arguments.getFirst()));
     return switch (operation.id()) {
-      case HELP -> parseSingleToken(arguments, new CliCommand.Help());
-      case VERSION -> parseSingleToken(arguments, new CliCommand.Version());
-      case CAPABILITIES -> parseSingleToken(arguments, new CliCommand.Capabilities());
+      case HELP -> parseDiscoveryCommand(arguments, CliCommand.Help::new);
+      case VERSION -> parseDiscoveryCommand(arguments, CliCommand.Version::new);
+      case CAPABILITIES -> parseDiscoveryCommand(arguments, CliCommand.Capabilities::new);
       case PRINT_REQUEST_TEMPLATE ->
           parseSingleToken(arguments, new CliCommand.PrintRequestTemplate());
       case PRINT_PLAN_TEMPLATE -> parseSingleToken(arguments, new CliCommand.PrintPlanTemplate());
       case GENERATE_BOOK_KEY_FILE -> parseGenerateBookKeyFileCommand(arguments);
-      case OPEN_BOOK -> parseBookOnlyCommand(arguments, CliCommand.OpenBook::new);
+      case OPEN_BOOK -> parseBookOnlyOutputCommand(arguments, CliCommand.OpenBook::new);
       case REKEY_BOOK -> parseRekeyBookCommand(arguments);
-      case DECLARE_ACCOUNT -> parseRequestBoundCommand(arguments, CliCommand.DeclareAccount::new);
-      case INSPECT_BOOK -> parseBookOnlyCommand(arguments, CliCommand.InspectBook::new);
+      case DECLARE_ACCOUNT ->
+          parseRequestBoundOutputCommand(arguments, CliCommand.DeclareAccount::new);
+      case INSPECT_BOOK -> parseInspectBookCommand(arguments);
       case LIST_ACCOUNTS -> parseListAccountsCommand(arguments);
       case GET_POSTING -> parseGetPostingCommand(arguments);
       case LIST_POSTINGS -> parseListPostingsCommand(arguments);
       case ACCOUNT_BALANCE -> parseAccountBalanceCommand(arguments);
+      case TRIAL_BALANCE -> parseTrialBalanceCommand(arguments);
+      case ACCOUNT_LEDGER -> parseAccountLedgerCommand(arguments);
+      case PERIOD_SUMMARY -> parsePeriodSummaryCommand(arguments);
       case EXECUTE_PLAN -> parseRequestBoundCommand(arguments, CliCommand.ExecutePlan::new);
-      case PREFLIGHT_ENTRY -> parseRequestBoundCommand(arguments, CliCommand.PreflightEntry::new);
-      case POST_ENTRY -> parseRequestBoundCommand(arguments, CliCommand.PostEntry::new);
+      case PREFLIGHT_ENTRY ->
+          parseRequestBoundOutputCommand(arguments, CliCommand.PreflightEntry::new);
+      case POST_ENTRY -> parseRequestBoundOutputCommand(arguments, CliCommand.PostEntry::new);
     };
   }
 
@@ -63,32 +76,73 @@ final class CliArguments {
     return command;
   }
 
-  private static CliCommand parseBookOnlyCommand(
-      List<String> arguments, BookOnlyCommandFactory commandFactory) {
-    ParsedBookArguments parsedArguments = parseBookOnlyArguments(arguments);
-    return commandFactory.create(parsedArguments.bookAccess());
+  private static CliCommand parseDiscoveryCommand(
+      List<String> arguments, DiscoveryCommandFactory commandFactory) {
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (!ProtocolOptions.OUTPUT.equals(argument)) {
+        throw invalid(argument, "Unsupported argument: " + argument);
+      }
+      outputMode =
+          requireOutputMode(
+              outputMode,
+              requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+    }
+    return commandFactory.create(resolvedDiscoveryOutputMode(outputMode));
+  }
+
+  private static CliCommand parseBookOnlyOutputCommand(
+      List<String> arguments, BookOnlyOutputCommandFactory commandFactory) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (!ProtocolOptions.OUTPUT.equals(argument)) {
+        throw invalid(argument, "Unsupported argument: " + argument);
+      }
+      outputMode =
+          requireOutputMode(
+              outputMode,
+              requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+    }
+    return commandFactory.create(parsedArguments.bookAccess(), resolvedOutputMode(outputMode));
   }
 
   private static CliCommand parseGenerateBookKeyFileCommand(List<String> arguments) {
     Path bookKeyFilePath = null;
+    @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (!ProtocolOptions.BOOK_KEY_FILE.equals(argument)) {
-        throw invalid(argument, "Unsupported argument: " + argument);
+      switch (argument) {
+        case ProtocolOptions.BOOK_KEY_FILE -> {
+          if (bookKeyFilePath != null) {
+            throw invalid(
+                ProtocolOptions.BOOK_KEY_FILE,
+                "Duplicate argument: " + ProtocolOptions.BOOK_KEY_FILE);
+          }
+          bookKeyFilePath = requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
-      if (bookKeyFilePath != null) {
-        throw invalid(
-            ProtocolOptions.BOOK_KEY_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_KEY_FILE);
-      }
-      bookKeyFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE));
     }
     if (bookKeyFilePath == null) {
       throw invalid(
           ProtocolOptions.BOOK_KEY_FILE,
           "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
     }
-    return new CliCommand.GenerateBookKeyFile(bookKeyFilePath);
+    return new CliCommand.GenerateBookKeyFile(bookKeyFilePath, resolvedOutputMode(outputMode));
   }
 
   private static CliCommand parseRequestBoundCommand(
@@ -98,32 +152,87 @@ final class CliArguments {
         parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
   }
 
-  private static CliCommand parseGetPostingCommand(List<String> arguments) {
-    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
-    String postingIdValue = null;
+  private static CliCommand parseRequestBoundOutputCommand(
+      List<String> arguments, RequestBoundOutputCommandFactory commandFactory) {
+    ParsedBookArguments parsedArguments = parseRequestBoundCommandArguments(arguments);
+    @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (!ProtocolOptions.POSTING_ID.equals(argument)) {
+      if (!ProtocolOptions.OUTPUT.equals(argument)) {
         throw invalid(argument, "Unsupported argument: " + argument);
       }
-      if (postingIdValue != null) {
-        throw invalid(
-            ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
+      outputMode =
+          requireOutputMode(
+              outputMode,
+              requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+    }
+    return commandFactory.create(
+        parsedArguments.bookAccess(),
+        parsedArguments.optionalRequestFile().orElseThrow(),
+        resolvedOutputMode(outputMode));
+  }
+
+  private static CliCommand parseGetPostingCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    String postingIdValue = null;
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.POSTING_ID -> {
+          if (postingIdValue != null) {
+            throw invalid(
+                ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
+          }
+          postingIdValue = requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
-      postingIdValue = requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
     }
     if (postingIdValue == null) {
       throw invalid(
           ProtocolOptions.POSTING_ID, "A " + ProtocolOptions.POSTING_ID + " argument is required.");
     }
-    return new CliCommand.GetPosting(parsedArguments.bookAccess(), new PostingId(postingIdValue));
+    String requiredPostingIdValue = postingIdValue;
+    return new CliCommand.GetPosting(
+        parsedArguments.bookAccess(),
+        requireValidArgument(
+            ProtocolOptions.POSTING_ID, () -> new PostingId(requiredPostingIdValue)),
+        resolvedOutputMode(outputMode));
+  }
+
+  private static CliCommand parseInspectBookCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (!ProtocolOptions.OUTPUT.equals(argument)) {
+        throw invalid(argument, "Unsupported argument: " + argument);
+      }
+      outputMode =
+          requireOutputMode(
+              outputMode,
+              requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+    }
+    return new CliCommand.InspectBook(parsedArguments.bookAccess(), resolvedOutputMode(outputMode));
   }
 
   private static CliCommand parseListAccountsCommand(List<String> arguments) {
     ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
     Integer limit = null;
     Integer offset = null;
+    @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -144,14 +253,25 @@ final class CliArguments {
               parseIntegerOption(
                   requireValue(argumentIterator, ProtocolOptions.OFFSET), ProtocolOptions.OFFSET);
         }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
         default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
     }
+    int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
+    int resolvedOffset = offset == null ? ProtocolLimits.DEFAULT_PAGE_OFFSET : offset;
     return new CliCommand.ListAccounts(
         parsedArguments.bookAccess(),
-        new ListAccountsQuery(
-            limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit,
-            offset == null ? ProtocolLimits.DEFAULT_PAGE_OFFSET : offset));
+        requireValidArgument(
+            resolvedOffset < ProtocolLimits.PAGE_OFFSET_MIN
+                ? ProtocolOptions.OFFSET
+                : ProtocolOptions.LIMIT,
+            () -> new ListAccountsQuery(resolvedLimit, resolvedOffset)),
+        resolvedOutputMode(outputMode));
   }
 
   private static CliCommand parseListPostingsCommand(List<String> arguments) {
@@ -161,6 +281,7 @@ final class CliArguments {
     @Nullable LocalDate effectiveDateTo = null;
     Integer limit = null;
     @Nullable String cursor = null;
+    @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -209,17 +330,46 @@ final class CliArguments {
           }
           cursor = requireValue(argumentIterator, ProtocolOptions.CURSOR);
         }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
         default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
     }
+    String resolvedAccountCodeValue = accountCodeValue;
+    LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
+    LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
+    String resolvedCursor = cursor;
+    Optional<AccountCode> resolvedAccountCode =
+        Optional.ofNullable(resolvedAccountCodeValue)
+            .map(
+                value ->
+                    requireValidArgument(
+                        ProtocolOptions.ACCOUNT_CODE, () -> new AccountCode(value)));
+    EffectiveDateRange resolvedEffectiveDateRange =
+        requireValidArgument(
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            () ->
+                EffectiveDateRange.of(
+                    Optional.ofNullable(resolvedEffectiveDateFrom),
+                    Optional.ofNullable(resolvedEffectiveDateTo)));
+    Optional<PostingPageCursor> resolvedPostingPageCursor =
+        Optional.ofNullable(resolvedCursor).map(CliArguments::postingPageCursor);
     return new CliCommand.ListPostings(
         parsedArguments.bookAccess(),
-        new ListPostingsQuery(
-            Optional.ofNullable(accountCodeValue).map(AccountCode::new),
-            Optional.ofNullable(effectiveDateFrom),
-            Optional.ofNullable(effectiveDateTo),
-            limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit,
-            Optional.ofNullable(cursor).map(PostingPageCursor::fromWireValue)));
+        requireValidArgument(
+            ProtocolOptions.LIMIT,
+            () ->
+                new ListPostingsQuery(
+                    resolvedAccountCode,
+                    resolvedEffectiveDateRange,
+                    resolvedLimit,
+                    resolvedPostingPageCursor)),
+        resolvedOutputMode(outputMode));
   }
 
   private static CliCommand parseAccountBalanceCommand(List<String> arguments) {
@@ -227,6 +377,8 @@ final class CliArguments {
     String accountCodeValue = null;
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
+    @Nullable OutputMode outputMode = null;
+    @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -261,6 +413,14 @@ final class CliArguments {
                   requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
                   ProtocolOptions.EFFECTIVE_DATE_TO);
         }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+        case ProtocolOptions.PDF_OUT ->
+            pdfOutPath = requirePdfOutPath(pdfOutPath, argumentIterator);
         default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
     }
@@ -269,12 +429,202 @@ final class CliArguments {
           ProtocolOptions.ACCOUNT_CODE,
           "A " + ProtocolOptions.ACCOUNT_CODE + " argument is required.");
     }
+    String requiredAccountCodeValue = accountCodeValue;
+    LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
+    LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    AccountCode resolvedAccountCode =
+        requireValidArgument(
+            ProtocolOptions.ACCOUNT_CODE, () -> new AccountCode(requiredAccountCodeValue));
+    EffectiveDateRange resolvedEffectiveDateRange =
+        requireValidArgument(
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            () ->
+                EffectiveDateRange.of(
+                    Optional.ofNullable(resolvedEffectiveDateFrom),
+                    Optional.ofNullable(resolvedEffectiveDateTo)));
     return new CliCommand.AccountBalance(
         parsedArguments.bookAccess(),
-        new AccountBalanceQuery(
-            new AccountCode(accountCodeValue),
-            Optional.ofNullable(effectiveDateFrom),
-            Optional.ofNullable(effectiveDateTo)));
+        new AccountBalanceQuery(resolvedAccountCode, resolvedEffectiveDateRange),
+        resolvedReportOutput(outputMode, pdfOutPath));
+  }
+
+  private static CliCommand parseTrialBalanceCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    @Nullable LocalDate effectiveDateTo = null;
+    @Nullable OutputMode outputMode = null;
+    @Nullable Path pdfOutPath = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
+          if (effectiveDateTo != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_TO,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+          }
+          effectiveDateTo =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                  ProtocolOptions.EFFECTIVE_DATE_TO);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+        case ProtocolOptions.PDF_OUT ->
+            pdfOutPath = requirePdfOutPath(pdfOutPath, argumentIterator);
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    return new CliCommand.TrialBalance(
+        parsedArguments.bookAccess(),
+        requireValidArgument(
+            ProtocolOptions.EFFECTIVE_DATE_TO,
+            () -> new TrialBalanceQuery(Optional.ofNullable(resolvedEffectiveDateTo))),
+        resolvedReportOutput(outputMode, pdfOutPath));
+  }
+
+  private static CliCommand parseAccountLedgerCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    @Nullable String accountCodeValue = null;
+    @Nullable LocalDate effectiveDateFrom = null;
+    @Nullable LocalDate effectiveDateTo = null;
+    @Nullable OutputMode outputMode = null;
+    @Nullable Path pdfOutPath = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.ACCOUNT_CODE -> {
+          if (accountCodeValue != null) {
+            throw invalid(
+                ProtocolOptions.ACCOUNT_CODE,
+                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
+          }
+          accountCodeValue = requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
+          if (effectiveDateFrom != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
+          }
+          effectiveDateFrom =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                  ProtocolOptions.EFFECTIVE_DATE_FROM);
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
+          if (effectiveDateTo != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_TO,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+          }
+          effectiveDateTo =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                  ProtocolOptions.EFFECTIVE_DATE_TO);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+        case ProtocolOptions.PDF_OUT ->
+            pdfOutPath = requirePdfOutPath(pdfOutPath, argumentIterator);
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    if (accountCodeValue == null) {
+      throw invalid(
+          ProtocolOptions.ACCOUNT_CODE,
+          "A " + ProtocolOptions.ACCOUNT_CODE + " argument is required.");
+    }
+    String requiredAccountCodeValue = accountCodeValue;
+    LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
+    LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    AccountCode resolvedAccountCode =
+        requireValidArgument(
+            ProtocolOptions.ACCOUNT_CODE, () -> new AccountCode(requiredAccountCodeValue));
+    EffectiveDateRange resolvedEffectiveDateRange =
+        requireValidArgument(
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            () ->
+                EffectiveDateRange.of(
+                    Optional.ofNullable(resolvedEffectiveDateFrom),
+                    Optional.ofNullable(resolvedEffectiveDateTo)));
+    return new CliCommand.AccountLedger(
+        parsedArguments.bookAccess(),
+        new AccountLedgerQuery(resolvedAccountCode, resolvedEffectiveDateRange),
+        resolvedReportOutput(outputMode, pdfOutPath));
+  }
+
+  private static CliCommand parsePeriodSummaryCommand(List<String> arguments) {
+    ParsedBookArguments parsedArguments = parseBookAndCommandArguments(arguments);
+    @Nullable LocalDate effectiveDateFrom = null;
+    @Nullable LocalDate effectiveDateTo = null;
+    @Nullable OutputMode outputMode = null;
+    @Nullable Path pdfOutPath = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      switch (argument) {
+        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
+          if (effectiveDateFrom != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
+          }
+          effectiveDateFrom =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                  ProtocolOptions.EFFECTIVE_DATE_FROM);
+        }
+        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
+          if (effectiveDateTo != null) {
+            throw invalid(
+                ProtocolOptions.EFFECTIVE_DATE_TO,
+                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+          }
+          effectiveDateTo =
+              parseLocalDateOption(
+                  requireValue(argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                  ProtocolOptions.EFFECTIVE_DATE_TO);
+        }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+        case ProtocolOptions.PDF_OUT ->
+            pdfOutPath = requirePdfOutPath(pdfOutPath, argumentIterator);
+        default -> throw invalid(argument, "Unsupported argument: " + argument);
+      }
+    }
+    if (effectiveDateFrom == null) {
+      throw invalid(
+          ProtocolOptions.EFFECTIVE_DATE_FROM,
+          "A " + ProtocolOptions.EFFECTIVE_DATE_FROM + " argument is required.");
+    }
+    if (effectiveDateTo == null) {
+      throw invalid(
+          ProtocolOptions.EFFECTIVE_DATE_TO,
+          "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
+    }
+    LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
+    LocalDate requiredEffectiveDateTo = effectiveDateTo;
+    return new CliCommand.PeriodSummary(
+        parsedArguments.bookAccess(),
+        requireValidArgument(
+            ProtocolOptions.EFFECTIVE_DATE_FROM,
+            () -> new PeriodSummaryQuery(requiredEffectiveDateFrom, requiredEffectiveDateTo)),
+        resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   private static CliCommand parseRekeyBookCommand(List<String> arguments) {
@@ -283,6 +633,7 @@ final class CliArguments {
     Path replacementBookKeyFilePath = null;
     PassphraseSourceKind currentPassphraseSourceKind = null;
     PassphraseSourceKind replacementPassphraseSourceKind = null;
+    @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -292,14 +643,14 @@ final class CliArguments {
             throw invalid(
                 ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
           }
-          bookFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_FILE));
+          bookFilePath = requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_FILE);
         }
         case ProtocolOptions.BOOK_KEY_FILE -> {
           currentPassphraseSourceKind =
               requireSinglePassphraseSource(
                   currentPassphraseSourceKind, PassphraseSourceKind.KEY_FILE);
           currentBookKeyFilePath =
-              Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE));
+              requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
         }
         case ProtocolOptions.BOOK_PASSPHRASE_STDIN -> {
           currentPassphraseSourceKind =
@@ -316,7 +667,7 @@ final class CliArguments {
               requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind, PassphraseSourceKind.KEY_FILE);
           replacementBookKeyFilePath =
-              Path.of(requireValue(argumentIterator, ProtocolOptions.NEW_BOOK_KEY_FILE));
+              requirePathOptionValue(argumentIterator, ProtocolOptions.NEW_BOOK_KEY_FILE);
         }
         case ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN -> {
           replacementPassphraseSourceKind =
@@ -328,6 +679,12 @@ final class CliArguments {
               requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind, PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
+        case ProtocolOptions.OUTPUT ->
+            outputMode =
+                requireOutputMode(
+                    outputMode,
+                    requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
         default -> throw invalid(argument, "Unsupported argument: " + argument);
       }
     }
@@ -364,15 +721,17 @@ final class CliArguments {
     validateDistinctRekeyPaths(bookFilePath, currentPassphraseSource, replacementPassphraseSource);
     validateRekeyStandardInputUsage(currentPassphraseSource, replacementPassphraseSource);
     return new CliCommand.RekeyBook(
-        new BookAccess(bookFilePath, currentPassphraseSource), replacementPassphraseSource);
-  }
-
-  private static ParsedBookArguments parseBookOnlyArguments(List<String> arguments) {
-    return parseBookArguments(arguments, BookArgumentMode.BOOK_ONLY);
+        new BookAccess(bookFilePath, currentPassphraseSource),
+        replacementPassphraseSource,
+        resolvedOutputMode(outputMode));
   }
 
   private static ParsedBookArguments parseRequestBoundArguments(List<String> arguments) {
     return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND);
+  }
+
+  private static ParsedBookArguments parseRequestBoundCommandArguments(List<String> arguments) {
+    return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS);
   }
 
   private static ParsedBookArguments parseBookAndCommandArguments(List<String> arguments) {
@@ -395,12 +754,12 @@ final class CliArguments {
             throw invalid(
                 ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
           }
-          bookFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_FILE));
+          bookFilePath = requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_FILE);
         }
         case ProtocolOptions.BOOK_KEY_FILE -> {
           passphraseSourceKind =
               requireSinglePassphraseSource(passphraseSourceKind, PassphraseSourceKind.KEY_FILE);
-          bookKeyFilePath = Path.of(requireValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE));
+          bookKeyFilePath = requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
         }
         case ProtocolOptions.BOOK_PASSPHRASE_STDIN -> {
           passphraseSourceKind =
@@ -421,7 +780,7 @@ final class CliArguments {
                 ProtocolOptions.REQUEST_FILE,
                 "Duplicate argument: " + ProtocolOptions.REQUEST_FILE);
           }
-          requestFile = Path.of(requireValue(argumentIterator, ProtocolOptions.REQUEST_FILE));
+          requestFile = requirePathOptionValue(argumentIterator, ProtocolOptions.REQUEST_FILE);
         }
         default -> {
           if (!mode.collectsCommandArguments()) {
@@ -607,9 +966,115 @@ final class CliArguments {
     return argumentIterator.next();
   }
 
+  private static Path requirePathOptionValue(
+      ListIterator<String> argumentIterator, String optionName) {
+    return parsePathOption(requireValue(argumentIterator, optionName), optionName);
+  }
+
+  private static Path parsePathOption(String rawValue, String optionName) {
+    try {
+      return Path.of(rawValue);
+    } catch (InvalidPathException exception) {
+      throw invalid(optionName, "Option must be a valid filesystem path: " + optionName, exception);
+    }
+  }
+
+  private static PostingPageCursor postingPageCursor(String wireValue) {
+    try {
+      return PostingPageCursor.fromWireValue(wireValue);
+    } catch (IllegalArgumentException exception) {
+      throw new CliArgumentsException(
+          ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
+          ProtocolOptions.CURSOR,
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported posting page cursor."),
+          "Rerun list-postings without "
+              + ProtocolOptions.CURSOR
+              + ", or pass the opaque nextCursor value returned by a prior successful list-postings response.",
+          exception);
+    }
+  }
+
+  private static <T> T requireValidArgument(String argument, Supplier<T> supplier) {
+    Objects.requireNonNull(argument, "argument");
+    Objects.requireNonNull(supplier, "supplier");
+    try {
+      return supplier.get();
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          argument,
+          Objects.requireNonNullElse(exception.getMessage(), "Invalid argument value."),
+          exception);
+    }
+  }
+
+  private static OutputMode requireOutputMode(
+      @Nullable OutputMode currentOutputMode,
+      String rawOutputMode,
+      List<OutputMode> supportedModes) {
+    if (currentOutputMode != null) {
+      throw invalid(ProtocolOptions.OUTPUT, "Duplicate argument: " + ProtocolOptions.OUTPUT);
+    }
+    OutputMode outputMode;
+    try {
+      outputMode = OutputMode.fromWireValue(rawOutputMode);
+    } catch (IllegalArgumentException exception) {
+      throw invalid(
+          ProtocolOptions.OUTPUT,
+          "Unsupported output mode for "
+              + ProtocolOptions.OUTPUT
+              + ": "
+              + rawOutputMode
+              + ". Accepted values: "
+              + supportedModes.stream()
+                  .map(OutputMode::wireValue)
+                  .collect(java.util.stream.Collectors.joining(", "))
+              + ".",
+          exception);
+    }
+    if (!supportedModes.contains(outputMode)) {
+      throw invalid(
+          ProtocolOptions.OUTPUT,
+          "Unsupported output mode for "
+              + ProtocolOptions.OUTPUT
+              + ": "
+              + rawOutputMode
+              + ". Accepted values: "
+              + supportedModes.stream()
+                  .map(OutputMode::wireValue)
+                  .collect(java.util.stream.Collectors.joining(", "))
+              + ".");
+    }
+    return outputMode;
+  }
+
+  private static OutputMode resolvedOutputMode(@Nullable OutputMode outputMode) {
+    return outputMode == null ? OutputMode.JSON : outputMode;
+  }
+
+  private static OutputMode resolvedDiscoveryOutputMode(@Nullable OutputMode outputMode) {
+    return outputMode == null ? OutputMode.HUMAN : outputMode;
+  }
+
+  private static CliCommand.ReportOutput resolvedReportOutput(
+      @Nullable OutputMode outputMode, @Nullable Path pdfOutPath) {
+    return new CliCommand.ReportOutput(resolvedOutputMode(outputMode), pdfOutPath);
+  }
+
+  private static Path requirePdfOutPath(
+      @Nullable Path currentPdfOutPath, ListIterator<String> argumentIterator) {
+    if (currentPdfOutPath != null) {
+      throw invalid(ProtocolOptions.PDF_OUT, "Duplicate argument: " + ProtocolOptions.PDF_OUT);
+    }
+    return requirePathOptionValue(argumentIterator, ProtocolOptions.PDF_OUT);
+  }
+
+  private static List<OutputMode> supportedOutputModes(OutputMode... outputModes) {
+    return List.of(outputModes);
+  }
+
   private static CliArgumentsException invalid(String argument, String message) {
     return new CliArgumentsException(
-        "invalid-request",
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
         argument,
         message,
         "Run 'fingrind "
@@ -619,7 +1084,7 @@ final class CliArguments {
 
   private static CliArgumentsException invalid(String argument, String message, Throwable cause) {
     return new CliArgumentsException(
-        "invalid-request",
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
         argument,
         message,
         "Run 'fingrind "
@@ -649,6 +1114,7 @@ final class CliArguments {
   private enum BookArgumentMode {
     BOOK_ONLY(false, false),
     REQUEST_BOUND(true, false),
+    REQUEST_BOUND_WITH_COMMAND_ARGUMENTS(true, true),
     BOOK_WITH_COMMAND_ARGUMENTS(false, true);
 
     private final boolean acceptsRequestFile;
@@ -678,7 +1144,7 @@ final class CliArguments {
 
   private static CliArgumentsException unknownCommand(String commandName) {
     return new CliArgumentsException(
-        "unknown-command",
+        ContractErrors.Descriptor.UNKNOWN_COMMAND.code(),
         commandName,
         "Unsupported command: " + commandName,
         "Run 'fingrind "
@@ -700,11 +1166,11 @@ final class CliArguments {
     }
   }
 
-  /** Factory for commands that only need a selected book file. */
+  /** Factory for commands that need one selected book and one output mode. */
   @FunctionalInterface
-  private interface BookOnlyCommandFactory {
-    /** Creates one CLI command for the provided book path. */
-    CliCommand create(BookAccess bookAccess);
+  private interface BookOnlyOutputCommandFactory {
+    /** Creates one CLI command for the provided book and output mode. */
+    CliCommand create(BookAccess bookAccess, OutputMode outputMode);
   }
 
   /** Factory for commands that need both a book file and a request payload path. */
@@ -712,5 +1178,19 @@ final class CliArguments {
   private interface RequestBoundCommandFactory {
     /** Creates one CLI command for the provided book and request paths. */
     CliCommand create(BookAccess bookAccess, Path requestFile);
+  }
+
+  /** Factory for commands that need a book, request file, and output mode. */
+  @FunctionalInterface
+  private interface RequestBoundOutputCommandFactory {
+    /** Creates one CLI command for the provided book, request path, and output mode. */
+    CliCommand create(BookAccess bookAccess, Path requestFile, OutputMode outputMode);
+  }
+
+  /** Factory for discovery commands that select one output mode. */
+  @FunctionalInterface
+  private interface DiscoveryCommandFactory {
+    /** Creates one CLI command for the selected output mode. */
+    CliCommand create(OutputMode outputMode);
   }
 }

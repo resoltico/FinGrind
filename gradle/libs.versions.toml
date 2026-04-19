@@ -4,6 +4,7 @@ junit-jupiter = "6.0.3"
 junit-platform-launcher = "6.0.3"
 jackson-databind = "3.1.2"
 jazzer = "0.30.0"
+pdfbox = "3.0.7"
 errorprone = "2.49.0"
 errorprone-plugin = "5.1.0"
 jspecify = "1.0.0"
@@ -20,6 +21,7 @@ jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref
 jazzer = { module = "com.code-intelligence:jazzer", version.ref = "jazzer" }
 jazzer-api = { module = "com.code-intelligence:jazzer-api", version.ref = "jazzer" }
 jazzer-junit = { module = "com.code-intelligence:jazzer-junit", version.ref = "jazzer" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-bom" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }

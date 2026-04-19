@@ -11,6 +11,8 @@ public record ProtocolOperation(
     List<String> aliases,
     List<String> options,
     ExecutionMode executionMode,
+    List<String> outputModes,
+    List<ProtocolArtifactOutput> artifactOutputs,
     String usage,
     String analysisSummary,
     List<String> examples) {
@@ -22,6 +24,8 @@ public record ProtocolOperation(
     aliases = List.copyOf(Objects.requireNonNull(aliases, "aliases"));
     options = List.copyOf(Objects.requireNonNull(options, "options"));
     Objects.requireNonNull(executionMode, "executionMode");
+    outputModes = List.copyOf(Objects.requireNonNull(outputModes, "outputModes"));
+    artifactOutputs = List.copyOf(Objects.requireNonNull(artifactOutputs, "artifactOutputs"));
     Objects.requireNonNull(usage, "usage");
     Objects.requireNonNull(analysisSummary, "analysisSummary");
     examples = List.copyOf(Objects.requireNonNull(examples, "examples"));

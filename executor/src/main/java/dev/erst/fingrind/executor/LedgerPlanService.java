@@ -35,7 +35,7 @@ public final class LedgerPlanService {
   private final LedgerPlanSession planSession;
   private final Clock clock;
   private final BookAdministrationService bookAdministrationService;
-  private final BookQueryService bookQueryService;
+  private final BookReadService bookReadService;
   private final PostingApplicationService postingApplicationService;
 
   /** Creates a ledger-plan executor. */
@@ -46,7 +46,7 @@ public final class LedgerPlanService {
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.bookAdministrationService =
         new BookAdministrationService(bookSession.administrationSession(), clock);
-    this.bookQueryService = new BookQueryService(bookSession.querySession());
+    this.bookReadService = new BookReadService(bookSession.readSession());
     this.postingApplicationService =
         new PostingApplicationService(bookSession.postingSession(), postingIdGenerator, clock);
   }
@@ -59,7 +59,7 @@ public final class LedgerPlanService {
     planSession.beginLedgerPlanTransaction();
     boolean rollbackRequired = true;
     try {
-      if (!plan.beginsWithOpenBook() && !bookQueryService.isInitialized()) {
+      if (!plan.beginsWithOpenBook() && !bookReadService.isInitialized()) {
         LedgerStep firstStep = plan.steps().getFirst();
         entries.add(missingBookEntry(firstStep, startedAt));
         planSession.rollbackLedgerPlanTransaction();
@@ -181,7 +181,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome inspectBookOutcome() {
-    BookInspection inspection = bookQueryService.inspectBook();
+    BookInspection inspection = bookReadService.inspectBook();
     return stepSucceeded(
         LedgerFact.text("state", inspection.status().wireValue()),
         LedgerFact.flag("initialized", inspection.initialized()),
@@ -189,7 +189,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome listAccountsOutcome(LedgerStep.ListAccounts step) {
-    return switch (bookQueryService.listAccounts(step.query())) {
+    return switch (bookReadService.listAccounts(step.query())) {
       case ListAccountsResult.Listed listed ->
           stepSucceeded(
               LedgerFact.count("count", listed.page().accounts().size()),
@@ -199,7 +199,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome getPostingOutcome(LedgerStep.GetPosting step) {
-    return switch (bookQueryService.getPosting(step.postingId())) {
+    return switch (bookReadService.getPosting(step.postingId())) {
       case dev.erst.fingrind.contract.GetPostingResult.Found found ->
           stepSucceeded(postingFacts(found.postingFact()).toArray(LedgerFact[]::new));
       case dev.erst.fingrind.contract.GetPostingResult.Rejected rejected ->
@@ -208,7 +208,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome listPostingsOutcome(LedgerStep.ListPostings step) {
-    return switch (bookQueryService.listPostings(step.query())) {
+    return switch (bookReadService.listPostings(step.query())) {
       case ListPostingsResult.Listed listed ->
           stepSucceeded(
               LedgerFact.count("count", listed.page().postings().size()),
@@ -218,7 +218,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome accountBalanceOutcome(LedgerStep.AccountBalance step) {
-    return switch (bookQueryService.accountBalance(step.query())) {
+    return switch (bookReadService.accountBalance(step.query())) {
       case AccountBalanceResult.Reported reported -> balanceFacts(reported.snapshot());
       case AccountBalanceResult.Rejected rejected -> queryRejection(rejected.rejection());
     };
@@ -236,7 +236,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome assertAccountDeclared(LedgerAssertion.AccountDeclared assertion) {
-    boolean present = bookQueryService.findAccount(assertion.accountCode()).isPresent();
+    boolean present = bookReadService.findAccount(assertion.accountCode()).isPresent();
     return present
         ? stepSucceeded(LedgerFact.text("accountCode", assertion.accountCode().value()))
         : assertionFailure(
@@ -246,7 +246,7 @@ public final class LedgerPlanService {
 
   private StepOutcome assertAccountActive(LedgerAssertion.AccountActive assertion) {
     Optional<dev.erst.fingrind.contract.DeclaredAccount> account =
-        bookQueryService.findAccount(assertion.accountCode());
+        bookReadService.findAccount(assertion.accountCode());
     if (account.isEmpty()) {
       return assertionFailure(
           "Account is not declared.",
@@ -260,7 +260,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome assertPostingExists(LedgerAssertion.PostingExists assertion) {
-    boolean present = bookQueryService.findPosting(assertion.postingId()).isPresent();
+    boolean present = bookReadService.findPosting(assertion.postingId()).isPresent();
     return present
         ? stepSucceeded(LedgerFact.text("postingId", assertion.postingId().value()))
         : assertionFailure(
@@ -268,7 +268,7 @@ public final class LedgerPlanService {
   }
 
   private StepOutcome assertAccountBalance(LedgerAssertion.AccountBalanceEquals assertion) {
-    return switch (bookQueryService.accountBalance(assertion.query())) {
+    return switch (bookReadService.accountBalance(assertion.query())) {
       case AccountBalanceResult.Reported reported ->
           assertAccountBalance(assertion, reported.snapshot());
       case AccountBalanceResult.Rejected rejected -> queryRejection(rejected.rejection());

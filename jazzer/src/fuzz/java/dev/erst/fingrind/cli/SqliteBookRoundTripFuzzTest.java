@@ -47,7 +47,7 @@ public class SqliteBookRoundTripFuzzTest {
             applicationService.commit(command), PostingRejection.UnknownAccount.class);
 
         var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
-        if (CliFuzzSupport.listAccounts(postingFactStore.querySession()).size()
+        if (CliFuzzSupport.listAccounts(postingFactStore.readSession()).size()
             != declaredAccounts.size()) {
           throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
         }

@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -50,7 +51,7 @@ class ContractCoverageTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             List.of(
                 new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), NormalBalance.DEBIT)));
+                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
 
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
@@ -122,7 +123,7 @@ class ContractCoverageTest {
 
     ContractDiscovery.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.17.0", "test"),
+            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.18.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());
@@ -155,7 +156,7 @@ class ContractCoverageTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             List.of(
                 new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), NormalBalance.DEBIT)));
+                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
     LedgerAssertion.AccountActive active =
         new LedgerAssertion.AccountActive(new AccountCode("1000"));
     LedgerAssertion.PostingExists postingExists =
@@ -166,14 +167,14 @@ class ContractCoverageTest {
             Optional.empty(),
             Optional.of(LocalDate.parse("2026-04-30")),
             money("10.00"),
-            NormalBalance.DEBIT);
+            BalanceSide.DEBIT);
     LedgerAssertion.AccountBalanceEquals lowerBoundOnlyAssertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"),
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.empty(),
             money("10.00"),
-            NormalBalance.DEBIT);
+            BalanceSide.DEBIT);
     PostingRejection.InactiveAccount inactive =
         new PostingRejection.InactiveAccount(new AccountCode("2000"));
 
@@ -344,7 +345,7 @@ class ContractCoverageTest {
         };
     LedgerAssertion.AccountBalanceEquals assertion =
         new LedgerAssertion.AccountBalanceEquals(
-            new AccountCode("1000"), bounded, money("10.00"), NormalBalance.DEBIT);
+            new AccountCode("1000"), bounded, money("10.00"), BalanceSide.DEBIT);
     PostEntryResult.CommitRejected commitRejected =
         new PostEntryResult.CommitRejected(
             new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey());

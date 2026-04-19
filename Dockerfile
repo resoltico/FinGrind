@@ -9,11 +9,12 @@ COPY third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/sqlite3mc_am
 
 # The internal application JAR is built by the GitHub Actions workflow
 # (./gradlew :cli:shadowJar) before docker build is invoked. That task also stages the
-# compile-only analysis support jars under cli/build/docker/jdeps so jdeps can resolve
-# package-level nullness annotations while computing the private runtime image.
-# Public CLI downloads are the self-contained bundle archives, not this assembly input.
+# canonical private-runtime module list under cli/build/docker/runtime-modules.txt so
+# the container image and bundle archive consume the same runtime closure instead of
+# re-deriving competing jdeps results in two places. Public CLI downloads are the
+# self-contained bundle archives, not this assembly input.
 COPY cli/build/libs/fingrind.jar fingrind.jar
-COPY cli/build/docker/jdeps/ jdeps/
+COPY cli/build/docker/runtime-modules.txt runtime-modules.txt
 
 RUN python3 - <<'PY'
 from hashlib import sha3_256
@@ -36,11 +37,6 @@ PY
 RUN cc -O2 -fPIC -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 \
     -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1 -shared \
     -Wl,-soname,libsqlite3.so.0 -o libsqlite3.so.0 sqlite3mc_amalgamation.c -ldl -lpthread
-
-RUN jdeps_classpath="$(find /build/jdeps -type f -name '*.jar' -print | paste -sd: -)" && \
-    jdeps --multi-release 26 \
-    --class-path "${jdeps_classpath}" \
-    --print-module-deps /build/fingrind.jar > /build/runtime-modules.txt
 
 RUN jlink \
     --module-path "${JAVA_HOME}/jmods" \

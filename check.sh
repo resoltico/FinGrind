@@ -19,15 +19,17 @@
 #   :cli:bundleCliArchive -> build the self-contained CLI archive plus SHA-256 checksum
 #
 # Stage 4 exercises the public release bundle from a clean extracted archive:
-#   scripts/bundle-smoke.sh -> verify discovery, explicit book lifecycle, and write behavior
-#                              without ambient Java or a preconfigured SQLite library path
+#   scripts/bundle-smoke.sh -> verify discovery, explicit book lifecycle, reporting, stdout
+#                              output-mode selection, PDF artifact export, and deterministic-failure
+#                              behavior without ambient Java or a preconfigured SQLite library path
 #
 # Stage 5 syntax-checks the release-surface shell scripts:
 #   bash -n check.sh scripts/*.sh jazzer/bin/*
 #
 # Stage 6 exercises the Docker release surface from a non-default working directory:
 #   scripts/docker-smoke.sh -> build the image and verify discovery, explicit book lifecycle,
-#                              and write behavior
+#                              reporting, stdout output-mode selection, PDF artifact export,
+#                              and deterministic-failure behavior
 #
 # The script is location-independent: it always targets the repository that contains this file,
 # even when invoked from another working directory or through a symlink.
@@ -137,9 +139,9 @@ print_usage() {
         '  1. check coverage' \
         '  2. jazzer check' \
         '  3. :cli:bundleCliArchive' \
-        '  4. scripts/bundle-smoke.sh' \
+        '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
         '  5. bash -n check.sh scripts/*.sh jazzer/bin/*' \
-        '  6. scripts/docker-smoke.sh' \
+        '  6. scripts/docker-smoke.sh (Docker acceptance workflow)' \
         '' \
         'Supported options:' \
         '  -h, --help' \
@@ -784,7 +786,7 @@ run_stage \
     "${repo_root}/jazzer" \
     check
 run_stage 'cli-bundle' 'Stage 3/6: building self-contained CLI bundle archive' "${repo_root}" :cli:bundleCliArchive
-run_shell_stage 'bundle-smoke' 'Stage 4/6: running self-contained bundle smoke test' \
+run_shell_stage 'bundle-smoke' 'Stage 4/6: running self-contained bundle acceptance test' \
     "${repo_root}/scripts/bundle-smoke.sh"
 
 shell_syntax_targets=("${repo_root}/check.sh")
@@ -801,4 +803,4 @@ fi
 
 run_shell_stage 'shell-syntax' 'Stage 5/6: syntax-checking release-surface shell scripts' \
     bash -n "${shell_syntax_targets[@]}"
-run_shell_stage 'docker-smoke' 'Stage 6/6: running Docker smoke test' "${repo_root}/scripts/docker-smoke.sh"
+run_shell_stage 'docker-smoke' 'Stage 6/6: running Docker acceptance test' "${repo_root}/scripts/docker-smoke.sh"

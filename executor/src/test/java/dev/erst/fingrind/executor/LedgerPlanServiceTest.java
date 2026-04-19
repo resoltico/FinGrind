@@ -32,6 +32,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -107,7 +108,7 @@ class LedgerPlanServiceTest {
                                   Optional.empty(),
                                   Optional.empty(),
                                   new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
-                                  NormalBalance.DEBIT)))));
+                                  BalanceSide.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
       assertEquals(14, result.journal().steps().size());
@@ -428,7 +429,7 @@ class LedgerPlanServiceTest {
               Optional.empty(),
               Optional.empty(),
               new Money(new CurrencyCode("USD"), BigDecimal.ZERO),
-              NormalBalance.DEBIT));
+              BalanceSide.ZERO));
     }
   }
 
@@ -448,7 +449,7 @@ class LedgerPlanServiceTest {
                                   Optional.empty(),
                                   Optional.empty(),
                                   new Money(new CurrencyCode("EUR"), BigDecimal.TEN),
-                                  NormalBalance.DEBIT)))));
+                                  BalanceSide.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, rejectedQueryResult.status());
       assertEquals(
@@ -471,7 +472,7 @@ class LedgerPlanServiceTest {
                                   Optional.empty(),
                                   Optional.empty(),
                                   new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
-                                  NormalBalance.CREDIT)))));
+                                  BalanceSide.CREDIT)))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, mismatchResult.status());
       assertEquals(
@@ -498,7 +499,7 @@ class LedgerPlanServiceTest {
                                   Optional.empty(),
                                   Optional.empty(),
                                   new Money(new CurrencyCode("EUR"), new BigDecimal("9.00")),
-                                  NormalBalance.DEBIT)))));
+                                  BalanceSide.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, amountMismatchResult.status());
       assertTrue(
@@ -658,8 +659,8 @@ class LedgerPlanServiceTest {
     }
 
     @Override
-    public BookQuerySession querySession() {
-      return delegate.querySession();
+    public BookReadSession readSession() {
+      return delegate.readSession();
     }
 
     @Override
@@ -692,8 +693,8 @@ class LedgerPlanServiceTest {
   private static final class ListAccountsRejectingLedgerPlanSession
       implements LedgerPlanSession, AutoCloseable {
     private final InMemoryBookSession delegate = new InMemoryBookSession();
-    private final BookQuerySession rejectingQuerySession =
-        new BookQuerySession() {
+    private final BookReadSession rejectingQuerySession =
+        new BookReadSession() {
           @Override
           public dev.erst.fingrind.contract.BookInspection inspectBook() {
             return delegate.inspectBook();
@@ -732,6 +733,25 @@ class LedgerPlanServiceTest {
           }
 
           @Override
+          public dev.erst.fingrind.contract.TrialBalanceReport trialBalance(
+              dev.erst.fingrind.contract.TrialBalanceQuery query) {
+            return delegate.trialBalance(query);
+          }
+
+          @Override
+          public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
+              dev.erst.fingrind.contract.AccountLedgerQuery query,
+              dev.erst.fingrind.contract.DeclaredAccount account) {
+            return delegate.accountLedger(query, account);
+          }
+
+          @Override
+          public dev.erst.fingrind.contract.PeriodSummaryReport periodSummary(
+              dev.erst.fingrind.contract.PeriodSummaryQuery query) {
+            return delegate.periodSummary(query);
+          }
+
+          @Override
           public void close() {
             // Parent test fixture owns lifecycle.
           }
@@ -748,7 +768,7 @@ class LedgerPlanServiceTest {
     }
 
     @Override
-    public BookQuerySession querySession() {
+    public BookReadSession readSession() {
       return rejectingQuerySession;
     }
 

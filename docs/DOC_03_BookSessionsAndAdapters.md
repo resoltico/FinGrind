@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: ADAPTERS
 updated: "2026-04-17"
 route:
@@ -72,17 +72,20 @@ public interface PostingBookSession extends PostingValidationBook, AutoCloseable
 - Surface: `commit(PostingDraft, PostingIdGenerator)`, fixture-oriented `commit(PostingFact)`, `close()`
 - Purpose: keep durable commit explicit and allow the store to allocate `postingId` only after acceptance
 
-## `BookQuerySession`
+## `BookReadSession`
 
-`BookQuerySession` is the executor-owned read seam for lifecycle inspection, listings, and balances.
+`BookReadSession` is the executor-owned unified read seam for lifecycle inspection, listings,
+posting history, balances, and office-worker reports.
 
 ```java
-public interface BookQuerySession extends AutoCloseable
+public interface BookReadSession extends AutoCloseable
 ```
 
 - Surface: `inspectBook()`, `isInitialized()`, `listAccounts(...)`, `findAccount(...)`,
-  `findPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `close()`
-- Purpose: expose query capabilities without widening the write seam
+  `findPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`,
+  `accountLedger(...)`, `periodSummary(...)`, `close()`
+- Purpose: expose one authoritative read model without splitting query and report workflows into
+  parallel service/session families
 
 ## `LedgerPlanSession`
 
@@ -92,12 +95,12 @@ public interface BookQuerySession extends AutoCloseable
 public interface LedgerPlanSession
 ```
 
-- Views: exposes `administrationSession()`, `postingSession()`, and `querySession()` as narrow
+- Views: exposes `administrationSession()`, `postingSession()`, and `readSession()` as narrow
   operation seams bound to the same transaction boundary
 - Surface: `beginLedgerPlanTransaction()`, `commitLedgerPlanTransaction()`,
   `rollbackLedgerPlanTransaction()`
-- Purpose: let one ledger plan reuse the ordinary administration, query, and posting seams inside
-  one explicit durable transaction
+- Purpose: let one ledger plan reuse the ordinary administration, unified-read, and posting seams
+  inside one explicit durable transaction
 
 ## `PostingCommitResult`
 
@@ -113,10 +116,10 @@ public sealed interface PostingCommitResult
 ## `InMemoryBookSession`
 
 `InMemoryBookSession` is the non-durable in-memory implementation of the administration, posting,
-query, and ledger-plan seams.
+unified-read, and ledger-plan seams.
 
 ```java
-public final class InMemoryBookSession implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookQuerySession
+public final class InMemoryBookSession implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookReadSession
 ```
 
 - Classpath: lives in application test fixtures rather than the production runtime surface
@@ -137,15 +140,16 @@ public final class SqliteBookPassphrase implements AutoCloseable
 ## `SqlitePostingFactStore`
 
 `SqlitePostingFactStore` is the durable SQLite-backed implementation of FinGrind's administration,
-posting, query, and ledger-plan seams, with focused collaborators handling the lower-level SQLite
-read/write/configuration details.
+posting, unified-read, and ledger-plan seams, with focused collaborators handling the lower-level
+SQLite read/write/configuration details.
 
 ```java
-public final class SqlitePostingFactStore implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookQuerySession
+public final class SqlitePostingFactStore implements LedgerPlanSession
 ```
 
 - Purpose: persist one protected entity book into one selected SQLite file
-- Access modes: supports read-only query sessions plus writable administration and commit sessions
+- Access modes: supports read-only unified-read sessions plus writable administration and commit
+  sessions
 - Inspection: exposes lifecycle, application id, detected book-format version, supported version,
   compatibility, and migration policy through `inspectBook()`
 - Queries: supports paged account listing, posting lookup, filtered posting history, and grouped

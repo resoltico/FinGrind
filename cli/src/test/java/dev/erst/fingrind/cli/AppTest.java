@@ -71,7 +71,6 @@ class AppTest {
       System.setOut(previousOut);
     }
 
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"application\" : \"FinGrind\""));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));
   }
 }

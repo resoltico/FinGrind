@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-17"
+updated: "2026-04-19"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -20,9 +20,9 @@ Then choose one of the user, developer, or reference tracks below.
 
 ## User Guides
 
-- [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, exit codes, and runtime requirements
-- [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, and ledger-plan JSON shapes, rejection codes, and response envelopes
-- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
+- [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, exit codes, and runtime requirements
+- [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, deterministic error codes, and response envelopes
+- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
 - [examples/declare-account-cash.json](./examples/declare-account-cash.json): minimal account-declaration request for a debit-balance cash account
 - [examples/declare-account-revenue.json](./examples/declare-account-revenue.json): minimal account-declaration request for a credit-balance revenue account
@@ -34,6 +34,18 @@ Then choose one of the user, developer, or reference tracks below.
 - [examples/get-posting-response.json](./examples/get-posting-response.json): example committed-posting lookup response
 - [examples/list-postings-response.json](./examples/list-postings-response.json): example paginated posting-history response
 - [examples/account-balance-response.json](./examples/account-balance-response.json): example grouped per-currency balance response
+- [examples/trial-balance-response.json](./examples/trial-balance-response.json): example JSON trial-balance response
+- [examples/account-ledger-response.json](./examples/account-ledger-response.json): example JSON account-ledger response
+- [examples/period-summary-response.json](./examples/period-summary-response.json): example JSON period-summary response
+- [examples/trial-balance-human.txt](./examples/trial-balance-human.txt): example human-readable trial-balance output
+- [examples/account-ledger.csv](./examples/account-ledger.csv): example spreadsheet-ready account-ledger export
+- [examples/period-summary-human.txt](./examples/period-summary-human.txt): example human-readable period-summary output
+
+Report PDF artifacts are intentionally not checked in under `docs/examples`; the release and smoke
+workflows verify `--pdf-out` directly against real CLI, bundle, and container surfaces.
+- [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
+- [examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json): deterministic wrong-passphrase error example
+- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): canonical `print-plan-template` output
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with a per-step journal

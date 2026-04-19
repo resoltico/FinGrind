@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,8 +27,12 @@ public final class SqliteBookKeyFile {
     try {
       return Files.readAllBytes(bookKeyFilePath);
     } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to read the FinGrind book key file: " + bookKeyFilePath, exception);
+      throw new ContractErrorException(
+          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
+          "Failed to read the FinGrind book key file: " + bookKeyFilePath,
+          "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
+          null,
+          exception);
     }
   }
 

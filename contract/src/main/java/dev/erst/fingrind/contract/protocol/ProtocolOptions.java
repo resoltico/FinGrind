@@ -49,6 +49,12 @@ public final class ProtocolOptions {
   /** Option selecting a paginated query page offset. */
   public static final String OFFSET = "--offset";
 
+  /** Option selecting the presentation format for commands that advertise output modes. */
+  public static final String OUTPUT = "--output";
+
+  /** Option selecting one PDF export destination for supported report commands. */
+  public static final String PDF_OUT = "--pdf-out";
+
   /** Token that routes request JSON through standard input. */
   public static final String STDIN_TOKEN = "-";
 
@@ -88,5 +94,15 @@ public final class ProtocolOptions {
   /** Returns the rendered optional page-offset syntax. */
   public static String optionalOffsetSyntax() {
     return "[%s <%d+>]".formatted(ProtocolOptions.OFFSET, ProtocolLimits.PAGE_OFFSET_MIN);
+  }
+
+  /** Returns the rendered optional output-mode syntax for the supplied modes. */
+  public static String optionalOutputSyntax(List<String> outputModes) {
+    return "[" + OUTPUT + " <" + String.join("|", outputModes) + ">]";
+  }
+
+  /** Returns the rendered optional PDF-export syntax for supported report commands. */
+  public static String optionalPdfOutSyntax() {
+    return "[" + PDF_OUT + " <path>]";
   }
 }

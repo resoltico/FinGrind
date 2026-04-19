@@ -45,7 +45,7 @@ verify_ref() {
 
     for ((attempt = 1; attempt <= retry_count; attempt++)); do
         if anonymous_docker pull "${image_ref}" >/dev/null 2>&1; then
-            version_output="$(anonymous_docker run --rm "${image_ref}" version 2>/dev/null | tr -d '\r')"
+            version_output="$(anonymous_docker run --rm "${image_ref}" version --output json 2>/dev/null | tr -d '\r')"
             if require_match "${version_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' \
                 && require_match "${version_output}" '"application"[[:space:]]*:[[:space:]]*"FinGrind"' \
                 && require_match "${version_output}" "\"version\"[[:space:]]*:[[:space:]]*\"${expected_version}\""; then

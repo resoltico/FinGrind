@@ -30,6 +30,12 @@ public enum OperationId {
   LIST_POSTINGS("list-postings"),
   /** Computes balances for one account. */
   ACCOUNT_BALANCE("account-balance"),
+  /** Computes the trial balance for one book. */
+  TRIAL_BALANCE("trial-balance"),
+  /** Computes the running ledger for one account. */
+  ACCOUNT_LEDGER("account-ledger"),
+  /** Computes the bounded period summary for one book. */
+  PERIOD_SUMMARY("period-summary"),
   /** Executes one ordered AI-agent ledger plan transaction. */
   EXECUTE_PLAN("execute-plan"),
   /** Validates one posting request without committing it. */

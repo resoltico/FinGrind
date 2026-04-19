@@ -68,7 +68,15 @@ class ProtocolCatalogTest {
         List.of("generate-book-key-file", "open-book", "rekey-book", "declare-account"),
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
     assertEquals(
-        List.of("inspect-book", "list-accounts", "get-posting", "list-postings", "account-balance"),
+        List.of(
+            "inspect-book",
+            "list-accounts",
+            "get-posting",
+            "list-postings",
+            "account-balance",
+            "trial-balance",
+            "account-ledger",
+            "period-summary"),
         ProtocolCatalog.operationNames(OperationCategory.QUERY));
     assertEquals(
         List.of("execute-plan", "preflight-entry", "post-entry"),
@@ -83,6 +91,8 @@ class ProtocolCatalogTest {
         aliases,
         List.of(),
         ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON.wireValue()),
+        List.of(),
         "fingrind " + id.wireName(),
         "summary",
         List.of());
@@ -91,9 +101,14 @@ class ProtocolCatalogTest {
   @Test
   void operationDescriptors_renderLimitsOptionsUsageAndExamplesFromProtocolFacts() {
     ProtocolOperation listAccounts = ProtocolCatalog.operation(OperationId.LIST_ACCOUNTS);
+    ProtocolOperation trialBalance = ProtocolCatalog.operation(OperationId.TRIAL_BALANCE);
 
     assertEquals("[--limit <1-200>]", ProtocolOptions.optionalLimitSyntax());
     assertEquals("[--offset <0+>]", ProtocolOptions.optionalOffsetSyntax());
+    assertEquals(
+        "[--output <json|human|csv>]",
+        ProtocolOptions.optionalOutputSyntax(List.of("json", "human", "csv")));
+    assertEquals("[--pdf-out <path>]", ProtocolOptions.optionalPdfOutSyntax());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         ProtocolOptions.bookPassphraseOptions());
@@ -103,6 +118,12 @@ class ProtocolCatalogTest {
     assertTrue(listAccounts.options().contains("[--limit <1-200>]"));
     assertTrue(listAccounts.usage().contains("[--book-key-file <path> | --book-passphrase-stdin"));
     assertTrue(listAccounts.examples().getFirst().contains("--limit 50"));
+    assertEquals(List.of("json", "human", "csv"), trialBalance.outputModes());
+    assertTrue(trialBalance.options().contains("[--output <json|human|csv>]"));
+    assertTrue(trialBalance.options().contains("[--pdf-out <path>]"));
+    assertEquals(1, trialBalance.artifactOutputs().size());
+    assertEquals("pdf", trialBalance.artifactOutputs().getFirst().format());
+    assertEquals("--pdf-out <path>", trialBalance.artifactOutputs().getFirst().option());
   }
 
   @Test

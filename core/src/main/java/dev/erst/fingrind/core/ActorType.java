@@ -6,14 +6,14 @@ import java.util.Objects;
 
 /** Classifies the actor that initiated one posting request. */
 public enum ActorType {
-  USER,
+  HUMAN,
   SYSTEM,
   AGENT;
 
   /** Returns the stable public wire value for this actor type. */
   public String wireValue() {
     return switch (this) {
-      case USER -> "USER";
+      case HUMAN -> "HUMAN";
       case SYSTEM -> "SYSTEM";
       case AGENT -> "AGENT";
     };

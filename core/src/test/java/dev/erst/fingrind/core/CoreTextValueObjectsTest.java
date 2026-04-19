@@ -52,11 +52,20 @@ class CoreTextValueObjectsTest {
     assertEquals(java.util.List.of("DEBIT", "CREDIT"), NormalBalance.wireValues());
     assertThrows(IllegalArgumentException.class, () -> NormalBalance.fromWireValue("debit"));
 
-    assertEquals("USER", ActorType.USER.wireValue());
+    assertEquals("DEBIT", BalanceSide.DEBIT.wireValue());
+    assertEquals("CREDIT", BalanceSide.CREDIT.wireValue());
+    assertEquals("ZERO", BalanceSide.ZERO.wireValue());
+    assertEquals(BalanceSide.DEBIT, BalanceSide.fromWireValue("DEBIT"));
+    assertEquals(BalanceSide.CREDIT, BalanceSide.fromWireValue("CREDIT"));
+    assertEquals(BalanceSide.ZERO, BalanceSide.fromWireValue("ZERO"));
+    assertEquals(java.util.List.of("DEBIT", "CREDIT", "ZERO"), BalanceSide.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> BalanceSide.fromWireValue("debit"));
+
+    assertEquals("HUMAN", ActorType.HUMAN.wireValue());
     assertEquals("SYSTEM", ActorType.SYSTEM.wireValue());
     assertEquals("AGENT", ActorType.AGENT.wireValue());
-    assertEquals(java.util.List.of("USER", "SYSTEM", "AGENT"), ActorType.wireValues());
-    assertEquals(ActorType.USER, ActorType.fromWireValue("USER"));
+    assertEquals(java.util.List.of("HUMAN", "SYSTEM", "AGENT"), ActorType.wireValues());
+    assertEquals(ActorType.HUMAN, ActorType.fromWireValue("HUMAN"));
     assertEquals(ActorType.SYSTEM, ActorType.fromWireValue("SYSTEM"));
     assertEquals(ActorType.AGENT, ActorType.fromWireValue("AGENT"));
     assertThrows(IllegalArgumentException.class, () -> ActorType.fromWireValue("ROBOT"));

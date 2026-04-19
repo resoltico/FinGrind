@@ -311,7 +311,7 @@ public final class JazzerReplaySupport {
 
         List<DeclaredAccount> declaredAccounts =
             CliFuzzSupport.declarePostingAccounts(administrationService, command);
-        if (CliFuzzSupport.listAccounts(postingFactStore.querySession()).size()
+        if (CliFuzzSupport.listAccounts(postingFactStore.readSession()).size()
             != declaredAccounts.size()) {
           throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
         }

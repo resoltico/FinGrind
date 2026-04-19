@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_DOCKER
 updated: "2026-04-17"
 route:
@@ -41,6 +41,9 @@ The container image itself also stays on the same managed-runtime policy as the 
   native library
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
+- it reuses the repository-built runtime module list staged at
+  `cli/build/docker/runtime-modules.txt`, so Docker and bundle publication cannot drift onto
+  competing private-runtime closures
 - it sets `fingrind.runtime.distribution=container-image` so `capabilities` discloses the active
   distribution surface explicitly
 
@@ -102,8 +105,9 @@ Then the supported local gates are:
 - verifies the containerized protected-book metadata surface:
   `bookProtectionMode`, `defaultBookCipher`, `requiredSqlite3mcVersion`, and
   `loadedSqlite3mcVersion`
-- verifies that reopening the same mounted book with the wrong key fails as `runtime-failure`
-  rather than silently reading the file
+- verifies that reopening the same mounted book with the wrong key fails as the deterministic
+  `book-authentication-failed` error rather than silently reading the file or leaking raw SQLite
+  storage symptoms
 
 The tag-driven public container workflow also waits for the complete GitHub release asset set
 before image publication, so the public image cannot race ahead of an incomplete bundle release.

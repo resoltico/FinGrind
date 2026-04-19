@@ -51,6 +51,8 @@ class MachineContractTest {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());
+    assertEquals("--output", capabilities.requestInput().queryOutputOption());
+    assertEquals(List.of("json", "human", "csv"), capabilities.requestInput().queryOutputModes());
     assertTrue(
         capabilities
             .requestInput()
@@ -72,6 +74,10 @@ class MachineContractTest {
         capabilities.responseModel().rejections().stream()
             .map(ContractResponse.RejectionDescriptor::code)
             .toList();
+    List<String> errorCodes =
+        capabilities.responseModel().errorDescriptors().stream()
+            .map(ContractResponse.ErrorDescriptor::code)
+            .toList();
     assertTrue(rejectionCodes.contains("administration-book-not-initialized"));
     assertTrue(rejectionCodes.contains("query-book-not-initialized"));
     assertTrue(rejectionCodes.contains("posting-book-not-initialized"));
@@ -79,6 +85,10 @@ class MachineContractTest {
     assertTrue(rejectionCodes.contains("posting-not-found"));
     assertTrue(rejectionCodes.contains("reversal-does-not-negate-target"));
     assertEquals(rejectionCodes.size(), rejectionCodes.stream().distinct().count());
+    assertTrue(errorCodes.contains("invalid-page-cursor"));
+    assertTrue(errorCodes.contains("interactive-prompt-unavailable"));
+    assertTrue(errorCodes.contains("book-authentication-failed"));
+    assertEquals(errorCodes.size(), errorCodes.stream().distinct().count());
   }
 
   @Test
@@ -131,13 +141,19 @@ class MachineContractTest {
 
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
-    assertEquals(17, help.commands().size());
+    assertEquals(20, help.commands().size());
     assertEquals("generate-book-key-file", help.commands().get(5).name());
     assertEquals("open-book", help.commands().get(6).name());
     assertEquals("rekey-book", help.commands().get(7).name());
     assertEquals("inspect-book", help.commands().get(9).name());
     assertEquals("account-balance", help.commands().get(13).name());
+    assertEquals("trial-balance", help.commands().get(14).name());
+    assertEquals("account-ledger", help.commands().get(15).name());
+    assertEquals("period-summary", help.commands().get(16).name());
     assertTrue(help.commands().get(7).options().get(2).contains("--new-book-passphrase-prompt"));
+    assertEquals(List.of("json", "human", "csv"), help.commands().get(14).outputModes());
+    assertEquals("pdf", help.commands().get(14).artifactOutputs().getFirst().format());
+    assertEquals("--pdf-out <path>", help.commands().get(14).artifactOutputs().getFirst().option());
     assertEquals(4, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());
@@ -149,7 +165,7 @@ class MachineContractTest {
     assertEquals(List.of(), ProtocolCatalog.unsupportedPublicCliOperatingSystems());
     assertEquals("2026-04-13", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
-    assertEquals("USER", template.provenance().actorType());
+    assertEquals("HUMAN", template.provenance().actorType());
     assertEquals("posting-1", reversalTemplate.priorPostingId());
   }
 

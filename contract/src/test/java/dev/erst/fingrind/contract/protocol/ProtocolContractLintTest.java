@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.protocol;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.ContractErrors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -196,6 +197,10 @@ class ProtocolContractLintTest {
                 "unknown-account",
                 "unknown-command"));
     ids.addAll(BookInspection.Status.wireValues());
+    ids.addAll(
+        ContractErrors.descriptors().stream()
+            .map(dev.erst.fingrind.contract.ContractResponse.ErrorDescriptor::code)
+            .toList());
     ids.addAll(LedgerAssertionKind.wireValues());
     ids.addAll(ProtocolCatalog.successStatuses());
     ids.addAll(ProtocolCatalog.rejectionStatuses());

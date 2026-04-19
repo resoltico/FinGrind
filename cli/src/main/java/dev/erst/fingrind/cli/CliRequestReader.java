@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.PostEntryCommand;
@@ -32,13 +33,13 @@ final class CliRequestReader {
       throw exception;
     } catch (java.time.DateTimeException exception) {
       throw new CliRequestException(
-          "invalid-request",
+          ContractErrors.Descriptor.INVALID_REQUEST.code(),
           "Request contains an invalid date/time value.",
           "Use ISO-8601 values such as YYYY-MM-DD and YYYY-MM-DDTHH:MM:SSZ.",
           exception);
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
-          "invalid-request",
+          ContractErrors.Descriptor.INVALID_REQUEST.code(),
           CliJsonRequestSupport.normalizedMessage(exception),
           CliJsonRequestSupport.invalidRequestHint(),
           exception);
@@ -54,7 +55,7 @@ final class CliRequestReader {
       throw exception;
     } catch (IllegalArgumentException exception) {
       throw new CliRequestException(
-          "invalid-request",
+          ContractErrors.Descriptor.INVALID_REQUEST.code(),
           CliJsonRequestSupport.normalizedMessage(exception),
           CliJsonRequestSupport.invalidRequestHint(),
           exception);
@@ -70,13 +71,13 @@ final class CliRequestReader {
       throw exception;
     } catch (java.time.DateTimeException exception) {
       throw new CliRequestException(
-          "invalid-request",
+          ContractErrors.Descriptor.INVALID_REQUEST.code(),
           "Ledger plan contains an invalid date/time value.",
           "Use ISO-8601 values such as YYYY-MM-DD and YYYY-MM-DDTHH:MM:SSZ.",
           exception);
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
-          "invalid-request",
+          ContractErrors.Descriptor.INVALID_REQUEST.code(),
           CliJsonRequestSupport.normalizedMessage(exception),
           CliJsonRequestSupport.invalidRequestHint(),
           exception);

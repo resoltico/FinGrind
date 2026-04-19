@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
@@ -64,7 +65,7 @@ final class CliJsonRequestSupport {
 
   static CliRequestException requestReadFailure(Exception exception) {
     return new CliRequestException(
-        "invalid-request",
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
         readFailureMessage(exception),
         "Run 'fingrind "
             + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)

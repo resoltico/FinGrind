@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -13,26 +14,40 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountLedgerEntry;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookMigrationPolicy;
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PostingRequest;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -151,10 +166,10 @@ class SqlitePostingFactStoreTest {
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertNotNull(postingFactStore.administrationSession());
       assertNotNull(postingFactStore.postingSession());
-      assertNotNull(postingFactStore.querySession());
+      assertNotNull(postingFactStore.readSession());
       assertNotSame(postingFactStore, postingFactStore.administrationSession());
       assertNotSame(postingFactStore, postingFactStore.postingSession());
-      assertNotSame(postingFactStore, postingFactStore.querySession());
+      assertNotSame(postingFactStore, postingFactStore.readSession());
     }
   }
 
@@ -252,7 +267,7 @@ class SqlitePostingFactStoreTest {
       AccountBalanceQuery balanceQuery =
           new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty());
 
-      try (var queryView = postingFactStore.querySession()) {
+      try (var queryView = postingFactStore.readSession()) {
         assertEquals(postingFactStore.inspectBook(), queryView.inspectBook());
         assertTrue(queryView.isInitialized());
         assertEquals(
@@ -277,6 +292,138 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  void reportView_delegatesReportsAndClose() {
+    Path databasePath = tempDirectory.resolve("report-view.sqlite");
+    PostingFact openingPosting =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    PostingFact zeroingPosting =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      postingFactStore.commit(openingPosting);
+      postingFactStore.commit(zeroingPosting);
+
+      DeclaredAccount revenueAccount =
+          postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
+      DeclaredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+
+      try (var reportView = postingFactStore.readSession()) {
+        assertTrue(reportView.isInitialized());
+        assertEquals(Optional.of(cashAccount), reportView.findAccount(new AccountCode("1000")));
+        assertEquals(
+            postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())),
+            reportView.trialBalance(new TrialBalanceQuery(Optional.empty())));
+        assertEquals(
+            new AccountLedgerReport(
+                revenueAccount,
+                EffectiveDateRange.unbounded(),
+                List.of(),
+                List.of(
+                    new AccountLedgerEntry(
+                        openingPosting,
+                        new CurrencyBalance(
+                            money("EUR", "0.00"),
+                            money("EUR", "10.00"),
+                            money("EUR", "10.00"),
+                            BalanceSide.CREDIT),
+                        money("EUR", "10.00"),
+                        BalanceSide.CREDIT),
+                    new AccountLedgerEntry(
+                        zeroingPosting,
+                        new CurrencyBalance(
+                            money("EUR", "10.00"),
+                            money("EUR", "0.00"),
+                            money("EUR", "10.00"),
+                            BalanceSide.DEBIT),
+                        money("EUR", "0.00"),
+                        BalanceSide.ZERO)),
+                List.of(
+                    new CurrencyBalance(
+                        money("EUR", "10.00"),
+                        money("EUR", "10.00"),
+                        money("EUR", "0.00"),
+                        BalanceSide.ZERO))),
+            reportView.accountLedger(
+                new AccountLedgerQuery(new AccountCode("2000"), EffectiveDateRange.unbounded()),
+                revenueAccount));
+        assertEquals(
+            postingFactStore.periodSummary(
+                new PeriodSummaryQuery(
+                    LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))),
+            reportView.periodSummary(
+                new PeriodSummaryQuery(
+                    LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))));
+      }
+
+      IllegalStateException exception =
+          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
+      assertEquals("SQLite book session is already closed.", exception.getMessage());
+    }
+  }
+
+  @Test
+  void reportMethods_throwBookNotInitializedWhenBookIsMissing() {
+    Path databasePath = tempDirectory.resolve("missing-report-book.sqlite");
+    DeclaredAccount cashAccount =
+        new DeclaredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      IllegalStateException trialBalanceFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
+      IllegalStateException accountLedgerFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  postingFactStore.accountLedger(
+                      new AccountLedgerQuery(
+                          new AccountCode("1000"), Optional.empty(), Optional.empty()),
+                      cashAccount));
+      IllegalStateException periodSummaryFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  postingFactStore.periodSummary(
+                      new PeriodSummaryQuery(
+                          LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
+
+      assertEquals(
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          trialBalanceFailure.getMessage());
+      assertEquals(
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          accountLedgerFailure.getMessage());
+      assertEquals(
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          periodSummaryFailure.getMessage());
+    }
+  }
+
+  @Test
   void queryView_requiresInitializedBookForDirectQueryCalls() throws Exception {
     ListPostingsQuery postingsQuery =
         new ListPostingsQuery(
@@ -287,7 +434,7 @@ class SqlitePostingFactStoreTest {
     Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
             new SqlitePostingFactStore(bookAccess(missingBookPath));
-        var queryView = postingFactStore.querySession()) {
+        var queryView = postingFactStore.readSession()) {
       assertFalse(queryView.isInitialized());
       assertInitializedQueryViewFailure(
           () -> queryView.listAccounts(firstAccountPage()),
@@ -301,7 +448,7 @@ class SqlitePostingFactStoreTest {
     createEmptySqliteFile(rawSqlitePath);
     try (SqlitePostingFactStore postingFactStore =
             new SqlitePostingFactStore(bookAccess(rawSqlitePath));
-        var queryView = postingFactStore.querySession()) {
+        var queryView = postingFactStore.readSession()) {
       assertFalse(queryView.isInitialized());
       assertInitializedQueryViewFailure(
           () -> queryView.listAccounts(firstAccountPage()),
@@ -318,7 +465,7 @@ class SqlitePostingFactStoreTest {
 
     try (SqlitePostingFactStore postingFactStore =
             new SqlitePostingFactStore(bookAccess(databasePath));
-        var queryView = postingFactStore.querySession()) {
+        var queryView = postingFactStore.readSession()) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath));
 
       assertWrappedQueryViewNativeFailure(
@@ -1320,12 +1467,12 @@ class SqlitePostingFactStoreTest {
                           money("EUR", "10.00"),
                           money("EUR", "12.00"),
                           money("EUR", "2.00"),
-                          NormalBalance.CREDIT),
+                          BalanceSide.CREDIT),
                       new CurrencyBalance(
                           money("USD", "7.00"),
                           money("USD", "7.00"),
                           money("USD", "0.00"),
-                          NormalBalance.DEBIT)))),
+                          BalanceSide.ZERO)))),
           postingFactStore.accountBalance(
               new AccountBalanceQuery(
                   new AccountCode("1000"), Optional.empty(), Optional.empty())));
@@ -1345,7 +1492,7 @@ class SqlitePostingFactStoreTest {
                           money("EUR", "10.00"),
                           money("EUR", "4.00"),
                           money("EUR", "6.00"),
-                          NormalBalance.DEBIT)))),
+                          BalanceSide.DEBIT)))),
           postingFactStore.accountBalance(
               new AccountBalanceQuery(
                   new AccountCode("1000"),
@@ -1367,7 +1514,7 @@ class SqlitePostingFactStoreTest {
                           money("USD", "7.00"),
                           money("USD", "7.00"),
                           money("USD", "0.00"),
-                          NormalBalance.DEBIT)))),
+                          BalanceSide.ZERO)))),
           postingFactStore.accountBalance(
               new AccountBalanceQuery(
                   new AccountCode("1000"),
@@ -1377,9 +1524,393 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  void trialBalance_andPeriodSummary_computeOfficeReportModels() {
+    Path databasePath = tempDirectory.resolve("office-reports.sqlite");
+    PostingFact postingOne =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    PostingFact postingTwo =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.CREDIT, "EUR", "4.00"),
+                line("2000", JournalLine.EntrySide.DEBIT, "EUR", "4.00")));
+    PostingFact postingThree =
+        postingFact(
+            "posting-3",
+            "idem-3",
+            LocalDate.parse("2026-04-09"),
+            Instant.parse("2026-04-09T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "USD", "8.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "USD", "8.00")));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      postingFactStore.commit(postingOne);
+      postingFactStore.commit(postingTwo);
+      postingFactStore.commit(postingThree);
+
+      DeclaredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+      DeclaredAccount revenueAccount =
+          postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
+
+      assertEquals(
+          new TrialBalanceReport(
+              Optional.of(LocalDate.parse("2026-04-08")),
+              List.of(
+                  new TrialBalanceRow(
+                      cashAccount,
+                      new CurrencyBalance(
+                          money("EUR", "10.00"),
+                          money("EUR", "4.00"),
+                          money("EUR", "6.00"),
+                          BalanceSide.DEBIT)),
+                  new TrialBalanceRow(
+                      revenueAccount,
+                      new CurrencyBalance(
+                          money("EUR", "4.00"),
+                          money("EUR", "10.00"),
+                          money("EUR", "6.00"),
+                          BalanceSide.CREDIT)))),
+          postingFactStore.trialBalance(
+              new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-08")))));
+
+      assertEquals(
+          new PeriodSummaryReport(
+              LocalDate.parse("2026-04-07"),
+              LocalDate.parse("2026-04-08"),
+              2,
+              4,
+              2,
+              List.of(
+                  new PeriodCurrencySummary(
+                      new CurrencyBalance(
+                          money("EUR", "14.00"),
+                          money("EUR", "14.00"),
+                          money("EUR", "0.00"),
+                          BalanceSide.ZERO))),
+              List.of(
+                  new PeriodAccountActivityRow(
+                      cashAccount,
+                      new CurrencyBalance(
+                          money("EUR", "10.00"),
+                          money("EUR", "4.00"),
+                          money("EUR", "6.00"),
+                          BalanceSide.DEBIT)),
+                  new PeriodAccountActivityRow(
+                      revenueAccount,
+                      new CurrencyBalance(
+                          money("EUR", "4.00"),
+                          money("EUR", "10.00"),
+                          money("EUR", "6.00"),
+                          BalanceSide.CREDIT)))),
+          postingFactStore.periodSummary(
+              new PeriodSummaryQuery(
+                  LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))));
+    }
+  }
+
+  @Test
+  void accountLedger_computesOpeningRunningAndClosingBalances() {
+    Path databasePath = tempDirectory.resolve("account-ledger-report.sqlite");
+    PostingFact postingOne =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    PostingFact postingTwo =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.CREDIT, "EUR", "4.00"),
+                line("2000", JournalLine.EntrySide.DEBIT, "EUR", "4.00")));
+    PostingFact postingThree =
+        postingFact(
+            "posting-3",
+            "idem-3",
+            LocalDate.parse("2026-04-09"),
+            Instant.parse("2026-04-09T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "USD", "8.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "USD", "8.00")));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      postingFactStore.commit(postingOne);
+      postingFactStore.commit(postingTwo);
+      postingFactStore.commit(postingThree);
+
+      DeclaredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+
+      assertEquals(
+          new AccountLedgerReport(
+              cashAccount,
+              EffectiveDateRange.of(
+                  Optional.of(LocalDate.parse("2026-04-08")),
+                  Optional.of(LocalDate.parse("2026-04-09"))),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "10.00"),
+                      money("EUR", "0.00"),
+                      money("EUR", "10.00"),
+                      BalanceSide.DEBIT)),
+              List.of(
+                  new AccountLedgerEntry(
+                      postingTwo,
+                      new CurrencyBalance(
+                          money("EUR", "0.00"),
+                          money("EUR", "4.00"),
+                          money("EUR", "4.00"),
+                          BalanceSide.CREDIT),
+                      money("EUR", "6.00"),
+                      BalanceSide.DEBIT),
+                  new AccountLedgerEntry(
+                      postingThree,
+                      new CurrencyBalance(
+                          money("USD", "8.00"),
+                          money("USD", "0.00"),
+                          money("USD", "8.00"),
+                          BalanceSide.DEBIT),
+                      money("USD", "8.00"),
+                      BalanceSide.DEBIT)),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "10.00"),
+                      money("EUR", "4.00"),
+                      money("EUR", "6.00"),
+                      BalanceSide.DEBIT),
+                  new CurrencyBalance(
+                      money("USD", "8.00"),
+                      money("USD", "0.00"),
+                      money("USD", "8.00"),
+                      BalanceSide.DEBIT))),
+          postingFactStore.accountLedger(
+              new AccountLedgerQuery(
+                  new AccountCode("1000"),
+                  Optional.of(LocalDate.parse("2026-04-08")),
+                  Optional.of(LocalDate.parse("2026-04-09"))),
+              cashAccount));
+    }
+  }
+
+  @Test
+  void accountLedger_allowsMinimumLowerBoundWithoutOpeningBalanceLookback() {
+    Path databasePath = tempDirectory.resolve("account-ledger-min-lower-bound.sqlite");
+    PostingFact posting =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      postingFactStore.commit(posting);
+
+      DeclaredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+
+      assertEquals(
+          new AccountLedgerReport(
+              cashAccount,
+              EffectiveDateRange.of(Optional.of(LocalDate.MIN), Optional.empty()),
+              List.of(),
+              List.of(
+                  new AccountLedgerEntry(
+                      posting,
+                      new CurrencyBalance(
+                          money("EUR", "10.00"),
+                          money("EUR", "0.00"),
+                          money("EUR", "10.00"),
+                          BalanceSide.DEBIT),
+                      money("EUR", "10.00"),
+                      BalanceSide.DEBIT)),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "10.00"),
+                      money("EUR", "0.00"),
+                      money("EUR", "10.00"),
+                      BalanceSide.DEBIT))),
+          postingFactStore.accountLedger(
+              new AccountLedgerQuery(
+                  new AccountCode("1000"), Optional.of(LocalDate.MIN), Optional.empty()),
+              cashAccount));
+    }
+  }
+
+  @Test
+  void accountLedger_supportsCreditOpeningBalances() {
+    Path databasePath = tempDirectory.resolve("account-ledger-credit-opening.sqlite");
+    PostingFact openingPosting =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    PostingFact inRangePosting =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      postingFactStore.commit(openingPosting);
+      postingFactStore.commit(inRangePosting);
+
+      DeclaredAccount revenueAccount =
+          postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
+
+      assertEquals(
+          new AccountLedgerReport(
+              revenueAccount,
+              EffectiveDateRange.of(
+                  Optional.of(LocalDate.parse("2026-04-08")),
+                  Optional.of(LocalDate.parse("2026-04-08"))),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "0.00"),
+                      money("EUR", "10.00"),
+                      money("EUR", "10.00"),
+                      BalanceSide.CREDIT)),
+              List.of(
+                  new AccountLedgerEntry(
+                      inRangePosting,
+                      new CurrencyBalance(
+                          money("EUR", "10.00"),
+                          money("EUR", "0.00"),
+                          money("EUR", "10.00"),
+                          BalanceSide.DEBIT),
+                      money("EUR", "0.00"),
+                      BalanceSide.ZERO)),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "10.00"),
+                      money("EUR", "10.00"),
+                      money("EUR", "0.00"),
+                      BalanceSide.ZERO))),
+          postingFactStore.accountLedger(
+              new AccountLedgerQuery(
+                  new AccountCode("2000"),
+                  Optional.of(LocalDate.parse("2026-04-08")),
+                  Optional.of(LocalDate.parse("2026-04-08"))),
+              revenueAccount));
+    }
+  }
+
+  @Test
+  void accountLedger_sortsMultipleOpeningCurrenciesBeforeRunningBalances() {
+    Path databasePath = tempDirectory.resolve("account-ledger-multi-opening.sqlite");
+    PostingFact eurOpeningPosting =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    PostingFact usdOpeningPosting =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "USD", "7.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "USD", "7.00")));
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      postingFactStore.commit(eurOpeningPosting);
+      postingFactStore.commit(usdOpeningPosting);
+
+      DeclaredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+
+      assertEquals(
+          new AccountLedgerReport(
+              cashAccount,
+              EffectiveDateRange.of(
+                  Optional.of(LocalDate.parse("2026-04-09")),
+                  Optional.of(LocalDate.parse("2026-04-09"))),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "10.00"),
+                      money("EUR", "0.00"),
+                      money("EUR", "10.00"),
+                      BalanceSide.DEBIT),
+                  new CurrencyBalance(
+                      money("USD", "7.00"),
+                      money("USD", "0.00"),
+                      money("USD", "7.00"),
+                      BalanceSide.DEBIT)),
+              List.of(),
+              List.of(
+                  new CurrencyBalance(
+                      money("EUR", "10.00"),
+                      money("EUR", "0.00"),
+                      money("EUR", "10.00"),
+                      BalanceSide.DEBIT),
+                  new CurrencyBalance(
+                      money("USD", "7.00"),
+                      money("USD", "0.00"),
+                      money("USD", "7.00"),
+                      BalanceSide.DEBIT))),
+          postingFactStore.accountLedger(
+              new AccountLedgerQuery(
+                  new AccountCode("1000"),
+                  Optional.of(LocalDate.parse("2026-04-09")),
+                  Optional.of(LocalDate.parse("2026-04-09"))),
+              cashAccount));
+    }
+  }
+
+  @Test
   void queryMethods_wrapFailuresForInvalidBookFiles() throws IOException {
     Path invalidBookPath = tempDirectory.resolve("query-not-a-sqlite-file.sqlite");
     Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
+    DeclaredAccount cashAccount =
+        new DeclaredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -1413,6 +1944,37 @@ class SqlitePostingFactStoreTest {
                           new AccountCode("1000"), Optional.empty(), Optional.empty())));
       assertInvalidPlaintextBookFailure(exception);
     }
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
+      assertInvalidPlaintextBookFailure(exception);
+    }
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  postingFactStore.accountLedger(
+                      new AccountLedgerQuery(
+                          new AccountCode("1000"), Optional.empty(), Optional.empty()),
+                      cashAccount));
+      assertInvalidPlaintextBookFailure(exception);
+    }
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  postingFactStore.periodSummary(
+                      new PeriodSummaryQuery(
+                          LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
+      assertInvalidPlaintextBookFailure(exception);
+    }
   }
 
   @Test
@@ -1422,6 +1984,13 @@ class SqlitePostingFactStoreTest {
     initializeBookOnDisk(bookPath);
     SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(bookAccess(bookPath));
     setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
+    DeclaredAccount cashAccount =
+        new DeclaredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
 
     IllegalStateException inspectFailure =
         assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
@@ -1448,6 +2017,57 @@ class SqlitePostingFactStoreTest {
                     new AccountBalanceQuery(
                         new AccountCode("1000"), Optional.empty(), Optional.empty())));
     assertTrue(balanceFailure.getMessage().contains("Failed to query SQLite book."));
+
+    IllegalStateException trialBalanceFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
+    assertTrue(trialBalanceFailure.getMessage().contains("Failed to query SQLite book."));
+
+    IllegalStateException accountLedgerFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                postingFactStore.accountLedger(
+                    new AccountLedgerQuery(
+                        new AccountCode("1000"), Optional.empty(), Optional.empty()),
+                    cashAccount));
+    assertTrue(accountLedgerFailure.getMessage().contains("Failed to query SQLite book."));
+
+    IllegalStateException periodSummaryFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                postingFactStore.periodSummary(
+                    new PeriodSummaryQuery(
+                        LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
+    assertTrue(periodSummaryFailure.getMessage().contains("Failed to query SQLite book."));
+
+    var readView = postingFactStore.readSession();
+    IllegalStateException readTrialBalanceFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> readView.trialBalance(new TrialBalanceQuery(Optional.empty())));
+    assertTrue(readTrialBalanceFailure.getMessage().contains("Failed to query SQLite book."));
+
+    IllegalStateException readAccountLedgerFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                readView.accountLedger(
+                    new AccountLedgerQuery(
+                        new AccountCode("1000"), Optional.empty(), Optional.empty()),
+                    cashAccount));
+    assertTrue(readAccountLedgerFailure.getMessage().contains("Failed to query SQLite book."));
+
+    IllegalStateException readPeriodSummaryFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                readView.periodSummary(
+                    new PeriodSummaryQuery(
+                        LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
+    assertTrue(readPeriodSummaryFailure.getMessage().contains("Failed to query SQLite book."));
   }
 
   @Test
@@ -3579,8 +4199,15 @@ class SqlitePostingFactStoreTest {
   }
 
   private static void assertInvalidPlaintextBookFailure(IllegalStateException exception) {
-    assertTrue(exception.getMessage().contains("Failed to open SQLite book connection."));
-    assertTrue(exception.getMessage().contains("SQLITE_NOTADB"));
+    ContractErrorException contractError =
+        assertInstanceOf(ContractErrorException.class, exception);
+    assertEquals(ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(), contractError.code());
+    assertTrue(
+        contractError
+            .getMessage()
+            .contains(
+                "FinGrind could not authenticate the selected protected book with the supplied passphrase source."));
+    assertFalse(contractError.getMessage().contains("SQLITE_NOTADB"));
   }
 
   private static PostingCommitResult rejected(PostingRejection rejection) {

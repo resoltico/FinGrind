@@ -32,7 +32,7 @@ The current model is intentionally strict:
 
 ## What You Can Do Today
 
-FinGrind currently exposes seventeen CLI commands:
+FinGrind currently exposes twenty CLI commands:
 - `help`
 - `version`
 - `capabilities`
@@ -47,6 +47,9 @@ FinGrind currently exposes seventeen CLI commands:
 - `get-posting`
 - `list-postings`
 - `account-balance`
+- `trial-balance`
+- `account-ledger`
+- `period-summary`
 - `execute-plan`
 - `preflight-entry`
 - `post-entry`
@@ -62,6 +65,9 @@ The book lifecycle is explicit:
 - `list-postings` returns reverse-chronological pages with `limit`, `postings`, and an optional
   opaque `nextCursor`
 - `get-posting` and `account-balance` expose committed history and grouped balances
+- `trial-balance`, `account-ledger`, and `period-summary` answer office-worker reporting
+  questions in one command, can render `json`, `human`, or `csv` output on stdout, and can
+  write PDF report artifacts through explicit `--pdf-out` paths
 - `execute-plan` runs one ordered ledger plan atomically and returns a per-step execution journal
 - `preflight-entry` and `post-entry` reject a missing or unopened book with `posting-book-not-initialized`
 - `preflight-entry` and `post-entry` report undeclared or inactive accounts under `account-state-violations`
@@ -88,15 +94,15 @@ The canonical machine-readable source for that matrix is
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.17.0-macos-aarch64.tar.gz
-./fingrind-0.17.0-macos-aarch64/bin/fingrind help
+tar -xzf fingrind-0.18.0-macos-aarch64.tar.gz
+./fingrind-0.18.0-macos-aarch64/bin/fingrind help
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.17.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.17.0-windows-x86_64\bin\fingrind.cmd help
+Expand-Archive fingrind-0.18.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.18.0-windows-x86_64\bin\fingrind.cmd help
 ```
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
@@ -147,8 +153,8 @@ FinGrind does not support arbitrary host `libsqlite3` fallback.
 The `find .../build/managed-sqlite` export above is the supported local source-checkout path
 because it keeps developer-only raw-JAR verification on the same managed native library contract
 as Gradle, Jazzer, CI, and Docker.
-Running `:cli:shadowJar` also stages the compile-only JDeps support jars used by Docker image
-assembly under `cli/build/docker/jdeps/`, so no separate Docker preparation task is required.
+Running `:cli:shadowJar` also stages the canonical Docker runtime-module list under
+`cli/build/docker/runtime-modules.txt`, so no separate Docker preparation task is required.
 
 For full contributor verification, keep the checkout on the Mac's local filesystem.
 Mounted external volumes are outside the supported setup because Gradle project-cache and JaCoCo
@@ -312,6 +318,38 @@ fingrind \
   --book-file /tmp/acme-book.sqlite \
   --book-key-file /tmp/fingrind/keys/acme.book-key \
   --account-code 1000
+
+fingrind \
+  trial-balance \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --effective-date-to 2026-04-08 \
+  --output human
+
+fingrind \
+  account-ledger \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --account-code 1000 \
+  --effective-date-from 2026-04-01 \
+  --effective-date-to 2026-04-30 \
+  --output csv
+
+fingrind \
+  period-summary \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --effective-date-from 2026-04-01 \
+  --effective-date-to 2026-04-30 \
+  --output human
+
+fingrind \
+  trial-balance \
+  --book-file /tmp/acme-book.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --effective-date-to 2026-04-08 \
+  --output human \
+  --pdf-out /tmp/reports/acme-trial-balance.pdf
 ```
 
 ## Request Shape
@@ -393,12 +431,14 @@ Current deterministic rejection codes include:
 - For a local source checkout, `:cli:shadowJar` packages only the Java application surface.
   Run `./gradlew prepareManagedSqlite` as well before validating that developer-only raw-JAR path
   against the managed native library under `build/managed-sqlite/`.
-- `help`, `version`, and `capabilities` return JSON envelopes for discovery.
+- `help`, `version`, and `capabilities` default to human-readable discovery output and also accept
+  `--output json` for machine parsing.
 - `print-request-template` and `print-plan-template` return raw JSON so they can be piped straight
   into a file.
 - `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`,
-  `list-postings`, `account-balance`, `execute-plan`, `preflight-entry`, and `post-entry` require
-  `--book-file` plus exactly one explicit passphrase source.
+  `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`,
+  `execute-plan`, `preflight-entry`, and `post-entry` require `--book-file` plus exactly one
+  explicit passphrase source.
 - `rekey-book` also requires exactly one replacement passphrase source through
   `--new-book-key-file`, `--new-book-passphrase-stdin`, or `--new-book-passphrase-prompt`.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file protected with
@@ -419,6 +459,12 @@ Current deterministic rejection codes include:
 - `list-accounts` returns paginated payloads with `limit`, `offset`, and `hasMore`.
 - `list-postings` returns `limit`, `postings`, and an optional opaque `nextCursor` for keyset
   pagination.
+- `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`,
+  `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`,
+  `account-ledger`, `period-summary`, `preflight-entry`, and `post-entry` accept
+  `--output json|human`. The tabular read/report commands also accept `--output csv`.
+  `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally
+  write one PDF artifact through `--pdf-out <path>`. JSON remains the default machine surface.
 - `execute-plan` returns `status: "plan-committed"` on success, `status: "plan-rejected"` for
   deterministic step rejections, and `status: "plan-assertion-failed"` for failed assertions;
   the bounded durable plan journal is included under `payload.journal` or `details.plan.journal`,
@@ -436,8 +482,14 @@ Current deterministic rejection codes include:
 - posting-side account failures are returned as `account-state-violations` with one or more
   detailed issue objects under `details.violations`.
 - Duplicate `idempotencyKey` values are rejected within the selected book file.
-- Using the wrong key file or wrong non-file passphrase source fails the runtime open with a
-  structured `runtime-failure`, typically including `SQLITE_NOTADB`.
+- Using the wrong key file or wrong non-file passphrase source returns the deterministic
+  `book-authentication-failed` error with exit `2`; storage symptoms such as `SQLITE_NOTADB` do
+  not leak to callers.
+- Running `--book-passphrase-prompt` without a supported controlling terminal returns the
+  deterministic `interactive-prompt-unavailable` error with repair hints pointing to
+  `--book-key-file` or `--book-passphrase-stdin`.
+- Passing a malformed `list-postings --cursor` returns the deterministic `invalid-page-cursor`
+  error with argument `--cursor` and a hint describing how to reuse `nextCursor`.
 - `capabilities` is the best machine-readable contract surface for commands, request fields,
   ledger-plan execution semantics, account-registry rules, rejection descriptors, advisory
   preflight semantics, the single-currency entry model, and the current protected-book runtime

@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: CONTRACT_EXECUTOR
-updated: "2026-04-18"
+updated: "2026-04-19"
 route:
-  keywords: [fingrind, contract, executor, open-book, declare-account, inspect-book, list-postings, account-balance, preflight, rejection, uuid-v7, machine-contract, protocol-catalog, ledger-plan]
+  keywords: [fingrind, contract, executor, open-book, declare-account, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, rejection, uuid-v7, machine-contract, protocol-catalog, ledger-plan]
   questions: ["how does the contract boundary work in fingrind", "what query models exist in fingrind", "how are posting ids generated in fingrind", "where does execute-plan live in fingrind"]
 ---
 
@@ -49,8 +49,8 @@ public enum OperationId
 
 - Members include discovery (`PRINT_REQUEST_TEMPLATE`, `PRINT_PLAN_TEMPLATE`), administration
   (`OPEN_BOOK`, `REKEY_BOOK`, `DECLARE_ACCOUNT`), query (`INSPECT_BOOK`, `LIST_ACCOUNTS`,
-  `GET_POSTING`, `LIST_POSTINGS`, `ACCOUNT_BALANCE`), and write (`EXECUTE_PLAN`,
-  `PREFLIGHT_ENTRY`, `POST_ENTRY`) operations
+  `GET_POSTING`, `LIST_POSTINGS`, `ACCOUNT_BALANCE`, `TRIAL_BALANCE`, `ACCOUNT_LEDGER`,
+  `PERIOD_SUMMARY`), and write (`EXECUTE_PLAN`, `PREFLIGHT_ENTRY`, `POST_ENTRY`) operations
 
 ## `ProtocolLimits` And `ProtocolOptions`
 
@@ -109,17 +109,20 @@ public final class BookAdministrationService
 - Surface: `openBook()`, `declareAccount(DeclareAccountCommand)`
 - Policy: stamps `initializedAt` and `declaredAt` from the application clock instead of trusting caller input
 
-## `BookQueryService`
+## `BookReadService`
 
-`BookQueryService` owns read-only inspection, listing, posting-history, and balance workflows.
+`BookReadService` owns the complete read-side application surface: lifecycle inspection, listings,
+posting history, balances, and office-worker reports.
 
 ```java
-public final class BookQueryService
+public final class BookReadService
 ```
 
-- Constructor: requires `BookQuerySession`
-- Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`, `accountBalance(...)`
-- Policy: maps unopened books, unknown query accounts, and missing posting ids into explicit query rejections
+- Constructor: requires `BookReadSession`
+- Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`,
+  `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`
+- Policy: maps unopened books, unknown query accounts, and missing posting ids into explicit query
+  rejections before rendering human, CSV, JSON, or PDF surfaces
 
 ## `DeclareAccountCommand`
 

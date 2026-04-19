@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-04-17"
 route:
@@ -163,8 +163,9 @@ The raw JAR route remains useful for:
 - advanced contributor debugging
 - validating the application JAR directly during development
 
-`./gradlew :cli:shadowJar` also stages the compile-only JDeps support jars that the Docker build
-uses to analyze the shaded application JAR under `cli/build/docker/jdeps/`.
+`./gradlew :cli:shadowJar` also stages the canonical runtime-module list that the Docker build
+reuses under `cli/build/docker/runtime-modules.txt`, so the public bundle and container image
+consume the same trimmed Java runtime closure instead of deriving competing module sets.
 
 It is not the public release artifact.
 

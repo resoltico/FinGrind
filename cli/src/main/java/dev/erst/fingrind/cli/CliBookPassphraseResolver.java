@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.IOException;
@@ -66,7 +68,7 @@ final class CliBookPassphraseResolver {
     Path normalizedPath = bookFilePath.toAbsolutePath().normalize();
     char[] password = terminal.readPassword(promptStyle.primaryPrompt(normalizedPath));
     if (password == null) {
-      throw new IllegalStateException(
+      throw interactivePromptFailure(
           "FinGrind did not receive a book passphrase from the interactive console.");
     }
     if (promptStyle == PromptStyle.SINGLE) {
@@ -76,13 +78,13 @@ final class CliBookPassphraseResolver {
     char[] confirmation = terminal.readPassword(promptStyle.confirmationPrompt(normalizedPath));
     if (confirmation == null) {
       Arrays.fill(password, '\0');
-      throw new IllegalStateException(
+      throw interactivePromptFailure(
           "FinGrind did not receive a confirmed book passphrase from the interactive console.");
     }
     if (!Arrays.equals(password, confirmation)) {
       Arrays.fill(password, '\0');
       Arrays.fill(confirmation, '\0');
-      throw new IllegalStateException(
+      throw interactivePromptFailure(
           "FinGrind did not receive matching book passphrases from the interactive console.");
     }
     Arrays.fill(confirmation, '\0');
@@ -144,8 +146,12 @@ final class CliBookPassphraseResolver {
       try {
         return (char[]) readPasswordMethod.invoke(consoleHandle, "%s", new Object[] {prompt});
       } catch (ReflectiveOperationException exception) {
-        throw new IllegalStateException(
-            "Failed to prompt for a book passphrase from the interactive console.", exception);
+        throw new ContractErrorException(
+            ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED,
+            "Failed to prompt for a book passphrase from the interactive console.",
+            "Rerun the command from a supported interactive terminal, or use --book-key-file or --book-passphrase-stdin instead.",
+            null,
+            exception);
       }
     }
 
@@ -164,8 +170,20 @@ final class CliBookPassphraseResolver {
     }
   }
 
-  private static IllegalStateException noConsole() {
-    return new IllegalStateException(NO_INTERACTIVE_CONSOLE_MESSAGE);
+  private static ContractErrorException noConsole() {
+    return new ContractErrorException(
+        ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE,
+        NO_INTERACTIVE_CONSOLE_MESSAGE,
+        "Rerun the command from an interactive terminal, or use --book-key-file or --book-passphrase-stdin instead.",
+        null);
+  }
+
+  private static ContractErrorException interactivePromptFailure(String message) {
+    return new ContractErrorException(
+        ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED,
+        message,
+        "Rerun the command from a supported interactive terminal and provide one valid passphrase, or use --book-key-file or --book-passphrase-stdin instead.",
+        null);
   }
 
   /** Prompt modes for existing-book secrets versus newly entered replacement secrets. */

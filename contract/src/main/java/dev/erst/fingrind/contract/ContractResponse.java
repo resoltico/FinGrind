@@ -12,6 +12,7 @@ public final class ContractResponse {
     return List.of(
         BookModelDescriptor.class,
         FieldDescriptor.class,
+        ErrorDescriptor.class,
         ResponseModelDescriptor.class,
         PlanExecutionDescriptor.class,
         RejectionDescriptor.class,
@@ -36,12 +37,22 @@ public final class ContractResponse {
   /** One general field descriptor for envelopes or emitted payloads. */
   public record FieldDescriptor(String name, String description) {}
 
+  /** One stable machine error descriptor. */
+  public record ErrorDescriptor(String code, String description) {
+    /** Validates the structured error descriptor payload. */
+    public ErrorDescriptor {
+      Objects.requireNonNull(code, "code");
+      Objects.requireNonNull(description, "description");
+    }
+  }
+
   /** Descriptor for the stable response contract. */
   public record ResponseModelDescriptor(
       List<String> successStatuses,
       List<String> rejectionStatuses,
       String errorStatus,
       List<RejectionDescriptor> rejections,
+      List<ErrorDescriptor> errorDescriptors,
       List<FieldDescriptor> rejectionFields,
       List<FieldDescriptor> postEntryRejectionFields,
       List<FieldDescriptor> errorFields) {}

@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.math.BigDecimal;
@@ -30,13 +29,19 @@ final class SqlitePostingReadSupport {
     if (account.isEmpty()) {
       return Optional.empty();
     }
-    DeclaredAccount declaredAccount = account.orElseThrow();
-    return Optional.of(
-        new AccountBalanceSnapshot(
-            declaredAccount,
-            query.effectiveDateFrom(),
-            query.effectiveDateTo(),
-            loadCurrencyBalances(activeDatabase, query, declaredAccount)));
+    return Optional.of(accountBalance(activeDatabase, query, account.orElseThrow()));
+  }
+
+  AccountBalanceSnapshot accountBalance(
+      SqliteNativeDatabase activeDatabase,
+      AccountBalanceQuery query,
+      DeclaredAccount declaredAccount)
+      throws SqliteNativeException {
+    return new AccountBalanceSnapshot(
+        declaredAccount,
+        query.effectiveDateFrom(),
+        query.effectiveDateTo(),
+        loadCurrencyBalances(activeDatabase, query, declaredAccount));
   }
 
   PostingPage loadPostingPage(SqliteNativeDatabase activeDatabase, ListPostingsQuery query)
@@ -75,6 +80,19 @@ final class SqlitePostingReadSupport {
       throws SqliteNativeException {
     return SqliteStatementQuerySupport.findOnePosting(
         activeDatabase, sql, binder, postingId -> loadLines(activeDatabase, postingId));
+  }
+
+  List<PostingFact> loadPostingFacts(
+      SqliteNativeDatabase activeDatabase, String sql, SqliteStatementQuerySupport.Binder binder)
+      throws SqliteNativeException {
+    List<PostingFact> postings = new ArrayList<>();
+    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
+      binder.bind(statement);
+      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+        postings.add(loadPostingRow(activeDatabase, statement));
+      }
+    }
+    return List.copyOf(postings);
   }
 
   private PostingFact loadPostingRow(
@@ -206,17 +224,8 @@ final class SqlitePostingReadSupport {
 
   private static CurrencyBalance balance(
       CurrencyCode currencyCode, Totals totals, NormalBalance accountNormalBalance) {
-    BigDecimal net = totals.debit.subtract(totals.credit);
-    BigDecimal absoluteNet = net.abs();
-    NormalBalance balanceSide = net.signum() >= 0 ? NormalBalance.DEBIT : NormalBalance.CREDIT;
-    if (absoluteNet.signum() == 0) {
-      balanceSide = accountNormalBalance;
-    }
-    return new CurrencyBalance(
-        new Money(currencyCode, totals.debit),
-        new Money(currencyCode, totals.credit),
-        new Money(currencyCode, absoluteNet),
-        balanceSide);
+    return SqliteBalanceMath.currencyBalance(
+        currencyCode, totals.debit, totals.credit, accountNormalBalance);
   }
 
   /** Running debit and credit totals for one account/currency balance bucket. */

@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -116,15 +118,18 @@ final class SqliteBookKeyFileSecurity {
         return;
       }
       if (!Files.isRegularFile(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        throw new IllegalStateException(
+        throw invalidBookKeyFile(
             "The FinGrind book key file must be a regular non-symlink file: " + bookKeyFilePath);
       }
       requireSecureSecurity(bookKeyFilePath, securityInspector.inspect(bookKeyFilePath));
     } catch (UnsupportedOperationException exception) {
       throw unsupportedSecureFilesystem(bookKeyFilePath, exception);
     } catch (IOException exception) {
-      throw new IllegalStateException(
+      throw new ContractErrorException(
+          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
           "Failed to inspect the FinGrind book key file permissions: " + bookKeyFilePath,
+          "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
+          null,
           exception);
     }
   }
@@ -152,11 +157,11 @@ final class SqliteBookKeyFileSecurity {
   private static void requireSecurePosixPermissions(
       Path bookKeyFilePath, Set<PosixFilePermission> permissions) {
     if (!permissions.contains(PosixFilePermission.OWNER_READ)) {
-      throw new IllegalStateException(
+      throw invalidBookKeyFile(
           "The FinGrind book key file must be owner-readable: " + bookKeyFilePath);
     }
     if (!POSIX_KEY_FILE_PERMISSIONS.containsAll(permissions)) {
-      throw new IllegalStateException(
+      throw invalidBookKeyFile(
           "The FinGrind book key file must use owner-only permissions (0400 or 0600): "
               + bookKeyFilePath);
     }
@@ -167,7 +172,7 @@ final class SqliteBookKeyFileSecurity {
         .filter(entry -> entry.type() == AclEntryType.ALLOW)
         .filter(entry -> security.owner().equals(entry.principal()))
         .noneMatch(entry -> entry.permissions().containsAll(ACL_READ_PERMISSIONS))) {
-      throw new IllegalStateException(
+      throw invalidBookKeyFile(
           "The FinGrind book key file ACL must grant the file owner read access: "
               + bookKeyFilePath);
     }
@@ -180,7 +185,7 @@ final class SqliteBookKeyFileSecurity {
         .findFirst()
         .ifPresent(
             entry -> {
-              throw new IllegalStateException(
+              throw invalidBookKeyFile(
                   "The FinGrind book key file ACL must grant secret access only to the file owner: "
                       + bookKeyFilePath
                       + " grants access to "
@@ -217,13 +222,26 @@ final class SqliteBookKeyFileSecurity {
     return path.getFileSystem().supportedFileAttributeViews().contains(ACL_VIEW);
   }
 
-  private static IllegalStateException unsupportedSecureFilesystem(Path path) {
-    return new IllegalStateException(unsupportedSecureFilesystemMessage(path));
+  private static ContractErrorException invalidBookKeyFile(String message) {
+    return new ContractErrorException(
+        ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
+        message,
+        "Use one regular non-symlink key file protected by POSIX owner-only permissions or a Windows owner-only ACL, then rerun the command.",
+        null);
   }
 
-  private static IllegalStateException unsupportedSecureFilesystem(
+  private static ContractErrorException unsupportedSecureFilesystem(Path path) {
+    return invalidBookKeyFile(unsupportedSecureFilesystemMessage(path));
+  }
+
+  private static ContractErrorException unsupportedSecureFilesystem(
       Path path, RuntimeException cause) {
-    return new IllegalStateException(unsupportedSecureFilesystemMessage(path), cause);
+    return new ContractErrorException(
+        ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
+        unsupportedSecureFilesystemMessage(path),
+        "Use one regular non-symlink key file protected by POSIX owner-only permissions or a Windows owner-only ACL, then rerun the command.",
+        null,
+        cause);
   }
 
   private static String unsupportedSecureFilesystemMessage(Path path) {

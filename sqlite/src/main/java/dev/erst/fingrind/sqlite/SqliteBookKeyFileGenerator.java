@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -88,9 +90,12 @@ public final class SqliteBookKeyFileGenerator {
     try {
       SqliteBookKeyFileSecurity.createSecureEmptyFile(normalizedPath);
     } catch (FileAlreadyExistsException exception) {
-      throw new IllegalStateException(
+      throw new ContractErrorException(
+          ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS,
           "The FinGrind book key file already exists and will not be overwritten: "
               + normalizedPath,
+          "Choose a different destination path for generate-book-key-file, or remove the existing file yourself before rerunning.",
+          null,
           exception);
     }
   }

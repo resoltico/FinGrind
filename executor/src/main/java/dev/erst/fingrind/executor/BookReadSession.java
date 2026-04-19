@@ -2,19 +2,25 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Optional;
 
-/** Read-only seam for inspecting books, listings, and balances. */
-public interface BookQuerySession extends AutoCloseable {
+/** Unified read-only seam for inspection, listings, balances, and office-worker reports. */
+public interface BookReadSession extends AutoCloseable {
   /** Inspects the selected book file without mutating it. */
   BookInspection inspectBook();
 
@@ -35,6 +41,15 @@ public interface BookQuerySession extends AutoCloseable {
 
   /** Computes grouped per-currency balances for one declared account in one initialized book. */
   Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query);
+
+  /** Computes one canonical trial-balance report. */
+  TrialBalanceReport trialBalance(TrialBalanceQuery query);
+
+  /** Computes one canonical account-ledger report for one declared account. */
+  AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account);
+
+  /** Computes one canonical bounded period summary report. */
+  PeriodSummaryReport periodSummary(PeriodSummaryQuery query);
 
   @Override
   void close();

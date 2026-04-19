@@ -25,9 +25,9 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -150,8 +150,8 @@ final class CliLedgerPlanParser {
               parseWireValue(
                   requiredText(assertionNode, ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE),
                   ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE,
-                  NormalBalance.wireValues(),
-                  NormalBalance::fromWireValue));
+                  BalanceSide.wireValues(),
+                  BalanceSide::fromWireValue));
     };
   }
 

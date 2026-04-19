@@ -90,7 +90,7 @@ public final class MachineContract {
             new ContractTemplates.JournalLineTemplateDescriptor(
                 "2000", JournalLine.EntrySide.CREDIT.wireValue(), "EUR", "10.00")),
         new ContractTemplates.ProvenanceTemplateDescriptor(
-            "operator-1", ActorType.USER.wireValue(), "command-1", "idem-1", "cause-1", null),
+            "operator-1", ActorType.HUMAN.wireValue(), "command-1", "idem-1", "cause-1", null),
         null);
   }
 

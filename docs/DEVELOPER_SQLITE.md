@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-17"
 route:
@@ -173,10 +173,11 @@ The SQLite adapter is split into focused collaborators:
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
   `BookNotInitialized`
 - read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
-  `account-balance`, and `preflight-entry`) open SQLite through `SQLITE_OPEN_READONLY` and then
-  enforce `pragma query_only = on`
+  `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, and `preflight-entry`)
+  open SQLite through `SQLITE_OPEN_READONLY` and then enforce `pragma query_only = on`
 - opening an existing plaintext SQLite file or using the wrong passphrase source fails during key
-  validation, typically surfacing `SQLITE_NOTADB`
+  validation, but the public CLI classifies those cases as the deterministic
+  `book-authentication-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`
 - initialized FinGrind books are stamped with a fixed `pragma application_id` and
   `pragma user_version`, and foreign or unsupported SQLite files are rejected before ordinary book
   reads proceed
@@ -202,8 +203,11 @@ The SQLite adapter is split into focused collaborators:
 The posting seam distinguishes ordinary domain outcomes from true runtime failures:
 - accepted commits return `PostingCommitResult.Committed`
 - ordinary write refusals return `PostingCommitResult.Rejected(...)`
-- other SQLite-native, bridge, filesystem, passphrase-source, or cipher failures stay
-  `IllegalStateException` and become CLI `runtime-failure`
+- deterministic passphrase and key-file policy failures are translated into contract-owned CLI
+  errors such as `book-authentication-failed`, `invalid-book-key-file`, or
+  `interactive-prompt-unavailable`
+- other SQLite-native, bridge, or filesystem failures stay `IllegalStateException` and become CLI
+  `runtime-failure`
 
 ## Book Protection Contract
 

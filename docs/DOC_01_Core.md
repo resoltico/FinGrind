@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: CORE
 updated: "2026-04-17"
 route:
@@ -189,7 +189,7 @@ public record ActorId(String value)
 
 ```java
 public enum ActorType {
-  USER,
+  HUMAN,
   SYSTEM,
   AGENT
 }

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_JAZZER_COVERAGE
 updated: "2026-04-17"
 route:
@@ -133,6 +133,7 @@ What it asserts:
 Not yet fuzzed:
 - concurrent access between multiple writers
 - CLI response rendering and envelope serialization
-- executed inspect-book, get-posting, list-postings, and account-balance query surfaces beyond request parsing
+- executed inspect-book, get-posting, list-postings, account-balance, trial-balance,
+  account-ledger, and period-summary read/report surfaces beyond request parsing
 - corrupt or directory-backed pre-existing book paths before any valid schema exists
 - large-scale corpus growth around reversal policy edge cases such as reversal-shape near misses
