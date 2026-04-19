@@ -74,9 +74,12 @@ function Invoke-BundleCommand {
         $stdoutPath = [System.IO.Path]::GetTempFileName()
         $stderrPath = [System.IO.Path]::GetTempFileName()
         try {
+            $quotedArgumentLine = ($Arguments | ForEach-Object {
+                    '"' + $_.Replace('"', '\"') + '"'
+                }) -join ' '
             $process = Start-Process `
                 -FilePath $script:BundleLauncher `
-                -ArgumentList $Arguments `
+                -ArgumentList $quotedArgumentLine `
                 -NoNewWindow `
                 -Wait `
                 -PassThru `
