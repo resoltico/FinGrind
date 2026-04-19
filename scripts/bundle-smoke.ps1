@@ -304,7 +304,7 @@ try {
   "accountName": "Revenue",
   "normalBalance": "CREDIT"
 }
-    "@ | Write-Utf8NoBomFile -Path $declareRevenuePath
+"@ | Write-Utf8NoBomFile -Path $declareRevenuePath
 
     "definitely-wrong-bundle-acceptance-passphrase`n" | Write-Utf8NoBomFile -Path $wrongBookKeyPath
 
