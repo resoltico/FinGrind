@@ -93,7 +93,7 @@ jobs:
       - name: Verify managed SQLite CLI runtime
         run: |
           set -euo pipefail
-          output="$(./gradlew :cli:run --args='capabilities' --no-daemon --console=plain)"
+          output="$(./gradlew :cli:run --args='capabilities --output json' --no-daemon --console=plain)"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -Eq '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"'
           printf '%s\n' "$output" | grep -Eq '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'

@@ -39,7 +39,7 @@ jobs:
       - name: Verify managed SQLite CLI runtime
         run: |
           set -euo pipefail
-          output="$(./gradlew :cli:run --args='capabilities' --no-daemon --console=plain)"
+          output="$(./gradlew :cli:run --args='capabilities --output json' --no-daemon --console=plain)"
           printf '%s\n' "$output"
           printf '%s\n' "$output" | grep -Eq '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"'
           printf '%s\n' "$output" | grep -Eq '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
@@ -83,7 +83,7 @@ jobs:
       - name: Verify managed SQLite CLI runtime on Windows
         shell: pwsh
         run: |
-          $output = .\gradlew.bat :cli:run --args='capabilities' --no-daemon --console=plain | Out-String
+          $output = .\gradlew.bat :cli:run --args='capabilities --output json' --no-daemon --console=plain | Out-String
           Write-Host $output
           if ($output -notmatch '"sqliteLibraryMode"\s*:\s*"managed-only"') { throw "missing managed-only sqlite library mode" }
           if ($output -notmatch '"requiredMinimumSqliteVersion"\s*:\s*"3\.53\.0"') { throw "missing required minimum SQLite version" }
