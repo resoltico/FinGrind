@@ -1995,7 +1995,7 @@ class FinGrindCliTest {
             .path("hint")
             .asString()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows)"));
+                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
 
   @Test
@@ -2030,7 +2030,7 @@ class FinGrindCliTest {
             .path("hint")
             .asString()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows)"));
+                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
 
   @Test
@@ -2066,7 +2066,7 @@ class FinGrindCliTest {
             .path("hint")
             .asString()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows)"));
+                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
 
   @Test
@@ -2082,7 +2082,7 @@ class FinGrindCliTest {
             fixedClock(),
             new ExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
-                    "bin\\fingrind.cmd must be used from the extracted bundle root.")));
+                    "bin\\fingrind.ps1 must be used from the extracted bundle root.")));
 
     int exitCode =
         cli.run(
@@ -2102,7 +2102,7 @@ class FinGrindCliTest {
             .path("hint")
             .asString()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows)"));
+                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
 
   @Test

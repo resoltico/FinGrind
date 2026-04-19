@@ -142,7 +142,7 @@ try {
     }
 
     $bundleRoot = $extractedRoots[0].FullName
-    $script:BundleLauncher = Join-Path $bundleRoot "bin/fingrind.cmd"
+    $script:BundleLauncher = Join-Path $bundleRoot "bin/fingrind.ps1"
     $runtimeJava = Join-Path $bundleRoot "runtime/bin/java.exe"
     $applicationJar = Join-Path $bundleRoot "lib/app/fingrind.jar"
     $nativeLibrary = Join-Path $bundleRoot "lib/native/sqlite3.dll"
@@ -184,7 +184,7 @@ try {
     if ($bundleManifest.bundleTarget.classifier -ne "windows-x86_64") {
         Fail "bundle manifest did not report the current host classifier"
     }
-    if ($bundleManifest.launcher -ne "bin/fingrind.cmd") {
+    if ($bundleManifest.launcher -ne "bin/fingrind.ps1") {
         Fail "bundle manifest did not report the Windows launcher path"
     }
     if ($bundleManifest.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {

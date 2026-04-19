@@ -97,7 +97,7 @@ The current public target set is:
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
 Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
-published as `.zip` archives with the `bin\fingrind.cmd` launcher.
+published as `.zip` archives with the `bin\fingrind.ps1` launcher.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
@@ -116,8 +116,8 @@ One public Windows bundle flow:
 
 ```powershell
 Expand-Archive fingrind-0.18.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.18.0-windows-x86_64\bin\fingrind.cmd help
-.\fingrind-0.18.0-windows-x86_64\bin\fingrind.cmd `
+.\fingrind-0.18.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.18.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > $env:TEMP\fingrind-request.json
 ```
 

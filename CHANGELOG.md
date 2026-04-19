@@ -31,9 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unified the bundle and container private-runtime build paths around one staged module list and
   explicitly retained `jdk.unsupported`, so Docker can no longer drift from the bundle `jdeps`
   result and PDF export no longer emits PDFBox unmapper warnings on trimmed runtimes.
-- Switched the public Windows bundle launcher to UTF-8 before it forwards CLI arguments, so
-  Unicode workspace and book paths survive the `fingrind.cmd` boundary instead of degrading into
-  invalid `?` path characters.
+- Switched the public Windows bundle launcher contract to `bin\fingrind.ps1` and kept
+  `bin\fingrind.cmd` as a compatibility wrapper, so Unicode workspace and book paths no longer
+  degrade into invalid `?` path characters before the JVM sees them.
 
 ### Documentation
 - Updated README, user guides, developer docs, release protocol, and checked-in examples for the

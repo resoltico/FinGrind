@@ -1,24 +1,11 @@
 @echo off
 setlocal enableextensions
-chcp 65001 >nul
 
-for %%I in ("%~dp0..") do set "APP_HOME=%%~fI"
-set "RUNTIME_JAVA=%APP_HOME%\runtime\bin\java.exe"
-set "APPLICATION_JAR=%APP_HOME%\lib\app\fingrind.jar"
+set "POWERSHELL_LAUNCHER=%~dp0fingrind.ps1"
 
-if not exist "%RUNTIME_JAVA%" (
-  >&2 echo error: missing bundled Java runtime at %RUNTIME_JAVA%
+if not exist "%POWERSHELL_LAUNCHER%" (
+  >&2 echo error: missing FinGrind PowerShell launcher at %POWERSHELL_LAUNCHER%
   exit /b 1
 )
 
-if not exist "%APPLICATION_JAR%" (
-  >&2 echo error: missing FinGrind application JAR at %APPLICATION_JAR%
-  exit /b 1
-)
-
-"%RUNTIME_JAVA%" ^
-  --enable-native-access=ALL-UNNAMED ^
-  "-Dfingrind.bundle.home=%APP_HOME%" ^
-  -Dfingrind.runtime.distribution=self-contained-bundle ^
-  -jar "%APPLICATION_JAR%" ^
-  %*
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%POWERSHELL_LAUNCHER%" %*

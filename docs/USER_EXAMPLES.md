@@ -14,7 +14,7 @@ route:
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
 `./fingrind-0.18.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.18.0-windows-x86_64\bin\fingrind.cmd` on Windows. For source-driven local work,
+`.\fingrind-0.18.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 

@@ -21,7 +21,7 @@ FinGrind's public CLI download is a self-contained per-platform archive, not a r
 
 Each published archive contains:
 - `bin/fingrind`
-- `bin/fingrind.cmd`
+- `bin/fingrind.ps1`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
@@ -78,7 +78,7 @@ Linux bundle policy:
 Windows bundle policy:
 - public Windows bundles are built on Windows GitHub-hosted runners
 - they use the native MSVC toolchain through the Developer Command Prompt environment
-- they are published as `.zip` archives and use `bin\fingrind.cmd` as the platform launcher
+- they are published as `.zip` archives and use `bin\fingrind.ps1` as the platform launcher
 
 ## Release Build Policy
 
