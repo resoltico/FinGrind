@@ -71,9 +71,24 @@ function Invoke-BundleCommand {
     try {
         Remove-Item Env:FINGRIND_SQLITE_LIBRARY -ErrorAction SilentlyContinue
         Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue
-
-        $output = & $script:BundleLauncher @Arguments 2>&1 | Out-String
-        $exitCode = $LASTEXITCODE
+        $stdoutPath = [System.IO.Path]::GetTempFileName()
+        $stderrPath = [System.IO.Path]::GetTempFileName()
+        try {
+            $process = Start-Process `
+                -FilePath $script:BundleLauncher `
+                -ArgumentList $Arguments `
+                -NoNewWindow `
+                -Wait `
+                -PassThru `
+                -RedirectStandardOutput $stdoutPath `
+                -RedirectStandardError $stderrPath
+            $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { "" }
+            $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { "" }
+            $output = ($stdout, $stderr | Where-Object { -not [string]::IsNullOrEmpty($_) }) -join "`n"
+            $exitCode = $process.ExitCode
+        } finally {
+            Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        }
     } finally {
         if ($null -ne $originalSqliteLibrary) {
             $env:FINGRIND_SQLITE_LIBRARY = $originalSqliteLibrary
