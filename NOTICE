@@ -9,6 +9,10 @@ The Apache License, Version 2.0 full text is included in this distribution as
 LICENSE-APACHE-2.0 and is also available at:
   https://www.apache.org/licenses/LICENSE-2.0
 
+The SIL Open Font License, Version 1.1 full text is included in this
+distribution as LICENSE-SIL-OFL-1.1 and is also available at:
+  https://openfontlicense.org
+
 ================================================================================
 Apache 2.0 Components
 ================================================================================
@@ -22,6 +26,21 @@ Jackson Databind / Jackson Core / Jackson Annotations
 
   Jackson JSON processor
   Copyright (c) 2007- Tatu Saloranta, tatu.saloranta@iki.fi
+
+--------------------------------------------------------------------------------
+Apache PDFBox / FontBox / PDFBox IO
+  Copyright 2002-2025 The Apache Software Foundation
+  https://pdfbox.apache.org/
+
+  Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE-2.0).
+
+--------------------------------------------------------------------------------
+Noto Sans
+  Copyright 2022 The Noto Project Authors
+  https://notofonts.github.io/
+
+  Licensed under the SIL Open Font License, Version 1.1
+  (see LICENSE-SIL-OFL-1.1).
 
 ================================================================================
 Runtime Notes

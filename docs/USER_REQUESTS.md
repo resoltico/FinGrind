@@ -1,10 +1,10 @@
 ---
 afad: "3.5"
-version: "0.17.0"
-domain: USER_REQUESTS
-updated: "2026-04-18"
+version: "0.18.0"
+domain: HUMAN_REQUESTS
+updated: "2026-04-19"
 route:
-  keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, ledger-plan, execute-plan]
+  keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
 ---
 
@@ -119,14 +119,14 @@ Current ledger-plan rules:
 | Field | Accepted Values |
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
-| `provenance.actorType` | `USER`, `SYSTEM`, `AGENT` |
+| `provenance.actorType` | `HUMAN`, `SYSTEM`, `AGENT` |
 | `normalBalance` | `DEBIT`, `CREDIT` |
 
 ## CLI Output Shapes
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance` | `status`, `payload` |
+| success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary` | `status`, `payload` |
 | raw request document | `print-request-template`, `print-plan-template` | minimal valid posting request JSON or runnable ledger-plan JSON |
 | `preflight-accepted` | successful `preflight-entry` | `status`, `idempotencyKey`, `effectiveDate` |
 | `committed` | successful `post-entry` | `status`, `postingId`, `idempotencyKey`, `effectiveDate`, `recordedAt` |
@@ -168,7 +168,11 @@ rendered:
   are arrays of `{ "name", "presence", "description" }`
 - `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live
   enum constants
-- `responseModel.rejections` is an array of `{ "code", "description" }`
+- `responseModel.rejections` is an array of deterministic business rejections rendered from the
+  administration, query, and posting rejection families
+- `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
+  descriptors such as `invalid-page-cursor`, `book-authentication-failed`, and
+  `interactive-prompt-unavailable`
 - `preflightSemantics` is the short machine hint and `preflight` expands it with
   `isCommitGuarantee`
 - `currencyModel` declares the current single-currency scope and the explicit
@@ -217,12 +221,57 @@ rendered:
 - optional query filters: `effectiveDateFrom`, `effectiveDateTo`
 - `balances[]`, where each bucket includes `currencyCode`, `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
 
-Checked-in examples for the read/query surface:
+## Report Responses
+
+`trial-balance` success returns:
+- optional `payload.effectiveDateTo`
+- `payload.rows[]`, where each row includes `accountCode`, `accountName`, `normalBalance`, `active`,
+  `declaredAt`, `currencyCode`, `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
+
+`account-ledger` success returns:
+- declared-account identity fields: `accountCode`, `accountName`, `normalBalance`, `active`, `declaredAt`
+- optional date filters: `effectiveDateFrom`, `effectiveDateTo`
+- `openingBalances[]` and `closingBalances[]`, where each bucket includes `currencyCode`,
+  `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
+- `entries[]`, where each row includes `postingId`, `effectiveDate`, `recordedAt`, `currencyCode`,
+  `debitAmount`, `creditAmount`, `runningBalance`, `runningBalanceSide`, and `counterpartAccounts[]`
+
+`period-summary` success returns:
+- `payload.effectiveDateFrom`
+- `payload.effectiveDateTo`
+- `payload.postingCount`
+- `payload.postingLineCount`
+- `payload.accountsTouched`
+- `payload.currencyTotals[]`, where each row includes `currencyCode`, `debitTotal`, `creditTotal`,
+  `netAmount`, and `balanceSide`
+- `payload.accountActivity[]`, where each row includes `accountCode`, `accountName`,
+  `normalBalance`, `active`, `declaredAt`, `currencyCode`, `debitTotal`, `creditTotal`,
+  `netAmount`, and `balanceSide`
+
+Commands that advertise `--output` keep JSON as the default machine surface. Discovery,
+administration, write, and read/report commands can also render operator-facing `--output human`,
+and the tabular read/report commands support `--output csv` for spreadsheet import.
+`account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
+one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result
+model; it does not change the JSON payload contract. Deterministic failures for commands that
+accept `--output human` are rendered in the same human-facing format instead of falling back to
+JSON envelopes.
+
+Checked-in examples for the read/report surface:
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json)
 - [examples/list-accounts-response.json](./examples/list-accounts-response.json)
 - [examples/get-posting-response.json](./examples/get-posting-response.json)
 - [examples/list-postings-response.json](./examples/list-postings-response.json)
 - [examples/account-balance-response.json](./examples/account-balance-response.json)
+- [examples/trial-balance-response.json](./examples/trial-balance-response.json)
+- [examples/account-ledger-response.json](./examples/account-ledger-response.json)
+- [examples/period-summary-response.json](./examples/period-summary-response.json)
+- [examples/trial-balance-human.txt](./examples/trial-balance-human.txt)
+- [examples/account-ledger.csv](./examples/account-ledger.csv)
+- [examples/period-summary-human.txt](./examples/period-summary-human.txt)
+
+FinGrind does not check PDF binaries into `docs/examples`; PDF export is verified through CLI,
+bundle, and Docker smoke flows instead.
 
 Checked-in examples for the ledger-plan surface:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
@@ -259,3 +308,8 @@ Malformed JSON, wrong field types, missing required fields, invalid date/time te
 domain-validation failures return `status: "error"` with code `invalid-request`.
 Argument and parsing failures may also carry a `hint` and `argument` field so a caller can correct
 the invocation mechanically.
+
+Deterministic CLI-side `status: "error"` examples are also checked in:
+- [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)
+- [examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json)
+- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json)

@@ -8,8 +8,8 @@ public interface LedgerPlanSession {
   /** Returns the posting view bound to the same atomic plan boundary. */
   PostingBookSession postingSession();
 
-  /** Returns the query view bound to the same atomic plan boundary. */
-  BookQuerySession querySession();
+  /** Returns the unified read view bound to the same atomic plan boundary. */
+  BookReadSession readSession();
 
   /** Begins one atomic ledger-plan transaction. */
   void beginLedgerPlanTransaction();

@@ -14,6 +14,7 @@ public final class ContractDiscovery {
         HelpDescriptor.class,
         CapabilitiesDescriptor.class,
         VersionDescriptor.class,
+        ArtifactOutputDescriptor.class,
         CommandDescriptor.class,
         ExitCodeDescriptor.class,
         EnvironmentDescriptor.class);
@@ -62,9 +63,18 @@ public final class ContractDiscovery {
   /** Descriptor for the version payload. */
   public record VersionDescriptor(String application, String version, String description) {}
 
+  /** Descriptor for one non-stdout export artifact supported by a command. */
+  public record ArtifactOutputDescriptor(String format, String option, String description) {}
+
   /** Descriptor for one advertised CLI command. */
   public record CommandDescriptor(
-      String name, List<String> aliases, List<String> options, String output, String summary) {}
+      String name,
+      List<String> aliases,
+      List<String> options,
+      String executionMode,
+      List<String> outputModes,
+      List<ArtifactOutputDescriptor> artifactOutputs,
+      String summary) {}
 
   /** Descriptor for one process exit code. */
   public record ExitCodeDescriptor(int code, String meaning) {}

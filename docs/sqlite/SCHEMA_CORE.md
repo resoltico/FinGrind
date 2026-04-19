@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: SQLITE_SCHEMA_CORE
 updated: "2026-04-18"
 route:
@@ -34,7 +34,7 @@ create table if not exists posting_fact (
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null,
-    actor_type text not null check (actor_type in ('USER', 'SYSTEM', 'AGENT')),
+    actor_type text not null check (actor_type in ('HUMAN', 'SYSTEM', 'AGENT')),
     command_id text not null,
     idempotency_key text not null,
     causation_id text not null,

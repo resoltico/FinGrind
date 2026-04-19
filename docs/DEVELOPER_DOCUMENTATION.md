@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-04-17"
+updated: "2026-04-19"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -20,7 +20,7 @@ FinGrind uses a deliberately split documentation model:
 - [README.md](./README.md) inside `docs/`: documentation index
 - `DOC_*.md`: AFAD-style reference atoms for current public API
 - other `docs/*.md`: auxiliary guides for users and contributors
-- `docs/examples/*.json`: runnable example payloads used by user guides
+- `docs/examples/`: runnable JSON, text, and CSV examples used by user guides
 
 This split is intentional. User onboarding, developer operations, and API retrieval serve different
 jobs and should not be collapsed into one giant file.
@@ -32,7 +32,7 @@ Put new material in the narrowest fitting place:
 - build, testing, storage, and workflow material belongs in developer guides under `docs/`
 - public API state belongs in `DOC_*.md`, not in narrative guides
 - schema descriptions belong under `docs/sqlite/`
-- example JSON payloads belong under `docs/examples/`
+- example payloads and rendered output examples belong under `docs/examples/`
 
 Do not put developer-only material into the root README.
 Do not duplicate full API signatures into auxiliary guides.

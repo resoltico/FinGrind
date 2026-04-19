@@ -1,0 +1,3 @@
+accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts
+1000,Cash,2026-04-07,2026-04-08,019da359-6a2f-705d-9e3b-40099a5d51ab,2026-04-07,2026-04-19T01:27:19.244188Z,EUR,10.00,0.00,10.00,DEBIT,2000
+1000,Cash,2026-04-07,2026-04-08,019da359-6bd2-7962-b974-2bdb26947072,2026-04-08,2026-04-19T01:27:19.669587Z,EUR,0.00,4.00,6.00,DEBIT,2000

@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -93,9 +95,12 @@ public final class SqliteBookPassphrase implements AutoCloseable {
       }
     }
     if (endIndex == 0) {
-      throw new IllegalStateException(
+      throw new ContractErrorException(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
           "The FinGrind book passphrase source must contain a non-empty UTF-8 passphrase: "
-              + sourceDescription);
+              + sourceDescription,
+          "Provide one non-empty UTF-8 passphrase through the selected key file, standard input, or interactive prompt route.",
+          null);
     }
     return Arrays.copyOf(loadedBytes, endIndex);
   }
@@ -110,9 +115,12 @@ public final class SqliteBookPassphrase implements AutoCloseable {
               .onUnmappableCharacter(CodingErrorAction.REPORT)
               .decode(ByteBuffer.wrap(keyBytes));
     } catch (CharacterCodingException exception) {
-      throw new IllegalStateException(
+      throw new ContractErrorException(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
           "The FinGrind book passphrase source must contain a UTF-8 passphrase: "
               + sourceDescription,
+          "Provide one UTF-8 passphrase payload through the selected passphrase source and rerun the command.",
+          null,
           exception);
     }
     try {
@@ -120,9 +128,12 @@ public final class SqliteBookPassphrase implements AutoCloseable {
       while (offset < decoded.length()) {
         int codePoint = Character.codePointAt(decoded, offset);
         if (Character.isISOControl(codePoint)) {
-          throw new IllegalStateException(
+          throw new ContractErrorException(
+              ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
               "The FinGrind book passphrase source must contain a single-line UTF-8 text passphrase without control characters: "
-                  + sourceDescription);
+                  + sourceDescription,
+              "Provide one single-line passphrase without control characters through the selected passphrase source and rerun the command.",
+              null);
         }
         offset += Character.charCount(codePoint);
       }

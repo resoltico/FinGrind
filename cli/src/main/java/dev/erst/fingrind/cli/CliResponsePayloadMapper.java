@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountLedgerEntry;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
@@ -13,12 +15,16 @@ import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.contract.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RejectionNarrative;
+import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
 import java.nio.file.Path;
 import java.util.List;
@@ -194,6 +200,43 @@ final class CliResponsePayloadMapper {
         snapshot.balances().stream().map(CliResponsePayloadMapper::balancePayload).toList());
   }
 
+  static CliResponseJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
+    return new CliResponseJsonModels.TrialBalancePayload(
+        report.effectiveDateTo().map(Object::toString).orElse(null),
+        report.rows().stream().map(CliResponsePayloadMapper::trialBalanceRowPayload).toList());
+  }
+
+  static CliResponseJsonModels.AccountLedgerPayload accountLedgerPayload(
+      AccountLedgerReport report) {
+    return new CliResponseJsonModels.AccountLedgerPayload(
+        report.account().accountCode().value(),
+        report.account().accountName().value(),
+        report.account().normalBalance().wireValue(),
+        report.account().active(),
+        report.account().declaredAt().toString(),
+        report.effectiveDateRange().effectiveDateFrom().map(Object::toString).orElse(null),
+        report.effectiveDateRange().effectiveDateTo().map(Object::toString).orElse(null),
+        report.openingBalances().stream().map(CliResponsePayloadMapper::balancePayload).toList(),
+        report.entries().stream()
+            .map(entry -> accountLedgerEntryPayload(report.account(), entry))
+            .toList(),
+        report.closingBalances().stream().map(CliResponsePayloadMapper::balancePayload).toList());
+  }
+
+  static CliResponseJsonModels.PeriodSummaryPayload periodSummaryPayload(
+      PeriodSummaryReport report) {
+    return new CliResponseJsonModels.PeriodSummaryPayload(
+        report.effectiveDateFrom().toString(),
+        report.effectiveDateTo().toString(),
+        report.postingCount(),
+        report.postingLineCount(),
+        report.accountsTouched(),
+        report.currencyTotals().stream().map(summary -> balancePayload(summary.totals())).toList(),
+        report.accountActivity().stream()
+            .map(CliResponsePayloadMapper::periodAccountActivityPayload)
+            .toList());
+  }
+
   static CliResponseJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
     return new CliResponseJsonModels.LedgerPlanPayload(
         result.planId().value(),
@@ -298,6 +341,50 @@ final class CliResponsePayloadMapper {
         balance.balanceSide().wireValue());
   }
 
+  private static CliResponseJsonModels.TrialBalanceRowPayload trialBalanceRowPayload(
+      TrialBalanceRow row) {
+    return new CliResponseJsonModels.TrialBalanceRowPayload(
+        row.account().accountCode().value(),
+        row.account().accountName().value(),
+        row.account().normalBalance().wireValue(),
+        row.account().active(),
+        row.account().declaredAt().toString(),
+        row.balance().netAmount().currencyCode().value(),
+        row.balance().debitTotal().amount().toPlainString(),
+        row.balance().creditTotal().amount().toPlainString(),
+        row.balance().netAmount().amount().toPlainString(),
+        row.balance().balanceSide().wireValue());
+  }
+
+  private static CliResponseJsonModels.AccountLedgerEntryPayload accountLedgerEntryPayload(
+      DeclaredAccount account, AccountLedgerEntry entry) {
+    return new CliResponseJsonModels.AccountLedgerEntryPayload(
+        entry.postingFact().postingId().value(),
+        entry.postingFact().journalEntry().effectiveDate().toString(),
+        entry.postingFact().provenance().recordedAt().toString(),
+        entry.movement().netAmount().currencyCode().value(),
+        entry.movement().debitTotal().amount().toPlainString(),
+        entry.movement().creditTotal().amount().toPlainString(),
+        entry.runningNetAmount().amount().toPlainString(),
+        entry.runningBalanceSide().wireValue(),
+        counterpartAccounts(account, entry.postingFact()));
+  }
+
+  private static CliResponseJsonModels.PeriodAccountActivityPayload periodAccountActivityPayload(
+      PeriodAccountActivityRow row) {
+    return new CliResponseJsonModels.PeriodAccountActivityPayload(
+        row.account().accountCode().value(),
+        row.account().accountName().value(),
+        row.account().normalBalance().wireValue(),
+        row.account().active(),
+        row.account().declaredAt().toString(),
+        row.movement().netAmount().currencyCode().value(),
+        row.movement().debitTotal().amount().toPlainString(),
+        row.movement().creditTotal().amount().toPlainString(),
+        row.movement().netAmount().amount().toPlainString(),
+        row.movement().balanceSide().wireValue());
+  }
+
   private static CliResponseJsonModels.LedgerExecutionJournalPayload ledgerExecutionJournalPayload(
       LedgerExecutionJournal journal) {
     return new CliResponseJsonModels.LedgerExecutionJournalPayload(
@@ -348,5 +435,14 @@ final class CliResponsePayloadMapper {
 
   private static String absolutePath(Path bookFilePath) {
     return bookFilePath.toAbsolutePath().normalize().toString();
+  }
+
+  private static List<String> counterpartAccounts(
+      DeclaredAccount account, PostingFact postingFact) {
+    return postingFact.journalEntry().lines().stream()
+        .map(line -> line.accountCode().value())
+        .filter(accountCode -> !accountCode.equals(account.accountCode().value()))
+        .distinct()
+        .toList();
   }
 }

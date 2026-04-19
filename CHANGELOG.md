@@ -5,6 +5,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-04-19
+
+### Changed
+- Added first-class office-worker reporting commands through `trial-balance`, `account-ledger`,
+  and `period-summary`, taught the CLI read/report surface to render canonical `json`, `human`,
+  and `csv` output modes from the same report models, and added explicit `--pdf-out` export for
+  report artifacts through the new report PDF adapter module backed by Apache PDFBox.
+- Extended the public CLI output contract so administration and write commands that already carried
+  machine envelopes can now also render operator-facing `--output human`, and deterministic
+  failures on those commands now stay in the selected human format instead of falling back to JSON.
+- Hardened the public verification surface so the bundle, Windows bundle, Docker image, and root
+  `./check.sh` flow now run office-worker acceptance workflows instead of only narrow posting smoke
+  checks.
+
+### Fixed
+- Reclassified deterministic operator-repairable failures onto contract-owned CLI error codes, so
+  malformed posting cursors, wrong book passphrases, prompt-unavailable paths, key-file overwrite
+  refusals, and invalid key-file contract violations now exit `2` instead of surfacing as generic
+  `runtime-failure`.
+- Stopped wrong-passphrase failures from leaking raw SQLite storage symptoms such as
+  `SQLITE_NOTADB`; the public surface now returns `book-authentication-failed` with repair hints.
+- Normalized report JSON payloads onto explicit wire shapes so report commands no longer leak
+  internal value-object structure such as nested `.value` wrappers into the machine contract.
+- Unified the bundle and container private-runtime build paths around one staged module list and
+  explicitly retained `jdk.unsupported`, so Docker can no longer drift from the bundle `jdeps`
+  result and PDF export no longer emits PDFBox unmapper warnings on trimmed runtimes.
+- Switched the public Windows bundle launcher contract to `bin\fingrind.ps1` and kept
+  `bin\fingrind.cmd` as a compatibility wrapper, so Unicode workspace and book paths no longer
+  degrade into invalid `?` path characters before the JVM sees them.
+
+### Documentation
+- Updated README, user guides, developer docs, release protocol, and checked-in examples for the
+  new report commands, output modes, deterministic CLI error taxonomy, and public acceptance
+  verification workflow.
+
 ## [0.17.0] - 2026-04-18
 
 ### Changed
@@ -525,7 +560,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.18.0
 [0.17.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.17.0
 [0.16.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.16.0
 [0.15.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.15.0

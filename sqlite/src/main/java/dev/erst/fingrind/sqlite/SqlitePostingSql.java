@@ -29,6 +29,10 @@ final class SqlitePostingSql {
   static final int COL_ACCOUNT_NORMAL_BALANCE = 2;
   static final int COL_ACCOUNT_ACTIVE = 3;
   static final int COL_ACCOUNT_DECLARED_AT = 4;
+  static final int COL_REPORT_POSTING_ID = 5;
+  static final int COL_REPORT_ENTRY_SIDE = 6;
+  static final int COL_REPORT_CURRENCY_CODE = 7;
+  static final int COL_REPORT_AMOUNT = 8;
 
   private static final String BASE_POSTING_SELECT =
       """
@@ -124,6 +128,23 @@ final class SqlitePostingSql {
       from journal_line
       join posting_fact on posting_fact.posting_id = journal_line.posting_id
       where journal_line.account_code = ?
+      """;
+
+  private static final String BASE_REPORT_LINE_SELECT =
+      """
+      select
+          account.account_code,
+          account.account_name,
+          account.normal_balance,
+          account.active,
+          account.declared_at,
+          posting_fact.posting_id,
+          journal_line.entry_side,
+          journal_line.currency_code,
+          journal_line.amount
+      from journal_line
+      join posting_fact on posting_fact.posting_id = journal_line.posting_id
+      join account on account.account_code = journal_line.account_code
       """;
 
   static final String INSERT_POSTING_FACT =
@@ -243,6 +264,52 @@ final class SqlitePostingSql {
     }
     sql.append(
         " order by posting_fact.effective_date, posting_fact.recorded_at, journal_line.line_order");
+    return sql.toString();
+  }
+
+  static String loadTrialBalanceLines(boolean filterEffectiveDateTo) {
+    StringBuilder sql =
+        new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 96)
+            .append(BASE_REPORT_LINE_SELECT)
+            .append(" where 1 = 1");
+    if (filterEffectiveDateTo) {
+      sql.append(" and posting_fact.effective_date <= ?");
+    }
+    sql.append(
+        " order by account.account_code, journal_line.currency_code, posting_fact.effective_date, posting_fact.recorded_at, posting_fact.posting_id");
+    return sql.toString();
+  }
+
+  static String loadPeriodSummaryLines() {
+    return BASE_REPORT_LINE_SELECT
+        + """
+           where posting_fact.effective_date >= ?
+             and posting_fact.effective_date <= ?
+           order by posting_fact.effective_date, posting_fact.recorded_at, posting_fact.posting_id, journal_line.line_order
+           """;
+  }
+
+  static String listPostingsForAccountLedger(
+      boolean filterEffectiveDateFrom, boolean filterEffectiveDateTo) {
+    StringBuilder sql =
+        new StringBuilder(BASE_POSTING_SELECT.length() + 192)
+            .append(BASE_POSTING_SELECT)
+            .append(
+                """
+                 where exists (
+                     select 1
+                     from journal_line
+                     where journal_line.posting_id = posting_fact.posting_id
+                       and journal_line.account_code = ?
+                 )
+                """);
+    if (filterEffectiveDateFrom) {
+      sql.append(" and effective_date >= ?");
+    }
+    if (filterEffectiveDateTo) {
+      sql.append(" and effective_date <= ?");
+    }
+    sql.append(" order by effective_date, recorded_at, posting_id");
     return sql.toString();
   }
 

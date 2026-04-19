@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: INDEX
 updated: "2026-04-17"
 route:
-  keywords: [fingrind, index, routing, api, symbols, core, protocol-catalog, contract, executor, machine-contract, query-session, adapters]
-  questions: ["where is the fingrind api documented", "which doc file covers BookQuerySession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers LedgerPlanService"]
+  keywords: [fingrind, index, routing, api, symbols, core, protocol-catalog, contract, executor, machine-contract, read-session, adapters]
+  questions: ["where is the fingrind api documented", "which doc file covers BookReadSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers LedgerPlanService"]
 ---
 
 # API Index
@@ -65,7 +65,7 @@ route:
 | `DeclareAccountResult` | `DOC_02_Application.md` | `DeclareAccountResult` |
 | `RekeyBookResult` | `DOC_02_Application.md` | `RekeyBookResult` |
 | `BookInspection` | `DOC_02_Application.md` | `BookInspection` |
-| `BookQueryService` | `DOC_02_Application.md` | `BookQueryService` |
+| `BookReadService` | `DOC_02_Application.md` | `BookReadService` |
 | `ListAccountsQuery` | `DOC_02_Application.md` | `ListAccountsQuery` |
 | `AccountPage` | `DOC_02_Application.md` | `AccountPage` |
 | `ListAccountsResult` | `DOC_02_Application.md` | `ListAccountsResult` |
@@ -103,7 +103,7 @@ route:
 | `BookAdministrationSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookAdministrationSession` |
 | `PostingValidationBook` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidationBook` |
 | `PostingBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `PostingBookSession` |
-| `BookQuerySession` | `DOC_03_BookSessionsAndAdapters.md` | `BookQuerySession` |
+| `BookReadSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookReadSession` |
 | `LedgerPlanSession` | `DOC_03_BookSessionsAndAdapters.md` | `LedgerPlanSession` |
 | `InMemoryBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `InMemoryBookSession` |
 | `PostingCommitResult` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |

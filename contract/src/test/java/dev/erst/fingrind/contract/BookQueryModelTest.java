@@ -9,6 +9,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -222,7 +223,7 @@ class BookQueryModelTest {
         new ArrayList<>(
             List.of(
                 new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), NormalBalance.DEBIT)));
+                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
 
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(

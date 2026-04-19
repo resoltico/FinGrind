@@ -1,17 +1,30 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.AccountLedgerEntry;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
@@ -32,7 +45,7 @@ import java.util.function.Supplier;
 
 /** In-memory book session for tests and non-durable harness composition. */
 public final class InMemoryBookSession
-    implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookQuerySession {
+    implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookReadSession {
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<AccountCode, DeclaredAccount> accountsByCode = mutableMap();
   private final Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey = mutableMap();
@@ -53,7 +66,7 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public BookQuerySession querySession() {
+  public BookReadSession readSession() {
     return this;
   }
 
@@ -266,11 +279,166 @@ public final class InMemoryBookSession
           List<dev.erst.fingrind.contract.CurrencyBalance> balances =
               totalsByCurrency.entrySet().stream()
                   .sorted(Comparator.comparing(entry -> entry.getKey().value()))
-                  .map(entry -> balance(entry.getKey(), entry.getValue(), account.normalBalance()))
+                  .map(entry -> balance(entry.getKey(), entry.getValue()))
                   .toList();
           return Optional.of(
               new dev.erst.fingrind.contract.AccountBalanceSnapshot(
                   account, query.effectiveDateFrom(), query.effectiveDateTo(), balances));
+        });
+  }
+
+  @Override
+  public TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+    return withLock(
+        () ->
+            new TrialBalanceReport(
+                query.effectiveDateTo(),
+                accountsByCode.values().stream()
+                    .sorted(Comparator.comparing(account -> account.accountCode().value()))
+                    .flatMap(
+                        account ->
+                            balancesFor(
+                                    account,
+                                    postingsByPostingId.values().stream()
+                                        .filter(
+                                            posting ->
+                                                query.effectiveDateTo().stream()
+                                                    .allMatch(
+                                                        date ->
+                                                            !posting
+                                                                .journalEntry()
+                                                                .effectiveDate()
+                                                                .isAfter(date)))
+                                        .toList())
+                                .stream()
+                                .map(balance -> new TrialBalanceRow(account, balance)))
+                    .toList()));
+  }
+
+  @Override
+  public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+    return withLock(
+        () -> {
+          EffectiveDateRange range =
+              EffectiveDateRange.of(query.effectiveDateFrom(), query.effectiveDateTo());
+          List<PostingFact> orderedPostings =
+              postingsByPostingId.values().stream()
+                  .sorted(
+                      Comparator.comparing(
+                              (PostingFact posting) -> posting.journalEntry().effectiveDate())
+                          .thenComparing(posting -> posting.provenance().recordedAt())
+                          .thenComparing(posting -> posting.postingId().value()))
+                  .filter(
+                      posting ->
+                          posting.journalEntry().lines().stream()
+                              .anyMatch(line -> line.accountCode().equals(account.accountCode())))
+                  .toList();
+          List<CurrencyBalance> openingBalances =
+              balancesFor(
+                  account,
+                  orderedPostings.stream()
+                      .filter(
+                          posting ->
+                              query.effectiveDateFrom().stream()
+                                  .allMatch(
+                                      lowerBound ->
+                                          posting
+                                              .journalEntry()
+                                              .effectiveDate()
+                                              .isBefore(lowerBound)))
+                      .toList());
+          Map<CurrencyCode, Totals> runningTotals = totalsMap(openingBalances);
+          List<AccountLedgerEntry> entries = new java.util.ArrayList<>();
+          orderedPostings.stream()
+              .filter(posting -> range.contains(posting.journalEntry().effectiveDate()))
+              .forEach(
+                  posting -> {
+                    CurrencyBalance movement = movementFor(account, posting);
+                    Totals totals =
+                        runningTotals.computeIfAbsent(
+                            movement.netAmount().currencyCode(), ignored -> new Totals());
+                    totals.debit = totals.debit.add(movement.debitTotal().amount());
+                    totals.credit = totals.credit.add(movement.creditTotal().amount());
+                    dev.erst.fingrind.contract.CurrencyBalance runningBalance =
+                        balance(movement.netAmount().currencyCode(), totals);
+                    entries.add(
+                        new AccountLedgerEntry(
+                            posting,
+                            movement,
+                            runningBalance.netAmount(),
+                            runningBalance.balanceSide()));
+                  });
+          List<CurrencyBalance> closingBalances = balancesFromTotals(runningTotals);
+          return new AccountLedgerReport(account, range, openingBalances, entries, closingBalances);
+        });
+  }
+
+  @Override
+  public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+    return withLock(
+        () -> {
+          List<PostingFact> postings =
+              postingsByPostingId.values().stream()
+                  .filter(
+                      posting ->
+                          !posting
+                                  .journalEntry()
+                                  .effectiveDate()
+                                  .isBefore(query.effectiveDateFrom())
+                              && !posting
+                                  .journalEntry()
+                                  .effectiveDate()
+                                  .isAfter(query.effectiveDateTo()))
+                  .toList();
+          Map<CurrencyCode, Totals> currencyTotals = mutableMap();
+          Map<AccountCode, Map<CurrencyCode, Totals>> accountTotals = mutableMap();
+          postings.stream()
+              .flatMap(posting -> posting.journalEntry().lines().stream())
+              .forEach(
+                  line -> {
+                    accumulate(currencyTotals, line);
+                    accountTotals
+                        .computeIfAbsent(line.accountCode(), ignored -> mutableMap())
+                        .computeIfAbsent(line.amount().currencyCode(), ignored -> new Totals());
+                    accumulate(accountTotals.get(line.accountCode()), line);
+                  });
+          List<PeriodCurrencySummary> currencySummaries =
+              currencyTotals.entrySet().stream()
+                  .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+                  .map(
+                      entry -> new PeriodCurrencySummary(balance(entry.getKey(), entry.getValue())))
+                  .toList();
+          List<PeriodAccountActivityRow> accountActivity =
+              accountTotals.entrySet().stream()
+                  .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+                  .flatMap(
+                      entry -> {
+                        DeclaredAccount account = accountsByCode.get(entry.getKey());
+                        return entry.getValue().entrySet().stream()
+                            .sorted(Comparator.comparing(currency -> currency.getKey().value()))
+                            .map(
+                                currencyEntry ->
+                                    new PeriodAccountActivityRow(
+                                        account,
+                                        balance(currencyEntry.getKey(), currencyEntry.getValue())));
+                      })
+                  .toList();
+          long accountsTouched =
+              postings.stream()
+                  .flatMap(posting -> posting.journalEntry().lines().stream())
+                  .map(JournalLine::accountCode)
+                  .distinct()
+                  .count();
+          int postingLineCount =
+              postings.stream().mapToInt(posting -> posting.journalEntry().lines().size()).sum();
+          return new PeriodSummaryReport(
+              query.effectiveDateFrom(),
+              query.effectiveDateTo(),
+              postings.size(),
+              postingLineCount,
+              Math.toIntExact(accountsTouched),
+              currencySummaries,
+              accountActivity);
         });
   }
 
@@ -394,18 +562,64 @@ public final class InMemoryBookSession
   }
 
   private static dev.erst.fingrind.contract.CurrencyBalance balance(
-      CurrencyCode currencyCode, Totals totals, NormalBalance accountNormalBalance) {
+      CurrencyCode currencyCode, Totals totals) {
     BigDecimal net = totals.debit.subtract(totals.credit);
     BigDecimal absoluteNet = net.abs();
-    NormalBalance balanceSide = net.signum() >= 0 ? NormalBalance.DEBIT : NormalBalance.CREDIT;
+    BalanceSide balanceSide = net.signum() > 0 ? BalanceSide.DEBIT : BalanceSide.CREDIT;
     if (absoluteNet.signum() == 0) {
-      balanceSide = accountNormalBalance;
+      balanceSide = BalanceSide.ZERO;
     }
     return new dev.erst.fingrind.contract.CurrencyBalance(
         new Money(currencyCode, totals.debit),
         new Money(currencyCode, totals.credit),
         new Money(currencyCode, absoluteNet),
         balanceSide);
+  }
+
+  private static List<dev.erst.fingrind.contract.CurrencyBalance> balancesFor(
+      DeclaredAccount account, List<PostingFact> postings) {
+    Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+    postings.stream()
+        .flatMap(posting -> posting.journalEntry().lines().stream())
+        .filter(line -> line.accountCode().equals(account.accountCode()))
+        .forEach(line -> accumulate(totalsByCurrency, line));
+    return balancesFromTotals(totalsByCurrency);
+  }
+
+  private static List<dev.erst.fingrind.contract.CurrencyBalance> balancesFromTotals(
+      Map<CurrencyCode, Totals> totalsByCurrency) {
+    return totalsByCurrency.entrySet().stream()
+        .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+        .map(entry -> balance(entry.getKey(), entry.getValue()))
+        .toList();
+  }
+
+  private static Map<CurrencyCode, Totals> totalsMap(
+      List<dev.erst.fingrind.contract.CurrencyBalance> balances) {
+    Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+    for (dev.erst.fingrind.contract.CurrencyBalance balance : balances) {
+      totalsByCurrency.put(balance.netAmount().currencyCode(), totalsFrom(balance));
+    }
+    return totalsByCurrency;
+  }
+
+  private static Totals totalsFrom(dev.erst.fingrind.contract.CurrencyBalance balance) {
+    Totals totals = new Totals();
+    totals.debit = balance.debitTotal().amount();
+    totals.credit = balance.creditTotal().amount();
+    return totals;
+  }
+
+  private static dev.erst.fingrind.contract.CurrencyBalance movementFor(
+      DeclaredAccount account, PostingFact postingFact) {
+    Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+    postingFact.journalEntry().lines().stream()
+        .filter(line -> line.accountCode().equals(account.accountCode()))
+        .forEach(line -> accumulate(totalsByCurrency, line));
+    return totalsByCurrency.entrySet().stream()
+        .findFirst()
+        .map(entry -> balance(entry.getKey(), entry.getValue()))
+        .orElseThrow();
   }
 
   private <T> T withLock(Supplier<T> action) {

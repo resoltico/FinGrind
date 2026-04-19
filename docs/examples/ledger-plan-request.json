@@ -44,7 +44,7 @@
         ],
         "provenance": {
           "actorId": "operator-1",
-          "actorType": "USER",
+          "actorType": "HUMAN",
           "commandId": "command-1",
           "idempotencyKey": "idem-demo-1",
           "causationId": "cause-1"

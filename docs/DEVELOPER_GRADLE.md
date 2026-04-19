@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-17"
 route:
@@ -142,8 +142,8 @@ That contract now has a few explicit rules:
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
   private Java runtime image, managed native library, launcher, and checksum
 - `:cli:shadowJar` remains an internal assembly input for Docker and advanced contributor
-  debugging; it does not build a native library, but it does stage the Docker JDeps support jars
-  under `cli/build/docker/jdeps/`
+  debugging; it does not build a native library, but it does stage the shared Docker runtime
+  module list under `cli/build/docker/runtime-modules.txt`
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
   `build/managed-sqlite/`
 - local developer-only `java -jar` verification that wants the managed runtime must therefore run

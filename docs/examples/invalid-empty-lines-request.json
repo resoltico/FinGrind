@@ -3,7 +3,7 @@
   "lines": [],
   "provenance": {
     "actorId": "operator-3",
-    "actorType": "USER",
+    "actorType": "HUMAN",
     "commandId": "command-invalid-1",
     "idempotencyKey": "idem-invalid-1",
     "causationId": "cause-invalid-1"

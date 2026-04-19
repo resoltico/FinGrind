@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":contract"))
     implementation(project(":core"))
     implementation(project(":executor"))
+    implementation(project(":report-pdf"))
     implementation(project(":sqlite"))
     implementation(libs.jackson.databind)
     testImplementation(libs.junit.jupiter)
@@ -66,7 +67,7 @@ val managedSqliteLibraryPath =
             "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}"
         },
     )
-val dockerJdepsSupportDirectory = layout.buildDirectory.dir("docker/jdeps")
+val dockerRuntimeModuleListOutputFile = layout.buildDirectory.file("docker/runtime-modules.txt")
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
@@ -136,9 +137,11 @@ tasks.named<ShadowJar>("shadowJar") {
     // NOTICE covers bundled dependency attribution for the CLI distribution.
     // LICENSE is the MIT license for FinGrind's own code.
     // LICENSE-APACHE-2.0 satisfies Apache License 2.0 Section 4(a) for bundled dependencies.
+    // LICENSE-SIL-OFL-1.1 satisfies the bundled Noto Sans font license terms.
     from(rootProject.file("NOTICE")) { into("META-INF") }
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("LICENSE-APACHE-2.0")) { into("META-INF") }
+    from(rootProject.file("LICENSE-SIL-OFL-1.1")) { into("META-INF") }
 
     manifest {
         attributes(
@@ -148,19 +151,6 @@ tasks.named<ShadowJar>("shadowJar") {
             "Implementation-License" to "MIT",
         )
     }
-}
-
-val stageDockerJdepsSupport =
-    tasks.register<Sync>("stageDockerJdepsSupport") {
-        group = "distribution"
-        description =
-            "Stages compile-only dependency jars required to analyze the Docker assembly input."
-        from(jdepsSupportConfiguration)
-        into(dockerJdepsSupportDirectory)
-    }
-
-tasks.named<ShadowJar>("shadowJar") {
-    finalizedBy(stageDockerJdepsSupport)
 }
 
 tasks.named<ProcessResources>("processResources") {
@@ -206,9 +196,33 @@ val writeRuntimeModuleList =
         javaHomeDirectory.set(currentJavaHomeDirectory)
         applicationJar.set(shadowJarArchiveFile)
         javaVersion.set(fingrindJavaVersion)
+        additionalModules.set(listOf("jdk.unsupported"))
         dependencyClasspath.from(jdepsSupportConfiguration)
         outputFile.set(runtimeModuleListOutputFile)
     }
+
+val stageDockerRuntimeModuleList =
+    tasks.register<Sync>("stageDockerRuntimeModuleList") {
+        group = "distribution"
+        description =
+            "Stages the precomputed runtime module list used by the Docker image build."
+        dependsOn(writeRuntimeModuleList)
+        from(runtimeModuleListOutputFile)
+        into(dockerRuntimeModuleListOutputFile.map { it.asFile.parentFile })
+        rename { "runtime-modules.txt" }
+    }
+
+val stageDockerRuntimeInputs =
+    tasks.register("stageDockerRuntimeInputs") {
+        group = "distribution"
+        description =
+            "Stages the shared Docker runtime inputs required by the container image build."
+        dependsOn(stageDockerRuntimeModuleList)
+    }
+
+tasks.named<ShadowJar>("shadowJar") {
+    finalizedBy(stageDockerRuntimeInputs)
+}
 
 val createRuntimeImage =
     tasks.register<CreateRuntimeImageTask>("createRuntimeImage") {
@@ -256,6 +270,7 @@ val stageCliBundle =
         }
         from(rootProject.file("LICENSE"))
         from(rootProject.file("LICENSE-APACHE-2.0"))
+        from(rootProject.file("LICENSE-SIL-OFL-1.1"))
         from(rootProject.file("LICENSE-SQLITE3MULTIPLECIPHERS"))
         from(rootProject.file("NOTICE"))
         from(rootProject.file("PATENTS.md"))

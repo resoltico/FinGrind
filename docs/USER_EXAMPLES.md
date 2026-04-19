@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: USER_EXAMPLES
-updated: "2026-04-18"
+updated: "2026-04-19"
 route:
-  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
-  questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
+  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
+  questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
 ---
 
 # Example Workflows
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.17.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.17.0-windows-x86_64\bin\fingrind.cmd` on Windows. For source-driven local work,
+`./fingrind-0.18.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.18.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -243,6 +243,56 @@ fingrind \
   --cursor "<nextCursor-from-the-prior-page>"
 ```
 
+## Run Office-Worker Reports
+
+```bash
+fingrind \
+  trial-balance \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --effective-date-to 2026-04-08 \
+  --output human
+
+fingrind \
+  account-ledger \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --account-code 1000 \
+  --effective-date-from 2026-04-07 \
+  --effective-date-to 2026-04-08 \
+  --output csv
+
+fingrind \
+  period-summary \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --effective-date-from 2026-04-07 \
+  --effective-date-to 2026-04-08 \
+  --output human
+
+fingrind \
+  trial-balance \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --effective-date-to 2026-04-08 \
+  --output human \
+  --pdf-out /tmp/fingrind/reports/acme-trial-balance.pdf
+```
+
+Checked-in report examples:
+- [examples/trial-balance-response.json](./examples/trial-balance-response.json)
+- [examples/account-ledger-response.json](./examples/account-ledger-response.json)
+- [examples/period-summary-response.json](./examples/period-summary-response.json)
+- [examples/trial-balance-human.txt](./examples/trial-balance-human.txt)
+- [examples/account-ledger.csv](./examples/account-ledger.csv)
+- [examples/period-summary-human.txt](./examples/period-summary-human.txt)
+
+These report commands keep JSON as the default machine surface, while `--output human` and
+`--output csv` render accounting-grade display scale for operators and spreadsheet tools.
+`--pdf-out` writes a parallel PDF artifact to the requested path. FinGrind does not check PDF
+binaries into `docs/examples`; the checked-in text and CSV examples remain the canonical review
+fixtures.
+
 ## Book Must Exist And Be Opened
 
 ```bash
@@ -339,7 +389,20 @@ One invalid-request response:
 {"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for a minimal valid request document, or 'fingrind capabilities' for accepted enums and fields."}
 ```
 
-## Wrong Key Fails The Open
+## Invalid Cursor Is Rejected Deterministically
+
+```bash
+fingrind \
+  list-postings \
+  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --cursor definitely-not-a-valid-cursor
+```
+
+One deterministic error example is checked in at
+[examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json).
+
+## Wrong Key Fails Deterministically
 
 ```bash
 printf '%s\n' 'wrong-passphrase' > /tmp/fingrind/keys/wrong.book-key
@@ -351,5 +414,21 @@ fingrind \
   --book-key-file /tmp/fingrind/keys/wrong.book-key
 ```
 
-One runtime-failure response includes `SQLITE_NOTADB`, because FinGrind validates the configured
-book passphrase before any schema or account read proceeds.
+One deterministic error example is checked in at
+[examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json).
+Wrong passphrases now return `book-authentication-failed` with exit `2`; SQLite storage symptoms
+such as `SQLITE_NOTADB` do not leak to callers.
+
+## Prompt Mode Requires A Supported Interactive Terminal
+
+```bash
+fingrind \
+  open-book \
+  --book-file /tmp/fingrind/books/prompt/prompt.sqlite \
+  --book-passphrase-prompt
+```
+
+When no supported controlling terminal is available, FinGrind returns the deterministic
+`interactive-prompt-unavailable` error with a repair hint pointing to `--book-key-file` or
+`--book-passphrase-stdin`. One example is checked in at
+[examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json).

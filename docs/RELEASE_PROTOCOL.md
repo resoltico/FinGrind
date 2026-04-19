@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-17"
+updated: "2026-04-19"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -315,11 +315,51 @@ Docker login state:
 
 ```bash
 ANON_DOCKER_CONFIG="$(mktemp -d)"
+PUBLIC_REPORT_ROOT="$(mktemp -d)"
 gh release view vX.Y.Z
 DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker pull ghcr.io/resoltico/fingrind:X.Y.Z
 DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker pull ghcr.io/resoltico/fingrind:latest
 DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm ghcr.io/resoltico/fingrind:X.Y.Z version
 DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm ghcr.io/resoltico/fingrind:latest version
+cat > "$PUBLIC_REPORT_ROOT/declare-cash.json" <<'JSON'
+{"accountCode":"1000","accountName":"Cash","normalBalance":"DEBIT"}
+JSON
+cat > "$PUBLIC_REPORT_ROOT/declare-revenue.json" <<'JSON'
+{"accountCode":"2000","accountName":"Revenue","normalBalance":"CREDIT"}
+JSON
+cat > "$PUBLIC_REPORT_ROOT/posting.json" <<'JSON'
+{
+  "effectiveDate": "2026-04-08",
+  "lines": [
+    {"accountCode":"1000","side":"DEBIT","currencyCode":"EUR","amount":"10.00"},
+    {"accountCode":"2000","side":"CREDIT","currencyCode":"EUR","amount":"10.00"}
+  ],
+  "provenance": {
+    "actorId": "release-protocol",
+    "actorType": "AGENT",
+    "commandId": "release-protocol-posting",
+    "idempotencyKey": "release-protocol-idem-1",
+    "causationId": "release-protocol-cause-1"
+  }
+}
+JSON
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  generate-book-key-file --book-key-file /work/book.key
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  open-book --book-file /work/book.sqlite --book-key-file /work/book.key
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  post-entry --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key --effective-date-to 2026-04-08 --output human
+DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
+  trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key --effective-date-to 2026-04-08 --output human --pdf-out /work/trial-balance.pdf
+[[ -f "$PUBLIC_REPORT_ROOT/trial-balance.pdf" ]]
+[[ "$(head -c 5 "$PUBLIC_REPORT_ROOT/trial-balance.pdf")" == "%PDF-" ]]
+rm -rf "$PUBLIC_REPORT_ROOT"
 rm -rf "$ANON_DOCKER_CONFIG"
 ```
 
@@ -328,6 +368,12 @@ successful `docker pull` alone is not sufficient verification. In particular: a 
 `docker pull` can succeed even when the platform manifests have been deleted — the index
 manifest is still present but the image is not actually runnable. The `docker run ... version`
 check is the definitive test.
+
+The temporary mounted-book workflow is also mandatory. It proves that the published public image
+can still perform one end-to-end bookkeeping/reporting loop, not just print discovery metadata.
+`trial-balance --output human` must render the posted `EUR 10.00` balance rather than failing in
+book initialization, key handling, or reporting. The same anonymous verification must also prove
+that `--pdf-out` writes one valid PDF artifact to the mounted workspace.
 
 If any anonymous Docker command fails, remove the temporary config directory, inspect the
 published state, and rerun the full anonymous verification sequence after the fix. Do not switch

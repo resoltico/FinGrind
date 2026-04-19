@@ -2,8 +2,8 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -62,7 +62,7 @@ public sealed interface LedgerAssertion
       AccountCode accountCode,
       EffectiveDateRange effectiveDateRange,
       Money netAmount,
-      NormalBalance balanceSide)
+      BalanceSide balanceSide)
       implements LedgerAssertion {
     /** Validates the assertion. */
     public AccountBalanceEquals {
@@ -78,7 +78,7 @@ public sealed interface LedgerAssertion
         Optional<LocalDate> effectiveDateFrom,
         Optional<LocalDate> effectiveDateTo,
         Money netAmount,
-        NormalBalance balanceSide) {
+        BalanceSide balanceSide) {
       this(
           accountCode,
           EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo),

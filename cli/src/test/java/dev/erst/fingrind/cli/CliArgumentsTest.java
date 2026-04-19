@@ -3,12 +3,17 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
@@ -48,6 +53,18 @@ class CliArgumentsTest {
   }
 
   @Test
+  void parse_rejectsAdditionalArgumentsForSingleTokenCommands() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"print-request-template", "--unexpected"}));
+
+    assertEquals("invalid-request", exception.failure().code());
+    assertEquals("--unexpected", exception.failure().argument());
+    assertTrue(exception.failure().message().contains("does not accept additional arguments"));
+  }
+
+  @Test
   void parse_returnsGenerateBookKeyFileForValidCommand() {
     CliCommand.GenerateBookKeyFile command =
         assertInstanceOf(
@@ -58,6 +75,157 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(Path.of("books/entity.book-key"), command.bookKeyFilePath());
+    assertEquals(OutputMode.JSON, command.outputMode());
+  }
+
+  @Test
+  void parse_supportsHumanOutputForAdministrativeAndWriteCommands() {
+    CliCommand.GenerateBookKeyFile generateBookKeyFile =
+        assertInstanceOf(
+            CliCommand.GenerateBookKeyFile.class,
+            CliArguments.parse(
+                new String[] {
+                  "generate-book-key-file",
+                  "--book-key-file",
+                  "books/entity.book-key",
+                  "--output",
+                  "human"
+                }));
+    CliCommand.OpenBook openBook =
+        assertInstanceOf(
+            CliCommand.OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--output",
+                  "human"
+                }));
+    CliCommand.DeclareAccount declareAccount =
+        assertInstanceOf(
+            CliCommand.DeclareAccount.class,
+            CliArguments.parse(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "account.json",
+                  "--output",
+                  "human"
+                }));
+    CliCommand.RekeyBook rekeyBook =
+        assertInstanceOf(
+            CliCommand.RekeyBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "rekey-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--new-book-key-file",
+                  "book-new.key",
+                  "--output",
+                  "human"
+                }));
+    CliCommand.PostEntry postEntry =
+        assertInstanceOf(
+            CliCommand.PostEntry.class,
+            CliArguments.parse(
+                new String[] {
+                  "post-entry",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "entry.json",
+                  "--output",
+                  "human"
+                }));
+
+    assertEquals(OutputMode.HUMAN, generateBookKeyFile.outputMode());
+    assertEquals(OutputMode.HUMAN, openBook.outputMode());
+    assertEquals(OutputMode.HUMAN, declareAccount.outputMode());
+    assertEquals(OutputMode.HUMAN, rekeyBook.outputMode());
+    assertEquals(OutputMode.HUMAN, postEntry.outputMode());
+  }
+
+  @Test
+  void parse_rejectsCsvOutputForAdministrativeAndWriteCommands() {
+    CliArgumentsException generateCsv =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "generate-book-key-file",
+                      "--book-key-file",
+                      "books/entity.book-key",
+                      "--output",
+                      "csv"
+                    }));
+    CliArgumentsException openCsv =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--output",
+                      "csv"
+                    }));
+
+    assertEquals("--output", generateCsv.argument());
+    assertEquals("--output", openCsv.argument());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedExtraArgumentsForBookOnlyAndStrictRequestCommands() {
+    CliArgumentsException openBookExtra =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--extra"
+                    }));
+    CliArgumentsException executePlanExtra =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "execute-plan",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "plan.json",
+                      "--output",
+                      "human"
+                    }));
+
+    assertEquals("--extra", openBookExtra.argument());
+    assertEquals("Unsupported argument: --extra", openBookExtra.getMessage());
+    assertEquals("--output", executePlanExtra.argument());
+    assertEquals("Unsupported argument: --output", executePlanExtra.getMessage());
   }
 
   @Test
@@ -223,6 +391,316 @@ class CliArgumentsTest {
             java.util.Optional.of(LocalDate.parse("2026-04-01")),
             java.util.Optional.of(LocalDate.parse("2026-04-30"))),
         command.query());
+  }
+
+  @Test
+  void parse_returnsAccountBalanceWithPdfOutput() {
+    CliCommand.AccountBalance command =
+        assertInstanceOf(
+            CliCommand.AccountBalance.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--pdf-out",
+                  "reports/balance.pdf",
+                  "--output",
+                  "human"
+                }));
+
+    assertEquals(OutputMode.HUMAN, command.output().outputMode());
+    assertEquals(Path.of("reports/balance.pdf"), command.output().pdfOutPath());
+  }
+
+  @Test
+  void parse_supportsOutputModesForReadAndReportCommands() {
+    CliCommand.InspectBook inspectBook =
+        assertInstanceOf(
+            CliCommand.InspectBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "inspect-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--output",
+                  "human"
+                }));
+    CliCommand.TrialBalance trialBalance =
+        assertInstanceOf(
+            CliCommand.TrialBalance.class,
+            CliArguments.parse(
+                new String[] {
+                  "trial-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  "reports/trial-balance.pdf",
+                  "--output",
+                  "csv"
+                }));
+    CliCommand.AccountLedger accountLedger =
+        assertInstanceOf(
+            CliCommand.AccountLedger.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-ledger",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  "reports/cash-ledger.pdf",
+                  "--output",
+                  "human"
+                }));
+    CliCommand.PeriodSummary periodSummary =
+        assertInstanceOf(
+            CliCommand.PeriodSummary.class,
+            CliArguments.parse(
+                new String[] {
+                  "period-summary",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  "reports/april-summary.pdf",
+                  "--output",
+                  "csv"
+                }));
+
+    assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
+    assertEquals(
+        new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30"))), trialBalance.query());
+    assertEquals(OutputMode.CSV, trialBalance.output().outputMode());
+    assertEquals(Path.of("reports/trial-balance.pdf"), trialBalance.output().pdfOutPath());
+    assertEquals(
+        new AccountLedgerQuery(
+            new AccountCode("1000"),
+            Optional.of(LocalDate.parse("2026-04-01")),
+            Optional.of(LocalDate.parse("2026-04-30"))),
+        accountLedger.query());
+    assertEquals(OutputMode.HUMAN, accountLedger.output().outputMode());
+    assertEquals(Path.of("reports/cash-ledger.pdf"), accountLedger.output().pdfOutPath());
+    assertEquals(
+        new PeriodSummaryQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+        periodSummary.query());
+    assertEquals(OutputMode.CSV, periodSummary.output().outputMode());
+    assertEquals(Path.of("reports/april-summary.pdf"), periodSummary.output().pdfOutPath());
+  }
+
+  @Test
+  void parse_rejectsReversedEffectiveDateRangesForReadCommands() {
+    CliArgumentsException accountLedgerException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-ledger",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "1000",
+                      "--effective-date-from",
+                      "2026-04-30",
+                      "--effective-date-to",
+                      "2026-04-01"
+                    }));
+    CliArgumentsException periodSummaryException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "period-summary",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--effective-date-from",
+                      "2026-04-30",
+                      "--effective-date-to",
+                      "2026-04-01"
+                    }));
+
+    assertEquals("invalid-request", accountLedgerException.code());
+    assertEquals("--effective-date-from", accountLedgerException.argument());
+    assertEquals(
+        "effectiveDateFrom must be on or before effectiveDateTo.",
+        accountLedgerException.getMessage());
+    assertEquals("invalid-request", periodSummaryException.code());
+    assertEquals("--effective-date-from", periodSummaryException.argument());
+    assertEquals(
+        "effectiveDateFrom must be on or before effectiveDateTo.",
+        periodSummaryException.getMessage());
+  }
+
+  @Test
+  void parse_rejectsNegativeAccountListOffsetAgainstOffsetArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--offset",
+                      "-1"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--offset", exception.argument());
+    assertEquals("listAccounts offset must not be negative.", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsBlankAccountCodeAgainstAccountCodeArgumentForReadCommands() {
+    CliArgumentsException listPostingsException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "",
+                      "--effective-date-to",
+                      "2026-04-30"
+                    }));
+    CliArgumentsException accountBalanceException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "",
+                      "--effective-date-to",
+                      "2026-04-30"
+                    }));
+    CliArgumentsException accountLedgerException =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "account-ledger",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--account-code",
+                      "",
+                      "--effective-date-to",
+                      "2026-04-30"
+                    }));
+
+    assertEquals("--account-code", listPostingsException.argument());
+    assertEquals("--account-code", accountBalanceException.argument());
+    assertEquals("--account-code", accountLedgerException.argument());
+  }
+
+  @Test
+  void parse_rejectsNonPositivePostingListLimitAgainstLimitArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--limit",
+                      "0"
+                    }));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--limit", exception.argument());
+    assertTrue(exception.getMessage().contains("Posting list limit must be between"));
+  }
+
+  @Test
+  void parse_rejectsDuplicateAndInvalidPdfOutputPaths() {
+    CliArgumentsException duplicate =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "trial-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--pdf-out",
+                      "one.pdf",
+                      "--pdf-out",
+                      "two.pdf"
+                    }));
+
+    assertEquals("--pdf-out", duplicate.failure().argument());
+    assertTrue(duplicate.failure().message().contains("Duplicate argument"));
+
+    CliArgumentsException invalidPath =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "trial-balance",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--effective-date-to",
+                      "2026-04-30",
+                      "--pdf-out",
+                      "\u0000bad"
+                    }));
+
+    assertEquals("--pdf-out", invalidPath.failure().argument());
+    assertTrue(invalidPath.failure().message().contains("valid filesystem path"));
+    assertTrue(invalidPath.failure().message().contains("\u0000bad"));
   }
 
   @Test
@@ -550,6 +1028,29 @@ class CliArgumentsTest {
   }
 
   @Test
+  void parse_rejectsInvalidPostingCursorWithDedicatedContractCode() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-postings",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--cursor",
+                      "definitely-not-a-valid-cursor"
+                    }));
+
+    assertEquals("invalid-page-cursor", exception.code());
+    assertEquals("--cursor", exception.argument());
+    assertEquals(
+        "Unsupported posting page cursor: definitely-not-a-valid-cursor", exception.getMessage());
+  }
+
+  @Test
   void parse_rejectsAccountBalanceDuplicateAndUnsupportedArguments() {
     CliArgumentsException duplicateAccountCode =
         assertThrows(
@@ -658,7 +1159,7 @@ class CliArgumentsTest {
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--extra", exception.argument());
-    assertEquals("This command does not accept additional arguments.", exception.getMessage());
+    assertEquals("Unsupported argument: --extra", exception.getMessage());
   }
 
   @Test

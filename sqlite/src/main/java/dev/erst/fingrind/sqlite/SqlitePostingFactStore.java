@@ -2,28 +2,36 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookMigrationPolicy;
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PostingRequest;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationSession;
-import dev.erst.fingrind.executor.BookQuerySession;
+import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.LedgerPlanSession;
 import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.PostingCommitResult;
@@ -71,9 +79,10 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   private final Path bookPath;
   private final AccessMode accessMode;
   private final SqlitePostingReadSupport postingReadSupport;
+  private final SqliteReportReadSupport reportReadSupport;
   private final BookAdministrationSession administrationView = new AdministrationView();
   private final PostingBookSession postingView = new PostingView();
-  private final BookQuerySession queryView = new QueryView();
+  private final BookReadSession readView = new ReadView();
   private @Nullable SqliteBookPassphrase bookPassphrase;
 
   private @Nullable SqliteNativeDatabase database;
@@ -95,6 +104,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     this.bookPassphrase = Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
     this.postingReadSupport = new SqlitePostingReadSupport();
+    this.reportReadSupport = new SqliteReportReadSupport(postingReadSupport);
     this.database = null;
     this.cachedBookState = null;
     this.terminalFailure = null;
@@ -119,8 +129,8 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   }
 
   @Override
-  public BookQuerySession querySession() {
-    return queryView;
+  public BookReadSession readSession() {
+    return readView;
   }
 
   /** Inspects the selected SQLite book without requiring prior initialization. */
@@ -431,6 +441,51 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
   }
 
+  /** Computes one canonical trial-balance report for the selected initialized book. */
+  public TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+    ensureOpen();
+    if (Files.notExists(bookPath)) {
+      throw new IllegalStateException(NOT_INITIALIZED_BOOK_MESSAGE);
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      requireInitializedBook(activeDatabase);
+      return reportReadSupport.trialBalance(activeDatabase, query);
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  /** Computes one canonical account-ledger report for the selected declared account. */
+  public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+    ensureOpen();
+    if (Files.notExists(bookPath)) {
+      throw new IllegalStateException(NOT_INITIALIZED_BOOK_MESSAGE);
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      requireInitializedBook(activeDatabase);
+      return reportReadSupport.accountLedger(activeDatabase, query, account);
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  /** Computes one canonical bounded period summary for the selected initialized book. */
+  public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+    ensureOpen();
+    if (Files.notExists(bookPath)) {
+      throw new IllegalStateException(NOT_INITIALIZED_BOOK_MESSAGE);
+    }
+    try {
+      SqliteNativeDatabase activeDatabase = database();
+      requireInitializedBook(activeDatabase);
+      return reportReadSupport.periodSummary(activeDatabase, query);
+    } catch (SqliteNativeException exception) {
+      throw sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
   /** Commits one posting draft atomically inside the selected writable SQLite book. */
   @SuppressWarnings("PMD.CloseResource")
   public PostingCommitResult commit(
@@ -633,8 +688,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
       database = configuredDatabase;
       return configuredDatabase;
     } catch (SqliteNativeException exception) {
-      throw rememberTerminalFailure(
-          sqliteFailure("Failed to open SQLite book connection.", exception));
+      throw rememberTerminalFailure(openFailure(exception));
     } catch (IllegalStateException exception) {
       throw rememberTerminalFailure(exception);
     }
@@ -709,6 +763,18 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
         message + " " + exception.resultName() + ": " + detail, exception);
   }
 
+  private IllegalStateException openFailure(SqliteNativeException exception) {
+    if (exception.resultCode() == 26) {
+      return new ContractErrorException(
+          ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED,
+          "FinGrind could not authenticate the selected protected book with the supplied passphrase source.",
+          "Inspect the selected book file and passphrase source, then rerun with the correct secret or use inspect-book/open-book against the intended FinGrind book file.",
+          null,
+          exception);
+    }
+    return sqliteFailure("Failed to open SQLite book connection.", exception);
+  }
+
   /** Narrow administration-session view over this SQLite-backed store. */
   private final class AdministrationView implements BookAdministrationSession {
     @Override
@@ -776,8 +842,8 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     }
   }
 
-  /** Narrow query-session view over this SQLite-backed store. */
-  private final class QueryView implements BookQuerySession {
+  /** Narrow unified read-session view over this SQLite-backed store. */
+  private final class ReadView implements BookReadSession {
     @Override
     public BookInspection inspectBook() {
       return SqlitePostingFactStore.this.inspectBook();
@@ -836,6 +902,36 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
       ensureOpen();
       try {
         return postingReadSupport.accountBalance(initializedQueryDatabase(), query);
+      } catch (SqliteNativeException exception) {
+        throw sqliteFailure("Failed to query SQLite book.", exception);
+      }
+    }
+
+    @Override
+    public TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+      ensureOpen();
+      try {
+        return reportReadSupport.trialBalance(initializedQueryDatabase(), query);
+      } catch (SqliteNativeException exception) {
+        throw sqliteFailure("Failed to query SQLite book.", exception);
+      }
+    }
+
+    @Override
+    public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+      ensureOpen();
+      try {
+        return reportReadSupport.accountLedger(initializedQueryDatabase(), query, account);
+      } catch (SqliteNativeException exception) {
+        throw sqliteFailure("Failed to query SQLite book.", exception);
+      }
+    }
+
+    @Override
+    public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+      ensureOpen();
+      try {
+        return reportReadSupport.periodSummary(initializedQueryDatabase(), query);
       } catch (SqliteNativeException exception) {
         throw sqliteFailure("Failed to query SQLite book.", exception);
       }

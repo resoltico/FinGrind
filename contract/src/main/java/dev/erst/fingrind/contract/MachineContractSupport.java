@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.BookModelFacts;
 import dev.erst.fingrind.contract.protocol.CurrencyFacts;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanExecutionFacts;
 import dev.erst.fingrind.contract.protocol.PreflightFacts;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -48,6 +49,13 @@ final class MachineContractSupport {
         operation.aliases(),
         operation.options(),
         operation.executionMode().wireValue(),
+        operation.outputModes(),
+        operation.artifactOutputs().stream()
+            .map(
+                artifact ->
+                    new ContractDiscovery.ArtifactOutputDescriptor(
+                        artifact.format(), artifact.option(), artifact.description()))
+            .toList(),
         operation.analysisSummary());
   }
 
@@ -65,6 +73,12 @@ final class MachineContractSupport {
         ProtocolOptions.BOOK_FILE,
         ProtocolOptions.bookPassphraseOptions(),
         ProtocolOptions.REQUEST_FILE,
+        ProtocolOptions.OUTPUT,
+        OutputMode.wireValues(),
+        List.of(
+            "commands that advertise outputModes accept --output with one of those public values",
+            "supported report commands also accept --pdf-out <path> and write one PDF artifact on successful execution without changing the command's selected stdout output mode",
+            "successful discovery, administration, write, query, and report commands honor the selected output mode when they advertise one, while deterministic failures remain canonical JSON error envelopes so repair logic stays machine-readable"),
         ProtocolOptions.STDIN_TOKEN,
         "single SQLite book file for one entity",
         List.of(
@@ -260,6 +274,7 @@ final class MachineContractSupport {
         ProtocolCatalog.rejectionStatuses(),
         ProtocolStatuses.ERROR,
         rejectionDescriptors(),
+        ContractErrors.descriptors(),
         List.of(
             new ContractResponse.FieldDescriptor("status", "Literal rejection status."),
             new ContractResponse.FieldDescriptor("code", "Stable machine rejection code."),

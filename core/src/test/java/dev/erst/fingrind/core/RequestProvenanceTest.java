@@ -34,7 +34,7 @@ class RequestProvenanceTest {
         () ->
             new RequestProvenance(
                 new ActorId("actor-1"),
-                ActorType.USER,
+                ActorType.HUMAN,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
@@ -48,7 +48,7 @@ class RequestProvenanceTest {
         () ->
             new RequestProvenance(
                 null,
-                ActorType.USER,
+                ActorType.HUMAN,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),

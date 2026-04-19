@@ -28,6 +28,9 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
     @get:Input
     abstract val javaVersion: org.gradle.api.provider.Property<Int>
 
+    @get:Input
+    abstract val additionalModules: org.gradle.api.provider.ListProperty<String>
+
     @get:Classpath
     abstract val dependencyClasspath: ConfigurableFileCollection
 
@@ -45,6 +48,12 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
                 jdepsExecutable.absolutePath,
                 "--multi-release",
                 javaVersion.get().toString(),
+                // Bundled third-party jars may contain optional integration classes
+                // for logging backends or crypto providers that are not part of
+                // FinGrind's actual runtime closure. jdeps should derive modules
+                // from the reachable runtime path rather than fail on those
+                // deliberately absent optional dependencies.
+                "--ignore-missing-deps",
             )
         val classpathEntries = dependencyClasspath.files
         if (classpathEntries.isNotEmpty()) {
@@ -53,15 +62,22 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
         }
         command += "--print-module-deps"
         command += applicationJar.get().asFile.absolutePath
-        val moduleList =
+        val detectedModuleList =
             CommandLineSupport.run(command)
                 .trim()
-        if (moduleList.isEmpty()) {
+        if (detectedModuleList.isEmpty()) {
             throw IllegalStateException(
                 "jdeps produced an empty module list for ${applicationJar.get().asFile.absolutePath}.",
             )
         }
-        outputPath.writeText(moduleList + System.lineSeparator())
+        val mergedModuleList =
+            (detectedModuleList.split(',') + additionalModules.get())
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .distinct()
+                .sorted()
+                .joinToString(",")
+        outputPath.writeText(mergedModuleList + System.lineSeparator())
     }
 
     private fun executable(javaHomeDirectory: File, executableName: String): File {

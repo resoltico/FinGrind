@@ -19,7 +19,7 @@ create table if not exists posting_fact (
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null,
-    actor_type text not null check (actor_type in ('USER', 'SYSTEM', 'AGENT')),
+    actor_type text not null check (actor_type in ('HUMAN', 'SYSTEM', 'AGENT')),
     command_id text not null,
     idempotency_key text not null,
     causation_id text not null,

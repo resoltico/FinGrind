@@ -2,8 +2,8 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookAdministrationSession;
-import dev.erst.fingrind.executor.BookQueryService;
-import dev.erst.fingrind.executor.BookQuerySession;
+import dev.erst.fingrind.executor.BookReadService;
+import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
@@ -126,13 +126,13 @@ public final class CliFuzzSupport {
   }
 
   /** Lists accounts and fails fast if the registry surface is not in the expected state. */
-  public static List<DeclaredAccount> listAccounts(BookQuerySession bookSession) {
+  public static List<DeclaredAccount> listAccounts(BookReadSession bookSession) {
     Objects.requireNonNull(bookSession, "bookSession must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
     int offset = 0;
     while (true) {
       ListAccountsResult result =
-          new BookQueryService(bookSession)
+          new BookReadService(bookSession)
               .listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, offset));
       if (!(result instanceof ListAccountsResult.Listed listed)) {
         throw new IllegalStateException("Lifecycle setup failed to list declared accounts.");

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER
-updated: "2026-04-17"
+updated: "2026-04-19"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -29,7 +29,7 @@ Companion documents:
 
 ## Architecture
 
-FinGrind is a five-module Gradle project with a narrow accounting center, a contract-owned public
+FinGrind is a six-module Gradle project with a narrow accounting center, a contract-owned public
 surface, executor-owned services, and explicit adapter seams:
 
 ```text
@@ -47,10 +47,10 @@ contract/     Public request, result, metadata, and machine-contract surface:
 
 executor/     Execution services plus storage seams:
               BookAdministrationService, DeclareAccountCommand, DeclaredAccount,
-              BookQueryService, BookInspection, paged account and posting query models,
+              BookReadService, BookInspection, paged account and posting query/report models,
               PostingDraft, PostingRequest, PostingIdGenerator, UuidV7PostingIdGenerator,
               PostingApplicationService, LedgerPlanService,
-              BookAdministrationSession, PostingBookSession, BookQuerySession,
+              BookAdministrationSession, PostingBookSession, BookReadSession,
               PostingValidationBook, LedgerPlanSession, PostingCommitResult.
 
 sqlite/       Durable single-book adapter:
@@ -61,12 +61,17 @@ sqlite/       Durable single-book adapter:
               `book_schema.sql` through focused helpers for connection setup, book-state reading,
               single-row query support, posting reads, and durable writes.
 
+report-pdf/   PDF artifact adapter:
+              one focused Apache PDFBox-based renderer module that turns contract-owned reporting
+              DTOs into explicit PDF files for office-worker workflows without leaking PDFBox or
+              document-layout concerns into executor or CLI command parsing.
+
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus print-request-template, print-plan-template,
               generate-book-key-file, open-book, rekey-book, inspect-book, declare-account,
-              list-accounts, get-posting, list-postings, account-balance, execute-plan,
-              preflight-entry, and post-entry, with discovery payloads rendered from
-              contract-owned protocol metadata.
+              list-accounts, get-posting, list-postings, account-balance, trial-balance,
+              account-ledger, period-summary, execute-plan, preflight-entry, and post-entry,
+              with discovery payloads rendered from contract-owned protocol metadata.
 ```
 
 The dependency graph is deliberately one-way:
@@ -74,6 +79,7 @@ The dependency graph is deliberately one-way:
 ```text
 cli -> sqlite -> executor -> contract -> core
 cli -> executor -> contract -> core
+cli -> report-pdf -> contract -> core
 cli -> contract -> core
 sqlite -> contract -> core
 executor -> contract -> core

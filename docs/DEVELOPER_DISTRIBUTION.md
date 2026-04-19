@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.17.0"
+version: "0.18.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-04-17"
 route:
@@ -21,7 +21,7 @@ FinGrind's public CLI download is a self-contained per-platform archive, not a r
 
 Each published archive contains:
 - `bin/fingrind`
-- `bin/fingrind.cmd`
+- `bin/fingrind.ps1`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
@@ -78,7 +78,7 @@ Linux bundle policy:
 Windows bundle policy:
 - public Windows bundles are built on Windows GitHub-hosted runners
 - they use the native MSVC toolchain through the Developer Command Prompt environment
-- they are published as `.zip` archives and use `bin\fingrind.cmd` as the platform launcher
+- they are published as `.zip` archives and use `bin\fingrind.ps1` as the platform launcher
 
 ## Release Build Policy
 
@@ -163,8 +163,9 @@ The raw JAR route remains useful for:
 - advanced contributor debugging
 - validating the application JAR directly during development
 
-`./gradlew :cli:shadowJar` also stages the compile-only JDeps support jars that the Docker build
-uses to analyze the shaded application JAR under `cli/build/docker/jdeps/`.
+`./gradlew :cli:shadowJar` also stages the canonical runtime-module list that the Docker build
+reuses under `cli/build/docker/runtime-modules.txt`, so the public bundle and container image
+consume the same trimmed Java runtime closure instead of deriving competing module sets.
 
 It is not the public release artifact.
 

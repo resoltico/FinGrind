@@ -1,15 +1,24 @@
 package dev.erst.fingrind.contract;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 /** Closed result family for one committed-posting lookup. */
 public sealed interface GetPostingResult permits GetPostingResult.Found, GetPostingResult.Rejected {
+
+  /** Folds the closed result family without transport-layer pattern switching. */
+  <T> T fold(Function<Found, T> foundMapper, Function<Rejected, T> rejectedMapper);
 
   /** Success result carrying the matching committed posting. */
   record Found(PostingFact postingFact) implements GetPostingResult {
     /** Validates the committed-posting payload. */
     public Found {
       Objects.requireNonNull(postingFact, "postingFact");
+    }
+
+    @Override
+    public <T> T fold(Function<Found, T> foundMapper, Function<Rejected, T> rejectedMapper) {
+      return Objects.requireNonNull(foundMapper, "foundMapper").apply(this);
     }
   }
 
@@ -18,6 +27,11 @@ public sealed interface GetPostingResult permits GetPostingResult.Found, GetPost
     /** Validates the deterministic rejection payload. */
     public Rejected {
       Objects.requireNonNull(rejection, "rejection");
+    }
+
+    @Override
+    public <T> T fold(Function<Found, T> foundMapper, Function<Rejected, T> rejectedMapper) {
+      return Objects.requireNonNull(rejectedMapper, "rejectedMapper").apply(this);
     }
   }
 }

@@ -60,14 +60,14 @@ object DistributionSupport {
     fun launcherPathForOperatingSystemId(operatingSystemId: String): String =
         when (operatingSystemId) {
             "macos", "linux" -> "bin/fingrind"
-            "windows" -> "bin/fingrind.cmd"
+            "windows" -> "bin/fingrind.ps1"
             else -> throw IllegalStateException("Unsupported operating system id: $operatingSystemId")
         }
 
     fun launcherCommandForOperatingSystemId(operatingSystemId: String): String =
         when (operatingSystemId) {
             "macos", "linux" -> "./bin/fingrind"
-            "windows" -> ".\\bin\\fingrind.cmd"
+            "windows" -> ".\\bin\\fingrind.ps1"
             else -> throw IllegalStateException("Unsupported operating system id: $operatingSystemId")
         }
 

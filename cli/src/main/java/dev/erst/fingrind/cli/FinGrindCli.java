@@ -2,10 +2,14 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceResult;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.GetPostingResult;
@@ -17,20 +21,19 @@ import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.MachineContract;
 import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.PeriodSummaryResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.executor.BookAdministrationService;
-import dev.erst.fingrind.executor.BookQueryService;
-import dev.erst.fingrind.executor.LedgerPlanService;
-import dev.erst.fingrind.executor.PostingApplicationService;
-import dev.erst.fingrind.executor.PostingBookSession;
-import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
+import dev.erst.fingrind.report.pdf.PdfReportService;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
-import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -38,6 +41,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
@@ -51,26 +55,33 @@ final class FinGrindCli {
   private final CliResponseWriter responseWriter;
   private final CliMetadata metadata;
   private final Clock clock;
-  private final BookWorkflow bookWorkflow;
+  private final CliBookWorkflow bookWorkflow;
+  private final CliPdfReportExporter pdfReportExporter;
 
   FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
     this(
         inputStream,
         outputStream,
         clock,
-        new SqliteBookWorkflow(
+        new SqliteCliBookWorkflow(
             clock,
             new CliBookPassphraseResolver(
                 inputStream, CliBookPassphraseResolver.systemTerminal())));
   }
 
   FinGrindCli(
-      InputStream inputStream, PrintStream outputStream, Clock clock, BookWorkflow bookWorkflow) {
+      InputStream inputStream,
+      PrintStream outputStream,
+      Clock clock,
+      CliBookWorkflow bookWorkflow) {
     this.requestReader = new CliRequestReader(inputStream);
     this.responseWriter = new CliResponseWriter(outputStream);
     this.metadata = new CliMetadata();
     this.clock = Objects.requireNonNull(clock, "clock");
     this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+    this.pdfReportExporter =
+        new CliPdfReportExporter(
+            new PdfReportService(metadata.applicationName(), metadata.version(), this.clock));
   }
 
   FinGrindCli(
@@ -82,7 +93,7 @@ final class FinGrindCli {
         inputStream,
         outputStream,
         clock,
-        new SqliteBookWorkflow(
+        new SqliteCliBookWorkflow(
             clock,
             new CliBookPassphraseResolver(
                 inputStream, Objects.requireNonNull(terminal, "terminal"))));
@@ -90,59 +101,93 @@ final class FinGrindCli {
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */
   int run(String[] args) {
+    OutputMode failureOutputMode = inferredFailureOutputMode(args);
     try {
-      return switch (CliArguments.parse(args)) {
-        case CliCommand.Help _ -> writeHelp();
-        case CliCommand.Capabilities _ -> writeCapabilities();
-        case CliCommand.Version _ -> writeVersion();
+      CliCommand command = CliArguments.parse(args);
+      failureOutputMode = command.failureOutputMode();
+      return switch (command) {
+        case CliCommand.Help help -> writeHelp(help.outputMode());
+        case CliCommand.Capabilities capabilities -> writeCapabilities(capabilities.outputMode());
+        case CliCommand.Version version -> writeVersion(version.outputMode());
         case CliCommand.PrintRequestTemplate _ -> writeRequestTemplate();
         case CliCommand.PrintPlanTemplate _ -> writePlanTemplate();
-        case CliCommand.GenerateBookKeyFile command ->
-            runGenerateBookKeyFileCommand(command.bookKeyFilePath());
-        case CliCommand.OpenBook command -> runOpenBookCommand(command.bookAccess());
-        case CliCommand.RekeyBook command ->
-            runRekeyBookCommand(command.bookAccess(), command.replacementPassphraseSource());
-        case CliCommand.DeclareAccount command ->
-            runDeclareAccountCommand(command.bookAccess(), command.requestFile());
-        case CliCommand.InspectBook command -> runInspectBookCommand(command.bookAccess());
-        case CliCommand.ListAccounts command ->
-            runListAccountsCommand(command.bookAccess(), command.query());
-        case CliCommand.GetPosting command ->
-            runGetPostingCommand(command.bookAccess(), command.postingId());
-        case CliCommand.ListPostings command ->
-            runListPostingsCommand(command.bookAccess(), command.query());
-        case CliCommand.AccountBalance command ->
-            runAccountBalanceCommand(command.bookAccess(), command.query());
-        case CliCommand.ExecutePlan command ->
-            runExecutePlanCommand(command.bookAccess(), command.requestFile());
-        case CliCommand.PreflightEntry command ->
-            runPreflightEntryCommand(command.bookAccess(), command.requestFile());
-        case CliCommand.PostEntry command ->
-            runPostEntryCommand(command.bookAccess(), command.requestFile());
+        case CliCommand.GenerateBookKeyFile generateBookKeyFile ->
+            runGenerateBookKeyFileCommand(
+                generateBookKeyFile.bookKeyFilePath(), generateBookKeyFile.outputMode());
+        case CliCommand.OpenBook openBook ->
+            runOpenBookCommand(openBook.bookAccess(), openBook.outputMode());
+        case CliCommand.RekeyBook rekeyBook ->
+            runRekeyBookCommand(
+                rekeyBook.bookAccess(),
+                rekeyBook.replacementPassphraseSource(),
+                rekeyBook.outputMode());
+        case CliCommand.DeclareAccount declareAccount ->
+            runDeclareAccountCommand(
+                declareAccount.bookAccess(),
+                declareAccount.requestFile(),
+                declareAccount.outputMode());
+        case CliCommand.InspectBook inspectBook ->
+            runInspectBookCommand(inspectBook.bookAccess(), inspectBook.outputMode());
+        case CliCommand.ListAccounts listAccounts ->
+            runListAccountsCommand(
+                listAccounts.bookAccess(), listAccounts.query(), listAccounts.outputMode());
+        case CliCommand.GetPosting getPosting ->
+            runGetPostingCommand(
+                getPosting.bookAccess(), getPosting.postingId(), getPosting.outputMode());
+        case CliCommand.ListPostings listPostings ->
+            runListPostingsCommand(
+                listPostings.bookAccess(), listPostings.query(), listPostings.outputMode());
+        case CliCommand.AccountBalance accountBalance ->
+            runAccountBalanceCommand(
+                accountBalance.bookAccess(), accountBalance.query(), accountBalance.output());
+        case CliCommand.TrialBalance trialBalance ->
+            runTrialBalanceCommand(
+                trialBalance.bookAccess(), trialBalance.query(), trialBalance.output());
+        case CliCommand.AccountLedger accountLedger ->
+            runAccountLedgerCommand(
+                accountLedger.bookAccess(), accountLedger.query(), accountLedger.output());
+        case CliCommand.PeriodSummary periodSummary ->
+            runPeriodSummaryCommand(
+                periodSummary.bookAccess(), periodSummary.query(), periodSummary.output());
+        case CliCommand.ExecutePlan executePlan ->
+            runExecutePlanCommand(executePlan.bookAccess(), executePlan.requestFile());
+        case CliCommand.PreflightEntry preflightEntry ->
+            runPreflightEntryCommand(
+                preflightEntry.bookAccess(),
+                preflightEntry.requestFile(),
+                preflightEntry.outputMode());
+        case CliCommand.PostEntry postEntry ->
+            runPostEntryCommand(
+                postEntry.bookAccess(), postEntry.requestFile(), postEntry.outputMode());
       };
     } catch (CliArgumentsException | CliRequestException exception) {
-      responseWriter.writeFailure(cliFailure(exception));
+      responseWriter.writeFailure(cliFailure(exception), failureOutputMode);
+      return 2;
+    } catch (ContractErrorException exception) {
+      responseWriter.writeFailure(contractErrorFailure(exception), failureOutputMode);
       return 2;
     } catch (RuntimeException exception) {
-      responseWriter.writeFailure(runtimeFailure(exception));
+      responseWriter.writeFailure(runtimeFailure(exception), failureOutputMode);
       return 1;
     }
   }
 
-  private int writeHelp() {
-    responseWriter.writeHelp(MachineContract.help(applicationIdentity(), environmentDescriptor()));
+  private int writeHelp(OutputMode outputMode) {
+    responseWriter.writeHelp(
+        MachineContract.help(applicationIdentity(), environmentDescriptor()), outputMode);
     return 0;
   }
 
-  private int writeCapabilities() {
+  private int writeCapabilities(OutputMode outputMode) {
     responseWriter.writeCapabilities(
         MachineContract.capabilities(
-            applicationIdentity(), environmentDescriptor(), Instant.now(clock)));
+            applicationIdentity(), environmentDescriptor(), Instant.now(clock)),
+        outputMode);
     return 0;
   }
 
-  private int writeVersion() {
-    responseWriter.writeVersion(MachineContract.version(applicationIdentity()));
+  private int writeVersion(OutputMode outputMode) {
+    responseWriter.writeVersion(MachineContract.version(applicationIdentity()), outputMode);
     return 0;
   }
 
@@ -156,61 +201,173 @@ final class FinGrindCli {
     return 0;
   }
 
-  private int runGenerateBookKeyFileCommand(Path bookKeyFilePath) {
+  private int runGenerateBookKeyFileCommand(Path bookKeyFilePath, OutputMode outputMode) {
     responseWriter.writeGenerateBookKeyFileResult(
-        SqliteBookKeyFileGenerator.generate(bookKeyFilePath));
+        SqliteBookKeyFileGenerator.generate(bookKeyFilePath), outputMode);
     return 0;
   }
 
-  private int runOpenBookCommand(BookAccess bookAccess) {
+  private int runOpenBookCommand(BookAccess bookAccess, OutputMode outputMode) {
     OpenBookResult result = bookWorkflow.openBook(bookAccess);
-    responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result);
+    responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode);
     return exitCodeFor(result);
   }
 
   private int runRekeyBookCommand(
-      BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+      BookAccess bookAccess,
+      BookAccess.PassphraseSource replacementPassphraseSource,
+      OutputMode outputMode) {
     RekeyBookResult result = bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource);
-    responseWriter.writeRekeyBookResult(result);
+    responseWriter.writeRekeyBookResult(result, outputMode);
     return exitCodeFor(result);
   }
 
-  private int runDeclareAccountCommand(BookAccess bookAccess, Path requestFile) {
+  private int runDeclareAccountCommand(
+      BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
     DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
     DeclareAccountResult result = bookWorkflow.declareAccount(bookAccess, command);
-    responseWriter.writeDeclareAccountResult(result);
+    responseWriter.writeDeclareAccountResult(result, outputMode);
     return exitCodeFor(result);
   }
 
-  private int runInspectBookCommand(BookAccess bookAccess) {
+  private int runInspectBookCommand(BookAccess bookAccess, OutputMode outputMode) {
     BookInspection inspection = bookWorkflow.inspectBook(bookAccess);
-    responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection);
+    responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection, outputMode);
     return 0;
   }
 
-  private int runListAccountsCommand(BookAccess bookAccess, ListAccountsQuery query) {
+  private int runListAccountsCommand(
+      BookAccess bookAccess, ListAccountsQuery query, OutputMode outputMode) {
     ListAccountsResult result = bookWorkflow.listAccounts(bookAccess, query);
-    responseWriter.writeListAccountsResult(result);
+    responseWriter.writeListAccountsResult(result, outputMode);
     return exitCodeFor(result);
   }
 
   private int runGetPostingCommand(
-      BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
+      BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId, OutputMode outputMode) {
     GetPostingResult result = bookWorkflow.getPosting(bookAccess, postingId);
-    responseWriter.writeGetPostingResult(result);
+    responseWriter.writeGetPostingResult(result, outputMode);
     return exitCodeFor(result);
   }
 
-  private int runListPostingsCommand(BookAccess bookAccess, ListPostingsQuery query) {
+  private int runListPostingsCommand(
+      BookAccess bookAccess, ListPostingsQuery query, OutputMode outputMode) {
     ListPostingsResult result = bookWorkflow.listPostings(bookAccess, query);
-    responseWriter.writeListPostingsResult(result);
+    responseWriter.writeListPostingsResult(result, outputMode);
     return exitCodeFor(result);
   }
 
-  private int runAccountBalanceCommand(BookAccess bookAccess, AccountBalanceQuery query) {
+  private int runAccountBalanceCommand(
+      BookAccess bookAccess, AccountBalanceQuery query, CliCommand.ReportOutput output) {
     AccountBalanceResult result = bookWorkflow.accountBalance(bookAccess, query);
-    responseWriter.writeAccountBalanceResult(result);
+    exportAccountBalanceIfRequested(bookAccess.bookFilePath(), result, output.pdfOutPath());
+    responseWriter.writeAccountBalanceResult(result, output.outputMode());
     return exitCodeFor(result);
+  }
+
+  private int runTrialBalanceCommand(
+      BookAccess bookAccess, TrialBalanceQuery query, CliCommand.ReportOutput output) {
+    TrialBalanceResult result = bookWorkflow.trialBalance(bookAccess, query);
+    exportTrialBalanceIfRequested(bookAccess.bookFilePath(), result, output.pdfOutPath());
+    responseWriter.writeTrialBalanceResult(result, output.outputMode());
+    return exitCodeFor(result);
+  }
+
+  private int runAccountLedgerCommand(
+      BookAccess bookAccess, AccountLedgerQuery query, CliCommand.ReportOutput output) {
+    AccountLedgerResult result = bookWorkflow.accountLedger(bookAccess, query);
+    exportAccountLedgerIfRequested(bookAccess.bookFilePath(), result, output.pdfOutPath());
+    responseWriter.writeAccountLedgerResult(result, output.outputMode());
+    return exitCodeFor(result);
+  }
+
+  private int runPeriodSummaryCommand(
+      BookAccess bookAccess, PeriodSummaryQuery query, CliCommand.ReportOutput output) {
+    PeriodSummaryResult result = bookWorkflow.periodSummary(bookAccess, query);
+    exportPeriodSummaryIfRequested(bookAccess.bookFilePath(), result, output.pdfOutPath());
+    responseWriter.writePeriodSummaryResult(result, output.outputMode());
+    return exitCodeFor(result);
+  }
+
+  private static OutputMode inferredFailureOutputMode(String[] args) {
+    if (args.length == 0) {
+      return OutputMode.HUMAN;
+    }
+    OutputMode inferred =
+        ProtocolCatalog.findByToken(args[0])
+            .map(
+                operation ->
+                    switch (operation.id()) {
+                      case HELP, CAPABILITIES, VERSION -> OutputMode.HUMAN;
+                      default -> OutputMode.JSON;
+                    })
+            .orElse(OutputMode.JSON);
+    int index = 1;
+    while (index + 1 < args.length) {
+      if (!"--output".equals(args[index])) {
+        index++;
+        continue;
+      }
+      try {
+        inferred = OutputMode.fromWireValue(args[index + 1]);
+      } catch (IllegalArgumentException ignored) {
+        // Keep the last valid or default inferred mode when the raw argument is malformed.
+      }
+      index += 2;
+    }
+    return inferred == OutputMode.HUMAN ? OutputMode.HUMAN : OutputMode.JSON;
+  }
+
+  private void exportAccountBalanceIfRequested(
+      Path bookFilePath, AccountBalanceResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    result.fold(
+        reported -> {
+          pdfReportExporter.exportAccountBalance(outputPath, bookFilePath, reported.snapshot());
+          return Boolean.TRUE;
+        },
+        rejected -> Boolean.FALSE);
+  }
+
+  private void exportTrialBalanceIfRequested(
+      Path bookFilePath, TrialBalanceResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    result.fold(
+        reported -> {
+          pdfReportExporter.exportTrialBalance(outputPath, bookFilePath, reported.report());
+          return Boolean.TRUE;
+        },
+        rejected -> Boolean.FALSE);
+  }
+
+  private void exportAccountLedgerIfRequested(
+      Path bookFilePath, AccountLedgerResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    result.fold(
+        reported -> {
+          pdfReportExporter.exportAccountLedger(outputPath, bookFilePath, reported.report());
+          return Boolean.TRUE;
+        },
+        rejected -> Boolean.FALSE);
+  }
+
+  private void exportPeriodSummaryIfRequested(
+      Path bookFilePath, PeriodSummaryResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    result.fold(
+        reported -> {
+          pdfReportExporter.exportPeriodSummary(outputPath, bookFilePath, reported.report());
+          return Boolean.TRUE;
+        },
+        rejected -> Boolean.FALSE);
   }
 
   private int runExecutePlanCommand(BookAccess bookAccess, Path requestFile) {
@@ -220,17 +377,18 @@ final class FinGrindCli {
     return exitCodeFor(result);
   }
 
-  private int runPreflightEntryCommand(BookAccess bookAccess, Path requestFile) {
+  private int runPreflightEntryCommand(
+      BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     PreflightEntryResult result = bookWorkflow.preflight(bookAccess, command);
-    responseWriter.writePostEntryResult(result);
+    responseWriter.writePostEntryResult(result, outputMode);
     return exitCodeFor(result);
   }
 
-  private int runPostEntryCommand(BookAccess bookAccess, Path requestFile) {
+  private int runPostEntryCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     CommitEntryResult result = bookWorkflow.commit(bookAccess, command);
-    responseWriter.writePostEntryResult(result);
+    responseWriter.writePostEntryResult(result, outputMode);
     return exitCodeFor(result);
   }
 
@@ -287,6 +445,27 @@ final class FinGrindCli {
     return switch (result) {
       case AccountBalanceResult.Reported _ -> 0;
       case AccountBalanceResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(TrialBalanceResult result) {
+    return switch (result) {
+      case TrialBalanceResult.Reported _ -> 0;
+      case TrialBalanceResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(AccountLedgerResult result) {
+    return switch (result) {
+      case AccountLedgerResult.Reported _ -> 0;
+      case AccountLedgerResult.Rejected _ -> 2;
+    };
+  }
+
+  private static int exitCodeFor(PeriodSummaryResult result) {
+    return switch (result) {
+      case PeriodSummaryResult.Reported _ -> 0;
+      case PeriodSummaryResult.Rejected _ -> 2;
     };
   }
 
@@ -351,218 +530,36 @@ final class FinGrindCli {
     };
   }
 
+  private static CliFailure contractErrorFailure(ContractErrorException exception) {
+    return new CliFailure(
+        exception.code(),
+        Objects.requireNonNullElse(exception.getMessage(), exception.descriptor().description()),
+        exception.hint(),
+        exception.argument());
+  }
+
   private CliFailure runtimeFailure(RuntimeException exception) {
+    if (exception instanceof CliPdfExportException pdfExportException) {
+      return new CliFailure(
+          ContractErrors.Descriptor.RUNTIME_FAILURE.code(),
+          message(pdfExportException),
+          "Inspect the selected --pdf-out destination, its parent directory permissions, and the available filesystem space, then rerun the command.",
+          "--pdf-out");
+    }
     String message = message(exception);
     String hint =
         switch (SqliteFailureClassifier.classify(exception)) {
           case MANAGED_RUNTIME ->
-              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.cmd on Windows), or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning.";
+              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning.";
           case STORAGE ->
               "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem.";
           case OTHER ->
               "Inspect the message and rerun after fixing the underlying runtime problem.";
         };
-    return new CliFailure("runtime-failure", message, hint, null);
+    return new CliFailure(ContractErrors.Descriptor.RUNTIME_FAILURE.code(), message, hint, null);
   }
 
   private static String message(Exception exception) {
     return Objects.requireNonNullElse(exception.getMessage(), "CLI command failed.");
-  }
-
-  /** Execution seam for routing CLI commands through the selected book adapter. */
-  interface BookWorkflow {
-    /** Opens the selected book and installs the canonical FinGrind schema when possible. */
-    OpenBookResult openBook(BookAccess bookAccess);
-
-    /** Rotates the passphrase that protects one existing book file. */
-    RekeyBookResult rekeyBook(
-        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource);
-
-    /** Declares or reactivates one account inside the selected book. */
-    DeclareAccountResult declareAccount(BookAccess bookAccess, DeclareAccountCommand command);
-
-    /** Inspects one selected book for lifecycle and compatibility state. */
-    BookInspection inspectBook(BookAccess bookAccess);
-
-    /** Lists the declared accounts currently stored in the selected book. */
-    ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query);
-
-    /** Returns one committed posting by durable posting identity. */
-    GetPostingResult getPosting(BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId);
-
-    /** Lists one filtered page of committed postings. */
-    ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query);
-
-    /** Computes per-currency balances for one declared account. */
-    AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query);
-
-    /** Executes one ordered AI-agent ledger plan atomically. */
-    LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan);
-
-    /** Validates a posting request without mutating the selected book. */
-    PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command);
-
-    /** Commits a posting request into the selected book. */
-    CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command);
-  }
-
-  /** Default workflow that opens one SQLite-backed book file per command. */
-  private static final class SqliteBookWorkflow implements BookWorkflow {
-    private final Clock clock;
-    private final CliBookPassphraseResolver passphraseResolver;
-
-    private SqliteBookWorkflow(Clock clock, CliBookPassphraseResolver passphraseResolver) {
-      this.clock = Objects.requireNonNull(clock, "clock");
-      this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
-    }
-
-    @Override
-    public OpenBookResult openBook(BookAccess bookAccess) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE,
-              CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
-        return new BookAdministrationService(bookSession.administrationSession(), clock).openBook();
-      }
-    }
-
-    @Override
-    public RekeyBookResult rekeyBook(
-        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
-      try (SqlitePostingFactStore bookSession =
-              openBookSession(
-                  bookAccess,
-                  SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
-                  CliBookPassphraseResolver.PromptStyle.SINGLE);
-          var replacementPassphrase =
-              passphraseResolver.resolve(
-                  bookAccess.bookFilePath(),
-                  replacementPassphraseSource,
-                  CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
-        return bookSession.rekeyBook(replacementPassphrase);
-      }
-    }
-
-    @Override
-    public DeclareAccountResult declareAccount(
-        BookAccess bookAccess, DeclareAccountCommand command) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookAdministrationService(bookSession.administrationSession(), clock)
-            .declareAccount(command);
-      }
-    }
-
-    @Override
-    public BookInspection inspectBook(BookAccess bookAccess) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_ONLY,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession.querySession()).inspectBook();
-      }
-    }
-
-    @Override
-    public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_ONLY,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession.querySession()).listAccounts(query);
-      }
-    }
-
-    @Override
-    public GetPostingResult getPosting(
-        BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_ONLY,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession.querySession()).getPosting(postingId);
-      }
-    }
-
-    @Override
-    public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_ONLY,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession.querySession()).listPostings(query);
-      }
-    }
-
-    @Override
-    public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_ONLY,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new BookQueryService(bookSession.querySession()).accountBalance(query);
-      }
-    }
-
-    @Override
-    public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
-      boolean initializesBook = plan.beginsWithOpenBook();
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.PLAN_EXECUTION,
-              initializesBook
-                  ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
-                  : CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
-            .execute(plan);
-      }
-    }
-
-    @Override
-    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_ONLY,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return postingApplicationService(bookSession.postingSession(), clock).preflight(command);
-      }
-    }
-
-    @Override
-    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
-      try (SqlitePostingFactStore bookSession =
-          openBookSession(
-              bookAccess,
-              SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
-              CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-        return postingApplicationService(bookSession.postingSession(), clock).commit(command);
-      }
-    }
-
-    private SqlitePostingFactStore openBookSession(
-        BookAccess bookAccess,
-        SqlitePostingFactStore.AccessMode accessMode,
-        CliBookPassphraseResolver.PromptStyle promptStyle) {
-      return new SqlitePostingFactStore(
-          bookAccess.bookFilePath(),
-          passphraseResolver.resolve(bookAccess, promptStyle),
-          accessMode);
-    }
-
-    private static PostingApplicationService postingApplicationService(
-        PostingBookSession bookSession, Clock clock) {
-      return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
-    }
   }
 }

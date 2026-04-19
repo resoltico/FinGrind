@@ -759,7 +759,7 @@ class JazzerReplaySupportTest {
           },
           "provenance": {
             "actorId": "actor-5",
-            "actorType": "USER",
+            "actorType": "HUMAN",
             "commandId": "command-5",
             "idempotencyKey": "idem-5",
             "causationId": "cause-5"

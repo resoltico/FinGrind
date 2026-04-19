@@ -118,6 +118,64 @@ interface CliResponseJsonModels {
       String netAmount,
       String balanceSide) {}
 
+  record TrialBalancePayload(@Nullable String effectiveDateTo, List<TrialBalanceRowPayload> rows) {}
+
+  record TrialBalanceRowPayload(
+      String accountCode,
+      String accountName,
+      String normalBalance,
+      boolean active,
+      String declaredAt,
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      String balanceSide) {}
+
+  record AccountLedgerPayload(
+      String accountCode,
+      String accountName,
+      String normalBalance,
+      boolean active,
+      String declaredAt,
+      @Nullable String effectiveDateFrom,
+      @Nullable String effectiveDateTo,
+      List<BalanceBucketPayload> openingBalances,
+      List<AccountLedgerEntryPayload> entries,
+      List<BalanceBucketPayload> closingBalances) {}
+
+  record AccountLedgerEntryPayload(
+      String postingId,
+      String effectiveDate,
+      String recordedAt,
+      String currencyCode,
+      String debitAmount,
+      String creditAmount,
+      String runningBalance,
+      String runningBalanceSide,
+      List<String> counterpartAccounts) {}
+
+  record PeriodSummaryPayload(
+      String effectiveDateFrom,
+      String effectiveDateTo,
+      int postingCount,
+      int postingLineCount,
+      int accountsTouched,
+      List<BalanceBucketPayload> currencyTotals,
+      List<PeriodAccountActivityPayload> accountActivity) {}
+
+  record PeriodAccountActivityPayload(
+      String accountCode,
+      String accountName,
+      String normalBalance,
+      boolean active,
+      String declaredAt,
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      String balanceSide) {}
+
   record AccountStateViolationsDetails(List<AccountStateViolationPayload> violations) {}
 
   record AccountStateViolationPayload(String code, String accountCode) {}

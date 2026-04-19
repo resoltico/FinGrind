@@ -1,0 +1,1 @@
+{"status":"error","code":"invalid-page-cursor","message":"Unsupported posting page cursor: definitely-not-a-valid-cursor","hint":"Rerun list-postings without --cursor, or pass the opaque nextCursor value returned by a prior successful list-postings response.","argument":"--cursor"}

@@ -9,7 +9,7 @@
         "effectiveDate": "2026-04-08",
         "recordedAt": "2026-04-08T12:00:00Z",
         "actorId": "operator-1",
-        "actorType": "USER",
+        "actorType": "HUMAN",
         "commandId": "command-basic-1",
         "idempotencyKey": "idem-basic-1",
         "causationId": "cause-basic-1",

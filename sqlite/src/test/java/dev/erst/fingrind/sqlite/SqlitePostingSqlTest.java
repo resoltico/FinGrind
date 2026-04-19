@@ -44,6 +44,28 @@ class SqlitePostingSqlTest {
   }
 
   @Test
+  void loadTrialBalanceLines_andAccountLedgerQueries_includeOnlyRequestedFilters() {
+    String unfilteredTrialBalance = SqlitePostingSql.loadTrialBalanceLines(false);
+    String filteredTrialBalance = SqlitePostingSql.loadTrialBalanceLines(true);
+    String unboundedLedger = SqlitePostingSql.listPostingsForAccountLedger(false, false);
+    String lowerBoundLedger = SqlitePostingSql.listPostingsForAccountLedger(true, false);
+    String upperBoundLedger = SqlitePostingSql.listPostingsForAccountLedger(false, true);
+    String boundedLedger = SqlitePostingSql.listPostingsForAccountLedger(true, true);
+
+    assertFalse(unfilteredTrialBalance.contains("posting_fact.effective_date <= ?"));
+    assertTrue(filteredTrialBalance.contains(" and posting_fact.effective_date <= ?"));
+
+    assertFalse(unboundedLedger.contains("effective_date >= ?"));
+    assertFalse(unboundedLedger.contains("effective_date <= ?"));
+    assertTrue(lowerBoundLedger.contains(" and effective_date >= ?"));
+    assertFalse(lowerBoundLedger.contains("effective_date <= ?"));
+    assertFalse(upperBoundLedger.contains("effective_date >= ?"));
+    assertTrue(upperBoundLedger.contains(" and effective_date <= ?"));
+    assertTrue(boundedLedger.contains(" and effective_date >= ?"));
+    assertTrue(boundedLedger.contains(" and effective_date <= ?"));
+  }
+
+  @Test
   void findAccountsByCodeCount_rejectsNonPositiveCounts() {
     assertThrows(IllegalArgumentException.class, () -> SqlitePostingSql.findAccountsByCodeCount(0));
   }
