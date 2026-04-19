@@ -681,3 +681,5 @@ try {
         Remove-Item -LiteralPath $smokeRoot -Recurse -Force
     }
 }
+
+exit 0
