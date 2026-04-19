@@ -41,6 +41,25 @@ function Require-NoMatch {
     }
 }
 
+function Read-AsciiPrefix {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true)]
+        [int] $Length
+    )
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $buffer = [byte[]]::new($Length)
+        $bytesRead = $stream.Read($buffer, 0, $Length)
+        return [System.Text.Encoding]::ASCII.GetString($buffer, 0, $bytesRead)
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 function ProjectVersion {
     $versionLine = Get-Content -Path (Join-Path $script:RepoRoot "gradle.properties") |
         Where-Object { $_ -match '^version=' } |
@@ -532,7 +551,7 @@ try {
     if (-not (Test-Path -LiteralPath $trialBalancePdfPath -PathType Leaf)) {
         Fail "trial-balance did not write the requested PDF artifact"
     }
-    $pdfHeader = [System.Text.Encoding]::ASCII.GetString((Get-Content -LiteralPath $trialBalancePdfPath -Encoding Byte -TotalCount 5))
+    $pdfHeader = Read-AsciiPrefix -Path $trialBalancePdfPath -Length 5
     if ($pdfHeader -ne "%PDF-") {
         Fail "trial-balance PDF artifact did not start with %PDF-"
     }
