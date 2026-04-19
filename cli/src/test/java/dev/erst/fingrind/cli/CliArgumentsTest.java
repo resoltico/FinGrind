@@ -700,6 +700,7 @@ class CliArgumentsTest {
 
     assertEquals("--pdf-out", invalidPath.failure().argument());
     assertTrue(invalidPath.failure().message().contains("valid filesystem path"));
+    assertTrue(invalidPath.failure().message().contains("\u0000bad"));
   }
 
   @Test
