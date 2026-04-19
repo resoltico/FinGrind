@@ -1,5 +1,6 @@
 @echo off
 setlocal enableextensions
+chcp 65001 >nul
 
 for %%I in ("%~dp0..") do set "APP_HOME=%%~fI"
 set "RUNTIME_JAVA=%APP_HOME%\runtime\bin\java.exe"
