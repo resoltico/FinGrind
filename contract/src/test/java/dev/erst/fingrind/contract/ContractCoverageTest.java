@@ -123,7 +123,7 @@ class ContractCoverageTest {
 
     ContractDiscovery.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.18.0", "test"),
+            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.19.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());
@@ -140,7 +140,6 @@ class ContractCoverageTest {
   }
 
   @Test
-  @SuppressWarnings("NullOptional")
   void inspectionAssertionsAndViolationsCoverOptionalAndPositiveBranches() {
     BookInspection inspection =
         new BookInspection.Initialized(
@@ -490,7 +489,6 @@ class ContractCoverageTest {
   }
 
   @Test
-  @SuppressWarnings("NullOptional")
   void ledgerFactsAndJournalValidationCoverTypedAndFailureBranches() {
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
@@ -575,7 +573,6 @@ class ContractCoverageTest {
   }
 
   @Test
-  @SuppressWarnings("NullOptional")
   void journalRecordsRejectBlankIdentifiersAndBackwardsTimes() {
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");

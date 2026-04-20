@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import java.util.Objects;
 
 /** Signals one invalid or unsupported CLI argument combination. */
-final class CliArgumentsException extends IllegalArgumentException {
+final class CliArgumentsException extends IllegalArgumentException implements CliCommandException {
   private static final long serialVersionUID = 1L;
 
   private final String code;
@@ -37,7 +37,8 @@ final class CliArgumentsException extends IllegalArgumentException {
     return hint;
   }
 
-  CliFailure failure() {
+  @Override
+  public CliFailure failure() {
     return new CliFailure(
         code,
         Objects.requireNonNullElse(getMessage(), "CLI arguments are invalid."),

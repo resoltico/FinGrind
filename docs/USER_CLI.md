@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: USER_CLI
 updated: "2026-04-19"
 route:
@@ -101,23 +101,25 @@ published as `.zip` archives with the `bin\fingrind.ps1` launcher.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
-- a top-level `bundle-manifest.json` with machine-readable distribution metadata
+- a top-level `bundle-manifest.json` with machine-readable distribution metadata and canonical
+  bootstrap commands that point back to `help`, `capabilities`, and the request/plan template
+  operations
 
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.18.0-macos-aarch64.tar.gz
-./fingrind-0.18.0-macos-aarch64/bin/fingrind help
-./fingrind-0.18.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.19.0-macos-aarch64.tar.gz
+./fingrind-0.19.0-macos-aarch64/bin/fingrind help
+./fingrind-0.19.0-macos-aarch64/bin/fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.18.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.18.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.18.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.19.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.19.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.19.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > $env:TEMP\fingrind-request.json
 ```
 

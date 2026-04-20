@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: DOCUMENTATION_INDEX
 updated: "2026-04-19"
 route:
@@ -16,10 +16,12 @@ route:
 ## Start Here
 
 Start with the root [README.md](../README.md) for the storefront overview.
+If you want the fastest first run, continue with [USER_QUICK_START.md](./USER_QUICK_START.md).
 Then choose one of the user, developer, or reference tracks below.
 
 ## User Guides
 
+- [USER_QUICK_START.md](./USER_QUICK_START.md): fastest path to create one protected book, post one entry, and read one report back
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, exit codes, and runtime requirements
 - [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, deterministic error codes, and response envelopes
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
@@ -73,4 +75,5 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_Core.md](./DOC_01_Core.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
+- [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)

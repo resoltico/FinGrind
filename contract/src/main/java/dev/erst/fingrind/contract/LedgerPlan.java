@@ -1,5 +1,7 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import java.util.List;
 import java.util.Objects;
@@ -23,7 +25,10 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps) {
       throw new IllegalArgumentException("Ledger plan stepId values must be unique.");
     }
     if (steps.stream().skip(1).anyMatch(LedgerStep.OpenBook.class::isInstance)) {
-      throw new IllegalArgumentException("Ledger plan open-book step must be first when present.");
+      throw new IllegalArgumentException(
+          "Ledger plan "
+              + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+              + " step must be first when present.");
     }
   }
 

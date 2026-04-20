@@ -7,6 +7,7 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.PathSensitive
@@ -15,6 +16,8 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.register
 
 private val wildcardImportPattern = Regex("""^import\s+(static\s+)?[\w.]+\.\*;$""")
+private val catchThrowablePattern = Regex("""\bcatch\s*\(\s*Throwable(?:\s+\w+)?\s*\)""")
+private val suppressWarningsPattern = Regex("""@SuppressWarnings\s*\(""")
 private const val JACKSON_DATABIND_GROUP = "tools.jackson.core"
 private const val JACKSON_DATABIND_MODULE = "jackson-databind"
 private const val LEGACY_JACKSON_GROUP = "com.fasterxml.jackson.core"
@@ -23,6 +26,7 @@ internal fun Project.registerJavaSourcePolicyTask() =
     tasks.register<VerifyJavaSourcePoliciesTask>("verifyJavaSourcePolicies") {
         group = "verification"
         description = "Fails the build when Java source files use forbidden wildcard imports."
+        projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
         sourceFiles.from(
             fileTree(projectDir) {
                 include("src/*/java/**/*.java")
@@ -36,6 +40,8 @@ internal fun Project.registerJacksonDependencyPolicyTask() =
         group = "verification"
         description =
             "Fails the build when projects declare direct Jackson dependencies outside the approved databind entrypoint or require the legacy Jackson annotation module."
+        projectPathValue.set(path)
+        projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
         directDependencies.set(
             configurations
                 .sortedBy { it.name }
@@ -56,12 +62,16 @@ internal fun Project.registerJacksonDependencyPolicyTask() =
     }
 
 abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
+    @get:Input
+    abstract val projectDirectoryPath: Property<String>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceFiles: ConfigurableFileCollection
 
     @TaskAction
     fun verify() {
+        val projectDirectory = File(projectDirectoryPath.get())
         val violations = mutableListOf<String>()
         sourceFiles.files
             .sortedBy { it.invariantSeparatorsPath() }
@@ -70,7 +80,17 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                     lines.forEachIndexed { index, line ->
                         if (wildcardImportPattern.matches(line.trim())) {
                             violations +=
-                                "${file.displayPath(project.projectDir)}:${index + 1}: wildcard imports are forbidden."
+                                "${file.displayPath(projectDirectory)}:${index + 1}: wildcard imports are forbidden."
+                        }
+                        if (file.invariantSeparatorsPath().contains("/src/main/java/")) {
+                            if (catchThrowablePattern.containsMatchIn(line)) {
+                                violations +=
+                                    "${file.displayPath(projectDirectory)}:${index + 1}: catch (Throwable) is forbidden in production sources."
+                            }
+                            if (suppressWarningsPattern.containsMatchIn(line)) {
+                                violations +=
+                                    "${file.displayPath(projectDirectory)}:${index + 1}: @SuppressWarnings is forbidden in production sources; fix the root cause instead."
+                            }
                         }
                     }
                 }
@@ -88,6 +108,12 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
 
 abstract class VerifyJacksonDependencyPolicyTask : DefaultTask() {
     @get:Input
+    abstract val projectPathValue: Property<String>
+
+    @get:Input
+    abstract val projectDirectoryPath: Property<String>
+
+    @get:Input
     abstract val directDependencies: ListProperty<String>
 
     @get:InputFiles
@@ -96,18 +122,19 @@ abstract class VerifyJacksonDependencyPolicyTask : DefaultTask() {
 
     @TaskAction
     fun verify() {
+        val projectDirectory = File(projectDirectoryPath.get())
         val violations = mutableListOf<String>()
         directDependencies.get().forEach { dependencyCoordinate ->
             val (configuration, group, module) = dependencyCoordinate.split('|', limit = 3)
             when (group) {
                 LEGACY_JACKSON_GROUP ->
                     violations +=
-                        "${project.path}:$configuration declares forbidden direct dependency $group:$module."
+                        "${projectPathValue.get()}:$configuration declares forbidden direct dependency $group:$module."
 
                 JACKSON_DATABIND_GROUP ->
                     if (module != JACKSON_DATABIND_MODULE) {
                         violations +=
-                            "${project.path}:$configuration declares unsupported direct Jackson module $group:$module; declare only $JACKSON_DATABIND_GROUP:$JACKSON_DATABIND_MODULE directly."
+                            "${projectPathValue.get()}:$configuration declares unsupported direct Jackson module $group:$module; declare only $JACKSON_DATABIND_GROUP:$JACKSON_DATABIND_MODULE directly."
                     }
             }
         }
@@ -119,11 +146,11 @@ abstract class VerifyJacksonDependencyPolicyTask : DefaultTask() {
                     lines.forEachIndexed { index, line ->
                         if (legacyJacksonModuleRequirePattern.matches(line.trim())) {
                             violations +=
-                                "${file.displayPath(project.projectDir)}:${index + 1}: module-info must not require com.fasterxml.jackson.annotation directly; require only tools.jackson.databind."
+                                "${file.displayPath(projectDirectory)}:${index + 1}: module-info must not require com.fasterxml.jackson.annotation directly; require only tools.jackson.databind."
                         }
                         if (forbiddenJacksonCatalogPattern.containsMatchIn(line)) {
                             violations +=
-                                "${file.displayPath(project.projectDir)}:${index + 1}: repository-owned Jackson catalog entries must not declare jackson-annotations or direct com.fasterxml.jackson.core coordinates."
+                                "${file.displayPath(projectDirectory)}:${index + 1}: repository-owned Jackson catalog entries must not declare jackson-annotations or direct com.fasterxml.jackson.core coordinates."
                         }
                     }
                 }

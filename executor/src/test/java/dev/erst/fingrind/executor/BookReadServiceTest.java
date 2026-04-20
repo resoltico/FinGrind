@@ -195,24 +195,23 @@ class BookReadServiceTest {
 
   @Test
   void getPostingAndAccountBalance_returnCommittedSnapshots() {
-    try (CountingFindAccountBookSession bookSession = initializedCountingBook()) {
-      declareDefaultAccounts(bookSession.delegate());
-      PostingFact postingFact = postingFact("posting-1", "idem-1");
-      bookSession.commit(postingFact);
-      bookSession.resetFindAccountCalls();
-      BookReadService service = new BookReadService(bookSession);
+    CountingFindAccountBookSession bookSession = initializedCountingBook();
+    declareDefaultAccounts(bookSession.delegate());
+    PostingFact postingFact = postingFact("posting-1", "idem-1");
+    bookSession.commit(postingFact);
+    bookSession.resetFindAccountCalls();
+    BookReadService service = new BookReadService(bookSession);
 
-      assertEquals(
-          new GetPostingResult.Found(postingFact), service.getPosting(new PostingId("posting-1")));
-      assertEquals(
-          new AccountBalanceResult.Reported(
-              new AccountBalanceSnapshot(
-                  CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE))),
-          service.accountBalance(
-              new AccountBalanceQuery(
-                  CASH_ACCOUNT.accountCode(), Optional.empty(), Optional.empty())));
-      assertEquals(0, bookSession.findAccountCalls());
-    }
+    assertEquals(
+        new GetPostingResult.Found(postingFact), service.getPosting(new PostingId("posting-1")));
+    assertEquals(
+        new AccountBalanceResult.Reported(
+            new AccountBalanceSnapshot(
+                CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE))),
+        service.accountBalance(
+            new AccountBalanceQuery(
+                CASH_ACCOUNT.accountCode(), Optional.empty(), Optional.empty())));
+    assertEquals(0, bookSession.findAccountCalls());
   }
 
   @Test
@@ -525,11 +524,6 @@ class BookReadServiceTest {
 
     private void resetFindAccountCalls() {
       findAccountCalls = 0;
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
     }
   }
 }

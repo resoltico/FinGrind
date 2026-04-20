@@ -640,11 +640,6 @@ class LedgerPlanServiceTest {
               Instant declaredAt) {
             return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
           }
-
-          @Override
-          public void close() {
-            // Parent wrapper owns lifecycle.
-          }
         };
     private boolean rollbackCalled;
 
@@ -749,11 +744,6 @@ class LedgerPlanServiceTest {
           public dev.erst.fingrind.contract.PeriodSummaryReport periodSummary(
               dev.erst.fingrind.contract.PeriodSummaryQuery query) {
             return delegate.periodSummary(query);
-          }
-
-          @Override
-          public void close() {
-            // Parent test fixture owns lifecycle.
           }
         };
 

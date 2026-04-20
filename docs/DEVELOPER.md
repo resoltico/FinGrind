@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: DEVELOPER
 updated: "2026-04-19"
 route:
@@ -42,13 +42,13 @@ contract/     Public request, result, metadata, and machine-contract surface:
               ProtocolPostEntryFields, ProtocolDeclareAccountFields,
               MachineContract plus ContractDiscovery / ContractTemplates /
               ContractRequestShapes / ContractResponse descriptor namespaces,
-              administration/query/write DTOs, rejections, committed facts,
-              ledger plans, assertions, plan journals.
+              administration/query/write DTOs, reporting DTOs, deterministic error vocabularies,
+              committed facts, ledger plans, assertions, and plan journals.
 
 executor/     Execution services plus storage seams:
               BookAdministrationService, DeclareAccountCommand, DeclaredAccount,
               BookReadService, BookInspection, paged account and posting query/report models,
-              PostingDraft, PostingRequest, PostingIdGenerator, UuidV7PostingIdGenerator,
+              PostingDraft, PostingIdGenerator, UuidV7PostingIdGenerator,
               PostingApplicationService, LedgerPlanService,
               BookAdministrationSession, PostingBookSession, BookReadSession,
               PostingValidationBook, LedgerPlanSession, PostingCommitResult.
@@ -331,3 +331,7 @@ Public API reference lives in:
 - [DOC_01_Core.md](./DOC_01_Core.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
+- [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
+
+That reference spine tracks main-source public surfaces plus the public CLI launcher entrypoint.
+It does not route test fixtures.

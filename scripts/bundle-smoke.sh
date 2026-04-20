@@ -186,14 +186,31 @@ require_match "${bundle_readme}" 'bundle-manifest\.json' \
     "bundle README did not mention the machine-readable bundle manifest"
 
 bundle_manifest="$(tr -d '\r' < "${bundle_root}/bundle-manifest.json")"
-require_match "${bundle_manifest}" '"runtimeDistribution"[[:space:]]*:[[:space:]]*"self-contained-bundle"' \
+bundle_manifest_compact="$(printf '%s' "${bundle_manifest}" | tr -d '[:space:]')"
+require_match "${bundle_manifest_compact}" '"runtimeDistribution":"self-contained-bundle"' \
     "bundle manifest did not report the self-contained runtime distribution"
-require_match "${bundle_manifest}" "\"classifier\"[[:space:]]*:[[:space:]]*\"$(host_bundle_classifier)\"" \
+require_match "${bundle_manifest_compact}" "\"classifier\":\"$(host_bundle_classifier)\"" \
     "bundle manifest did not report the current host classifier"
-require_match "${bundle_manifest}" '"supportedPublicCliBundleTargets"[[:space:]]*:[[:space:]]*\[[^]]*"windows-x86_64"' \
+require_match "${bundle_manifest_compact}" '"supportedPublicCliBundleTargets":\[[^]]*"windows-x86_64"' \
     "bundle manifest did not report the supported public bundle targets"
-require_match "${bundle_manifest}" '"unsupportedPublicCliOperatingSystems"[[:space:]]*:[[:space:]]*\[[[:space:]]*\]' \
+require_match "${bundle_manifest_compact}" '"unsupportedPublicCliOperatingSystems":\[\]' \
     "bundle manifest did not report the current unsupported public operating systems"
+require_match "${bundle_manifest_compact}" '"recommendedFirstCommand":\[[^]]*"help"' \
+    "bundle manifest did not publish the canonical bootstrap help command"
+require_match "${bundle_manifest_compact}" '"machineReadableContractCommand":\[[^]]*"capabilities"' \
+    "bundle manifest did not publish the canonical machine-readable contract command"
+require_match "${bundle_manifest_compact}" '"requestTemplateCommand":\[[^]]*"print-request-template"' \
+    "bundle manifest did not publish the canonical request-template bootstrap command"
+require_match "${bundle_manifest_compact}" '"planTemplateCommand":\[[^]]*"print-plan-template"' \
+    "bundle manifest did not publish the canonical plan-template bootstrap command"
+require_no_match "${bundle_manifest_compact}" '"discoveryCommands":' \
+    "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
+require_no_match "${bundle_manifest_compact}" '"administrationCommands":' \
+    "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
+require_no_match "${bundle_manifest_compact}" '"queryCommands":' \
+    "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
+require_no_match "${bundle_manifest_compact}" '"writeCommands":' \
+    "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
 
 runtime_version_output="$("${bundle_root}/runtime/bin/java" --version | tr -d '\r')"
 require_match "${runtime_version_output}" '^openjdk 26 ' \

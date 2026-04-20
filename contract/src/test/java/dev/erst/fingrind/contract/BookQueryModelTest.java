@@ -36,7 +36,6 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for query-side model records and sealed families. */
 class BookQueryModelTest {
   @Test
-  @SuppressWarnings("NullOptional")
   void accountBalanceQuery_rejectsNullOptionalsAndRejectsDescendingDateRange() {
     AccountBalanceQuery query =
         new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty());
@@ -56,10 +55,10 @@ class BookQueryModelTest {
     assertEquals(Optional.of(LocalDate.parse("2026-04-09")), orderedRangeQuery.effectiveDateTo());
     assertThrows(
         NullPointerException.class,
-        () -> new AccountBalanceQuery(new AccountCode("1000"), null, Optional.empty()));
+        () -> new AccountBalanceQuery(new AccountCode("1000"), nullOptional(), Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), null));
+        () -> new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), nullOptional()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -78,7 +77,6 @@ class BookQueryModelTest {
   }
 
   @Test
-  @SuppressWarnings("NullOptional")
   void listPostingsQuery_rejectsNullOptionalsAndValidatesBounds() {
     ListPostingsQuery query =
         new ListPostingsQuery(
@@ -108,13 +106,19 @@ class BookQueryModelTest {
     assertEquals(200, ListPostingsQuery.maxLimit());
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(null, Optional.empty(), Optional.empty(), 1, Optional.empty()));
+        () ->
+            new ListPostingsQuery(
+                nullOptional(), Optional.empty(), Optional.empty(), 1, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(Optional.empty(), null, Optional.empty(), 1, Optional.empty()));
+        () ->
+            new ListPostingsQuery(
+                Optional.empty(), nullOptional(), Optional.empty(), 1, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), null, 1, Optional.empty()));
+        () ->
+            new ListPostingsQuery(
+                Optional.empty(), Optional.empty(), nullOptional(), 1, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -127,7 +131,9 @@ class BookQueryModelTest {
                 Optional.empty(), Optional.empty(), Optional.empty(), 201, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(Optional.empty(), Optional.empty(), Optional.empty(), 1, null));
+        () ->
+            new ListPostingsQuery(
+                Optional.empty(), Optional.empty(), Optional.empty(), 1, nullOptional()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -217,7 +223,6 @@ class BookQueryModelTest {
   }
 
   @Test
-  @SuppressWarnings("NullOptional")
   void accountBalanceSnapshot_rejectsNullOptionalsAndCopiesBalances() {
     List<CurrencyBalance> balances =
         new ArrayList<>(
@@ -236,11 +241,13 @@ class BookQueryModelTest {
     assertThrows(
         NullPointerException.class,
         () ->
-            new AccountBalanceSnapshot(declaredAccount("1000"), null, Optional.empty(), List.of()));
+            new AccountBalanceSnapshot(
+                declaredAccount("1000"), nullOptional(), Optional.empty(), List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
-            new AccountBalanceSnapshot(declaredAccount("1000"), Optional.empty(), null, List.of()));
+            new AccountBalanceSnapshot(
+                declaredAccount("1000"), Optional.empty(), nullOptional(), List.of()));
   }
 
   @Test
@@ -363,6 +370,10 @@ class BookQueryModelTest {
 
   private static Money money(String amount) {
     return new Money(new CurrencyCode("EUR"), new BigDecimal(amount));
+  }
+
+  private static <T> Optional<T> nullOptional() {
+    return Optional.class.cast(null);
   }
 
   private static CommittedProvenance committedProvenance(String idempotencyKey) {

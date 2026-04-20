@@ -9,13 +9,13 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Shared SQLite statement helpers for single-row lookups and pragma reads. */
 final class SqliteStatementQuerySupport {
@@ -74,7 +74,6 @@ final class SqliteStatementQuerySupport {
         });
   }
 
-  @SuppressWarnings("PMD.UseConcurrentHashMap")
   static Map<AccountCode, DeclaredAccount> findAccounts(
       SqliteNativeDatabase activeDatabase, Set<AccountCode> accountCodes)
       throws SqliteNativeException {
@@ -88,12 +87,15 @@ final class SqliteStatementQuerySupport {
             statement.bindText(bindIndex, accountCode.value());
             bindIndex++;
           }
-          Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
+          List<DeclaredAccount> accounts = new ArrayList<>();
           while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
-            DeclaredAccount account = SqlitePostingMapper.declaredAccount(statement);
-            accounts.put(account.accountCode(), account);
+            accounts.add(SqlitePostingMapper.declaredAccount(statement));
           }
-          return Map.copyOf(accounts);
+          Map<AccountCode, DeclaredAccount> accountsByCode = new ConcurrentHashMap<>();
+          for (DeclaredAccount account : accounts) {
+            accountsByCode.put(account.accountCode(), account);
+          }
+          return accountsByCode;
         });
   }
 
@@ -187,15 +189,11 @@ final class SqliteStatementQuerySupport {
         });
   }
 
-  @SuppressWarnings("PMD.UseTryWithResources")
   private static <T> T withStatement(
       SqliteNativeDatabase activeDatabase, String sql, StatementQuery<T> query)
       throws SqliteNativeException {
-    SqliteNativeStatement statement = activeDatabase.prepare(sql);
-    try {
+    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       return query.query(statement);
-    } finally {
-      statement.close();
     }
   }
 }

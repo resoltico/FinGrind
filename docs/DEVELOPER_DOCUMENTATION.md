@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: DEVELOPER_DOCUMENTATION
 updated: "2026-04-19"
 route:
@@ -18,7 +18,8 @@ route:
 FinGrind uses a deliberately split documentation model:
 - root [README.md](../README.md): storefront, user-facing only
 - [README.md](./README.md) inside `docs/`: documentation index
-- `DOC_*.md`: AFAD-style reference atoms for current public API
+- `DOC_*.md`: AFAD-style reference atoms for the exported main-source public API plus the public
+  CLI launcher entrypoint, routed through `DOC_00_Index.md`
 - other `docs/*.md`: auxiliary guides for users and contributors
 - `docs/examples/`: runnable JSON, text, and CSV examples used by user guides
 
@@ -31,6 +32,9 @@ Put new material in the narrowest fitting place:
 - CLI usage, request flows, and copy-paste commands belong in user guides under `docs/`
 - build, testing, storage, and workflow material belongs in developer guides under `docs/`
 - public API state belongs in `DOC_*.md`, not in narrative guides
+- nested public types in the reference spine use qualified symbol names such as `Outer.Inner`
+- CLI and PDF adapter entrypoints belong in the reference spine too; do not bury exported adapter
+  surfaces in narrative docs
 - schema descriptions belong under `docs/sqlite/`
 - example payloads and rendered output examples belong under `docs/examples/`
 
@@ -41,6 +45,10 @@ Do not duplicate full API signatures into auxiliary guides.
 
 When behavior changes, update the matching docs in the same change:
 - public API changes: update `DOC_*.md`
+- exported-symbol routing changes: update `DOC_00_Index.md` so every routed symbol points at a
+  real file and a real `##` heading
+- keep the reference spine limited to main-source public surfaces; test fixtures do not belong in
+  `DOC_*.md`
 - CLI surface or JSON behavior changes: update user guides and any affected example payloads
 - tooling or workflow changes: update developer guides
 - schema changes: update `docs/sqlite/` and any affected rationale docs

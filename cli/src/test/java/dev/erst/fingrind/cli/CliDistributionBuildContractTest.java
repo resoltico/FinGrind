@@ -29,6 +29,23 @@ class CliDistributionBuildContractTest {
     assertFalse(buildScript.contains("docker/jdeps"));
   }
 
+  @Test
+  void cliBuild_generatesBundleManifestFromCanonicalContractMetadata() throws IOException {
+    Path repositoryRoot = repositoryRoot();
+    String bundleManifest =
+        Files.readString(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json"));
+
+    assertTrue(Files.exists(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json")));
+    assertTrue(bundleManifest.contains("${helpOperation}"));
+    assertTrue(bundleManifest.contains("${capabilitiesOperation}"));
+    assertTrue(bundleManifest.contains("${requestTemplateOperation}"));
+    assertTrue(bundleManifest.contains("${planTemplateOperation}"));
+    assertFalse(bundleManifest.contains("\"discoveryCommands\""));
+    assertFalse(bundleManifest.contains("\"administrationCommands\""));
+    assertFalse(bundleManifest.contains("\"queryCommands\""));
+    assertFalse(bundleManifest.contains("\"writeCommands\""));
+  }
+
   private static Path repositoryRoot() {
     Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
     while (!Files.exists(directory.resolve("settings.gradle.kts"))) {

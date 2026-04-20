@@ -5,10 +5,10 @@ import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Lookup-only seam used by posting validation rules in both preflight and commit paths. */
 public interface PostingValidationBook {
@@ -19,13 +19,12 @@ public interface PostingValidationBook {
   Optional<DeclaredAccount> findAccount(AccountCode accountCode);
 
   /** Looks up the supplied declared accounts in one batch when the store can do so efficiently. */
-  @SuppressWarnings("PMD.UseConcurrentHashMap")
   default Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
-    Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
-    for (AccountCode accountCode : accountCodes) {
-      findAccount(accountCode).ifPresent(account -> accounts.put(accountCode, account));
-    }
-    return Map.copyOf(accounts);
+    return accountCodes.stream()
+        .map(accountCode -> Map.entry(accountCode, findAccount(accountCode)))
+        .flatMap(
+            entry -> entry.getValue().stream().map(account -> Map.entry(entry.getKey(), account)))
+        .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   /** Looks up one existing posting fact by book-local idempotency identity. */

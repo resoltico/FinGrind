@@ -13,10 +13,10 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Integration tests for the low-level SQLite FFM bridge failure paths. */
@@ -65,7 +65,7 @@ class SqliteNativeInteropTest {
 
       try (SqliteNativeStatement statement =
           SqliteNativeLibrary.prepare(database, "insert into sample (id) values (?)")) {
-        MemorySegment statementHandle = statementHandle(statement);
+        MemorySegment statementHandle = statement.handle();
 
         try (Arena arena = Arena.ofConfined()) {
           MemorySegment textPointer = arena.allocateFrom("x");
@@ -90,8 +90,7 @@ class SqliteNativeInteropTest {
         SqliteNativeException exception =
             assertThrows(
                 SqliteNativeException.class,
-                () ->
-                    SqliteNativeLibrary.step(database.handle(), statementHandle(duplicateInsert)));
+                () -> SqliteNativeLibrary.step(database.handle(), duplicateInsert.handle()));
         assertEquals(
             SqliteNativeLibrary.SQLITE_CONSTRAINT_PRIMARYKEY,
             SqliteNativeLibrary.extendedErrorCode(database.handle()));
@@ -212,15 +211,13 @@ class SqliteNativeInteropTest {
   }
 
   @Test
-  @SuppressWarnings("PMD.CloseResource")
   void databaseAndStatementClose_areIdempotent() throws Exception {
-    SqliteNativeDatabase database =
-        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("close.sqlite")));
-    try {
-      SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, "select 1");
-      assertDoesNotThrow(statement::close);
-      assertDoesNotThrow(statement::close);
-    } finally {
+    try (SqliteNativeDatabase database =
+        SqliteNativeLibrary.open(bookAccess(tempDirectory.resolve("close.sqlite")))) {
+      try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, "select 1")) {
+        assertDoesNotThrow(statement::close);
+        assertDoesNotThrow(statement::close);
+      }
       assertDoesNotThrow(database::close);
       assertDoesNotThrow(database::close);
     }
@@ -251,6 +248,7 @@ class SqliteNativeInteropTest {
           MethodHandles.dropArguments(
               MethodHandles.constant(MemorySegment.class, messagePointer), 0, MemorySegment.class);
 
+      assertEquals(4L, strlen(messagePointer));
       assertThrows(
           IllegalStateException.class,
           () -> SqliteNativeLibrary.sqliteVersion(throwingVersionHandle));
@@ -358,8 +356,8 @@ class SqliteNativeInteropTest {
     }
   }
 
-  private static void assertBridgeFailure(ThrowingRunnable runnable) {
-    assertThrows(IllegalStateException.class, runnable::run);
+  private static void assertBridgeFailure(Executable runnable) {
+    assertThrows(IllegalStateException.class, runnable);
   }
 
   private static BookAccess bookAccess(Path bookPath) {
@@ -388,22 +386,7 @@ class SqliteNativeInteropTest {
             java.lang.invoke.MethodType.methodType(long.class, MemorySegment.class));
   }
 
-  @SuppressWarnings("unused")
   private static long strlen(MemorySegment pointer) {
     return pointer.getString(0).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-  }
-
-  @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.SignatureDeclareThrowsException"})
-  private static MemorySegment statementHandle(SqliteNativeStatement statement) throws Exception {
-    Field field = SqliteNativeStatement.class.getDeclaredField("statementHandle");
-    field.setAccessible(true);
-    return (MemorySegment) field.get(statement);
-  }
-
-  /** Runnable that can throw checked exceptions while exercising low-level bridge failures. */
-  @FunctionalInterface
-  @SuppressWarnings("PMD.SignatureDeclareThrowsException")
-  private interface ThrowingRunnable {
-    void run() throws Exception;
   }
 }

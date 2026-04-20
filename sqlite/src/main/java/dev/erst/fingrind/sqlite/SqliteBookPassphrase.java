@@ -72,12 +72,16 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return nativeBuffer;
   }
 
+  byte[] utf8BytesCopy() {
+    return utf8Bytes.clone();
+  }
+
   @Override
   public void close() {
     Arrays.fill(utf8Bytes, (byte) 0);
   }
 
-  private static String normalizeSourceDescription(String sourceDescription) {
+  static String normalizeSourceDescription(String sourceDescription) {
     Objects.requireNonNull(sourceDescription, "sourceDescription");
     String normalized = sourceDescription.trim();
     if (normalized.isEmpty()) {
@@ -142,7 +146,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     }
   }
 
-  private static void zeroize(ByteBuffer encodedBytes) {
+  static void zeroize(ByteBuffer encodedBytes) {
     ByteBuffer duplicate = encodedBytes.duplicate();
     if (duplicate.hasArray()) {
       int startIndex = duplicate.arrayOffset();
@@ -155,7 +159,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     }
   }
 
-  private static void zeroize(CharBuffer decodedCharacters) {
+  static void zeroize(CharBuffer decodedCharacters) {
     CharBuffer duplicate = decodedCharacters.duplicate();
     if (duplicate.hasArray()) {
       int startIndex = duplicate.arrayOffset();

@@ -3,8 +3,8 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.PostingFact;
 import java.util.Objects;
 
-/** Posting-only seam for validating and committing journal entries. */
-public interface PostingBookSession extends PostingValidationBook, AutoCloseable {
+/** Posting-only seam over an already-open book boundary; lifecycle stays with the owner. */
+public interface PostingBookSession extends PostingValidationBook {
   /** Attempts one durable commit and returns the ordinary application outcome explicitly. */
   PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator);
 
@@ -22,7 +22,4 @@ public interface PostingBookSession extends PostingValidationBook, AutoCloseable
             postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
         postingFact::postingId);
   }
-
-  @Override
-  void close();
 }

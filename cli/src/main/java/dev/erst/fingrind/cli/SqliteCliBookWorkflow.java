@@ -31,6 +31,7 @@ import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
+import dev.erst.fingrind.sqlite.SqliteStoreAccessMode;
 import java.time.Clock;
 import java.util.Objects;
 
@@ -49,7 +50,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_WRITE_CREATE,
+            SqliteStoreAccessMode.READ_WRITE_CREATE,
             CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
       return new BookAdministrationService(bookSession.administrationSession(), clock).openBook();
     }
@@ -61,7 +62,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
             openBookSession(
                 bookAccess,
-                SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+                SqliteStoreAccessMode.READ_WRITE_EXISTING,
                 CliBookPassphraseResolver.PromptStyle.SINGLE);
         var replacementPassphrase =
             passphraseResolver.resolve(
@@ -77,7 +78,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+            SqliteStoreAccessMode.READ_WRITE_EXISTING,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookAdministrationService(bookSession.administrationSession(), clock)
           .declareAccount(command);
@@ -89,7 +90,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).inspectBook();
     }
@@ -100,7 +101,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).listAccounts(query);
     }
@@ -112,7 +113,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).getPosting(postingId);
     }
@@ -123,7 +124,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).listPostings(query);
     }
@@ -134,7 +135,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).accountBalance(query);
     }
@@ -145,7 +146,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).trialBalance(query);
     }
@@ -156,7 +157,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).accountLedger(query);
     }
@@ -167,7 +168,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return new BookReadService(bookSession.readSession()).periodSummary(query);
     }
@@ -179,7 +180,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.PLAN_EXECUTION,
+            SqliteStoreAccessMode.PLAN_EXECUTION,
             initializesBook
                 ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
                 : CliBookPassphraseResolver.PromptStyle.SINGLE)) {
@@ -193,7 +194,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_ONLY,
+            SqliteStoreAccessMode.READ_ONLY,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return postingApplicationService(bookSession.postingSession(), clock).preflight(command);
     }
@@ -204,7 +205,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     try (SqlitePostingFactStore bookSession =
         openBookSession(
             bookAccess,
-            SqlitePostingFactStore.AccessMode.READ_WRITE_EXISTING,
+            SqliteStoreAccessMode.READ_WRITE_EXISTING,
             CliBookPassphraseResolver.PromptStyle.SINGLE)) {
       return postingApplicationService(bookSession.postingSession(), clock).commit(command);
     }
@@ -212,7 +213,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
 
   private SqlitePostingFactStore openBookSession(
       BookAccess bookAccess,
-      SqlitePostingFactStore.AccessMode accessMode,
+      SqliteStoreAccessMode accessMode,
       CliBookPassphraseResolver.PromptStyle promptStyle) {
     return new SqlitePostingFactStore(
         bookAccess.bookFilePath(), passphraseResolver.resolve(bookAccess, promptStyle), accessMode);

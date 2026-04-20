@@ -74,6 +74,6 @@ enum SqliteBookState {
   }
 
   private static int expectedUserVersion() {
-    return SqlitePostingFactStore.BOOK_FORMAT_VERSION;
+    return SqliteBookContract.FORMAT_VERSION;
   }
 }

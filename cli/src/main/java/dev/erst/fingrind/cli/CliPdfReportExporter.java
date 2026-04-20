@@ -82,9 +82,13 @@ final class CliPdfReportExporter {
     }
     try {
       fileOperations.deleteIfExists(path);
-    } catch (IOException ignored) {
-      // Best-effort cleanup only.
+    } catch (IOException exception) {
+      ignoreCleanupFailure(exception);
     }
+  }
+
+  private static void ignoreCleanupFailure(IOException exception) {
+    java.util.Objects.requireNonNull(exception, "exception");
   }
 
   /** One filesystem adapter used by PDF export and its focused unit tests. */

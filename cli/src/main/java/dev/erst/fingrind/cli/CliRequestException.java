@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import java.util.Objects;
 
 /** Signals one invalid request document or request-shape failure. */
-final class CliRequestException extends IllegalArgumentException {
+final class CliRequestException extends IllegalArgumentException implements CliCommandException {
   private static final long serialVersionUID = 1L;
 
   private final String code;
@@ -15,7 +15,8 @@ final class CliRequestException extends IllegalArgumentException {
     this.hint = hint;
   }
 
-  CliFailure failure() {
+  @Override
+  public CliFailure failure() {
     return new CliFailure(
         code, Objects.requireNonNullElse(getMessage(), "Request is invalid."), hint, null);
   }

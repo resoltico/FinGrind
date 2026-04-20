@@ -5,6 +5,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-04-21
+
+### Changed
+- Derived the capabilities `sourceCheckoutJava` value from a generated protocol resource wired to
+  the canonical Gradle Java-version property, so the machine contract no longer duplicates the
+  source-checkout baseline as a hardcoded CLI string.
+- Replaced the CLI's duplicated command-failure exception handling with a sealed
+  `CliCommandException` seam and centralized unsupported-output-mode messaging, so failure
+  dispatch is exhaustive and the public `--output` option token is consumed through one canonical
+  protocol owner.
+- Broke up more CLI and SQLite god-files into narrower seams, including dedicated read-query and
+  report argument parsers, dedicated query/report human and CSV renderers, and a top-level
+  `SqliteStoreAccessMode` contract instead of a nested store-owned access-policy enum.
+- Split more SQLite adapter responsibilities into focused helpers, including top-level native
+  runtime support, native invocation/error handling, store transaction/failure support, session
+  views, transaction validation, store-owned database wrappers, explicit passphrase ownership
+  wrappers, dedicated store read/mutation operation coordinators, and separate native bootstrap,
+  statement, and error helpers, reducing the remaining monolith pressure in the native bridge and
+  book store.
+- Split more cross-cutting contract, executor, and CLI god-files into explicit concern seams,
+  including dedicated machine-contract request/response/domain descriptor builders, dedicated CLI
+  rejection/book/report/plan payload mappers, dedicated ledger-plan assertion and outcome helpers,
+  and explicit SQLite store lifecycle and native-connection coordinators.
+- Split the remaining mixed SQLite and CLI seams further by introducing a canonical
+  `SqliteBookContract`, dedicated SQLite query-vs-report read helpers, dedicated account-vs-summary
+  report CLI parsers, a dedicated native-API loader, and a same-package `SqliteStoreTestAccess`
+  shim so test-only lifecycle seams no longer bloat the production store façade.
+- Hard-broke the executor session ownership model so `BookAdministrationSession`,
+  `PostingBookSession`, and `BookReadSession` are now non-owning operation views while the outer
+  workflow or store remains the sole lifecycle owner, removing the old aliasing trap where closing
+  one narrowed view silently closed sibling views backed by the same store.
+- Reworked the parsed CLI command model into structural output-mode subfamilies and added missing
+  invariant checks for query/report command records, so failure-output behavior is derived once per
+  command family instead of repeated across nearly every command variant.
+- Made the public bundle manifest a generated artifact instead of a hand-authored template shadow,
+  so bundle bootstrap metadata now points at the canonical `help`, `capabilities`,
+  `print-request-template`, and `print-plan-template` operations without maintaining a second
+  command registry next to the protocol catalog.
+
+### Fixed
+- Preserved JVM `Error` propagation across the SQLite FFM bridge while still wrapping ordinary
+  reflective/native invocation failures with deterministic state, so heap or VM failures no longer
+  masquerade as storage-classified SQLite problems.
+- Moved typed SQLite `MethodHandle` adapters into a non-exported internal package, added the
+  required null-marked package boundary, and kept best-effort native shutdown cleanup quiet for
+  ordinary bridge exceptions without swallowing JVM `Error`s.
+- Removed the remaining magic SQLite result-code literals and kept runtime/library lookup messages
+  aligned with the real Windows launcher surface (`bin\\fingrind.ps1` with `bin\\fingrind.cmd`
+  retained as a compatibility wrapper).
+- Reworked the SQLite store's session-owned connection and rekey secret handling so the strict PMD
+  resource rules and the 100% JaCoCo branch gate are both satisfied structurally rather than by
+  suppressions or coverage-shaped code.
+- Removed the remaining production and Jazzer wildcard imports, production `@SuppressWarnings`,
+  production `catch (Throwable)`, and reflective `setAccessible(...)` bridge probes that were
+  still violating the repository's AGENTS-guided source policy, and hardened the build logic so
+  those regressions now fail fast again.
+- Replaced brittle SQLite test reflection that reached into moved private helpers and fields with
+  same-package test seams on native connection, store lifecycle, and passphrase internals, so the
+  architecture can keep evolving without silently invalidating the regression suite.
+- Removed the last uncovered SQLite coverage-shaped branches by deleting unused native/bootstrap
+  pass-throughs, normalizing reopened-database cleanup paths, and adding regression coverage for
+  declare-account CLI argument rejection, standalone JSON emission, and SQLite cleanup-close
+  failures during native connection setup.
+- Removed the remaining raw embedded operation ids from CLI, contract, executor, and SQLite
+  user-facing messages, and strengthened contract linting so hyphenated command ids embedded inside
+  larger string literals now fail the build instead of drifting silently.
+
 ## [0.18.0] - 2026-04-19
 
 ### Changed
@@ -560,7 +627,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.19.0
 [0.18.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.18.0
 [0.17.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.17.0
 [0.16.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.16.0

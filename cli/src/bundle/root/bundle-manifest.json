@@ -24,37 +24,20 @@
   },
   "bootstrap": {
     "recommendedFirstCommand": [
-      ${bundleLauncherCommandJson},
-      "help"
+      "${bundleLauncherCommand}",
+      "${helpOperation}"
     ],
     "machineReadableContractCommand": [
-      ${bundleLauncherCommandJson},
-      "capabilities"
+      "${bundleLauncherCommand}",
+      "${capabilitiesOperation}"
     ],
-    "discoveryCommands": [
-      "help",
-      "version",
-      "capabilities",
-      "print-request-template",
-      "print-plan-template"
+    "requestTemplateCommand": [
+      "${bundleLauncherCommand}",
+      "${requestTemplateOperation}"
     ],
-    "administrationCommands": [
-      "generate-book-key-file",
-      "open-book",
-      "rekey-book",
-      "declare-account"
-    ],
-    "queryCommands": [
-      "list-accounts",
-      "inspect-book",
-      "get-posting",
-      "list-postings",
-      "account-balance"
-    ],
-    "writeCommands": [
-      "preflight-entry",
-      "post-entry",
-      "execute-plan"
+    "planTemplateCommand": [
+      "${bundleLauncherCommand}",
+      "${planTemplateOperation}"
     ]
   },
   "documentationFiles": [

@@ -72,15 +72,13 @@ import dev.erst.fingrind.core.SourceChannel;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -206,6 +204,19 @@ class CliResponseWriterTest {
 
     assertThrows(RuntimeException.class, () -> responseWriter.writeJson(cyclic, false));
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void writeJson_writesStandaloneJsonPayload() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeJson(Map.of("status", "ok", "count", 2), false);
+
+    JsonNode json = readJson(outputStream);
+
+    assertEquals("ok", json.path("status").asText());
+    assertEquals(2, json.path("count").asInt());
   }
 
   @Test
@@ -382,32 +393,24 @@ class CliResponseWriterTest {
   }
 
   @Test
-  void privateRejectionEnvelopeWriter_coversJsonAndHumanBranches() throws Throwable {
+  void queryRejectionWriter_coversJsonAndHumanBranches() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    MethodHandles.Lookup lookup =
-        MethodHandles.privateLookupIn(CliResponseWriter.class, MethodHandles.lookup());
-    MethodHandle writer =
-        lookup.findVirtual(
-            CliResponseWriter.class,
-            "writeEnvelopeOrHumanRejection",
-            MethodType.methodType(
-                void.class, OutputMode.class, CliResponseJsonModels.RejectedEnvelope.class));
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
     CliResponseJsonModels.RejectedEnvelope envelope =
         new CliResponseJsonModels.RejectedEnvelope(
             "rejected", "query-book-not-initialized", "The book is not initialized.", null, null);
 
-    writer.invoke(responseWriter, OutputMode.HUMAN, envelope);
+    outputChannel.writeQueryRejection(OutputMode.HUMAN, envelope);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
 
     outputStream.reset();
-    writer.invoke(responseWriter, OutputMode.JSON, envelope);
+    outputChannel.writeQueryRejection(OutputMode.JSON, envelope);
     JsonNode json = readJson(outputStream);
     assertEquals("rejected", json.path("status").asText());
     assertEquals("query-book-not-initialized", json.path("code").asText());
 
     outputStream.reset();
-    writer.invoke(responseWriter, OutputMode.CSV, envelope);
+    outputChannel.writeQueryRejection(OutputMode.CSV, envelope);
     json = readJson(outputStream);
     assertEquals("rejected", json.path("status").asText());
     assertEquals("query-book-not-initialized", json.path("code").asText());
@@ -442,7 +445,7 @@ class CliResponseWriterTest {
                 "self-contained-bundle",
                 ProtocolCatalog.supportedPublicCliBundleTargets(),
                 ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                "26+",
+                ProtocolCatalog.sourceCheckoutJava(),
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
                 "required",
@@ -491,7 +494,7 @@ class CliResponseWriterTest {
                 "self-contained-bundle",
                 ProtocolCatalog.supportedPublicCliBundleTargets(),
                 ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                "26+",
+                ProtocolCatalog.sourceCheckoutJava(),
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
                 "required",
@@ -541,7 +544,7 @@ class CliResponseWriterTest {
                 "self-contained-bundle",
                 ProtocolCatalog.supportedPublicCliBundleTargets(),
                 ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                "26+",
+                ProtocolCatalog.sourceCheckoutJava(),
                 "sqlite-ffm-sqlite3mc",
                 "sqlite",
                 "required",

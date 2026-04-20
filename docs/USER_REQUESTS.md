@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: HUMAN_REQUESTS
 updated: "2026-04-19"
 route:

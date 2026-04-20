@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
@@ -120,20 +119,12 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
   void helperBoundaries_enforceSecureFilesystemAndMetadataContracts() throws Exception {
-    Method ensureParentDirectory =
-        SqliteBookKeyFileGenerator.class.getDeclaredMethod("ensureParentDirectory", Path.class);
-    ensureParentDirectory.setAccessible(true);
-    Method deleteQuietly =
-        SqliteBookKeyFileGenerator.class.getDeclaredMethod("deleteQuietly", Path.class);
-    deleteQuietly.setAccessible(true);
-
     assertDoesNotThrow(
         () ->
             SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                 tempDirectory.resolve("ok.book-key")));
-    assertDoesNotThrow(() -> ensureParentDirectory.invoke(null, Path.of("/")));
+    assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.ensureParentDirectory(Path.of("/")));
 
     Path zipArchive = tempDirectory.resolve("zipfs-book-key.zip");
     try (FileSystem zipFileSystem =
@@ -154,7 +145,7 @@ class SqliteBookKeyFileGeneratorTest {
     Path nonEmptyDirectory =
         Files.createDirectory(tempDirectory.resolve("non-empty-delete-target"));
     Files.writeString(nonEmptyDirectory.resolve("child.txt"), "keep", StandardCharsets.UTF_8);
-    assertDoesNotThrow(() -> deleteQuietly.invoke(null, nonEmptyDirectory));
+    assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.deleteQuietly(nonEmptyDirectory));
     assertTrue(Files.exists(nonEmptyDirectory));
 
     if (supportsPosix(tempDirectory)) {
@@ -167,7 +158,7 @@ class SqliteBookKeyFileGeneratorTest {
           lockedDirectory,
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
       try {
-        assertDoesNotThrow(() -> deleteQuietly.invoke(null, lockedFile));
+        assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.deleteQuietly(lockedFile));
         assertTrue(Files.exists(lockedFile));
       } finally {
         Files.setPosixFilePermissions(lockedDirectory, originalPermissions);

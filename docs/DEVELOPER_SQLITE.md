@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-17"
 route:

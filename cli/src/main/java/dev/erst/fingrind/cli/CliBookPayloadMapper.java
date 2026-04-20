@@ -1,0 +1,142 @@
+package dev.erst.fingrind.cli;
+
+import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PostingPage;
+import dev.erst.fingrind.contract.PostingPageCursor;
+import java.nio.file.Path;
+import java.util.List;
+
+/** Maps book, account, posting, and query payloads into CLI JSON models. */
+final class CliBookPayloadMapper {
+  private CliBookPayloadMapper() {}
+
+  static Object bookInspectionPayload(Path bookFilePath, BookInspection inspection) {
+    return switch (inspection) {
+      case BookInspection.Missing missing ->
+          new CliResponseJsonModels.MissingBookInspectionPayload(
+              absolutePath(bookFilePath),
+              missing.status().wireValue(),
+              missing.initialized(),
+              missing.compatibleWithCurrentBinary(),
+              missing.canInitializeWithOpenBook(),
+              missing.supportedBookFormatVersion(),
+              missing.migrationPolicy().wireValue());
+      case BookInspection.Existing existing ->
+          new CliResponseJsonModels.ExistingBookInspectionPayload(
+              absolutePath(bookFilePath),
+              existing.status().wireValue(),
+              existing.initialized(),
+              existing.compatibleWithCurrentBinary(),
+              existing.canInitializeWithOpenBook(),
+              existing.applicationId(),
+              existing.detectedBookFormatVersion(),
+              existing.supportedBookFormatVersion(),
+              existing.migrationPolicy().wireValue());
+      case BookInspection.Initialized initialized ->
+          new CliResponseJsonModels.InitializedBookInspectionPayload(
+              absolutePath(bookFilePath),
+              initialized.status().wireValue(),
+              initialized.initialized(),
+              initialized.compatibleWithCurrentBinary(),
+              initialized.canInitializeWithOpenBook(),
+              initialized.applicationId(),
+              initialized.detectedBookFormatVersion(),
+              initialized.supportedBookFormatVersion(),
+              initialized.migrationPolicy().wireValue(),
+              initialized.initializedAt().toString());
+    };
+  }
+
+  static CliResponseJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
+    return new CliResponseJsonModels.DeclaredAccountPayload(
+        account.accountCode().value(),
+        account.accountName().value(),
+        account.normalBalance().wireValue(),
+        account.active(),
+        account.declaredAt().toString());
+  }
+
+  static CliResponseJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
+    return new CliResponseJsonModels.PostingPayload(
+        postingFact.postingId().value(),
+        postingFact.journalEntry().effectiveDate().toString(),
+        postingFact.provenance().recordedAt().toString(),
+        postingFact.provenance().requestProvenance().actorId().value(),
+        postingFact.provenance().requestProvenance().actorType().wireValue(),
+        postingFact.provenance().requestProvenance().commandId().value(),
+        postingFact.provenance().requestProvenance().idempotencyKey().value(),
+        postingFact.provenance().requestProvenance().causationId().value(),
+        postingFact
+            .provenance()
+            .requestProvenance()
+            .correlationId()
+            .map(value -> value.value())
+            .orElse(null),
+        postingFact.provenance().sourceChannel().wireValue(),
+        postingFact
+            .postingLineage()
+            .reversalReference()
+            .map(
+                reference ->
+                    new CliResponseJsonModels.ReversalPayload(
+                        reference.priorPostingId().value(),
+                        postingFact.postingLineage().reversalReason().orElseThrow().value()))
+            .orElse(null),
+        postingFact.journalEntry().lines().stream()
+            .map(CliBookPayloadMapper::linePayload)
+            .toList());
+  }
+
+  static CliResponseJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
+    return new CliResponseJsonModels.PostingListPayload(
+        page.limit(),
+        page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
+        page.postings().stream().map(CliBookPayloadMapper::postingPayload).toList());
+  }
+
+  static CliResponseJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
+    return new CliResponseJsonModels.AccountListPayload(
+        page.limit(),
+        page.offset(),
+        page.hasMore(),
+        page.accounts().stream().map(CliBookPayloadMapper::accountPayload).toList());
+  }
+
+  static CliResponseJsonModels.AccountBalancePayload accountBalancePayload(
+      AccountBalanceSnapshot snapshot) {
+    return new CliResponseJsonModels.AccountBalancePayload(
+        snapshot.account().accountCode().value(),
+        snapshot.account().accountName().value(),
+        snapshot.account().normalBalance().wireValue(),
+        snapshot.account().active(),
+        snapshot.account().declaredAt().toString(),
+        snapshot.effectiveDateFrom().map(Object::toString).orElse(null),
+        snapshot.effectiveDateTo().map(Object::toString).orElse(null),
+        snapshot.balances().stream().map(CliPayloadSupport::balancePayload).toList());
+  }
+
+  static List<String> counterpartAccounts(DeclaredAccount account, PostingFact postingFact) {
+    return postingFact.journalEntry().lines().stream()
+        .map(line -> line.accountCode().value())
+        .filter(accountCode -> !accountCode.equals(account.accountCode().value()))
+        .distinct()
+        .toList();
+  }
+
+  private static CliResponseJsonModels.JournalLinePayload linePayload(
+      dev.erst.fingrind.core.JournalLine line) {
+    return new CliResponseJsonModels.JournalLinePayload(
+        line.accountCode().value(),
+        line.side().wireValue(),
+        line.amount().currencyCode().value(),
+        line.amount().amount().toPlainString());
+  }
+
+  private static String absolutePath(Path bookFilePath) {
+    return bookFilePath.toAbsolutePath().normalize().toString();
+  }
+}

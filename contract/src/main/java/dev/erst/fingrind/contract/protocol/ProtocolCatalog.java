@@ -98,6 +98,11 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliOperatingSystems();
   }
 
+  /** Returns the canonical minimum Java line for source-checkout execution. */
+  public static String sourceCheckoutJava() {
+    return ProtocolCatalogFacts.runtimeEnvironmentContract().sourceCheckoutJava();
+  }
+
   private static Stream<Map.Entry<String, ProtocolOperation>> tokensFor(
       ProtocolOperation operation) {
     return Stream.concat(

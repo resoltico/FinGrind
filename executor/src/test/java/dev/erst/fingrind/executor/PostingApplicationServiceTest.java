@@ -275,41 +275,39 @@ class PostingApplicationServiceTest {
   @Test
   void commit_mapsOrdinaryBookSessionOutcomes() {
     PostingBookSession bookSession = mappedOutcomeBookSession();
-    try (bookSession) {
-      PostingApplicationService applicationService = applicationService(bookSession);
+    PostingApplicationService applicationService = applicationService(bookSession);
 
-      assertEquals(
-          commitRejected(
-              new IdempotencyKey("idem-book-not-initialized"),
-              new PostingRejection.BookNotInitialized()),
-          applicationService.commit(command("idem-book-not-initialized")));
-      assertEquals(
-          commitRejected(
-              new IdempotencyKey("idem-unknown-account"),
-              new PostingRejection.AccountStateViolations(
-                  List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
-          applicationService.commit(command("idem-unknown-account")));
-      assertEquals(
-          commitRejected(
-              new IdempotencyKey("idem-inactive-account"),
-              new PostingRejection.AccountStateViolations(
-                  List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))),
-          applicationService.commit(command("idem-inactive-account")));
-      assertEquals(
-          commitRejected(
-              new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
-          applicationService.commit(command("idem-duplicate")));
-      assertEquals(
-          commitRejected(
-              new IdempotencyKey("idem-reversal-duplicate"),
-              new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
-          applicationService.commit(
-              command(
-                  "idem-reversal-duplicate",
-                  reversalReference("posting-1"),
-                  Optional.of(new ReversalReason("full reversal")),
-                  reversalJournalEntry())));
-    }
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-book-not-initialized"),
+            new PostingRejection.BookNotInitialized()),
+        applicationService.commit(command("idem-book-not-initialized")));
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-unknown-account"),
+            new PostingRejection.AccountStateViolations(
+                List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
+        applicationService.commit(command("idem-unknown-account")));
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-inactive-account"),
+            new PostingRejection.AccountStateViolations(
+                List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))),
+        applicationService.commit(command("idem-inactive-account")));
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
+        applicationService.commit(command("idem-duplicate")));
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-reversal-duplicate"),
+            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+        applicationService.commit(
+            command(
+                "idem-reversal-duplicate",
+                reversalReference("posting-1"),
+                Optional.of(new ReversalReason("full reversal")),
+                reversalJournalEntry())));
   }
 
   @Test
@@ -337,15 +335,13 @@ class PostingApplicationServiceTest {
             throw new IllegalStateException("boom");
           }
         };
-    try (bookSession) {
-      PostingApplicationService applicationService = applicationService(bookSession);
+    PostingApplicationService applicationService = applicationService(bookSession);
 
-      IllegalStateException thrown =
-          assertThrows(
-              IllegalStateException.class, () -> applicationService.commit(command("idem-1")));
+    IllegalStateException thrown =
+        assertThrows(
+            IllegalStateException.class, () -> applicationService.commit(command("idem-1")));
 
-      assertEquals("boom", thrown.getMessage());
-    }
+    assertEquals("boom", thrown.getMessage());
   }
 
   private static InMemoryBookSession initializedBook() {
@@ -552,8 +548,5 @@ class PostingApplicationServiceTest {
         PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       return commit(postingDraft.materialize(postingIdGenerator.nextPostingId()));
     }
-
-    @Override
-    public void close() {}
   }
 }
