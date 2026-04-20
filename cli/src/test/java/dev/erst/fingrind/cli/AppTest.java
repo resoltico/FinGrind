@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 
 /** Tests for App process entry point and exit handler wiring. */
 class AppTest {
+  private record SystemStreams(InputStream in, PrintStream out) {}
+
   @Test
   void runDelegatesToCliAndDoesNotCallExitHandlerOnSuccess() {
     AtomicInteger observedExitCode = new AtomicInteger(-1);
@@ -57,18 +59,16 @@ class AppTest {
   }
 
   @Test
-  @SuppressWarnings("PMD.CloseResource")
   void mainMethodRunsEndToEndWithHelpCommand() throws IOException {
-    InputStream previousIn = System.in;
-    PrintStream previousOut = System.out;
+    SystemStreams previousStreams = new SystemStreams(System.in, System.out);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
+    try (PrintStream redirectedOut = new PrintStream(outputStream, false, StandardCharsets.UTF_8)) {
       System.setIn(new ByteArrayInputStream(new byte[0]));
-      System.setOut(new PrintStream(outputStream, false, StandardCharsets.UTF_8));
+      System.setOut(redirectedOut);
       App.main(new String[] {"help"});
     } finally {
-      System.setIn(previousIn);
-      System.setOut(previousOut);
+      System.setIn(previousStreams.in());
+      System.setOut(previousStreams.out());
     }
 
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));

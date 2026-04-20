@@ -34,18 +34,21 @@ import dev.erst.fingrind.core.PostingId;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 /** In-memory book session for tests and non-durable harness composition. */
 public final class InMemoryBookSession
-    implements LedgerPlanSession, BookAdministrationSession, PostingBookSession, BookReadSession {
+    implements LedgerPlanSession,
+        BookAdministrationSession,
+        PostingBookSession,
+        BookReadSession,
+        AutoCloseable {
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<AccountCode, DeclaredAccount> accountsByCode = mutableMap();
   private final Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey = mutableMap();
@@ -112,19 +115,14 @@ public final class InMemoryBookSession
   }
 
   @Override
-  @SuppressWarnings("PMD.UseConcurrentHashMap")
   public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
     return withLock(
-        () -> {
-          Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
-          for (AccountCode accountCode : accountCodes) {
-            DeclaredAccount account = accountsByCode.get(accountCode);
-            if (account != null) {
-              accounts.put(accountCode, account);
-            }
-          }
-          return Map.copyOf(accounts);
-        });
+        () ->
+            accountCodes.stream()
+                .filter(accountsByCode::containsKey)
+                .collect(
+                    java.util.stream.Collectors.toUnmodifiableMap(
+                        accountCode -> accountCode, accountsByCode::get)));
   }
 
   @Override
@@ -641,7 +639,7 @@ public final class InMemoryBookSession
   }
 
   private static <K, V> Map<K, V> mutableMap() {
-    return new HashMap<>();
+    return new ConcurrentHashMap<>();
   }
 
   /** Mutable debit and credit accumulators for one currency bucket. */

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-04-17"
 route:
@@ -26,7 +26,7 @@ Each published archive contains:
 - the FinGrind application JAR
 - the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
 - a top-level `README.md` for local human bootstrap
-- a top-level `bundle-manifest.json` for machine bootstrap and target discovery
+- a top-level generated `bundle-manifest.json` for machine bootstrap and target discovery
 - license and notice files
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
@@ -180,6 +180,9 @@ Every release must verify:
 - the extracted bundle runs without a preconfigured `FINGRIND_SQLITE_LIBRARY`
 - the extracted bundle contains a top-level human `README.md` and machine-readable
   `bundle-manifest.json`
+- the shipped `bundle-manifest.json` points machine clients at the canonical `help`,
+  `capabilities`, `print-request-template`, and `print-plan-template` operations instead of
+  reauthoring static command-group arrays
 - `capabilities` reports the expected managed runtime contract
 - the GitHub release object contains the complete bundle-and-checksum set
 - the container workflow waits for the complete GitHub release asset set before it publishes the

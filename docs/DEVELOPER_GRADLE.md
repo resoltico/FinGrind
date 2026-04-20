@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-17"
 route:
@@ -205,12 +205,14 @@ FinGrind keeps public operation metadata in the contract protocol catalog and tr
 failure.
 
 Rules:
-- production Java outside contract protocol must not reauthor hyphenated operation ids as string
+- production Java outside contract protocol must not embed hyphenated operation ids inside string
   literals
 - documentation command examples that invoke `fingrind` must reference registered operation ids
 - backticked hyphen identifiers in docs must either be registered operations or explicitly known
   non-operation identifiers such as rejection codes, platform classifiers, or Jazzer harness keys
 - catalog usage and quick-start examples must reference only registered operations
+- bundle machine metadata must point at canonical protocol operations instead of reauthoring static
+  command-group arrays
 
 Why this rule exists:
 - agent-facing help, docs, parser aliases, capabilities summaries, plan templates, and error hints
@@ -218,6 +220,11 @@ Why this rule exists:
   on one command vocabulary
 - adding or renaming a command should fail fast unless the contract protocol registry, docs, and
   renderers stay in sync
+- embedding `open-book`, `list-postings`, or similar ids inside larger user-facing strings is the
+  same drift class as reauthoring the raw literal directly; both create a second owner for command
+  vocabulary
+- bundle bootstrap metadata must stay truthful without maintaining a shadow registry next to the
+  real protocol catalog
 
 ### Source and dependency policy
 
@@ -226,6 +233,8 @@ not review-time preferences.
 
 Rules:
 - Java source files under any `src/*/java` tree must not use wildcard imports
+- production Java source files under any `src/main/java` tree must not catch `Throwable`
+- production Java source files under any `src/main/java` tree must not use `@SuppressWarnings`
 - direct Jackson dependencies may only enter through tools.jackson.core:jackson-databind
 - direct `com.fasterxml.jackson.core:*` declarations are forbidden even in tests or the nested
   Jazzer build
@@ -237,6 +246,10 @@ Rules:
 
 Why this rule exists:
 - wildcard imports hide real source dependencies and make architectural review harder
+- `catch (Throwable)` blurs the line between recoverable bridge failures and JVM-fatal `Error`
+  paths, which misclassifies failures and breaks the runtime hinting contract
+- production `@SuppressWarnings` entries are almost always structural debt markers in this repo and
+  should be refactored away rather than normalized into the main source tree
 - the repeated Jackson 2.x vs 3.x review churn came from leaving the repo without an explicit
   ownership rule, even though the runtime behavior was already exercised by tests
 - one direct Jackson entrypoint means upgrades happen in one place, while source and replay tests
@@ -244,6 +257,8 @@ Why this rule exists:
 
 Repository-specific note:
 - `verifyJavaSourcePolicies` now fails `check` when wildcard imports appear in Java source sets
+- `verifyJavaSourcePolicies` also fails `check` when production Java source sets introduce
+  `catch (Throwable)` or production `@SuppressWarnings`
 - `verifyJacksonDependencyPolicy` now fails `check` for any direct Jackson dependency declaration
   outside tools.jackson.core:jackson-databind
 - these checks run in both the root product build and the nested Jazzer build

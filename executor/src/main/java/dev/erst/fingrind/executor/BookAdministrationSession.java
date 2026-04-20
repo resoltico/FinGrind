@@ -7,8 +7,8 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 
-/** Administration-only seam for initializing books and declaring accounts. */
-public interface BookAdministrationSession extends AutoCloseable {
+/** Administration-only seam over an already-open book boundary; lifecycle stays with the owner. */
+public interface BookAdministrationSession {
   /** Explicitly initializes one new book if the selected path is currently empty. */
   OpenBookResult openBook(Instant initializedAt);
 
@@ -18,7 +18,4 @@ public interface BookAdministrationSession extends AutoCloseable {
       AccountName accountName,
       NormalBalance normalBalance,
       Instant declaredAt);
-
-  @Override
-  void close();
 }

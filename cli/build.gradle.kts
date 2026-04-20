@@ -73,28 +73,41 @@ val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
 val distributionDirectory = layout.buildDirectory.dir("distributions")
 val bundleClassifierValue = bundleClassifier.get()
-val bundleOperatingSystem = bundleClassifierValue.substringBefore('-')
-val bundleArchitecture = bundleClassifierValue.substringAfter('-')
+val bundleOperatingSystemId = bundleClassifierValue.substringBefore('-')
+val bundleArchitectureId = bundleClassifierValue.substringAfter('-')
 val bundleArchiveExtension =
-    providers.provider { DistributionSupport.archiveExtensionForOperatingSystemId(bundleOperatingSystem) }
+    providers.provider { DistributionSupport.archiveExtensionForOperatingSystemId(bundleOperatingSystemId) }
 val bundleArchiveFileName = bundleName.zip(bundleArchiveExtension) { name, extension -> "$name.$extension" }
 val bundleSha256File =
     bundleArchiveFileName.flatMap { fileName -> layout.buildDirectory.file("distributions/$fileName.sha256") }
 val hostBundleClassifier = DistributionSupport.hostClassifier()
 val bundleLauncherPath =
-    providers.provider { DistributionSupport.launcherPathForOperatingSystemId(bundleOperatingSystem) }
+    providers.provider { DistributionSupport.launcherPathForOperatingSystemId(bundleOperatingSystemId) }
 val bundleLauncherCommand =
-    providers.provider { DistributionSupport.launcherCommandForOperatingSystemId(bundleOperatingSystem) }
+    providers.provider { DistributionSupport.launcherCommandForOperatingSystemId(bundleOperatingSystemId) }
 val bundleTemplateProperties =
     mapOf(
         "version" to project.version.toString(),
-        "bundleClassifier" to bundleClassifierValue,
         "bundleArchiveFormat" to bundleArchiveExtension.get(),
-        "bundleOperatingSystem" to bundleOperatingSystem,
-        "bundleArchitecture" to bundleArchitecture,
+        "bundleClassifier" to bundleClassifierValue,
+        "bundleOperatingSystem" to bundleOperatingSystemId,
+        "bundleArchitecture" to bundleArchitectureId,
         "bundleLauncherPath" to bundleLauncherPath.get(),
         "bundleLauncherCommand" to bundleLauncherCommand.get(),
-        "bundleLauncherCommandJson" to DistributionSupport.jsonString(bundleLauncherCommand.get()),
+        "helpOperation" to
+            DistributionSupport.protocolOperationName(repositoryRootDirectory, "HELP"),
+        "capabilitiesOperation" to
+            DistributionSupport.protocolOperationName(repositoryRootDirectory, "CAPABILITIES"),
+        "requestTemplateOperation" to
+            DistributionSupport.protocolOperationName(
+                repositoryRootDirectory,
+                "PRINT_REQUEST_TEMPLATE",
+            ),
+        "planTemplateOperation" to
+            DistributionSupport.protocolOperationName(
+                repositoryRootDirectory,
+                "PRINT_PLAN_TEMPLATE",
+            ),
         "publicBundleTargetsJson" to
             DistributionSupport.jsonStringArray(publicCliBundleTargets),
         "unsupportedPublicOperatingSystemsJson" to
@@ -277,7 +290,7 @@ val stageCliBundle =
     }
 
 val bundleArchiveTask: org.gradle.api.tasks.TaskProvider<out AbstractArchiveTask> =
-    if (bundleOperatingSystem == "windows") {
+    if (bundleOperatingSystemId == "windows") {
         tasks.register<Zip>("bundleCliZip") {
             group = "distribution"
             description = "Builds the compressed self-contained FinGrind CLI bundle archive."

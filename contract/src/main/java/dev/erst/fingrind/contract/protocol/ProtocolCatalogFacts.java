@@ -57,6 +57,8 @@ final class ProtocolCatalogFacts {
           ProtocolStatuses.REJECTED,
           ProtocolStatuses.PLAN_REJECTED,
           ProtocolStatuses.PLAN_ASSERTION_FAILED);
+  private static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
+      RuntimeEnvironmentContract.current();
   private static final PublicDistributionContract PUBLIC_DISTRIBUTION_CONTRACT =
       PublicDistributionContract.current();
 
@@ -88,6 +90,10 @@ final class ProtocolCatalogFacts {
 
   static List<String> rejectionStatuses() {
     return REJECTION_STATUSES;
+  }
+
+  static RuntimeEnvironmentContract runtimeEnvironmentContract() {
+    return RUNTIME_ENVIRONMENT_CONTRACT;
   }
 
   static PublicDistributionContract publicDistributionContract() {

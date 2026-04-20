@@ -27,11 +27,11 @@ import dev.erst.fingrind.core.SourceChannel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for shared posting validation rules. */
@@ -154,9 +154,8 @@ class PostingValidationTest {
   }
 
   /** Validation-book double that exposes the batch account lookup path explicitly. */
-  @SuppressWarnings("PMD.UseConcurrentHashMap")
   private static final class RecordingValidationBook implements PostingValidationBook {
-    private final Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
+    private final Map<AccountCode, DeclaredAccount> accounts = new ConcurrentHashMap<>();
     private boolean initialized;
     private Optional<PostingFact> existingPosting = Optional.empty();
     private int findAccountsCalls;
@@ -176,7 +175,8 @@ class PostingValidationTest {
     public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
       findAccountsCalls++;
       requestedAccounts = List.copyOf(accountCodes);
-      Map<AccountCode, DeclaredAccount> matchedAccounts = new LinkedHashMap<>();
+      Map<AccountCode, DeclaredAccount> matchedAccounts =
+          new java.util.concurrent.ConcurrentHashMap<>();
       for (AccountCode accountCode : accountCodes) {
         DeclaredAccount account = accounts.get(accountCode);
         if (account != null) {
@@ -203,9 +203,8 @@ class PostingValidationTest {
   }
 
   /** Validation-book double that exercises the default single-account fallback lookup path. */
-  @SuppressWarnings("PMD.UseConcurrentHashMap")
   private static final class FallbackValidationBook implements PostingValidationBook {
-    private final Map<AccountCode, DeclaredAccount> accounts = new LinkedHashMap<>();
+    private final Map<AccountCode, DeclaredAccount> accounts = new ConcurrentHashMap<>();
     private List<AccountCode> requestedAccounts = List.of();
 
     @Override

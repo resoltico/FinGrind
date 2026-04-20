@@ -11,7 +11,7 @@ final class SqliteConnectionSupport {
   private SqliteConnectionSupport() {}
 
   static SqliteNativeDatabase configureOpenedDatabase(
-      SqliteNativeDatabase openedDatabase, SqlitePostingFactStore.AccessMode accessMode)
+      SqliteNativeDatabase openedDatabase, SqliteStoreAccessMode accessMode)
       throws SqliteNativeException {
     try {
       Objects.requireNonNull(accessMode, "accessMode");
@@ -39,8 +39,8 @@ final class SqliteConnectionSupport {
   static void closeAfterConfigurationFailure(SqliteNativeDatabase openedDatabase) {
     try {
       openedDatabase.close();
-    } catch (SqliteNativeException ignored) {
-      // Preserve the original open/configuration failure.
+    } catch (SqliteNativeException exception) {
+      SqliteBestEffort.ignore(exception);
     }
   }
 
@@ -53,8 +53,8 @@ final class SqliteConnectionSupport {
     }
   }
 
-  private static void assertOpenConfiguration(
-      SqliteNativeDatabase openedDatabase, SqlitePostingFactStore.AccessMode accessMode)
+  static void assertOpenConfiguration(
+      SqliteNativeDatabase openedDatabase, SqliteStoreAccessMode accessMode)
       throws SqliteNativeException {
     if (SqliteStatementQuerySupport.querySingleInt(openedDatabase, "pragma foreign_keys") != 1) {
       throw new IllegalStateException("SQLite connection failed to keep foreign_keys enabled.");

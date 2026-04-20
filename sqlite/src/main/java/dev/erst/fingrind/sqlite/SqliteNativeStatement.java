@@ -62,6 +62,10 @@ final class SqliteNativeStatement implements AutoCloseable {
     return SqliteNativeLibrary.columnInt(statementHandle, columnIndex);
   }
 
+  MemorySegment handle() {
+    return statementHandle;
+  }
+
   static int utf8ByteLength(MemorySegment valuePointer) {
     // Arena.allocateFrom(String) already encoded one null-terminated UTF-8 buffer for SQLite.
     return Math.toIntExact(valuePointer.byteSize() - 1L);

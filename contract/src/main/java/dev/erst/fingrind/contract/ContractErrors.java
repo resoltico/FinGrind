@@ -1,8 +1,6 @@
 package dev.erst.fingrind.contract;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /** Canonical machine-readable deterministic error vocabulary for FinGrind CLI failures. */
 public final class ContractErrors {
@@ -14,63 +12,66 @@ public final class ContractErrors {
   }
 
   /** Stable descriptor for one deterministic CLI error code. */
-  @SuppressWarnings("ImmutableEnumChecker")
   public enum Descriptor {
-    UNKNOWN_COMMAND(
-        "unknown-command",
-        "Invocation refused because the selected command name is not one of the public FinGrind operations."),
-    INVALID_REQUEST(
-        "invalid-request",
-        "Invocation or request document refused because it does not match the accepted FinGrind command or request contract."),
-    RUNTIME_FAILURE(
-        "runtime-failure",
-        "Command failed because of a genuine runtime or environment problem rather than deterministic caller input."),
-    INVALID_PAGE_CURSOR(
-        "invalid-page-cursor",
-        "Posting-history pagination refused because the supplied cursor is not a valid FinGrind posting page cursor."),
-    BOOK_KEY_FILE_ALREADY_EXISTS(
-        "book-key-file-already-exists",
-        "Book key file generation refused because the selected destination already exists and FinGrind will not overwrite it."),
-    INVALID_BOOK_KEY_FILE(
-        "invalid-book-key-file",
-        "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract."),
-    INVALID_BOOK_PASSPHRASE_SOURCE(
-        "invalid-book-passphrase-source",
-        "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract."),
-    INTERACTIVE_PROMPT_UNAVAILABLE(
-        "interactive-prompt-unavailable",
-        "Interactive passphrase entry refused because no supported controlling terminal is available."),
-    INTERACTIVE_PROMPT_FAILED(
-        "interactive-prompt-failed",
-        "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console."),
-    BOOK_AUTHENTICATION_FAILED(
-        "book-authentication-failed",
-        "Book access refused because FinGrind could not authenticate the selected protected book with the supplied passphrase source.");
-
-    private final String code;
-    private final String description;
-
-    Descriptor(String code, String description) {
-      this.code = Objects.requireNonNull(code, "code");
-      this.description = Objects.requireNonNull(description, "description");
-    }
+    UNKNOWN_COMMAND,
+    INVALID_REQUEST,
+    RUNTIME_FAILURE,
+    INVALID_PAGE_CURSOR,
+    BOOK_KEY_FILE_ALREADY_EXISTS,
+    INVALID_BOOK_KEY_FILE,
+    INVALID_BOOK_PASSPHRASE_SOURCE,
+    INTERACTIVE_PROMPT_UNAVAILABLE,
+    INTERACTIVE_PROMPT_FAILED,
+    BOOK_AUTHENTICATION_FAILED;
 
     /** Returns the stable wire code for this deterministic error descriptor. */
     public String code() {
-      return code;
+      return switch (this) {
+        case UNKNOWN_COMMAND -> "unknown-command";
+        case INVALID_REQUEST -> "invalid-request";
+        case RUNTIME_FAILURE -> "runtime-failure";
+        case INVALID_PAGE_CURSOR -> "invalid-page-cursor";
+        case BOOK_KEY_FILE_ALREADY_EXISTS -> "book-key-file-already-exists";
+        case INVALID_BOOK_KEY_FILE -> "invalid-book-key-file";
+        case INVALID_BOOK_PASSPHRASE_SOURCE -> "invalid-book-passphrase-source";
+        case INTERACTIVE_PROMPT_UNAVAILABLE -> "interactive-prompt-unavailable";
+        case INTERACTIVE_PROMPT_FAILED -> "interactive-prompt-failed";
+        case BOOK_AUTHENTICATION_FAILED -> "book-authentication-failed";
+      };
     }
 
     /** Returns the canonical machine-readable description for this error descriptor. */
     public String description() {
-      return description;
+      return switch (this) {
+        case UNKNOWN_COMMAND ->
+            "Invocation refused because the selected command name is not one of the public FinGrind operations.";
+        case INVALID_REQUEST ->
+            "Invocation or request document refused because it does not match the accepted FinGrind command or request contract.";
+        case RUNTIME_FAILURE ->
+            "Command failed because of a genuine runtime or environment problem rather than deterministic caller input.";
+        case INVALID_PAGE_CURSOR ->
+            "Posting-history pagination refused because the supplied cursor is not a valid FinGrind posting page cursor.";
+        case BOOK_KEY_FILE_ALREADY_EXISTS ->
+            "Book key file generation refused because the selected destination already exists and FinGrind will not overwrite it.";
+        case INVALID_BOOK_KEY_FILE ->
+            "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.";
+        case INVALID_BOOK_PASSPHRASE_SOURCE ->
+            "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.";
+        case INTERACTIVE_PROMPT_UNAVAILABLE ->
+            "Interactive passphrase entry refused because no supported controlling terminal is available.";
+        case INTERACTIVE_PROMPT_FAILED ->
+            "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console.";
+        case BOOK_AUTHENTICATION_FAILED ->
+            "Book access refused because FinGrind could not authenticate the selected protected book with the supplied passphrase source.";
+      };
     }
 
     private ContractResponse.ErrorDescriptor descriptor() {
-      return new ContractResponse.ErrorDescriptor(code, description);
+      return new ContractResponse.ErrorDescriptor(code(), description());
     }
 
     private static List<ContractResponse.ErrorDescriptor> descriptors() {
-      return Arrays.stream(values()).map(Descriptor::descriptor).toList();
+      return List.of(values()).stream().map(Descriptor::descriptor).toList();
     }
   }
 }

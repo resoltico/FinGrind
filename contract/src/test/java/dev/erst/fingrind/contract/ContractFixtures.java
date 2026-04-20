@@ -53,7 +53,7 @@ final class ContractFixtures {
         "self-contained-bundle",
         ProtocolCatalog.supportedPublicCliBundleTargets(),
         ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        "26+",
+        ProtocolCatalog.sourceCheckoutJava(),
         "sqlite-ffm-sqlite3mc",
         "sqlite",
         "required",

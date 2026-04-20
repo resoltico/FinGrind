@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -124,123 +123,144 @@ public sealed interface PostingRejection
   }
 
   /** Canonical posting rejection metadata keyed by stable wire code. */
-  @SuppressWarnings("ImmutableEnumChecker")
   enum Descriptor {
-    BOOK_NOT_INITIALIZED(
-        "posting-book-not-initialized",
-        "Posting refused because the selected book does not exist or has not been initialized with "
-            + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
-            + "."),
-    ACCOUNT_STATE_VIOLATIONS(
-        "account-state-violations",
-        "Posting refused because one or more journal lines reference undeclared or inactive accounts.",
-        List.of(
-            detailField(
-                "violations",
-                "Array of per-line account-state issue objects with stable code and accountCode.")),
-        AccountStateDetailDescriptor.descriptors()),
-    DUPLICATE_IDEMPOTENCY_KEY(
-        "duplicate-idempotency-key",
-        "Posting refused because the selected book already contains the same idempotency key."),
-    REVERSAL_TARGET_NOT_FOUND(
-        "reversal-target-not-found",
-        "Posting refused because reversal.priorPostingId does not identify a committed posting in this book.",
-        List.of(
-            detailField(
-                "priorPostingId",
-                "Previously committed posting that the requested reversal could not find."))),
-    REVERSAL_ALREADY_EXISTS(
-        "reversal-already-exists",
-        "Posting refused because the selected prior posting already has a full reversal.",
-        List.of(
-            detailField(
-                "priorPostingId",
-                "Previously committed posting that already has a full reversal."))),
-    REVERSAL_DOES_NOT_NEGATE_TARGET(
-        "reversal-does-not-negate-target",
-        "Posting refused because the candidate reversal does not exactly negate the target posting.",
-        List.of(
-            detailField(
-                "priorPostingId",
-                "Previously committed posting that the candidate reversal failed to negate.")));
-
-    private final String code;
-    private final String description;
-    private final List<ContractResponse.FieldDescriptor> detailFields;
-    private final List<ContractResponse.RejectionDescriptor> detailRejections;
-
-    Descriptor(String code, String description) {
-      this(code, description, List.of(), List.of());
-    }
-
-    Descriptor(
-        String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
-      this(code, description, detailFields, List.of());
-    }
-
-    Descriptor(
-        String code,
-        String description,
-        List<ContractResponse.FieldDescriptor> detailFields,
-        List<ContractResponse.RejectionDescriptor> detailRejections) {
-      this.code = Objects.requireNonNull(code, "code");
-      this.description = Objects.requireNonNull(description, "description");
-      this.detailFields = List.copyOf(Objects.requireNonNull(detailFields, "detailFields"));
-      this.detailRejections =
-          List.copyOf(Objects.requireNonNull(detailRejections, "detailRejections"));
-    }
+    BOOK_NOT_INITIALIZED,
+    ACCOUNT_STATE_VIOLATIONS,
+    DUPLICATE_IDEMPOTENCY_KEY,
+    REVERSAL_TARGET_NOT_FOUND,
+    REVERSAL_ALREADY_EXISTS,
+    REVERSAL_DOES_NOT_NEGATE_TARGET;
 
     private String code() {
-      return code;
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED -> "posting-book-not-initialized";
+        case ACCOUNT_STATE_VIOLATIONS -> "account-state-violations";
+        case DUPLICATE_IDEMPOTENCY_KEY -> "duplicate-idempotency-key";
+        case REVERSAL_TARGET_NOT_FOUND -> "reversal-target-not-found";
+        case REVERSAL_ALREADY_EXISTS -> "reversal-already-exists";
+        case REVERSAL_DOES_NOT_NEGATE_TARGET -> "reversal-does-not-negate-target";
+      };
+    }
+
+    private String description() {
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED ->
+            "Posting refused because the selected book does not exist or has not been initialized with "
+                + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+                + ".";
+        case ACCOUNT_STATE_VIOLATIONS ->
+            "Posting refused because one or more journal lines reference undeclared or inactive accounts.";
+        case DUPLICATE_IDEMPOTENCY_KEY ->
+            "Posting refused because the selected book already contains the same idempotency key.";
+        case REVERSAL_TARGET_NOT_FOUND ->
+            "Posting refused because reversal.priorPostingId does not identify a committed posting in this book.";
+        case REVERSAL_ALREADY_EXISTS ->
+            "Posting refused because the selected prior posting already has a full reversal.";
+        case REVERSAL_DOES_NOT_NEGATE_TARGET ->
+            "Posting refused because the candidate reversal does not exactly negate the target posting.";
+      };
+    }
+
+    private List<ContractResponse.FieldDescriptor> detailFields() {
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED, DUPLICATE_IDEMPOTENCY_KEY -> List.of();
+        case ACCOUNT_STATE_VIOLATIONS ->
+            List.of(
+                detailField(
+                    "violations",
+                    "Array of per-line account-state issue objects with stable code and accountCode."));
+        case REVERSAL_TARGET_NOT_FOUND ->
+            List.of(
+                detailField(
+                    "priorPostingId",
+                    "Previously committed posting that the requested reversal could not find."));
+        case REVERSAL_ALREADY_EXISTS ->
+            List.of(
+                detailField(
+                    "priorPostingId",
+                    "Previously committed posting that already has a full reversal."));
+        case REVERSAL_DOES_NOT_NEGATE_TARGET ->
+            List.of(
+                detailField(
+                    "priorPostingId",
+                    "Previously committed posting that the candidate reversal failed to negate."));
+      };
+    }
+
+    private List<ContractResponse.RejectionDescriptor> detailRejections() {
+      return switch (this) {
+        case ACCOUNT_STATE_VIOLATIONS -> AccountStateDetailDescriptor.descriptors();
+        case BOOK_NOT_INITIALIZED,
+            DUPLICATE_IDEMPOTENCY_KEY,
+            REVERSAL_TARGET_NOT_FOUND,
+            REVERSAL_ALREADY_EXISTS,
+            REVERSAL_DOES_NOT_NEGATE_TARGET ->
+            List.of();
+      };
     }
 
     private ContractResponse.RejectionDescriptor descriptor() {
       return new ContractResponse.RejectionDescriptor(
-          code, description, detailFields, detailRejections);
+          code(), description(), detailFields(), detailRejections());
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return Arrays.stream(values()).map(Descriptor::descriptor).toList();
+      return List.of(
+              BOOK_NOT_INITIALIZED,
+              ACCOUNT_STATE_VIOLATIONS,
+              DUPLICATE_IDEMPOTENCY_KEY,
+              REVERSAL_TARGET_NOT_FOUND,
+              REVERSAL_ALREADY_EXISTS,
+              REVERSAL_DOES_NOT_NEGATE_TARGET)
+          .stream()
+          .map(Descriptor::descriptor)
+          .toList();
     }
   }
 
   /** Canonical metadata for nested account-state detail rejections. */
-  @SuppressWarnings("ImmutableEnumChecker")
   enum AccountStateDetailDescriptor {
-    UNKNOWN_ACCOUNT(
-        "unknown-account",
-        "One journal line references an undeclared account.",
-        List.of(
-            detailField(
-                "accountCode", "Undeclared accountCode referenced by one rejected journal line."))),
-    INACTIVE_ACCOUNT(
-        "inactive-account",
-        "One journal line references an inactive account.",
-        List.of(
-            detailField(
-                "accountCode", "Inactive accountCode referenced by one rejected journal line.")));
-
-    private final String code;
-    private final String description;
-    private final List<ContractResponse.FieldDescriptor> detailFields;
-
-    AccountStateDetailDescriptor(
-        String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
-      this.code = Objects.requireNonNull(code, "code");
-      this.description = Objects.requireNonNull(description, "description");
-      this.detailFields = List.copyOf(Objects.requireNonNull(detailFields, "detailFields"));
-    }
+    UNKNOWN_ACCOUNT,
+    INACTIVE_ACCOUNT;
 
     private String code() {
-      return code;
+      return switch (this) {
+        case UNKNOWN_ACCOUNT -> "unknown-account";
+        case INACTIVE_ACCOUNT -> "inactive-account";
+      };
+    }
+
+    private String description() {
+      return switch (this) {
+        case UNKNOWN_ACCOUNT -> "One journal line references an undeclared account.";
+        case INACTIVE_ACCOUNT -> "One journal line references an inactive account.";
+      };
+    }
+
+    private List<ContractResponse.FieldDescriptor> detailFields() {
+      return switch (this) {
+        case UNKNOWN_ACCOUNT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Undeclared accountCode referenced by one rejected journal line."));
+        case INACTIVE_ACCOUNT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Inactive accountCode referenced by one rejected journal line."));
+      };
     }
 
     private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(code, description, detailFields, List.of());
+      return new ContractResponse.RejectionDescriptor(
+          code(), description(), detailFields(), List.of());
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return Arrays.stream(values()).map(AccountStateDetailDescriptor::descriptor).toList();
+      return List.of(UNKNOWN_ACCOUNT, INACTIVE_ACCOUNT).stream()
+          .map(AccountStateDetailDescriptor::descriptor)
+          .toList();
     }
   }
 }

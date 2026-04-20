@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.ContractDiscovery;
 import dev.erst.fingrind.contract.ContractResponse;
 import dev.erst.fingrind.contract.MachineContract;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new ContractDiscovery.HelpDescriptor(
                 "FinGrind",
-                "0.18.0",
+                "0.19.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -72,13 +73,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.18.0"));
+    assertTrue(rendered.contains("0.19.0"));
   }
 
   private static ContractDiscovery.ApplicationIdentity identity() {
     return new ContractDiscovery.ApplicationIdentity(
         "FinGrind",
-        "0.18.0",
+        "0.19.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 
@@ -88,7 +89,7 @@ class CliDiscoveryOutputRendererTest {
         "self-contained-bundle",
         List.of("macos-aarch64", "windows-x86_64"),
         List.of(),
-        "26+",
+        ProtocolCatalog.sourceCheckoutJava(),
         "sqlite-ffm-sqlite3mc",
         "sqlite",
         "required",

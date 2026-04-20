@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.PostingFact;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -92,15 +91,9 @@ public final class SqliteFuzzAssertions {
   }
 
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */
-  @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.SignatureDeclareThrowsException"})
   public static void assertStoreConnectionHardening(SqlitePostingFactStore postingFactStore) {
     try {
-      Field databaseField = SqlitePostingFactStore.class.getDeclaredField("database");
-      databaseField.setAccessible(true);
-      SqliteNativeDatabase database = (SqliteNativeDatabase) databaseField.get(postingFactStore);
-      if (database == null) {
-        throw new IllegalStateException("SQLite store did not open a database handle.");
-      }
+      SqliteNativeDatabase database = postingFactStore.activeNativeDatabase();
       assertQueryInt(database, "pragma foreign_keys", 1);
       assertQueryText(database, "pragma journal_mode", "delete");
       assertQueryInt(database, "pragma synchronous", 3);
@@ -108,9 +101,6 @@ public final class SqliteFuzzAssertions {
     } catch (SqliteNativeException exception) {
       throw new IllegalStateException(
           "SQLite store connection did not satisfy the pragma-hardening invariant.", exception);
-    } catch (ReflectiveOperationException exception) {
-      throw new IllegalStateException(
-          "Failed to inspect the SQLite store connection for hardening checks.", exception);
     }
   }
 

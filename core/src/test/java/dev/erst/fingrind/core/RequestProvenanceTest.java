@@ -27,7 +27,6 @@ class RequestProvenanceTest {
   }
 
   @Test
-  @SuppressWarnings("NullOptional")
   void constructor_rejectsNullOptionalFields() {
     assertThrows(
         NullPointerException.class,
@@ -38,7 +37,7 @@ class RequestProvenanceTest {
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
-                null));
+                nullOptional()));
   }
 
   @Test
@@ -53,5 +52,9 @@ class RequestProvenanceTest {
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.empty()));
+  }
+
+  private static <T> Optional<T> nullOptional() {
+    return Optional.class.cast(null);
   }
 }

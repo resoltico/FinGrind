@@ -19,8 +19,8 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Optional;
 
-/** Unified read-only seam for inspection, listings, balances, and office-worker reports. */
-public interface BookReadSession extends AutoCloseable {
+/** Unified read-only seam over an already-open book boundary; lifecycle stays with the owner. */
+public interface BookReadSession {
   /** Inspects the selected book file without mutating it. */
   BookInspection inspectBook();
 
@@ -50,7 +50,4 @@ public interface BookReadSession extends AutoCloseable {
 
   /** Computes one canonical bounded period summary report. */
   PeriodSummaryReport periodSummary(PeriodSummaryQuery query);
-
-  @Override
-  void close();
 }

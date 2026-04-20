@@ -270,7 +270,7 @@ class FinGrindCliTest {
     assertEquals(
         ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
         environmentDescriptor.unsupportedPublicCliOperatingSystems());
-    assertEquals("26+", environmentDescriptor.sourceCheckoutJava());
+    assertEquals(ProtocolCatalog.sourceCheckoutJava(), environmentDescriptor.sourceCheckoutJava());
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqliteLibraryEnvironmentVariable());
     assertEquals(
@@ -453,32 +453,31 @@ class FinGrindCliTest {
   }
 
   @Test
-  void cliFailure_rejectsUnsupportedExceptionTypes() throws Exception {
+  void cliFailure_mapsSealedCliCommandExceptions() throws Throwable {
     MethodHandle cliFailure =
         MethodHandles.privateLookupIn(FinGrindCli.class, MethodHandles.lookup())
             .findStatic(
                 FinGrindCli.class,
                 "cliFailure",
-                MethodType.methodType(CliFailure.class, Exception.class));
+                MethodType.methodType(CliFailure.class, CliCommandException.class));
 
-    IllegalArgumentException thrown =
-        org.junit.jupiter.api.Assertions.assertThrows(
-            IllegalArgumentException.class,
-            () -> cliFailure.invokeWithArguments(new IllegalStateException("boom")));
+    CliFailure argumentFailure =
+        (CliFailure)
+            cliFailure.invokeWithArguments(
+                new CliArgumentsException("invalid-argument", "--flag", "bad flag", "fix flag"));
+    CliFailure requestFailure =
+        (CliFailure)
+            cliFailure.invokeWithArguments(
+                new CliRequestException("invalid-request", "bad request", "fix request", null));
 
-    assertEquals("Unsupported CLI failure type.", thrown.getMessage());
+    assertEquals("invalid-argument", argumentFailure.code());
+    assertEquals("--flag", argumentFailure.argument());
+    assertEquals("invalid-request", requestFailure.code());
+    assertNull(requestFailure.argument());
   }
 
   @Test
-  void privateOutputSelectionHelpers_coverTemplateAndMalformedOutputBranches() throws Throwable {
-    MethodHandles.Lookup lookup =
-        MethodHandles.privateLookupIn(FinGrindCli.class, MethodHandles.lookup());
-    MethodHandle inferredFailureOutputMode =
-        lookup.findStatic(
-            FinGrindCli.class,
-            "inferredFailureOutputMode",
-            MethodType.methodType(OutputMode.class, String[].class));
-
+  void outputSelectionHelpers_coverTemplateAndMalformedOutputBranches() {
     BookAccess bookAccess =
         new BookAccess(
             Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")));
@@ -567,30 +566,28 @@ class FinGrindCliTest {
         new CliCommand.ExecutePlan(bookAccess, Path.of("plan.json")).failureOutputMode());
     assertEquals(
         OutputMode.JSON,
-        inferredFailureOutputMode.invokeWithArguments(
-            (Object)
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--output",
-                  "not-a-real-mode"
-                }));
+        CliExecutionSupport.inferredFailureOutputMode(
+            new String[] {
+              "open-book",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--output",
+              "not-a-real-mode"
+            }));
     assertEquals(
         OutputMode.HUMAN,
-        inferredFailureOutputMode.invokeWithArguments(
-            (Object)
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--output",
-                  "human"
-                }));
+        CliExecutionSupport.inferredFailureOutputMode(
+            new String[] {
+              "open-book",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--output",
+              "human"
+            }));
   }
 
   @Test

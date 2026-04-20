@@ -1,164 +1,29 @@
 ---
 afad: "3.5"
-version: "0.18.0"
+version: "0.19.0"
 domain: CORE
-updated: "2026-04-17"
+updated: "2026-04-19"
 route:
-  keywords: [fingrind, core, protocol, operation-catalog, journal, money, positive-money, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
-  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "how are request and committed provenance separated in fingrind", "where do the core accounting invariants live"]
+  keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
+  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
 ---
 
 # Core API Reference
 
-## `ProtocolCatalog`
-
-`ProtocolCatalog` is the contract-owned registry for public operation and model metadata.
-
-```java
-public final class ProtocolCatalog
-```
-
-- Purpose: own operation ids, aliases, display labels, execution modes, summaries, help usage,
-  quick-start examples, hard book-model facts, preflight facts, currency facts, and shared status
-  lists before executor or CLI rendering
-- Surface: `operations()`, `operation(...)`, `operationName(...)`, `findByToken(...)`,
-  `operationNames(...)`, and global fact accessors
-- Contract: CLI parsing, `help`, `capabilities`, rejection text, paging defaults, docs linting, and
-  Jazzer support consume this registry instead of reauthoring command ids
-
-## `ProtocolOperation`
-
-`ProtocolOperation` is one structured command descriptor in the contract protocol catalog.
-
-```java
-public record ProtocolOperation(
-    OperationId id,
-    OperationCategory category,
-    String displayLabel,
-    List<String> aliases,
-    List<String> options,
-    ExecutionMode executionMode,
-    String usage,
-    String analysisSummary,
-    List<String> examples)
-```
-
-- Purpose: keep operation metadata machine-readable before it is serialized by `MachineContract`
-- Validation: rejects `null` fields and defensively copies list fields
-
-## `OperationId`
-
-`OperationId` is the canonical enum of public FinGrind operation identifiers.
-
-```java
-public enum OperationId
-```
-
-- Members: `HELP`, `VERSION`, `CAPABILITIES`, `PRINT_REQUEST_TEMPLATE`, `PRINT_PLAN_TEMPLATE`,
-  `GENERATE_BOOK_KEY_FILE`, `OPEN_BOOK`, `REKEY_BOOK`, `DECLARE_ACCOUNT`, `INSPECT_BOOK`,
-  `LIST_ACCOUNTS`, `GET_POSTING`, `LIST_POSTINGS`, `ACCOUNT_BALANCE`, `EXECUTE_PLAN`,
-  `PREFLIGHT_ENTRY`, `POST_ENTRY`
-- Surface: `wireName()` returns the stable CLI and wire identifier
-
-## `OperationCategory`
-
-`OperationCategory` groups public operations for the capabilities surface.
-
-```java
-public enum OperationCategory {
-  DISCOVERY,
-  ADMINISTRATION,
-  QUERY,
-  WRITE
-}
-```
-
-- Purpose: drive `capabilities.discoveryCommands`, `administrationCommands`, `queryCommands`, and
-  `writeCommands` from one enum-backed catalog
-
-## `ExecutionMode`
-
-`ExecutionMode` describes the public output mode for one operation.
-
-```java
-public enum ExecutionMode
-```
-
-- Members: `JSON_ENVELOPE`, `RAW_JSON`
-- Surface: `wireValue()` returns values such as `json-envelope` and `raw-json`
-
-## `ProtocolLimits`
-
-`ProtocolLimits` owns shared public query limits.
-
-```java
-public final class ProtocolLimits
-```
-
-- Constants: `PAGE_LIMIT_MIN = 1`, `PAGE_LIMIT_MAX = 200`, `DEFAULT_PAGE_LIMIT = 50`,
-  `PAGE_OFFSET_MIN = 0`, `DEFAULT_PAGE_OFFSET = 0`
-- Consumers: contract query models, CLI argument defaults, help rendering, and Jazzer support
-
-## `ProtocolOptions`
-
-`ProtocolOptions` owns canonical public CLI option spellings.
-
-```java
-public final class ProtocolOptions
-```
-
-- Purpose: prevent parser, help, request-input descriptors, and passphrase-source models from
-  carrying divergent option strings
-- Surface: constants for book, passphrase, request, posting, account, date, limit, and offset
-  options plus helpers for rendered passphrase and pagination syntax
-
-## `BookModelFacts`
-
-`BookModelFacts` is the structured contract-owned description of the protected-book model.
-
-```java
-public record BookModelFacts(
-    String boundary,
-    String entityScope,
-    String filesystem,
-    String credential,
-    String initialization,
-    String accountRegistry,
-    String migration,
-    String currencyScope)
-```
-
-- Purpose: keep hard book-model limitations in core before `help` or `capabilities` render them
-
-## `CurrencyFacts`
-
-`CurrencyFacts` is the structured contract-owned description of currency support.
-
-```java
-public record CurrencyFacts(String scope, String multiCurrencyStatus, String description)
-```
-
-- Purpose: publish the current single-currency-per-entry model without duplicating text in CLI code
-
-## `PreflightFacts`
-
-`PreflightFacts` is the structured contract-owned description of preflight semantics.
-
-```java
-public record PreflightFacts(String semantics, boolean commitGuarantee, String description)
-```
-
-- Purpose: publish advisory preflight behavior once for help, capabilities, and user-facing docs
+This file documents the exported `core` module only. `core` owns the accounting vocabulary and
+invariants that higher layers reuse. It does not own protocol metadata, CLI options, request
+templates, storage access, or report rendering.
 
 ## `AccountCode`
 
-`AccountCode` is the jurisdiction-agnostic account identifier carried by one journal line.
+`AccountCode` is the jurisdiction-agnostic account identifier carried by journal lines and account
+registries.
 
 ```java
 public record AccountCode(String value)
 ```
 
-- Purpose: name the account on one line without imposing a country-specific chart shape
+- Purpose: represent one book-local account without hard-coding a chart-of-accounts scheme
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `AccountName`
@@ -169,12 +34,12 @@ public record AccountCode(String value)
 public record AccountName(String value)
 ```
 
-- Purpose: keep the account registry human-readable without leaving display names as raw strings
+- Purpose: keep account display text typed instead of using raw strings
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `ActorId`
 
-`ActorId` is the stable identifier for the actor that submitted one posting request.
+`ActorId` is the stable identifier for the caller recorded in request provenance.
 
 ```java
 public record ActorId(String value)
@@ -195,17 +60,32 @@ public enum ActorType {
 }
 ```
 
-- Purpose: distinguish user, system, and agent callers without magic strings
+- Purpose: distinguish human, system, and agent callers without free-form strings
+
+## `BalanceSide`
+
+`BalanceSide` is the side of one computed net balance, including the balanced zero state.
+
+```java
+public enum BalanceSide {
+  DEBIT,
+  CREDIT,
+  ZERO
+}
+```
+
+- Purpose: represent computed balance polarity for grouped balances and running ledgers
+- Wire contract: `wireValue()` and `fromWireValue(...)` own the stable public vocabulary
 
 ## `CausationId`
 
-`CausationId` is the stable identifier linking one posting request to its immediate cause.
+`CausationId` links one request to its immediate cause.
 
 ```java
 public record CausationId(String value)
 ```
 
-- Purpose: preserve immediate cause lineage in request provenance
+- Purpose: preserve causal lineage in request provenance
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `CommandId`
@@ -230,29 +110,29 @@ public record CommittedProvenance(
     SourceChannel sourceChannel)
 ```
 
-- Purpose: carry the accepted request provenance plus commit-time audit fields
+- Purpose: carry accepted caller provenance plus commit-time audit metadata
 - Validation: rejects `null` request provenance, `recordedAt`, and `sourceChannel`
 
 ## `CorrelationId`
 
-`CorrelationId` is the stable identifier linking one posting request to a broader operation.
+`CorrelationId` links one request to a broader workflow.
 
 ```java
 public record CorrelationId(String value)
 ```
 
-- Purpose: correlate multiple commands inside one larger workflow
+- Purpose: correlate related commands without overloading `CommandId`
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `CurrencyCode`
 
-`CurrencyCode` is the ISO-style currency identifier used by `Money`.
+`CurrencyCode` is the canonical three-letter currency identifier used by `Money`.
 
 ```java
 public record CurrencyCode(String value)
 ```
 
-- Purpose: make currency explicit and canonical
+- Purpose: keep currency explicit and normalized
 - Normalization: strips whitespace and uppercases with `Locale.ROOT`
 - Validation: accepts exactly three uppercase ASCII letters
 
@@ -264,23 +144,21 @@ public record CurrencyCode(String value)
 public record IdempotencyKey(String value)
 ```
 
-- Purpose: scope duplicate rejection inside one selected book
+- Purpose: scope duplicate detection inside one selected book
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `JournalEntry`
 
-`JournalEntry` is the balanced journal grammar that crosses the contract write boundary.
+`JournalEntry` is the balanced journal grammar that crosses the write boundary.
 
 ```java
 public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
 ```
 
-- Purpose: carry the accounting body of one posting request
+- Purpose: carry one complete accounting event with its effective date and lines
 - Normalization: defensively copies `lines`
 - Validation: rejects `null` effective date, empty lines, entries that do not contain both a debit
   and a credit side, mixed currencies, and unbalanced totals
-- Contract impact: the CLI machine contract advertises this invariant as
-  `currencyModel.scope = single-currency-per-entry`
 
 ## `JournalLine`
 
@@ -290,14 +168,14 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
 public record JournalLine(AccountCode accountCode, EntrySide side, PositiveMoney amount)
 ```
 
-- Purpose: keep account, side, and amount explicit on every line
-- Compatibility: accepts a general `Money` value through a convenience overload, then upgrades it
-  into `PositiveMoney`
-- Validation: rejects `null` fields and requires a strictly positive amount
+- Purpose: keep account, side, and strictly positive amount explicit on every line
+- Compatibility: accepts a general `Money` through a convenience constructor, then upgrades it to
+  `PositiveMoney`
+- Validation: rejects `null` fields
 
 ## `JournalLine.EntrySide`
 
-`EntrySide` is the closed set of journal equation sides.
+`EntrySide` is the closed set of journal-equation sides.
 
 ```java
 public enum EntrySide {
@@ -306,7 +184,7 @@ public enum EntrySide {
 }
 ```
 
-- Purpose: make line polarity explicit in the type system
+- Purpose: make line polarity explicit in the type system and wire vocabulary
 
 ## `Money`
 
@@ -319,7 +197,7 @@ public record Money(CurrencyCode currencyCode, BigDecimal amount)
 - Purpose: preserve exact decimal semantics without floating-point behavior
 - Normalization: strips trailing zeroes and normalizes negative scale to zero
 - Validation: rejects `null` fields and negative amounts
-- Usage: reused by balance and reporting surfaces that legitimately need zero-valued totals
+- Usage: reused by balances and reports that legitimately need zero-valued totals
 
 ## `PositiveMoney`
 
@@ -329,9 +207,8 @@ public record Money(CurrencyCode currencyCode, BigDecimal amount)
 public record PositiveMoney(Money value)
 ```
 
-- Purpose: make the journal-line positivity invariant structural instead of splitting it between
-  `Money` and `JournalLine`
-- Construction: accepts either a fully formed `Money` value or direct currency-and-amount inputs
+- Purpose: make the journal-line positivity invariant structural instead of duplicating it
+- Construction: accepts either a fully formed `Money` or direct currency-and-amount inputs
 - Validation: rejects zero-valued amounts with the canonical journal-line error
 
 ## `NormalBalance`
@@ -345,23 +222,23 @@ public enum NormalBalance {
 }
 ```
 
-- Purpose: make the account registry explicit enough for validation and future trial-balance style reads
+- Purpose: keep account-behavior metadata explicit for validation and reporting
 - Scope: bookkeeping-native and legislation-agnostic
 
 ## `PostingId`
 
-`PostingId` is the stable identifier for one committed posting fact.
+`PostingId` is the stable identifier for one committed posting.
 
 ```java
 public record PostingId(String value)
 ```
 
-- Purpose: name one durable posting independently of request idempotency
+- Purpose: identify durable postings independently of request idempotency
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `RequestProvenance`
 
-`RequestProvenance` is the caller-supplied provenance accepted at the posting request boundary.
+`RequestProvenance` is the caller-supplied provenance accepted at the posting boundary.
 
 ```java
 public record RequestProvenance(
@@ -373,9 +250,9 @@ public record RequestProvenance(
     Optional<CorrelationId> correlationId)
 ```
 
-- Purpose: carry the accepted request identity without commit-time audit fields
-- Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
+- Purpose: carry caller identity and lineage without commit-time audit fields
 - Validation: rejects `null` required fields and `null` optionals
+- Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
 
 ## `ReversalReason`
 
@@ -385,23 +262,23 @@ public record RequestProvenance(
 public record ReversalReason(String value)
 ```
 
-- Purpose: preserve the operator-supplied reason carried by reversal posting lineage
+- Purpose: preserve operator-supplied reversal narrative in typed form
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
 ## `ReversalReference`
 
-`ReversalReference` is the additive link from a new posting fact to an earlier committed posting.
+`ReversalReference` is the additive link from a new posting to an earlier committed posting.
 
 ```java
 public record ReversalReference(PostingId priorPostingId)
 ```
 
-- Purpose: model reversal lineage outside the journal-entry grammar
+- Purpose: model reversal lineage outside the journal grammar
 - Validation: rejects `null` prior posting id
 
 ## `SourceChannel`
 
-`SourceChannel` is the operating surface through which one posting request entered FinGrind.
+`SourceChannel` is the operating surface through which one posting entered FinGrind.
 
 ```java
 public enum SourceChannel {
@@ -409,5 +286,5 @@ public enum SourceChannel {
 }
 ```
 
-- Purpose: record the committed ingress channel explicitly
+- Purpose: record committed ingress explicitly
 - Current scope: only `CLI` is currently supported

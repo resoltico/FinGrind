@@ -221,11 +221,28 @@ class CliArgumentsTest {
                       "--output",
                       "human"
                     }));
+    CliArgumentsException declareAccountExtra =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "declare-account",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "declare-account.json",
+                      "--extra"
+                    }));
 
     assertEquals("--extra", openBookExtra.argument());
     assertEquals("Unsupported argument: --extra", openBookExtra.getMessage());
     assertEquals("--output", executePlanExtra.argument());
     assertEquals("Unsupported argument: --output", executePlanExtra.getMessage());
+    assertEquals("--extra", declareAccountExtra.argument());
+    assertEquals("Unsupported argument: --extra", declareAccountExtra.getMessage());
   }
 
   @Test

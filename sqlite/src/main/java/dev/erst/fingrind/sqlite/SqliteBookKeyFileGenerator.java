@@ -2,6 +2,8 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.ContractErrorException;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -82,7 +84,7 @@ public final class SqliteBookKeyFileGenerator {
     return bookKeyFilePath.toAbsolutePath().normalize();
   }
 
-  private static void ensureParentDirectory(Path normalizedPath) throws IOException {
+  static void ensureParentDirectory(Path normalizedPath) throws IOException {
     SqliteBookKeyFileSecurity.ensureSecureParentDirectory(normalizedPath);
   }
 
@@ -94,7 +96,9 @@ public final class SqliteBookKeyFileGenerator {
           ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS,
           "The FinGrind book key file already exists and will not be overwritten: "
               + normalizedPath,
-          "Choose a different destination path for generate-book-key-file, or remove the existing file yourself before rerunning.",
+          "Choose a different destination path for "
+              + ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)
+              + ", or remove the existing file yourself before rerunning.",
           null,
           exception);
     }
@@ -119,11 +123,11 @@ public final class SqliteBookKeyFileGenerator {
     }
   }
 
-  private static void deleteQuietly(Path normalizedPath) {
+  static void deleteQuietly(Path normalizedPath) {
     try {
       Files.deleteIfExists(normalizedPath);
-    } catch (IOException ignored) {
-      // Preserve the original failure.
+    } catch (IOException exception) {
+      SqliteBestEffort.ignore(exception);
     }
   }
 

@@ -7,14 +7,32 @@ import java.util.Properties
 object DistributionSupport {
     private const val PUBLIC_DISTRIBUTION_CONTRACT_PATH =
         "contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.properties"
+    private const val OPERATION_ID_SOURCE_PATH =
+        "contract/src/main/java/dev/erst/fingrind/contract/protocol/OperationId.java"
     private const val SUPPORTED_BUNDLE_TARGETS_KEY = "supportedPublicCliBundleTargets"
     private const val UNSUPPORTED_OPERATING_SYSTEMS_KEY = "unsupportedPublicCliOperatingSystems"
+    private val operationIdLinePattern =
+        Regex("""^\s*([A-Z_]+)\("([^"]+)"\),?$""")
 
     fun publicCliBundleTargets(projectRootDirectory: Path): List<String> =
         loadPublicDistributionContract(projectRootDirectory).supportedPublicCliBundleTargets
 
     fun unsupportedPublicCliOperatingSystems(projectRootDirectory: Path): List<String> =
         loadPublicDistributionContract(projectRootDirectory).unsupportedOperatingSystems
+
+    fun protocolOperationName(projectRootDirectory: Path, operationIdConstantName: String): String {
+        val source =
+            Files.readAllLines(projectRootDirectory.resolve(OPERATION_ID_SOURCE_PATH))
+        for (line in source) {
+            val match = operationIdLinePattern.matchEntire(line) ?: continue
+            if (match.groupValues[1] == operationIdConstantName) {
+                return match.groupValues[2]
+            }
+        }
+        throw IllegalStateException(
+            "Unknown protocol operation constant $operationIdConstantName in $OPERATION_ID_SOURCE_PATH.",
+        )
+    }
 
     fun operatingSystemId(osName: String = System.getProperty("os.name", "")): String {
         val operatingSystem = osName.lowercase()

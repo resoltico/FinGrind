@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -61,53 +60,57 @@ public sealed interface BookQueryRejection
   }
 
   /** Canonical query rejection metadata keyed by stable wire code. */
-  @SuppressWarnings("ImmutableEnumChecker")
   enum Descriptor {
-    BOOK_NOT_INITIALIZED(
-        "query-book-not-initialized",
-        "Query refused because the selected book does not exist or has not been initialized with "
-            + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
-            + "."),
-    UNKNOWN_ACCOUNT(
-        "unknown-account",
-        "Query refused because the selected accountCode is not declared in this book.",
-        List.of(
-            detailField(
-                "accountCode",
-                "Undeclared accountCode supplied by the caller for the rejected query."))),
-    POSTING_NOT_FOUND(
-        "posting-not-found",
-        "Query refused because the selected postingId does not identify a committed posting in this book.",
-        List.of(
-            detailField(
-                "postingId",
-                "Posting identifier supplied by the caller that does not exist in this book.")));
-
-    private final String code;
-    private final String description;
-    private final List<ContractResponse.FieldDescriptor> detailFields;
-
-    Descriptor(String code, String description) {
-      this(code, description, List.of());
-    }
-
-    Descriptor(
-        String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
-      this.code = Objects.requireNonNull(code, "code");
-      this.description = Objects.requireNonNull(description, "description");
-      this.detailFields = List.copyOf(Objects.requireNonNull(detailFields, "detailFields"));
-    }
+    BOOK_NOT_INITIALIZED,
+    UNKNOWN_ACCOUNT,
+    POSTING_NOT_FOUND;
 
     private String code() {
-      return code;
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED -> "query-book-not-initialized";
+        case UNKNOWN_ACCOUNT -> "unknown-account";
+        case POSTING_NOT_FOUND -> "posting-not-found";
+      };
+    }
+
+    private String description() {
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED ->
+            "Query refused because the selected book does not exist or has not been initialized with "
+                + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+                + ".";
+        case UNKNOWN_ACCOUNT ->
+            "Query refused because the selected accountCode is not declared in this book.";
+        case POSTING_NOT_FOUND ->
+            "Query refused because the selected postingId does not identify a committed posting in this book.";
+      };
+    }
+
+    private List<ContractResponse.FieldDescriptor> detailFields() {
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED -> List.of();
+        case UNKNOWN_ACCOUNT ->
+            List.of(
+                detailField(
+                    "accountCode",
+                    "Undeclared accountCode supplied by the caller for the rejected query."));
+        case POSTING_NOT_FOUND ->
+            List.of(
+                detailField(
+                    "postingId",
+                    "Posting identifier supplied by the caller that does not exist in this book."));
+      };
     }
 
     private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(code, description, detailFields, List.of());
+      return new ContractResponse.RejectionDescriptor(
+          code(), description(), detailFields(), List.of());
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return Arrays.stream(values()).map(Descriptor::descriptor).toList();
+      return List.of(BOOK_NOT_INITIALIZED, UNKNOWN_ACCOUNT, POSTING_NOT_FOUND).stream()
+          .map(Descriptor::descriptor)
+          .toList();
     }
   }
 }

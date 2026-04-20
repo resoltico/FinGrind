@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import org.junit.jupiter.api.Test;
@@ -13,44 +11,36 @@ import org.junit.jupiter.api.Test;
 /** Tests for {@link SqliteBookPassphrase}. */
 class SqliteBookPassphraseTest {
   @Test
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void normalizeSourceDescription_trimsAndRejectsBlankSourceDescriptions() throws Exception {
-    Method method =
-        SqliteBookPassphrase.class.getDeclaredMethod("normalizeSourceDescription", String.class);
-    method.setAccessible(true);
+  void normalizeSourceDescription_trimsAndRejectsBlankSourceDescriptions() {
+    assertEquals(
+        "secret source", SqliteBookPassphrase.normalizeSourceDescription("  secret source  "));
 
-    assertEquals("secret source", method.invoke(null, "  secret source  "));
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteBookPassphrase.normalizeSourceDescription("   "));
 
-    InvocationTargetException exception =
-        assertThrows(InvocationTargetException.class, () -> method.invoke(null, "   "));
-
-    assertEquals("sourceDescription must not be blank.", exception.getCause().getMessage());
+    assertEquals("sourceDescription must not be blank.", exception.getMessage());
   }
 
   @Test
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void zeroize_overwritesArrayBackedBuffers() throws Exception {
+  void zeroize_overwritesArrayBackedBuffers() {
     ByteBuffer heapBytes = ByteBuffer.wrap(new byte[] {7, 8, 9, 10});
 
-    Method method = SqliteBookPassphrase.class.getDeclaredMethod("zeroize", ByteBuffer.class);
-    method.setAccessible(true);
-    method.invoke(null, heapBytes);
+    SqliteBookPassphrase.zeroize(heapBytes);
 
     assertArrayEquals(new byte[4], heapBytes.array());
   }
 
   @Test
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void zeroize_overwritesDirectBuffers() throws Exception {
+  void zeroize_overwritesDirectBuffers() {
     ByteBuffer directBytes = ByteBuffer.allocateDirect(4);
     directBytes.put(0, (byte) 7);
     directBytes.put(1, (byte) 8);
     directBytes.put(2, (byte) 9);
     directBytes.put(3, (byte) 10);
 
-    Method method = SqliteBookPassphrase.class.getDeclaredMethod("zeroize", ByteBuffer.class);
-    method.setAccessible(true);
-    method.invoke(null, directBytes);
+    SqliteBookPassphrase.zeroize(directBytes);
 
     byte[] actual = new byte[4];
     for (int index = 0; index < actual.length; index++) {
@@ -60,17 +50,14 @@ class SqliteBookPassphraseTest {
   }
 
   @Test
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void zeroize_overwritesDirectCharBuffers() throws Exception {
+  void zeroize_overwritesDirectCharBuffers() {
     CharBuffer directCharacters = ByteBuffer.allocateDirect(8).asCharBuffer();
     directCharacters.put(0, 'a');
     directCharacters.put(1, 'b');
     directCharacters.put(2, 'c');
     directCharacters.put(3, 'd');
 
-    Method method = SqliteBookPassphrase.class.getDeclaredMethod("zeroize", CharBuffer.class);
-    method.setAccessible(true);
-    method.invoke(null, directCharacters);
+    SqliteBookPassphrase.zeroize(directCharacters);
 
     char[] actual = new char[4];
     for (int index = 0; index < actual.length; index++) {

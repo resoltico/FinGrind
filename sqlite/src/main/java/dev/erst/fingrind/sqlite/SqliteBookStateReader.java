@@ -58,16 +58,14 @@ final class SqliteBookStateReader {
         activeDatabase, SqlitePostingSql.USER_SCHEMA_EXISTS, statement -> {});
   }
 
-  private boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase)
-      throws SqliteNativeException {
+  boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
     return existsTable(activeDatabase, bookMetaTable)
         && existsTable(activeDatabase, accountTable)
         && existsTable(activeDatabase, postingFactTable)
         && existsTable(activeDatabase, journalLineTable);
   }
 
-  private boolean hasInitializedMarker(SqliteNativeDatabase activeDatabase)
-      throws SqliteNativeException {
+  boolean hasInitializedMarker(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
     return existsTable(activeDatabase, bookMetaTable)
         && SqliteStatementQuerySupport.existsRow(
             activeDatabase,

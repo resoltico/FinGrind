@@ -11,8 +11,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.Arena;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -312,22 +310,15 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
-  @SuppressWarnings("PMD.AvoidAccessibilityAlteration")
-  void promptStyle_singlePromptDoesNotExposeConfirmationPrompt() throws Exception {
-    Method method =
-        CliBookPassphraseResolver.PromptStyle.class.getDeclaredMethod(
-            "confirmationPrompt", Path.class);
-    method.setAccessible(true);
-
-    InvocationTargetException exception =
+  void promptStyle_singlePromptDoesNotExposeConfirmationPrompt() {
+    IllegalStateException exception =
         assertThrows(
-            InvocationTargetException.class,
+            IllegalStateException.class,
             () ->
-                method.invoke(
-                    CliBookPassphraseResolver.PromptStyle.SINGLE, Path.of("book.sqlite")));
+                CliBookPassphraseResolver.PromptStyle.SINGLE.confirmationPrompt(
+                    Path.of("book.sqlite")));
 
-    assertEquals(
-        "This prompt style does not support confirmation.", exception.getCause().getMessage());
+    assertEquals("This prompt style does not support confirmation.", exception.getMessage());
   }
 
   @Test
@@ -374,6 +365,17 @@ class CliBookPassphraseResolverTest {
     assertEquals("reader", exception.getMessage());
   }
 
+  @Test
+  void consoleFixtureHandles_areDirectlyCallable() {
+    assertEquals(
+        "console-secret", new String(new FakeConsoleHandle().readPassword("%s", "book.sqlite")));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> new ThrowingConsoleHandle().readPassword("%s", "book.sqlite"));
+    assertEquals("boom", exception.getMessage());
+  }
+
   private static char[] failPrompt(String prompt) {
     throw new AssertionError("Unexpected prompt usage: " + prompt);
   }
@@ -395,7 +397,6 @@ class CliBookPassphraseResolverTest {
 
   /** Console-shaped test double that records the reflected prompt format and arguments. */
   private static final class FakeConsoleHandle {
-    @SuppressWarnings("UnusedMethod")
     char[] readPassword(String format, Object... arguments) {
       assertEquals("%s", format);
       assertEquals(1, arguments.length);
@@ -406,7 +407,6 @@ class CliBookPassphraseResolverTest {
 
   /** Console-shaped test double that fails once the reflected readPassword method is invoked. */
   private static final class ThrowingConsoleHandle {
-    @SuppressWarnings({"UnusedMethod", "DoNotCallSuggester"})
     char[] readPassword(String format, Object... arguments) {
       assertEquals("%s", format);
       assertEquals(1, arguments.length);

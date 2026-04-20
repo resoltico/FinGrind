@@ -191,7 +191,7 @@ final class CliBookPassphraseResolver {
     SINGLE,
     CONFIRMED_NEW_SECRET;
 
-    private String primaryPrompt(Path normalizedPath) {
+    String primaryPrompt(Path normalizedPath) {
       return switch (this) {
         case SINGLE -> "FinGrind book passphrase for %s: ".formatted(normalizedPath);
         case CONFIRMED_NEW_SECRET ->
@@ -199,7 +199,7 @@ final class CliBookPassphraseResolver {
       };
     }
 
-    private String confirmationPrompt(Path normalizedPath) {
+    String confirmationPrompt(Path normalizedPath) {
       if (this != CONFIRMED_NEW_SECRET) {
         throw new IllegalStateException("This prompt style does not support confirmation.");
       }

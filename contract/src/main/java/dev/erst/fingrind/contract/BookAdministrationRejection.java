@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.NormalBalance;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -69,56 +68,66 @@ public sealed interface BookAdministrationRejection
   }
 
   /** Canonical administration rejection metadata keyed by stable wire code. */
-  @SuppressWarnings("ImmutableEnumChecker")
   enum Descriptor {
-    BOOK_ALREADY_INITIALIZED(
-        "book-already-initialized",
-        "Book initialization refused because the selected book is already initialized."),
-    BOOK_NOT_INITIALIZED(
-        "administration-book-not-initialized",
-        "Administration command refused because the selected book does not exist or has not been initialized with "
-            + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
-            + "."),
-    BOOK_CONTAINS_SCHEMA(
-        "book-contains-schema",
-        "Book initialization refused because the selected SQLite file already contains schema objects."),
-    NORMAL_BALANCE_CONFLICT(
-        "account-normal-balance-conflict",
-        "Account declaration refused because the requested normalBalance conflicts with the existing immutable value.",
-        List.of(
-            detailField("accountCode", "Declared account code that already exists in the book."),
-            detailField(
-                "existingNormalBalance",
-                "Immutable live normalBalance already stored for this account."),
-            detailField(
-                "requestedNormalBalance",
-                "Conflicting normalBalance that the caller attempted to declare.")));
-
-    private final String code;
-    private final String description;
-    private final List<ContractResponse.FieldDescriptor> detailFields;
-
-    Descriptor(String code, String description) {
-      this(code, description, List.of());
-    }
-
-    Descriptor(
-        String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
-      this.code = Objects.requireNonNull(code, "code");
-      this.description = Objects.requireNonNull(description, "description");
-      this.detailFields = List.copyOf(Objects.requireNonNull(detailFields, "detailFields"));
-    }
+    BOOK_ALREADY_INITIALIZED,
+    BOOK_NOT_INITIALIZED,
+    BOOK_CONTAINS_SCHEMA,
+    NORMAL_BALANCE_CONFLICT;
 
     private String code() {
-      return code;
+      return switch (this) {
+        case BOOK_ALREADY_INITIALIZED -> "book-already-initialized";
+        case BOOK_NOT_INITIALIZED -> "administration-book-not-initialized";
+        case BOOK_CONTAINS_SCHEMA -> "book-contains-schema";
+        case NORMAL_BALANCE_CONFLICT -> "account-normal-balance-conflict";
+      };
+    }
+
+    private String description() {
+      return switch (this) {
+        case BOOK_ALREADY_INITIALIZED ->
+            "Book initialization refused because the selected book is already initialized.";
+        case BOOK_NOT_INITIALIZED ->
+            "Administration command refused because the selected book does not exist or has not been initialized with "
+                + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+                + ".";
+        case BOOK_CONTAINS_SCHEMA ->
+            "Book initialization refused because the selected SQLite file already contains schema objects.";
+        case NORMAL_BALANCE_CONFLICT ->
+            "Account declaration refused because the requested normalBalance conflicts with the existing immutable value.";
+      };
+    }
+
+    private List<ContractResponse.FieldDescriptor> detailFields() {
+      return switch (this) {
+        case BOOK_ALREADY_INITIALIZED, BOOK_NOT_INITIALIZED, BOOK_CONTAINS_SCHEMA -> List.of();
+        case NORMAL_BALANCE_CONFLICT ->
+            List.of(
+                detailField(
+                    "accountCode", "Declared account code that already exists in the book."),
+                detailField(
+                    "existingNormalBalance",
+                    "Immutable live normalBalance already stored for this account."),
+                detailField(
+                    "requestedNormalBalance",
+                    "Conflicting normalBalance that the caller attempted to declare."));
+      };
     }
 
     private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(code, description, detailFields, List.of());
+      return new ContractResponse.RejectionDescriptor(
+          code(), description(), detailFields(), List.of());
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return Arrays.stream(values()).map(Descriptor::descriptor).toList();
+      return List.of(
+              BOOK_ALREADY_INITIALIZED,
+              BOOK_NOT_INITIALIZED,
+              BOOK_CONTAINS_SCHEMA,
+              NORMAL_BALANCE_CONFLICT)
+          .stream()
+          .map(Descriptor::descriptor)
+          .toList();
     }
   }
 }
