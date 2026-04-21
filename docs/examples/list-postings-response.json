@@ -1,13 +1,12 @@
 {
   "status": "ok",
   "payload": {
-    "limit": 1,
-    "nextCursor": "AQAAAAAAAFBHAAAAAGnWQ0AAAAAAAAAAJDAxOTYzYzcwLThkNjUtN2I1Ni04YTY0LTNjOTI3NDVkOGY3Mg",
+    "limit": 25,
     "postings": [
       {
-        "postingId": "01963c70-8d65-7b56-8a64-3c92745d8f72",
+        "postingId": "019dadaf-2bec-7888-a1d8-544eb843fd3d",
         "effectiveDate": "2026-04-08",
-        "recordedAt": "2026-04-08T12:00:00Z",
+        "recordedAt": "2026-04-21T01:37:11.549110Z",
         "actorId": "operator-1",
         "actorType": "HUMAN",
         "commandId": "command-basic-1",

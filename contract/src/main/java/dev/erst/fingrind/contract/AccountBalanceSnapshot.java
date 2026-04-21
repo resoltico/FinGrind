@@ -16,6 +16,6 @@ public record AccountBalanceSnapshot(
     Objects.requireNonNull(account, "account");
     Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
     Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    balances = List.copyOf(Objects.requireNonNull(balances, "balances"));
+    balances = balances == null ? List.of() : List.copyOf(balances);
   }
 }

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: USER_CLI
-updated: "2026-04-19"
+updated: "2026-04-21"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -108,18 +108,18 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.19.0-macos-aarch64.tar.gz
-./fingrind-0.19.0-macos-aarch64/bin/fingrind help
-./fingrind-0.19.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.20.0-macos-aarch64.tar.gz
+./fingrind-0.20.0-macos-aarch64/bin/fingrind help
+./fingrind-0.20.0-macos-aarch64/bin/fingrind \
   print-request-template > /tmp/fingrind-request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.19.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.19.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.19.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.20.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.20.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.20.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > $env:TEMP\fingrind-request.json
 ```
 

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.protocol;
 
 import java.util.List;
+import java.util.Objects;
 
 /** Common builders for canonical protocol operation descriptors. */
 final class ProtocolOperationSupport {
@@ -94,5 +95,30 @@ final class ProtocolOperationSupport {
       List<String> outputModes,
       List<ProtocolArtifactOutput> artifactOutputs,
       String analysisSummary,
-      List<String> examples) {}
+      List<String> examples) {
+    OperationDefinition {
+      Objects.requireNonNull(id, "id");
+      Objects.requireNonNull(category, "category");
+      displayLabel = requireText(displayLabel, "displayLabel");
+      aliases = copyList(aliases);
+      options = copyList(options);
+      Objects.requireNonNull(executionMode, "executionMode");
+      outputModes = copyList(outputModes);
+      artifactOutputs = copyList(artifactOutputs);
+      analysisSummary = requireText(analysisSummary, "analysisSummary");
+      examples = copyList(examples);
+    }
+  }
+
+  private static String requireText(String value, String fieldName) {
+    Objects.requireNonNull(value, fieldName);
+    if (value.isBlank()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank.");
+    }
+    return value;
+  }
+
+  private static <T> List<T> copyList(List<T> values) {
+    return values == null ? List.of() : List.copyOf(values);
+  }
 }

@@ -10,6 +10,6 @@ public record TrialBalanceReport(Optional<LocalDate> effectiveDateTo, List<Trial
   /** Validates one trial-balance report. */
   public TrialBalanceReport {
     Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    rows = List.copyOf(Objects.requireNonNull(rows, "rows"));
+    rows = rows == null ? List.of() : List.copyOf(rows);
   }
 }

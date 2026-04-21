@@ -123,7 +123,7 @@ class ContractCoverageTest {
 
     ContractDiscovery.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.19.0", "test"),
+            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.20.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());
@@ -360,7 +360,7 @@ class ContractCoverageTest {
                     new LedgerJournalEntry.Succeeded(
                         stepId("open"),
                         LedgerStepKind.OPEN_BOOK,
-                        null,
+                        Optional.empty(),
                         startedAt,
                         finishedAt,
                         List.of()))));
@@ -374,7 +374,7 @@ class ContractCoverageTest {
                     new LedgerJournalEntry.Rejected(
                         stepId("post"),
                         LedgerStepKind.POST_ENTRY,
-                        null,
+                        Optional.empty(),
                         startedAt,
                         finishedAt,
                         List.of(),
@@ -389,7 +389,7 @@ class ContractCoverageTest {
                     new LedgerJournalEntry.AssertionFailed(
                         stepId("assert"),
                         LedgerStepKind.ASSERT,
-                        LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
+                        Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
                         startedAt,
                         finishedAt,
                         List.of(),
@@ -508,27 +508,32 @@ class ContractCoverageTest {
         new LedgerJournalEntry.Rejected(
             stepId("assert"),
             LedgerStepKind.ASSERT,
-            LedgerAssertionKind.ACCOUNT_DECLARED,
+            Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
             startedAt,
             finishedAt,
             List.of(LedgerFact.flag("active", false)),
             failure);
     LedgerJournalEntry nullableOptionals =
         new LedgerJournalEntry.Succeeded(
-            stepId("post"), LedgerStepKind.POST_ENTRY, null, startedAt, finishedAt, List.of());
+            stepId("post"),
+            LedgerStepKind.POST_ENTRY,
+            Optional.empty(),
+            startedAt,
+            finishedAt,
+            List.of());
     LedgerJournalEntry assertionFailed =
         new LedgerJournalEntry.AssertionFailed(
             stepId("assert-balance"),
             LedgerStepKind.ASSERT,
-            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
+            Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
             startedAt,
             finishedAt,
             List.of(LedgerFact.text("currencyCode", "EUR")),
             failure);
 
-    assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, detailed.detailKind());
-    assertEquals(null, nullableOptionals.detailKind());
-    assertEquals(null, new LedgerStep.OpenBook(stepId("open")).detailKind());
+    assertEquals(Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED), detailed.detailKind());
+    assertEquals(Optional.empty(), nullableOptionals.detailKind());
+    assertEquals(Optional.empty(), new LedgerStep.OpenBook(stepId("open")).detailKind());
     assertEquals(Optional.of(failure), detailed.optionalFailure());
     assertEquals(Optional.empty(), nullableOptionals.optionalFailure());
     assertEquals(Optional.of(failure), assertionFailed.optionalFailure());
@@ -544,7 +549,7 @@ class ContractCoverageTest {
             new LedgerJournalEntry.Rejected(
                 stepId("assert"),
                 null,
-                LedgerAssertionKind.ACCOUNT_DECLARED,
+                Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
                 startedAt,
                 finishedAt,
                 List.of(),
@@ -555,7 +560,7 @@ class ContractCoverageTest {
             new LedgerJournalEntry.AssertionFailed(
                 stepId("assert"),
                 LedgerStepKind.ASSERT,
-                null,
+                Optional.empty(),
                 startedAt,
                 finishedAt,
                 List.of(),
@@ -566,7 +571,7 @@ class ContractCoverageTest {
             new LedgerJournalEntry.Succeeded(
                 stepId("post"),
                 LedgerStepKind.POST_ENTRY,
-                LedgerAssertionKind.ACCOUNT_DECLARED,
+                Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
                 startedAt,
                 finishedAt,
                 List.of()));
@@ -579,7 +584,12 @@ class ContractCoverageTest {
     LedgerStepFailure failure = new LedgerStepFailure("rejected", "Rejected.", List.of());
     LedgerJournalEntry succeededWithoutFailure =
         new LedgerJournalEntry.Succeeded(
-            stepId("post"), LedgerStepKind.POST_ENTRY, null, startedAt, finishedAt, List.of());
+            stepId("post"),
+            LedgerStepKind.POST_ENTRY,
+            Optional.empty(),
+            startedAt,
+            finishedAt,
+            List.of());
     LedgerExecutionJournal rejectedJournal =
         new LedgerExecutionJournal(
             startedAt,
@@ -588,7 +598,7 @@ class ContractCoverageTest {
                 new LedgerJournalEntry.Rejected(
                     stepId("post"),
                     LedgerStepKind.POST_ENTRY,
-                    null,
+                    Optional.empty(),
                     startedAt,
                     finishedAt,
                     List.of(),
@@ -608,7 +618,7 @@ class ContractCoverageTest {
             new LedgerJournalEntry.Rejected(
                 stepId(" "),
                 LedgerStepKind.POST_ENTRY,
-                null,
+                Optional.empty(),
                 startedAt,
                 finishedAt,
                 List.of(),
@@ -619,7 +629,7 @@ class ContractCoverageTest {
             new LedgerJournalEntry.Rejected(
                 stepId("post"),
                 LedgerStepKind.POST_ENTRY,
-                null,
+                Optional.empty(),
                 finishedAt,
                 startedAt,
                 List.of(),

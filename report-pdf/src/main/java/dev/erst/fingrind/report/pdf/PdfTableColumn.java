@@ -6,6 +6,10 @@ import java.util.Objects;
 record PdfTableColumn(String header, float widthWeight, CellAlignment alignment) {
   PdfTableColumn {
     Objects.requireNonNull(header, "header");
+    header = header.strip();
+    if (header.isEmpty()) {
+      throw new IllegalArgumentException("header must not be blank.");
+    }
     Objects.requireNonNull(alignment, "alignment");
     if (widthWeight <= 0f) {
       throw new IllegalArgumentException("widthWeight must be greater than zero.");

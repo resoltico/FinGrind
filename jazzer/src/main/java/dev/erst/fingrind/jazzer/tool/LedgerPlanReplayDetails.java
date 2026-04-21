@@ -10,5 +10,12 @@ public record LedgerPlanReplayDetails(
     int assertionStepCount,
     boolean beginsWithOpenBook,
     String failureMessage)
-    implements ReplayDetails {}
-
+    implements ReplayDetails {
+  public LedgerPlanReplayDetails {
+    requestStatus = ReplayModelValidation.requireText(requestStatus, "requestStatus");
+    planId = ReplayModelValidation.requireText(planId, "planId");
+    firstStepKind = ReplayModelValidation.requireText(firstStepKind, "firstStepKind");
+    lastStepKind = ReplayModelValidation.requireText(lastStepKind, "lastStepKind");
+    failureMessage = ReplayModelValidation.requireText(failureMessage, "failureMessage");
+  }
+}

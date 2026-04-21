@@ -88,21 +88,18 @@ final class SqliteAccountLedgerReadSupport {
 
   private List<PostingFact> postingFactsForAccountLedger(
       SqliteNativeDatabase activeDatabase, AccountLedgerQuery query) throws SqliteNativeException {
-    boolean filterEffectiveDateFrom = query.effectiveDateFrom().isPresent();
-    boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
     return postingReadSupport.loadPostingFacts(
         activeDatabase,
-        SqlitePostingSql.listPostingsForAccountLedger(
-            filterEffectiveDateFrom, filterEffectiveDateTo),
+        SqlitePostingSql.listPostingsForAccountLedger(query),
         statement -> {
           int bindIndex = 1;
           statement.bindText(bindIndex, query.accountCode().value());
           bindIndex++;
-          if (filterEffectiveDateFrom) {
+          if (query.effectiveDateFrom().isPresent()) {
             statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
             bindIndex++;
           }
-          if (filterEffectiveDateTo) {
+          if (query.effectiveDateTo().isPresent()) {
             statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
           }
         });

@@ -71,7 +71,9 @@ public record PublicDistributionContract(
   }
 
   private static List<String> normalize(List<String> values, String fieldName) {
-    Objects.requireNonNull(values, fieldName);
+    if (values == null) {
+      return List.of();
+    }
     Set<String> unique = new LinkedHashSet<>();
     for (String value : values) {
       Objects.requireNonNull(value, fieldName);

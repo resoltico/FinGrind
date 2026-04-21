@@ -17,7 +17,7 @@ final class CliBookPayloadMapper {
   static Object bookInspectionPayload(Path bookFilePath, BookInspection inspection) {
     return switch (inspection) {
       case BookInspection.Missing missing ->
-          new CliResponseJsonModels.MissingBookInspectionPayload(
+          new CliAdministrationJsonModels.MissingBookInspectionPayload(
               absolutePath(bookFilePath),
               missing.status().wireValue(),
               missing.initialized(),
@@ -26,7 +26,7 @@ final class CliBookPayloadMapper {
               missing.supportedBookFormatVersion(),
               missing.migrationPolicy().wireValue());
       case BookInspection.Existing existing ->
-          new CliResponseJsonModels.ExistingBookInspectionPayload(
+          new CliAdministrationJsonModels.ExistingBookInspectionPayload(
               absolutePath(bookFilePath),
               existing.status().wireValue(),
               existing.initialized(),
@@ -37,7 +37,7 @@ final class CliBookPayloadMapper {
               existing.supportedBookFormatVersion(),
               existing.migrationPolicy().wireValue());
       case BookInspection.Initialized initialized ->
-          new CliResponseJsonModels.InitializedBookInspectionPayload(
+          new CliAdministrationJsonModels.InitializedBookInspectionPayload(
               absolutePath(bookFilePath),
               initialized.status().wireValue(),
               initialized.initialized(),
@@ -51,8 +51,8 @@ final class CliBookPayloadMapper {
     };
   }
 
-  static CliResponseJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
-    return new CliResponseJsonModels.DeclaredAccountPayload(
+  static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
+    return new CliBookQueryJsonModels.DeclaredAccountPayload(
         account.accountCode().value(),
         account.accountName().value(),
         account.normalBalance().wireValue(),
@@ -60,8 +60,8 @@ final class CliBookPayloadMapper {
         account.declaredAt().toString());
   }
 
-  static CliResponseJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
-    return new CliResponseJsonModels.PostingPayload(
+  static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
+    return new CliBookQueryJsonModels.PostingPayload(
         postingFact.postingId().value(),
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
@@ -82,7 +82,7 @@ final class CliBookPayloadMapper {
             .reversalReference()
             .map(
                 reference ->
-                    new CliResponseJsonModels.ReversalPayload(
+                    new CliBookQueryJsonModels.ReversalPayload(
                         reference.priorPostingId().value(),
                         postingFact.postingLineage().reversalReason().orElseThrow().value()))
             .orElse(null),
@@ -91,24 +91,24 @@ final class CliBookPayloadMapper {
             .toList());
   }
 
-  static CliResponseJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
-    return new CliResponseJsonModels.PostingListPayload(
+  static CliBookQueryJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
+    return new CliBookQueryJsonModels.PostingListPayload(
         page.limit(),
         page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
         page.postings().stream().map(CliBookPayloadMapper::postingPayload).toList());
   }
 
-  static CliResponseJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
-    return new CliResponseJsonModels.AccountListPayload(
+  static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
+    return new CliBookQueryJsonModels.AccountListPayload(
         page.limit(),
         page.offset(),
         page.hasMore(),
         page.accounts().stream().map(CliBookPayloadMapper::accountPayload).toList());
   }
 
-  static CliResponseJsonModels.AccountBalancePayload accountBalancePayload(
+  static CliBookQueryJsonModels.AccountBalancePayload accountBalancePayload(
       AccountBalanceSnapshot snapshot) {
-    return new CliResponseJsonModels.AccountBalancePayload(
+    return new CliBookQueryJsonModels.AccountBalancePayload(
         snapshot.account().accountCode().value(),
         snapshot.account().accountName().value(),
         snapshot.account().normalBalance().wireValue(),
@@ -127,9 +127,9 @@ final class CliBookPayloadMapper {
         .toList();
   }
 
-  private static CliResponseJsonModels.JournalLinePayload linePayload(
+  private static CliBookQueryJsonModels.JournalLinePayload linePayload(
       dev.erst.fingrind.core.JournalLine line) {
-    return new CliResponseJsonModels.JournalLinePayload(
+    return new CliBookQueryJsonModels.JournalLinePayload(
         line.accountCode().value(),
         line.side().wireValue(),
         line.amount().currencyCode().value(),

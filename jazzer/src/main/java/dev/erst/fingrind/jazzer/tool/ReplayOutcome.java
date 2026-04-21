@@ -10,11 +10,23 @@ public sealed interface ReplayOutcome
   ReplayDetails details();
 
   /** Represents a replay that completed without surfacing a bug. */
-  record Success(String harnessKey, ReplayDetails details) implements ReplayOutcome {}
+  record Success(String harnessKey, ReplayDetails details) implements ReplayOutcome {
+    public Success {
+      harnessKey = ReplayModelValidation.requireText(harnessKey, "harnessKey");
+      details = ReplayModelValidation.requireDetails(details, "details");
+    }
+  }
 
   /** Represents a replay that was invalid in a documented, expected way. */
   record ExpectedInvalid(String harnessKey, String invalidKind, String message, ReplayDetails details)
-      implements ReplayOutcome {}
+      implements ReplayOutcome {
+    public ExpectedInvalid {
+      harnessKey = ReplayModelValidation.requireText(harnessKey, "harnessKey");
+      invalidKind = ReplayModelValidation.requireText(invalidKind, "invalidKind");
+      message = ReplayModelValidation.requireText(message, "message");
+      details = ReplayModelValidation.requireDetails(details, "details");
+    }
+  }
 
   /** Represents a replay that surfaced an unexpected exception or invariant failure. */
   record UnexpectedFailure(
@@ -23,5 +35,13 @@ public sealed interface ReplayOutcome
       String message,
       String stackTrace,
       ReplayDetails details)
-      implements ReplayOutcome {}
+      implements ReplayOutcome {
+    public UnexpectedFailure {
+      harnessKey = ReplayModelValidation.requireText(harnessKey, "harnessKey");
+      failureKind = ReplayModelValidation.requireText(failureKind, "failureKind");
+      message = ReplayModelValidation.requireText(message, "message");
+      stackTrace = ReplayModelValidation.requireText(stackTrace, "stackTrace");
+      details = ReplayModelValidation.requireDetails(details, "details");
+    }
+  }
 }

@@ -20,14 +20,26 @@ public record ProtocolOperation(
   public ProtocolOperation {
     Objects.requireNonNull(id, "id");
     Objects.requireNonNull(category, "category");
-    Objects.requireNonNull(displayLabel, "displayLabel");
-    aliases = List.copyOf(Objects.requireNonNull(aliases, "aliases"));
-    options = List.copyOf(Objects.requireNonNull(options, "options"));
+    displayLabel = requireText(displayLabel, "displayLabel");
+    aliases = copyList(aliases);
+    options = copyList(options);
     Objects.requireNonNull(executionMode, "executionMode");
-    outputModes = List.copyOf(Objects.requireNonNull(outputModes, "outputModes"));
-    artifactOutputs = List.copyOf(Objects.requireNonNull(artifactOutputs, "artifactOutputs"));
-    Objects.requireNonNull(usage, "usage");
-    Objects.requireNonNull(analysisSummary, "analysisSummary");
-    examples = List.copyOf(Objects.requireNonNull(examples, "examples"));
+    outputModes = copyList(outputModes);
+    artifactOutputs = copyList(artifactOutputs);
+    usage = requireText(usage, "usage");
+    analysisSummary = requireText(analysisSummary, "analysisSummary");
+    examples = copyList(examples);
+  }
+
+  private static String requireText(String value, String fieldName) {
+    Objects.requireNonNull(value, fieldName);
+    if (value.isBlank()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank.");
+    }
+    return value;
+  }
+
+  private static <T> List<T> copyList(List<T> values) {
+    return values == null ? List.of() : List.copyOf(values);
   }
 }

@@ -22,12 +22,12 @@ import java.nio.file.Path;
 final class CliResponsePayloadMapper {
   private CliResponsePayloadMapper() {}
 
-  static CliResponseJsonModels.SuccessEnvelope successEnvelope(Object payload) {
-    return new CliResponseJsonModels.SuccessEnvelope(ProtocolStatuses.OK, payload);
+  static CliEnvelopeJsonModels.SuccessEnvelope successEnvelope(Object payload) {
+    return new CliEnvelopeJsonModels.SuccessEnvelope(ProtocolStatuses.OK, payload);
   }
 
-  static CliResponseJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
-    return new CliResponseJsonModels.FailureEnvelope(
+  static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
+    return new CliEnvelopeJsonModels.FailureEnvelope(
         ProtocolStatuses.ERROR,
         failure.code(),
         failure.message(),
@@ -35,17 +35,17 @@ final class CliResponsePayloadMapper {
         failure.argument());
   }
 
-  static CliResponseJsonModels.PreflightAcceptedEnvelope preflightEnvelope(
+  static CliEnvelopeJsonModels.PreflightAcceptedEnvelope preflightEnvelope(
       PostEntryResult.PreflightAccepted accepted) {
-    return new CliResponseJsonModels.PreflightAcceptedEnvelope(
+    return new CliEnvelopeJsonModels.PreflightAcceptedEnvelope(
         ProtocolStatuses.PREFLIGHT_ACCEPTED,
         accepted.idempotencyKey().value(),
         accepted.effectiveDate().toString());
   }
 
-  static CliResponseJsonModels.CommittedEnvelope committedEnvelope(
+  static CliEnvelopeJsonModels.CommittedEnvelope committedEnvelope(
       PostEntryResult.Committed committed) {
-    return new CliResponseJsonModels.CommittedEnvelope(
+    return new CliEnvelopeJsonModels.CommittedEnvelope(
         ProtocolStatuses.COMMITTED,
         committed.postingId().value(),
         committed.idempotencyKey().value(),
@@ -53,17 +53,17 @@ final class CliResponsePayloadMapper {
         committed.recordedAt().toString());
   }
 
-  static CliResponseJsonModels.RejectedEnvelope postingRejectedEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope postingRejectedEnvelope(
       String requestIdempotencyKey, PostingRejection rejection) {
     return CliRejectionPayloadMapper.postingRejectedEnvelope(requestIdempotencyKey, rejection);
   }
 
-  static CliResponseJsonModels.RejectedEnvelope administrationRejectedEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope administrationRejectedEnvelope(
       BookAdministrationRejection rejection) {
     return CliRejectionPayloadMapper.administrationRejectedEnvelope(rejection);
   }
 
-  static CliResponseJsonModels.RejectedEnvelope queryRejectedEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope queryRejectedEnvelope(
       BookQueryRejection rejection) {
     return CliRejectionPayloadMapper.queryRejectedEnvelope(rejection);
   }
@@ -72,46 +72,44 @@ final class CliResponsePayloadMapper {
     return CliBookPayloadMapper.bookInspectionPayload(bookFilePath, inspection);
   }
 
-  static CliResponseJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
+  static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(DeclaredAccount account) {
     return CliBookPayloadMapper.accountPayload(account);
   }
 
-  static CliResponseJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
+  static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
     return CliBookPayloadMapper.postingPayload(postingFact);
   }
 
-  static CliResponseJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
+  static CliBookQueryJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
     return CliBookPayloadMapper.postingPagePayload(page);
   }
 
-  static CliResponseJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
+  static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
     return CliBookPayloadMapper.accountPagePayload(page);
   }
 
-  static CliResponseJsonModels.AccountBalancePayload accountBalancePayload(
+  static CliBookQueryJsonModels.AccountBalancePayload accountBalancePayload(
       AccountBalanceSnapshot snapshot) {
     return CliBookPayloadMapper.accountBalancePayload(snapshot);
   }
 
-  static CliResponseJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
+  static CliReportJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
     return CliReportPayloadMapper.trialBalancePayload(report);
   }
 
-  static CliResponseJsonModels.AccountLedgerPayload accountLedgerPayload(
-      AccountLedgerReport report) {
+  static CliReportJsonModels.AccountLedgerPayload accountLedgerPayload(AccountLedgerReport report) {
     return CliReportPayloadMapper.accountLedgerPayload(report);
   }
 
-  static CliResponseJsonModels.PeriodSummaryPayload periodSummaryPayload(
-      PeriodSummaryReport report) {
+  static CliReportJsonModels.PeriodSummaryPayload periodSummaryPayload(PeriodSummaryReport report) {
     return CliReportPayloadMapper.periodSummaryPayload(report);
   }
 
-  static CliResponseJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
+  static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
     return CliPlanPayloadMapper.ledgerPlanPayload(result);
   }
 
-  static CliResponseJsonModels.RejectedEnvelope rejectedPlanEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope rejectedPlanEnvelope(
       LedgerPlanResult result, String status) {
     return CliPlanPayloadMapper.rejectedPlanEnvelope(result, status);
   }

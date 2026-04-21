@@ -10,4 +10,13 @@ public record CliRequestReplayDetails(
     String actorType,
     String sourceChannel,
     String failureMessage)
-    implements ReplayDetails {}
+    implements ReplayDetails {
+  public CliRequestReplayDetails {
+    requestStatus = ReplayModelValidation.requireText(requestStatus, "requestStatus");
+    effectiveDate = ReplayModelValidation.requireText(effectiveDate, "effectiveDate");
+    idempotencyKey = ReplayModelValidation.requireText(idempotencyKey, "idempotencyKey");
+    actorType = ReplayModelValidation.requireText(actorType, "actorType");
+    sourceChannel = ReplayModelValidation.requireText(sourceChannel, "sourceChannel");
+    failureMessage = ReplayModelValidation.requireText(failureMessage, "failureMessage");
+  }
+}

@@ -36,15 +36,17 @@ final class SqliteStoreSupport {
         reopenedDatabase == null ? null : reopenedDatabase.nativeDatabase());
   }
 
-  static void commitIfOwned(SqliteNativeDatabase activeDatabase, boolean ownsTransaction)
+  static void commitIfOwned(
+      SqliteNativeDatabase activeDatabase, SqliteTransactionOwnership transactionOwnership)
       throws SqliteNativeException {
-    if (ownsTransaction) {
+    if (transactionOwnership == SqliteTransactionOwnership.OWNED) {
       activeDatabase.executeStatement("commit");
     }
   }
 
-  static void rollbackIfOwned(SqliteNativeDatabase activeDatabase, boolean ownsTransaction) {
-    if (ownsTransaction) {
+  static void rollbackIfOwned(
+      SqliteNativeDatabase activeDatabase, SqliteTransactionOwnership transactionOwnership) {
+    if (transactionOwnership == SqliteTransactionOwnership.OWNED) {
       rollbackQuietly(activeDatabase);
     }
   }

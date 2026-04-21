@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
-/** Initializes the canonical FinGrind book schema when a durable commit needs it. */
-final class SqliteSchemaManager {
+/** Bootstraps the canonical FinGrind book schema when a durable commit needs it. */
+final class SqliteBookSchemaBootstrap {
   private static final AtomicReference<@Nullable String> canonicalSchemaSql =
       new AtomicReference<>();
 
-  private SqliteSchemaManager() {}
+  private SqliteBookSchemaBootstrap() {}
 
   /** Ensures the book parent directory exists before a writable connection is opened. */
   static void ensureParentDirectory(Path bookPath) {
@@ -49,7 +49,8 @@ final class SqliteSchemaManager {
   }
 
   private static String canonicalSchemaSql() {
-    return cachedValue(canonicalSchemaSql, () -> readSchema(SqliteSchemaManager::openSchemaStream));
+    return cachedValue(
+        canonicalSchemaSql, () -> readSchema(SqliteBookSchemaBootstrap::openSchemaStream));
   }
 
   static String cachedValue(AtomicReference<@Nullable String> cache, Supplier<String> loader) {
@@ -67,7 +68,7 @@ final class SqliteSchemaManager {
   }
 
   private static InputStream openSchemaStream() {
-    return SqliteSchemaManager.class.getResourceAsStream(
+    return SqliteBookSchemaBootstrap.class.getResourceAsStream(
         "/dev/erst/fingrind/sqlite/book_schema.sql");
   }
 }

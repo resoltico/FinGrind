@@ -23,8 +23,7 @@ final class CliMutationResponseSupport {
       case PostEntryResult.PreflightAccepted accepted ->
           outputMode.run(
               () ->
-                  outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.preflightEnvelope(accepted), false),
+                  outputChannel.writeEnvelope(CliResponsePayloadMapper.preflightEnvelope(accepted)),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderPreflightAcceptedHuman(accepted)),
@@ -35,7 +34,7 @@ final class CliMutationResponseSupport {
           outputMode.run(
               () ->
                   outputChannel.writeEnvelope(
-                      CliResponsePayloadMapper.committedEnvelope(committed), false),
+                      CliResponsePayloadMapper.committedEnvelope(committed)),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderCommittedHuman(committed)),
@@ -64,9 +63,8 @@ final class CliMutationResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          new CliResponseJsonModels.OpenBookPayload(
-                              absolutePath(bookFilePath), opened.initializedAt().toString())),
-                      false),
+                          new CliAdministrationJsonModels.OpenBookPayload(
+                              absolutePath(bookFilePath), opened.initializedAt().toString()))),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderOpenBookHuman(bookFilePath, opened)),
@@ -88,12 +86,11 @@ final class CliMutationResponseSupport {
         () ->
             outputChannel.writeEnvelope(
                 CliResponsePayloadMapper.successEnvelope(
-                    new CliResponseJsonModels.GeneratedBookKeyFilePayload(
+                    new CliAdministrationJsonModels.GeneratedBookKeyFilePayload(
                         absolutePath(generatedKeyFile.bookKeyFilePath()),
                         generatedKeyFile.encoding(),
                         generatedKeyFile.entropyBits(),
-                        generatedKeyFile.permissions())),
-                false),
+                        generatedKeyFile.permissions()))),
         () ->
             outputChannel.writeText(
                 CliMutationOutputRenderer.renderGeneratedBookKeyFileHuman(generatedKeyFile)),
@@ -110,9 +107,8 @@ final class CliMutationResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          new CliResponseJsonModels.RekeyBookPayload(
-                              absolutePath(rekeyed.bookFilePath()))),
-                      false),
+                          new CliAdministrationJsonModels.RekeyBookPayload(
+                              absolutePath(rekeyed.bookFilePath())))),
               () ->
                   outputChannel.writeText(CliMutationOutputRenderer.renderRekeyBookHuman(rekeyed)),
               () -> {
@@ -134,8 +130,7 @@ final class CliMutationResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountPayload(declared.account())),
-                      false),
+                          CliResponsePayloadMapper.accountPayload(declared.account()))),
               () ->
                   outputChannel.writeText(
                       CliMutationOutputRenderer.renderDeclaredAccountHuman(declared.account())),

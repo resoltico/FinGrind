@@ -2,15 +2,15 @@ Period Summary
 ==============
 
 Range              : 2026-04-07 to 2026-04-08
-Posting count      : 2
-Posting line count : 4
+Posting count      : 1
+Posting line count : 2
 Accounts touched   : 2
 
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       14.00 |        14.00 |       0.00 | DEBIT
+EUR      |       10.00 |        10.00 |       0.00 | ZERO
 
 Account | Name    | Normal balance | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | DEBIT          | EUR      |       10.00 |         4.00 |       6.00 | DEBIT       
-2000    | Revenue | CREDIT         | EUR      |        4.00 |        10.00 |       6.00 | CREDIT
+1000    | Cash    | DEBIT          | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
+2000    | Revenue | CREDIT         | EUR      |        0.00 |        10.00 |      10.00 | CREDIT

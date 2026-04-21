@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-17"
+updated: "2026-04-21"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -137,7 +137,7 @@ The nested Jazzer build also includes normal JUnit support tests that cover:
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `ledger-plan-request` | `4` | valid plan parse, removed execution-policy rejection, open-book ordering rejection, unknown kind rejection without assertion fallthrough |
+| `ledger-plan-request` | `5` | valid plan parse, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `5` | explicit lifecycle setup plus success, invalid actor, exponent rejection, invalid missing reversal reason, missing reversal target |
 | `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, Unicode round-trip, exponent rejection, invalid type, invalid missing reversal reason, missing reversal target |
 

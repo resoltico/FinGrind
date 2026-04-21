@@ -16,12 +16,11 @@ import java.util.Map;
 final class SqliteTrialBalanceReadSupport {
   TrialBalanceReport trialBalance(SqliteNativeDatabase activeDatabase, TrialBalanceQuery query)
       throws SqliteNativeException {
-    boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
     Map<AccountCode, SqliteReportDataSupport.AccountTotals> totalsByAccount =
         SqliteReportDataSupport.insertionOrderedMap();
     try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.loadTrialBalanceLines(filterEffectiveDateTo))) {
-      if (filterEffectiveDateTo) {
+        activeDatabase.prepare(SqlitePostingSql.loadTrialBalanceLines(query))) {
+      if (query.effectiveDateTo().isPresent()) {
         statement.bindText(1, query.effectiveDateTo().orElseThrow().toString());
       }
       while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {

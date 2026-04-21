@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Low-level JSON and text output channel for deterministic CLI response rendering. */
@@ -17,11 +18,16 @@ final class CliOutputChannel {
     this.outputStream = Objects.requireNonNull(outputStream, "outputStream");
   }
 
-  void writeJson(Object value, boolean pretty) {
-    byte[] document =
-        pretty
-            ? objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(value)
-            : objectMapper.writeValueAsBytes(value);
+  void writeJson(Object value) {
+    writeJsonDocument(objectMapper.writer(), value);
+  }
+
+  void writePrettyJson(Object value) {
+    writeJsonDocument(objectMapper.writerWithDefaultPrettyPrinter(), value);
+  }
+
+  private void writeJsonDocument(ObjectWriter writer, Object value) {
+    byte[] document = writer.writeValueAsBytes(value);
     outputStream.write(document, 0, document.length);
     outputStream.println();
     outputStream.flush();
@@ -33,17 +39,21 @@ final class CliOutputChannel {
     outputStream.flush();
   }
 
-  void writeEnvelope(Object envelope, boolean pretty) {
-    writeJson(envelope, pretty);
+  void writeEnvelope(Object envelope) {
+    writeJson(envelope);
   }
 
-  void writeSuccess(Object payload, boolean pretty) {
-    writeEnvelope(CliResponsePayloadMapper.successEnvelope(payload), pretty);
+  private void writePrettyEnvelope(Object envelope) {
+    writePrettyJson(envelope);
+  }
+
+  void writePrettySuccess(Object payload) {
+    writePrettyEnvelope(CliResponsePayloadMapper.successEnvelope(payload));
   }
 
   void writeMutationRejection(
       OutputMode outputMode,
-      CliResponseJsonModels.RejectedEnvelope envelope,
+      CliEnvelopeJsonModels.RejectedEnvelope envelope,
       @Nullable String idempotencyKey) {
     if (outputMode == OutputMode.HUMAN) {
       writeText(
@@ -51,17 +61,17 @@ final class CliOutputChannel {
               envelope.code(), envelope.message(), idempotencyKey));
       return;
     }
-    writeEnvelope(envelope, false);
+    writeEnvelope(envelope);
   }
 
-  void writeQueryRejection(OutputMode outputMode, CliResponseJsonModels.RejectedEnvelope envelope) {
+  void writeQueryRejection(OutputMode outputMode, CliEnvelopeJsonModels.RejectedEnvelope envelope) {
     outputMode.run(
-        () -> writeEnvelope(envelope, false),
+        () -> writeEnvelope(envelope),
         () ->
             writeText(
                 CliFailureOutputRenderer.renderRejectedHuman(
                     envelope.code(), envelope.message(), envelope.idempotencyKey())),
-        () -> writeEnvelope(envelope, false));
+        () -> writeEnvelope(envelope));
   }
 
   private static ObjectMapper configuredObjectMapper() {

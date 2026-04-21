@@ -175,8 +175,8 @@ public final class JazzerHarnessRunner {
   /** Describes the single {@code @FuzzTest} method owned by one harness class. */
   record HarnessDescriptor(String className, String methodName) {
     HarnessDescriptor {
-      Objects.requireNonNull(className, "className must not be null");
-      Objects.requireNonNull(methodName, "methodName must not be null");
+      className = ReplayModelValidation.requireText(className, "className");
+      methodName = ReplayModelValidation.requireText(methodName, "methodName");
     }
   }
 

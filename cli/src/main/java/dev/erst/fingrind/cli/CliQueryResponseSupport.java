@@ -29,8 +29,7 @@ final class CliQueryResponseSupport {
         () ->
             outputChannel.writeEnvelope(
                 CliResponsePayloadMapper.successEnvelope(
-                    CliResponsePayloadMapper.bookInspectionPayload(bookFilePath, inspection)),
-                false),
+                    CliResponsePayloadMapper.bookInspectionPayload(bookFilePath, inspection))),
         () ->
             outputChannel.writeText(
                 CliQueryOutputRenderer.renderBookInspectionHuman(bookFilePath, inspection)),
@@ -47,8 +46,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountPagePayload(listed.page())),
-                      false),
+                          CliResponsePayloadMapper.accountPagePayload(listed.page()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountsHuman(listed.page())),
@@ -70,8 +68,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.postingPayload(found.postingFact())),
-                      false),
+                          CliResponsePayloadMapper.postingPayload(found.postingFact()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPostingHuman(found.postingFact())),
@@ -95,8 +92,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.postingPagePayload(listed.page())),
-                      false),
+                          CliResponsePayloadMapper.postingPagePayload(listed.page()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPostingRegisterHuman(listed.page())),
@@ -119,8 +115,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountBalancePayload(reported.snapshot())),
-                      false),
+                          CliResponsePayloadMapper.accountBalancePayload(reported.snapshot()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountBalanceHuman(reported.snapshot())),
@@ -143,8 +138,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.trialBalancePayload(reported.report())),
-                      false),
+                          CliResponsePayloadMapper.trialBalancePayload(reported.report()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderTrialBalanceHuman(reported.report())),
@@ -167,8 +161,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.accountLedgerPayload(reported.report())),
-                      false),
+                          CliResponsePayloadMapper.accountLedgerPayload(reported.report()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderAccountLedgerHuman(reported.report())),
@@ -191,8 +184,7 @@ final class CliQueryResponseSupport {
               () ->
                   outputChannel.writeEnvelope(
                       CliResponsePayloadMapper.successEnvelope(
-                          CliResponsePayloadMapper.periodSummaryPayload(reported.report())),
-                      false),
+                          CliResponsePayloadMapper.periodSummaryPayload(reported.report()))),
               () ->
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPeriodSummaryHuman(reported.report())),
@@ -212,7 +204,7 @@ final class CliQueryResponseSupport {
     Object envelope =
         switch (result) {
           case LedgerPlanResult.Succeeded succeeded ->
-              new CliResponseJsonModels.SuccessEnvelope(
+              new CliEnvelopeJsonModels.SuccessEnvelope(
                   ProtocolStatuses.PLAN_COMMITTED,
                   CliResponsePayloadMapper.ledgerPlanPayload(succeeded));
           case LedgerPlanResult.Rejected rejected ->
@@ -222,7 +214,7 @@ final class CliQueryResponseSupport {
               CliResponsePayloadMapper.rejectedPlanEnvelope(
                   assertionFailed, ProtocolStatuses.PLAN_ASSERTION_FAILED);
         };
-    outputChannel.writeEnvelope(envelope, false);
+    outputChannel.writeEnvelope(envelope);
   }
 
   static String planRejectionStatus(LedgerPlanStatus status) {

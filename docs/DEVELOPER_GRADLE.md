@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-17"
+updated: "2026-04-21"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -71,6 +71,7 @@ core/
 contract/
 executor/
 sqlite/
+report-pdf/
 cli/
 jazzer/
 ├── settings.gradle.kts
@@ -79,7 +80,8 @@ jazzer/
 
 Each layer owns a different concern:
 
-- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`, and `cli`
+- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`,
+  `report-pdf`, and `cli`
 - shared included build logic: houses reusable Gradle plugins, managed-SQLite tasks, and shared
   pulse infrastructure
 - nested Jazzer build: runs Jazzer support tests, regression replay, and local fuzzing flows
@@ -116,10 +118,9 @@ The consumer scripts are intentionally thin now:
 
 ### Composite build for Jazzer
 
-`jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can consume the live
-local `core`, `contract`, `executor`, `sqlite`, and `cli` modules without publishing snapshots.
-This keeps Jazzer iteration fast and ensures fuzzing runs against the exact working tree under
-review.
+`jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can resolve the live
+local product modules without publishing snapshots. This keeps Jazzer iteration fast and ensures
+fuzzing runs against the exact working tree under review.
 
 ### One dependency authority
 
@@ -299,7 +300,8 @@ Rules:
 
 These are the Gradle-level invariants worth preserving:
 
-- `core`, `contract`, `executor`, `sqlite`, and `cli` remain ordinary root subprojects
+- `core`, `contract`, `executor`, `sqlite`, `report-pdf`, and `cli` remain ordinary root
+  subprojects
 - `jazzer/` remains a nested build, not a root subproject
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
 - the repository contains no active `buildSrc` tree

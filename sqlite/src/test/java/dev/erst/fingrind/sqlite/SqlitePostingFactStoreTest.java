@@ -2195,7 +2195,7 @@ class SqlitePostingFactStoreTest {
             withStandaloneDatabase(
                 staticBookAccess(databasePath),
                 database -> {
-                  SqliteSchemaManager.initializeBook(database);
+                  SqliteBookSchemaBootstrap.initializeBook(database);
                   SqliteMutationWriter.upsertAccount(
                       database,
                       new DeclaredAccount(
@@ -2253,7 +2253,7 @@ class SqlitePostingFactStoreTest {
             withStandaloneDatabase(
                 bookAccess(bookPath),
                 database -> {
-                  SqliteSchemaManager.initializeBook(database);
+                  SqliteBookSchemaBootstrap.initializeBook(database);
                   insertInitializedAtRow(database);
                   insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
                   insertPostingFactRow(database, "posting-1", "idem-1");
@@ -2477,7 +2477,7 @@ class SqlitePostingFactStoreTest {
   void readSchema_mapsIoFailure() {
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteSchemaManager.readSchema(SqlitePostingFactStoreTest::failingInputStream));
+        () -> SqliteBookSchemaBootstrap.readSchema(SqlitePostingFactStoreTest::failingInputStream));
   }
 
   @Test
@@ -2489,7 +2489,7 @@ class SqlitePostingFactStoreTest {
             withStandaloneDatabase(
                 bookAccess(bookPath),
                 database -> {
-                  SqliteSchemaManager.initializeBook(
+                  SqliteBookSchemaBootstrap.initializeBook(
                       database,
                       () ->
                           new ByteArrayInputStream(
@@ -2525,7 +2525,7 @@ class SqlitePostingFactStoreTest {
   void cachedValue_loadsAndStoresValueWhenCacheIsEmpty() {
     AtomicReference<String> schemaCache = new AtomicReference<>();
 
-    assertEquals("loaded", SqliteSchemaManager.cachedValue(schemaCache, () -> "loaded"));
+    assertEquals("loaded", SqliteBookSchemaBootstrap.cachedValue(schemaCache, () -> "loaded"));
     assertEquals("loaded", schemaCache.get());
   }
 
@@ -2535,7 +2535,7 @@ class SqlitePostingFactStoreTest {
 
     assertEquals(
         "cached",
-        SqliteSchemaManager.cachedValue(
+        SqliteBookSchemaBootstrap.cachedValue(
             schemaCache,
             () -> {
               throw new AssertionError("loader should not run when cache already has a value");
@@ -2548,7 +2548,7 @@ class SqlitePostingFactStoreTest {
 
     assertEquals(
         "published-first",
-        SqliteSchemaManager.cachedValue(
+        SqliteBookSchemaBootstrap.cachedValue(
             schemaCache,
             () -> {
               schemaCache.set("published-first");
@@ -3924,7 +3924,7 @@ class SqlitePostingFactStoreTest {
   }
 
   private static void createSchemaOnlyBook(Path bookPath) throws SqliteNativeException {
-    withStandaloneDatabase(staticBookAccess(bookPath), SqliteSchemaManager::initializeBook);
+    withStandaloneDatabase(staticBookAccess(bookPath), SqliteBookSchemaBootstrap::initializeBook);
   }
 
   private static void createPartialFinGrindBook(
@@ -3998,7 +3998,7 @@ class SqlitePostingFactStoreTest {
     withStandaloneDatabase(
         staticBookAccess(bookPath),
         database -> {
-          SqliteSchemaManager.initializeBook(database);
+          SqliteBookSchemaBootstrap.initializeBook(database);
           insertInitializedAtRow(database);
           insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
           insertAccountRow(database, "2000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");

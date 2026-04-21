@@ -16,7 +16,7 @@ final class CliDiscoveryResponseSupport {
 
   void writeHelp(ContractDiscovery.HelpDescriptor helpDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writeSuccess(helpDescriptor, true),
+        () -> outputChannel.writePrettySuccess(helpDescriptor),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
@@ -27,7 +27,7 @@ final class CliDiscoveryResponseSupport {
   void writeCapabilities(
       ContractDiscovery.CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writeSuccess(capabilitiesDescriptor, true),
+        () -> outputChannel.writePrettySuccess(capabilitiesDescriptor),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderCapabilitiesHuman(capabilitiesDescriptor)),
@@ -39,7 +39,7 @@ final class CliDiscoveryResponseSupport {
 
   void writeVersion(ContractDiscovery.VersionDescriptor versionDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writeSuccess(versionDescriptor, true),
+        () -> outputChannel.writePrettySuccess(versionDescriptor),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderVersionHuman(versionDescriptor)),
@@ -50,10 +50,10 @@ final class CliDiscoveryResponseSupport {
   }
 
   void writeRequestTemplate(ContractTemplates.PostingRequestTemplateDescriptor requestTemplate) {
-    outputChannel.writeJson(requestTemplate, true);
+    outputChannel.writePrettyJson(requestTemplate);
   }
 
   void writePlanTemplate(ContractTemplates.LedgerPlanTemplateDescriptor planTemplate) {
-    outputChannel.writeJson(planTemplate, true);
+    outputChannel.writePrettyJson(planTemplate);
   }
 }

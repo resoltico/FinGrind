@@ -33,7 +33,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -155,21 +154,22 @@ final class CliLedgerPlanParser {
     };
   }
 
-  private static ListAccountsQuery readListAccountsQuery(@Nullable ObjectNode queryNode) {
-    if (queryNode == null) {
+  private static ListAccountsQuery readListAccountsQuery(Optional<ObjectNode> queryNode) {
+    if (queryNode.isEmpty()) {
       return new ListAccountsQuery(
           ProtocolLimits.DEFAULT_PAGE_LIMIT, ProtocolLimits.DEFAULT_PAGE_OFFSET);
     }
-    rejectUnexpectedFields(queryNode, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
+    ObjectNode queryObject = queryNode.orElseThrow();
+    rejectUnexpectedFields(queryObject, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
     return new ListAccountsQuery(
-        optionalInt(queryNode, ProtocolLedgerPlanFields.Query.LIMIT)
+        optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
-        optionalInt(queryNode, ProtocolLedgerPlanFields.Query.OFFSET)
+        optionalInt(queryObject, ProtocolLedgerPlanFields.Query.OFFSET)
             .orElse(ProtocolLimits.DEFAULT_PAGE_OFFSET));
   }
 
-  private static ListPostingsQuery readListPostingsQuery(@Nullable ObjectNode queryNode) {
-    if (queryNode == null) {
+  private static ListPostingsQuery readListPostingsQuery(Optional<ObjectNode> queryNode) {
+    if (queryNode.isEmpty()) {
       return new ListPostingsQuery(
           Optional.empty(),
           Optional.empty(),
@@ -177,16 +177,18 @@ final class CliLedgerPlanParser {
           ProtocolLimits.DEFAULT_PAGE_LIMIT,
           Optional.empty());
     }
-    rejectUnexpectedFields(queryNode, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
+    ObjectNode queryObject = queryNode.orElseThrow();
+    rejectUnexpectedFields(queryObject, "query", CliJsonRequestSupport.LEDGER_QUERY_FIELDS);
     return new ListPostingsQuery(
-        optionalText(queryNode, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE).map(AccountCode::new),
-        optionalText(queryNode, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)
+        optionalText(queryObject, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)
+            .map(AccountCode::new),
+        optionalText(queryObject, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)
             .map(LocalDate::parse),
-        optionalText(queryNode, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO)
+        optionalText(queryObject, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO)
             .map(LocalDate::parse),
-        optionalInt(queryNode, ProtocolLedgerPlanFields.Query.LIMIT)
+        optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
-        optionalText(queryNode, ProtocolLedgerPlanFields.Query.CURSOR)
+        optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
             .map(PostingPageCursor::fromWireValue));
   }
 

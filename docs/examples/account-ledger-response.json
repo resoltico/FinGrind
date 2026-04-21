@@ -1,1 +1,37 @@
-{"status":"ok","payload":{"accountCode":"1000","accountName":"Cash","normalBalance":"DEBIT","active":true,"declaredAt":"2026-04-19T01:27:17.619131Z","effectiveDateFrom":"2026-04-07","effectiveDateTo":"2026-04-08","openingBalances":[],"entries":[{"postingId":"019da359-6a2f-705d-9e3b-40099a5d51ab","effectiveDate":"2026-04-07","recordedAt":"2026-04-19T01:27:19.244188Z","currencyCode":"EUR","debitAmount":"10","creditAmount":"0","runningBalance":"10","runningBalanceSide":"DEBIT","counterpartAccounts":["2000"]},{"postingId":"019da359-6bd2-7962-b974-2bdb26947072","effectiveDate":"2026-04-08","recordedAt":"2026-04-19T01:27:19.669587Z","currencyCode":"EUR","debitAmount":"0","creditAmount":"4","runningBalance":"6","runningBalanceSide":"DEBIT","counterpartAccounts":["2000"]}],"closingBalances":[{"currencyCode":"EUR","debitTotal":"10","creditTotal":"4","netAmount":"6","balanceSide":"DEBIT"}]}}
+{
+  "status": "ok",
+  "payload": {
+    "accountCode": "1000",
+    "accountName": "Cash",
+    "normalBalance": "DEBIT",
+    "active": true,
+    "declaredAt": "2026-04-21T01:37:10.306917Z",
+    "effectiveDateFrom": "2026-04-07",
+    "effectiveDateTo": "2026-04-08",
+    "openingBalances": [],
+    "entries": [
+      {
+        "postingId": "019dadaf-2bec-7888-a1d8-544eb843fd3d",
+        "effectiveDate": "2026-04-08",
+        "recordedAt": "2026-04-21T01:37:11.549110Z",
+        "currencyCode": "EUR",
+        "debitAmount": "10",
+        "creditAmount": "0",
+        "runningBalance": "10",
+        "runningBalanceSide": "DEBIT",
+        "counterpartAccounts": [
+          "2000"
+        ]
+      }
+    ],
+    "closingBalances": [
+      {
+        "currencyCode": "EUR",
+        "debitTotal": "10",
+        "creditTotal": "0",
+        "netAmount": "10",
+        "balanceSide": "DEBIT"
+      }
+    ]
+  }
+}

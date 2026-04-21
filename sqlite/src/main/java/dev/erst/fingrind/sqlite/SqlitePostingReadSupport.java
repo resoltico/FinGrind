@@ -47,21 +47,9 @@ final class SqlitePostingReadSupport {
   PostingPage loadPostingPage(SqliteNativeDatabase activeDatabase, ListPostingsQuery query)
       throws SqliteNativeException {
     List<PostingFact> postings = new ArrayList<>();
-    boolean filterAccount = query.accountCode().isPresent();
-    boolean filterEffectiveDateFrom = query.effectiveDateFrom().isPresent();
-    boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
-    boolean filterCursor = query.cursor().isPresent();
-    String sql =
-        SqlitePostingSql.listPostings(
-            filterAccount, filterEffectiveDateFrom, filterEffectiveDateTo, filterCursor);
+    String sql = SqlitePostingSql.listPostings(query);
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
-      bindPostingPageQuery(
-          statement,
-          query,
-          filterAccount,
-          filterEffectiveDateFrom,
-          filterEffectiveDateTo,
-          filterCursor);
+      bindPostingPageQuery(statement, query);
       while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
         postings.add(loadPostingRow(activeDatabase, statement));
       }
@@ -114,13 +102,10 @@ final class SqlitePostingReadSupport {
   private List<CurrencyBalance> loadCurrencyBalances(
       SqliteNativeDatabase activeDatabase, AccountBalanceQuery query, DeclaredAccount account)
       throws SqliteNativeException {
-    boolean filterEffectiveDateFrom = query.effectiveDateFrom().isPresent();
-    boolean filterEffectiveDateTo = query.effectiveDateTo().isPresent();
-    String sql =
-        SqlitePostingSql.loadAccountLinesForBalance(filterEffectiveDateFrom, filterEffectiveDateTo);
+    String sql = SqlitePostingSql.loadAccountLinesForBalance(query);
     Map<CurrencyCode, Totals> totalsByCurrency = mutableTotalsByCurrency();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
-      bindAccountBalanceQuery(statement, query, filterEffectiveDateFrom, filterEffectiveDateTo);
+      bindAccountBalanceQuery(statement, query);
       while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
         JournalLine.EntrySide side = readEntrySide(statement);
         CurrencyCode currencyCode = readCurrencyCode(statement);
@@ -144,28 +129,22 @@ final class SqlitePostingReadSupport {
     return List.copyOf(balances);
   }
 
-  private static void bindPostingPageQuery(
-      SqliteNativeStatement statement,
-      ListPostingsQuery query,
-      boolean filterAccount,
-      boolean filterEffectiveDateFrom,
-      boolean filterEffectiveDateTo,
-      boolean filterCursor)
+  private static void bindPostingPageQuery(SqliteNativeStatement statement, ListPostingsQuery query)
       throws SqliteNativeException {
     int bindIndex = 1;
-    if (filterAccount) {
+    if (query.accountCode().isPresent()) {
       statement.bindText(bindIndex, query.accountCode().orElseThrow().value());
       bindIndex++;
     }
-    if (filterEffectiveDateFrom) {
+    if (query.effectiveDateFrom().isPresent()) {
       statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
       bindIndex++;
     }
-    if (filterEffectiveDateTo) {
+    if (query.effectiveDateTo().isPresent()) {
       statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
       bindIndex++;
     }
-    if (filterCursor) {
+    if (query.cursor().isPresent()) {
       PostingPageCursor cursor = query.cursor().orElseThrow();
       statement.bindText(bindIndex, cursor.effectiveDate().toString());
       bindIndex++;
@@ -193,19 +172,15 @@ final class SqlitePostingReadSupport {
   }
 
   private static void bindAccountBalanceQuery(
-      SqliteNativeStatement statement,
-      AccountBalanceQuery query,
-      boolean filterEffectiveDateFrom,
-      boolean filterEffectiveDateTo)
-      throws SqliteNativeException {
+      SqliteNativeStatement statement, AccountBalanceQuery query) throws SqliteNativeException {
     int bindIndex = 1;
     statement.bindText(bindIndex, query.accountCode().value());
     bindIndex++;
-    if (filterEffectiveDateFrom) {
+    if (query.effectiveDateFrom().isPresent()) {
       statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
       bindIndex++;
     }
-    if (filterEffectiveDateTo) {
+    if (query.effectiveDateTo().isPresent()) {
       statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
     }
   }

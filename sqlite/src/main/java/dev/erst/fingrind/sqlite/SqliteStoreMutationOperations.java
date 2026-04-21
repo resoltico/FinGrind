@@ -30,20 +30,21 @@ final class SqliteStoreMutationOperations {
   OpenBookResult openBook(Instant initializedAt) {
     store.ensureOpenSession();
     store.accessMode().requireWritableInitialization();
-    SqliteSchemaManager.ensureParentDirectory(store.bookPath());
+    SqliteBookSchemaBootstrap.ensureParentDirectory(store.bookPath());
     SqliteSessionDatabase activeDatabase = store.database();
-    boolean ownsTransaction = false;
+    SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
     try {
       SqliteBookStateSnapshot snapshot = store.stateSnapshot(activeDatabase.nativeDatabase());
-      OpenBookResult preexistingOutcome = snapshot.state().openBookResult(snapshot.userVersion());
-      if (preexistingOutcome != null) {
-        return preexistingOutcome;
+      Optional<OpenBookResult> preexistingOutcome =
+          snapshot.state().openBookResult(snapshot.userVersion());
+      if (preexistingOutcome.isPresent()) {
+        return preexistingOutcome.orElseThrow();
       }
 
-      ownsTransaction = store.beginImmediateIfNeeded(activeDatabase);
-      SqliteSchemaManager.initializeBook(activeDatabase.nativeDatabase());
+      transactionOwnership = store.beginImmediateIfNeeded(activeDatabase);
+      SqliteBookSchemaBootstrap.initializeBook(activeDatabase.nativeDatabase());
       SqliteMutationWriter.insertInitializedAt(activeDatabase.nativeDatabase(), initializedAt);
-      SqliteStoreSupport.commitIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+      SqliteStoreSupport.commitIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
       store.cacheState(
           new SqliteBookStateSnapshot(
               SqliteBookContract.APPLICATION_ID,
@@ -51,7 +52,7 @@ final class SqliteStoreMutationOperations {
               SqliteBookState.INITIALIZED_FINGRIND));
       return new OpenBookResult.Opened(initializedAt);
     } catch (SqliteNativeException exception) {
-      SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+      SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
       throw SqliteStoreSupport.sqliteFailure("Failed to initialize SQLite book.", exception);
     }
   }
@@ -68,19 +69,19 @@ final class SqliteStoreMutationOperations {
           new BookAdministrationRejection.BookNotInitialized());
     }
     SqliteSessionDatabase activeDatabase = store.database();
-    boolean ownsTransaction = false;
+    SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
     try {
       if (!store.isInitializedBook(activeDatabase.nativeDatabase())) {
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.BookNotInitialized());
       }
 
-      ownsTransaction = store.beginImmediateIfNeeded(activeDatabase);
+      transactionOwnership = store.beginImmediateIfNeeded(activeDatabase);
       Optional<DeclaredAccount> existingAccount =
           SqliteStatementQuerySupport.findOneAccount(activeDatabase.nativeDatabase(), accountCode);
       if (existingAccount.isPresent()
           && existingAccount.orElseThrow().normalBalance() != normalBalance) {
-        SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+        SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
         return new DeclareAccountResult.Rejected(
             new BookAdministrationRejection.NormalBalanceConflict(
                 accountCode, existingAccount.orElseThrow().normalBalance(), normalBalance));
@@ -101,10 +102,10 @@ final class SqliteStoreMutationOperations {
                       new DeclaredAccount(
                           accountCode, accountName, normalBalance, true, declaredAt));
       SqliteMutationWriter.upsertAccount(activeDatabase.nativeDatabase(), declaredAccount);
-      SqliteStoreSupport.commitIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+      SqliteStoreSupport.commitIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
       return new DeclareAccountResult.Declared(declaredAccount);
     } catch (SqliteNativeException exception) {
-      SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+      SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
       throw SqliteStoreSupport.sqliteFailure("Failed to declare SQLite book account.", exception);
     }
   }
@@ -116,16 +117,16 @@ final class SqliteStoreMutationOperations {
       return new PostingCommitResult.Rejected(new PostingRejection.BookNotInitialized());
     }
     SqliteSessionDatabase activeDatabase = store.database();
-    boolean ownsTransaction = false;
+    SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
     try {
-      ownsTransaction = store.beginImmediateIfNeeded(activeDatabase);
+      transactionOwnership = store.beginImmediateIfNeeded(activeDatabase);
       Optional<PostingRejection> ordinaryOutcome =
           PostingValidation.rejectionFor(
               postingDraft,
               new SqliteTransactionValidationBook(
                   activeDatabase.nativeDatabase(), store.postingReadSupport()));
       if (ordinaryOutcome.isPresent()) {
-        SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+        SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
         return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
       }
       PostingFact postingFact =
@@ -133,10 +134,10 @@ final class SqliteStoreMutationOperations {
               Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId());
       SqliteMutationWriter.insertPostingFact(activeDatabase.nativeDatabase(), postingFact);
       SqliteMutationWriter.insertJournalLines(activeDatabase.nativeDatabase(), postingFact);
-      SqliteStoreSupport.commitIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+      SqliteStoreSupport.commitIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
       return new PostingCommitResult.Committed(postingFact);
     } catch (SqliteNativeException exception) {
-      SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), ownsTransaction);
+      SqliteStoreSupport.rollbackIfOwned(activeDatabase.nativeDatabase(), transactionOwnership);
       throw SqliteStoreSupport.sqliteFailure("Failed to commit SQLite posting fact.", exception);
     }
   }

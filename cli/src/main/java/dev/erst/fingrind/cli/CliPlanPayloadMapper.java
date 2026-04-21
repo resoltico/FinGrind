@@ -13,23 +13,23 @@ import java.util.List;
 final class CliPlanPayloadMapper {
   private CliPlanPayloadMapper() {}
 
-  static CliResponseJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
-    return new CliResponseJsonModels.LedgerPlanPayload(
+  static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
+    return new CliPlanJsonModels.LedgerPlanPayload(
         result.planId().value(),
         result.status().wireValue(),
         ledgerExecutionJournalPayload(result.journal()));
   }
 
-  static CliResponseJsonModels.RejectedEnvelope rejectedPlanEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope rejectedPlanEnvelope(
       LedgerPlanResult result, String status) {
-    CliResponseJsonModels.LedgerPlanPayload payload = ledgerPlanPayload(result);
+    CliPlanJsonModels.LedgerPlanPayload payload = ledgerPlanPayload(result);
     LedgerStepFailure failure = result.journal().requiredFailedStep().requiredFailure();
-    return new CliResponseJsonModels.RejectedEnvelope(
+    return new CliEnvelopeJsonModels.RejectedEnvelope(
         status,
         failure.code(),
         failure.message(),
         null,
-        new CliResponseJsonModels.PlanRejectionDetails(payload));
+        new CliRejectionJsonModels.PlanRejectionDetails(payload));
   }
 
   static String planRejectionStatus(LedgerPlanStatus status) {
@@ -41,20 +41,20 @@ final class CliPlanPayloadMapper {
     };
   }
 
-  private static CliResponseJsonModels.LedgerExecutionJournalPayload ledgerExecutionJournalPayload(
+  private static CliPlanJsonModels.LedgerExecutionJournalPayload ledgerExecutionJournalPayload(
       LedgerExecutionJournal journal) {
-    return new CliResponseJsonModels.LedgerExecutionJournalPayload(
+    return new CliPlanJsonModels.LedgerExecutionJournalPayload(
         journal.startedAt().toString(),
         journal.finishedAt().toString(),
         journal.steps().stream().map(CliPlanPayloadMapper::ledgerJournalEntryPayload).toList());
   }
 
-  private static CliResponseJsonModels.LedgerJournalEntryPayload ledgerJournalEntryPayload(
+  private static CliPlanJsonModels.LedgerJournalEntryPayload ledgerJournalEntryPayload(
       LedgerJournalEntry entry) {
-    return new CliResponseJsonModels.LedgerJournalEntryPayload(
+    return new CliPlanJsonModels.LedgerJournalEntryPayload(
         entry.stepId().value(),
         entry.kind().wireValue(),
-        entry.detailKind() == null ? null : entry.detailKind().wireValue(),
+        entry.detailKind().map(detailKind -> detailKind.wireValue()).orElse(null),
         entry.status().wireValue(),
         entry.startedAt().toString(),
         entry.finishedAt().toString(),
@@ -64,28 +64,26 @@ final class CliPlanPayloadMapper {
             : null);
   }
 
-  private static CliResponseJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(
+  private static CliPlanJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(
       LedgerStepFailure failure) {
-    return new CliResponseJsonModels.LedgerStepFailurePayload(
+    return new CliPlanJsonModels.LedgerStepFailurePayload(
         failure.code(), failure.message(), factPayloads(failure.facts()));
   }
 
-  private static List<CliResponseJsonModels.LedgerFactPayload> factPayloads(
-      List<LedgerFact> facts) {
+  private static List<CliPlanJsonModels.LedgerFactPayload> factPayloads(List<LedgerFact> facts) {
     return facts.stream().map(CliPlanPayloadMapper::ledgerFactPayload).toList();
   }
 
-  private static CliResponseJsonModels.LedgerFactPayload ledgerFactPayload(LedgerFact fact) {
+  private static CliPlanJsonModels.LedgerFactPayload ledgerFactPayload(LedgerFact fact) {
     return switch (fact) {
       case LedgerFact.Text text ->
-          new CliResponseJsonModels.TextLedgerFactPayload(text.name(), text.value());
+          new CliPlanJsonModels.TextLedgerFactPayload(text.name(), text.value());
       case LedgerFact.Flag flag ->
-          new CliResponseJsonModels.FlagLedgerFactPayload(flag.name(), flag.value());
+          new CliPlanJsonModels.FlagLedgerFactPayload(flag.name(), flag.value());
       case LedgerFact.Count count ->
-          new CliResponseJsonModels.CountLedgerFactPayload(count.name(), count.value());
+          new CliPlanJsonModels.CountLedgerFactPayload(count.name(), count.value());
       case LedgerFact.Group group ->
-          new CliResponseJsonModels.GroupLedgerFactPayload(
-              group.name(), factPayloads(group.facts()));
+          new CliPlanJsonModels.GroupLedgerFactPayload(group.name(), factPayloads(group.facts()));
     };
   }
 }

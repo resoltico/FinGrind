@@ -121,7 +121,7 @@ final class CliBookArgumentSupport {
       BookAccess bookAccess, @Nullable Path requestFile, List<String> commandArguments) {
     ParsedBookArguments {
       Objects.requireNonNull(bookAccess, "bookAccess");
-      commandArguments = List.copyOf(Objects.requireNonNull(commandArguments, "commandArguments"));
+      commandArguments = commandArguments == null ? List.of() : List.copyOf(commandArguments);
     }
 
     Optional<Path> optionalRequestFile() {
@@ -131,24 +131,42 @@ final class CliBookArgumentSupport {
 
   /** Supported parser shapes for commands that address one selected book file. */
   private enum BookArgumentMode {
-    REQUEST_BOUND(true, false),
-    REQUEST_BOUND_WITH_COMMAND_ARGUMENTS(true, true),
-    BOOK_WITH_COMMAND_ARGUMENTS(false, true);
+    REQUEST_BOUND {
+      @Override
+      boolean acceptsRequestFile() {
+        return true;
+      }
 
-    private final boolean acceptsRequestFile;
-    private final boolean collectsCommandArguments;
+      @Override
+      boolean collectsCommandArguments() {
+        return false;
+      }
+    },
+    REQUEST_BOUND_WITH_COMMAND_ARGUMENTS {
+      @Override
+      boolean acceptsRequestFile() {
+        return true;
+      }
 
-    BookArgumentMode(boolean acceptsRequestFile, boolean collectsCommandArguments) {
-      this.acceptsRequestFile = acceptsRequestFile;
-      this.collectsCommandArguments = collectsCommandArguments;
-    }
+      @Override
+      boolean collectsCommandArguments() {
+        return true;
+      }
+    },
+    BOOK_WITH_COMMAND_ARGUMENTS {
+      @Override
+      boolean acceptsRequestFile() {
+        return false;
+      }
 
-    boolean acceptsRequestFile() {
-      return acceptsRequestFile;
-    }
+      @Override
+      boolean collectsCommandArguments() {
+        return true;
+      }
+    };
 
-    boolean collectsCommandArguments() {
-      return collectsCommandArguments;
-    }
+    abstract boolean acceptsRequestFile();
+
+    abstract boolean collectsCommandArguments();
   }
 }

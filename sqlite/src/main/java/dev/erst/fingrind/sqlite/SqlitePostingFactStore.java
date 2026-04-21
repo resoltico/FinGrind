@@ -262,7 +262,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     return reportReadSupport;
   }
 
-  boolean beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase)
+  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase)
       throws SqliteNativeException {
     return lifecycle.beginImmediateIfNeeded(activeDatabase);
   }

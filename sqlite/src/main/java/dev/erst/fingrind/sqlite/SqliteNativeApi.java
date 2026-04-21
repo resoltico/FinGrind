@@ -55,5 +55,13 @@ record SqliteNativeApi(
     Objects.requireNonNull(sqlite3ExtendedErrcode, "sqlite3ExtendedErrcode");
     Objects.requireNonNull(loadedVersion, "loadedVersion");
     Objects.requireNonNull(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
+    loadedVersion = loadedVersion.strip();
+    loadedSqlite3mcVersion = loadedSqlite3mcVersion.strip();
+    if (loadedVersion.isEmpty()) {
+      throw new IllegalArgumentException("loadedVersion must not be blank.");
+    }
+    if (loadedSqlite3mcVersion.isEmpty()) {
+      throw new IllegalArgumentException("loadedSqlite3mcVersion must not be blank.");
+    }
   }
 }

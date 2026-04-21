@@ -97,21 +97,19 @@ final class JazzerTopology {
       Map<String, JazzerRunTarget> runTargetsByKey,
       Map<String, JazzerRunTarget> runTargetsByTaskName) {
     Registry {
-      harnesses = List.copyOf(Objects.requireNonNull(harnesses, "harnesses must not be null"));
-      harnessesByKey = Map.copyOf(Objects.requireNonNull(harnessesByKey, "harnessesByKey must not be null"));
-      runTargets = List.copyOf(Objects.requireNonNull(runTargets, "runTargets must not be null"));
-      runTargetsByKey =
-          Map.copyOf(Objects.requireNonNull(runTargetsByKey, "runTargetsByKey must not be null"));
+      harnesses = harnesses == null ? List.of() : List.copyOf(harnesses);
+      harnessesByKey = harnessesByKey == null ? Map.of() : Map.copyOf(harnessesByKey);
+      runTargets = runTargets == null ? List.of() : List.copyOf(runTargets);
+      runTargetsByKey = runTargetsByKey == null ? Map.of() : Map.copyOf(runTargetsByKey);
       runTargetsByTaskName =
-          Map.copyOf(
-              Objects.requireNonNull(runTargetsByTaskName, "runTargetsByTaskName must not be null"));
+          runTargetsByTaskName == null ? Map.of() : Map.copyOf(runTargetsByTaskName);
     }
   }
 
   private record TopologyDocument(List<HarnessDocument> harnesses, List<RunTargetDocument> runTargets) {
     TopologyDocument {
-      harnesses = List.copyOf(Objects.requireNonNull(harnesses, "harnesses must not be null"));
-      runTargets = List.copyOf(Objects.requireNonNull(runTargets, "runTargets must not be null"));
+      harnesses = harnesses == null ? List.of() : List.copyOf(harnesses);
+      runTargets = runTargets == null ? List.of() : List.copyOf(runTargets);
       if (harnesses.isEmpty()) {
         throw new IllegalArgumentException("Jazzer topology must declare at least one harness");
       }
@@ -142,7 +140,7 @@ final class JazzerTopology {
       displayName = requireNonBlank(displayName, "displayName");
       taskName = requireNonBlank(taskName, "taskName");
       workingDirectory = requireNonBlank(workingDirectory, "workingDirectory");
-      harnessKeys = List.copyOf(Objects.requireNonNull(harnessKeys, "harnessKeys must not be null"));
+      harnessKeys = harnessKeys == null ? List.of() : List.copyOf(harnessKeys);
       if (harnessKeys.isEmpty()) {
         throw new IllegalArgumentException("harnessKeys must not be empty");
       }

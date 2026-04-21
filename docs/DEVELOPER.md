@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: DEVELOPER
-updated: "2026-04-19"
+updated: "2026-04-21"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -287,7 +287,8 @@ root-script `subprojects {}` policy blocks.
 ## GitHub Workflows
 
 The repository currently ships four workflow surfaces:
-- `CI` runs on pushes and pull requests to `main`, and includes `Check` and `Docker smoke`.
+- `CI` runs on pushes and pull requests to `main`, and includes `check`, the Windows bundle smoke
+  job, and the Docker smoke job.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
@@ -330,8 +331,13 @@ Public API reference lives in:
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
+- [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
+- [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
+- [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 
 That reference spine tracks main-source public surfaces plus the public CLI launcher entrypoint.
-It does not route test fixtures.
+`DOC_02_Application.md` is now the routing overview for the split contract/executor reference set,
+and `DOC_00_Index.md` routes every exported symbol to the narrower file that actually owns it.
+The spine does not route test fixtures.

@@ -9,7 +9,7 @@ public record LedgerStepFailure(String code, String message, List<LedgerFact> fa
   public LedgerStepFailure {
     Objects.requireNonNull(code, "code");
     Objects.requireNonNull(message, "message");
-    facts = List.copyOf(Objects.requireNonNull(facts, "facts"));
+    facts = facts == null ? List.of() : List.copyOf(facts);
     if (code.isBlank()) {
       throw new IllegalArgumentException("Ledger step failure code must not be blank.");
     }

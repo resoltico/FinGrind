@@ -1565,6 +1565,19 @@ class SqliteNativeLibraryTest {
     }
   }
 
+  @Test
+  void sqliteNativeApi_rejectsBlankLoadedVersions() {
+    Object[] blankLoadedVersionArguments = defaultSqliteApiArguments();
+    blankLoadedVersionArguments[22] = " ";
+
+    assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankLoadedVersionArguments));
+
+    Object[] blankSqlite3mcArguments = defaultSqliteApiArguments();
+    blankSqlite3mcArguments[23] = " ";
+
+    assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankSqlite3mcArguments));
+  }
+
   private static SqliteNativeApi sqliteApi(
       MethodHandle keyHandle,
       MethodHandle closeHandle,
