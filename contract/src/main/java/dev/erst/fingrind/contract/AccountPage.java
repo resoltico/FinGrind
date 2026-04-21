@@ -1,13 +1,12 @@
 package dev.erst.fingrind.contract;
 
 import java.util.List;
-import java.util.Objects;
 
 /** One stable page of declared accounts. */
 public record AccountPage(List<DeclaredAccount> accounts, int limit, int offset, boolean hasMore) {
   /** Validates one paginated account page. */
   public AccountPage {
-    accounts = List.copyOf(Objects.requireNonNull(accounts, "accounts"));
+    accounts = accounts == null ? List.of() : List.copyOf(accounts);
     if (limit < 1) {
       throw new IllegalArgumentException("Account page limit must be positive.");
     }

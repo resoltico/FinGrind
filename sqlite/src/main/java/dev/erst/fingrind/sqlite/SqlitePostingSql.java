@@ -1,5 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.TrialBalanceQuery;
 import java.util.Collections;
 
 /** Canonical SQL statements for the SQLite posting adapter. */
@@ -211,16 +215,12 @@ final class SqlitePostingSql {
         + ")";
   }
 
-  static String listPostings(
-      boolean filterAccount,
-      boolean filterEffectiveDateFrom,
-      boolean filterEffectiveDateTo,
-      boolean filterCursor) {
+  static String listPostings(ListPostingsQuery query) {
     StringBuilder sql =
         new StringBuilder(BASE_POSTING_SELECT.length() + 256)
             .append(BASE_POSTING_SELECT)
             .append(" where 1 = 1");
-    if (filterAccount) {
+    if (query.accountCode().isPresent()) {
       sql.append(
           """
            and exists (
@@ -231,13 +231,13 @@ final class SqlitePostingSql {
            )
           """);
     }
-    if (filterEffectiveDateFrom) {
+    if (query.effectiveDateFrom().isPresent()) {
       sql.append(" and effective_date >= ?");
     }
-    if (filterEffectiveDateTo) {
+    if (query.effectiveDateTo().isPresent()) {
       sql.append(" and effective_date <= ?");
     }
-    if (filterCursor) {
+    if (query.cursor().isPresent()) {
       sql.append(
           """
            and (
@@ -251,15 +251,14 @@ final class SqlitePostingSql {
     return sql.toString();
   }
 
-  static String loadAccountLinesForBalance(
-      boolean filterEffectiveDateFrom, boolean filterEffectiveDateTo) {
+  static String loadAccountLinesForBalance(AccountBalanceQuery query) {
     StringBuilder sql =
         new StringBuilder(LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
             .append(LOAD_ACCOUNT_LINES_FOR_BALANCE);
-    if (filterEffectiveDateFrom) {
+    if (query.effectiveDateFrom().isPresent()) {
       sql.append(" and posting_fact.effective_date >= ?");
     }
-    if (filterEffectiveDateTo) {
+    if (query.effectiveDateTo().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
     }
     sql.append(
@@ -267,12 +266,12 @@ final class SqlitePostingSql {
     return sql.toString();
   }
 
-  static String loadTrialBalanceLines(boolean filterEffectiveDateTo) {
+  static String loadTrialBalanceLines(TrialBalanceQuery query) {
     StringBuilder sql =
         new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 96)
             .append(BASE_REPORT_LINE_SELECT)
             .append(" where 1 = 1");
-    if (filterEffectiveDateTo) {
+    if (query.effectiveDateTo().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
     }
     sql.append(
@@ -289,8 +288,7 @@ final class SqlitePostingSql {
            """;
   }
 
-  static String listPostingsForAccountLedger(
-      boolean filterEffectiveDateFrom, boolean filterEffectiveDateTo) {
+  static String listPostingsForAccountLedger(AccountLedgerQuery query) {
     StringBuilder sql =
         new StringBuilder(BASE_POSTING_SELECT.length() + 192)
             .append(BASE_POSTING_SELECT)
@@ -303,10 +301,10 @@ final class SqlitePostingSql {
                        and journal_line.account_code = ?
                  )
                 """);
-    if (filterEffectiveDateFrom) {
+    if (query.effectiveDateFrom().isPresent()) {
       sql.append(" and effective_date >= ?");
     }
-    if (filterEffectiveDateTo) {
+    if (query.effectiveDateTo().isPresent()) {
       sql.append(" and effective_date <= ?");
     }
     sql.append(" order by effective_date, recorded_at, posting_id");

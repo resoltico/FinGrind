@@ -9,7 +9,7 @@ public record PostingPage(
     List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
   /** Validates one committed-posting page. */
   public PostingPage {
-    postings = List.copyOf(Objects.requireNonNull(postings, "postings"));
+    postings = postings == null ? List.of() : List.copyOf(postings);
     Objects.requireNonNull(nextCursor, "nextCursor");
     if (limit < 1) {
       throw new IllegalArgumentException("Posting page limit must be greater than zero.");

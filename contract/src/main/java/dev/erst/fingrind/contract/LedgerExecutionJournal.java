@@ -11,7 +11,7 @@ public record LedgerExecutionJournal(
   public LedgerExecutionJournal {
     Objects.requireNonNull(startedAt, "startedAt");
     Objects.requireNonNull(finishedAt, "finishedAt");
-    steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
+    steps = steps == null ? List.of() : List.copyOf(steps);
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Ledger journal must contain at least one step.");
     }

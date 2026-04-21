@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-17"
+updated: "2026-04-21"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -153,7 +153,7 @@ The SQLite adapter is split into focused collaborators:
 - [`SqliteNativeStatement`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java):
   single-use prepared statement wrapper with statement-scoped native memory; bound text length is
   derived from the native UTF-8 segment size instead of re-encoding Java strings on every bind
-- [`SqliteSchemaManager`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSchemaManager.java):
+- [`SqliteBookSchemaBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSchemaBootstrap.java):
   lazily loads and caches the canonical schema resource, then applies it on the writable
   connection
 - [`SqlitePostingSql`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSql.java):

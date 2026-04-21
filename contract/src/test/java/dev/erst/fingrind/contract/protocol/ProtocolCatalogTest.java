@@ -83,6 +83,78 @@ class ProtocolCatalogTest {
         ProtocolCatalog.operationNames(OperationCategory.WRITE));
   }
 
+  @Test
+  void protocolDescriptorRecords_rejectBlankTextAndCoalesceNullCollections() {
+    ProtocolOperation operation =
+        new ProtocolOperation(
+            OperationId.HELP,
+            OperationCategory.DISCOVERY,
+            "Help",
+            null,
+            null,
+            ExecutionMode.JSON_ENVELOPE,
+            null,
+            null,
+            "fingrind help",
+            "summary",
+            null);
+    ProtocolOperationSupport.OperationDefinition definition =
+        new ProtocolOperationSupport.OperationDefinition(
+            OperationId.HELP,
+            OperationCategory.DISCOVERY,
+            "Help",
+            null,
+            null,
+            ExecutionMode.JSON_ENVELOPE,
+            null,
+            null,
+            "summary",
+            null);
+
+    assertEquals(List.of(), operation.aliases());
+    assertEquals(List.of(), operation.options());
+    assertEquals(List.of(), operation.outputModes());
+    assertEquals(List.of(), operation.artifactOutputs());
+    assertEquals(List.of(), operation.examples());
+    assertEquals(List.of(), definition.aliases());
+    assertEquals(List.of(), definition.options());
+    assertEquals(List.of(), definition.outputModes());
+    assertEquals(List.of(), definition.artifactOutputs());
+    assertEquals(List.of(), definition.examples());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtocolOperation(
+                OperationId.HELP,
+                OperationCategory.DISCOVERY,
+                " ",
+                List.of(),
+                List.of(),
+                ExecutionMode.JSON_ENVELOPE,
+                List.of(),
+                List.of(),
+                "fingrind help",
+                "summary",
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtocolOperationSupport.OperationDefinition(
+                OperationId.HELP,
+                OperationCategory.DISCOVERY,
+                " ",
+                List.of(),
+                List.of(),
+                ExecutionMode.JSON_ENVELOPE,
+                List.of(),
+                List.of(),
+                "summary",
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ProtocolArtifactOutput(" ", "--pdf-out <path>", "Exports one PDF report."));
+  }
+
   private static ProtocolOperation operation(OperationId id, List<String> aliases) {
     return new ProtocolOperation(
         id,
@@ -259,7 +331,9 @@ class ProtocolCatalogTest {
     assertThrows(
         UncheckedIOException.class,
         () -> PublicDistributionContract.loadFromResource(failingInputStream(), "bad-resource"));
-    assertThrows(NullPointerException.class, () -> new PublicDistributionContract(null, List.of()));
+    assertEquals(
+        List.of(),
+        new PublicDistributionContract(null, List.of()).supportedPublicCliBundleTargets());
     assertThrows(
         IllegalArgumentException.class,
         () -> new PublicDistributionContract(List.of("macos-aarch64", " "), List.of()));

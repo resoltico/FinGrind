@@ -172,7 +172,7 @@ class ReportingContractTypesTest {
   @Test
   void reportingValueTypes_rejectInvalidInputs() {
     assertThrows(NullPointerException.class, () -> new TrialBalanceQuery(null));
-    assertThrows(NullPointerException.class, () -> new TrialBalanceReport(Optional.empty(), null));
+    assertEquals(List.of(), new TrialBalanceReport(Optional.empty(), null).rows());
     assertThrows(NullPointerException.class, () -> new TrialBalanceRow(null, EUR_DEBIT_BALANCE));
     assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Reported(null));
     assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Rejected(null));

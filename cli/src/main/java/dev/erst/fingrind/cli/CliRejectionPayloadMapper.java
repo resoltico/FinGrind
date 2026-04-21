@@ -11,9 +11,9 @@ import org.jspecify.annotations.Nullable;
 final class CliRejectionPayloadMapper {
   private CliRejectionPayloadMapper() {}
 
-  static CliResponseJsonModels.RejectedEnvelope postingRejectedEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope postingRejectedEnvelope(
       String requestIdempotencyKey, PostingRejection rejection) {
-    return new CliResponseJsonModels.RejectedEnvelope(
+    return new CliEnvelopeJsonModels.RejectedEnvelope(
         ProtocolStatuses.REJECTED,
         PostingRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
@@ -21,9 +21,9 @@ final class CliRejectionPayloadMapper {
         postingRejectionDetails(rejection));
   }
 
-  static CliResponseJsonModels.RejectedEnvelope administrationRejectedEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope administrationRejectedEnvelope(
       BookAdministrationRejection rejection) {
-    return new CliResponseJsonModels.RejectedEnvelope(
+    return new CliEnvelopeJsonModels.RejectedEnvelope(
         ProtocolStatuses.REJECTED,
         BookAdministrationRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
@@ -31,9 +31,9 @@ final class CliRejectionPayloadMapper {
         administrationRejectionDetails(rejection));
   }
 
-  static CliResponseJsonModels.RejectedEnvelope queryRejectedEnvelope(
+  static CliEnvelopeJsonModels.RejectedEnvelope queryRejectedEnvelope(
       BookQueryRejection rejection) {
-    return new CliResponseJsonModels.RejectedEnvelope(
+    return new CliEnvelopeJsonModels.RejectedEnvelope(
         ProtocolStatuses.REJECTED,
         BookQueryRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
@@ -45,31 +45,31 @@ final class CliRejectionPayloadMapper {
     return switch (rejection) {
       case PostingRejection.BookNotInitialized _ -> null;
       case PostingRejection.AccountStateViolations violations ->
-          new CliResponseJsonModels.AccountStateViolationsDetails(
+          new CliRejectionJsonModels.AccountStateViolationsDetails(
               violations.violations().stream()
                   .map(CliRejectionPayloadMapper::accountStateViolationPayload)
                   .toList());
       case PostingRejection.DuplicateIdempotencyKey _ -> null;
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
-          new CliResponseJsonModels.PriorPostingDetails(
+          new CliRejectionJsonModels.PriorPostingDetails(
               reversalTargetNotFound.priorPostingId().value());
       case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
-          new CliResponseJsonModels.PriorPostingDetails(
+          new CliRejectionJsonModels.PriorPostingDetails(
               reversalAlreadyExists.priorPostingId().value());
       case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
-          new CliResponseJsonModels.PriorPostingDetails(
+          new CliRejectionJsonModels.PriorPostingDetails(
               reversalDoesNotNegateTarget.priorPostingId().value());
     };
   }
 
-  private static CliResponseJsonModels.AccountStateViolationPayload accountStateViolationPayload(
+  private static CliRejectionJsonModels.AccountStateViolationPayload accountStateViolationPayload(
       PostingRejection.AccountStateViolation violation) {
     return switch (violation) {
       case PostingRejection.UnknownAccount unknownAccount ->
-          new CliResponseJsonModels.AccountStateViolationPayload(
+          new CliRejectionJsonModels.AccountStateViolationPayload(
               PostingRejection.wireCode(unknownAccount), unknownAccount.accountCode().value());
       case PostingRejection.InactiveAccount inactiveAccount ->
-          new CliResponseJsonModels.AccountStateViolationPayload(
+          new CliRejectionJsonModels.AccountStateViolationPayload(
               PostingRejection.wireCode(inactiveAccount), inactiveAccount.accountCode().value());
     };
   }
@@ -81,7 +81,7 @@ final class CliRejectionPayloadMapper {
       case BookAdministrationRejection.BookNotInitialized _ -> null;
       case BookAdministrationRejection.BookContainsSchema _ -> null;
       case BookAdministrationRejection.NormalBalanceConflict conflict ->
-          new CliResponseJsonModels.NormalBalanceConflictDetails(
+          new CliRejectionJsonModels.NormalBalanceConflictDetails(
               conflict.accountCode().value(),
               conflict.existingNormalBalance().wireValue(),
               conflict.requestedNormalBalance().wireValue());
@@ -92,9 +92,9 @@ final class CliRejectionPayloadMapper {
     return switch (rejection) {
       case BookQueryRejection.BookNotInitialized _ -> null;
       case BookQueryRejection.UnknownAccount unknownAccount ->
-          new CliResponseJsonModels.UnknownAccountDetails(unknownAccount.accountCode().value());
+          new CliRejectionJsonModels.UnknownAccountDetails(unknownAccount.accountCode().value());
       case BookQueryRejection.PostingNotFound postingNotFound ->
-          new CliResponseJsonModels.PostingNotFoundDetails(postingNotFound.postingId().value());
+          new CliRejectionJsonModels.PostingNotFoundDetails(postingNotFound.postingId().value());
     };
   }
 }

@@ -81,7 +81,7 @@ final class CliResponseWriter {
       outputChannel.writeText(CliFailureOutputRenderer.renderFailureHuman(failure));
       return;
     }
-    outputChannel.writeEnvelope(CliResponsePayloadMapper.failureEnvelope(failure), false);
+    outputChannel.writeEnvelope(CliResponsePayloadMapper.failureEnvelope(failure));
   }
 
   void writeFailure(String code, String message) {
@@ -186,8 +186,8 @@ final class CliResponseWriter {
     queryWriter.writeLedgerPlanResult(result);
   }
 
-  void writeJson(Object value, boolean pretty) {
-    outputChannel.writeJson(value, pretty);
+  void writeJson(Object value) {
+    outputChannel.writeJson(value);
   }
 
   static String planRejectionStatus(LedgerPlanStatus status) {

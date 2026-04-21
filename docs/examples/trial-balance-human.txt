@@ -5,5 +5,5 @@ Effective date to : 2026-04-08
 
 Account | Name    | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | DEBIT          | true   | EUR      |       10.00 |         4.00 |       6.00 | DEBIT
-2000    | Revenue | CREDIT         | true   | EUR      |        4.00 |        10.00 |       6.00 | CREDIT
+1000    | Cash    | DEBIT          | true   | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
+2000    | Revenue | CREDIT         | true   | EUR      |        0.00 |        10.00 |      10.00 | CREDIT

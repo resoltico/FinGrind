@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-17"
+updated: "2026-04-21"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -17,7 +17,7 @@ route:
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, duplicate-key rejection, unexpected-field rejection, and legacy-field hard breaks | `10` |
-| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` | ledger-plan parsing, canonical step-kind preservation, removal of the inert execution-policy block, open-book ordering, and unknown-kind error shaping without assertion fallthrough | `4` |
+| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` | ledger-plan parsing, canonical step-kind preservation, removal of the inert execution-policy block, open-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `5` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
 | `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 

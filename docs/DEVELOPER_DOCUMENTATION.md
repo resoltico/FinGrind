@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.19.0"
+version: "0.20.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-04-19"
+updated: "2026-04-21"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -24,7 +24,9 @@ FinGrind uses a deliberately split documentation model:
 - `docs/examples/`: runnable JSON, text, and CSV examples used by user guides
 
 This split is intentional. User onboarding, developer operations, and API retrieval serve different
-jobs and should not be collapsed into one giant file.
+jobs and should not be collapsed into one giant file. When one reference area starts mixing
+multiple domains into a retrieval-hostile god-file, split it back into narrower `DOC_*.md` files
+and keep the old route only as a lightweight overview if compatibility is helpful.
 
 ## Placement Rules
 
@@ -47,6 +49,9 @@ When behavior changes, update the matching docs in the same change:
 - public API changes: update `DOC_*.md`
 - exported-symbol routing changes: update `DOC_00_Index.md` so every routed symbol points at a
   real file and a real `##` heading
+- when one reference file grows past a clean domain boundary, split it and update
+  `docs/README.md`, contributor guides that list the reference spine, and any old overview file
+  that now serves only as a router
 - keep the reference spine limited to main-source public surfaces; test fixtures do not belong in
   `DOC_*.md`
 - CLI surface or JSON behavior changes: update user guides and any affected example payloads

@@ -15,4 +15,20 @@ public record SqliteBookRoundTripReplayDetails(
     String duplicateStatus,
     boolean storedFactPresent,
     String failureMessage)
-    implements ReplayDetails {}
+    implements ReplayDetails {
+  public SqliteBookRoundTripReplayDetails {
+    requestStatus = ReplayModelValidation.requireText(requestStatus, "requestStatus");
+    effectiveDate = ReplayModelValidation.requireText(effectiveDate, "effectiveDate");
+    idempotencyKey = ReplayModelValidation.requireText(idempotencyKey, "idempotencyKey");
+    uninitializedCommitStatus =
+        ReplayModelValidation.requireText(uninitializedCommitStatus, "uninitializedCommitStatus");
+    undeclaredCommitStatus =
+        ReplayModelValidation.requireText(undeclaredCommitStatus, "undeclaredCommitStatus");
+    inactiveCommitStatus =
+        ReplayModelValidation.requireText(inactiveCommitStatus, "inactiveCommitStatus");
+    finalCommitStatus = ReplayModelValidation.requireText(finalCommitStatus, "finalCommitStatus");
+    reloadStatus = ReplayModelValidation.requireText(reloadStatus, "reloadStatus");
+    duplicateStatus = ReplayModelValidation.requireText(duplicateStatus, "duplicateStatus");
+    failureMessage = ReplayModelValidation.requireText(failureMessage, "failureMessage");
+  }
+}

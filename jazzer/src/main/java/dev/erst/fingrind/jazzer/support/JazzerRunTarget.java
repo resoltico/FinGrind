@@ -18,7 +18,7 @@ public record JazzerRunTarget(
     displayName = requireNonBlank(displayName, "displayName");
     taskName = requireNonBlank(taskName, "taskName");
     workingDirectory = requireNonBlank(workingDirectory, "workingDirectory");
-    harnesses = List.copyOf(Objects.requireNonNull(harnesses, "harnesses must not be null"));
+    harnesses = harnesses == null ? List.of() : List.copyOf(harnesses);
     if (harnesses.isEmpty()) {
       throw new IllegalArgumentException("harnesses must not be empty");
     }

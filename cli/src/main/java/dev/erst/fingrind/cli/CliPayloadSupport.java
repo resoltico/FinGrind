@@ -6,8 +6,8 @@ import dev.erst.fingrind.contract.CurrencyBalance;
 final class CliPayloadSupport {
   private CliPayloadSupport() {}
 
-  static CliResponseJsonModels.BalanceBucketPayload balancePayload(CurrencyBalance balance) {
-    return new CliResponseJsonModels.BalanceBucketPayload(
+  static CliBookQueryJsonModels.BalanceBucketPayload balancePayload(CurrencyBalance balance) {
+    return new CliBookQueryJsonModels.BalanceBucketPayload(
         balance.debitTotal().currencyCode().value(),
         balance.debitTotal().amount().toPlainString(),
         balance.creditTotal().amount().toPlainString(),

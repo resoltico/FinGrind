@@ -2,7 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.OpenBookResult;
-import org.jspecify.annotations.Nullable;
+import java.util.Optional;
 
 /** Stable on-disk lifecycle state derived from one selected SQLite book file. */
 enum SqliteBookState {
@@ -14,8 +14,9 @@ enum SqliteBookState {
   },
   INITIALIZED_FINGRIND {
     @Override
-    OpenBookResult openBookResult(int loadedUserVersion) {
-      return new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized());
+    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+      return Optional.of(
+          new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()));
     }
   },
   FOREIGN_SQLITE {
@@ -25,8 +26,9 @@ enum SqliteBookState {
     }
 
     @Override
-    OpenBookResult openBookResult(int loadedUserVersion) {
-      return new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema());
+    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+      return Optional.of(
+          new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema()));
     }
   },
   UNSUPPORTED_FINGRIND_VERSION {
@@ -41,7 +43,7 @@ enum SqliteBookState {
     }
 
     @Override
-    OpenBookResult openBookResult(int loadedUserVersion) {
+    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
       throw new IllegalStateException(
           "The selected FinGrind book format version "
               + loadedUserVersion
@@ -58,7 +60,7 @@ enum SqliteBookState {
     }
 
     @Override
-    OpenBookResult openBookResult(int loadedUserVersion) {
+    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
       throw new IllegalStateException(
           "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
     }
@@ -69,8 +71,8 @@ enum SqliteBookState {
     // Initialized books satisfy this precondition without further action.
   }
 
-  @Nullable OpenBookResult openBookResult(int loadedUserVersion) {
-    return null;
+  Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+    return Optional.empty();
   }
 
   private static int expectedUserVersion() {

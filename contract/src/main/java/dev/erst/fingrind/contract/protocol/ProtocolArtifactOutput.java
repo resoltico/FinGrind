@@ -12,13 +12,21 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 
   /** Validates one artifact-export descriptor. */
   public ProtocolArtifactOutput {
-    Objects.requireNonNull(format, "format");
-    Objects.requireNonNull(option, "option");
-    Objects.requireNonNull(description, "description");
+    format = requireText(format, "format");
+    option = requireText(option, "option");
+    description = requireText(description, "description");
   }
 
   /** Returns the canonical PDF export descriptor. */
   public static ProtocolArtifactOutput pdf() {
     return PDF;
+  }
+
+  private static String requireText(String value, String fieldName) {
+    Objects.requireNonNull(value, fieldName);
+    if (value.isBlank()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank.");
+    }
+    return value;
   }
 }

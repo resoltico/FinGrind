@@ -17,12 +17,18 @@ final class CliTextFormat {
 
   private CliTextFormat() {}
 
+  /** Alignment modes for fixed-width CLI text cells. */
+  private enum TextAlignment {
+    LEFT,
+    RIGHT
+  }
+
   static String renderKeyValueBlock(List<List<String>> rows) {
     int labelWidth = rows.stream().mapToInt(row -> row.getFirst().length()).max().orElse(0);
     StringBuilder document = new StringBuilder();
     for (List<String> row : rows) {
       document
-          .append(padded(row.getFirst(), labelWidth, false))
+          .append(padded(row.getFirst(), labelWidth, TextAlignment.LEFT))
           .append(" : ")
           .append(row.get(1))
           .append(System.lineSeparator());
@@ -100,7 +106,11 @@ final class CliTextFormat {
       if (index > 0) {
         document.append(" | ");
       }
-      document.append(padded(row.get(index), widths[index], rightAligned.contains(index)));
+      document.append(
+          padded(
+              row.get(index),
+              widths[index],
+              rightAligned.contains(index) ? TextAlignment.RIGHT : TextAlignment.LEFT));
     }
     document.append(System.lineSeparator());
   }
@@ -121,8 +131,8 @@ final class CliTextFormat {
     return Set.copyOf(rightAligned);
   }
 
-  private static String padded(String value, int width, boolean rightAligned) {
-    return rightAligned
+  private static String padded(String value, int width, TextAlignment alignment) {
+    return alignment == TextAlignment.RIGHT
         ? " ".repeat(width - value.length()) + value
         : value + " ".repeat(width - value.length());
   }

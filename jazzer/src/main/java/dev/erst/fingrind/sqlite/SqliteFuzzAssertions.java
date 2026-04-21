@@ -55,8 +55,18 @@ public final class SqliteFuzzAssertions {
     }
   }
 
-  /** Updates one account's active flag directly in SQLite so harnesses can assert reactivation. */
-  public static void updateAccountActiveFlag(Path bookPath, String accountCode, boolean active)
+  /** Deactivates one account directly in SQLite so harnesses can assert reactivation. */
+  public static void deactivateAccount(Path bookPath, String accountCode)
+      throws java.io.IOException {
+    updateAccountActivity(bookPath, accountCode, 0);
+  }
+
+  /** Activates one account directly in SQLite for deterministic harness setup. */
+  public static void activateAccount(Path bookPath, String accountCode) throws java.io.IOException {
+    updateAccountActivity(bookPath, accountCode, 1);
+  }
+
+  private static void updateAccountActivity(Path bookPath, String accountCode, int activeFlag)
       throws java.io.IOException {
     if (!Files.exists(bookPath)) {
       throw new IllegalArgumentException("SQLite book does not exist: " + bookPath);
@@ -70,7 +80,7 @@ public final class SqliteFuzzAssertions {
                set active = %d
              where account_code = '%s'
             """
-                .formatted(active ? 1 : 0, escapeSqlLiteral(accountCode)));
+                .formatted(activeFlag, escapeSqlLiteral(accountCode)));
       } finally {
         database.close();
       }

@@ -17,6 +17,7 @@ import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import java.util.Optional;
 
 /** Shared CLI execution policy for failure-mode inference and typed exit-code mapping. */
 final class CliExecutionSupport {
@@ -58,23 +59,22 @@ final class CliExecutionSupport {
         index++;
         continue;
       }
-      OutputMode parsedOutputMode = parseRecognizedOutputMode(args[index + 1]);
-      if (parsedOutputMode != null) {
-        inferred = parsedOutputMode;
+      Optional<OutputMode> parsedOutputMode = parseRecognizedOutputMode(args[index + 1]);
+      if (parsedOutputMode.isPresent()) {
+        inferred = parsedOutputMode.orElseThrow();
       }
       index += 2;
     }
     return inferred == OutputMode.HUMAN ? OutputMode.HUMAN : OutputMode.JSON;
   }
 
-  private static @org.jspecify.annotations.Nullable OutputMode parseRecognizedOutputMode(
-      String rawOutputMode) {
+  private static Optional<OutputMode> parseRecognizedOutputMode(String rawOutputMode) {
     for (OutputMode outputMode : OutputMode.values()) {
       if (outputMode.wireValue().equals(rawOutputMode)) {
-        return outputMode;
+        return Optional.of(outputMode);
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   static int exitCodeFor(PreflightEntryResult result) {

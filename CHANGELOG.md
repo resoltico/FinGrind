@@ -5,6 +5,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-04-21
+
+### Changed
+- Split the package-private CLI JSON transport model monolith into explicit administration,
+  envelope, query, report, plan, and rejection model families, so the CLI transport surface no
+  longer depends on one 500-line god-file for unrelated response shapes.
+- Split remaining mixed-responsibility contract, CLI, and Jazzer seams further, including dedicated
+  machine-contract request helpers, narrower CLI mutation/discovery/runtime helpers, dedicated
+  posting-rejection descriptors, dedicated Jazzer request-vs-posting-vs-SQLite replay
+  collaborators, and an owned replay scratch-directory seam instead of one catch-all posting
+  replay file.
+- Hardened record invariants across CLI, contract, SQLite, and Jazzer model types so non-blank
+  textual identifiers are normalized at the constructor boundary and collection-bearing records
+  coalesce `null` inputs to immutable empty collections before defensive copying.
+
+### Fixed
+- Added missing compact constructors and blank-string validation to replay details, CLI payload
+  models, ledger facts, PDF table columns, and SQLite native API metadata.
+- Reworked remaining behavior-shaping flag seams in CLI, SQLite, and Jazzer support so pretty JSON
+  rendering, dynamic posting/report SQL selection, and SQLite fuzz account state changes now flow
+  through explicit methods or query-owned inputs instead of boolean mode switches.
+- Stopped Jazzer SQLite replay cleanup from swallowing temporary-directory deletion failures; those
+  cleanup faults now surface as real unexpected replay failures instead of silently leaking scratch
+  state.
+- Corrected the Jazzer developer references to match the real committed regression floor, including
+  the fifth `ledger-plan-request` seed for the 100-step protocol limit rejection.
+
+### Documentation
+- Split the application reference docs into narrower protocol/discovery, administration/reporting,
+  and posting/ledger-plan files, refreshed checked-in examples from live current behavior, and
+  realigned the developer documentation with the current root build, bundle, Docker, and Windows
+  smoke surfaces.
+
 ## [0.19.0] - 2026-04-21
 
 ### Changed
@@ -627,7 +660,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.20.0
 [0.19.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.19.0
 [0.18.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.18.0
 [0.17.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.17.0

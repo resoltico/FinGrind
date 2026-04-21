@@ -69,9 +69,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -453,22 +450,13 @@ class FinGrindCliTest {
   }
 
   @Test
-  void cliFailure_mapsSealedCliCommandExceptions() throws Throwable {
-    MethodHandle cliFailure =
-        MethodHandles.privateLookupIn(FinGrindCli.class, MethodHandles.lookup())
-            .findStatic(
-                FinGrindCli.class,
-                "cliFailure",
-                MethodType.methodType(CliFailure.class, CliCommandException.class));
-
+  void cliFailure_mapsSealedCliCommandExceptions() {
     CliFailure argumentFailure =
-        (CliFailure)
-            cliFailure.invokeWithArguments(
-                new CliArgumentsException("invalid-argument", "--flag", "bad flag", "fix flag"));
+        CliFailureMapper.cliFailure(
+            new CliArgumentsException("invalid-argument", "--flag", "bad flag", "fix flag"));
     CliFailure requestFailure =
-        (CliFailure)
-            cliFailure.invokeWithArguments(
-                new CliRequestException("invalid-request", "bad request", "fix request", null));
+        CliFailureMapper.cliFailure(
+            new CliRequestException("invalid-request", "bad request", "fix request", null));
 
     assertEquals("invalid-argument", argumentFailure.code());
     assertEquals("--flag", argumentFailure.argument());
@@ -3096,7 +3084,7 @@ class FinGrindCliTest {
                 new LedgerJournalEntry.Succeeded(
                     stepId("inspect"),
                     LedgerStepKind.INSPECT_BOOK,
-                    null,
+                    Optional.empty(),
                     timestamp,
                     timestamp,
                     List.of(LedgerFact.flag("ok", true), LedgerFact.count("count", 1))))));
@@ -3119,7 +3107,7 @@ class FinGrindCliTest {
                 new LedgerJournalEntry.AssertionFailed(
                     stepId("assert"),
                     LedgerStepKind.ASSERT,
-                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
+                    Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
                     timestamp,
                     timestamp,
                     List.of(),

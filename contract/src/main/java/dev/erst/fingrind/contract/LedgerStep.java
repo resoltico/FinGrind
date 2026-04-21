@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
+import java.util.Optional;
 
 /** One executable step inside an AI-agent-authored ledger plan. */
 public sealed interface LedgerStep
@@ -24,9 +24,9 @@ public sealed interface LedgerStep
   /** Canonical request and journal kind represented by this step. */
   LedgerStepKind kind();
 
-  /** Nullable detail kind emitted alongside the step kind in execution journals. */
-  default @Nullable LedgerAssertionKind detailKind() {
-    return null;
+  /** Optional assertion detail emitted alongside the step kind in execution journals. */
+  default Optional<LedgerAssertionKind> detailKind() {
+    return Optional.empty();
   }
 
   /** Validates a step identifier. */
@@ -172,8 +172,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public LedgerAssertionKind detailKind() {
-      return assertion.kind();
+    public Optional<LedgerAssertionKind> detailKind() {
+      return Optional.of(assertion.kind());
     }
   }
 }

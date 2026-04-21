@@ -4,22 +4,20 @@
     "planId": "plan-demo-1",
     "status": "succeeded",
     "journal": {
-      "planId": "plan-demo-1",
-      "status": "succeeded",
-      "startedAt": "2026-04-17T05:57:48.222783Z",
-      "finishedAt": "2026-04-17T05:57:48.332914Z",
+      "startedAt": "2026-04-21T01:38:12.715415Z",
+      "finishedAt": "2026-04-21T01:38:12.839472Z",
       "steps": [
         {
           "stepId": "initialize-book",
           "kind": "open-book",
           "status": "succeeded",
-          "startedAt": "2026-04-17T05:57:48.309595Z",
-          "finishedAt": "2026-04-17T05:57:48.313722Z",
+          "startedAt": "2026-04-21T01:38:12.715806Z",
+          "finishedAt": "2026-04-21T01:38:12.819101Z",
           "facts": [
             {
               "kind": "text",
               "name": "initializedAt",
-              "value": "2026-04-17T05:57:48.310358Z"
+              "value": "2026-04-21T01:38:12.716080Z"
             }
           ]
         },
@@ -27,8 +25,8 @@
           "stepId": "declare-cash",
           "kind": "declare-account",
           "status": "succeeded",
-          "startedAt": "2026-04-17T05:57:48.313739Z",
-          "finishedAt": "2026-04-17T05:57:48.315839Z",
+          "startedAt": "2026-04-21T01:38:12.819488Z",
+          "finishedAt": "2026-04-21T01:38:12.823486Z",
           "facts": [
             {
               "kind": "text",
@@ -51,8 +49,8 @@
           "stepId": "declare-revenue",
           "kind": "declare-account",
           "status": "succeeded",
-          "startedAt": "2026-04-17T05:57:48.315843Z",
-          "finishedAt": "2026-04-17T05:57:48.316320Z",
+          "startedAt": "2026-04-21T01:38:12.823499Z",
+          "finishedAt": "2026-04-21T01:38:12.823938Z",
           "facts": [
             {
               "kind": "text",
@@ -75,13 +73,13 @@
           "stepId": "post-journal",
           "kind": "post-entry",
           "status": "succeeded",
-          "startedAt": "2026-04-17T05:57:48.316323Z",
-          "finishedAt": "2026-04-17T05:57:48.324512Z",
+          "startedAt": "2026-04-21T01:38:12.823942Z",
+          "finishedAt": "2026-04-21T01:38:12.831703Z",
           "facts": [
             {
               "kind": "text",
               "name": "postingId",
-              "value": "019d9a04-54a1-7f82-a5a5-f3c9ec7fd0ca"
+              "value": "019dadb0-1adc-7400-8554-57616ae1bd66"
             },
             {
               "kind": "text",
@@ -96,7 +94,7 @@
             {
               "kind": "text",
               "name": "recordedAt",
-              "value": "2026-04-17T05:57:48.320223Z"
+              "value": "2026-04-21T01:38:12.824153Z"
             }
           ]
         },
@@ -105,8 +103,8 @@
           "kind": "assert",
           "detailKind": "assert-account-balance",
           "status": "succeeded",
-          "startedAt": "2026-04-17T05:57:48.324517Z",
-          "finishedAt": "2026-04-17T05:57:48.331692Z",
+          "startedAt": "2026-04-21T01:38:12.831711Z",
+          "finishedAt": "2026-04-21T01:38:12.837821Z",
           "facts": [
             {
               "kind": "text",

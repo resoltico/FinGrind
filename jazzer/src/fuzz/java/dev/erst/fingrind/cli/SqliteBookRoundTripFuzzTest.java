@@ -171,7 +171,7 @@ public class SqliteBookRoundTripFuzzTest {
 
   private static void deactivateAccount(Path bookPath, String accountCode) {
     try {
-      SqliteFuzzAssertions.updateAccountActiveFlag(bookPath, accountCode, false);
+      SqliteFuzzAssertions.deactivateAccount(bookPath, accountCode);
     } catch (IOException exception) {
       throw new IllegalStateException("Failed to deactivate SQLite account during fuzz setup.", exception);
     }

@@ -16,7 +16,7 @@ sealed interface LedgerPlanStepOutcome
   /** Successful step outcome carrying facts and no failure payload. */
   record Succeeded(List<LedgerFact> facts) implements LedgerPlanStepOutcome {
     public Succeeded {
-      facts = List.copyOf(Objects.requireNonNull(facts, "facts"));
+      facts = facts == null ? List.of() : List.copyOf(facts);
     }
   }
 

@@ -107,7 +107,7 @@ class CliResponseWriterTest {
         new LedgerJournalEntry.Succeeded(
             stepId("balance"),
             LedgerStepKind.ACCOUNT_BALANCE,
-            null,
+            Optional.empty(),
             startedAt,
             finishedAt,
             List.of(
@@ -149,7 +149,7 @@ class CliResponseWriterTest {
         new LedgerJournalEntry.Rejected(
             stepId("declare-cash"),
             LedgerStepKind.DECLARE_ACCOUNT,
-            null,
+            Optional.empty(),
             startedAt,
             finishedAt,
             List.of(),
@@ -178,7 +178,7 @@ class CliResponseWriterTest {
         new LedgerJournalEntry.AssertionFailed(
             stepId("assert-balance"),
             LedgerStepKind.ASSERT,
-            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
+            Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
             startedAt,
             finishedAt,
             List.of(),
@@ -202,7 +202,7 @@ class CliResponseWriterTest {
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     SelfReferentialValue cyclic = new SelfReferentialValue();
 
-    assertThrows(RuntimeException.class, () -> responseWriter.writeJson(cyclic, false));
+    assertThrows(RuntimeException.class, () -> responseWriter.writeJson(cyclic));
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
   }
 
@@ -211,7 +211,7 @@ class CliResponseWriterTest {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
-    responseWriter.writeJson(Map.of("status", "ok", "count", 2), false);
+    responseWriter.writeJson(Map.of("status", "ok", "count", 2));
 
     JsonNode json = readJson(outputStream);
 
@@ -396,8 +396,8 @@ class CliResponseWriterTest {
   void queryRejectionWriter_coversJsonAndHumanBranches() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
-    CliResponseJsonModels.RejectedEnvelope envelope =
-        new CliResponseJsonModels.RejectedEnvelope(
+    CliEnvelopeJsonModels.RejectedEnvelope envelope =
+        new CliEnvelopeJsonModels.RejectedEnvelope(
             "rejected", "query-book-not-initialized", "The book is not initialized.", null, null);
 
     outputChannel.writeQueryRejection(OutputMode.HUMAN, envelope);

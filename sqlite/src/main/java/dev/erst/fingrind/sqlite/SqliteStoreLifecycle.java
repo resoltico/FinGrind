@@ -48,7 +48,7 @@ final class SqliteStoreLifecycle {
     if (accessMode.preservesMissingBookStateUntilMutation() && Files.notExists(bookPath)) {
       return;
     }
-    SqliteSchemaManager.ensureParentDirectory(bookPath);
+    SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
     try {
       database();
     } catch (IllegalStateException exception) {
@@ -164,14 +164,14 @@ final class SqliteStoreLifecycle {
     return activeDatabase.nativeDatabase();
   }
 
-  boolean beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase)
+  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase)
       throws SqliteNativeException {
     if (ledgerPlanTransactionActive) {
       beginLedgerPlanTransactionIfNeeded(activeDatabase);
-      return false;
+      return SqliteTransactionOwnership.SHARED;
     }
     activeDatabase.executeStatement("begin immediate");
-    return true;
+    return SqliteTransactionOwnership.OWNED;
   }
 
   Path bookPath() {

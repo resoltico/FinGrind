@@ -22,7 +22,7 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
     this.loadedSqlite3mcVersion = requireText(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
     this.libraryMode = requireText(libraryMode, "libraryMode");
     this.missingCompileOptions =
-        List.copyOf(Objects.requireNonNull(missingCompileOptions, "missingCompileOptions"));
+        missingCompileOptions == null ? List.of() : List.copyOf(missingCompileOptions);
     if (this.missingCompileOptions.isEmpty()) {
       throw new IllegalArgumentException("missingCompileOptions must not be empty.");
     }
@@ -49,6 +49,8 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
       String loadedSqlite3mcVersion,
       String libraryMode,
       List<String> missingCompileOptions) {
+    List<String> compileOptions =
+        missingCompileOptions == null ? List.of() : List.copyOf(missingCompileOptions);
     return "SQLite "
         + loadedSqliteVersion
         + " / SQLite3 Multiple Ciphers "
@@ -56,7 +58,7 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
         + " in "
         + libraryMode
         + " is missing required compile options: "
-        + String.join(", ", missingCompileOptions);
+        + String.join(", ", compileOptions);
   }
 
   private static String requireText(String value, String fieldName) {

@@ -29,7 +29,7 @@ public record PeriodSummaryReport(
     if (accountsTouched < 0) {
       throw new IllegalArgumentException("accountsTouched must not be negative.");
     }
-    currencyTotals = List.copyOf(Objects.requireNonNull(currencyTotals, "currencyTotals"));
-    accountActivity = List.copyOf(Objects.requireNonNull(accountActivity, "accountActivity"));
+    currencyTotals = currencyTotals == null ? List.of() : List.copyOf(currencyTotals);
+    accountActivity = accountActivity == null ? List.of() : List.copyOf(accountActivity);
   }
 }

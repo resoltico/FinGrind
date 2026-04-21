@@ -19,11 +19,11 @@ final class MachineContractSupport {
   }
 
   static ContractRequestShapes.RequestInputDescriptor requestInput() {
-    return MachineContractRequestSupport.requestInput();
+    return MachineContractRequestInputSupport.requestInput();
   }
 
   static ContractRequestShapes.RequestShapesDescriptor requestShapes() {
-    return MachineContractRequestSupport.requestShapes();
+    return MachineContractRequestShapeSupport.requestShapes();
   }
 
   static ContractResponse.ResponseModelDescriptor responseModel() {

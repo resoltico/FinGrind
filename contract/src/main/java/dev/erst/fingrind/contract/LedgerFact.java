@@ -42,6 +42,9 @@ public sealed interface LedgerFact
     public Text {
       requireName(name);
       Objects.requireNonNull(value, "value");
+      if (value.isBlank()) {
+        throw new IllegalArgumentException("Ledger fact value must not be blank.");
+      }
     }
   }
 
@@ -66,7 +69,7 @@ public sealed interface LedgerFact
     /** Validates one grouped journal fact. */
     public Group {
       requireName(name);
-      facts = List.copyOf(Objects.requireNonNull(facts, "facts"));
+      facts = facts == null ? List.of() : List.copyOf(facts);
       if (facts.isEmpty()) {
         throw new IllegalArgumentException("Grouped ledger facts must not be empty.");
       }

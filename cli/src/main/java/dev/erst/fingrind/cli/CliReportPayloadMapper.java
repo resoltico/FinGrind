@@ -12,15 +12,14 @@ import dev.erst.fingrind.contract.TrialBalanceRow;
 final class CliReportPayloadMapper {
   private CliReportPayloadMapper() {}
 
-  static CliResponseJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
-    return new CliResponseJsonModels.TrialBalancePayload(
+  static CliReportJsonModels.TrialBalancePayload trialBalancePayload(TrialBalanceReport report) {
+    return new CliReportJsonModels.TrialBalancePayload(
         report.effectiveDateTo().map(Object::toString).orElse(null),
         report.rows().stream().map(CliReportPayloadMapper::trialBalanceRowPayload).toList());
   }
 
-  static CliResponseJsonModels.AccountLedgerPayload accountLedgerPayload(
-      AccountLedgerReport report) {
-    return new CliResponseJsonModels.AccountLedgerPayload(
+  static CliReportJsonModels.AccountLedgerPayload accountLedgerPayload(AccountLedgerReport report) {
+    return new CliReportJsonModels.AccountLedgerPayload(
         report.account().accountCode().value(),
         report.account().accountName().value(),
         report.account().normalBalance().wireValue(),
@@ -35,9 +34,8 @@ final class CliReportPayloadMapper {
         report.closingBalances().stream().map(CliPayloadSupport::balancePayload).toList());
   }
 
-  static CliResponseJsonModels.PeriodSummaryPayload periodSummaryPayload(
-      PeriodSummaryReport report) {
-    return new CliResponseJsonModels.PeriodSummaryPayload(
+  static CliReportJsonModels.PeriodSummaryPayload periodSummaryPayload(PeriodSummaryReport report) {
+    return new CliReportJsonModels.PeriodSummaryPayload(
         report.effectiveDateFrom().toString(),
         report.effectiveDateTo().toString(),
         report.postingCount(),
@@ -51,9 +49,9 @@ final class CliReportPayloadMapper {
             .toList());
   }
 
-  private static CliResponseJsonModels.TrialBalanceRowPayload trialBalanceRowPayload(
+  private static CliReportJsonModels.TrialBalanceRowPayload trialBalanceRowPayload(
       TrialBalanceRow row) {
-    return new CliResponseJsonModels.TrialBalanceRowPayload(
+    return new CliReportJsonModels.TrialBalanceRowPayload(
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().normalBalance().wireValue(),
@@ -66,9 +64,9 @@ final class CliReportPayloadMapper {
         row.balance().balanceSide().wireValue());
   }
 
-  private static CliResponseJsonModels.AccountLedgerEntryPayload accountLedgerEntryPayload(
+  private static CliReportJsonModels.AccountLedgerEntryPayload accountLedgerEntryPayload(
       DeclaredAccount account, AccountLedgerEntry entry) {
-    return new CliResponseJsonModels.AccountLedgerEntryPayload(
+    return new CliReportJsonModels.AccountLedgerEntryPayload(
         entry.postingFact().postingId().value(),
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
@@ -80,9 +78,9 @@ final class CliReportPayloadMapper {
         CliBookPayloadMapper.counterpartAccounts(account, entry.postingFact()));
   }
 
-  private static CliResponseJsonModels.PeriodAccountActivityPayload periodAccountActivityPayload(
+  private static CliReportJsonModels.PeriodAccountActivityPayload periodAccountActivityPayload(
       PeriodAccountActivityRow row) {
-    return new CliResponseJsonModels.PeriodAccountActivityPayload(
+    return new CliReportJsonModels.PeriodAccountActivityPayload(
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().normalBalance().wireValue(),

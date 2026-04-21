@@ -14,8 +14,8 @@ public record AccountLedgerReport(
   public AccountLedgerReport {
     Objects.requireNonNull(account, "account");
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
-    openingBalances = List.copyOf(Objects.requireNonNull(openingBalances, "openingBalances"));
-    entries = List.copyOf(Objects.requireNonNull(entries, "entries"));
-    closingBalances = List.copyOf(Objects.requireNonNull(closingBalances, "closingBalances"));
+    openingBalances = openingBalances == null ? List.of() : List.copyOf(openingBalances);
+    entries = entries == null ? List.of() : List.copyOf(entries);
+    closingBalances = closingBalances == null ? List.of() : List.copyOf(closingBalances);
   }
 }

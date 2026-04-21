@@ -18,7 +18,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new ContractDiscovery.HelpDescriptor(
                 "FinGrind",
-                "0.19.0",
+                "0.20.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -73,13 +73,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.19.0"));
+    assertTrue(rendered.contains("0.20.0"));
   }
 
   private static ContractDiscovery.ApplicationIdentity identity() {
     return new ContractDiscovery.ApplicationIdentity(
         "FinGrind",
-        "0.19.0",
+        "0.20.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 

@@ -7,18 +7,107 @@
       "planId": "plan-demo-1",
       "status": "assertion-failed",
       "journal": {
-        "planId": "plan-demo-1",
-        "status": "assertion-failed",
-        "startedAt": "2026-04-17T05:57:48.222783Z",
-        "finishedAt": "2026-04-17T05:57:48.332914Z",
+        "startedAt": "2026-04-21T01:38:33.071043Z",
+        "finishedAt": "2026-04-21T01:38:33.191747Z",
         "steps": [
+          {
+            "stepId": "initialize-book",
+            "kind": "open-book",
+            "status": "succeeded",
+            "startedAt": "2026-04-21T01:38:33.165531Z",
+            "finishedAt": "2026-04-21T01:38:33.173640Z",
+            "facts": [
+              {
+                "kind": "text",
+                "name": "initializedAt",
+                "value": "2026-04-21T01:38:33.165754Z"
+              }
+            ]
+          },
+          {
+            "stepId": "declare-cash",
+            "kind": "declare-account",
+            "status": "succeeded",
+            "startedAt": "2026-04-21T01:38:33.174058Z",
+            "finishedAt": "2026-04-21T01:38:33.176723Z",
+            "facts": [
+              {
+                "kind": "text",
+                "name": "accountCode",
+                "value": "1000"
+              },
+              {
+                "kind": "text",
+                "name": "normalBalance",
+                "value": "DEBIT"
+              },
+              {
+                "kind": "flag",
+                "name": "active",
+                "value": true
+              }
+            ]
+          },
+          {
+            "stepId": "declare-revenue",
+            "kind": "declare-account",
+            "status": "succeeded",
+            "startedAt": "2026-04-21T01:38:33.176729Z",
+            "finishedAt": "2026-04-21T01:38:33.177110Z",
+            "facts": [
+              {
+                "kind": "text",
+                "name": "accountCode",
+                "value": "2000"
+              },
+              {
+                "kind": "text",
+                "name": "normalBalance",
+                "value": "CREDIT"
+              },
+              {
+                "kind": "flag",
+                "name": "active",
+                "value": true
+              }
+            ]
+          },
+          {
+            "stepId": "post-journal",
+            "kind": "post-entry",
+            "status": "succeeded",
+            "startedAt": "2026-04-21T01:38:33.177113Z",
+            "finishedAt": "2026-04-21T01:38:33.184370Z",
+            "facts": [
+              {
+                "kind": "text",
+                "name": "postingId",
+                "value": "019dadb0-6a5d-732b-8427-982cc8549bd6"
+              },
+              {
+                "kind": "text",
+                "name": "idempotencyKey",
+                "value": "idem-demo-1"
+              },
+              {
+                "kind": "text",
+                "name": "effectiveDate",
+                "value": "2026-04-17"
+              },
+              {
+                "kind": "text",
+                "name": "recordedAt",
+                "value": "2026-04-21T01:38:33.177259Z"
+              }
+            ]
+          },
           {
             "stepId": "assert-cash-balance",
             "kind": "assert",
             "detailKind": "assert-account-balance",
             "status": "assertion-failed",
-            "startedAt": "2026-04-17T05:57:48.324517Z",
-            "finishedAt": "2026-04-17T05:57:48.331692Z",
+            "startedAt": "2026-04-21T01:38:33.184376Z",
+            "finishedAt": "2026-04-21T01:38:33.190837Z",
             "facts": [
               {
                 "kind": "text",
@@ -33,12 +122,12 @@
               {
                 "kind": "text",
                 "name": "expectedNetAmount",
-                "value": "10.00"
+                "value": "11"
               },
               {
                 "kind": "text",
                 "name": "actualNetAmount",
-                "value": "9.00"
+                "value": "10"
               },
               {
                 "kind": "text",
@@ -68,12 +157,12 @@
                 {
                   "kind": "text",
                   "name": "expectedNetAmount",
-                  "value": "10.00"
+                  "value": "11"
                 },
                 {
                   "kind": "text",
                   "name": "actualNetAmount",
-                  "value": "9.00"
+                  "value": "10"
                 },
                 {
                   "kind": "text",

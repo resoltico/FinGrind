@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -21,7 +22,14 @@ public final class ContractDiscovery {
   }
 
   /** Stable identity fields that appear on discovery descriptors. */
-  public record ApplicationIdentity(String application, String version, String description) {}
+  public record ApplicationIdentity(String application, String version, String description) {
+    /** Validates one stable application identity descriptor. */
+    public ApplicationIdentity {
+      application = ContractDescriptorValidation.requireText(application, "application");
+      version = ContractDescriptorValidation.requireText(version, "version");
+      description = ContractDescriptorValidation.requireText(description, "description");
+    }
+  }
 
   /** Descriptor for the help payload. */
   public record HelpDescriptor(
@@ -35,7 +43,22 @@ public final class ContractDiscovery {
       List<ExitCodeDescriptor> exitCodes,
       ContractResponse.PreflightDescriptor preflight,
       ContractResponse.CurrencyDescriptor currencyModel,
-      EnvironmentDescriptor environment) {}
+      EnvironmentDescriptor environment) {
+    /** Validates one help descriptor payload. */
+    public HelpDescriptor {
+      application = ContractDescriptorValidation.requireText(application, "application");
+      version = ContractDescriptorValidation.requireText(version, "version");
+      description = ContractDescriptorValidation.requireText(description, "description");
+      usage = ContractDescriptorValidation.copyList(usage, "usage");
+      bookModel = ContractDescriptorValidation.requireValue(bookModel, "bookModel");
+      commands = ContractDescriptorValidation.copyList(commands, "commands");
+      quickStart = ContractDescriptorValidation.copyList(quickStart, "quickStart");
+      exitCodes = ContractDescriptorValidation.copyList(exitCodes, "exitCodes");
+      preflight = ContractDescriptorValidation.requireValue(preflight, "preflight");
+      currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
+      environment = ContractDescriptorValidation.requireValue(environment, "environment");
+    }
+  }
 
   /** Descriptor for the capabilities payload. */
   public record CapabilitiesDescriptor(
@@ -58,13 +81,55 @@ public final class ContractDiscovery {
       ContractResponse.PreflightDescriptor preflight,
       ContractResponse.CurrencyDescriptor currencyModel,
       EnvironmentDescriptor environment,
-      String timestamp) {}
+      String timestamp) {
+    /** Validates one capabilities descriptor payload. */
+    public CapabilitiesDescriptor {
+      application = ContractDescriptorValidation.requireText(application, "application");
+      version = ContractDescriptorValidation.requireText(version, "version");
+      storage = ContractDescriptorValidation.copyList(storage, "storage");
+      bookBoundary = ContractDescriptorValidation.requireText(bookBoundary, "bookBoundary");
+      discoveryCommands =
+          ContractDescriptorValidation.copyList(discoveryCommands, "discoveryCommands");
+      administrationCommands =
+          ContractDescriptorValidation.copyList(administrationCommands, "administrationCommands");
+      queryCommands = ContractDescriptorValidation.copyList(queryCommands, "queryCommands");
+      writeCommands = ContractDescriptorValidation.copyList(writeCommands, "writeCommands");
+      requestInput = ContractDescriptorValidation.requireValue(requestInput, "requestInput");
+      requestShapes = ContractDescriptorValidation.requireValue(requestShapes, "requestShapes");
+      responseModel = ContractDescriptorValidation.requireValue(responseModel, "responseModel");
+      planExecution = ContractDescriptorValidation.requireValue(planExecution, "planExecution");
+      audit = ContractDescriptorValidation.requireValue(audit, "audit");
+      accountRegistry =
+          ContractDescriptorValidation.requireValue(accountRegistry, "accountRegistry");
+      reversals = ContractDescriptorValidation.requireValue(reversals, "reversals");
+      preflightSemantics =
+          ContractDescriptorValidation.requireText(preflightSemantics, "preflightSemantics");
+      preflight = ContractDescriptorValidation.requireValue(preflight, "preflight");
+      currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
+      environment = ContractDescriptorValidation.requireValue(environment, "environment");
+      timestamp = ContractDescriptorValidation.requireText(timestamp, "timestamp");
+    }
+  }
 
   /** Descriptor for the version payload. */
-  public record VersionDescriptor(String application, String version, String description) {}
+  public record VersionDescriptor(String application, String version, String description) {
+    /** Validates one version descriptor payload. */
+    public VersionDescriptor {
+      application = ContractDescriptorValidation.requireText(application, "application");
+      version = ContractDescriptorValidation.requireText(version, "version");
+      description = ContractDescriptorValidation.requireText(description, "description");
+    }
+  }
 
   /** Descriptor for one non-stdout export artifact supported by a command. */
-  public record ArtifactOutputDescriptor(String format, String option, String description) {}
+  public record ArtifactOutputDescriptor(String format, String option, String description) {
+    /** Validates one artifact-output descriptor payload. */
+    public ArtifactOutputDescriptor {
+      format = ContractDescriptorValidation.requireText(format, "format");
+      option = ContractDescriptorValidation.requireText(option, "option");
+      description = ContractDescriptorValidation.requireText(description, "description");
+    }
+  }
 
   /** Descriptor for one advertised CLI command. */
   public record CommandDescriptor(
@@ -74,10 +139,29 @@ public final class ContractDiscovery {
       String executionMode,
       List<String> outputModes,
       List<ArtifactOutputDescriptor> artifactOutputs,
-      String summary) {}
+      String summary) {
+    /** Validates one command descriptor payload. */
+    public CommandDescriptor {
+      name = ContractDescriptorValidation.requireText(name, "name");
+      aliases = ContractDescriptorValidation.copyList(aliases, "aliases");
+      options = ContractDescriptorValidation.copyList(options, "options");
+      executionMode = ContractDescriptorValidation.requireText(executionMode, "executionMode");
+      outputModes = ContractDescriptorValidation.copyList(outputModes, "outputModes");
+      artifactOutputs = ContractDescriptorValidation.copyList(artifactOutputs, "artifactOutputs");
+      summary = ContractDescriptorValidation.requireText(summary, "summary");
+    }
+  }
 
   /** Descriptor for one process exit code. */
-  public record ExitCodeDescriptor(int code, String meaning) {}
+  public record ExitCodeDescriptor(int code, String meaning) {
+    /** Validates one exit-code descriptor payload. */
+    public ExitCodeDescriptor {
+      if (code < 0) {
+        throw new IllegalArgumentException("code must not be negative.");
+      }
+      meaning = ContractDescriptorValidation.requireText(meaning, "meaning");
+    }
+  }
 
   /** Descriptor for the active SQLite runtime environment. */
   public record EnvironmentDescriptor(
@@ -100,5 +184,55 @@ public final class ContractDiscovery {
       String sqliteRuntimeStatus,
       @Nullable String loadedSqliteVersion,
       @Nullable String loadedSqlite3mcVersion,
-      @Nullable String sqliteRuntimeIssue) {}
+      @Nullable String sqliteRuntimeIssue) {
+    /** Validates one runtime environment descriptor payload. */
+    public EnvironmentDescriptor {
+      runtimeDistribution =
+          ContractDescriptorValidation.requireText(runtimeDistribution, "runtimeDistribution");
+      publicCliDistribution =
+          ContractDescriptorValidation.requireText(publicCliDistribution, "publicCliDistribution");
+      supportedPublicCliBundleTargets =
+          ContractDescriptorValidation.copyList(
+              supportedPublicCliBundleTargets, "supportedPublicCliBundleTargets");
+      unsupportedPublicCliOperatingSystems =
+          ContractDescriptorValidation.copyList(
+              unsupportedPublicCliOperatingSystems, "unsupportedPublicCliOperatingSystems");
+      sourceCheckoutJava =
+          ContractDescriptorValidation.requireText(sourceCheckoutJava, "sourceCheckoutJava");
+      storageDriver = ContractDescriptorValidation.requireText(storageDriver, "storageDriver");
+      storageEngine = ContractDescriptorValidation.requireText(storageEngine, "storageEngine");
+      bookProtectionMode =
+          ContractDescriptorValidation.requireText(bookProtectionMode, "bookProtectionMode");
+      defaultBookCipher =
+          ContractDescriptorValidation.requireText(defaultBookCipher, "defaultBookCipher");
+      sqliteLibraryMode =
+          ContractDescriptorValidation.requireText(sqliteLibraryMode, "sqliteLibraryMode");
+      sqliteLibraryEnvironmentVariable =
+          ContractDescriptorValidation.requireText(
+              sqliteLibraryEnvironmentVariable, "sqliteLibraryEnvironmentVariable");
+      sqliteLibraryBundleHomeSystemProperty =
+          ContractDescriptorValidation.requireText(
+              sqliteLibraryBundleHomeSystemProperty, "sqliteLibraryBundleHomeSystemProperty");
+      requiredSqliteCompileOptions =
+          ContractDescriptorValidation.copyList(
+              requiredSqliteCompileOptions, "requiredSqliteCompileOptions");
+      requiredMinimumSqliteVersion =
+          ContractDescriptorValidation.requireText(
+              requiredMinimumSqliteVersion, "requiredMinimumSqliteVersion");
+      requiredSqlite3mcVersion =
+          ContractDescriptorValidation.requireText(
+              requiredSqlite3mcVersion, "requiredSqlite3mcVersion");
+      sqliteRuntimeStatus =
+          ContractDescriptorValidation.requireText(sqliteRuntimeStatus, "sqliteRuntimeStatus");
+      loadedSqliteVersion =
+          ContractDescriptorValidation.requireOptionalText(
+              loadedSqliteVersion, "loadedSqliteVersion");
+      loadedSqlite3mcVersion =
+          ContractDescriptorValidation.requireOptionalText(
+              loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
+      sqliteRuntimeIssue =
+          ContractDescriptorValidation.requireOptionalText(
+              sqliteRuntimeIssue, "sqliteRuntimeIssue");
+    }
+  }
 }

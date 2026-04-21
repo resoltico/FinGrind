@@ -38,7 +38,7 @@ class UnsupportedSqliteCompileOptionsExceptionTest {
         IllegalArgumentException.class,
         () -> new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", " ", List.of("X")));
     assertThrows(
-        NullPointerException.class,
+        IllegalArgumentException.class,
         () ->
             new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", "managed-only", null));
     assertThrows(
