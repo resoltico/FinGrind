@@ -1,11 +1,12 @@
 pluginManagement {
     includeBuild("../gradle/build-logic")
+    val buildMetadata =
+        java.util.Properties().apply {
+            file("../gradle/fingrind-build.properties").inputStream().use { stream -> load(stream) }
+        }
     val foojayResolverConventionVersion =
-        Regex("""(?m)^foojay-resolver-convention\s*=\s*"([^"]+)"\s*$""")
-            .find(file("../gradle/libs.versions.toml").readText())
-            ?.groupValues
-            ?.get(1)
-            ?: error("Missing foojay-resolver-convention version in ../gradle/libs.versions.toml.")
+        buildMetadata.getProperty("foojayResolverConventionVersion")
+            ?: error("Missing foojayResolverConventionVersion in ../gradle/fingrind-build.properties.")
     plugins {
         id("org.gradle.toolchains.foojay-resolver-convention") version foojayResolverConventionVersion
     }

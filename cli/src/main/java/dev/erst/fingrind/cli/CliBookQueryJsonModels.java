@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import static dev.erst.fingrind.cli.CliJsonModelValidation.copyList;
-import static dev.erst.fingrind.cli.CliJsonModelValidation.requireNonNegative;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requireText;
@@ -79,10 +78,10 @@ interface CliBookQueryJsonModels {
   }
 
   record AccountListPayload(
-      int limit, int offset, boolean hasMore, List<DeclaredAccountPayload> accounts) {
+      int limit, @Nullable String nextCursor, List<DeclaredAccountPayload> accounts) {
     public AccountListPayload {
       requirePositive(limit, "limit");
-      requireNonNegative(offset, "offset");
+      nextCursor = requireOptionalText(nextCursor, "nextCursor");
       accounts = copyList(accounts);
     }
   }

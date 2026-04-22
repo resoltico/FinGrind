@@ -23,6 +23,17 @@ final class CliOperationText {
         + " response.";
   }
 
+  static String listAccountsCursorRepairHint() {
+    String listAccounts = operationName(OperationId.LIST_ACCOUNTS);
+    return "Rerun "
+        + listAccounts
+        + " without "
+        + ProtocolOptions.CURSOR
+        + ", or pass the opaque nextCursor value returned by a prior successful "
+        + listAccounts
+        + " response.";
+  }
+
   static String initializeWithOpenBookLabel() {
     return "Can initialize with " + operationName(OperationId.OPEN_BOOK);
   }

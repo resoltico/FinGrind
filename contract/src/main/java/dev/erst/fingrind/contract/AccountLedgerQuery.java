@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountCode;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Filter request for one account-ledger report. */
 public record AccountLedgerQuery(AccountCode accountCode, EffectiveDateRange effectiveDateRange) {
@@ -13,11 +14,11 @@ public record AccountLedgerQuery(AccountCode accountCode, EffectiveDateRange eff
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
   }
 
-  /** Compatibility constructor that lifts optional date bounds into a typed range. */
+  /** Convenience constructor that lifts nullable date bounds into a typed range. */
   public AccountLedgerQuery(
       AccountCode accountCode,
-      Optional<LocalDate> effectiveDateFrom,
-      Optional<LocalDate> effectiveDateTo) {
+      @Nullable LocalDate effectiveDateFrom,
+      @Nullable LocalDate effectiveDateTo) {
     this(accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo));
   }
 

@@ -1,14 +1,12 @@
 [versions]
 junit-bom = "6.0.3"
-junit-jupiter = "6.0.3"
-junit-platform-launcher = "6.0.3"
 jackson-databind = "3.1.2"
 jazzer = "0.30.0"
 pdfbox = "3.0.7"
 errorprone = "2.49.0"
 errorprone-plugin = "5.1.0"
 jspecify = "1.0.0"
-nullaway = "0.13.3"
+nullaway = "0.13.4"
 google-java-format = "1.35.0"
 jacoco = "0.8.14"
 pmd = "7.23.0"
@@ -25,8 +23,8 @@ jazzer-junit = { module = "com.code-intelligence:jazzer-junit", version.ref = "j
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-bom" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform-launcher" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 
 [plugins]

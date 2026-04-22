@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerPlan;
@@ -22,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -1344,6 +1346,7 @@ class CliRequestReaderTest {
     LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
 
     assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
+    assertTrue(((LedgerStep.ListAccounts) plan.steps().get(0)).query().cursor().isEmpty());
     assertTrue(((LedgerStep.ListPostings) plan.steps().get(1)).query().cursor().isEmpty());
   }
 
@@ -1476,7 +1479,8 @@ class CliRequestReaderTest {
                       "stepId": "list-accounts",
                       "kind": "list-accounts",
                       "query": {
-                        "offset": null
+                        "limit": null,
+                        "cursor": null
                       }
                     },
                     {
@@ -1492,7 +1496,26 @@ class CliRequestReaderTest {
     LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
 
     assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
+    assertTrue(((LedgerStep.ListAccounts) plan.steps().get(0)).query().cursor().isEmpty());
     assertTrue(((LedgerStep.ListPostings) plan.steps().get(1)).query().cursor().isEmpty());
+  }
+
+  @Test
+  void optionalInt_treatsMissingAndNullFieldsAsEmpty() throws IOException {
+    var rootNode =
+        CliJsonRequestCodec.requireRootObject(
+            CliJsonRequestCodec.configuredObjectMapper()
+                .readTree(
+                    """
+                    {
+                      "limit": 25,
+                      "explicitNull": null
+                    }
+                    """));
+
+    assertEquals(OptionalInt.empty(), CliJsonRequestCodec.optionalInt(rootNode, "missing"));
+    assertEquals(OptionalInt.empty(), CliJsonRequestCodec.optionalInt(rootNode, "explicitNull"));
+    assertEquals(OptionalInt.of(25), CliJsonRequestCodec.optionalInt(rootNode, "limit"));
   }
 
   private Path writeRequest(String payload) throws IOException {
@@ -1622,7 +1645,7 @@ class CliRequestReaderTest {
               "kind": "list-accounts",
               "query": {
                 "limit": 25,
-                "offset": 5
+                "cursor": "%s"
               }
             },
             {
@@ -1690,7 +1713,15 @@ class CliRequestReaderTest {
           ]
         }
         """
-        .formatted(validRequestJson(false), validRequestJson(false), validPostingCursor());
+        .formatted(
+            validRequestJson(false),
+            validRequestJson(false),
+            validAccountCursor(),
+            validPostingCursor());
+  }
+
+  private static String validAccountCursor() {
+    return new AccountPageCursor(new dev.erst.fingrind.core.AccountCode("1000")).wireValue();
   }
 
   private static String validPostingCursor() {

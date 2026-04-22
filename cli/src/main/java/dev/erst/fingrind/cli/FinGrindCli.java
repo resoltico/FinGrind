@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
@@ -21,8 +21,11 @@ final class FinGrindCli {
   private final CliResponseWriter responseWriter;
   private final CliMetadata metadata;
   private final Clock clock;
-  private final CliCommandExecutor commandExecutor;
+  private final CliAdministrativeCommandExecutor administrativeCommandExecutor;
   private final CliDiscoveryCommandExecutor discoveryCommandExecutor;
+  private final CliMutationCommandExecutor mutationCommandExecutor;
+  private final CliQueryCommandExecutor queryCommandExecutor;
+  private final CliReportCommandExecutor reportCommandExecutor;
 
   FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
     this(
@@ -48,10 +51,15 @@ final class FinGrindCli {
     CliPdfReportExporter pdfExporter =
         new CliPdfReportExporter(
             new PdfReportService(metadata.applicationName(), metadata.version(), this.clock));
-    this.commandExecutor =
-        new CliCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow, pdfExporter);
+    this.administrativeCommandExecutor =
+        new CliAdministrativeCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
     this.discoveryCommandExecutor =
         new CliDiscoveryCommandExecutor(responseWriter, metadata, this.clock);
+    this.mutationCommandExecutor =
+        new CliMutationCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
+    this.queryCommandExecutor = new CliQueryCommandExecutor(responseWriter, resolvedBookWorkflow);
+    this.reportCommandExecutor =
+        new CliReportCommandExecutor(responseWriter, resolvedBookWorkflow, pdfExporter);
   }
 
   FinGrindCli(
@@ -84,54 +92,55 @@ final class FinGrindCli {
         case CliCommand.PrintRequestTemplate _ -> discoveryCommandExecutor.writeRequestTemplate();
         case CliCommand.PrintPlanTemplate _ -> discoveryCommandExecutor.writePlanTemplate();
         case CliCommand.GenerateBookKeyFile generateBookKeyFile ->
-            commandExecutor.runGenerateBookKeyFileCommand(
+            administrativeCommandExecutor.runGenerateBookKeyFileCommand(
                 generateBookKeyFile.bookKeyFilePath(), generateBookKeyFile.outputMode());
         case CliCommand.OpenBook openBook ->
-            commandExecutor.runOpenBookCommand(openBook.bookAccess(), openBook.outputMode());
+            administrativeCommandExecutor.runOpenBookCommand(
+                openBook.bookAccess(), openBook.outputMode());
         case CliCommand.RekeyBook rekeyBook ->
-            commandExecutor.runRekeyBookCommand(
+            administrativeCommandExecutor.runRekeyBookCommand(
                 rekeyBook.bookAccess(),
                 rekeyBook.replacementPassphraseSource(),
                 rekeyBook.outputMode());
         case CliCommand.DeclareAccount declareAccount ->
-            commandExecutor.runDeclareAccountCommand(
+            administrativeCommandExecutor.runDeclareAccountCommand(
                 declareAccount.bookAccess(),
                 declareAccount.requestFile(),
                 declareAccount.outputMode());
         case CliCommand.InspectBook inspectBook ->
-            commandExecutor.runInspectBookCommand(
+            queryCommandExecutor.runInspectBookCommand(
                 inspectBook.bookAccess(), inspectBook.outputMode());
         case CliCommand.ListAccounts listAccounts ->
-            commandExecutor.runListAccountsCommand(
+            queryCommandExecutor.runListAccountsCommand(
                 listAccounts.bookAccess(), listAccounts.query(), listAccounts.outputMode());
         case CliCommand.GetPosting getPosting ->
-            commandExecutor.runGetPostingCommand(
+            queryCommandExecutor.runGetPostingCommand(
                 getPosting.bookAccess(), getPosting.postingId(), getPosting.outputMode());
         case CliCommand.ListPostings listPostings ->
-            commandExecutor.runListPostingsCommand(
+            queryCommandExecutor.runListPostingsCommand(
                 listPostings.bookAccess(), listPostings.query(), listPostings.outputMode());
         case CliCommand.AccountBalance accountBalance ->
-            commandExecutor.runAccountBalanceCommand(
+            reportCommandExecutor.runAccountBalanceCommand(
                 accountBalance.bookAccess(), accountBalance.query(), accountBalance.output());
         case CliCommand.TrialBalance trialBalance ->
-            commandExecutor.runTrialBalanceCommand(
+            reportCommandExecutor.runTrialBalanceCommand(
                 trialBalance.bookAccess(), trialBalance.query(), trialBalance.output());
         case CliCommand.AccountLedger accountLedger ->
-            commandExecutor.runAccountLedgerCommand(
+            reportCommandExecutor.runAccountLedgerCommand(
                 accountLedger.bookAccess(), accountLedger.query(), accountLedger.output());
         case CliCommand.PeriodSummary periodSummary ->
-            commandExecutor.runPeriodSummaryCommand(
+            reportCommandExecutor.runPeriodSummaryCommand(
                 periodSummary.bookAccess(), periodSummary.query(), periodSummary.output());
         case CliCommand.ExecutePlan executePlan ->
-            commandExecutor.runExecutePlanCommand(
+            mutationCommandExecutor.runExecutePlanCommand(
                 executePlan.bookAccess(), executePlan.requestFile());
         case CliCommand.PreflightEntry preflightEntry ->
-            commandExecutor.runPreflightEntryCommand(
+            mutationCommandExecutor.runPreflightEntryCommand(
                 preflightEntry.bookAccess(),
                 preflightEntry.requestFile(),
                 preflightEntry.outputMode());
         case CliCommand.PostEntry postEntry ->
-            commandExecutor.runPostEntryCommand(
+            mutationCommandExecutor.runPostEntryCommand(
                 postEntry.bookAccess(), postEntry.requestFile(), postEntry.outputMode());
       };
     } catch (CliArgumentsException | CliRequestException exception) {
@@ -143,7 +152,7 @@ final class FinGrindCli {
     }
   }
 
-  static ContractDiscovery.EnvironmentDescriptor environmentDescriptor(
+  static EnvironmentDescriptor environmentDescriptor(
       SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
     return CliRuntimeContractDescriptors.environmentDescriptor(runtimeProbe, runtimeDistribution);
   }

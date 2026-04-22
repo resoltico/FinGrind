@@ -1,18 +1,15 @@
 import org.gradle.api.tasks.WriteProperties
+import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
 
 plugins {
     `java-library`
-    id("fingrind.java-conventions")
+    id("dev.erst.fingrind.java-conventions")
 }
 
 description = "Canonical FinGrind public contract model and protocol metadata"
-val fingrindJavaVersion = providers.gradleProperty("fingrindJavaVersion").get()
+val fingrindJavaVersion = FinGrindBuildMetadata.load(project).javaVersion
 
-dependencies {
-    api(project(":core"))
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
-}
+dependencies { api(project(":core")) }
 
 val generatedProtocolResourcesDirectory =
     layout.buildDirectory.dir("generated-resources/protocol")

@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountCode;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Filter request for computing balances on one declared account. */
 public record AccountBalanceQuery(AccountCode accountCode, EffectiveDateRange effectiveDateRange) {
@@ -13,11 +14,11 @@ public record AccountBalanceQuery(AccountCode accountCode, EffectiveDateRange ef
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
   }
 
-  /** Compatibility constructor that lifts optional bounds into a typed range. */
+  /** Convenience constructor that lifts nullable bounds into a typed range. */
   public AccountBalanceQuery(
       AccountCode accountCode,
-      Optional<LocalDate> effectiveDateFrom,
-      Optional<LocalDate> effectiveDateTo) {
+      @Nullable LocalDate effectiveDateFrom,
+      @Nullable LocalDate effectiveDateTo) {
     this(accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo));
   }
 

@@ -1,13 +1,8 @@
 plugins {
     `java-library`
-    id("fingrind.java-conventions")
+    id("dev.erst.fingrind.java-conventions")
 }
 
 description = "PDF report rendering adapter for FinGrind reporting results"
 
-dependencies {
-    api(project(":contract"))
-    implementation(libs.pdfbox)
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
-}
+dependencies { api(project(":contract")); implementation(libs.pdfbox) }

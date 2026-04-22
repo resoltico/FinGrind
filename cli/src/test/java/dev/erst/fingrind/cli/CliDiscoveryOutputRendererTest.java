@@ -2,9 +2,17 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.ApplicationIdentity;
+import dev.erst.fingrind.contract.CommandDescriptor;
 import dev.erst.fingrind.contract.ContractResponse;
+import dev.erst.fingrind.contract.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.MachineContract;
+import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.time.Instant;
 import java.util.List;
@@ -16,9 +24,9 @@ class CliDiscoveryOutputRendererTest {
   void renderHelpHuman_rendersImplicitJsonOutputsAndEmptyQuickStart() {
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
-            new ContractDiscovery.HelpDescriptor(
+            new HelpDescriptor(
                 "FinGrind",
-                "0.21.0",
+                "0.22.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -31,7 +39,7 @@ class CliDiscoveryOutputRendererTest {
                     "hard-break-only",
                     "single-currency-entry"),
                 List.of(
-                    new ContractDiscovery.CommandDescriptor(
+                    new CommandDescriptor(
                         "help",
                         List.of(),
                         List.of(),
@@ -40,7 +48,7 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         "Show help")),
                 List.of(),
-                List.of(new ContractDiscovery.ExitCodeDescriptor(0, "ok")),
+                List.of(new ExitCodeDescriptor(0, "ok")),
                 new ContractResponse.PreflightDescriptor(
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
@@ -74,32 +82,31 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.21.0"));
+    assertTrue(rendered.contains("0.22.0"));
   }
 
-  private static ContractDiscovery.ApplicationIdentity identity() {
-    return new ContractDiscovery.ApplicationIdentity(
+  private static ApplicationIdentity identity() {
+    return new ApplicationIdentity(
         "FinGrind",
-        "0.21.0",
+        "0.22.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 
-  private static ContractDiscovery.EnvironmentDescriptor environment() {
-    return new ContractDiscovery.EnvironmentDescriptor(
-        new ContractDiscovery.EnvironmentDistributionDescriptor(
+  private static EnvironmentDescriptor environment() {
+    return new EnvironmentDescriptor(
+        new EnvironmentDistributionDescriptor(
             "self-contained-bundle",
             "self-contained-bundle",
             List.of("macos-aarch64", "windows-x86_64"),
             List.of(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new ContractDiscovery.EnvironmentStorageDescriptor(
-            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
-        new ContractDiscovery.EnvironmentSqliteDescriptor(
+        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentSqliteDescriptor(
             "managed-only",
             "FINGRIND_SQLITE_LIBRARY",
             "fingrind.bundle.home",
             List.of("THREADSAFE=1"),
-            ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
+            SqliteCompileOptionsVerificationStatus.VERIFIED,
             "3.53.0",
             "2.3.3",
             "loaded",

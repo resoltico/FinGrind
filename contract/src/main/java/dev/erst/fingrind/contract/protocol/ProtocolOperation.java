@@ -7,39 +7,60 @@ import java.util.Objects;
 public record ProtocolOperation(
     OperationId id,
     OperationCategory category,
-    String displayLabel,
-    List<String> aliases,
-    List<String> options,
-    ExecutionMode executionMode,
-    List<String> outputModes,
-    List<ProtocolArtifactOutput> artifactOutputs,
-    String usage,
-    String analysisSummary,
-    List<String> examples) {
+    ProtocolCommandSignature signature,
+    ProtocolOperationOutputs outputs,
+    ProtocolOperationDocumentation documentation) {
   /** Validates and defensively copies one protocol operation descriptor. */
   public ProtocolOperation {
     Objects.requireNonNull(id, "id");
     Objects.requireNonNull(category, "category");
-    displayLabel = requireText(displayLabel, "displayLabel");
-    aliases = copyList(aliases);
-    options = copyList(options);
-    Objects.requireNonNull(executionMode, "executionMode");
-    outputModes = copyList(outputModes);
-    artifactOutputs = copyList(artifactOutputs);
-    usage = requireText(usage, "usage");
-    analysisSummary = requireText(analysisSummary, "analysisSummary");
-    examples = copyList(examples);
+    Objects.requireNonNull(signature, "signature");
+    Objects.requireNonNull(outputs, "outputs");
+    Objects.requireNonNull(documentation, "documentation");
   }
 
-  private static String requireText(String value, String fieldName) {
-    Objects.requireNonNull(value, fieldName);
-    if (value.isBlank()) {
-      throw new IllegalArgumentException(fieldName + " must not be blank.");
-    }
-    return value;
+  /** Returns the public display label for this operation. */
+  public String displayLabel() {
+    return signature.displayLabel();
   }
 
-  private static <T> List<T> copyList(List<T> values) {
-    return values == null ? List.of() : List.copyOf(values);
+  /** Returns the supported command aliases for this operation. */
+  public List<String> aliases() {
+    return signature.aliases();
+  }
+
+  /** Returns the supported CLI options for this operation. */
+  public List<String> options() {
+    return signature.options();
+  }
+
+  /** Returns the canonical usage string for this operation. */
+  public String usage() {
+    return signature.usage();
+  }
+
+  /** Returns the execution mode contract for this operation. */
+  public ExecutionMode executionMode() {
+    return outputs.executionMode();
+  }
+
+  /** Returns the supported output modes for this operation. */
+  public List<String> outputModes() {
+    return outputs.outputModes();
+  }
+
+  /** Returns the non-stdout artifact outputs for this operation. */
+  public List<ProtocolArtifactOutput> artifactOutputs() {
+    return outputs.artifactOutputs();
+  }
+
+  /** Returns the concise analysis summary for this operation. */
+  public String analysisSummary() {
+    return documentation.analysisSummary();
+  }
+
+  /** Returns the catalog examples for this operation. */
+  public List<String> examples() {
+    return documentation.examples();
   }
 }

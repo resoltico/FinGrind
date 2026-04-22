@@ -1,7 +1,9 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.ContractTemplates;
+import dev.erst.fingrind.contract.HelpDescriptor;
+import dev.erst.fingrind.contract.VersionDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.Objects;
@@ -14,7 +16,7 @@ final class CliDiscoveryResponseWriter {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
   }
 
-  void writeHelp(ContractDiscovery.HelpDescriptor helpDescriptor, OutputMode outputMode) {
+  void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
     outputMode.run(
         () -> outputChannel.writePrettySuccess(helpDescriptor),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpHuman(helpDescriptor)),
@@ -24,8 +26,7 @@ final class CliDiscoveryResponseWriter {
         });
   }
 
-  void writeCapabilities(
-      ContractDiscovery.CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
+  void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
     outputMode.run(
         () -> outputChannel.writePrettySuccess(capabilitiesDescriptor),
         () ->
@@ -37,7 +38,7 @@ final class CliDiscoveryResponseWriter {
         });
   }
 
-  void writeVersion(ContractDiscovery.VersionDescriptor versionDescriptor, OutputMode outputMode) {
+  void writeVersion(VersionDescriptor versionDescriptor, OutputMode outputMode) {
     outputMode.run(
         () -> outputChannel.writePrettySuccess(versionDescriptor),
         () ->

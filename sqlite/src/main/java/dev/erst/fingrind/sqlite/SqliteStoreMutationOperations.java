@@ -21,9 +21,9 @@ import java.util.Optional;
 
 /** Mutation operations over one SQLite-backed book session. */
 final class SqliteStoreMutationOperations {
-  private final SqlitePostingFactStore store;
+  private final SqliteStoreContext store;
 
-  SqliteStoreMutationOperations(SqlitePostingFactStore store) {
+  SqliteStoreMutationOperations(SqliteStoreContext store) {
     this.store = Objects.requireNonNull(store, "store");
   }
 
@@ -161,7 +161,7 @@ final class SqliteStoreMutationOperations {
       }
       SqliteNativeLibrary.rekey(
           activeDatabase.nativeDatabase(), activeReplacementPassphrase.nativePassphrase());
-      SqlitePostingFactStore.closeOwnedDatabase(activeDatabase.nativeDatabase());
+      SqliteStoreContext.closeOwnedDatabase(activeDatabase.nativeDatabase());
       store.clearDatabaseState();
       SqliteSessionDatabase reopenedDatabase = null;
       try {

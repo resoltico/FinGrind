@@ -30,8 +30,7 @@ public final class ProtocolLedgerPlanFields {
         Query.EFFECTIVE_DATE_FROM,
         Query.EFFECTIVE_DATE_TO,
         Query.LIMIT,
-        Query.CURSOR,
-        Query.OFFSET);
+        Query.CURSOR);
   }
 
   /** Returns ledger-plan assertion object fields in stable wire order. */
@@ -100,9 +99,6 @@ public final class ProtocolLedgerPlanFields {
 
     /** Opaque posting-page cursor field. */
     public static final String CURSOR = "cursor";
-
-    /** Page-offset field. */
-    public static final String OFFSET = "offset";
 
     private Query() {}
   }

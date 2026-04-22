@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.AccountCode;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Filter and pagination request for listing committed postings. */
 public record ListPostingsQuery(
@@ -27,11 +28,11 @@ public record ListPostingsQuery(
     }
   }
 
-  /** Compatibility constructor that lifts optional bounds into a typed range. */
+  /** Convenience constructor that lifts nullable date bounds into a typed range. */
   public ListPostingsQuery(
       Optional<AccountCode> accountCode,
-      Optional<LocalDate> effectiveDateFrom,
-      Optional<LocalDate> effectiveDateTo,
+      @Nullable LocalDate effectiveDateFrom,
+      @Nullable LocalDate effectiveDateTo,
       int limit,
       Optional<PostingPageCursor> cursor) {
     this(accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo), limit, cursor);

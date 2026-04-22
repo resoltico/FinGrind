@@ -8,36 +8,36 @@ final class SqliteStoreTestAccess {
 
   static void publishNativeDatabase(
       SqlitePostingFactStore store, @Nullable SqliteNativeDatabase database) {
-    store.lifecycle().publishNativeDatabaseForTesting(database);
+    store.context().lifecycle().publishNativeDatabaseForTesting(database);
   }
 
   static void setPendingPassphrase(
       SqlitePostingFactStore store, @Nullable SqliteBookPassphrase passphrase) {
-    store.lifecycle().setPendingPassphraseForTesting(passphrase);
+    store.context().lifecycle().setPendingPassphraseForTesting(passphrase);
   }
 
   static SqliteBookPassphrase takePendingPassphrase(SqlitePostingFactStore store) {
-    return store.lifecycle().takePendingPassphraseForTesting();
+    return store.context().lifecycle().takePendingPassphraseForTesting();
   }
 
   static void setCachedState(
       SqlitePostingFactStore store, @Nullable SqliteBookStateSnapshot cachedBookState) {
-    store.lifecycle().setCachedStateForTesting(cachedBookState);
+    store.context().lifecycle().setCachedStateForTesting(cachedBookState);
   }
 
   static boolean closed(SqlitePostingFactStore store) {
-    return store.lifecycle().closed();
+    return store.context().lifecycle().closed();
   }
 
   static boolean ledgerPlanTransactionActive(SqlitePostingFactStore store) {
-    return store.lifecycle().ledgerPlanTransactionActive();
+    return store.context().lifecycle().ledgerPlanTransactionActive();
   }
 
   static boolean ledgerPlanTransactionBegunInDatabase(SqlitePostingFactStore store) {
-    return store.lifecycle().ledgerPlanTransactionBegunInDatabase();
+    return store.context().lifecycle().ledgerPlanTransactionBegunInDatabase();
   }
 
   static @Nullable SqliteNativeDatabase currentDatabaseHandle(SqlitePostingFactStore store) {
-    return store.lifecycle().currentDatabaseHandle();
+    return store.context().lifecycle().currentDatabaseHandle();
   }
 }

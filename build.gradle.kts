@@ -1,3 +1,3 @@
 plugins {
-    id("fingrind.root-conventions")
+    id("dev.erst.fingrind.root-conventions")
 }

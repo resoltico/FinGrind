@@ -10,11 +10,11 @@ final class MachineContractDescriptors {
     return MachineContractDomainDescriptors.bookModel();
   }
 
-  static List<ContractDiscovery.CommandDescriptor> commandDescriptors() {
+  static List<CommandDescriptor> commandDescriptors() {
     return MachineContractDomainDescriptors.commandDescriptors();
   }
 
-  static List<ContractDiscovery.ExitCodeDescriptor> exitCodes() {
+  static List<ExitCodeDescriptor> exitCodes() {
     return MachineContractDomainDescriptors.exitCodes();
   }
 

@@ -16,9 +16,9 @@ import java.util.Set;
 
 /** Narrow posting-session view over one SQLite-backed store. */
 final class SqlitePostingBookSessionView implements PostingBookSession {
-  private final SqlitePostingFactStore store;
+  private final SqliteStoreContext store;
 
-  SqlitePostingBookSessionView(SqlitePostingFactStore store) {
+  SqlitePostingBookSessionView(SqliteStoreContext store) {
     this.store = Objects.requireNonNull(store, "store");
   }
 

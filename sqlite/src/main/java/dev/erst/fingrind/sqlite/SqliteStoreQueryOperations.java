@@ -27,9 +27,9 @@ final class SqliteStoreQueryOperations {
     T run(SqliteNativeDatabase activeDatabase);
   }
 
-  private final SqlitePostingFactStore store;
+  private final SqliteStoreContext store;
 
-  SqliteStoreQueryOperations(SqlitePostingFactStore store) {
+  SqliteStoreQueryOperations(SqliteStoreContext store) {
     this.store = Objects.requireNonNull(store, "store");
   }
 
@@ -131,7 +131,7 @@ final class SqliteStoreQueryOperations {
   AccountPage listAccounts(ListAccountsQuery query) {
     store.ensureOpenSession();
     if (missingOrBlankBook()) {
-      return new AccountPage(List.of(), query.limit(), query.offset(), false);
+      return new AccountPage(List.of(), query.limit(), Optional.empty());
     }
     return queryInitialized(
         "Failed to query SQLite book.",

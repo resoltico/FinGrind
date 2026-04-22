@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: CONTRACT_PROTOCOL
 updated: "2026-04-21"
 route:
@@ -36,6 +36,9 @@ public record ProtocolOperation(...)
 ```
 
 - Purpose: keep command metadata machine-readable before any renderer serializes it
+- Related types: `ProtocolCommandSignature` owns display label, aliases, options, and usage;
+  `ProtocolOperationOutputs` owns execution/output modes plus artifact outputs; and
+  `ProtocolOperationDocumentation` owns the summary/examples prose
 
 ## `OperationId`
 
@@ -159,6 +162,10 @@ public record PlanExecutionFacts(...)
 - Purpose: keep book-model scope, currency support, advisory preflight behavior, and ledger-plan
   execution semantics structured before help or capabilities render them
 - Policy: these are not CLI-local prose constants
+- Related types: `BookBoundaryFact`, `BookEntityScopeFact`, `BookFilesystemFact`,
+  `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
+  `BookMigrationFact`, and `BookCurrencyScopeFact` are the semantic text wrappers carried by
+  `BookModelFacts`
 
 ## `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
 
@@ -187,12 +194,12 @@ public final class MachineContract
 ```
 
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
-- Inputs: `ProtocolCatalog`, `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, and
-  `ContractTemplates`
+- Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
+  `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
 
 ## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
 
-These public namespace classes own the typed descriptor families used by `MachineContract`.
+These public contract owners define the typed descriptor families used by `MachineContract`.
 
 ```java
 public final class ContractDiscovery
@@ -201,14 +208,13 @@ public final class ContractResponse
 public final class ContractTemplates
 ```
 
-- `ContractDiscovery`: help, capabilities, version, environment, exit-code, and command
-  descriptors
-- `ContractDiscovery.ApplicationIdentity`, `.HelpDescriptor`, `.CapabilitiesDescriptor`,
-  `.StorageSurfaceDescriptor`, `.CommandCatalogDescriptor`, `.VersionDescriptor`,
-  `.ArtifactOutputDescriptor`, `.CommandDescriptor`, `.ExitCodeDescriptor`,
-  `.EnvironmentDistributionDescriptor`, `.EnvironmentStorageDescriptor`,
-  `.EnvironmentSqliteDescriptor`, `.EnvironmentDescriptor`, and
-  `.SqliteCompileOptionsVerificationStatus` are the nested typed discovery payloads
+- `ContractDiscovery`: discovery-descriptor registry used for coverage and contract audits
+- `ApplicationIdentity`, `HelpDescriptor`, `CapabilitiesDescriptor`,
+  `StorageSurfaceDescriptor`, `CommandCatalogDescriptor`, `VersionDescriptor`,
+  `ArtifactOutputDescriptor`, `CommandDescriptor`, `ExitCodeDescriptor`,
+  `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
+  `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
+  `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
 - `ContractRequestShapes`: request-input plumbing plus posting, account-declaration, and ledger-plan
   request-shape descriptors
 - `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,

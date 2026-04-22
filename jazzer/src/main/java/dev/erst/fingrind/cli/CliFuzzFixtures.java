@@ -7,6 +7,7 @@ import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.LedgerPlan;
@@ -132,11 +133,11 @@ public final class CliFuzzFixtures {
   public static List<DeclaredAccount> listAccounts(BookReadSession bookSession) {
     Objects.requireNonNull(bookSession, "bookSession must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
-    int offset = 0;
+    java.util.Optional<AccountPageCursor> cursor = java.util.Optional.empty();
     while (true) {
       ListAccountsResult result =
           new BookReadService(bookSession)
-              .listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, offset));
+              .listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, cursor));
       ListAccountsResult.Listed listed =
           switch (result) {
             case ListAccountsResult.Listed accepted -> accepted;
@@ -148,7 +149,7 @@ public final class CliFuzzFixtures {
       if (!listed.page().hasMore()) {
         return List.copyOf(accounts);
       }
-      offset += listed.page().accounts().size();
+      cursor = listed.page().nextCursor();
     }
   }
 

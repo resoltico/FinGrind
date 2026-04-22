@@ -44,7 +44,7 @@ class ContractCoverageTest {
   void resultRecordsExposePayloadsAcrossAdministrationAndQuerySurfaces() {
     DeclaredAccount declaredAccount = declaredAccount("1000");
     PostingFact postingFact = postingFact("posting-1", "idem-1");
-    AccountPage accountPage = new AccountPage(List.of(declaredAccount), 50, 0, false);
+    AccountPage accountPage = new AccountPage(List.of(declaredAccount), 50, Optional.empty());
     PostingPage postingPage = new PostingPage(List.of(postingFact), 50, Optional.empty());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
@@ -123,9 +123,9 @@ class ContractCoverageTest {
     assertEquals("10.00", template.steps().get(4).assertion().netAmount());
     assertEquals("DEBIT", template.steps().get(4).assertion().balanceSide());
 
-    ContractDiscovery.CapabilitiesDescriptor capabilities =
+    CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.21.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.22.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());
@@ -165,15 +165,15 @@ class ContractCoverageTest {
     LedgerAssertion.AccountBalanceEquals assertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"),
-            Optional.empty(),
-            Optional.of(LocalDate.parse("2026-04-30")),
+            null,
+            LocalDate.parse("2026-04-30"),
             money("10.00"),
             BalanceSide.DEBIT);
     LedgerAssertion.AccountBalanceEquals lowerBoundOnlyAssertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"),
-            Optional.of(LocalDate.parse("2026-04-01")),
-            Optional.empty(),
+            LocalDate.parse("2026-04-01"),
+            null,
             money("10.00"),
             BalanceSide.DEBIT);
     PostingRejection.InactiveAccount inactive =
@@ -297,13 +297,10 @@ class ContractCoverageTest {
   void dateRangesLineagesPostingShapesAndPlanResultsExposeDerivedAccessors() {
     ReversalReference reversalReference = new ReversalReference(new PostingId("posting-1"));
     EffectiveDateRange unbounded = EffectiveDateRange.unbounded();
-    EffectiveDateRange from =
-        EffectiveDateRange.of(Optional.of(LocalDate.parse("2026-04-01")), Optional.empty());
-    EffectiveDateRange to =
-        EffectiveDateRange.of(Optional.empty(), Optional.of(LocalDate.parse("2026-04-30")));
+    EffectiveDateRange from = EffectiveDateRange.of(LocalDate.parse("2026-04-01"), null);
+    EffectiveDateRange to = EffectiveDateRange.of(null, LocalDate.parse("2026-04-30"));
     EffectiveDateRange bounded =
-        EffectiveDateRange.of(
-            Optional.of(LocalDate.parse("2026-04-01")), Optional.of(LocalDate.parse("2026-04-30")));
+        EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
     PostingLineage direct = PostingLineage.direct();
     ReversalReason reversalReason = new ReversalReason("operator reversal");
     PostingLineage reversal = PostingLineage.reversal(reversalReference, reversalReason);
@@ -473,8 +470,7 @@ class ContractCoverageTest {
     ContractResponse.RejectionDescriptor leafRejection =
         new ContractResponse.RejectionDescriptor("code", "description");
 
-    assertTrue(
-        ContractDiscovery.descriptorTypes().contains(ContractDiscovery.HelpDescriptor.class));
+    assertTrue(ContractDiscovery.descriptorTypes().contains(HelpDescriptor.class));
     assertTrue(
         ContractRequestShapes.descriptorTypes()
             .contains(ContractRequestShapes.LedgerPlanRequestShapeDescriptor.class));

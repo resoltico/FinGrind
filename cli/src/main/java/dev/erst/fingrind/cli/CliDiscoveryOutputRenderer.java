@@ -1,6 +1,10 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.CommandCatalogDescriptor;
+import dev.erst.fingrind.contract.HelpDescriptor;
+import dev.erst.fingrind.contract.StorageSurfaceDescriptor;
+import dev.erst.fingrind.contract.VersionDescriptor;
 import java.util.List;
 import java.util.Objects;
 
@@ -8,7 +12,7 @@ import java.util.Objects;
 final class CliDiscoveryOutputRenderer {
   private CliDiscoveryOutputRenderer() {}
 
-  static String renderHelpHuman(ContractDiscovery.HelpDescriptor helpDescriptor) {
+  static String renderHelpHuman(HelpDescriptor helpDescriptor) {
     Objects.requireNonNull(helpDescriptor, "helpDescriptor");
     String header =
         CliTextFormat.renderKeyValueBlock(
@@ -49,11 +53,10 @@ final class CliDiscoveryOutputRenderer {
             section("Exit Codes", exitCodes)));
   }
 
-  static String renderCapabilitiesHuman(
-      ContractDiscovery.CapabilitiesDescriptor capabilitiesDescriptor) {
+  static String renderCapabilitiesHuman(CapabilitiesDescriptor capabilitiesDescriptor) {
     Objects.requireNonNull(capabilitiesDescriptor, "capabilitiesDescriptor");
-    ContractDiscovery.StorageSurfaceDescriptor storageDescriptor = capabilitiesDescriptor.storage();
-    ContractDiscovery.CommandCatalogDescriptor commandCatalog = capabilitiesDescriptor.commands();
+    StorageSurfaceDescriptor storageDescriptor = capabilitiesDescriptor.storage();
+    CommandCatalogDescriptor commandCatalog = capabilitiesDescriptor.commands();
     String header =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -82,7 +85,7 @@ final class CliDiscoveryOutputRenderer {
             header, section("Command Groups", commands), section("Read Surface", outputModes)));
   }
 
-  static String renderVersionHuman(ContractDiscovery.VersionDescriptor versionDescriptor) {
+  static String renderVersionHuman(VersionDescriptor versionDescriptor) {
     Objects.requireNonNull(versionDescriptor, "versionDescriptor");
     return CliTextFormat.renderTitledBlock(
         versionDescriptor.application(),

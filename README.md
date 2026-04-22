@@ -52,7 +52,8 @@ of spread across notes, spreadsheets, and half-finished checks.
   balance, account ledger, and period summary.
 - The model stays intentionally strict: one book per business, one currency per entry, positive line
   amounts, and balanced entries only.
-- FinGrind is open source under MIT, with notices and patent notes linked below.
+- FinGrind is open source under MIT, with bundled dependency license texts, notices, and patent
+  notes linked below.
 
 ## Start Here
 
@@ -92,6 +93,8 @@ that stays legible.
 ## Legal
 
 - [LICENSE](./LICENSE)
+- [LICENSE-APACHE-2.0](./LICENSE-APACHE-2.0)
+- [LICENSE-SIL-OFL-1.1](./LICENSE-SIL-OFL-1.1)
 - [NOTICE](./NOTICE)
 - [PATENTS.md](./PATENTS.md)
 - [LICENSE-SQLITE3MULTIPLECIPHERS](./LICENSE-SQLITE3MULTIPLECIPHERS)

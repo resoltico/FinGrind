@@ -18,7 +18,7 @@ Build policy:
 - the Gradle task `verifyManagedSqliteSource` verifies the vendored `sqlite3mc_amalgamation.c`
   hash after normalizing line endings to LF so Git checkout policy cannot skew the integrity check
 - the Gradle task `prepareManagedSqlite` compiles a managed shared library from this source for the
-  current macOS or Linux host
+  current macOS, Linux, or Windows host
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, and `SQLITE_SECURE_DELETE=1`
 - the Docker image compiles the same vendored source during image build

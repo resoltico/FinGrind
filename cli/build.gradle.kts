@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
+import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
 import dev.erst.fingrind.buildlogic.DistributionContractReader
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
@@ -16,7 +17,7 @@ import org.gradle.api.tasks.bundling.Zip
 
 plugins {
     application
-    id("fingrind.java-conventions")
+    id("dev.erst.fingrind.java-conventions")
     alias(libs.plugins.shadow)
 }
 
@@ -29,15 +30,14 @@ dependencies {
     implementation(project(":report-pdf"))
     implementation(project(":sqlite"))
     implementation(libs.jackson.databind)
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 application {
     mainClass = "dev.erst.fingrind.cli.App"
 }
 
-val fingrindJavaVersion = providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
+val buildMetadata = FinGrindBuildMetadata.load(project)
+val fingrindJavaVersion = buildMetadata.javaVersion
 val repositoryRootDirectory = rootProject.projectDir.toPath()
 val publicCliBundleTargets = DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
 val unsupportedPublicCliOperatingSystems =
@@ -94,20 +94,13 @@ val bundleTemplateProperties =
         "bundleArchitecture" to bundleArchitectureId,
         "bundleLauncherPath" to bundleLauncherPath.get(),
         "bundleLauncherCommand" to bundleLauncherCommand.get(),
-        "helpOperation" to
-            DistributionContractReader.protocolOperationName(repositoryRootDirectory, "HELP"),
+        "helpOperation" to DistributionContractReader.helpOperationName(repositoryRootDirectory),
         "capabilitiesOperation" to
-            DistributionContractReader.protocolOperationName(repositoryRootDirectory, "CAPABILITIES"),
+            DistributionContractReader.capabilitiesOperationName(repositoryRootDirectory),
         "requestTemplateOperation" to
-            DistributionContractReader.protocolOperationName(
-                repositoryRootDirectory,
-                "PRINT_REQUEST_TEMPLATE",
-            ),
+            DistributionContractReader.requestTemplateOperationName(repositoryRootDirectory),
         "planTemplateOperation" to
-            DistributionContractReader.protocolOperationName(
-                repositoryRootDirectory,
-                "PRINT_PLAN_TEMPLATE",
-            ),
+            DistributionContractReader.planTemplateOperationName(repositoryRootDirectory),
         "publicBundleTargetsJson" to
             DistributionContractReader.jsonStringArray(publicCliBundleTargets),
         "unsupportedPublicOperatingSystemsJson" to
@@ -160,8 +153,8 @@ tasks.named<ShadowJar>("shadowJar") {
         attributes(
             "Implementation-Title" to "FinGrind",
             "Implementation-Version" to project.version,
-            "Implementation-Vendor" to "Ervins Strauhmanis",
-            "Implementation-License" to "MIT",
+            "Implementation-Vendor" to buildMetadata.implementationVendor,
+            "Implementation-License" to buildMetadata.implementationLicense,
         )
     }
 }

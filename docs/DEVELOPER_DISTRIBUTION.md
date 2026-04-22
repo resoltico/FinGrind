@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -20,14 +20,14 @@ publishing it.
 FinGrind's public CLI download is a self-contained per-platform archive, not a raw JAR.
 
 Each published archive contains:
-- `bin/fingrind`
-- `bin/fingrind.ps1`
+- launcher scripts under `bin/`: `fingrind`, `fingrind.ps1`, and `fingrind.cmd`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
 - a top-level `README.md` for local human bootstrap
 - a top-level generated `bundle-manifest.json` for machine bootstrap and target discovery
-- license and notice files
+- top-level legal files: `LICENSE`, `LICENSE-APACHE-2.0`, `LICENSE-SIL-OFL-1.1`,
+  `LICENSE-SQLITE3MULTIPLECIPHERS`, `NOTICE`, and `PATENTS.md`
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
 That keeps public execution independent from:
@@ -78,7 +78,8 @@ Linux bundle policy:
 Windows bundle policy:
 - public Windows bundles are built on Windows GitHub-hosted runners
 - they use the native MSVC toolchain through the Developer Command Prompt environment
-- they are published as `.zip` archives and use `bin\fingrind.ps1` as the platform launcher
+- they are published as `.zip` archives and use `bin\fingrind.ps1` as the canonical launcher
+- `bin\fingrind.cmd` remains in the archive as a compatibility wrapper
 
 ## Release Build Policy
 

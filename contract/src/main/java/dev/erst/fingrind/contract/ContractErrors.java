@@ -51,7 +51,7 @@ public final class ContractErrors {
         case RUNTIME_FAILURE ->
             "Command failed because of a genuine runtime or environment problem rather than deterministic caller input.";
         case INVALID_PAGE_CURSOR ->
-            "Posting-history pagination refused because the supplied cursor is not a valid FinGrind posting page cursor.";
+            "Paginated query refused because the supplied cursor is not a valid FinGrind page cursor.";
         case BOOK_KEY_FILE_ALREADY_EXISTS ->
             "Book key file generation refused because the selected destination already exists and FinGrind will not overwrite it.";
         case INVALID_BOOK_KEY_FILE ->

@@ -202,7 +202,8 @@ final class SqlitePostingSql {
       """;
 
   static String listAccounts() {
-    return BASE_ACCOUNT_SELECT + " order by account_code limit ? offset ?";
+    return BASE_ACCOUNT_SELECT
+        + " where (? is null or account_code > ?) order by account_code limit ?";
   }
 
   static String findAccountsByCodeCount(int accountCount) {

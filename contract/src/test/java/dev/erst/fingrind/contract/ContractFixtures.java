@@ -47,22 +47,21 @@ final class ContractFixtures {
         SourceChannel.CLI);
   }
 
-  static ContractDiscovery.EnvironmentDescriptor environmentDescriptor() {
-    return new ContractDiscovery.EnvironmentDescriptor(
-        new ContractDiscovery.EnvironmentDistributionDescriptor(
+  static EnvironmentDescriptor environmentDescriptor() {
+    return new EnvironmentDescriptor(
+        new EnvironmentDistributionDescriptor(
             "source-checkout",
             "self-contained-bundle",
             ProtocolCatalog.supportedPublicCliBundleTargets(),
             ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new ContractDiscovery.EnvironmentStorageDescriptor(
-            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
-        new ContractDiscovery.EnvironmentSqliteDescriptor(
+        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentSqliteDescriptor(
             "managed-only",
             "FINGRIND_SQLITE_LIBRARY",
             "fingrind.bundle.home",
             List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-            ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+            SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
             "3.53.0",
             "2.3.3",
             "unavailable",

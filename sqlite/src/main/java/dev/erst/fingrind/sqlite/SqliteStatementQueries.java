@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.PostingFact;
@@ -15,7 +16,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** Shared SQLite statement helpers for single-row lookups and pragma reads. */
 final class SqliteStatementQueries {
@@ -89,11 +91,9 @@ final class SqliteStatementQueries {
           while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
             accounts.add(SqlitePostingMapper.declaredAccount(statement));
           }
-          Map<AccountCode, DeclaredAccount> accountsByCode = new ConcurrentHashMap<>();
-          for (DeclaredAccount account : accounts) {
-            accountsByCode.put(account.accountCode(), account);
-          }
-          return accountsByCode;
+          return accounts.stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(DeclaredAccount::accountCode, Function.identity()));
         });
   }
 
@@ -103,8 +103,15 @@ final class SqliteStatementQueries {
         activeDatabase,
         SqlitePostingSql.listAccounts(),
         statement -> {
-          statement.bindInt(1, query.limit() + 1);
-          statement.bindInt(2, query.offset());
+          String cursorAccountCode =
+              query
+                  .cursor()
+                  .map(AccountPageCursor::accountCode)
+                  .map(AccountCode::value)
+                  .orElse(null);
+          statement.bindText(1, cursorAccountCode);
+          statement.bindText(2, cursorAccountCode);
+          statement.bindInt(3, query.limit() + 1);
           while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
             accounts.add(SqlitePostingMapper.declaredAccount(statement));
           }
@@ -112,7 +119,12 @@ final class SqliteStatementQueries {
         });
     boolean hasMore = accounts.size() > query.limit();
     List<DeclaredAccount> pageItems = hasMore ? accounts.subList(0, query.limit()) : accounts;
-    return new AccountPage(pageItems, query.limit(), query.offset(), hasMore);
+    return new AccountPage(
+        pageItems,
+        query.limit(),
+        hasMore
+            ? Optional.of(AccountPageCursor.fromAccount(pageItems.getLast()))
+            : Optional.empty());
   }
 
   static boolean existsRow(SqliteNativeDatabase activeDatabase, String sql, Binder binder) {

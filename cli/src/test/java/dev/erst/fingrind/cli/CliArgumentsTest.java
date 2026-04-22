@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
@@ -293,11 +294,12 @@ class CliArgumentsTest {
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
-    assertEquals(new ListAccountsQuery(50, 0), command.query());
+    assertEquals(new ListAccountsQuery(50, Optional.empty()), command.query());
   }
 
   @Test
-  void parse_returnsListAccountsWithPagingOptions() {
+  void parse_returnsListAccountsWithCursorOption() {
+    AccountPageCursor cursor = new AccountPageCursor(new AccountCode("1000"));
     CliCommand.ListAccounts command =
         assertInstanceOf(
             CliCommand.ListAccounts.class,
@@ -310,11 +312,11 @@ class CliArgumentsTest {
                   "book.key",
                   "--limit",
                   "25",
-                  "--offset",
-                  "75"
+                  "--cursor",
+                  cursor.wireValue()
                 }));
 
-    assertEquals(new ListAccountsQuery(25, 75), command.query());
+    assertEquals(new ListAccountsQuery(25, Optional.of(cursor)), command.query());
   }
 
   @Test
@@ -376,8 +378,8 @@ class CliArgumentsTest {
     assertEquals(
         new ListPostingsQuery(
             Optional.of(new AccountCode("1000")),
-            Optional.of(LocalDate.parse("2026-04-01")),
-            Optional.of(LocalDate.parse("2026-04-30")),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
             10,
             Optional.of(cursor)),
         command.query());
@@ -405,9 +407,7 @@ class CliArgumentsTest {
 
     assertEquals(
         new AccountBalanceQuery(
-            new AccountCode("1000"),
-            java.util.Optional.of(LocalDate.parse("2026-04-01")),
-            java.util.Optional.of(LocalDate.parse("2026-04-30"))),
+            new AccountCode("1000"), LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         command.query());
   }
 
@@ -515,9 +515,7 @@ class CliArgumentsTest {
     assertEquals(Path.of("reports/trial-balance.pdf"), trialBalance.output().pdfOutPath());
     assertEquals(
         new AccountLedgerQuery(
-            new AccountCode("1000"),
-            Optional.of(LocalDate.parse("2026-04-01")),
-            Optional.of(LocalDate.parse("2026-04-30"))),
+            new AccountCode("1000"), LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         accountLedger.query());
     assertEquals(OutputMode.HUMAN, accountLedger.output().outputMode());
     assertEquals(Path.of("reports/cash-ledger.pdf"), accountLedger.output().pdfOutPath());
@@ -578,7 +576,7 @@ class CliArgumentsTest {
   }
 
   @Test
-  void parse_rejectsNegativeAccountListOffsetAgainstOffsetArgument() {
+  void parse_rejectsInvalidAccountListCursorAgainstCursorArgument() {
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
@@ -590,13 +588,14 @@ class CliArgumentsTest {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--offset",
-                      "-1"
+                      "--cursor",
+                      "%"
                     }));
 
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--offset", exception.argument());
-    assertEquals("listAccounts offset must not be negative.", exception.getMessage());
+    assertEquals("invalid-page-cursor", exception.code());
+    assertEquals("--cursor", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage()).contains("Unsupported account page cursor"));
   }
 
   @Test
@@ -860,9 +859,7 @@ class CliArgumentsTest {
                 }));
 
     assertEquals(
-        new ListPostingsQuery(
-            Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty()),
-        command.query());
+        new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty()), command.query());
   }
 
   @Test
@@ -883,7 +880,7 @@ class CliArgumentsTest {
                       "--limit",
                       "20"
                     }));
-    CliArgumentsException duplicateOffset =
+    CliArgumentsException duplicateCursor =
         assertThrows(
             CliArgumentsException.class,
             () ->
@@ -894,10 +891,10 @@ class CliArgumentsTest {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--offset",
-                      "10",
-                      "--offset",
-                      "20"
+                      "--cursor",
+                      "first",
+                      "--cursor",
+                      "second"
                     }));
     CliArgumentsException unsupported =
         assertThrows(
@@ -916,8 +913,8 @@ class CliArgumentsTest {
 
     assertEquals("--limit", duplicateLimit.argument());
     assertEquals("Duplicate argument: --limit", duplicateLimit.getMessage());
-    assertEquals("--offset", duplicateOffset.argument());
-    assertEquals("Duplicate argument: --offset", duplicateOffset.getMessage());
+    assertEquals("--cursor", duplicateCursor.argument());
+    assertEquals("Duplicate argument: --cursor", duplicateCursor.getMessage());
     assertEquals("--extra", unsupported.argument());
     assertEquals("Unsupported argument: --extra", unsupported.getMessage());
   }

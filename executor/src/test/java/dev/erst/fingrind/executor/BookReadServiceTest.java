@@ -105,7 +105,7 @@ class BookReadServiceTest {
 
       assertEquals(
           new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.listAccounts(new ListAccountsQuery(50, 0)));
+          service.listAccounts(new ListAccountsQuery(50, Optional.empty())));
     }
   }
 
@@ -117,8 +117,8 @@ class BookReadServiceTest {
 
       assertEquals(
           new ListAccountsResult.Listed(
-              new AccountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, 0, false)),
-          service.listAccounts(new ListAccountsQuery(50, 0)));
+              new AccountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, Optional.empty())),
+          service.listAccounts(new ListAccountsQuery(50, Optional.empty())));
     }
   }
 
@@ -151,11 +151,7 @@ class BookReadServiceTest {
               new BookQueryRejection.UnknownAccount(new AccountCode("9999"))),
           service.listPostings(
               new ListPostingsQuery(
-                  Optional.of(new AccountCode("9999")),
-                  Optional.empty(),
-                  Optional.empty(),
-                  20,
-                  Optional.empty())));
+                  Optional.of(new AccountCode("9999")), null, null, 20, Optional.empty())));
     }
   }
 
@@ -167,8 +163,7 @@ class BookReadServiceTest {
       assertEquals(
           new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.listPostings(
-              new ListPostingsQuery(
-                  Optional.empty(), Optional.empty(), Optional.empty(), 20, Optional.empty())));
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -180,18 +175,13 @@ class BookReadServiceTest {
           new ListPostingsResult.Listed(
               new PostingPage(List.of(postingFact), 20, Optional.empty())),
           service.listPostings(
-              new ListPostingsQuery(
-                  Optional.empty(), Optional.empty(), Optional.empty(), 20, Optional.empty())));
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
       assertEquals(
           new ListPostingsResult.Listed(
               new PostingPage(List.of(postingFact), 20, Optional.empty())),
           service.listPostings(
               new ListPostingsQuery(
-                  Optional.of(CASH_ACCOUNT.accountCode()),
-                  Optional.empty(),
-                  Optional.empty(),
-                  20,
-                  Optional.empty())));
+                  Optional.of(CASH_ACCOUNT.accountCode()), null, null, 20, Optional.empty())));
     }
   }
 
@@ -210,9 +200,7 @@ class BookReadServiceTest {
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
                 CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE))),
-        service.accountBalance(
-            new AccountBalanceQuery(
-                CASH_ACCOUNT.accountCode(), Optional.empty(), Optional.empty())));
+        service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
     assertEquals(0, bookSession.findAccountCalls());
   }
 
@@ -242,9 +230,7 @@ class BookReadServiceTest {
 
       assertEquals(
           new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.accountBalance(
-              new AccountBalanceQuery(
-                  CASH_ACCOUNT.accountCode(), Optional.empty(), Optional.empty())));
+          service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = new BookReadService(bookSession);
@@ -252,9 +238,7 @@ class BookReadServiceTest {
       assertEquals(
           new AccountBalanceResult.Rejected(
               new BookQueryRejection.UnknownAccount(CASH_ACCOUNT.accountCode())),
-          service.accountBalance(
-              new AccountBalanceQuery(
-                  CASH_ACCOUNT.accountCode(), Optional.empty(), Optional.empty())));
+          service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
     }
   }
 
@@ -320,7 +304,7 @@ class BookReadServiceTest {
           new AccountLedgerResult.Reported(
               new AccountLedgerReport(
                   CASH_ACCOUNT,
-                  EffectiveDateRange.of(Optional.of(EFFECTIVE_DATE), Optional.of(EFFECTIVE_DATE)),
+                  EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
                   List.of(),
                   List.of(
                       new AccountLedgerEntry(
@@ -330,10 +314,7 @@ class BookReadServiceTest {
                           BalanceSide.DEBIT)),
                   List.of(EUR_DEBIT_BALANCE))),
           service.accountLedger(
-              new AccountLedgerQuery(
-                  CASH_ACCOUNT.accountCode(),
-                  Optional.of(EFFECTIVE_DATE),
-                  Optional.of(EFFECTIVE_DATE))));
+              new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), EFFECTIVE_DATE, EFFECTIVE_DATE)));
     }
   }
 

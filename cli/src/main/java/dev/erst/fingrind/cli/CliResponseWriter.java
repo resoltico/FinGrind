@@ -3,10 +3,11 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.ContractTemplates;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.GetPostingResult;
+import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.ListAccountsResult;
@@ -16,6 +17,7 @@ import dev.erst.fingrind.contract.PeriodSummaryResult;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.VersionDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
@@ -39,28 +41,27 @@ final class CliResponseWriter {
     this.queryWriter = new CliQueryResponseWriter(outputChannel);
   }
 
-  void writeHelp(ContractDiscovery.HelpDescriptor helpDescriptor) {
+  void writeHelp(HelpDescriptor helpDescriptor) {
     writeHelp(helpDescriptor, OutputMode.JSON);
   }
 
-  void writeHelp(ContractDiscovery.HelpDescriptor helpDescriptor, OutputMode outputMode) {
+  void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode) {
     discoveryWriter.writeHelp(helpDescriptor, outputMode);
   }
 
-  void writeCapabilities(ContractDiscovery.CapabilitiesDescriptor capabilitiesDescriptor) {
+  void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor) {
     writeCapabilities(capabilitiesDescriptor, OutputMode.JSON);
   }
 
-  void writeCapabilities(
-      ContractDiscovery.CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
+  void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor, OutputMode outputMode) {
     discoveryWriter.writeCapabilities(capabilitiesDescriptor, outputMode);
   }
 
-  void writeVersion(ContractDiscovery.VersionDescriptor versionDescriptor) {
+  void writeVersion(VersionDescriptor versionDescriptor) {
     writeVersion(versionDescriptor, OutputMode.JSON);
   }
 
-  void writeVersion(ContractDiscovery.VersionDescriptor versionDescriptor, OutputMode outputMode) {
+  void writeVersion(VersionDescriptor versionDescriptor, OutputMode outputMode) {
     discoveryWriter.writeVersion(versionDescriptor, outputMode);
   }
 

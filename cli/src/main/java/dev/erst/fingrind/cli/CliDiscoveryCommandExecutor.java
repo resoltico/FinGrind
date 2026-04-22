@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.ApplicationIdentity;
+import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.MachineContract;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
@@ -49,11 +50,11 @@ final class CliDiscoveryCommandExecutor {
     return 0;
   }
 
-  private ContractDiscovery.ApplicationIdentity applicationIdentity() {
+  private ApplicationIdentity applicationIdentity() {
     return CliRuntimeContractDescriptors.applicationIdentity(metadata);
   }
 
-  private ContractDiscovery.EnvironmentDescriptor environmentDescriptor() {
+  private EnvironmentDescriptor environmentDescriptor() {
     return CliRuntimeContractDescriptors.environmentDescriptor(
         SqliteRuntime.probe(), FinGrindCli.runtimeDistribution());
   }

@@ -28,10 +28,10 @@ final class SqliteStoreReadOperations {
   private final SqliteStoreQueryOperations queryOperations;
   private final SqliteStoreReportOperations reportOperations;
 
-  SqliteStoreReadOperations(SqlitePostingFactStore store) {
-    Objects.requireNonNull(store, "store");
-    this.queryOperations = new SqliteStoreQueryOperations(store);
-    this.reportOperations = new SqliteStoreReportOperations(store);
+  SqliteStoreReadOperations(SqliteStoreContext context) {
+    Objects.requireNonNull(context, "context");
+    this.queryOperations = new SqliteStoreQueryOperations(context);
+    this.reportOperations = new SqliteStoreReportOperations(context);
   }
 
   BookInspection inspectBook() {

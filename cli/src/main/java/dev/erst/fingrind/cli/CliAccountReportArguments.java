@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Parses account-specific report commands that require one account code. */
@@ -24,8 +23,7 @@ final class CliAccountReportArguments {
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             () ->
                 EffectiveDateRange.of(
-                    Optional.ofNullable(parsedArguments.effectiveDateFrom()),
-                    Optional.ofNullable(parsedArguments.effectiveDateTo())));
+                    parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo()));
     return new CliCommand.AccountBalance(
         parsedArguments.bookAccess(),
         new AccountBalanceQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
@@ -39,8 +37,7 @@ final class CliAccountReportArguments {
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             () ->
                 EffectiveDateRange.of(
-                    Optional.ofNullable(parsedArguments.effectiveDateFrom()),
-                    Optional.ofNullable(parsedArguments.effectiveDateTo())));
+                    parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo()));
     return new CliCommand.AccountLedger(
         parsedArguments.bookAccess(),
         new AccountLedgerQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),

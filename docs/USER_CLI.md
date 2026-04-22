@@ -1,11 +1,11 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: USER_CLI
 updated: "2026-04-22"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
-  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
+  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
 ---
 
 # CLI Guide
@@ -73,7 +73,7 @@ one PDF artifact through `--pdf-out <path>`.
 | `rekey-book` | none | `--book-file`, exactly one current passphrase source, exactly one replacement passphrase source, optional `--output` | rotates the passphrase that protects the selected existing book |
 | `declare-account` | none | `--book-file`, exactly one passphrase source, `--request-file`, optional `--output` | declares or reactivates one account in the selected book |
 | `inspect-book` | none | `--book-file`, exactly one passphrase source, optional `--output` | returns lifecycle state, compatibility, and book-format metadata for the selected book |
-| `list-accounts` | none | `--book-file`, exactly one passphrase source, optional `--limit`, optional `--offset`, optional `--output` | returns one paginated slice of the selected book's declared account registry |
+| `list-accounts` | none | `--book-file`, exactly one passphrase source, optional `--limit`, optional `--cursor`, optional `--output` | returns one stable keyset-paginated slice of the selected book's declared account registry |
 | `get-posting` | none | `--book-file`, exactly one passphrase source, `--posting-id`, optional `--output` | returns one committed posting by durable posting id |
 | `list-postings` | none | `--book-file`, exactly one passphrase source, optional account/date filters, optional `--limit`, optional `--cursor`, optional `--output` | returns one reverse-chronological page of committed posting history |
 | `account-balance` | none | `--book-file`, exactly one passphrase source, `--account-code`, optional date filters, optional `--output`, optional `--pdf-out` | returns grouped per-currency balances for one declared account and can also export one PDF report |
@@ -98,6 +98,7 @@ Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ord
 hosts. They are not presented as a universal Linux binary for every libc variant.
 Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
 published as `.zip` archives with the `bin\fingrind.ps1` launcher.
+They also include `bin\fingrind.cmd` as a compatibility wrapper.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
@@ -108,18 +109,18 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.21.0-macos-aarch64.tar.gz
-./fingrind-0.21.0-macos-aarch64/bin/fingrind help
-./fingrind-0.21.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.22.0-macos-aarch64.tar.gz
+./fingrind-0.22.0-macos-aarch64/bin/fingrind help
+./fingrind-0.22.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.21.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.21.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.21.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.22.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.22.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.22.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -179,7 +180,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `1` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
 | malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
-| malformed `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported posting page cursor: ...` |
+| malformed `list-accounts --cursor` or `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported account page cursor: ...` or `Unsupported posting page cursor: ...` |
 | book is missing or never opened | `2` | `administration-book-not-initialized`, `query-book-not-initialized`, or `posting-book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
 | posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
@@ -224,7 +225,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or
   `post-entry`, because it reports initialization state, detected book-format version, supported
   book-format version, and compatibility with the current binary.
-- `list-accounts` returns paginated payloads with `limit`, `offset`, and `hasMore`.
+- `list-accounts` returns paginated payloads with `limit`, `accounts`, and an optional opaque
+  `nextCursor` that can be passed back through `--cursor`.
 - `list-postings` returns paginated payloads with `limit`, `postings`, and an optional opaque
   `nextCursor` that can be passed back through `--cursor`.
 - `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`,

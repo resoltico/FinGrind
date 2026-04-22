@@ -1,0 +1,67 @@
+package dev.erst.fingrind.cli;
+
+import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.DeclareAccountCommand;
+import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import java.nio.file.Path;
+import java.util.Objects;
+
+/** Executes administrative CLI commands that mutate book setup or key material. */
+final class CliAdministrativeCommandExecutor {
+  private final CliRequestReader requestReader;
+  private final CliResponseWriter responseWriter;
+  private final CliBookWorkflow bookWorkflow;
+
+  CliAdministrativeCommandExecutor(
+      CliRequestReader requestReader,
+      CliResponseWriter responseWriter,
+      CliBookWorkflow bookWorkflow) {
+    this.requestReader = Objects.requireNonNull(requestReader, "requestReader");
+    this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
+    this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
+  }
+
+  int runGenerateBookKeyFileCommand(Path bookKeyFilePath, OutputMode outputMode) {
+    return SqliteBookKeyFileGenerator.generateDecision(bookKeyFilePath)
+        .fold(
+            generatedKeyFile -> {
+              responseWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
+              return 0;
+            },
+            failure ->
+                CliCommandOutcomeWriter.writeDeterministicFailure(
+                    failure, outputMode, responseWriter));
+  }
+
+  int runOpenBookCommand(BookAccess bookAccess, OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.openBook(bookAccess),
+        outputMode,
+        result -> responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runRekeyBookCommand(
+      BookAccess bookAccess,
+      BookAccess.PassphraseSource replacementPassphraseSource,
+      OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
+        outputMode,
+        result -> responseWriter.writeRekeyBookResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runDeclareAccountCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.declareAccount(bookAccess, command),
+        outputMode,
+        result -> responseWriter.writeDeclareAccountResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+}
