@@ -31,5 +31,11 @@ capabilities_output="$(
     cd "${repo_root}" &&
         ./gradlew -q :cli:run --args='capabilities --output json' --no-daemon --console=plain
 )"
-printf '%s\n' "${capabilities_output}"
-printf '%s\n' "${capabilities_output}" | python3 "${verifier}"
+if ! verifier_output="$(
+    printf '%s\n' "${capabilities_output}" | python3 "${verifier}" 2>&1
+)"; then
+    printf '%s\n' "${capabilities_output}"
+    printf '%s\n' "${verifier_output}" >&2
+    exit 1
+fi
+printf '%s\n' "${verifier_output}"

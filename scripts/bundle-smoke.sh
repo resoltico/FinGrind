@@ -29,6 +29,21 @@ require_match() {
     fi
 }
 
+require_java_26() {
+    local java_command=$1
+    local version_output version_token
+
+    version_output="$("${java_command}" --version 2>&1 | tr -d '\r')"
+    version_token="$(printf '%s\n' "${version_output}" | awk 'NR == 1 { print $2 }')"
+    case "${version_token}" in
+        26|26.*) ;;
+        *)
+            printf '%s\n' "${version_output}" >&2
+            die "bundled Java runtime did not report Java 26"
+            ;;
+    esac
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -212,9 +227,7 @@ require_no_match "${bundle_manifest_compact}" '"queryCommands":' \
 require_no_match "${bundle_manifest_compact}" '"writeCommands":' \
     "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
 
-runtime_version_output="$("${bundle_root}/runtime/bin/java" --version | tr -d '\r')"
-require_match "${runtime_version_output}" '^openjdk 26 ' \
-    "bundled Java runtime did not report Java 26"
+require_java_26 "${bundle_root}/runtime/bin/java"
 runtime_modules_output="$("${bundle_root}/runtime/bin/java" --list-modules | tr -d '\r')"
 require_no_match "${runtime_modules_output}" '^jdk\.jlink@' \
     "bundled Java runtime still contains jdk.jlink"

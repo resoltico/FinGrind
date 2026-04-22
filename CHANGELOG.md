@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the inline workflow-only managed SQLite runtime probes with one canonical
   source-checkout verifier script, and bound that same helper into the local root gate so
   GitHub workflow checks cannot drift behind the live `capabilities` contract again.
+- Hardened the bundle smoke Java-runtime probes on Unix and Windows to parse the Java major
+  version token from combined `java --version` output instead of assuming one exact raw line,
+  preventing CI-only bundle false negatives when the runtime reports the same version text
+  differently.
 - Reworked `check.sh` stall diagnostics and timeout teardown around a shared process-tree helper,
   so bounded `jcmd` and `lsof` probes can no longer outlive the watchdog shell as orphaned
   descendants; the root gate now executes a dedicated TERM-ignoring process-tree regression to

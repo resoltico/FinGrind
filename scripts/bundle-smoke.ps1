@@ -41,6 +41,24 @@ function Require-NoMatch {
     }
 }
 
+function Require-Java26 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $JavaCommand
+    )
+
+    $versionOutput = (& $JavaCommand --version 2>&1 | Out-String) -replace "`r", ""
+    $versionLines = @($versionOutput -split "`n" | Where-Object { $_ -ne "" })
+    $versionTokens = @()
+    if ($versionLines.Count -gt 0) {
+        $versionTokens = @($versionLines[0] -split '\s+' | Where-Object { $_ -ne "" })
+    }
+    if ($versionTokens.Count -lt 2 -or ($versionTokens[1] -ne "26" -and -not $versionTokens[1].StartsWith("26."))) {
+        Write-Host $versionOutput
+        Fail "bundled Java runtime did not report Java 26"
+    }
+}
+
 function Read-AsciiPrefix {
     param(
         [Parameter(Mandatory = $true)]
@@ -219,10 +237,7 @@ try {
         Fail "bundle manifest still reported unsupported public operating systems"
     }
 
-    $runtimeVersionOutput = (& $runtimeJava --version | Out-String) -replace "`r", ""
-    if ($runtimeVersionOutput -notmatch '^openjdk 26 ') {
-        Fail "bundled Java runtime did not report Java 26"
-    }
+    Require-Java26 $runtimeJava
     $runtimeModulesOutput = (& $runtimeJava --list-modules | Out-String) -replace "`r", ""
     foreach ($forbiddenModule in @('jdk.jlink@', 'jdk.jpackage@', 'jdk.jdeps@')) {
         if ($runtimeModulesOutput -match ('^' + [regex]::Escape($forbiddenModule))) {
