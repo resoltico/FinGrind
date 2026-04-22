@@ -164,10 +164,9 @@ final class MachineContractRequestShapeDescriptors {
                 ProtocolLedgerPlanFields.Query.CURSOR,
                 "Opaque cursor for continuing "
                     + operation(OperationId.LIST_POSTINGS)
-                    + " from the prior page."),
-            optionalField(
-                ProtocolLedgerPlanFields.Query.OFFSET,
-                "Page offset for " + operation(OperationId.LIST_ACCOUNTS) + " steps.")),
+                    + " or "
+                    + operation(OperationId.LIST_ACCOUNTS)
+                    + " from the prior page.")),
         List.of(
             requiredField(
                 ProtocolLedgerPlanFields.Assertion.KIND,

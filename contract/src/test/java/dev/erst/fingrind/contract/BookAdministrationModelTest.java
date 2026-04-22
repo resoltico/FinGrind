@@ -64,7 +64,7 @@ class BookAdministrationModelTest {
                     Instant.parse("2026-04-07T10:15:30Z"))));
 
     ListAccountsResult.Listed listed =
-        new ListAccountsResult.Listed(new AccountPage(source, 50, 0, false));
+        new ListAccountsResult.Listed(new AccountPage(source, 50, java.util.Optional.empty()));
     source.clear();
 
     assertEquals(1, listed.page().accounts().size());

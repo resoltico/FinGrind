@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
@@ -305,10 +306,9 @@ class SqlitePostingFactStoreTest {
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
 
       ListPostingsQuery postingsQuery =
-          new ListPostingsQuery(
-              Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty());
+          new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty());
       AccountBalanceQuery balanceQuery =
-          new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty());
+          new AccountBalanceQuery(new AccountCode("1000"), null, null);
 
       var queryView = postingFactStore.readSession();
       assertEquals(postingFactStore.inspectBook(), queryView.inspectBook());
@@ -434,9 +434,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty()),
-                      cashAccount));
+                      new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
       IllegalStateException periodSummaryFailure =
           assertThrows(
               IllegalStateException.class,
@@ -460,10 +458,8 @@ class SqlitePostingFactStoreTest {
   @Test
   void queryView_requiresInitializedBookForDirectQueryCalls() throws Exception {
     ListPostingsQuery postingsQuery =
-        new ListPostingsQuery(
-            Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty());
-    AccountBalanceQuery balanceQuery =
-        new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty());
+        new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty());
+    AccountBalanceQuery balanceQuery = new AccountBalanceQuery(new AccountCode("1000"), null, null);
 
     Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
@@ -508,12 +504,10 @@ class SqlitePostingFactStoreTest {
           () -> queryView.findPosting(new PostingId("posting-1")),
           () ->
               queryView.listPostings(
-                  new ListPostingsQuery(
-                      Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty())),
+                  new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty())),
           () ->
               queryView.accountBalance(
-                  new AccountBalanceQuery(
-                      new AccountCode("1000"), Optional.empty(), Optional.empty())));
+                  new AccountBalanceQuery(new AccountCode("1000"), null, null)));
       setStoreDatabase(postingFactStore, null);
     }
   }
@@ -1175,16 +1169,28 @@ class SqlitePostingFactStoreTest {
 
       assertEquals(
           List.of(new AccountCode("1000"), new AccountCode("2000")),
-          postingFactStore.listAccounts(new ListAccountsQuery(2, 0)).accounts().stream()
+          postingFactStore
+              .listAccounts(new ListAccountsQuery(2, Optional.empty()))
+              .accounts()
+              .stream()
               .map(DeclaredAccount::accountCode)
               .toList());
-      assertTrue(postingFactStore.listAccounts(new ListAccountsQuery(2, 0)).hasMore());
+      var firstPage = postingFactStore.listAccounts(new ListAccountsQuery(2, Optional.empty()));
+      assertTrue(firstPage.hasMore());
+      assertEquals(
+          Optional.of(new AccountPageCursor(new AccountCode("2000"))), firstPage.nextCursor());
       assertEquals(
           List.of(new AccountCode("3000")),
-          postingFactStore.listAccounts(new ListAccountsQuery(2, 2)).accounts().stream()
+          postingFactStore
+              .listAccounts(new ListAccountsQuery(2, firstPage.nextCursor()))
+              .accounts()
+              .stream()
               .map(DeclaredAccount::accountCode)
               .toList());
-      assertFalse(postingFactStore.listAccounts(new ListAccountsQuery(2, 2)).hasMore());
+      assertFalse(
+          postingFactStore
+              .listAccounts(new ListAccountsQuery(2, firstPage.nextCursor()))
+              .hasMore());
     }
   }
 
@@ -1276,8 +1282,7 @@ class SqlitePostingFactStoreTest {
   @Test
   void listPostings_returnsEmptyPagesForMissingAndBlankBooks() throws Exception {
     ListPostingsQuery firstPage =
-        new ListPostingsQuery(
-            Optional.empty(), Optional.empty(), Optional.empty(), 2, Optional.empty());
+        new ListPostingsQuery(Optional.empty(), null, null, 2, Optional.empty());
 
     Path missingBookPath = tempDirectory.resolve("list-postings-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
@@ -1357,15 +1362,14 @@ class SqlitePostingFactStoreTest {
               2,
               Optional.of(PostingPageCursor.fromPosting(postingTwo))),
           postingFactStore.listPostings(
-              new ListPostingsQuery(
-                  Optional.empty(), Optional.empty(), Optional.empty(), 2, Optional.empty())));
+              new ListPostingsQuery(Optional.empty(), null, null, 2, Optional.empty())));
       assertEquals(
           new PostingPage(List.of(postingOne), 2, Optional.empty()),
           postingFactStore.listPostings(
               new ListPostingsQuery(
                   Optional.empty(),
-                  Optional.empty(),
-                  Optional.empty(),
+                  null,
+                  null,
                   2,
                   Optional.of(PostingPageCursor.fromPosting(postingTwo)))));
       assertEquals(
@@ -1373,8 +1377,8 @@ class SqlitePostingFactStoreTest {
           postingFactStore.listPostings(
               new ListPostingsQuery(
                   Optional.of(new AccountCode("1000")),
-                  Optional.of(LocalDate.parse("2026-04-07")),
-                  Optional.of(LocalDate.parse("2026-04-08")),
+                  LocalDate.parse("2026-04-07"),
+                  LocalDate.parse("2026-04-08"),
                   50,
                   Optional.empty())));
     }
@@ -1390,8 +1394,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty())));
+                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
 
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
@@ -1407,8 +1410,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty())));
+                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
 
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
@@ -1474,8 +1476,7 @@ class SqlitePostingFactStoreTest {
       assertEquals(
           Optional.empty(),
           postingFactStore.accountBalance(
-              new AccountBalanceQuery(
-                  new AccountCode("9999"), Optional.empty(), Optional.empty())));
+              new AccountBalanceQuery(new AccountCode("9999"), null, null)));
 
       assertEquals(
           Optional.of(
@@ -1500,8 +1501,7 @@ class SqlitePostingFactStoreTest {
                           money("USD", "0.00"),
                           BalanceSide.ZERO)))),
           postingFactStore.accountBalance(
-              new AccountBalanceQuery(
-                  new AccountCode("1000"), Optional.empty(), Optional.empty())));
+              new AccountBalanceQuery(new AccountCode("1000"), null, null)));
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
@@ -1521,9 +1521,7 @@ class SqlitePostingFactStoreTest {
                           BalanceSide.DEBIT)))),
           postingFactStore.accountBalance(
               new AccountBalanceQuery(
-                  new AccountCode("1000"),
-                  Optional.empty(),
-                  Optional.of(LocalDate.parse("2026-04-08")))));
+                  new AccountCode("1000"), null, LocalDate.parse("2026-04-08"))));
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
@@ -1544,8 +1542,8 @@ class SqlitePostingFactStoreTest {
           postingFactStore.accountBalance(
               new AccountBalanceQuery(
                   new AccountCode("1000"),
-                  Optional.of(LocalDate.parse("2026-04-10")),
-                  Optional.of(LocalDate.parse("2026-04-11")))));
+                  LocalDate.parse("2026-04-10"),
+                  LocalDate.parse("2026-04-11"))));
     }
   }
 
@@ -1692,9 +1690,7 @@ class SqlitePostingFactStoreTest {
       assertEquals(
           new AccountLedgerReport(
               cashAccount,
-              EffectiveDateRange.of(
-                  Optional.of(LocalDate.parse("2026-04-08")),
-                  Optional.of(LocalDate.parse("2026-04-09"))),
+              EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09")),
               List.of(
                   new CurrencyBalance(
                       money("EUR", "10.00"),
@@ -1734,8 +1730,8 @@ class SqlitePostingFactStoreTest {
           postingFactStore.accountLedger(
               new AccountLedgerQuery(
                   new AccountCode("1000"),
-                  Optional.of(LocalDate.parse("2026-04-08")),
-                  Optional.of(LocalDate.parse("2026-04-09"))),
+                  LocalDate.parse("2026-04-08"),
+                  LocalDate.parse("2026-04-09")),
               cashAccount));
     }
   }
@@ -1764,7 +1760,7 @@ class SqlitePostingFactStoreTest {
       assertEquals(
           new AccountLedgerReport(
               cashAccount,
-              EffectiveDateRange.of(Optional.of(LocalDate.MIN), Optional.empty()),
+              EffectiveDateRange.of(LocalDate.MIN, null),
               List.of(),
               List.of(
                   new AccountLedgerEntry(
@@ -1783,9 +1779,7 @@ class SqlitePostingFactStoreTest {
                       money("EUR", "10.00"),
                       BalanceSide.DEBIT))),
           postingFactStore.accountLedger(
-              new AccountLedgerQuery(
-                  new AccountCode("1000"), Optional.of(LocalDate.MIN), Optional.empty()),
-              cashAccount));
+              new AccountLedgerQuery(new AccountCode("1000"), LocalDate.MIN, null), cashAccount));
     }
   }
 
@@ -1823,9 +1817,7 @@ class SqlitePostingFactStoreTest {
       assertEquals(
           new AccountLedgerReport(
               revenueAccount,
-              EffectiveDateRange.of(
-                  Optional.of(LocalDate.parse("2026-04-08")),
-                  Optional.of(LocalDate.parse("2026-04-08"))),
+              EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-08")),
               List.of(
                   new CurrencyBalance(
                       money("EUR", "0.00"),
@@ -1851,8 +1843,8 @@ class SqlitePostingFactStoreTest {
           postingFactStore.accountLedger(
               new AccountLedgerQuery(
                   new AccountCode("2000"),
-                  Optional.of(LocalDate.parse("2026-04-08")),
-                  Optional.of(LocalDate.parse("2026-04-08"))),
+                  LocalDate.parse("2026-04-08"),
+                  LocalDate.parse("2026-04-08")),
               revenueAccount));
     }
   }
@@ -1891,9 +1883,7 @@ class SqlitePostingFactStoreTest {
       assertEquals(
           new AccountLedgerReport(
               cashAccount,
-              EffectiveDateRange.of(
-                  Optional.of(LocalDate.parse("2026-04-09")),
-                  Optional.of(LocalDate.parse("2026-04-09"))),
+              EffectiveDateRange.of(LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
               List.of(
                   new CurrencyBalance(
                       money("EUR", "10.00"),
@@ -1920,8 +1910,8 @@ class SqlitePostingFactStoreTest {
           postingFactStore.accountLedger(
               new AccountLedgerQuery(
                   new AccountCode("1000"),
-                  Optional.of(LocalDate.parse("2026-04-09")),
-                  Optional.of(LocalDate.parse("2026-04-09"))),
+                  LocalDate.parse("2026-04-09"),
+                  LocalDate.parse("2026-04-09")),
               cashAccount));
     }
   }
@@ -1951,12 +1941,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.listPostings(
-                      new ListPostingsQuery(
-                          Optional.empty(),
-                          Optional.empty(),
-                          Optional.empty(),
-                          10,
-                          Optional.empty())));
+                      new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty())));
       assertInvalidPlaintextBookFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -1966,8 +1951,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty())));
+                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
       assertInvalidPlaintextBookFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -1985,9 +1969,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty()),
-                      cashAccount));
+                      new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
       assertInvalidPlaintextBookFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -2027,12 +2009,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.listPostings(
-                      new ListPostingsQuery(
-                          Optional.empty(),
-                          Optional.empty(),
-                          Optional.empty(),
-                          10,
-                          Optional.empty())));
+                      new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty())));
       assertTrue(listFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException balanceFailure =
@@ -2040,8 +2017,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty())));
+                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
       assertTrue(balanceFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException trialBalanceFailure =
@@ -2055,9 +2031,7 @@ class SqlitePostingFactStoreTest {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerQuery(
-                          new AccountCode("1000"), Optional.empty(), Optional.empty()),
-                      cashAccount));
+                      new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
       assertTrue(accountLedgerFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException periodSummaryFailure =
@@ -2082,9 +2056,7 @@ class SqlitePostingFactStoreTest {
                 IllegalStateException.class,
                 () ->
                     readView.accountLedger(
-                        new AccountLedgerQuery(
-                            new AccountCode("1000"), Optional.empty(), Optional.empty()),
-                        cashAccount));
+                        new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
         assertTrue(readAccountLedgerFailure.getMessage().contains("Failed to query SQLite book."));
 
         IllegalStateException readPeriodSummaryFailure =
@@ -3103,22 +3075,49 @@ class SqlitePostingFactStoreTest {
   }
 
   @Test
+  void bookPath_and_passphraseDelegates_matchTheSharedStoreContext() {
+    Path bookPath = tempDirectory.resolve("delegate-path.sqlite");
+    BookAccess access = bookAccess(bookPath);
+
+    try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(access)) {
+      assertEquals(bookPath, postingFactStore.bookPath());
+      try (SqliteBookPassphrase delegated =
+              SqlitePostingFactStore.passphraseDecisionFor(access).requireAccepted();
+          SqliteBookPassphrase forwarded =
+              SqlitePostingFactStore.passphraseFor(access).requireAccepted()) {
+        assertEquals(delegated.sourceDescription(), forwarded.sourceDescription());
+        assertArrayEquals(delegated.utf8BytesCopy(), forwarded.utf8BytesCopy());
+      }
+    }
+  }
+
+  @Test
   void assertOpenConfiguration_rejectsHardeningDrift() throws Exception {
-    assertOpenConfigurationFailure(
-        "pragma foreign_keys = off", "SQLite connection failed to keep foreign_keys enabled.");
-    assertOpenConfigurationFailure(
-        "pragma journal_mode = wal", "SQLite connection failed to enforce journal_mode=DELETE.");
-    assertOpenConfigurationFailure(
-        "pragma synchronous = normal", "SQLite connection failed to enforce synchronous=EXTRA.");
-    assertOpenConfigurationFailure(
-        "pragma trusted_schema = on", "SQLite connection failed to disable trusted_schema.");
-    assertOpenConfigurationFailure(
-        "pragma secure_delete = off", "SQLite connection failed to enable secure_delete.");
-    assertOpenConfigurationFailure(
-        "pragma temp_store = file", "SQLite connection failed to force temp_store=MEMORY.");
-    assertOpenConfigurationFailure(
-        "pragma query_only = on",
-        "SQLite connection failed to enforce the expected query_only setting.");
+    List<OpenConfigurationDrift> driftCases =
+        List.of(
+            new OpenConfigurationDrift(
+                "pragma foreign_keys = off",
+                "SQLite connection failed to keep foreign_keys enabled."),
+            new OpenConfigurationDrift(
+                "pragma journal_mode = wal",
+                "SQLite connection failed to enforce journal_mode=DELETE."),
+            new OpenConfigurationDrift(
+                "pragma synchronous = normal",
+                "SQLite connection failed to enforce synchronous=EXTRA."),
+            new OpenConfigurationDrift(
+                "pragma trusted_schema = on",
+                "SQLite connection failed to disable trusted_schema."),
+            new OpenConfigurationDrift(
+                "pragma secure_delete = off", "SQLite connection failed to enable secure_delete."),
+            new OpenConfigurationDrift(
+                "pragma temp_store = file", "SQLite connection failed to force temp_store=MEMORY."),
+            new OpenConfigurationDrift(
+                "pragma query_only = on",
+                "SQLite connection failed to enforce the expected query_only setting."));
+
+    for (OpenConfigurationDrift driftCase : driftCases) {
+      assertOpenConfigurationFailure(driftCase.pragma(), driftCase.failureMessage());
+    }
   }
 
   @Test
@@ -4312,7 +4311,7 @@ class SqlitePostingFactStoreTest {
   }
 
   private static ListAccountsQuery firstAccountPage() {
-    return new ListAccountsQuery(50, 0);
+    return new ListAccountsQuery(50, Optional.empty());
   }
 
   @SafeVarargs
@@ -4368,4 +4367,7 @@ class SqlitePostingFactStoreTest {
   private interface ThrowingRunnable {
     void run() throws ReflectiveOperationException;
   }
+
+  /** One expected drift between enforced PRAGMA state and an injected hardening mutation. */
+  private record OpenConfigurationDrift(String pragma, String failureMessage) {}
 }

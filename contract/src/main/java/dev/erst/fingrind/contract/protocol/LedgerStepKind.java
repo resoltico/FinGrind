@@ -6,15 +6,15 @@ import java.util.Objects;
 
 /** Canonical wire kinds accepted for top-level ledger-plan steps. */
 public enum LedgerStepKind {
-  OPEN_BOOK(OperationId.OPEN_BOOK.wireName()),
-  DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT.wireName()),
-  PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY.wireName()),
-  POST_ENTRY(OperationId.POST_ENTRY.wireName()),
-  INSPECT_BOOK(OperationId.INSPECT_BOOK.wireName()),
-  LIST_ACCOUNTS(OperationId.LIST_ACCOUNTS.wireName()),
-  GET_POSTING(OperationId.GET_POSTING.wireName()),
-  LIST_POSTINGS(OperationId.LIST_POSTINGS.wireName()),
-  ACCOUNT_BALANCE(OperationId.ACCOUNT_BALANCE.wireName()),
+  OPEN_BOOK("open-book"),
+  DECLARE_ACCOUNT("declare-account"),
+  PREFLIGHT_ENTRY("preflight-entry"),
+  POST_ENTRY("post-entry"),
+  INSPECT_BOOK("inspect-book"),
+  LIST_ACCOUNTS("list-accounts"),
+  GET_POSTING("get-posting"),
+  LIST_POSTINGS("list-postings"),
+  ACCOUNT_BALANCE("account-balance"),
   ASSERT("assert");
 
   private final String wireValue;

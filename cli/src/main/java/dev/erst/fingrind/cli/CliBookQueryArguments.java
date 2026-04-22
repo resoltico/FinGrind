@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
@@ -81,7 +82,7 @@ final class CliBookQueryArguments {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments);
     Integer limit = null;
-    Integer offset = null;
+    @Nullable String cursor = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
@@ -97,15 +98,12 @@ final class CliBookQueryArguments {
                   CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.LIMIT),
                   ProtocolOptions.LIMIT);
         }
-        case ProtocolOptions.OFFSET -> {
-          if (offset != null) {
+        case ProtocolOptions.CURSOR -> {
+          if (cursor != null) {
             throw CliArgumentValueParser.invalid(
-                ProtocolOptions.OFFSET, "Duplicate argument: " + ProtocolOptions.OFFSET);
+                ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
           }
-          offset =
-              CliArgumentValueParser.parseIntegerOption(
-                  CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OFFSET),
-                  ProtocolOptions.OFFSET);
+          cursor = CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.CURSOR);
         }
         case ProtocolOptions.OUTPUT ->
             outputMode =
@@ -119,14 +117,12 @@ final class CliBookQueryArguments {
       }
     }
     int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
-    int resolvedOffset = offset == null ? ProtocolLimits.DEFAULT_PAGE_OFFSET : offset;
+    Optional<AccountPageCursor> resolvedCursor =
+        Optional.ofNullable(cursor).map(CliArgumentValueParser::accountPageCursor);
     return new CliCommand.ListAccounts(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
-            resolvedOffset < ProtocolLimits.PAGE_OFFSET_MIN
-                ? ProtocolOptions.OFFSET
-                : ProtocolOptions.LIMIT,
-            () -> new ListAccountsQuery(resolvedLimit, resolvedOffset)),
+            ProtocolOptions.LIMIT, () -> new ListAccountsQuery(resolvedLimit, resolvedCursor)),
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
@@ -218,10 +214,7 @@ final class CliBookQueryArguments {
     EffectiveDateRange resolvedEffectiveDateRange =
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_FROM,
-            () ->
-                EffectiveDateRange.of(
-                    Optional.ofNullable(resolvedEffectiveDateFrom),
-                    Optional.ofNullable(resolvedEffectiveDateTo)));
+            () -> EffectiveDateRange.of(resolvedEffectiveDateFrom, resolvedEffectiveDateTo));
     Optional<dev.erst.fingrind.contract.PostingPageCursor> resolvedPostingPageCursor =
         Optional.ofNullable(resolvedCursor).map(CliArgumentValueParser::postingPageCursor);
     return new CliCommand.ListPostings(

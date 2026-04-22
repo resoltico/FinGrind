@@ -36,11 +36,11 @@ final class ProtocolQueryOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.optionalLimitSyntax(),
-                ProtocolOptions.optionalOffsetSyntax(),
+                ProtocolOptions.optionalCursorSyntax(),
                 ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
             ExecutionMode.JSON_ENVELOPE,
             OutputMode.wireValues(),
-            "List one stable page of declared accounts in the selected book.",
+            "List one stable page of declared accounts in the selected book using keyset pagination.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
                     .formatted(

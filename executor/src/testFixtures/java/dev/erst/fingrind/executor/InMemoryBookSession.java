@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.CurrencyBalance;
@@ -164,11 +165,16 @@ public final class InMemoryBookSession
           List<DeclaredAccount> accounts =
               accountsByCode.values().stream()
                   .sorted(Comparator.comparing(account -> account.accountCode().value()))
+                  .filter(account -> matchesAccountCursor(account, query.cursor()))
                   .toList();
-          int start = Math.min(query.offset(), accounts.size());
-          int end = Math.min(start + query.limit(), accounts.size());
+          int end = Math.min(query.limit(), accounts.size());
+          List<DeclaredAccount> pageItems = accounts.subList(0, end);
           return new dev.erst.fingrind.contract.AccountPage(
-              accounts.subList(start, end), query.limit(), query.offset(), end < accounts.size());
+              pageItems,
+              query.limit(),
+              end < accounts.size()
+                  ? Optional.of(AccountPageCursor.fromAccount(pageItems.getLast()))
+                  : Optional.empty());
         });
   }
 
@@ -320,7 +326,8 @@ public final class InMemoryBookSession
     return withLock(
         () -> {
           EffectiveDateRange range =
-              EffectiveDateRange.of(query.effectiveDateFrom(), query.effectiveDateTo());
+              EffectiveDateRange.of(
+                  query.effectiveDateFrom().orElse(null), query.effectiveDateTo().orElse(null));
           List<PostingFact> orderedPostings =
               postingsByPostingId.values().stream()
                   .sorted(
@@ -532,6 +539,12 @@ public final class InMemoryBookSession
     java.time.LocalDate effectiveDate = postingFact.journalEntry().effectiveDate();
     return effectiveDateFrom.stream().allMatch(date -> !effectiveDate.isBefore(date))
         && effectiveDateTo.stream().allMatch(date -> !effectiveDate.isAfter(date));
+  }
+
+  private static boolean matchesAccountCursor(
+      DeclaredAccount account, Optional<AccountPageCursor> cursor) {
+    return cursor.isEmpty()
+        || account.accountCode().value().compareTo(cursor.orElseThrow().accountCode().value()) > 0;
   }
 
   private static boolean matchesCursor(

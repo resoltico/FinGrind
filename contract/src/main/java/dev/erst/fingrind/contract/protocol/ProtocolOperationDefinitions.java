@@ -67,15 +67,11 @@ final class ProtocolOperationDefinitions {
     return new ProtocolOperation(
         definition.id(),
         definition.category(),
-        definition.displayLabel(),
-        definition.aliases(),
-        definition.options(),
-        definition.executionMode(),
-        definition.outputModes(),
-        definition.artifactOutputs(),
-        usage,
-        definition.analysisSummary(),
-        definition.examples());
+        new ProtocolCommandSignature(
+            definition.displayLabel(), definition.aliases(), definition.options(), usage),
+        new ProtocolOperationOutputs(
+            definition.executionMode(), definition.outputModes(), definition.artifactOutputs()),
+        new ProtocolOperationDocumentation(definition.analysisSummary(), definition.examples()));
   }
 
   private static String usageOption(String option) {

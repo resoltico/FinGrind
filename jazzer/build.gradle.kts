@@ -1,5 +1,5 @@
 plugins {
-    id("fingrind.jazzer-conventions")
+    id("dev.erst.fingrind.jazzer-conventions")
 }
 
 dependencies {

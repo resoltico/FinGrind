@@ -11,16 +11,22 @@ import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.ApplicationIdentity;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.ContractDiscovery;
+import dev.erst.fingrind.contract.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.EffectiveDateRange;
+import dev.erst.fingrind.contract.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.GetPostingResult;
+import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
@@ -42,9 +48,11 @@ import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.VersionDescriptor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -419,12 +427,122 @@ class CliResponseWriterTest {
   }
 
   @Test
+  void outputChannel_serializesProjectEnumsUsingWireValue() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+
+    outputChannel.writeJson(new EnumPayload(OutputMode.JSON, NormalBalance.DEBIT));
+
+    JsonNode json = readJson(outputStream);
+    assertEquals("json", json.path("outputMode").asText());
+    assertEquals("DEBIT", json.path("normalBalance").asText());
+  }
+
+  @Test
+  void outputChannel_serializesNonProjectEnumsUsingEnumName() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+
+    outputChannel.writeJson(new ExternalEnumPayload(Thread.State.RUNNABLE));
+
+    JsonNode json = readJson(outputStream);
+    assertEquals("RUNNABLE", json.path("state").asText());
+  }
+
+  @Test
+  void outputChannel_rejectsProjectEnumsWithoutWireValue() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> outputChannel.writeJson(new MissingWireValuePayload(MissingWireValue.UNSAFE)));
+
+    assertTrue(exception.getMessage().contains("must declare wireValue()"));
+  }
+
+  @Test
+  void outputChannel_rejectsBlankProjectEnumWireValues() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+    assertEquals(" ", CliBlankWireValueFixture.UNSAFE.wireValue());
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                outputChannel.writeJson(
+                    new BlankWireValuePayload(CliBlankWireValueFixture.UNSAFE)));
+
+    assertTrue(exception.getMessage().contains("must return a non-blank String"));
+  }
+
+  @Test
+  void outputChannel_rejectsNonStringProjectEnumWireValues() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+    assertEquals(Integer.valueOf(7), CliNonStringWireValueFixture.UNSAFE.wireValue());
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                outputChannel.writeJson(
+                    new NonStringWireValuePayload(CliNonStringWireValueFixture.UNSAFE)));
+
+    assertTrue(exception.getMessage().contains("must return a non-blank String"));
+  }
+
+  @Test
+  void outputChannel_rejectsProjectEnumsWhenWireValueResolutionThrows() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+    assertThrows(
+        UnsupportedOperationException.class, () -> CliExplodingWireValueFixture.UNSAFE.wireValue());
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                outputChannel.writeJson(
+                    new ExplodingWireValuePayload(CliExplodingWireValueFixture.UNSAFE)));
+
+    assertTrue(exception.getMessage().contains("Failed to resolve CLI JSON wireValue()"));
+    assertTrue(causeChainContains(exception, "boom"));
+  }
+
+  @Test
+  void outputChannel_preservesUnrelatedIllegalStateFailures() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+
+    RuntimeException exception =
+        assertThrows(RuntimeException.class, () -> outputChannel.writeJson(new ExplodingGetter()));
+
+    assertFalse(exception instanceof IllegalStateException);
+    assertTrue(causeChainContains(exception, "boom"));
+  }
+
+  @Test
+  void outputChannel_preservesNullMessageIllegalStateFailures() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class, () -> outputChannel.writeJson(new ExplodingGetter(true, null)));
+
+    assertFalse(exception instanceof IllegalStateException);
+  }
+
+  @Test
   void writeVersion_writesOkEnvelope() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
     responseWriter.writeVersion(
-        new ContractDiscovery.VersionDescriptor(
+        new VersionDescriptor(
             "FinGrind",
             "0.9.0",
             "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"));
@@ -436,15 +554,15 @@ class CliResponseWriterTest {
 
   @Test
   void writeHelp_supportsJsonAndHumanButRejectsCsv() throws IOException {
-    ContractDiscovery.HelpDescriptor helpDescriptor =
+    HelpDescriptor helpDescriptor =
         MachineContract.help(
-            new ContractDiscovery.ApplicationIdentity(
+            new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             environmentDescriptor(
                 "self-contained-bundle",
-                ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "loaded",
                 "3.53.0",
                 "2.3.3",
@@ -473,13 +591,13 @@ class CliResponseWriterTest {
 
     responseWriter.writeCapabilities(
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity(
+            new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             environmentDescriptor(
                 "container-image",
-                ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                 "unavailable",
                 null,
                 null,
@@ -512,15 +630,15 @@ class CliResponseWriterTest {
 
   @Test
   void writeCapabilities_supportsHumanButRejectsCsv() {
-    ContractDiscovery.CapabilitiesDescriptor capabilities =
+    CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity(
+            new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             environmentDescriptor(
                 "self-contained-bundle",
-                ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "loaded",
                 "3.53.0",
                 "2.3.3",
@@ -541,8 +659,8 @@ class CliResponseWriterTest {
 
   @Test
   void writeVersion_supportsHumanButRejectsCsv() {
-    ContractDiscovery.VersionDescriptor versionDescriptor =
-        new ContractDiscovery.VersionDescriptor(
+    VersionDescriptor versionDescriptor =
+        new VersionDescriptor(
             "FinGrind",
             "0.9.0",
             "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
@@ -749,7 +867,7 @@ class CliResponseWriterTest {
     CliResponseWriter listSuccessWriter = new CliResponseWriter(utf8PrintStream(listSuccessOutput));
     listSuccessWriter.writeListAccountsResult(
         new ListAccountsResult.Listed(
-            new AccountPage(java.util.List.of(declaredAccount), 50, 0, false)));
+            new AccountPage(java.util.List.of(declaredAccount), 50, java.util.Optional.empty())));
 
     String declareSuccessJson = declareSuccessOutput.toString(StandardCharsets.UTF_8);
     assertTrue(declareSuccessJson.contains("\"accountName\":\"Cash\""));
@@ -757,8 +875,7 @@ class CliResponseWriterTest {
 
     String listSuccessJson = listSuccessOutput.toString(StandardCharsets.UTF_8);
     assertTrue(listSuccessJson.contains("\"limit\":50"));
-    assertTrue(listSuccessJson.contains("\"offset\":0"));
-    assertTrue(listSuccessJson.contains("\"hasMore\":false"));
+    assertFalse(listSuccessJson.contains("\"nextCursor\""));
     assertTrue(listSuccessJson.contains("\"accountName\":\"Cash\""));
 
     ByteArrayOutputStream declareRejectionOutput = new ByteArrayOutputStream();
@@ -967,9 +1084,7 @@ class CliResponseWriterTest {
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
             declaredCashAccount(),
-            EffectiveDateRange.of(
-                Optional.of(LocalDate.parse("2026-04-01")),
-                Optional.of(LocalDate.parse("2026-04-30"))),
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
             List.of(
                 new AccountLedgerEntry(
@@ -1201,23 +1316,22 @@ class CliResponseWriterTest {
     return new PrintStream(outputStream, false, StandardCharsets.UTF_8);
   }
 
-  private static ContractDiscovery.EnvironmentDescriptor environmentDescriptor(
+  private static EnvironmentDescriptor environmentDescriptor(
       String runtimeDistribution,
-      ContractDiscovery.SqliteCompileOptionsVerificationStatus compileOptionsVerification,
+      SqliteCompileOptionsVerificationStatus compileOptionsVerification,
       String state,
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
       String diagnostics) {
-    return new ContractDiscovery.EnvironmentDescriptor(
-        new ContractDiscovery.EnvironmentDistributionDescriptor(
+    return new EnvironmentDescriptor(
+        new EnvironmentDistributionDescriptor(
             runtimeDistribution,
             "self-contained-bundle",
             ProtocolCatalog.supportedPublicCliBundleTargets(),
             ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new ContractDiscovery.EnvironmentStorageDescriptor(
-            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
-        new ContractDiscovery.EnvironmentSqliteDescriptor(
+        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentSqliteDescriptor(
             "managed-only",
             "FINGRIND_SQLITE_LIBRARY",
             "fingrind.bundle.home",
@@ -1274,6 +1388,67 @@ class CliResponseWriterTest {
     List<String> values = new java.util.ArrayList<>();
     node.forEach(element -> values.add(element.asText()));
     return List.copyOf(values);
+  }
+
+  private static boolean causeChainContains(Throwable exception, String text) {
+    Throwable current = exception;
+    while (current != null) {
+      String message = current.getMessage();
+      if (message != null && message.contains(text)) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  /** Mixed project-enum payload used to verify stable JSON wire values. */
+  private record EnumPayload(OutputMode outputMode, NormalBalance normalBalance) {}
+
+  /** Non-project enum payload used to verify fallback enum serialization. */
+  private record ExternalEnumPayload(Thread.State state) {}
+
+  /** Payload whose enum omits wireValue() to verify explicit enforcement. */
+  private record MissingWireValuePayload(MissingWireValue value) {}
+
+  /** Payload whose enum returns blank wire text to verify validation. */
+  private record BlankWireValuePayload(CliBlankWireValueFixture value) {}
+
+  /** Payload whose enum throws during wireValue() resolution. */
+  private record ExplodingWireValuePayload(CliExplodingWireValueFixture value) {}
+
+  /** Payload whose enum returns a non-string wire value to verify validation. */
+  private record NonStringWireValuePayload(CliNonStringWireValueFixture value) {}
+
+  /** Test-only enum that intentionally omits wireValue() to verify CLI JSON enforcement. */
+  private enum MissingWireValue {
+    UNSAFE
+  }
+
+  /** Value whose accessor throws so unrelated serializer failures are not rewritten. */
+  private static final class ExplodingGetter {
+    private final boolean explode;
+    private final String failureMessage;
+
+    ExplodingGetter() {
+      this(true, "boom");
+    }
+
+    private ExplodingGetter(boolean explode, String failureMessage) {
+      this.explode = explode;
+      this.failureMessage = failureMessage;
+    }
+
+    @JsonProperty("value")
+    String value() {
+      if (explode) {
+        if (failureMessage == null) {
+          throw new IllegalStateException();
+        }
+        throw new IllegalStateException(failureMessage);
+      }
+      return "safe";
+    }
   }
 
   /** Deliberately self-referential value used to force a serializer failure. */

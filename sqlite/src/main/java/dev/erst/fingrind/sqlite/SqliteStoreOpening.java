@@ -37,7 +37,7 @@ enum SqliteStoreOpening {
 
     ContractDecision<SqlitePostingFactStore> prime() {
       return store()
-          .lifecycle()
+          .context()
           .prime()
           .fold(ignored -> ContractDecision.accepted(release()), ContractDecision::rejected);
     }

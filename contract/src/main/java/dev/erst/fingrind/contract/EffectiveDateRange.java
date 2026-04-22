@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Structurally typed effective-date filter shared by read models and ledger assertions. */
 public sealed interface EffectiveDateRange
@@ -17,19 +18,17 @@ public sealed interface EffectiveDateRange
   /** Returns the optional upper bound of this date range. */
   Optional<LocalDate> effectiveDateTo();
 
-  /** Builds the canonical date range for the supplied optional bounds. */
+  /** Builds the canonical date range for the supplied nullable bounds. */
   static EffectiveDateRange of(
-      Optional<LocalDate> effectiveDateFrom, Optional<LocalDate> effectiveDateTo) {
-    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    if (effectiveDateFrom.isPresent() && effectiveDateTo.isPresent()) {
-      return new Bounded(effectiveDateFrom.orElseThrow(), effectiveDateTo.orElseThrow());
+      @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
+    if (effectiveDateFrom != null && effectiveDateTo != null) {
+      return new Bounded(effectiveDateFrom, effectiveDateTo);
     }
-    if (effectiveDateFrom.isPresent()) {
-      return new From(effectiveDateFrom.orElseThrow());
+    if (effectiveDateFrom != null) {
+      return new From(effectiveDateFrom);
     }
-    if (effectiveDateTo.isPresent()) {
-      return new To(effectiveDateTo.orElseThrow());
+    if (effectiveDateTo != null) {
+      return new To(effectiveDateTo);
     }
     return Unbounded.INSTANCE;
   }

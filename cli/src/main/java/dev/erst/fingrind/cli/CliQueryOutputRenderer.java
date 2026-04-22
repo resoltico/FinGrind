@@ -15,35 +15,35 @@ final class CliQueryOutputRenderer {
   private CliQueryOutputRenderer() {}
 
   static String renderBookInspectionHuman(Path bookFilePath, BookInspection inspection) {
-    return CliBookQueryOutputRenderer.renderBookInspectionHuman(bookFilePath, inspection);
+    return CliBookInspectionOutputRenderer.renderHuman(bookFilePath, inspection);
   }
 
   static String renderAccountsHuman(AccountPage page) {
-    return CliBookQueryOutputRenderer.renderAccountsHuman(page);
+    return CliAccountPageOutputRenderer.renderHuman(page);
   }
 
   static String renderAccountsCsv(AccountPage page) {
-    return CliBookQueryOutputRenderer.renderAccountsCsv(page);
+    return CliAccountPageOutputRenderer.renderCsv(page);
   }
 
   static String renderPostingHuman(PostingFact postingFact) {
-    return CliBookQueryOutputRenderer.renderPostingHuman(postingFact);
+    return CliPostingOutputRenderer.renderPostingHuman(postingFact);
   }
 
   static String renderPostingRegisterHuman(PostingPage page) {
-    return CliBookQueryOutputRenderer.renderPostingRegisterHuman(page);
+    return CliPostingOutputRenderer.renderPostingRegisterHuman(page);
   }
 
   static String renderPostingRegisterCsv(PostingPage page) {
-    return CliBookQueryOutputRenderer.renderPostingRegisterCsv(page);
+    return CliPostingOutputRenderer.renderPostingRegisterCsv(page);
   }
 
   static String renderAccountBalanceHuman(AccountBalanceSnapshot snapshot) {
-    return CliBookQueryOutputRenderer.renderAccountBalanceHuman(snapshot);
+    return CliAccountBalanceOutputRenderer.renderHuman(snapshot);
   }
 
   static String renderAccountBalanceCsv(AccountBalanceSnapshot snapshot) {
-    return CliBookQueryOutputRenderer.renderAccountBalanceCsv(snapshot);
+    return CliAccountBalanceOutputRenderer.renderCsv(snapshot);
   }
 
   static String renderTrialBalanceHuman(TrialBalanceReport report) {

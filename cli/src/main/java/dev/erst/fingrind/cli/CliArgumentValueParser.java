@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -67,6 +68,19 @@ final class CliArgumentValueParser {
           ProtocolOptions.CURSOR,
           Objects.requireNonNullElse(exception.getMessage(), "Unsupported posting page cursor."),
           CliOperationText.listPostingsCursorRepairHint(),
+          exception);
+    }
+  }
+
+  static AccountPageCursor accountPageCursor(String wireValue) {
+    try {
+      return AccountPageCursor.fromWireValue(wireValue);
+    } catch (IllegalArgumentException exception) {
+      throw new CliArgumentsException(
+          ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
+          ProtocolOptions.CURSOR,
+          Objects.requireNonNullElse(exception.getMessage(), "Unsupported account page cursor."),
+          CliOperationText.listAccountsCursorRepairHint(),
           exception);
     }
   }

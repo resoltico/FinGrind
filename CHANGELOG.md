@@ -5,6 +5,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-04-22
+
+### Changed
+- Switched `list-accounts` to the same opaque cursor-based keyset pagination model already used by
+  `list-postings`, so account-registry reads now accept `--cursor` and return `nextCursor`
+  instead of the older `offset` / `hasMore` paging shape.
+- Refreshed release-critical dependencies on the shipped build and container paths, including
+  NullAway `0.13.4` and Alpine `3.23`.
+
+### Fixed
+- Corrected the release/bootstrap documentation and generated bundle metadata so the documented
+  required GitHub checks, release-workflow lookup commands, shipped legal files, Windows launcher
+  inventory, and patent notes now match the actual current CI, bundle, and dependency surfaces.
+- The release closeout protocol is now executable instead of prose-only. FinGrind now ships
+  `scripts/verify-release-primary-checkout.sh`, a dedicated shell regression for it, and updated
+  release docs/check wiring so releasing from a disposable worktree cannot quietly leave the
+  primary checkout behind `origin/main` with stale version-bearing files and misleading overlays.
+- Hardened the live release procedure further so it now explicitly handles in-place release
+  candidates, re-runs the full gate after version sweeps, and refreshes sibling dependency-PR
+  state after each merge instead of relying on stale GitHub mergeability snapshots.
+- Reworked the protocol/build internals around canonical build metadata, explicit discovery
+  descriptor types, and narrower CLI/SQLite seams, and refreshed the checked-in docs/examples so
+  the published developer and machine-facing guidance matches the current runtime and paging
+  contracts.
+
 ## [0.21.0] - 2026-04-22
 
 ### Changed
@@ -698,7 +723,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.22.0
 [0.21.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.21.0
 [0.20.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.20.0
 [0.19.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.19.0

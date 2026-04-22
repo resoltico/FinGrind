@@ -26,8 +26,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
             val topology = JazzerTopology.load(this)
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
-            val fingrindJavaVersion =
-                providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
+            val buildMetadata = FinGrindBuildMetadata.load(this)
+            val fingrindJavaVersion = buildMetadata.javaVersion
             val jazzerMaxDuration = providers.gradleProperty("jazzerMaxDuration").orNull
             val jazzerMaxExecutions = providers.gradleProperty("jazzerMaxExecutions").orNull
             val sourcePolicyTask = registerJavaSourcePolicyTask()

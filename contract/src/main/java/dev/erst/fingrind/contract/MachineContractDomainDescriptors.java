@@ -28,24 +28,23 @@ final class MachineContractDomainDescriptors {
         bookModel.currencyScope());
   }
 
-  static List<ContractDiscovery.CommandDescriptor> commandDescriptors() {
+  static List<CommandDescriptor> commandDescriptors() {
     return ProtocolCatalog.operations().stream()
         .map(MachineContractDomainDescriptors::commandDescriptor)
         .toList();
   }
 
-  static List<ContractDiscovery.ExitCodeDescriptor> exitCodes() {
+  static List<ExitCodeDescriptor> exitCodes() {
     return List.of(
-        new ContractDiscovery.ExitCodeDescriptor(0, "successful command"),
-        new ContractDiscovery.ExitCodeDescriptor(1, "invalid invocation or malformed request"),
-        new ContractDiscovery.ExitCodeDescriptor(
-            2, "deterministic refusal after the command was understood"),
-        new ContractDiscovery.ExitCodeDescriptor(
+        new ExitCodeDescriptor(0, "successful command"),
+        new ExitCodeDescriptor(1, "invalid invocation or malformed request"),
+        new ExitCodeDescriptor(2, "deterministic refusal after the command was understood"),
+        new ExitCodeDescriptor(
             3,
             "valid "
                 + ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN)
                 + " request whose assertion step failed"),
-        new ContractDiscovery.ExitCodeDescriptor(4, "runtime or environment failure"));
+        new ExitCodeDescriptor(4, "runtime or environment failure"));
   }
 
   static ContractResponse.AuditDescriptor audit() {
@@ -138,9 +137,8 @@ final class MachineContractDomainDescriptors {
         facts.transactionMode(), facts.failurePolicy(), facts.journal(), facts.hardLimitations());
   }
 
-  private static ContractDiscovery.CommandDescriptor commandDescriptor(
-      ProtocolOperation operation) {
-    return new ContractDiscovery.CommandDescriptor(
+  private static CommandDescriptor commandDescriptor(ProtocolOperation operation) {
+    return new CommandDescriptor(
         operation.id().wireName(),
         operation.aliases(),
         operation.options(),
@@ -149,7 +147,7 @@ final class MachineContractDomainDescriptors {
         operation.artifactOutputs().stream()
             .map(
                 artifact ->
-                    new ContractDiscovery.ArtifactOutputDescriptor(
+                    new ArtifactOutputDescriptor(
                         artifact.format(), artifact.option(), artifact.description()))
             .toList(),
         operation.analysisSummary());

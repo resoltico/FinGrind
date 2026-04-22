@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
@@ -17,11 +18,11 @@ import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractDiscovery;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.GetPostingResult;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
@@ -43,6 +44,7 @@ import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.TrialBalanceResult;
@@ -265,7 +267,7 @@ class FinGrindCliTest {
 
   @Test
   void environmentDescriptor_reportsUnavailableRuntimeWhenSqliteProbeFails() {
-    ContractDiscovery.EnvironmentDescriptor environmentDescriptor =
+    EnvironmentDescriptor environmentDescriptor =
         FinGrindCli.environmentDescriptor(
             new SqliteRuntime.Probe(
                 "managed-only",
@@ -302,7 +304,7 @@ class FinGrindCliTest {
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         environmentDescriptor.sqlite().requiredCompileOptions());
     assertEquals(
-        ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
         environmentDescriptor.sqlite().compileOptionsVerification());
     assertEquals("3.53.0", environmentDescriptor.sqlite().requiredMinimumSqliteVersion());
     assertEquals("2.3.3", environmentDescriptor.sqlite().requiredSqlite3mcVersion());
@@ -547,7 +549,8 @@ class FinGrindCliTest {
         new CliCommand.InspectBook(bookAccess, OutputMode.HUMAN).failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
-        new CliCommand.ListAccounts(bookAccess, new ListAccountsQuery(20, 0), OutputMode.HUMAN)
+        new CliCommand.ListAccounts(
+                bookAccess, new ListAccountsQuery(20, Optional.empty()), OutputMode.HUMAN)
             .failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
@@ -557,16 +560,14 @@ class FinGrindCliTest {
         OutputMode.HUMAN,
         new CliCommand.ListPostings(
                 bookAccess,
-                new ListPostingsQuery(
-                    Optional.empty(), Optional.empty(), Optional.empty(), 20, Optional.empty()),
+                new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()),
                 OutputMode.HUMAN)
             .failureOutputMode());
     assertEquals(
         OutputMode.HUMAN,
         new CliCommand.AccountBalance(
                 bookAccess,
-                new AccountBalanceQuery(
-                    new AccountCode("1000"), Optional.empty(), Optional.empty()),
+                new AccountBalanceQuery(new AccountCode("1000"), null, null),
                 humanReport)
             .failureOutputMode());
     assertEquals(
@@ -578,7 +579,7 @@ class FinGrindCliTest {
         OutputMode.HUMAN,
         new CliCommand.AccountLedger(
                 bookAccess,
-                new AccountLedgerQuery(new AccountCode("1000"), Optional.empty(), Optional.empty()),
+                new AccountLedgerQuery(new AccountCode("1000"), null, null),
                 humanReport)
             .failureOutputMode());
     assertEquals(
@@ -1130,6 +1131,7 @@ class FinGrindCliTest {
         writeNamedRequest("declare.json", declareAccountJson("1000", "Cash", "DEBIT"));
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
+    AccountPageCursor accountCursor = new AccountPageCursor(new AccountCode("1000"));
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
@@ -1151,8 +1153,7 @@ class FinGrindCliTest {
                             true,
                             Instant.parse("2026-04-07T12:00:00Z"))),
                     25,
-                    10,
-                    false)),
+                    Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -1202,8 +1203,8 @@ class FinGrindCliTest {
               bookKeyFilePath.toString(),
               "--limit",
               "25",
-              "--offset",
-              "10"
+              "--cursor",
+              accountCursor.wireValue()
             }));
     assertEquals(
         0,
@@ -1247,7 +1248,9 @@ class FinGrindCliTest {
         List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.declareAccountAccesses());
     assertEquals(
         List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.listAccountAccesses());
-    assertEquals(List.of(new ListAccountsQuery(25, 10)), workflow.listAccountQueries());
+    assertEquals(
+        List.of(new ListAccountsQuery(25, Optional.of(accountCursor))),
+        workflow.listAccountQueries());
     assertEquals(List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.preflightAccesses());
     assertEquals(List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.commitAccesses());
     assertEquals(
@@ -1553,7 +1556,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -1606,7 +1609,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -2233,7 +2236,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -2285,7 +2288,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -2337,7 +2340,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -2394,7 +2397,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(
@@ -2444,7 +2447,7 @@ class FinGrindCliTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, 0, false)),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
             new PostEntryResult.PreflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             new PostEntryResult.Committed(

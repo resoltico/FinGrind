@@ -66,8 +66,8 @@ class ReportingContractTypesTest {
     AccountLedgerQuery accountLedgerQuery =
         new AccountLedgerQuery(
             CASH_ACCOUNT.accountCode(),
-            Optional.of(LocalDate.parse("2026-04-01")),
-            Optional.of(LocalDate.parse("2026-04-30")));
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"));
     AccountLedgerEntry accountLedgerEntry =
         new AccountLedgerEntry(
             postingFact("posting-1", "idem-1"),
@@ -104,7 +104,7 @@ class ReportingContractTypesTest {
         new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized());
 
     ListAccountsResult.Listed listedAccounts =
-        new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, 0, false));
+        new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     ListAccountsResult.Rejected rejectedAccounts =
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized());
     GetPostingResult.Found foundPosting =
@@ -183,7 +183,7 @@ class ReportingContractTypesTest {
         () -> new AccountLedgerQuery(null, EffectiveDateRange.unbounded()));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), null, Optional.empty()));
+        () -> new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), (EffectiveDateRange) null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -264,7 +264,7 @@ class ReportingContractTypesTest {
 
     AtomicInteger foldCounter = new AtomicInteger();
     ListAccountsResult.Listed listedAccounts =
-        new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, 0, false));
+        new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     listedAccounts.fold(
         ignored -> {
           foldCounter.incrementAndGet();
@@ -345,16 +345,10 @@ class ReportingContractTypesTest {
     assertEquals(
         ContractResponse.CommitGuarantee.NOT_GUARANTEED,
         ContractResponse.CommitGuarantee.fromGuaranteed(false));
-    assertEquals(
-        "verified", ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED.wireValue());
-    assertEquals(
-        "verified", ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED.toString());
-    assertEquals(
-        "not-verified",
-        ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.wireValue());
-    assertEquals(
-        "not-verified",
-        ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.toString());
+    assertEquals("verified", SqliteCompileOptionsVerificationStatus.VERIFIED.wireValue());
+    assertEquals("verified", SqliteCompileOptionsVerificationStatus.VERIFIED.toString());
+    assertEquals("not-verified", SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.wireValue());
+    assertEquals("not-verified", SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.toString());
   }
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {

@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** First-class assertions an AI agent can include in a ledger plan. */
 public sealed interface LedgerAssertion
@@ -72,11 +73,11 @@ public sealed interface LedgerAssertion
       Objects.requireNonNull(balanceSide, "balanceSide");
     }
 
-    /** Compatibility constructor that lifts optional bounds into a typed range. */
+    /** Convenience constructor that lifts nullable bounds into a typed range. */
     public AccountBalanceEquals(
         AccountCode accountCode,
-        Optional<LocalDate> effectiveDateFrom,
-        Optional<LocalDate> effectiveDateTo,
+        @Nullable LocalDate effectiveDateFrom,
+        @Nullable LocalDate effectiveDateTo,
         Money netAmount,
         BalanceSide balanceSide) {
       this(

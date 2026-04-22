@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostingFact;
@@ -102,8 +103,7 @@ final class CliBookPayloadMapper {
   static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
     return new CliBookQueryJsonModels.AccountListPayload(
         page.limit(),
-        page.offset(),
-        page.hasMore(),
+        page.nextCursor().map(AccountPageCursor::wireValue).orElse(null),
         page.accounts().stream().map(CliBookPayloadMapper::accountPayload).toList());
   }
 

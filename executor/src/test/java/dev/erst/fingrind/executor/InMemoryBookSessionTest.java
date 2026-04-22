@@ -97,9 +97,8 @@ class InMemoryBookSessionTest {
                       true,
                       FIXED_INSTANT)),
               50,
-              0,
-              false),
-          bookSession.listAccounts(new ListAccountsQuery(50, 0)));
+              Optional.empty()),
+          bookSession.listAccounts(new ListAccountsQuery(50, Optional.empty())));
     }
   }
 

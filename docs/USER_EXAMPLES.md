@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: USER_EXAMPLES
 updated: "2026-04-22"
 route:
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.21.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.21.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.22.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.22.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -134,12 +134,22 @@ fingrind \
   list-accounts \
   --book-file ./acme.sqlite \
   --book-key-file ./acme.book-key \
-  --limit 50 \
-  --offset 0
+  --limit 1
 ```
 
 One successful paged response is checked in at
 [examples/list-accounts-response.json](./examples/list-accounts-response.json).
+If that response includes `payload.nextCursor`, pass the opaque value back through `--cursor` to
+continue from the prior page without offset scans:
+
+```bash
+fingrind \
+  list-accounts \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --limit 1 \
+  --cursor "<nextCursor-from-the-prior-page>"
+```
 
 ## Preflight And Commit One Entry
 

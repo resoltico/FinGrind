@@ -37,7 +37,7 @@ class ContractNormalizationTest {
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"), 1, 2, 1, null, null);
     AccountBalanceSnapshot accountBalanceSnapshot =
         new AccountBalanceSnapshot(CASH_ACCOUNT, Optional.empty(), Optional.empty(), null);
-    AccountPage accountPage = new AccountPage(null, 50, 0, false);
+    AccountPage accountPage = new AccountPage(null, 50, Optional.empty());
     PostingPage postingPage = new PostingPage(null, 10, Optional.empty());
     LedgerStepFailure failure = new LedgerStepFailure("rejected", "Rejected.", null);
 
@@ -69,14 +69,11 @@ class ContractNormalizationTest {
 
   @Test
   void exitCodeDescriptors_rejectNegativeCodes() {
-    ContractDiscovery.ExitCodeDescriptor exitCode =
-        new ContractDiscovery.ExitCodeDescriptor(0, "success");
+    ExitCodeDescriptor exitCode = new ExitCodeDescriptor(0, "success");
 
     assertEquals(0, exitCode.code());
     assertEquals("success", exitCode.meaning());
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new ContractDiscovery.ExitCodeDescriptor(-1, "invalid"));
+    assertThrows(IllegalArgumentException.class, () -> new ExitCodeDescriptor(-1, "invalid"));
   }
 
   @Test

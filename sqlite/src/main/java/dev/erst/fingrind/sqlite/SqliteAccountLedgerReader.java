@@ -66,8 +66,7 @@ final class SqliteAccountLedgerReader {
     return postingReader
         .accountBalance(
             activeDatabase,
-            new AccountBalanceQuery(
-                account.accountCode(), Optional.empty(), Optional.of(lowerBound.minusDays(1))),
+            new AccountBalanceQuery(account.accountCode(), null, lowerBound.minusDays(1)),
             account)
         .balances();
   }
@@ -78,7 +77,7 @@ final class SqliteAccountLedgerReader {
         .accountBalance(
             activeDatabase,
             new AccountBalanceQuery(
-                account.accountCode(), Optional.empty(), query.effectiveDateTo()),
+                account.accountCode(), null, query.effectiveDateTo().orElse(null)),
             account)
         .balances();
   }

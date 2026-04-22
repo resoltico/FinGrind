@@ -38,17 +38,13 @@ import org.junit.jupiter.api.Test;
 @NullUnmarked
 class BookQueryModelTest {
   @Test
-  void accountBalanceQuery_rejectsNullOptionalsAndRejectsDescendingDateRange() {
-    AccountBalanceQuery query =
-        new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty());
+  void accountBalanceQuery_acceptsNullableBoundsAndRejectsDescendingDateRange() {
+    AccountBalanceQuery query = new AccountBalanceQuery(new AccountCode("1000"), null, null);
     AccountBalanceQuery lowerBoundedQuery =
-        new AccountBalanceQuery(
-            new AccountCode("1000"), Optional.of(LocalDate.parse("2026-04-08")), Optional.empty());
+        new AccountBalanceQuery(new AccountCode("1000"), LocalDate.parse("2026-04-08"), null);
     AccountBalanceQuery orderedRangeQuery =
         new AccountBalanceQuery(
-            new AccountCode("1000"),
-            Optional.of(LocalDate.parse("2026-04-08")),
-            Optional.of(LocalDate.parse("2026-04-09")));
+            new AccountCode("1000"), LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09"));
 
     assertTrue(query.effectiveDateFrom().isEmpty());
     assertTrue(query.effectiveDateTo().isEmpty());
@@ -56,45 +52,39 @@ class BookQueryModelTest {
     assertTrue(lowerBoundedQuery.effectiveDateTo().isEmpty());
     assertEquals(Optional.of(LocalDate.parse("2026-04-09")), orderedRangeQuery.effectiveDateTo());
     assertThrows(
-        NullPointerException.class,
-        () -> new AccountBalanceQuery(new AccountCode("1000"), nullOptional(), Optional.empty()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), nullOptional()));
-    assertThrows(
         IllegalArgumentException.class,
         () ->
             new AccountBalanceQuery(
                 new AccountCode("1000"),
-                Optional.of(LocalDate.parse("2026-04-09")),
-                Optional.of(LocalDate.parse("2026-04-08"))));
+                LocalDate.parse("2026-04-09"),
+                LocalDate.parse("2026-04-08")));
+    assertThrows(
+        NullPointerException.class,
+        () -> new AccountBalanceQuery(new AccountCode("1000"), (EffectiveDateRange) null));
   }
 
   @Test
   void listAccountsQuery_validatesBounds() {
-    assertEquals(new ListAccountsQuery(50, 0), new ListAccountsQuery(50, 0));
-    assertThrows(IllegalArgumentException.class, () -> new ListAccountsQuery(0, 0));
-    assertThrows(IllegalArgumentException.class, () -> new ListAccountsQuery(201, 0));
-    assertThrows(IllegalArgumentException.class, () -> new ListAccountsQuery(1, -1));
+    assertEquals(
+        new ListAccountsQuery(50, Optional.empty()), new ListAccountsQuery(50, Optional.empty()));
+    assertThrows(IllegalArgumentException.class, () -> new ListAccountsQuery(0, Optional.empty()));
+    assertThrows(
+        IllegalArgumentException.class, () -> new ListAccountsQuery(201, Optional.empty()));
+    assertThrows(NullPointerException.class, () -> new ListAccountsQuery(1, nullOptional()));
   }
 
   @Test
-  void listPostingsQuery_rejectsNullOptionalsAndValidatesBounds() {
+  void listPostingsQuery_rejectsNullCursorAndValidatesBounds() {
     ListPostingsQuery query =
-        new ListPostingsQuery(
-            Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty());
+        new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty());
     ListPostingsQuery lowerBoundedQuery =
         new ListPostingsQuery(
-            Optional.empty(),
-            Optional.of(LocalDate.parse("2026-04-08")),
-            Optional.empty(),
-            50,
-            Optional.empty());
+            Optional.empty(), LocalDate.parse("2026-04-08"), null, 50, Optional.empty());
     ListPostingsQuery orderedRangeQuery =
         new ListPostingsQuery(
             Optional.empty(),
-            Optional.of(LocalDate.parse("2026-04-08")),
-            Optional.of(LocalDate.parse("2026-04-09")),
+            LocalDate.parse("2026-04-08"),
+            LocalDate.parse("2026-04-09"),
             50,
             Optional.empty());
 
@@ -110,51 +100,48 @@ class BookQueryModelTest {
         NullPointerException.class,
         () ->
             new ListPostingsQuery(
-                nullOptional(), Optional.empty(), Optional.empty(), 1, Optional.empty()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new ListPostingsQuery(
-                Optional.empty(), nullOptional(), Optional.empty(), 1, Optional.empty()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new ListPostingsQuery(
-                Optional.empty(), Optional.empty(), nullOptional(), 1, Optional.empty()));
+                nullOptional(), EffectiveDateRange.unbounded(), 1, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new ListPostingsQuery(
-                Optional.empty(), Optional.empty(), Optional.empty(), 0, Optional.empty()));
+        () -> new ListPostingsQuery(Optional.empty(), null, null, 0, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new ListPostingsQuery(
-                Optional.empty(), Optional.empty(), Optional.empty(), 201, Optional.empty()));
+        () -> new ListPostingsQuery(Optional.empty(), null, null, 201, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new ListPostingsQuery(
-                Optional.empty(), Optional.empty(), Optional.empty(), 1, nullOptional()));
+        () -> new ListPostingsQuery(Optional.empty(), null, null, 1, nullOptional()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ListPostingsQuery(
                 Optional.empty(),
-                Optional.of(LocalDate.parse("2026-04-09")),
-                Optional.of(LocalDate.parse("2026-04-08")),
+                LocalDate.parse("2026-04-09"),
+                LocalDate.parse("2026-04-08"),
                 1,
                 Optional.empty()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ListPostingsQuery(
+                Optional.empty(), (EffectiveDateRange) null, 1, Optional.empty()));
   }
 
   @Test
   void accountAndPostingPages_copyPayloadsAndValidateBounds() {
     List<DeclaredAccount> accounts = new ArrayList<>(List.of(declaredAccount("1000")));
-    AccountPage accountPage = new AccountPage(accounts, 50, 0, false);
+    AccountPage accountPage = new AccountPage(accounts, 50, Optional.empty());
+    AccountPage nextAccountPage =
+        new AccountPage(
+            List.of(declaredAccount("1000")),
+            50,
+            Optional.of(new AccountPageCursor(new AccountCode("1000"))));
     accounts.clear();
     assertEquals(1, accountPage.accounts().size());
-    assertThrows(IllegalArgumentException.class, () -> new AccountPage(List.of(), 0, 0, false));
-    assertThrows(IllegalArgumentException.class, () -> new AccountPage(List.of(), 1, -1, false));
+    assertFalse(accountPage.hasMore());
+    assertTrue(nextAccountPage.hasMore());
+    assertThrows(
+        IllegalArgumentException.class, () -> new AccountPage(List.of(), 0, Optional.empty()));
+    assertThrows(NullPointerException.class, () -> new AccountPage(List.of(), 1, null));
 
     List<PostingFact> postings = new ArrayList<>(List.of(postingFact("posting-1", "idem-1")));
     PostingPage postingPage = new PostingPage(postings, 50, Optional.empty());
@@ -222,6 +209,46 @@ class BookQueryModelTest {
         () ->
             PostingPageCursor.fromWireValue(
                 Base64.getUrlEncoder().withoutPadding().encodeToString(invalidInstant)));
+  }
+
+  @Test
+  void accountPageCursor_roundTripsStableWireValues() {
+    DeclaredAccount account = declaredAccount("1000");
+    AccountPageCursor cursor = AccountPageCursor.fromAccount(account);
+
+    assertEquals(cursor, AccountPageCursor.fromWireValue(cursor.wireValue()));
+    assertThrows(NullPointerException.class, () -> AccountPageCursor.fromWireValue(null));
+    assertThrows(IllegalArgumentException.class, () -> AccountPageCursor.fromWireValue("%"));
+    assertThrows(
+        IllegalArgumentException.class, () -> AccountPageCursor.fromWireValue("not-a-cursor"));
+    byte[] validBytes = Base64.getUrlDecoder().decode(cursor.wireValue());
+    byte[] unsupportedVersion = Arrays.copyOf(validBytes, validBytes.length);
+    unsupportedVersion[0] = 2;
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AccountPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(unsupportedVersion)));
+    byte[] truncated = Arrays.copyOf(validBytes, 4);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AccountPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(truncated)));
+    byte[] negativeLength = Arrays.copyOf(validBytes, validBytes.length);
+    ByteBuffer.wrap(negativeLength).putInt(1, -1);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AccountPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(negativeLength)));
+    byte[] mismatchedLength = Arrays.copyOf(validBytes, validBytes.length);
+    ByteBuffer.wrap(mismatchedLength).putInt(1, 999);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AccountPageCursor.fromWireValue(
+                Base64.getUrlEncoder().withoutPadding().encodeToString(mismatchedLength)));
   }
 
   @Test

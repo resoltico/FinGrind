@@ -1,13 +1,8 @@
 plugins {
     `java-library`
-    id("fingrind.java-conventions")
+    id("dev.erst.fingrind.java-conventions")
 }
 
 description = "SQLite-backed FinGrind persistence adapter"
 
-dependencies {
-    implementation(project(":contract"))
-    implementation(project(":executor"))
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
-}
+dependencies { implementation(project(":contract")); implementation(project(":executor")) }

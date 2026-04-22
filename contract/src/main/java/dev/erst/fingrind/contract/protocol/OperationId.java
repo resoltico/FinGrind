@@ -3,54 +3,48 @@ package dev.erst.fingrind.contract.protocol;
 /** Canonical FinGrind operation identifiers exposed on the public machine contract. */
 public enum OperationId {
   /** Prints command usage, examples, and workflow guidance. */
-  HELP("help"),
+  HELP,
   /** Prints application identity and version information. */
-  VERSION("version"),
+  VERSION,
   /** Prints the machine-readable contract catalog. */
-  CAPABILITIES("capabilities"),
+  CAPABILITIES,
   /** Prints a minimal posting-request JSON document. */
-  PRINT_REQUEST_TEMPLATE("print-request-template"),
+  PRINT_REQUEST_TEMPLATE,
   /** Prints a minimal AI-agent ledger-plan JSON document. */
-  PRINT_PLAN_TEMPLATE("print-plan-template"),
+  PRINT_PLAN_TEMPLATE,
   /** Creates a generated owner-only book key file. */
-  GENERATE_BOOK_KEY_FILE("generate-book-key-file"),
+  GENERATE_BOOK_KEY_FILE,
   /** Initializes one protected book. */
-  OPEN_BOOK("open-book"),
+  OPEN_BOOK,
   /** Rotates the passphrase protecting one book. */
-  REKEY_BOOK("rekey-book"),
+  REKEY_BOOK,
   /** Declares or reactivates one account. */
-  DECLARE_ACCOUNT("declare-account"),
+  DECLARE_ACCOUNT,
   /** Inspects one book for lifecycle and compatibility state. */
-  INSPECT_BOOK("inspect-book"),
+  INSPECT_BOOK,
   /** Lists the declared account registry. */
-  LIST_ACCOUNTS("list-accounts"),
+  LIST_ACCOUNTS,
   /** Returns one committed posting. */
-  GET_POSTING("get-posting"),
+  GET_POSTING,
   /** Lists committed postings. */
-  LIST_POSTINGS("list-postings"),
+  LIST_POSTINGS,
   /** Computes balances for one account. */
-  ACCOUNT_BALANCE("account-balance"),
+  ACCOUNT_BALANCE,
   /** Computes the trial balance for one book. */
-  TRIAL_BALANCE("trial-balance"),
+  TRIAL_BALANCE,
   /** Computes the running ledger for one account. */
-  ACCOUNT_LEDGER("account-ledger"),
+  ACCOUNT_LEDGER,
   /** Computes the bounded period summary for one book. */
-  PERIOD_SUMMARY("period-summary"),
+  PERIOD_SUMMARY,
   /** Executes one ordered AI-agent ledger plan transaction. */
-  EXECUTE_PLAN("execute-plan"),
+  EXECUTE_PLAN,
   /** Validates one posting request without committing it. */
-  PREFLIGHT_ENTRY("preflight-entry"),
+  PREFLIGHT_ENTRY,
   /** Commits one posting request. */
-  POST_ENTRY("post-entry");
-
-  private final String wireName;
-
-  OperationId(String wireName) {
-    this.wireName = wireName;
-  }
+  POST_ENTRY;
 
   /** Returns the stable CLI and wire identifier for this operation. */
   public String wireName() {
-    return wireName;
+    return OperationIdContract.current().wireName(name());
   }
 }

@@ -7,12 +7,10 @@ import java.util.Properties
 object DistributionContractReader {
     private const val PUBLIC_DISTRIBUTION_CONTRACT_PATH =
         "contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.properties"
-    private const val OPERATION_ID_SOURCE_PATH =
-        "contract/src/main/java/dev/erst/fingrind/contract/protocol/OperationId.java"
+    private const val OPERATION_ID_CONTRACT_PATH =
+        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.properties"
     private const val SUPPORTED_BUNDLE_TARGETS_KEY = "supportedPublicCliBundleTargets"
     private const val UNSUPPORTED_OPERATING_SYSTEMS_KEY = "unsupportedPublicCliOperatingSystems"
-    private val operationIdLinePattern =
-        Regex("""^\s*([A-Z_]+)\("([^"]+)"\),?$""")
 
     fun publicCliBundleTargets(projectRootDirectory: Path): List<String> =
         loadPublicDistributionContract(projectRootDirectory).supportedPublicCliBundleTargets
@@ -20,19 +18,17 @@ object DistributionContractReader {
     fun unsupportedPublicCliOperatingSystems(projectRootDirectory: Path): List<String> =
         loadPublicDistributionContract(projectRootDirectory).unsupportedOperatingSystems
 
-    fun protocolOperationName(projectRootDirectory: Path, operationIdConstantName: String): String {
-        val source =
-            Files.readAllLines(projectRootDirectory.resolve(OPERATION_ID_SOURCE_PATH))
-        for (line in source) {
-            val match = operationIdLinePattern.matchEntire(line) ?: continue
-            if (match.groupValues[1] == operationIdConstantName) {
-                return match.groupValues[2]
-            }
-        }
-        throw IllegalStateException(
-            "Unknown protocol operation constant $operationIdConstantName in $OPERATION_ID_SOURCE_PATH.",
-        )
-    }
+    fun helpOperationName(projectRootDirectory: Path): String =
+        loadOperationContract(projectRootDirectory).wireName("HELP")
+
+    fun capabilitiesOperationName(projectRootDirectory: Path): String =
+        loadOperationContract(projectRootDirectory).wireName("CAPABILITIES")
+
+    fun requestTemplateOperationName(projectRootDirectory: Path): String =
+        loadOperationContract(projectRootDirectory).wireName("PRINT_REQUEST_TEMPLATE")
+
+    fun planTemplateOperationName(projectRootDirectory: Path): String =
+        loadOperationContract(projectRootDirectory).wireName("PRINT_PLAN_TEMPLATE")
 
     fun operatingSystemId(osName: String = System.getProperty("os.name", "")): String {
         val operatingSystem = osName.lowercase()
@@ -130,6 +126,14 @@ object DistributionContractReader {
         )
     }
 
+    private fun loadOperationContract(projectRootDirectory: Path): OperationIdContract {
+        val properties = Properties()
+        Files.newInputStream(projectRootDirectory.resolve(OPERATION_ID_CONTRACT_PATH)).use { stream ->
+            properties.load(stream)
+        }
+        return OperationIdContract(properties)
+    }
+
     private fun parseList(rawValue: String?): List<String> =
         rawValue
             ?.split(',')
@@ -143,3 +147,13 @@ private data class PublicDistributionContract(
     val supportedPublicCliBundleTargets: List<String>,
     val unsupportedOperatingSystems: List<String>,
 )
+
+private data class OperationIdContract(
+    private val wireNames: Properties,
+) {
+    fun wireName(operationConstantName: String): String =
+        wireNames.getProperty(operationConstantName)
+            ?: throw IllegalArgumentException(
+                "Unknown protocol operation constant $operationConstantName in $wireNames.",
+            )
+}

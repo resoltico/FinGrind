@@ -3,32 +3,35 @@
 FinGrind's own code is licensed under the MIT License. MIT grants broad copyright
 permissions but does not contain an explicit patent grant or patent retaliation clause.
 
-## Bundled Dependencies
+## Shipped Components
 
-The packaged CLI JAR bundles Jackson Databind, Jackson Core, and Jackson Annotations.
-All three are licensed under the Apache License, Version 2.0.
+The current distribution surfaces ship these notable component families.
+The packaged CLI JAR bundles FinGrind code plus the Jackson, PDFBox, and Noto Sans assets it
+needs directly.
+The public self-contained bundles additionally ship the managed SQLite runtime artifacts and their
+license texts.
 
 | Component | License | Explicit Patent Grant |
 |:----------|:--------|:----------------------|
 | FinGrind | MIT | No (implicit only) |
 | Jackson Databind / Core / Annotations | Apache 2.0 | Yes |
-| SQLite | Public Domain | N/A |
+| Apache PDFBox / FontBox / PDFBox IO | Apache 2.0 | Yes |
+| Noto Sans | SIL OFL 1.1 | No separate express patent-grant section in the bundled license text |
+| SQLite3 Multiple Ciphers | MIT | No (implicit only) |
+| SQLite | Public Domain | No license-based patent grant text |
 
-Apache License 2.0 contains an explicit patent grant from contributors (Section 3):
+The Apache License 2.0 used by Jackson and Apache PDFBox includes an express contributor patent
+grant in Section 3.
 
-> Subject to the terms and conditions of this License, each Contributor hereby grants
-> to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-> patent license to make, have made, use, offer to sell, sell, import, and otherwise
-> transfer the Work...
+The bundled SIL Open Font License 1.1 text for Noto Sans does not contain a separate express
+patent-grant section.
 
-This grant applies to contributions made by Jackson contributors to those components.
-It does not extend to FinGrind's own MIT-licensed code.
+The MIT licenses used by FinGrind itself and SQLite3 Multiple Ciphers do not contain an express
+patent grant or retaliation clause.
 
-## SQLite
-
-SQLite is in the public domain. Its authors disclaim copyright entirely. Patent
-considerations do not apply to public domain software in the conventional sense,
-though patent law is jurisdiction-specific and this document is not legal advice.
+SQLite is in the public domain. That means there is no copyright licensor granting separate patent
+rights through a software license, but public-domain status by itself does not answer third-party
+patent questions.
 
 ## Patent Non-Assertion
 

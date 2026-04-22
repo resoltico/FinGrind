@@ -12,6 +12,7 @@ import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredText;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanId;
@@ -136,9 +137,11 @@ final class CliLedgerPlanParser {
               new AccountCode(
                   requiredText(assertionNode, ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE)),
               optionalText(assertionNode, ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM)
-                  .map(LocalDate::parse),
+                  .map(LocalDate::parse)
+                  .orElse(null),
               optionalText(assertionNode, ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO)
-                  .map(LocalDate::parse),
+                  .map(LocalDate::parse)
+                  .orElse(null),
               new Money(
                   new CurrencyCode(
                       requiredText(
@@ -155,26 +158,21 @@ final class CliLedgerPlanParser {
 
   private static ListAccountsQuery readListAccountsQuery(Optional<ObjectNode> queryNode) {
     if (queryNode.isEmpty()) {
-      return new ListAccountsQuery(
-          ProtocolLimits.DEFAULT_PAGE_LIMIT, ProtocolLimits.DEFAULT_PAGE_OFFSET);
+      return new ListAccountsQuery(ProtocolLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
     rejectUnexpectedFields(queryObject, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
     return new ListAccountsQuery(
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
-        optionalInt(queryObject, ProtocolLedgerPlanFields.Query.OFFSET)
-            .orElse(ProtocolLimits.DEFAULT_PAGE_OFFSET));
+        optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
+            .map(AccountPageCursor::fromWireValue));
   }
 
   private static ListPostingsQuery readListPostingsQuery(Optional<ObjectNode> queryNode) {
     if (queryNode.isEmpty()) {
       return new ListPostingsQuery(
-          Optional.empty(),
-          Optional.empty(),
-          Optional.empty(),
-          ProtocolLimits.DEFAULT_PAGE_LIMIT,
-          Optional.empty());
+          Optional.empty(), null, null, ProtocolLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
     rejectUnexpectedFields(queryObject, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
@@ -182,9 +180,11 @@ final class CliLedgerPlanParser {
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)
             .map(AccountCode::new),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)
-            .map(LocalDate::parse),
+            .map(LocalDate::parse)
+            .orElse(null),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO)
-            .map(LocalDate::parse),
+            .map(LocalDate::parse)
+            .orElse(null),
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
@@ -196,8 +196,10 @@ final class CliLedgerPlanParser {
     return new AccountBalanceQuery(
         new AccountCode(requiredText(query, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)),
         optionalText(query, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)
-            .map(LocalDate::parse),
+            .map(LocalDate::parse)
+            .orElse(null),
         optionalText(query, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO)
-            .map(LocalDate::parse));
+            .map(LocalDate::parse)
+            .orElse(null));
   }
 }

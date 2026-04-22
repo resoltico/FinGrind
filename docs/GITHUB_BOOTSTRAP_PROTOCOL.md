@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -92,6 +92,7 @@ gh api \
 Enable branch protection on `main` only after the required CI status-check names exist.
 For FinGrind, the required checks are:
 - `Check`
+- `Windows bundle smoke`
 - `Docker smoke`
 
 Apply protection:
@@ -104,7 +105,7 @@ gh api \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Check", "Docker smoke"]
+    "contexts": ["Check", "Windows bundle smoke", "Docker smoke"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": null,
@@ -122,7 +123,7 @@ Recommended repository settings alignment:
 - branch auto-delete on merge is enabled
 - Actions workflow permissions default to write
 - `main` protection enforces admins
-- required checks remain exactly `Check` and `Docker smoke`
+- required checks remain exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
 
 ## Step 7
 

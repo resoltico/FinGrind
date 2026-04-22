@@ -10,6 +10,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
@@ -91,15 +92,9 @@ class ProtocolCatalogTest {
         new ProtocolOperation(
             OperationId.HELP,
             OperationCategory.DISCOVERY,
-            "Help",
-            null,
-            null,
-            ExecutionMode.JSON_ENVELOPE,
-            null,
-            null,
-            "fingrind help",
-            "summary",
-            null);
+            new ProtocolCommandSignature("Help", null, null, "fingrind help"),
+            new ProtocolOperationOutputs(ExecutionMode.JSON_ENVELOPE, null, null),
+            new ProtocolOperationDocumentation("summary", null));
     ProtocolOperationDefinitions.OperationDefinition definition =
         new ProtocolOperationDefinitions.OperationDefinition(
             OperationId.HELP,
@@ -124,20 +119,16 @@ class ProtocolCatalogTest {
     assertEquals(List.of(), definition.artifactOutputs());
     assertEquals(List.of(), definition.examples());
     assertThrows(
+        IllegalArgumentException.class, () -> new ProtocolOperationDocumentation(" ", List.of()));
+    assertThrows(
         IllegalArgumentException.class,
         () ->
             new ProtocolOperation(
                 OperationId.HELP,
                 OperationCategory.DISCOVERY,
-                " ",
-                List.of(),
-                List.of(),
-                ExecutionMode.JSON_ENVELOPE,
-                List.of(),
-                List.of(),
-                "fingrind help",
-                "summary",
-                List.of()));
+                new ProtocolCommandSignature(" ", List.of(), List.of(), "fingrind help"),
+                new ProtocolOperationOutputs(ExecutionMode.JSON_ENVELOPE, List.of(), List.of()),
+                new ProtocolOperationDocumentation("summary", List.of())));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -157,19 +148,50 @@ class ProtocolCatalogTest {
         () -> new ProtocolArtifactOutput(" ", "--pdf-out <path>", "Exports one PDF report."));
   }
 
+  @Test
+  void operationIdContract_loadsAndRejectsMissingMappings() {
+    OperationIdContract contract =
+        OperationIdContract.loadFromResource(
+            new ByteArrayInputStream(
+                "HELP=help\nVERSION=version\n".getBytes(StandardCharsets.UTF_8)),
+            "memory");
+    OperationIdContract blankContract =
+        OperationIdContract.loadFromResource(
+            new ByteArrayInputStream("HELP=\n".getBytes(StandardCharsets.UTF_8)), "blank");
+
+    assertEquals("help", contract.wireName("HELP"));
+    assertThrows(IllegalStateException.class, () -> contract.wireName("UNKNOWN"));
+    assertThrows(IllegalStateException.class, () -> blankContract.wireName("HELP"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> OperationIdContract.loadFromResource(null, "missing.properties"));
+    assertThrows(
+        UncheckedIOException.class,
+        () ->
+            OperationIdContract.loadFromResource(
+                new InputStream() {
+                  @Override
+                  public int read() throws IOException {
+                    throw new IOException("boom");
+                  }
+
+                  @Override
+                  public int read(byte[] buffer, int offset, int length) throws IOException {
+                    throw new IOException("boom");
+                  }
+                },
+                "broken.properties"));
+  }
+
   private static ProtocolOperation operation(OperationId id, List<String> aliases) {
     return new ProtocolOperation(
         id,
         OperationCategory.DISCOVERY,
-        id.wireName(),
-        aliases,
-        List.of(),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON.wireValue()),
-        List.of(),
-        "fingrind " + id.wireName(),
-        "summary",
-        List.of());
+        new ProtocolCommandSignature(
+            id.wireName(), aliases, List.of(), "fingrind " + id.wireName()),
+        new ProtocolOperationOutputs(
+            ExecutionMode.JSON_ENVELOPE, List.of(OutputMode.JSON.wireValue()), List.of()),
+        new ProtocolOperationDocumentation("summary", List.of()));
   }
 
   @Test
@@ -178,7 +200,7 @@ class ProtocolCatalogTest {
     ProtocolOperation trialBalance = ProtocolCatalog.operation(OperationId.TRIAL_BALANCE);
 
     assertEquals("[--limit <1-200>]", ProtocolOptions.optionalLimitSyntax());
-    assertEquals("[--offset <0+>]", ProtocolOptions.optionalOffsetSyntax());
+    assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
     assertEquals(
         "[--output <json|human|csv>]",
         ProtocolOptions.optionalOutputSyntax(List.of("json", "human", "csv")));
@@ -249,7 +271,7 @@ class ProtocolCatalogTest {
         List.of("stepId", "kind", "posting", "declareAccount", "query", "assertion", "postingId"),
         ProtocolLedgerPlanFields.stepFields());
     assertEquals(
-        List.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "cursor", "offset"),
+        List.of("accountCode", "effectiveDateFrom", "effectiveDateTo", "limit", "cursor"),
         ProtocolLedgerPlanFields.queryFields());
     assertEquals(
         List.of(
@@ -275,7 +297,7 @@ class ProtocolCatalogTest {
     assertEquals("effectiveDateFrom", ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM);
     assertEquals("effectiveDateTo", ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO);
     assertEquals("limit", ProtocolLedgerPlanFields.Query.LIMIT);
-    assertEquals("offset", ProtocolLedgerPlanFields.Query.OFFSET);
+    assertEquals("cursor", ProtocolLedgerPlanFields.Query.CURSOR);
     assertEquals("kind", ProtocolLedgerPlanFields.Assertion.KIND);
     assertEquals("accountCode", ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE);
     assertEquals("postingId", ProtocolLedgerPlanFields.Assertion.POSTING_ID);

@@ -23,9 +23,9 @@ import java.util.Optional;
 
 /** Narrow unified read-session view over one SQLite-backed store. */
 final class SqliteBookReadSessionView implements BookReadSession {
-  private final SqlitePostingFactStore store;
+  private final SqliteStoreContext store;
 
-  SqliteBookReadSessionView(SqlitePostingFactStore store) {
+  SqliteBookReadSessionView(SqliteStoreContext store) {
     this.store = Objects.requireNonNull(store, "store");
   }
 

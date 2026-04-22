@@ -46,9 +46,6 @@ public final class ProtocolOptions {
   /** Option selecting the opaque next-page cursor for posting-history pagination. */
   public static final String CURSOR = "--cursor";
 
-  /** Option selecting a paginated query page offset. */
-  public static final String OFFSET = "--offset";
-
   /** Option selecting the presentation format for commands that advertise output modes. */
   public static final String OUTPUT = "--output";
 
@@ -86,14 +83,9 @@ public final class ProtocolOptions {
             ProtocolOptions.LIMIT, ProtocolLimits.PAGE_LIMIT_MIN, ProtocolLimits.PAGE_LIMIT_MAX);
   }
 
-  /** Returns the rendered optional posting-history cursor syntax. */
+  /** Returns the rendered optional page-cursor syntax. */
   public static String optionalCursorSyntax() {
     return "[" + ProtocolOptions.CURSOR + " <cursor>]";
-  }
-
-  /** Returns the rendered optional page-offset syntax. */
-  public static String optionalOffsetSyntax() {
-    return "[%s <%d+>]".formatted(ProtocolOptions.OFFSET, ProtocolLimits.PAGE_OFFSET_MIN);
   }
 
   /** Returns the rendered optional output-mode syntax for the supplied modes. */

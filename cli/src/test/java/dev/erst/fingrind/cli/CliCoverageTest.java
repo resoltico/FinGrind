@@ -159,10 +159,10 @@ class CliCoverageTest {
                 Instant.parse("2026-04-07T10:15:30Z")));
     String accountsHuman =
         CliQueryOutputRenderer.renderAccountsHuman(
-            new AccountPage(List.of(cashAccount), 50, 0, false));
+            new AccountPage(List.of(cashAccount), 50, Optional.empty()));
     String accountsCsv =
         CliQueryOutputRenderer.renderAccountsCsv(
-            new AccountPage(List.of(cashAccount), 50, 0, false));
+            new AccountPage(List.of(cashAccount), 50, Optional.empty()));
     String postingHuman = CliQueryOutputRenderer.renderPostingHuman(postingFact);
     PostingPageCursor nextCursor =
         new PostingPageCursor(
@@ -775,19 +775,22 @@ class CliCoverageTest {
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
-                new ListAccountsResult.Listed(new AccountPage(List.of(cashAccount), 50, 0, false)),
+                new ListAccountsResult.Listed(
+                    new AccountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"accountCode\":\"1000\"");
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
-                new ListAccountsResult.Listed(new AccountPage(List.of(cashAccount), 50, 0, false)),
+                new ListAccountsResult.Listed(
+                    new AccountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
         "Cash");
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
-                new ListAccountsResult.Listed(new AccountPage(List.of(cashAccount), 50, 0, false)),
+                new ListAccountsResult.Listed(
+                    new AccountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "accountCode,accountName,normalBalance,active,declaredAt");
     assertWriterOutput(
@@ -1347,8 +1350,7 @@ class CliCoverageTest {
       DeclaredAccount account, PostingFact postingFact, CurrencyBalance balance) {
     return new AccountLedgerReport(
         account,
-        EffectiveDateRange.of(
-            Optional.of(LocalDate.parse("2026-04-01")), Optional.of(LocalDate.parse("2026-04-30"))),
+        EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         List.of(balance),
         List.of(
             new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT)),

@@ -34,14 +34,36 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             repositories.mavenCentral()
 
             val libs = versionCatalog()
-            val fingrindJavaVersion =
-                providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
+            val buildMetadata = FinGrindBuildMetadata.load(this)
+            val fingrindJavaVersion = buildMetadata.javaVersion
+            val implementationVendor = buildMetadata.implementationVendor
+            val implementationLicense = buildMetadata.implementationLicense
+            val enforcedErrorProneChecks =
+                listOf(
+                    "BadImport",
+                    "BoxedPrimitiveConstructor",
+                    "CheckReturnValue",
+                    "EqualsIncompatibleType",
+                    "JavaLangClash",
+                    "MissingCasesInEnumSwitch",
+                    "MissingOverride",
+                    "NullAway",
+                    "ReferenceEquality",
+                    "RequireExplicitNullMarking",
+                    "StringCaseLocaleUsage",
+                )
 
             pluginManager.withPlugin("java") {
                 extensions.configure<JavaPluginExtension> {
                     toolchain.languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
                     withSourcesJar()
                 }
+                dependencies.add(
+                    "testImplementation",
+                    project.dependencies.platform(libs.library("junit-bom")),
+                )
+                dependencies.add("testImplementation", libs.library("junit-jupiter"))
+                dependencies.add("testRuntimeOnly", libs.library("junit-platform-launcher"))
             }
 
             dependencies.add("errorprone", libs.library("errorprone-core"))
@@ -78,8 +100,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                     mapOf(
                         "Implementation-Title" to project.name,
                         "Implementation-Version" to project.version,
-                        "Implementation-Vendor" to "Ervins Strauhmanis",
-                        "Implementation-License" to "MIT",
+                        "Implementation-Vendor" to implementationVendor,
+                        "Implementation-License" to implementationLicense,
                     ),
                 )
             }
@@ -88,35 +110,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 options.errorprone.disableWarningsInGeneratedCode.set(true)
                 options.errorprone.option("NullAway:OnlyNullMarked", "true")
                 options.errorprone.option("NullAway:JSpecifyMode", "true")
-                if (name == "compileJava") {
-                    options.errorprone.error(
-                        "BadImport",
-                        "BoxedPrimitiveConstructor",
-                        "CheckReturnValue",
-                        "EqualsIncompatibleType",
-                        "JavaLangClash",
-                        "MissingCasesInEnumSwitch",
-                        "MissingOverride",
-                        "NullAway",
-                        "ReferenceEquality",
-                        "RequireExplicitNullMarking",
-                        "StringCaseLocaleUsage"
-                    )
-                } else {
-                    options.errorprone.error(
-                        "BadImport",
-                        "BoxedPrimitiveConstructor",
-                        "CheckReturnValue",
-                        "EqualsIncompatibleType",
-                        "JavaLangClash",
-                        "MissingCasesInEnumSwitch",
-                        "MissingOverride",
-                        "NullAway",
-                        "ReferenceEquality",
-                        "RequireExplicitNullMarking",
-                        "StringCaseLocaleUsage"
-                    )
-                }
+                options.errorprone.error(*enforcedErrorProneChecks.toTypedArray())
             }
 
             tasks.withType<Pmd>().configureEach {

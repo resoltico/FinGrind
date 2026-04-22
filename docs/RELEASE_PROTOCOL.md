@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -54,8 +54,12 @@ Requirements before continuing:
 - the primary checkout path is known explicitly
 - the primary checkout must not be left behind `origin/main` at release closeout
 - if the primary checkout is already clean and current, release from it directly
-- if the primary checkout has local work, is intentionally dirty, or lives on a problematic or slow
-  filesystem, create a clean release worktree from the same repository and do the release there:
+- if the primary checkout is dirty only because it already contains the intended release payload,
+  continue in place, but first inspect that diff deliberately and move immediately onto
+  `release/X.Y.Z` before doing more release edits; do not keep release work floating on `main`
+- if the primary checkout has unrelated local work, is intentionally dirty for some other reason,
+  or lives on a problematic or slow filesystem, create a clean release worktree from the same
+  repository and do the release there:
 
 ```bash
 PRIMARY_CHECKOUT=$(git rev-parse --show-toplevel)
@@ -71,22 +75,22 @@ last resort and, if used, must still be reconciled back into the primary checkou
 release session ends.
 
 If the primary checkout has unpublished local work, decide before the release whether that work is
-real or stale. Real work must move onto a named branch or exported patch before closeout. Stale
-work must be dropped. Never leave the primary checkout on stale `main` plus unpublished overlays.
+real or stale. Real work that is not part of this release must move onto a named branch or
+exported patch before closeout. Stale work must be dropped. Never leave the primary checkout on
+stale `main` plus unpublished overlays.
 
 Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 
-Then verify every item in this checklist. All must be true before any commit or tag:
+Then verify every non-version item in this checklist. These repository and runtime conditions must
+be true before any release commit or tag:
 
-- `gradle.properties` `version=` equals the target release version exactly (for example `X.Y.Z`).
-- All `docs/*.md` frontmatter `version:` fields equal the target version.
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.
 - GitHub repository settings are still aligned with this procedure:
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
   - `main` is protected with admin enforcement
-  - required status checks are exactly `Check` and `Docker smoke`
+  - required status checks are exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
 
 Before cutting the release branch, enumerate open PRs so dependency-automation work is never
 surprise-discovered after publication:
@@ -101,6 +105,10 @@ machinery or release-critical dependencies. If it does, land or reject it before
 release branch. If it does not, carry that decision forward and complete Step 10 before ending
 the release session.
 
+If you merge or close one release-critical PR, re-enumerate the remaining open PRs before acting
+on the next one. A changed `main` branch can invalidate sibling merge state or required-check
+evaluations.
+
 ### Step 2
 
 Commit on a release branch.
@@ -110,6 +118,8 @@ rejected and wastes time. Always commit on a release branch.
 
 ```bash
 git checkout -b release/X.Y.Z
+# apply the target version across every version-bearing surface
+./check.sh
 git add <every modified file that belongs in the release — never .codex/>
 git status --short
 git diff --cached --name-status
@@ -120,6 +130,14 @@ git push origin release/X.Y.Z
 
 Treat staging as a handoff checkpoint, not a formality. Before committing:
 
+- if Step 1 continued in place from a dirty primary checkout, the branch creation above is the
+  point where the release payload stops living on `main`; do not switch back to dirty `main`
+- after the version sweep, `gradle.properties` `version=` equals the target release version
+  exactly (for example `X.Y.Z`)
+- all `docs/*.md` frontmatter `version:` fields equal the target release version
+- all user-facing archive names, release examples, and version-pinned tests now reference the
+  target release version
+- the rerun of `./check.sh` exits 0 after the version-bearing edits
 - `git status --short` must show no intended release file left unstaged or untracked.
 - `git diff --cached --name-status` must show the exact file set expected for the release.
 - `git diff --cached --stat` must confirm that the staged payload includes both versioning or
@@ -157,7 +175,7 @@ Treat the PR itself as a second scope-verification checkpoint:
   this PR diff checkpoint. Re-verify both after each fix commit.
 
 Do not proceed until **every** required job in workflow `CI` has `"conclusion": "SUCCESS"`.
-At the time of writing that means `Check` and `Docker smoke`.
+At the time of writing that means `Check`, `Windows bundle smoke`, and `Docker smoke`.
 If any required job fails, fix the failure, push to the release branch, and wait again — do not
 merge a red PR.
 
@@ -263,22 +281,24 @@ non-`release/` branch as automatically acceptable just because Step 6 only hard-
 Monitor workflows with duplicate-run awareness.
 
 ```bash
-gh run list --workflow=release.yml --branch=vX.Y.Z --event=push --limit=10
-gh run list --workflow=container.yml --branch=vX.Y.Z --event=push --limit=10
+TAG_SHA=$(git rev-list -n 1 vX.Y.Z)
+gh run list --workflow=release.yml --commit "$TAG_SHA" --event=push --limit=10
+gh run list --workflow=container.yml --commit "$TAG_SHA" --event=push --limit=10
 ```
 
 Do not assume there is exactly one run per workflow. A single tag push may produce multiple runs
 for the same workflow. Treat the workflow boundary as a **handoff checkpoint**:
 
-1. Enumerate **all** runs for `release.yml` on `vX.Y.Z`.
-2. Enumerate **all** runs for `container.yml` on `vX.Y.Z`.
-3. Inspect each run that is not `completed/success` with:
+1. Resolve the tag commit with `git rev-list -n 1 vX.Y.Z`.
+2. Enumerate **all** `release.yml` runs for that commit.
+3. Enumerate **all** `container.yml` runs for that commit.
+4. Inspect each run that is not `completed/success` with:
 
 ```bash
 gh run view <run-id> --log-failed
 ```
 
-4. Verify the external GitHub state directly before deciding the release is failed.
+5. Verify the external GitHub state directly before deciding the release is failed.
 
 Rules:
 
@@ -423,7 +443,8 @@ behavior is the authoritative state.
 The container registry retains the last 5 releases. Only `X.Y.Z` and `latest` tags are
 published per release; there is no `X.Y` floating tag.
 
-Only after all five succeed report to the user: the release is publicly available.
+Only after the full anonymous pull, run, mounted-book, and PDF verification sequence succeeds
+report to the user: the release is publicly available.
 
 The container workflow is expected to perform the exact-tag and `latest` pull-and-run verification
 internally after publication. The operator-side verification remains mandatory because public
@@ -505,27 +526,31 @@ Requirements before declaring the release session complete:
 Reconcile the primary checkout.
 
 If the release used a dedicated release worktree or any checkout other than the primary checkout,
-the session is not complete until the primary checkout is truthful again.
+the session is not complete until the primary checkout is truthful again. This step is now a
+scripted gate, not a reminder. Do not declare the release complete until the verifier passes.
+
+If unpublished local work from the primary checkout is still needed, move it onto a named branch
+based on current `main` first, then return the primary checkout itself to `main`.
 
 Run:
 
 ```bash
-git -C "$PRIMARY_CHECKOUT" fetch origin --prune --tags
 git -C "$PRIMARY_CHECKOUT" checkout main
-git -C "$PRIMARY_CHECKOUT" rev-list --left-right --count HEAD...origin/main
 git -C "$PRIMARY_CHECKOUT" merge --ff-only origin/main
-git -C "$PRIMARY_CHECKOUT" rev-parse HEAD
-git -C "$PRIMARY_CHECKOUT" status --short
+./scripts/verify-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "X.Y.Z"
 ```
+
+The verifier is authoritative. It fetches `origin`, requires the primary checkout to be on `main`,
+requires `HEAD` to equal `origin/main`, checks that `gradle.properties` and `CHANGELOG.md` reflect
+the released version, rejects tracked overlays, and rejects unexpected untracked debris outside the
+repo's explicit scratch prefixes.
 
 Requirements before declaring the release session complete:
 
-- the primary checkout `HEAD` equals `origin/main`
-- the primary checkout version-bearing files, including `gradle.properties` and `CHANGELOG.md`,
-  reflect the released version
+- `./scripts/verify-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "X.Y.Z"` exits 0
 - no stale release-only checkout may be left behind with the appearance of being authoritative
 - if unpublished local work from the primary checkout is still needed, replay it deliberately onto
-  a named branch based on current `main`; do not leave it only in a stash
+  a named branch based on current `main`; do not leave it only in a stash or mixed into `main`
 - if that unpublished local work is stale, superseded, or regresses the shipped release state,
   delete it instead of preserving misleading debris
 

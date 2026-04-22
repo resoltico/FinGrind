@@ -42,7 +42,7 @@ class LedgerPlanContractTest {
                 List.of(
                     new LedgerStep.InspectBook(stepId("duplicate")),
                     new LedgerStep.ListAccounts(
-                        stepId("duplicate"), new ListAccountsQuery(50, 0)))));
+                        stepId("duplicate"), new ListAccountsQuery(50, Optional.empty())))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -70,7 +70,8 @@ class LedgerPlanContractTest {
     assertEquals(LedgerStepKind.INSPECT_BOOK, new LedgerStep.InspectBook(stepId("inspect")).kind());
     assertEquals(
         LedgerStepKind.LIST_ACCOUNTS,
-        new LedgerStep.ListAccounts(stepId("accounts"), new ListAccountsQuery(50, 0)).kind());
+        new LedgerStep.ListAccounts(stepId("accounts"), new ListAccountsQuery(50, Optional.empty()))
+            .kind());
     assertEquals(
         LedgerStepKind.GET_POSTING,
         new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")).kind());
@@ -78,15 +79,12 @@ class LedgerPlanContractTest {
         LedgerStepKind.LIST_POSTINGS,
         new LedgerStep.ListPostings(
                 stepId("postings"),
-                new ListPostingsQuery(
-                    Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty()))
+                new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty()))
             .kind());
     assertEquals(
         LedgerStepKind.ACCOUNT_BALANCE,
         new LedgerStep.AccountBalance(
-                stepId("balance"),
-                new AccountBalanceQuery(
-                    new AccountCode("1000"), Optional.empty(), Optional.empty()))
+                stepId("balance"), new AccountBalanceQuery(new AccountCode("1000"), null, null))
             .kind());
     assertEquals(
         LedgerStepKind.ASSERT,
@@ -107,8 +105,8 @@ class LedgerPlanContractTest {
     LedgerAssertion.AccountBalanceEquals assertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"),
-            Optional.of(LocalDate.parse("2026-04-01")),
-            Optional.of(LocalDate.parse("2026-04-30")),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
             new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
             BalanceSide.DEBIT);
 
@@ -126,8 +124,8 @@ class LedgerPlanContractTest {
         () ->
             new LedgerAssertion.AccountBalanceEquals(
                 new AccountCode("1000"),
-                Optional.of(LocalDate.parse("2026-05-01")),
-                Optional.of(LocalDate.parse("2026-04-30")),
+                LocalDate.parse("2026-05-01"),
+                LocalDate.parse("2026-04-30"),
                 new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
                 BalanceSide.DEBIT));
     assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountDeclared(null));

@@ -9,9 +9,9 @@ import java.util.Objects;
 
 /** Narrow administration-session view over one SQLite-backed store. */
 final class SqliteBookAdministrationSessionView implements BookAdministrationSession {
-  private final SqlitePostingFactStore store;
+  private final SqliteStoreContext store;
 
-  SqliteBookAdministrationSessionView(SqlitePostingFactStore store) {
+  SqliteBookAdministrationSessionView(SqliteStoreContext store) {
     this.store = Objects.requireNonNull(store, "store");
   }
 

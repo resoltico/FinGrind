@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test;
 class MachineContractTest {
   @Test
   void capabilities_areDerivedFromLiveEnumsAndRejectionCatalogs() {
-    ContractDiscovery.CapabilitiesDescriptor capabilities =
+    CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
+            new ApplicationIdentity("FinGrind", "0.9.0", "desc"),
             readyEnvironmentDescriptor(),
             Instant.parse("2026-04-13T12:00:00Z"));
 
@@ -87,12 +87,11 @@ class MachineContractTest {
 
   @Test
   void helpVersionAndRequestTemplate_publishCanonicalDiscoveryMetadata() {
-    ContractDiscovery.ApplicationIdentity identity =
-        new ContractDiscovery.ApplicationIdentity("FinGrind", "0.9.0", "desc");
-    ContractDiscovery.EnvironmentDescriptor environment = readyEnvironmentDescriptor();
+    ApplicationIdentity identity = new ApplicationIdentity("FinGrind", "0.9.0", "desc");
+    EnvironmentDescriptor environment = readyEnvironmentDescriptor();
 
-    ContractDiscovery.HelpDescriptor help = MachineContract.help(identity, environment);
-    ContractDiscovery.VersionDescriptor version = MachineContract.version(identity);
+    HelpDescriptor help = MachineContract.help(identity, environment);
+    VersionDescriptor version = MachineContract.version(identity);
     ContractTemplates.PostingRequestTemplateDescriptor template =
         MachineContract.requestTemplate(
             Clock.fixed(Instant.parse("2026-04-13T12:00:00Z"), java.time.ZoneOffset.UTC));
@@ -151,22 +150,21 @@ class MachineContractTest {
         .values();
   }
 
-  private static ContractDiscovery.EnvironmentDescriptor readyEnvironmentDescriptor() {
-    return new ContractDiscovery.EnvironmentDescriptor(
-        new ContractDiscovery.EnvironmentDistributionDescriptor(
+  private static EnvironmentDescriptor readyEnvironmentDescriptor() {
+    return new EnvironmentDescriptor(
+        new EnvironmentDistributionDescriptor(
             "self-contained-bundle",
             "self-contained-bundle",
             ProtocolCatalog.supportedPublicCliBundleTargets(),
             ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new ContractDiscovery.EnvironmentStorageDescriptor(
-            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
-        new ContractDiscovery.EnvironmentSqliteDescriptor(
+        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentSqliteDescriptor(
             "managed-only",
             "FINGRIND_SQLITE_LIBRARY",
             "fingrind.bundle.home",
             List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-            ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
+            SqliteCompileOptionsVerificationStatus.VERIFIED,
             "3.53.0",
             "2.3.3",
             "ready",

@@ -22,14 +22,13 @@ class SqlitePostingSqlTest {
   void listPostings_includesOnlyRequestedFilters() {
     String unfiltered =
         SqlitePostingSql.listPostings(
-            new ListPostingsQuery(
-                Optional.empty(), Optional.empty(), Optional.empty(), 50, Optional.empty()));
+            new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty()));
     String fullyFiltered =
         SqlitePostingSql.listPostings(
             new ListPostingsQuery(
                 Optional.of(new AccountCode("1000")),
-                Optional.of(LocalDate.parse("2026-04-01")),
-                Optional.of(LocalDate.parse("2026-04-30")),
+                LocalDate.parse("2026-04-01"),
+                LocalDate.parse("2026-04-30"),
                 50,
                 Optional.of(
                     new PostingPageCursor(
@@ -60,13 +59,13 @@ class SqlitePostingSqlTest {
   void loadAccountLinesForBalance_includesOnlyRequestedDateFilters() {
     String unfiltered =
         SqlitePostingSql.loadAccountLinesForBalance(
-            new AccountBalanceQuery(new AccountCode("1000"), Optional.empty(), Optional.empty()));
+            new AccountBalanceQuery(new AccountCode("1000"), null, null));
     String fullyFiltered =
         SqlitePostingSql.loadAccountLinesForBalance(
             new AccountBalanceQuery(
                 new AccountCode("1000"),
-                Optional.of(LocalDate.parse("2026-04-01")),
-                Optional.of(LocalDate.parse("2026-04-30"))));
+                LocalDate.parse("2026-04-01"),
+                LocalDate.parse("2026-04-30")));
 
     assertFalse(unfiltered.contains("posting_fact.effective_date >= ?"));
     assertFalse(unfiltered.contains("posting_fact.effective_date <= ?"));
@@ -83,25 +82,19 @@ class SqlitePostingSqlTest {
             new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30"))));
     String unboundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(new AccountCode("1000"), Optional.empty(), Optional.empty()));
+            new AccountLedgerQuery(new AccountCode("1000"), null, null));
     String lowerBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(
-                new AccountCode("1000"),
-                Optional.of(LocalDate.parse("2026-04-01")),
-                Optional.empty()));
+            new AccountLedgerQuery(new AccountCode("1000"), LocalDate.parse("2026-04-01"), null));
     String upperBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(
-                new AccountCode("1000"),
-                Optional.empty(),
-                Optional.of(LocalDate.parse("2026-04-30"))));
+            new AccountLedgerQuery(new AccountCode("1000"), null, LocalDate.parse("2026-04-30")));
     String boundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
             new AccountLedgerQuery(
                 new AccountCode("1000"),
-                Optional.of(LocalDate.parse("2026-04-01")),
-                Optional.of(LocalDate.parse("2026-04-30"))));
+                LocalDate.parse("2026-04-01"),
+                LocalDate.parse("2026-04-30")));
 
     assertFalse(unfilteredTrialBalance.contains("posting_fact.effective_date <= ?"));
     assertTrue(filteredTrialBalance.contains(" and posting_fact.effective_date <= ?"));

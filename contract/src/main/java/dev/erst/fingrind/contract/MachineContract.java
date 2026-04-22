@@ -19,12 +19,11 @@ public final class MachineContract {
   private MachineContract() {}
 
   /** Builds the canonical help descriptor. */
-  public static ContractDiscovery.HelpDescriptor help(
-      ContractDiscovery.ApplicationIdentity identity,
-      ContractDiscovery.EnvironmentDescriptor environment) {
+  public static HelpDescriptor help(
+      ApplicationIdentity identity, EnvironmentDescriptor environment) {
     Objects.requireNonNull(identity, "identity");
     Objects.requireNonNull(environment, "environment");
-    return new ContractDiscovery.HelpDescriptor(
+    return new HelpDescriptor(
         identity.application(),
         identity.version(),
         identity.description(),
@@ -41,19 +40,16 @@ public final class MachineContract {
   }
 
   /** Builds the canonical capabilities descriptor. */
-  public static ContractDiscovery.CapabilitiesDescriptor capabilities(
-      ContractDiscovery.ApplicationIdentity identity,
-      ContractDiscovery.EnvironmentDescriptor environment,
-      Instant timestamp) {
+  public static CapabilitiesDescriptor capabilities(
+      ApplicationIdentity identity, EnvironmentDescriptor environment, Instant timestamp) {
     Objects.requireNonNull(identity, "identity");
     Objects.requireNonNull(environment, "environment");
     Objects.requireNonNull(timestamp, "timestamp");
-    return new ContractDiscovery.CapabilitiesDescriptor(
+    return new CapabilitiesDescriptor(
         identity.application(),
         identity.version(),
-        new ContractDiscovery.StorageSurfaceDescriptor(
-            ProtocolCatalog.storageEngines(), "single-sqlite-file"),
-        new ContractDiscovery.CommandCatalogDescriptor(
+        new StorageSurfaceDescriptor(ProtocolCatalog.storageEngines(), "single-sqlite-file"),
+        new CommandCatalogDescriptor(
             ProtocolCatalog.operationNames(OperationCategory.DISCOVERY),
             ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION),
             ProtocolCatalog.operationNames(OperationCategory.QUERY),
@@ -72,10 +68,9 @@ public final class MachineContract {
   }
 
   /** Builds the canonical version descriptor. */
-  public static ContractDiscovery.VersionDescriptor version(
-      ContractDiscovery.ApplicationIdentity identity) {
+  public static VersionDescriptor version(ApplicationIdentity identity) {
     Objects.requireNonNull(identity, "identity");
-    return new ContractDiscovery.VersionDescriptor(
+    return new VersionDescriptor(
         identity.application(), identity.version(), identity.description());
   }
 

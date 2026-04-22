@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: CONTRACT_EXECUTOR_READ
 updated: "2026-04-21"
 route:
@@ -105,30 +105,44 @@ public sealed interface RekeyBookResult
 public sealed interface BookInspection
 ```
 
-- Variants: `Missing`, `BlankSqlite`, `Initialized`, `ForeignSqlite`,
-  `UnsupportedFormatVersion`, `IncompleteFinGrind`
+- Variants: `Missing`, `Existing`, `Initialized`
 - Purpose: distinguish missing, blank, initialized, foreign, unsupported, and incomplete books
-- Wire state: `status().wireValue()` is the stable lower-case/hyphenated vocabulary
+- Wire state: `status().wireValue()` is the stable lower-case/hyphenated vocabulary.
+  `Existing.status()` is the owner of the specific blank/foreign/unsupported/incomplete state.
 
 ## `ListAccountsQuery`
 
 `ListAccountsQuery` is the paginated read model for the declared-account registry.
 
 ```java
-public record ListAccountsQuery(int limit, int offset)
+public record ListAccountsQuery(int limit, Optional<AccountPageCursor> cursor)
 ```
 
-- Purpose: keep account-registry paging explicit
+- Purpose: keep account-registry paging explicit and keyset-resumable
+
+## `AccountPageCursor`
+
+`AccountPageCursor` is the stable opaque keyset cursor for ascending account-code pagination.
+
+```java
+public record AccountPageCursor(AccountCode accountCode)
+```
+
+- Purpose: continue account-registry pagination without offset scans
+- Wire contract: `wireValue()` and `fromWireValue(...)` own the base64url encoding
 
 ## `AccountPage`
 
 `AccountPage` is one stable page of declared accounts.
 
 ```java
-public record AccountPage(List<DeclaredAccount> accounts, int limit, int offset, boolean hasMore)
+public record AccountPage(
+    List<DeclaredAccount> accounts,
+    int limit,
+    Optional<AccountPageCursor> nextCursor)
 ```
 
-- Purpose: couple one account slice to its paging metadata
+- Purpose: couple one account slice to the next keyset cursor
 
 ## `ListAccountsResult`
 
@@ -215,10 +229,7 @@ public sealed interface ListPostingsResult
 `AccountBalanceQuery` is the grouped-balance request for one declared account.
 
 ```java
-public record AccountBalanceQuery(
-    AccountCode accountCode,
-    Optional<LocalDate> effectiveDateFrom,
-    Optional<LocalDate> effectiveDateTo)
+public record AccountBalanceQuery(AccountCode accountCode, EffectiveDateRange effectiveDateRange)
 ```
 
 - Purpose: request grouped per-currency totals for one account, optionally within an effective-date

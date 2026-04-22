@@ -22,9 +22,9 @@ final class SqliteStoreReportOperations {
     T run(SqliteNativeDatabase activeDatabase);
   }
 
-  private final SqlitePostingFactStore store;
+  private final SqliteStoreContext store;
 
-  SqliteStoreReportOperations(SqlitePostingFactStore store) {
+  SqliteStoreReportOperations(SqliteStoreContext store) {
     this.store = Objects.requireNonNull(store, "store");
   }
 

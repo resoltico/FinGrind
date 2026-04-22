@@ -78,20 +78,15 @@ class LedgerPlanServiceTest {
                           new LedgerStep.PostEntry(stepId("post"), postEntryCommand("idem-1")),
                           new LedgerStep.InspectBook(stepId("inspect")),
                           new LedgerStep.ListAccounts(
-                              stepId("accounts"), new ListAccountsQuery(50, 0)),
+                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())),
                           new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")),
                           new LedgerStep.ListPostings(
                               stepId("postings"),
                               new ListPostingsQuery(
-                                  Optional.empty(),
-                                  Optional.empty(),
-                                  Optional.empty(),
-                                  50,
-                                  Optional.empty())),
+                                  Optional.empty(), null, null, 50, Optional.empty())),
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(
-                                  new AccountCode("1000"), Optional.empty(), Optional.empty())),
+                              new AccountBalanceQuery(new AccountCode("1000"), null, null)),
                           new LedgerStep.Assert(
                               stepId("assert-declared"),
                               new LedgerAssertion.AccountDeclared(new AccountCode("1000"))),
@@ -105,8 +100,8 @@ class LedgerPlanServiceTest {
                               stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("1000"),
-                                  Optional.empty(),
-                                  Optional.empty(),
+                                  null,
+                                  null,
                                   new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
                                   BalanceSide.DEBIT)))));
 
@@ -171,8 +166,7 @@ class LedgerPlanServiceTest {
                       List.of(
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(
-                                  new AccountCode("1000"), Optional.empty(), Optional.empty())))));
+                              new AccountBalanceQuery(new AccountCode("1000"), null, null)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, queryResult.status());
       assertEquals(
@@ -346,11 +340,7 @@ class LedgerPlanServiceTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       ListPostingsQuery missingAccountQuery =
           new ListPostingsQuery(
-              Optional.of(new AccountCode("9999")),
-              Optional.empty(),
-              Optional.empty(),
-              50,
-              Optional.empty());
+              Optional.of(new AccountCode("9999")), null, null, 50, Optional.empty());
       LedgerPlanResult listPostingsResult =
           service(bookSession)
               .execute(
@@ -375,8 +365,7 @@ class LedgerPlanServiceTest {
                       List.of(
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              new AccountBalanceQuery(
-                                  new AccountCode("9999"), Optional.empty(), Optional.empty())))));
+                              new AccountBalanceQuery(new AccountCode("9999"), null, null)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, balanceResult.status());
       assertEquals(
@@ -398,7 +387,7 @@ class LedgerPlanServiceTest {
                       List.of(
                           new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.ListAccounts(
-                              stepId("accounts"), new ListAccountsQuery(50, 0)))));
+                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -427,8 +416,8 @@ class LedgerPlanServiceTest {
           bookSession,
           new LedgerAssertion.AccountBalanceEquals(
               new AccountCode("1000"),
-              Optional.empty(),
-              Optional.empty(),
+              null,
+              null,
               new Money(new CurrencyCode("USD"), BigDecimal.ZERO),
               BalanceSide.ZERO));
     }
@@ -447,8 +436,8 @@ class LedgerPlanServiceTest {
                               stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("9999"),
-                                  Optional.empty(),
-                                  Optional.empty(),
+                                  null,
+                                  null,
                                   new Money(new CurrencyCode("EUR"), BigDecimal.TEN),
                                   BalanceSide.DEBIT)))));
 
@@ -470,8 +459,8 @@ class LedgerPlanServiceTest {
                               stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("1000"),
-                                  Optional.empty(),
-                                  Optional.empty(),
+                                  null,
+                                  null,
                                   new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
                                   BalanceSide.CREDIT)))));
 
@@ -497,8 +486,8 @@ class LedgerPlanServiceTest {
                               stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
                                   new AccountCode("1000"),
-                                  Optional.empty(),
-                                  Optional.empty(),
+                                  null,
+                                  null,
                                   new Money(new CurrencyCode("EUR"), new BigDecimal("9.00")),
                                   BalanceSide.DEBIT)))));
 

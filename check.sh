@@ -28,6 +28,7 @@
 # by the GitHub workflows:
 #   bash -n check.sh scripts/*.sh jazzer/bin/*
 #   scripts/test-check-process-support.sh
+#   scripts/test-verify-release-primary-checkout.sh
 #   scripts/test-verify-managed-sqlite-runtime.sh
 #   scripts/verify-managed-sqlite-runtime.sh
 #
@@ -150,7 +151,7 @@ print_usage() {
         '  2. jazzer check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
-        '  5. bash -n check.sh scripts/*.sh jazzer/bin/* && scripts/test-check-process-support.sh && scripts/test-verify-managed-sqlite-runtime.sh && scripts/verify-managed-sqlite-runtime.sh' \
+        '  5. bash -n check.sh scripts/*.sh jazzer/bin/* && scripts/test-check-process-support.sh && scripts/test-verify-release-primary-checkout.sh && scripts/test-verify-managed-sqlite-runtime.sh && scripts/verify-managed-sqlite-runtime.sh' \
         '  6. scripts/docker-smoke.sh (Docker acceptance workflow)' \
         '' \
         'Supported options:' \
@@ -751,6 +752,7 @@ run_shell_stage 'shell-syntax' 'Stage 5/6: checking release-surface shell script
         set -euo pipefail
         bash -n "$@"
         "'"${repo_root}"'/scripts/test-check-process-support.sh"
+        "'"${repo_root}"'/scripts/test-verify-release-primary-checkout.sh"
         "'"${repo_root}"'/scripts/test-verify-managed-sqlite-runtime.sh"
         "'"${repo_root}"'/scripts/verify-managed-sqlite-runtime.sh"
     ' bash "${shell_syntax_targets[@]}"

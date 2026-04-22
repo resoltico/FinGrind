@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.21.0"
+version: "0.22.0"
 domain: HUMAN_REQUESTS
 updated: "2026-04-22"
 route:
@@ -101,7 +101,7 @@ Current ledger-plan rules:
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request
 - `list-accounts`, `list-postings`, and `account-balance` use nested `query`
-- `list-accounts.query` accepts `limit` plus optional `offset`
+- `list-accounts.query` accepts `limit` plus optional opaque `cursor`
 - `list-postings.query` accepts optional `accountCode`, optional effective-date bounds, required
   `limit`, and optional opaque `cursor`
 - `account-balance.query` accepts `accountCode` plus optional effective-date bounds
@@ -145,7 +145,7 @@ Dynamic fields:
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is the normalized absolute path of the selected book
-- `list-accounts` exposes `limit`, `offset`, and `hasMore`
+- `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
 - `list-postings` exposes `limit` plus an optional opaque `nextCursor`
 - `committed.postingId` is generated per successful commit as a UUID v7 value
 - `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
@@ -207,8 +207,7 @@ rendered:
 
 `list-accounts` success returns:
 - `payload.limit`
-- `payload.offset`
-- `payload.hasMore`
+- optional `payload.nextCursor`
 - `payload.accounts[]`, where each entry includes `accountCode`, `accountName`, `normalBalance`, `active`, and `declaredAt`
 
 `get-posting` success returns:

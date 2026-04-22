@@ -1,11 +1,14 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import java.util.Objects;
+import java.util.Optional;
 
 /** One paginated query for the declared account registry. */
-public record ListAccountsQuery(int limit, int offset) {
+public record ListAccountsQuery(int limit, Optional<AccountPageCursor> cursor) {
   /** Validates one paginated account-list request. */
   public ListAccountsQuery {
+    Objects.requireNonNull(cursor, "cursor");
     if (limit < ProtocolLimits.PAGE_LIMIT_MIN || limit > ProtocolLimits.PAGE_LIMIT_MAX) {
       throw new IllegalArgumentException(
           "listAccounts limit must be between "
@@ -13,9 +16,6 @@ public record ListAccountsQuery(int limit, int offset) {
               + " and "
               + ProtocolLimits.PAGE_LIMIT_MAX
               + ".");
-    }
-    if (offset < ProtocolLimits.PAGE_OFFSET_MIN) {
-      throw new IllegalArgumentException("listAccounts offset must not be negative.");
     }
   }
 }

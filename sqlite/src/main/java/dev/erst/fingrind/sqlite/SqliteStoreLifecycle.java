@@ -98,7 +98,7 @@ final class SqliteStoreLifecycle {
     }
     try {
       if (database != null) {
-        SqlitePostingFactStore.closeOwnedDatabase(database.nativeDatabase());
+        SqliteStoreContext.closeOwnedDatabase(database.nativeDatabase());
       }
       database = null;
       cachedBookState = null;
