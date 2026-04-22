@@ -37,27 +37,7 @@ jobs:
         run: ./gradlew check --no-daemon
 
       - name: Verify managed SQLite CLI runtime
-        run: |
-          set -euo pipefail
-          output="$(./gradlew :cli:run --args='capabilities --output json' --no-daemon --console=plain)"
-          printf '%s\n' "$output"
-          printf '%s\n' "$output" | python3 -c '
-          import json
-          import sys
-
-          payload = json.load(sys.stdin)["payload"]
-          sqlite = payload["environment"]["sqlite"]
-          checks = [
-              (sqlite["libraryMode"] == "managed-only", "missing managed-only sqlite library mode"),
-              (sqlite["requiredMinimumSqliteVersion"] == "3.53.0", "missing required minimum SQLite version"),
-              (sqlite["runtimeStatus"] == "ready", "missing ready sqlite runtime status"),
-              (sqlite["loadedSqliteVersion"] == "3.53.0", "missing loaded SQLite version"),
-          ]
-
-          for passed, message in checks:
-              if not passed:
-                  raise SystemExit(message)
-          '
+        run: ./scripts/verify-managed-sqlite-runtime.sh
 
       - name: Build self-contained CLI bundle
         run: ./gradlew :cli:bundleCliArchive --no-daemon --console=plain
@@ -96,14 +76,9 @@ jobs:
       - name: Verify managed SQLite CLI runtime on Windows
         shell: pwsh
         run: |
-          $output = .\gradlew.bat :cli:run --args='capabilities --output json' --no-daemon --console=plain | Out-String
+          $output = .\gradlew.bat -q :cli:run "--args=capabilities --output json" --no-daemon --console=plain | Out-String
           Write-Host $output
-          $payload = $output | ConvertFrom-Json
-          $sqlite = $payload.payload.environment.sqlite
-          if ($sqlite.libraryMode -ne "managed-only") { throw "missing managed-only sqlite library mode" }
-          if ($sqlite.requiredMinimumSqliteVersion -ne "3.53.0") { throw "missing required minimum SQLite version" }
-          if ($sqlite.runtimeStatus -ne "ready") { throw "missing ready sqlite runtime status" }
-          if ($sqlite.loadedSqliteVersion -ne "3.53.0") { throw "missing loaded SQLite version" }
+          $output | python .\scripts\verify-managed-sqlite-runtime.py
 
       - name: Build self-contained Windows CLI bundle
         shell: pwsh

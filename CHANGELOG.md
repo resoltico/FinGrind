@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Aligned `check.sh`, Jazzer build pulses, and developer docs around the canonical
   deterministic-tests pulse vocabulary, so the local full gate and the documented operator
   surface now describe the same Jazzer verification phases.
+- Replaced the inline workflow-only managed SQLite runtime probes with one canonical
+  source-checkout verifier script, and bound that same helper into the local root gate so
+  GitHub workflow checks cannot drift behind the live `capabilities` contract again.
 - Reworked `check.sh` stall diagnostics and timeout teardown around a shared process-tree helper,
   so bounded `jcmd` and `lsof` probes can no longer outlive the watchdog shell as orphaned
   descendants; the root gate now executes a dedicated TERM-ignoring process-tree regression to
