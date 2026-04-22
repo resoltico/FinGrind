@@ -50,7 +50,7 @@ final class SqliteNativeConnections {
 
   static SqliteNativeDatabase open(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode) {
-    return open(bookPath, bookPassphrase, openMode, SqliteNativeLibrary.api());
+    return open(bookPath, bookPassphrase, openMode, SqliteNativeBootstrap.api());
   }
 
   static SqliteNativeDatabase open(
@@ -68,7 +68,7 @@ final class SqliteNativeConnections {
       MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
       int resultCode = openNativeDatabase(filename, databasePointer, openMode, sqliteApi);
       MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
-      if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+      if (resultCode != SqliteNativeResultCodes.OK) {
         SqliteNativeException failure = SqliteNativeErrors.failure(resultCode, sqliteApi);
         suppressCloseFailure(databaseHandle, sqliteApi, failure);
         throw failure;
@@ -78,14 +78,14 @@ final class SqliteNativeConnections {
   }
 
   static void close(MemorySegment databaseHandle) {
-    SqliteNativeApi sqliteApi = SqliteNativeLibrary.api();
+    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     SqliteNativeInvocation.runSqlite(
         "Failed to close the SQLite native library bridge.",
         () -> {
           int resultCode =
               SqliteNativeCalls.addressToInt(effectiveSqlite3CloseV2(sqliteApi))
                   .invoke(databaseHandle);
-          if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+          if (resultCode != SqliteNativeResultCodes.OK) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
           }
           SqliteNativeBootstrap.recordClosedConnection();
@@ -97,7 +97,7 @@ final class SqliteNativeConnections {
   static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase) {
     Objects.requireNonNull(database, "database");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
-    SqliteNativeApi sqliteApi = SqliteNativeLibrary.api();
+    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment keyPointer = bookPassphrase.copyToCString(arena);
       int resultCode =
@@ -108,7 +108,7 @@ final class SqliteNativeConnections {
               () ->
                   SqliteNativeCalls.addressAddressIntToInt(effectiveSqlite3Rekey(sqliteApi))
                       .invoke(database.handle(), keyPointer, bookPassphrase.byteLength()));
-      if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+      if (resultCode != SqliteNativeResultCodes.OK) {
         throw SqliteNativeErrors.failure(resultCode, sqliteApi);
       }
       validateConfiguredKey(database.handle(), sqliteApi);
@@ -195,7 +195,7 @@ final class SqliteNativeConnections {
   }
 
   static void requireOpenConfigurationSuccess(int resultCode, SqliteNativeApi sqliteApi) {
-    if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+    if (resultCode != SqliteNativeResultCodes.OK) {
       throw SqliteNativeErrors.failure(resultCode, sqliteApi);
     }
   }
@@ -208,7 +208,7 @@ final class SqliteNativeConnections {
     try {
       int resultCode =
           SqliteNativeCalls.addressToInt(sqliteApi.sqlite3CloseV2()).invoke(databaseHandle);
-      if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+      if (resultCode != SqliteNativeResultCodes.OK) {
         primaryFailure.addSuppressed(SqliteNativeErrors.failure(resultCode, sqliteApi));
       }
     } catch (RuntimeException exception) {

@@ -1,11 +1,12 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 /** Public output-selection vocabulary for FinGrind commands that advertise selectable output. */
-public enum OutputMode {
+public enum OutputMode implements WireValue {
   /** Canonical machine-readable JSON output. */
   JSON("json") {
     @Override
@@ -35,6 +36,7 @@ public enum OutputMode {
   }
 
   /** Returns the stable public wire value for this output mode. */
+  @Override
   public String wireValue() {
     return wireValue;
   }

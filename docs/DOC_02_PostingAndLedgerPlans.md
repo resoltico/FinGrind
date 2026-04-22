@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -111,9 +111,10 @@ public sealed interface LedgerStep
 ```
 
 - Families: `OpenBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
-  `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, `TrialBalance`,
-  `AccountLedger`, `PeriodSummary`, `Assert`
+  `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, `Assert`
 - Purpose: keep plan execution exhaustively typed instead of routing through maps
+- Scope: current ledger plans intentionally stop at book inspection, listings, posting lookup, and
+  account-balance queries; office-worker report commands stay on the standalone CLI surface
 
 ## `LedgerAssertion`
 
@@ -149,6 +150,8 @@ public enum LedgerPlanStatus
 ```
 
 - Purpose: keep plan/journal tokens compiler-owned and renderer-independent
+- Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
 
 ## `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult`
 

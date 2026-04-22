@@ -48,7 +48,7 @@ final class SqlitePostingReader {
     String sql = SqlitePostingSql.listPostings(query);
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindPostingPageQuery(statement, query);
-      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+      while (statement.step() == SqliteNativeResultCodes.ROW) {
         postings.add(loadPostingRow(activeDatabase, statement));
       }
     }
@@ -72,7 +72,7 @@ final class SqlitePostingReader {
     List<PostingFact> postings = new ArrayList<>();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       binder.bind(statement);
-      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+      while (statement.step() == SqliteNativeResultCodes.ROW) {
         postings.add(loadPostingRow(activeDatabase, statement));
       }
     }
@@ -99,7 +99,7 @@ final class SqlitePostingReader {
     Map<CurrencyCode, Totals> totalsByCurrency = mutableTotalsByCurrency();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindAccountBalanceQuery(statement, query);
-      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+      while (statement.step() == SqliteNativeResultCodes.ROW) {
         JournalLine.EntrySide side = readEntrySide(statement);
         CurrencyCode currencyCode = readCurrencyCode(statement);
         BigDecimal amount = readAmount(statement);

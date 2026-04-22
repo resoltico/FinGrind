@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -142,10 +142,14 @@ The SQLite adapter is split into focused collaborators:
   posting reads, and durable writes
 - [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
-- [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java):
-  minimal FFM binding surface to the SQLite C API, including configured-library selection, version
-  and compile-option enforcement, key/rekey application, key validation, and `sqlite3_exec` for canonical schema
-  application
+- [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java),
+  [`SqliteNativeConnections`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeConnections.java),
+  [`SqliteNativeStatements`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatements.java),
+  [`SqliteNativeErrors`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeErrors.java),
+  and [`SqliteNativeRuntimePolicy`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeRuntimePolicy.java):
+  split native-bridge owners for bootstrap, configured-library selection, version and
+  compile-option enforcement, key/rekey application, key validation, statement execution, and
+  SQLite-native error decoding
 - [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
   loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
 - [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
@@ -286,7 +290,7 @@ Distribution note:
 
 Native bridge notes:
 - the SQLite symbol arena in
-  [`SqliteNativeLibrary`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeLibrary.java)
+  [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java)
   intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
   session
 - native library lookup has no platform-default fallback; it uses extracted bundle home for the

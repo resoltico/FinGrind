@@ -1,11 +1,12 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 /** Final status for one ledger-plan execution. */
-public enum LedgerPlanStatus {
+public enum LedgerPlanStatus implements WireValue {
   /** Every step completed successfully and the atomic transaction was committed. */
   SUCCEEDED,
   /** A deterministic command rejection stopped the plan and rolled back the transaction. */
@@ -14,6 +15,7 @@ public enum LedgerPlanStatus {
   ASSERTION_FAILED;
 
   /** Returns the stable wire value for this plan status. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case SUCCEEDED -> "succeeded";

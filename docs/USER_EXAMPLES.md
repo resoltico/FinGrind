@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: USER_EXAMPLES
 updated: "2026-04-22"
 route:
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.22.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.22.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.23.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.23.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -104,6 +104,10 @@ fingrind \
   --book-key-file ./acme.book-key \
   --new-book-passphrase-prompt
 ```
+
+`rekey-book` also accepts `--new-book-key-file` and `--new-book-passphrase-stdin` for the
+replacement secret. The interactive replacement prompt asks for the new passphrase twice and
+rejects mismatched entries.
 
 One successful response:
 

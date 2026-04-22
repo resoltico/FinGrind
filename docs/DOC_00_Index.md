@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: INDEX
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers BookReadSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -50,6 +50,7 @@ route:
 | `ReversalReason` | `DOC_01_Core.md` | `ReversalReason` |
 | `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
 | `SourceChannel` | `DOC_01_Core.md` | `SourceChannel` |
+| `WireValue` | `DOC_01_Core.md` | `WireValue` |
 | `ProtocolCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolCatalog` |
 | `ProtocolOperation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolCommandSignature` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |

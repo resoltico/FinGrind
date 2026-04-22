@@ -6,9 +6,9 @@ import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
@@ -120,8 +120,9 @@ final class CliBookPassphraseResolver {
     return systemConsoleReader(System.console());
   }
 
-  static Optional<Terminal> systemConsoleReader(@Nullable Object consoleHandle) {
-    return Optional.ofNullable(consoleHandle).map(ReflectiveConsoleTerminal::new);
+  static Optional<Terminal> systemConsoleReader(@Nullable Console consoleHandle) {
+    return Optional.ofNullable(consoleHandle)
+        .map(console -> new PromptingConsoleTerminal(console::readPassword));
   }
 
   /** Terminal adapter that obtains the controlling prompt bridge lazily for each read. */
@@ -143,42 +144,38 @@ final class CliBookPassphraseResolver {
     }
   }
 
-  /** Adapts a JDK console-like object by invoking its readPassword(format, args...) method. */
-  static final class ReflectiveConsoleTerminal implements Terminal {
-    private final Object consoleHandle;
-    private final Method readPasswordMethod;
+  /** Typed console seam for password prompts used by the interactive CLI flow. */
+  @FunctionalInterface
+  interface PromptingConsole {
+    /** Reads one password from the underlying console prompt and may return {@code null} on EOF. */
+    char @Nullable [] readPassword(String format, Object... arguments);
+  }
 
-    ReflectiveConsoleTerminal(Object consoleHandle) {
-      this.consoleHandle = Objects.requireNonNull(consoleHandle, "consoleHandle");
-      this.readPasswordMethod = resolveReadPasswordMethod(consoleHandle);
+  /** Shared terminal adapter that converts one typed prompt seam into FinGrind decisions. */
+  static class PromptingConsoleTerminal implements Terminal {
+    private final PromptingConsole promptingConsole;
+
+    PromptingConsoleTerminal(PromptingConsole promptingConsole) {
+      this.promptingConsole = Objects.requireNonNull(promptingConsole, "promptingConsole");
     }
 
     @Override
     public ContractDecision<char[]> readPassword(String prompt) {
       Objects.requireNonNull(prompt, "prompt");
       try {
-        return ContractDecision.accepted(
-            (char[]) readPasswordMethod.invoke(consoleHandle, "%s", new Object[] {prompt}));
-      } catch (ReflectiveOperationException exception) {
+        char @Nullable [] password = promptingConsole.readPassword("%s", prompt);
+        if (password == null) {
+          return ContractDecision.rejected(
+              interactivePromptFailure(
+                  "FinGrind did not receive a book passphrase from the interactive console."));
+        }
+        return ContractDecision.accepted(password);
+      } catch (RuntimeException exception) {
         return ContractDecision.rejected(
             ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED.failure(
                 "Failed to prompt for a book passphrase from the interactive console.",
                 "Rerun the command from a supported interactive terminal, or use --book-key-file or --book-passphrase-stdin instead.",
                 null));
-      }
-    }
-
-    private static Method resolveReadPasswordMethod(Object consoleHandle) {
-      try {
-        Method readPasswordMethod =
-            consoleHandle
-                .getClass()
-                .getDeclaredMethod("readPassword", String.class, Object[].class);
-        return readPasswordMethod;
-      } catch (NoSuchMethodException exception) {
-        throw new IllegalArgumentException(
-            "Interactive console handle does not expose readPassword(String, Object...).",
-            exception);
       }
     }
   }

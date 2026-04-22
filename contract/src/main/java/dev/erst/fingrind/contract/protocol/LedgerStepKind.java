@@ -1,11 +1,12 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 /** Canonical wire kinds accepted for top-level ledger-plan steps. */
-public enum LedgerStepKind {
+public enum LedgerStepKind implements WireValue {
   OPEN_BOOK("open-book"),
   DECLARE_ACCOUNT("declare-account"),
   PREFLIGHT_ENTRY("preflight-entry"),
@@ -24,6 +25,7 @@ public enum LedgerStepKind {
   }
 
   /** Returns the stable wire value for this plan step kind. */
+  @Override
   public String wireValue() {
     return wireValue;
   }

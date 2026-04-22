@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.Objects;
 public sealed interface BookInspection
     permits BookInspection.Missing, BookInspection.Existing, BookInspection.Initialized {
   /** Stable lifecycle and compatibility state reported for one book file. */
-  enum Status {
+  enum Status implements WireValue {
     MISSING,
     BLANK_SQLITE,
     INITIALIZED,
@@ -18,6 +19,7 @@ public sealed interface BookInspection
     INCOMPLETE_FINGRIND;
 
     /** Returns the stable public wire value for this book-inspection state. */
+    @Override
     public String wireValue() {
       return switch (this) {
         case MISSING -> "missing";

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -24,20 +25,20 @@ public final class SqliteRuntime {
 
   /** Reads the loaded SQLite library version through the Java 26 FFM bridge. */
   public static String sqliteVersion() {
-    return SqliteNativeLibrary.sqliteVersion();
+    return SqliteNativeBootstrap.sqliteVersion();
   }
 
   /** Reads the loaded SQLite3 Multiple Ciphers version through the Java 26 FFM bridge. */
   public static String sqlite3MultipleCiphersVersion() {
-    return SqliteNativeLibrary.sqlite3MultipleCiphersVersion();
+    return SqliteNativeBootstrap.sqlite3MultipleCiphersVersion();
   }
 
   /** Probes the packaged SQLite runtime without throwing, for CLI discovery surfaces. */
   public static Probe probe() {
     return probe(
-        SqliteNativeLibrary::configuredLibraryMode,
-        SqliteNativeLibrary::sqliteVersion,
-        SqliteNativeLibrary::sqlite3MultipleCiphersVersion,
+        () -> LIBRARY_MODE,
+        SqliteNativeBootstrap::sqliteVersion,
+        SqliteNativeBootstrap::sqlite3MultipleCiphersVersion,
         SqliteRuntime::failureDetail);
   }
 
@@ -184,7 +185,7 @@ public final class SqliteRuntime {
   }
 
   /** Stable wire names for machine-readable runtime statuses. */
-  public enum Status {
+  public enum Status implements WireValue {
     READY("ready"),
     UNAVAILABLE("unavailable"),
     INCOMPATIBLE("incompatible");
@@ -195,6 +196,7 @@ public final class SqliteRuntime {
       this.wireValue = wireValue;
     }
 
+    @Override
     public String wireValue() {
       return wireValue;
     }

@@ -8,12 +8,14 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.withType
 
 class FinGrindJazzerConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -58,6 +60,10 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
             extensions.configure<JavaPluginExtension> {
                 toolchain.languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
+            }
+
+            tasks.withType<JavaCompile>().configureEach {
+                options.release.set(fingrindJavaVersion)
             }
 
             val sourceSets = extensions.getByType<SourceSetContainer>()

@@ -107,6 +107,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.withType<JavaCompile>().configureEach {
+                options.release.set(fingrindJavaVersion)
                 options.errorprone.disableWarningsInGeneratedCode.set(true)
                 options.errorprone.option("NullAway:OnlyNullMarked", "true")
                 options.errorprone.option("NullAway:JSpecifyMode", "true")

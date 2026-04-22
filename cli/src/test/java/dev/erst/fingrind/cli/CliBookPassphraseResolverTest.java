@@ -306,30 +306,45 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
-  void systemConsoleReader_wrapsConsoleLikeHandle() {
+  void promptingConsoleTerminal_readsPasswordFromTypedPromptingConsole() {
     CliBookPassphraseResolver.Terminal terminal =
-        CliBookPassphraseResolver.systemConsoleReader(new FakeConsoleHandle()).orElseThrow();
+        new CliBookPassphraseResolver.PromptingConsoleTerminal(
+            (format, arguments) -> {
+              assertEquals("%s", format);
+              assertEquals(1, arguments.length);
+              assertEquals("book.sqlite", arguments[0]);
+              return "console-secret".toCharArray();
+            });
 
     assertEquals(
         "console-secret", new String(terminal.readPassword("book.sqlite").requireAccepted()));
   }
 
   @Test
-  void systemConsoleReader_rejectsHandlesWithoutReadPasswordMethod() {
-    IllegalArgumentException exception =
+  void promptingConsoleTerminal_rejectsNullPasswordReads() {
+    CliBookPassphraseResolver.Terminal terminal =
+        new CliBookPassphraseResolver.PromptingConsoleTerminal((format, arguments) -> null);
+
+    IllegalStateException exception =
         assertThrows(
-            IllegalArgumentException.class,
-            () -> CliBookPassphraseResolver.systemConsoleReader(new Object()));
+            IllegalStateException.class,
+            () -> terminal.readPassword("book.sqlite").requireAccepted());
 
     assertEquals(
-        "Interactive console handle does not expose readPassword(String, Object...).",
+        "FinGrind did not receive a book passphrase from the interactive console.",
         exception.getMessage());
   }
 
   @Test
-  void systemConsoleReader_wrapsReadPasswordInvocationFailures() {
+  void promptingConsoleTerminal_wrapsReadPasswordFailures() {
     CliBookPassphraseResolver.Terminal terminal =
-        CliBookPassphraseResolver.systemConsoleReader(new ThrowingConsoleHandle()).orElseThrow();
+        new CliBookPassphraseResolver.PromptingConsoleTerminal(
+            (format, arguments) -> {
+              assertEquals("%s", format);
+              assertEquals(1, arguments.length);
+              assertEquals("book.sqlite", arguments[0]);
+              throw new IllegalStateException("boom");
+            });
 
     IllegalStateException exception =
         assertThrows(
@@ -401,17 +416,6 @@ class CliBookPassphraseResolverTest {
     assertEquals("reader", exception.getMessage());
   }
 
-  @Test
-  void consoleFixtureHandles_areDirectlyCallable() {
-    assertEquals(
-        "console-secret", new String(new FakeConsoleHandle().readPassword("%s", "book.sqlite")));
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> new ThrowingConsoleHandle().readPassword("%s", "book.sqlite"));
-    assertEquals("boom", exception.getMessage());
-  }
-
   private static ContractDecision<char[]> failPrompt(String prompt) {
     throw new AssertionError("Unexpected prompt usage: " + prompt);
   }
@@ -434,25 +438,5 @@ class CliBookPassphraseResolverTest {
               assertEquals("book.sqlite", prompt);
               return ContractDecision.accepted(password.toCharArray());
             });
-  }
-
-  /** Console-shaped test double that records the reflected prompt format and arguments. */
-  private static final class FakeConsoleHandle {
-    char[] readPassword(String format, Object... arguments) {
-      assertEquals("%s", format);
-      assertEquals(1, arguments.length);
-      assertEquals("book.sqlite", arguments[0]);
-      return "console-secret".toCharArray();
-    }
-  }
-
-  /** Console-shaped test double that fails once the reflected readPassword method is invoked. */
-  private static final class ThrowingConsoleHandle {
-    char[] readPassword(String format, Object... arguments) {
-      assertEquals("%s", format);
-      assertEquals(1, arguments.length);
-      assertEquals("book.sqlite", arguments[0]);
-      throw new IllegalStateException("boom");
-    }
   }
 }

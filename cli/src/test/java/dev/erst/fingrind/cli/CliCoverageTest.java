@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookMigrationPolicy;
@@ -157,8 +158,18 @@ class CliCoverageTest {
                 1,
                 BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
                 Instant.parse("2026-04-07T10:15:30Z")));
+    AccountPageCursor nextAccountCursor = AccountPageCursor.fromAccount(cashAccount);
     String accountsHuman =
         CliQueryOutputRenderer.renderAccountsHuman(
+            new AccountPage(List.of(cashAccount), 50, Optional.of(nextAccountCursor)));
+    String accountsHumanWithoutCursor =
+        CliQueryOutputRenderer.renderAccountsHuman(
+            new AccountPage(List.of(cashAccount), 50, Optional.empty()));
+    String directAccountsHuman =
+        CliAccountPageOutputRenderer.renderHuman(
+            new AccountPage(List.of(cashAccount), 50, Optional.of(nextAccountCursor)));
+    String directAccountsHumanWithoutCursor =
+        CliAccountPageOutputRenderer.renderHuman(
             new AccountPage(List.of(cashAccount), 50, Optional.empty()));
     String accountsCsv =
         CliQueryOutputRenderer.renderAccountsCsv(
@@ -184,6 +195,10 @@ class CliCoverageTest {
     assertTrue(existingInspection.contains("blank-sqlite"));
     assertTrue(initializedInspection.contains("Initialized at"));
     assertTrue(accountsHuman.contains("Cash, reserve"));
+    assertTrue(accountsHuman.contains(nextAccountCursor.wireValue()));
+    assertTrue(accountsHumanWithoutCursor.contains("(none)"));
+    assertTrue(directAccountsHuman.contains(nextAccountCursor.wireValue()));
+    assertTrue(directAccountsHumanWithoutCursor.contains("(none)"));
     assertTrue(accountsCsv.contains("\"Cash, reserve\""));
     assertTrue(postingHuman.contains("Correlation id"));
     assertTrue(postingHuman.contains("posting-0"));

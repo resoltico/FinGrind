@@ -1,11 +1,12 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 /** Per-step execution status recorded in a ledger-plan journal. */
-public enum LedgerStepStatus {
+public enum LedgerStepStatus implements WireValue {
   /** The step completed successfully. */
   SUCCEEDED,
   /** The step received a deterministic domain rejection. */
@@ -14,6 +15,7 @@ public enum LedgerStepStatus {
   ASSERTION_FAILED;
 
   /** Returns the stable wire value for this step status. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case SUCCEEDED -> "succeeded";

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: DEVELOPER_JAVA
 updated: "2026-04-21"
 route:

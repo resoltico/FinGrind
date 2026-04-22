@@ -7,11 +7,12 @@ import java.util.Objects;
 /** One debit or credit line in a journal entry. */
 public record JournalLine(AccountCode accountCode, EntrySide side, PositiveMoney amount) {
   /** Side of the journal equation carried by one line. */
-  public enum EntrySide {
+  public enum EntrySide implements WireValue {
     DEBIT,
     CREDIT;
 
     /** Returns the stable public wire value for this journal-line side. */
+    @Override
     public String wireValue() {
       return switch (this) {
         case DEBIT -> "DEBIT";

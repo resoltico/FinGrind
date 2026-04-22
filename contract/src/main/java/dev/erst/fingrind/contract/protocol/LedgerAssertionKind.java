@@ -1,11 +1,12 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 /** Canonical wire kinds accepted inside ledger-plan assertion payloads. */
-public enum LedgerAssertionKind {
+public enum LedgerAssertionKind implements WireValue {
   ACCOUNT_DECLARED("assert-account-declared"),
   ACCOUNT_ACTIVE("assert-account-active"),
   POSTING_EXISTS("assert-posting-exists"),
@@ -18,6 +19,7 @@ public enum LedgerAssertionKind {
   }
 
   /** Returns the stable wire value for this assertion kind. */
+  @Override
   public String wireValue() {
     return wireValue;
   }

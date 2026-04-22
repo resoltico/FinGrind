@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: HUMAN_REQUESTS
 updated: "2026-04-22"
 route:
@@ -22,6 +22,10 @@ source:
   (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload from standard input
 - `--book-passphrase-prompt` with an interactive non-echo terminal prompt
+
+`rekey-book` reuses those current-book routes and additionally requires exactly one replacement
+passphrase source: `--new-book-key-file`, `--new-book-passphrase-stdin`, or
+`--new-book-passphrase-prompt`.
 
 ## Posting Request Shape
 

@@ -31,7 +31,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for the SQLite FFM binding layer. */
 @NullUnmarked
-class SqliteNativeLibraryTest {
+class SqliteNativeBridgeTest {
   private static final String TEST_BOOK_KEY = "native-library-test-book-key";
 
   @TempDir Path tempDirectory;
@@ -298,24 +298,25 @@ class SqliteNativeLibraryTest {
 
   @Test
   void resultName_mapsKnownAndUnknownCodes() {
-    assertEquals("SQLITE_OK", SqliteNativeLibrary.resultName(0));
-    assertEquals("SQLITE_ROW", SqliteNativeLibrary.resultName(100));
-    assertEquals("SQLITE_DONE", SqliteNativeLibrary.resultName(101));
-    assertEquals("SQLITE_CONSTRAINT_UNIQUE", SqliteNativeLibrary.resultName(2067));
-    assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", SqliteNativeLibrary.resultName(1555));
-    assertEquals("SQLITE_CONSTRAINT_DATATYPE", SqliteNativeLibrary.resultName(3091));
-    assertEquals("SQLITE_CONSTRAINT_FOREIGNKEY", SqliteNativeLibrary.resultName(787));
-    assertEquals("SQLITE_CANTOPEN", SqliteNativeLibrary.resultName(14));
-    assertEquals("SQLITE_CANTOPEN_ISDIR", SqliteNativeLibrary.resultName(526));
-    assertEquals("SQLITE_NOTADB", SqliteNativeLibrary.resultName(26));
-    assertEquals("SQLITE_999999", SqliteNativeLibrary.resultName(999999));
+    assertEquals("SQLITE_OK", SqliteNativeErrors.resultName(0));
+    assertEquals("SQLITE_ROW", SqliteNativeErrors.resultName(100));
+    assertEquals("SQLITE_DONE", SqliteNativeErrors.resultName(101));
+    assertEquals("SQLITE_CONSTRAINT_UNIQUE", SqliteNativeErrors.resultName(2067));
+    assertEquals("SQLITE_CONSTRAINT_PRIMARYKEY", SqliteNativeErrors.resultName(1555));
+    assertEquals("SQLITE_CONSTRAINT_DATATYPE", SqliteNativeErrors.resultName(3091));
+    assertEquals("SQLITE_CONSTRAINT_FOREIGNKEY", SqliteNativeErrors.resultName(787));
+    assertEquals("SQLITE_CANTOPEN", SqliteNativeErrors.resultName(14));
+    assertEquals("SQLITE_CANTOPEN_ISDIR", SqliteNativeErrors.resultName(526));
+    assertEquals("SQLITE_NOTADB", SqliteNativeErrors.resultName(26));
+    assertEquals("SQLITE_999999", SqliteNativeErrors.resultName(999999));
   }
 
   @Test
   void configuredLibraryTarget_requiresManagedLibraryPath() {
     IllegalStateException exception =
         assertThrows(
-            IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget(null));
+            IllegalStateException.class,
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null));
 
     assertTrue(exception.getMessage().contains("bundle launcher"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
@@ -324,29 +325,30 @@ class SqliteNativeLibraryTest {
   @Test
   void configuredLibraryTarget_requiresManagedPathAndNormalizesIt() {
     SqliteLibraryTarget libraryTarget =
-        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
+        SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0");
 
     assertEquals("managed-only", libraryTarget.mode());
     assertTrue(
         Path.of(libraryTarget.lookupTarget()).endsWith(Path.of("sqlite", "libsqlite3.so.0")));
-    assertEquals("managed-only", SqliteNativeLibrary.configuredLibraryMode());
+    assertEquals("managed-only", SqliteRuntime.LIBRARY_MODE);
     assertTrue(libraryTarget.toString().contains("managed-only"));
     assertEquals(
         libraryTarget,
-        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
+        SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0"));
     assertEquals(
         libraryTarget.hashCode(),
-        SqliteNativeLibrary.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0")
+        SqliteNativeRuntimePolicy.configuredLibraryTarget("./build/../sqlite/libsqlite3.so.0")
             .hashCode());
     assertThrows(
-        IllegalStateException.class, () -> SqliteNativeLibrary.configuredLibraryTarget("   "));
+        IllegalStateException.class,
+        () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   "));
     assertThrows(IllegalArgumentException.class, () -> new SqliteLibraryTarget(" ", "x"));
   }
 
   @Test
   void configuredLibraryTarget_prefersExplicitEnvironmentLibraryOverBundleHome() {
     SqliteLibraryTarget libraryTarget =
-        SqliteNativeLibrary.configuredLibraryTarget(
+        SqliteNativeRuntimePolicy.configuredLibraryTarget(
             "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString());
 
     assertEquals("managed-only", libraryTarget.mode());
@@ -363,7 +365,7 @@ class SqliteNativeLibraryTest {
     Files.writeString(bundledLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
 
     SqliteLibraryTarget libraryTarget =
-        SqliteNativeLibrary.configuredLibraryTarget(null, bundleHomePath.toString());
+        SqliteNativeRuntimePolicy.configuredLibraryTarget(null, bundleHomePath.toString());
 
     assertEquals("managed-only", libraryTarget.mode());
     assertEquals(
@@ -378,7 +380,8 @@ class SqliteNativeLibraryTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeLibrary.configuredLibraryTarget(null, bundleHomePath.toString()));
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(null, bundleHomePath.toString()));
 
     assertTrue(exception.getMessage().contains("bundle home"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
@@ -389,15 +392,15 @@ class SqliteNativeLibraryTest {
     IllegalStateException missingEverywhere =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeLibrary.configuredLibraryTarget(null, null));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null));
     IllegalStateException blankConfiguredPath =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeLibrary.configuredLibraryTarget("   ", null));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   ", null));
     IllegalStateException blankBundleHome =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeLibrary.configuredLibraryTarget(null, "   "));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, "   "));
 
     assertTrue(missingEverywhere.getMessage().contains("bundle launcher"));
     assertTrue(blankConfiguredPath.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
@@ -409,18 +412,19 @@ class SqliteNativeLibraryTest {
     String originalOsName = System.getProperty("os.name");
     try {
       System.setProperty("os.name", "Mac OS X");
-      assertEquals("libsqlite3.dylib", SqliteNativeLibrary.supportedNativeLibraryFileName());
+      assertEquals("libsqlite3.dylib", SqliteNativeRuntimePolicy.supportedNativeLibraryFileName());
 
       System.setProperty("os.name", "Linux");
-      assertEquals("libsqlite3.so.0", SqliteNativeLibrary.supportedNativeLibraryFileName());
+      assertEquals("libsqlite3.so.0", SqliteNativeRuntimePolicy.supportedNativeLibraryFileName());
 
       System.setProperty("os.name", "Windows 11");
-      assertEquals("sqlite3.dll", SqliteNativeLibrary.supportedNativeLibraryFileName());
+      assertEquals("sqlite3.dll", SqliteNativeRuntimePolicy.supportedNativeLibraryFileName());
 
       System.setProperty("os.name", "FreeBSD");
       IllegalStateException exception =
           assertThrows(
-              IllegalStateException.class, SqliteNativeLibrary::supportedNativeLibraryFileName);
+              IllegalStateException.class,
+              SqliteNativeRuntimePolicy::supportedNativeLibraryFileName);
 
       assertTrue(exception.getMessage().contains("macOS, Linux, and Windows only"));
       assertTrue(exception.getMessage().contains("FreeBSD"));
@@ -431,17 +435,17 @@ class SqliteNativeLibraryTest {
 
   @Test
   void requireSupportedVersion_rejectsOlderRuntimeAndCompareVersionsOrdersDottedNumbers() {
-    assertTrue(SqliteNativeLibrary.compareVersions("3.53.0", "3.52.9") > 0);
-    assertEquals(0, SqliteNativeLibrary.compareVersions("3.53", "3.53.0"));
-    assertEquals(0, SqliteNativeLibrary.compareVersions("3.53.0", "3.53"));
+    assertTrue(SqliteNativeRuntimePolicy.compareVersions("3.53.0", "3.52.9") > 0);
+    assertEquals(0, SqliteNativeRuntimePolicy.compareVersions("3.53", "3.53.0"));
+    assertEquals(0, SqliteNativeRuntimePolicy.compareVersions("3.53.0", "3.53"));
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteNativeLibrary.compareVersions("3.bad.0", "3.53.0"));
+        () -> SqliteNativeRuntimePolicy.compareVersions("3.bad.0", "3.53.0"));
 
     UnsupportedSqliteVersionException exception =
         assertThrows(
             UnsupportedSqliteVersionException.class,
-            () -> SqliteNativeLibrary.requireSupportedVersion("3.51.0", "managed-only"));
+            () -> SqliteNativeRuntimePolicy.requireSupportedVersion("3.51.0", "managed-only"));
 
     assertEquals("3.51.0", exception.loadedVersion());
     assertEquals("3.53.0", exception.requiredMinimumVersion());
@@ -453,7 +457,9 @@ class SqliteNativeLibraryTest {
     UnsupportedSqliteMultipleCiphersVersionException exception =
         assertThrows(
             UnsupportedSqliteMultipleCiphersVersionException.class,
-            () -> SqliteNativeLibrary.requireSupportedSqlite3mcVersion("2.3.2", "managed-only"));
+            () ->
+                SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(
+                    "2.3.2", "managed-only"));
 
     assertEquals("2.3.2", exception.loadedVersion());
     assertEquals("2.3.3", exception.requiredVersion());
@@ -466,7 +472,7 @@ class SqliteNativeLibraryTest {
         new UnsupportedSqliteVersionException("3.51.0", "3.53.0", "system");
 
     IllegalStateException exception =
-        SqliteNativeLibrary.nativeInitializationFailure(new ExceptionInInitializerError(cause));
+        SqliteNativeBootstrap.nativeInitializationFailure(new ExceptionInInitializerError(cause));
 
     assertEquals(cause, exception);
   }
@@ -476,7 +482,7 @@ class SqliteNativeLibraryTest {
     RuntimeException cause = new RuntimeException("boom");
 
     IllegalStateException exception =
-        SqliteNativeLibrary.nativeInitializationFailure(new ExceptionInInitializerError(cause));
+        SqliteNativeBootstrap.nativeInitializationFailure(new ExceptionInInitializerError(cause));
 
     assertEquals("boom", exception.getMessage());
     assertEquals(cause, exception.getCause());
@@ -486,7 +492,7 @@ class SqliteNativeLibraryTest {
   void nativeInitializationFailure_wrapsInitializerErrorWhenCauseIsMissing() {
     ExceptionInInitializerError error = new ExceptionInInitializerError();
 
-    IllegalStateException exception = SqliteNativeLibrary.nativeInitializationFailure(error);
+    IllegalStateException exception = SqliteNativeBootstrap.nativeInitializationFailure(error);
 
     assertEquals("Failed to initialize SQLite native library.", exception.getMessage());
     assertEquals(error, exception.getCause());
@@ -500,7 +506,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeLibrary.initialize(
+                SqliteNativeBootstrap.initialize(
                     () -> {
                       throw new ExceptionInInitializerError(cause);
                     }));
@@ -518,16 +524,16 @@ class SqliteNativeLibraryTest {
               0,
               MemorySegment.class);
 
-      assertEquals("SQLite native failure.", SqliteNativeLibrary.errorMessage(null, errorHandle));
+      assertEquals("SQLite native failure.", SqliteNativeErrors.errorMessage(null, errorHandle));
       assertEquals(
           "SQLite native failure.",
-          SqliteNativeLibrary.errorMessage(MemorySegment.NULL, errorHandle));
+          SqliteNativeErrors.errorMessage(MemorySegment.NULL, errorHandle));
     }
-    assertEquals("SQLite native failure.", SqliteNativeLibrary.errorMessage(null));
-    assertEquals("SQLite native failure.", SqliteNativeLibrary.errorMessage(MemorySegment.NULL));
+    assertEquals("SQLite native failure.", SqliteNativeErrors.errorMessage(null));
+    assertEquals("SQLite native failure.", SqliteNativeErrors.errorMessage(MemorySegment.NULL));
     assertEquals(
         "SQLite native failure.",
-        SqliteNativeLibrary.scriptErrorMessage(MemorySegment.NULL, MemorySegment.NULL));
+        SqliteNativeErrors.scriptErrorMessage(MemorySegment.NULL, MemorySegment.NULL));
   }
 
   @Test
@@ -540,7 +546,7 @@ class SqliteNativeLibraryTest {
               0,
               MemorySegment.class);
 
-      assertEquals("boom", SqliteNativeLibrary.errorMessage(fakeHandle, errorHandle));
+      assertEquals("boom", SqliteNativeErrors.errorMessage(fakeHandle, errorHandle));
     }
   }
 
@@ -561,14 +567,15 @@ class SqliteNativeLibraryTest {
                             MemorySegment.class,
                             arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.3"));
 
-                    assertFalse(SqliteNativeLibrary.errorMessage(database.handle()).isBlank());
-                    assertEquals("3.53.0", SqliteNativeLibrary.sqliteVersion(versionHandle));
+                    assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
+                    assertEquals("3.53.0", SqliteNativeBootstrap.sqliteVersion(versionHandle));
                     assertEquals(
                         "2.3.3",
-                        SqliteNativeLibrary.sqlite3MultipleCiphersVersion(sqlite3mcVersionHandle));
+                        SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                            sqlite3mcVersionHandle));
                     assertDoesNotThrow(
                         () ->
-                            SqliteNativeLibrary.freeSqliteBuffer(
+                            SqliteNativeErrors.freeSqliteBuffer(
                                 null,
                                 MethodHandles.dropArguments(
                                     MethodHandles.empty(
@@ -577,7 +584,7 @@ class SqliteNativeLibraryTest {
                                     MemorySegment.class)));
                     assertDoesNotThrow(
                         () ->
-                            SqliteNativeLibrary.freeSqliteBuffer(
+                            SqliteNativeErrors.freeSqliteBuffer(
                                 MemorySegment.NULL,
                                 MethodHandles.dropArguments(
                                     MethodHandles.empty(
@@ -590,7 +597,7 @@ class SqliteNativeLibraryTest {
 
   @Test
   void errorString_convenienceOverload_readsConfiguredApi() {
-    assertFalse(SqliteNativeLibrary.errorString(14).isBlank());
+    assertFalse(SqliteNativeErrors.errorString(14).isBlank());
   }
 
   @Test
@@ -599,7 +606,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             UnsupportedSqliteCompileOptionsException.class,
             () ->
-                SqliteNativeLibrary.requireSupportedCompileOptions(
+                SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
                     constantMethodHandle(0, MemorySegment.class),
                     "3.53.0",
                     "2.3.3",
@@ -627,23 +634,25 @@ class SqliteNativeLibraryTest {
 
       assertEquals(
           "boom",
-          SqliteNativeLibrary.errorMessage(
+          SqliteNativeErrors.errorMessage(
               MemorySegment.ofAddress(1L), errorMessageHandle, errorStrlenHandle));
       assertEquals(
           "3.53.0",
-          SqliteNativeLibrary.sqliteVersion(sqliteVersionHandle, sqliteVersionStrlenHandle));
+          SqliteNativeBootstrap.sqliteVersion(sqliteVersionHandle, sqliteVersionStrlenHandle));
       assertEquals(
           "2.3.3",
-          SqliteNativeLibrary.sqlite3MultipleCiphersVersion(
+          SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
               sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
-      assertEquals("3.53.0", SqliteNativeLibrary.requireSupportedVersion("3.53.0", "managed-only"));
       assertEquals(
-          "2.3.3", SqliteNativeLibrary.requireSupportedSqlite3mcVersion("2.3.3", "managed-only"));
+          "3.53.0", SqliteNativeRuntimePolicy.requireSupportedVersion("3.53.0", "managed-only"));
+      assertEquals(
+          "2.3.3",
+          SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion("2.3.3", "managed-only"));
       assertDoesNotThrow(
           () ->
-              SqliteNativeLibrary.requireSupportedCompileOptions(
+              SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
                   constantMethodHandle(1, MemorySegment.class), "3.53.0", "2.3.3", "managed-only"));
-      assertEquals("ok", SqliteNativeLibrary.initialize(() -> "ok"));
+      assertEquals("ok", SqliteNativeBootstrap.initialize(() -> "ok"));
     }
   }
 
@@ -653,7 +662,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeLibrary.compileOptionUsed(
+                SqliteNativeRuntimePolicy.compileOptionUsed(
                     throwingMethodHandle(
                         new IllegalStateException("boom"), int.class, MemorySegment.class),
                     "SECURE_DELETE"));
@@ -665,7 +674,7 @@ class SqliteNativeLibraryTest {
   @Test
   void compileOptionUsed_reportsEnabledCompileOption() {
     assertTrue(
-        SqliteNativeLibrary.compileOptionUsed(
+        SqliteNativeRuntimePolicy.compileOptionUsed(
             constantMethodHandle(1, MemorySegment.class), "SECURE_DELETE"));
   }
 
@@ -675,7 +684,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             AssertionError.class,
             () ->
-                SqliteNativeLibrary.compileOptionUsed(
+                SqliteNativeRuntimePolicy.compileOptionUsed(
                     throwingMethodHandle(
                         new AssertionError("boom"), int.class, MemorySegment.class),
                     "SECURE_DELETE"));
@@ -691,7 +700,7 @@ class SqliteNativeLibraryTest {
 
     assertEquals(
         "SQLITE_CANTOPEN",
-        SqliteNativeLibrary.errorString(
+        SqliteNativeErrors.errorString(
             14, nullErrorStringHandle, constantMethodHandle(0L, MemorySegment.class)));
   }
 
@@ -699,7 +708,7 @@ class SqliteNativeLibraryTest {
   void errorString_returnsResultNameWhenPointerIsNullSegment() {
     assertEquals(
         "SQLITE_CANTOPEN",
-        SqliteNativeLibrary.errorString(
+        SqliteNativeErrors.errorString(
             14,
             constantMethodHandle(MemorySegment.NULL, int.class),
             constantMethodHandle(0L, MemorySegment.class)));
@@ -710,7 +719,7 @@ class SqliteNativeLibraryTest {
     try (Arena arena = Arena.ofConfined()) {
       assertEquals(
           "SQLITE_CANTOPEN",
-          SqliteNativeLibrary.errorString(
+          SqliteNativeErrors.errorString(
               14,
               constantMethodHandle(arena.allocateFrom(""), int.class),
               constantMethodHandle(0L, MemorySegment.class)));
@@ -730,7 +739,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeLibrary.errorString(
+                SqliteNativeErrors.errorString(
                     14, throwingErrorStringHandle, constantMethodHandle(0L, MemorySegment.class)));
 
     assertEquals("Failed to read the SQLite error string.", exception.getMessage());
@@ -746,21 +755,19 @@ class SqliteNativeLibraryTest {
       MethodHandle strlenHandle = constantMethodHandle(4L, MemorySegment.class);
 
       assertEquals(
-          "boom",
-          SqliteNativeLibrary.scriptErrorMessage(14, boom, errorStringHandle, strlenHandle));
+          "boom", SqliteNativeErrors.scriptErrorMessage(14, boom, errorStringHandle, strlenHandle));
       assertEquals(
           "boom",
-          SqliteNativeLibrary.scriptErrorMessage(
+          SqliteNativeErrors.scriptErrorMessage(
               14, MemorySegment.NULL, errorStringHandle, strlenHandle));
       assertEquals(
-          "boom",
-          SqliteNativeLibrary.scriptErrorMessage(14, null, errorStringHandle, strlenHandle));
+          "boom", SqliteNativeErrors.scriptErrorMessage(14, null, errorStringHandle, strlenHandle));
     }
   }
 
   @Test
   void open_rejectsNullBookAccess() {
-    assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.open(null));
+    assertThrows(NullPointerException.class, () -> SqliteNativeConnections.open(null));
   }
 
   @Test
@@ -769,7 +776,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                SqliteNativeLibrary.open(
+                SqliteNativeConnections.open(
                     new BookAccess(
                         tempDirectory.resolve("stdin-access.sqlite"),
                         BookAccess.PassphraseSource.StandardInput.INSTANCE)));
@@ -790,7 +797,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeLibrary.open(
+                SqliteNativeConnections.open(
                     new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
 
     assertTrue(exception.getMessage().contains("must contain a UTF-8 passphrase"));
@@ -809,19 +816,19 @@ class SqliteNativeLibraryTest {
                       "create table sample (id integer not null, note text null)");
 
                   try (SqliteNativeStatement insert =
-                      SqliteNativeLibrary.prepare(
+                      SqliteNativeStatements.prepare(
                           database, "insert into sample (id, note) values (?, ?)")) {
                     insert.bindInt(1, 7);
                     insert.bindText(2, null);
-                    assertEquals(SqliteNativeLibrary.SQLITE_DONE, insert.step());
+                    assertEquals(SqliteNativeResultCodes.DONE, insert.step());
                   }
 
                   try (SqliteNativeStatement select =
-                      SqliteNativeLibrary.prepare(database, "select id, note from sample")) {
-                    assertEquals(SqliteNativeLibrary.SQLITE_ROW, select.step());
+                      SqliteNativeStatements.prepare(database, "select id, note from sample")) {
+                    assertEquals(SqliteNativeResultCodes.ROW, select.step());
                     assertEquals(7, select.columnInt(0));
                     assertNull(select.columnText(1));
-                    assertEquals(SqliteNativeLibrary.SQLITE_DONE, select.step());
+                    assertEquals(SqliteNativeResultCodes.DONE, select.step());
                   }
                 }));
   }
@@ -847,7 +854,8 @@ class SqliteNativeLibraryTest {
 
     SqliteNativeException exception =
         assertThrows(
-            SqliteNativeException.class, () -> SqliteNativeLibrary.open(bookAccess(directoryPath)));
+            SqliteNativeException.class,
+            () -> SqliteNativeConnections.open(bookAccess(directoryPath)));
 
     assertTrue(exception.resultName().contains("SQLITE_CANTOPEN"));
   }
@@ -863,7 +871,7 @@ class SqliteNativeLibraryTest {
     SqliteNativeException exception =
         assertThrows(
             SqliteNativeException.class,
-            () -> SqliteNativeLibrary.open(bookAccess(bookPath, "different-book-key")));
+            () -> SqliteNativeConnections.open(bookAccess(bookPath, "different-book-key")));
 
     assertTrue(exception.resultName().contains("SQLITE_NOTADB"));
   }
@@ -875,24 +883,25 @@ class SqliteNativeLibraryTest {
     try (SqliteBookPassphrase initialPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "initial native passphrase", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, initialPassphrase)) {
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, initialPassphrase)) {
       database.executeStatement("create table sample (id integer primary key, note text not null)");
       database.executeStatement("insert into sample (id, note) values (1, 'ok')");
 
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "replacement native passphrase", "rotated-key".toCharArray())) {
-        SqliteNativeLibrary.rekey(database, replacementPassphrase);
+        SqliteNativeConnections.rekey(database, replacementPassphrase);
       }
     }
 
     try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "replacement native passphrase", "rotated-key".toCharArray());
-        SqliteNativeDatabase reopened = SqliteNativeLibrary.open(bookPath, replacementPassphrase)) {
+        SqliteNativeDatabase reopened =
+            SqliteNativeConnections.open(bookPath, replacementPassphrase)) {
       try (SqliteNativeStatement statement =
-          SqliteNativeLibrary.prepare(reopened, "select count(*) from sample")) {
-        assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+          SqliteNativeStatements.prepare(reopened, "select count(*) from sample")) {
+        assertEquals(SqliteNativeResultCodes.ROW, statement.step());
         assertEquals(1, statement.columnInt(0));
       }
     }
@@ -902,7 +911,8 @@ class SqliteNativeLibraryTest {
             "stale native passphrase", TEST_BOOK_KEY.toCharArray())) {
       SqliteNativeException exception =
           assertThrows(
-              SqliteNativeException.class, () -> SqliteNativeLibrary.open(bookPath, oldPassphrase));
+              SqliteNativeException.class,
+              () -> SqliteNativeConnections.open(bookPath, oldPassphrase));
 
       assertEquals("SQLITE_NOTADB", exception.resultName());
     }
@@ -912,12 +922,12 @@ class SqliteNativeLibraryTest {
   void rekey_rejectsNullArguments() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-nulls.sqlite");
 
-    assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(null, null));
+    assertThrows(NullPointerException.class, () -> SqliteNativeConnections.rekey(null, null));
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "rekey null passphrase", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
-      assertThrows(NullPointerException.class, () -> SqliteNativeLibrary.rekey(database, null));
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
+      assertThrows(NullPointerException.class, () -> SqliteNativeConnections.rekey(database, null));
     }
   }
 
@@ -928,9 +938,9 @@ class SqliteNativeLibraryTest {
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "native failure passphrase", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase);
         AutoCloseable ignored =
-            SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+            SqliteNativeConnections.overrideSqlite3RekeyHandleForTesting(
                 constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))) {
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
@@ -938,7 +948,7 @@ class SqliteNativeLibraryTest {
         SqliteNativeException exception =
             assertThrows(
                 SqliteNativeException.class,
-                () -> SqliteNativeLibrary.rekey(database, replacementPassphrase));
+                () -> SqliteNativeConnections.rekey(database, replacementPassphrase));
 
         assertEquals("SQLITE_CANTOPEN", exception.resultName());
       }
@@ -952,9 +962,9 @@ class SqliteNativeLibraryTest {
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "throwable passphrase", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase);
         AutoCloseable ignored =
-            SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+            SqliteNativeConnections.overrideSqlite3RekeyHandleForTesting(
                 throwingMethodHandle(
                     new IllegalStateException("boom"),
                     int.class,
@@ -967,7 +977,7 @@ class SqliteNativeLibraryTest {
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> SqliteNativeLibrary.rekey(database, replacementPassphrase));
+                () -> SqliteNativeConnections.rekey(database, replacementPassphrase));
 
         assertTrue(
             exception
@@ -988,7 +998,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeLibrary.open(
+                SqliteNativeConnections.open(
                     new BookAccess(
                         bookPath, new BookAccess.PassphraseSource.KeyFile(missingKeyPath))));
 
@@ -1099,7 +1109,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "openWithDatabaseHandle",
                       java.lang.invoke.MethodType.methodType(
                           int.class,
@@ -1114,7 +1124,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "recordCloseCall",
                       java.lang.invoke.MethodType.methodType(
                           int.class, AtomicInteger.class, MemorySegment.class)),
@@ -1161,7 +1171,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "recordCloseCall",
                       java.lang.invoke.MethodType.methodType(
                           int.class, AtomicInteger.class, MemorySegment.class)),
@@ -1229,7 +1239,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "openWithDatabaseHandle",
                       java.lang.invoke.MethodType.methodType(
                           int.class,
@@ -1244,7 +1254,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "recordCloseCall",
                       java.lang.invoke.MethodType.methodType(
                           int.class, AtomicInteger.class, MemorySegment.class)),
@@ -1288,7 +1298,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "failOpenWithDatabaseHandle",
                       java.lang.invoke.MethodType.methodType(
                           int.class,
@@ -1303,7 +1313,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "recordCloseCallThenThrow",
                       java.lang.invoke.MethodType.methodType(
                           int.class, AtomicInteger.class, MemorySegment.class)),
@@ -1343,7 +1353,7 @@ class SqliteNativeLibraryTest {
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
-                      SqliteNativeLibraryTest.class,
+                      SqliteNativeBridgeTest.class,
                       "recordCloseCall",
                       java.lang.invoke.MethodType.methodType(
                           int.class, AtomicInteger.class, MemorySegment.class)),
@@ -1373,9 +1383,9 @@ class SqliteNativeLibraryTest {
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "close native failure", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+          SqliteNativeConnections.overrideSqlite3CloseV2HandleForTesting(
               constantMethodHandle(14, MemorySegment.class))) {
         SqliteNativeException exception =
             assertThrows(SqliteNativeException.class, database::close);
@@ -1388,24 +1398,24 @@ class SqliteNativeLibraryTest {
   @Test
   void close_keepsActiveConnectionCountUntilSuccessfulRetry() throws Exception {
     Path bookPath = tempDirectory.resolve("close-active-count.sqlite");
-    int initialActiveConnections = SqliteNativeLibrary.activeConnectionCount();
+    int initialActiveConnections = SqliteNativeBootstrap.activeConnectionCount();
 
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters("close active count", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
-      assertEquals(initialActiveConnections + 1, SqliteNativeLibrary.activeConnectionCount());
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
+      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
 
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+          SqliteNativeConnections.overrideSqlite3CloseV2HandleForTesting(
               constantMethodHandle(14, MemorySegment.class))) {
         assertThrows(SqliteNativeException.class, database::close);
-        assertEquals(initialActiveConnections + 1, SqliteNativeLibrary.activeConnectionCount());
+        assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
       }
 
-      assertEquals(initialActiveConnections + 1, SqliteNativeLibrary.activeConnectionCount());
+      assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
     }
 
-    assertEquals(initialActiveConnections, SqliteNativeLibrary.activeConnectionCount());
+    assertEquals(initialActiveConnections, SqliteNativeBootstrap.activeConnectionCount());
   }
 
   @Test
@@ -1413,9 +1423,9 @@ class SqliteNativeLibraryTest {
     Path bookPath = tempDirectory.resolve("close-throwable.sqlite");
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters("close throwable", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+          SqliteNativeConnections.overrideSqlite3CloseV2HandleForTesting(
               throwingMethodHandle(
                   new IllegalStateException("boom"), int.class, MemorySegment.class))) {
         IllegalStateException exception =
@@ -1432,9 +1442,9 @@ class SqliteNativeLibraryTest {
     Path bookPath = tempDirectory.resolve("close-error.sqlite");
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters("close error", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase)) {
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+          SqliteNativeConnections.overrideSqlite3CloseV2HandleForTesting(
               throwingMethodHandle(new AssertionError("boom"), int.class, MemorySegment.class))) {
         AssertionError error = assertThrows(AssertionError.class, database::close);
 
@@ -1449,7 +1459,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeLibrary.sqlite3MultipleCiphersVersion(
+                SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
                     throwingMethodHandle(new IllegalStateException("boom"), MemorySegment.class)));
 
     assertTrue(
@@ -1464,7 +1474,7 @@ class SqliteNativeLibraryTest {
         assertThrows(
             AssertionError.class,
             () ->
-                SqliteNativeLibrary.sqlite3MultipleCiphersVersion(
+                SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
                     throwingMethodHandle(new AssertionError("boom"), MemorySegment.class)));
 
     assertEquals("boom", error.getMessage());
@@ -1474,7 +1484,7 @@ class SqliteNativeLibraryTest {
   void shutdownQuietly_ignoresThrowablesFromNativeShutdown() {
     assertDoesNotThrow(
         () ->
-            SqliteNativeLibrary.shutdownQuietly(
+            SqliteNativeBootstrap.shutdownQuietly(
                 throwingMethodHandle(new IllegalStateException("boom"), int.class)));
   }
 
@@ -1485,16 +1495,16 @@ class SqliteNativeLibraryTest {
         MethodHandles.insertArguments(
             MethodHandles.lookup()
                 .findStatic(
-                    SqliteNativeLibraryTest.class,
+                    SqliteNativeBridgeTest.class,
                     "recordShutdownCall",
                     java.lang.invoke.MethodType.methodType(int.class, AtomicInteger.class)),
             0,
             shutdownCalls);
 
-    SqliteNativeLibrary.shutdownIfQuiescent(shutdownHandle, 1);
+    SqliteNativeBootstrap.shutdownIfQuiescent(shutdownHandle, 1);
     assertEquals(0, shutdownCalls.get());
 
-    SqliteNativeLibrary.shutdownIfQuiescent(shutdownHandle, 0);
+    SqliteNativeBootstrap.shutdownIfQuiescent(shutdownHandle, 0);
     assertEquals(1, shutdownCalls.get());
   }
 
@@ -1853,7 +1863,7 @@ class SqliteNativeLibraryTest {
   }
 
   private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
-    try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess)) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess)) {
       action.run(database);
     }
   }

@@ -22,7 +22,7 @@ final class SqliteTrialBalanceReader {
       if (query.effectiveDateTo().isPresent()) {
         statement.bindText(1, query.effectiveDateTo().orElseThrow().toString());
       }
-      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+      while (statement.step() == SqliteNativeResultCodes.ROW) {
         DeclaredAccount account = SqlitePostingMapper.declaredAccount(statement);
         CurrencyCode currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
         BigDecimal amount = SqliteReportRowValues.reportAmount(statement);

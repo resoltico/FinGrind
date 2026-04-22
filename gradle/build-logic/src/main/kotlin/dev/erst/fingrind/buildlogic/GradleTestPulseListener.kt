@@ -52,8 +52,8 @@ internal class GradleTestPulseListener(
                 emit(
                     "phase=finish completedClasses=$completedClasses completedTests=$completedTests failedTests=$failedTests skippedTests=$skippedTests result=${result.resultType}",
                 )
+                stopPulseLoop()
             }
-            stopPulseLoop()
             return
         }
         if (suite.className != null && suite.parent?.className == null) {

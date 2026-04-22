@@ -16,6 +16,6 @@ final class SqliteNativeException extends RuntimeException {
   }
 
   String resultName() {
-    return SqliteNativeLibrary.resultName(resultCode);
+    return SqliteNativeErrors.resultName(resultCode);
   }
 }

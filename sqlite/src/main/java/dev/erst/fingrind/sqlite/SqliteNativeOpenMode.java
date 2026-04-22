@@ -2,10 +2,10 @@ package dev.erst.fingrind.sqlite;
 
 /** Native SQLite open policies that FinGrind maps from its command-level access intents. */
 enum SqliteNativeOpenMode {
-  READ_ONLY(SqliteNativeLibrary.SQLITE_OPEN_READONLY),
-  READ_WRITE_EXISTING(SqliteNativeLibrary.SQLITE_OPEN_READWRITE),
-  READ_WRITE_CREATE(
-      SqliteNativeLibrary.SQLITE_OPEN_READWRITE | SqliteNativeLibrary.SQLITE_OPEN_CREATE);
+  // SQLite defines these sqlite3_open_v2 flags as stable C constants.
+  READ_ONLY(0x00000001),
+  READ_WRITE_EXISTING(0x00000002),
+  READ_WRITE_CREATE(0x00000002 | 0x00000004);
 
   private final int flags;
 

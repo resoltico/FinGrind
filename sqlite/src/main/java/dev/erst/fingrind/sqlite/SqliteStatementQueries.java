@@ -51,7 +51,7 @@ final class SqliteStatementQueries {
         sql,
         statement -> {
           binder.bind(statement);
-          if (statement.step() == SqliteNativeLibrary.SQLITE_DONE) {
+          if (statement.step() == SqliteNativeResultCodes.DONE) {
             return Optional.empty();
           }
           PostingId postingId =
@@ -68,7 +68,7 @@ final class SqliteStatementQueries {
         SqlitePostingSql.FIND_ACCOUNT_BY_CODE,
         statement -> {
           statement.bindText(1, accountCode.value());
-          if (statement.step() == SqliteNativeLibrary.SQLITE_DONE) {
+          if (statement.step() == SqliteNativeResultCodes.DONE) {
             return Optional.empty();
           }
           return Optional.of(SqlitePostingMapper.declaredAccount(statement));
@@ -88,7 +88,7 @@ final class SqliteStatementQueries {
             bindIndex++;
           }
           List<DeclaredAccount> accounts = new ArrayList<>();
-          while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+          while (statement.step() == SqliteNativeResultCodes.ROW) {
             accounts.add(SqlitePostingMapper.declaredAccount(statement));
           }
           return accounts.stream()
@@ -112,7 +112,7 @@ final class SqliteStatementQueries {
           statement.bindText(1, cursorAccountCode);
           statement.bindText(2, cursorAccountCode);
           statement.bindInt(3, query.limit() + 1);
-          while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+          while (statement.step() == SqliteNativeResultCodes.ROW) {
             accounts.add(SqlitePostingMapper.declaredAccount(statement));
           }
           return Boolean.TRUE;
@@ -133,7 +133,7 @@ final class SqliteStatementQueries {
         sql,
         statement -> {
           binder.bind(statement);
-          return statement.step() == SqliteNativeLibrary.SQLITE_ROW;
+          return statement.step() == SqliteNativeResultCodes.ROW;
         });
   }
 
@@ -143,7 +143,7 @@ final class SqliteStatementQueries {
         SqlitePostingSql.FIND_BOOK_INITIALIZED_AT,
         statement -> {
           statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY);
-          if (statement.step() == SqliteNativeLibrary.SQLITE_DONE) {
+          if (statement.step() == SqliteNativeResultCodes.DONE) {
             return Optional.empty();
           }
           return Optional.of(Instant.parse(SqlitePostingMapper.requiredText(statement, 0)));
@@ -163,11 +163,11 @@ final class SqliteStatementQueries {
         activeDatabase,
         sql,
         statement -> {
-          if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+          if (statement.step() != SqliteNativeResultCodes.ROW) {
             return OptionalInt.empty();
           }
           int value = statement.columnInt(0);
-          if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+          if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException(
                 "SQLite integer query returned more than one row: " + sql);
           }
@@ -180,13 +180,13 @@ final class SqliteStatementQueries {
         activeDatabase,
         sql,
         statement -> {
-          if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+          if (statement.step() != SqliteNativeResultCodes.ROW) {
             throw new IllegalStateException("SQLite text query returned no rows: " + sql);
           }
           String value =
               Objects.requireNonNull(
                   statement.columnText(0), "SQLite text query returned NULL: " + sql);
-          if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+          if (statement.step() != SqliteNativeResultCodes.DONE) {
             throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
           }
           return value;

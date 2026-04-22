@@ -5,6 +5,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-04-22
+
+### Changed
+- Introduced an explicit exported `WireValue` contract for stable FinGrind enum tokens and moved
+  CLI JSON serialization onto that compile-time interface instead of reflective `wireValue()`
+  lookup.
+- Split the remaining flat SQLite native bridge façade into role-owned bootstrap, connection,
+  statement, error, and runtime-policy collaborators, so the storage adapter no longer routes
+  every native call through one pass-through namespace.
+
+### Fixed
+- Switched interactive console passphrase prompting onto the typed JDK `Console` API instead of a
+  reflective `Object` seam, while keeping deterministic CLI failures for unavailable or failed
+  prompts.
+- Restored explicit `--release` targeting to product and Jazzer Java compilation, re-enabled
+  incremental shared build-logic compilation, and tightened test-pulse shutdown ordering so the
+  verification build is both stricter and less wasteful.
+- Updated the published docs so the API reference, SQLite schema notes, ledger-plan contract,
+  and rekey/passphrase guidance all match the current wire-value contract, sealed step surface,
+  and bundle/runtime behavior.
+
 ## [0.22.0] - 2026-04-22
 
 ### Changed
@@ -723,7 +744,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.23.0
 [0.22.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.22.0
 [0.21.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.21.0
 [0.20.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.20.0

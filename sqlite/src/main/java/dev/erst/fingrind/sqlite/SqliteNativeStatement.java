@@ -25,7 +25,7 @@ final class SqliteNativeStatement implements AutoCloseable {
     try {
       MemorySegment statementPointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment sqlPointer = arena.allocateFrom(sql);
-      SqliteNativeLibrary.prepareStatement(database.handle(), sqlPointer, statementPointer);
+      SqliteNativeStatements.prepareStatement(database.handle(), sqlPointer, statementPointer);
       this.statementHandle = statementPointer.get(ValueLayout.ADDRESS, 0);
     } catch (RuntimeException | Error exception) {
       arena.close();
@@ -35,28 +35,28 @@ final class SqliteNativeStatement implements AutoCloseable {
 
   void bindText(int parameterIndex, @Nullable String value) {
     if (value == null) {
-      SqliteNativeLibrary.bindNull(statementHandle, parameterIndex);
+      SqliteNativeStatements.bindNull(statementHandle, parameterIndex);
       return;
     }
     MemorySegment valuePointer = arena.allocateFrom(value);
-    SqliteNativeLibrary.bindText(
+    SqliteNativeStatements.bindText(
         statementHandle, parameterIndex, valuePointer, utf8ByteLength(valuePointer));
   }
 
   void bindInt(int parameterIndex, int value) {
-    SqliteNativeLibrary.bindInt(statementHandle, parameterIndex, value);
+    SqliteNativeStatements.bindInt(statementHandle, parameterIndex, value);
   }
 
   int step() {
-    return SqliteNativeLibrary.step(database.handle(), statementHandle);
+    return SqliteNativeStatements.step(database.handle(), statementHandle);
   }
 
   @Nullable String columnText(int columnIndex) {
-    return SqliteNativeLibrary.columnText(statementHandle, columnIndex);
+    return SqliteNativeStatements.columnText(statementHandle, columnIndex);
   }
 
   int columnInt(int columnIndex) {
-    return SqliteNativeLibrary.columnInt(statementHandle, columnIndex);
+    return SqliteNativeStatements.columnInt(statementHandle, columnIndex);
   }
 
   MemorySegment handle() {
@@ -73,7 +73,7 @@ final class SqliteNativeStatement implements AutoCloseable {
     if (closed) {
       return;
     }
-    SqliteNativeLibrary.finalizeStatement(statementHandle);
+    SqliteNativeStatements.finalizeStatement(statementHandle);
     arena.close();
     closed = true;
   }

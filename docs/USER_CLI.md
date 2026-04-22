@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: USER_CLI
 updated: "2026-04-22"
 route:
@@ -70,7 +70,7 @@ one PDF artifact through `--pdf-out <path>`.
 | `print-plan-template` | `--print-plan-template` | none | returns a runnable AI-agent ledger-plan scaffold as raw JSON |
 | `generate-book-key-file` | none | `--book-key-file`, optional `--output` | creates one new owner-only key file and returns only non-secret metadata |
 | `open-book` | none | `--book-file`, exactly one of `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`, optional `--output` | creates one initialized protected book with the canonical schema |
-| `rekey-book` | none | `--book-file`, exactly one current passphrase source, exactly one replacement passphrase source, optional `--output` | rotates the passphrase that protects the selected existing book |
+| `rekey-book` | none | `--book-file`, exactly one current passphrase source (`--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`), exactly one replacement passphrase source (`--new-book-key-file`, `--new-book-passphrase-stdin`, or `--new-book-passphrase-prompt`), optional `--output` | rotates the passphrase that protects the selected existing book |
 | `declare-account` | none | `--book-file`, exactly one passphrase source, `--request-file`, optional `--output` | declares or reactivates one account in the selected book |
 | `inspect-book` | none | `--book-file`, exactly one passphrase source, optional `--output` | returns lifecycle state, compatibility, and book-format metadata for the selected book |
 | `list-accounts` | none | `--book-file`, exactly one passphrase source, optional `--limit`, optional `--cursor`, optional `--output` | returns one stable keyset-paginated slice of the selected book's declared account registry |
@@ -109,18 +109,18 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.22.0-macos-aarch64.tar.gz
-./fingrind-0.22.0-macos-aarch64/bin/fingrind help
-./fingrind-0.22.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.23.0-macos-aarch64.tar.gz
+./fingrind-0.23.0-macos-aarch64/bin/fingrind help
+./fingrind-0.23.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.22.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.22.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.22.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.23.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.23.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.23.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -208,8 +208,13 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
   cannot be paired with `--request-file -`.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
-- `rekey-book` requires one current passphrase source plus one replacement passphrase source, and
-  it rejects using the same key-file path for both.
+- `rekey-book` requires one current passphrase source plus one replacement passphrase source.
+  The replacement options are `--new-book-key-file`, `--new-book-passphrase-stdin`, and
+  `--new-book-passphrase-prompt`.
+- `--new-book-passphrase-prompt` asks for the replacement secret twice and rejects mismatched
+  entries.
+- `rekey-book` rejects using the same key-file path for both current and replacement secrets, and
+  standard input cannot supply both current and replacement secrets in the same invocation.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /

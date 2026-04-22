@@ -19,7 +19,7 @@ class SqliteNativeDatabase implements AutoCloseable {
   }
 
   SqliteNativeStatement prepare(String sql) {
-    return SqliteNativeLibrary.prepare(this, sql);
+    return SqliteNativeStatements.prepare(this, sql);
   }
 
   /**
@@ -30,7 +30,7 @@ class SqliteNativeDatabase implements AutoCloseable {
   void executeStatement(String sql) {
     try (SqliteNativeStatement statement = prepare(sql)) {
       int resultCode = statement.step();
-      if (resultCode != SqliteNativeLibrary.SQLITE_DONE) {
+      if (resultCode != SqliteNativeResultCodes.DONE) {
         throw new IllegalStateException("SQLite control statement must not produce rows: " + sql);
       }
     }
@@ -39,7 +39,7 @@ class SqliteNativeDatabase implements AutoCloseable {
   /** Executes one multi-statement SQL script through {@code sqlite3_exec}. */
   void executeScript(String sql) {
     try (Arena arena = Arena.ofConfined()) {
-      SqliteNativeLibrary.executeScript(databaseHandle, arena.allocateFrom(sql));
+      SqliteNativeStatements.executeScript(databaseHandle, arena.allocateFrom(sql));
     }
   }
 
@@ -48,7 +48,7 @@ class SqliteNativeDatabase implements AutoCloseable {
     if (closed) {
       return;
     }
-    SqliteNativeLibrary.close(databaseHandle);
+    SqliteNativeConnections.close(databaseHandle);
     closed = true;
   }
 }

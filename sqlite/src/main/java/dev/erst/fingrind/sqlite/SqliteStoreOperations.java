@@ -60,7 +60,7 @@ final class SqliteStoreOperations {
   }
 
   static Optional<ContractFailure> authenticationFailure(SqliteNativeException exception) {
-    if (exception.resultCode() == SqliteNativeLibrary.SQLITE_NOTADB) {
+    if (exception.resultCode() == SqliteNativeResultCodes.NOTADB) {
       return Optional.of(
           ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.failure(
               "FinGrind could not authenticate the selected protected book with the supplied passphrase source.",
