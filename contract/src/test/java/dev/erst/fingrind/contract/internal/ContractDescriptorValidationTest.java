@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Covers invariant helpers shared by machine-contract descriptor records. */
+@NullUnmarked
 class ContractDescriptorValidationTest {
   @Test
   void requireText_trimsAndRejectsBlankValues() {

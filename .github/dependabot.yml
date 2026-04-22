@@ -16,3 +16,7 @@ updates:
       - dependency-name: "gradle/actions"
         update-types:
           - "version-update:semver-major"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"

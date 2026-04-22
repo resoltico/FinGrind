@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Contract-lint tests for repo-owned CLI distribution build assets. */
@@ -48,7 +49,8 @@ class CliDistributionBuildContractTest {
 
   private static Path repositoryRoot() {
     Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-    while (!Files.exists(directory.resolve("settings.gradle.kts"))) {
+    while (!Files.exists(
+        Objects.requireNonNull(directory, "directory").resolve("settings.gradle.kts"))) {
       directory = directory.getParent();
     }
     return directory;

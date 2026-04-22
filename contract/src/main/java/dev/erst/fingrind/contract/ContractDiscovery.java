@@ -14,10 +14,15 @@ public final class ContractDiscovery {
         ApplicationIdentity.class,
         HelpDescriptor.class,
         CapabilitiesDescriptor.class,
+        StorageSurfaceDescriptor.class,
+        CommandCatalogDescriptor.class,
         VersionDescriptor.class,
         ArtifactOutputDescriptor.class,
         CommandDescriptor.class,
         ExitCodeDescriptor.class,
+        EnvironmentDistributionDescriptor.class,
+        EnvironmentStorageDescriptor.class,
+        EnvironmentSqliteDescriptor.class,
         EnvironmentDescriptor.class);
   }
 
@@ -64,12 +69,8 @@ public final class ContractDiscovery {
   public record CapabilitiesDescriptor(
       String application,
       String version,
-      List<String> storage,
-      String bookBoundary,
-      List<String> discoveryCommands,
-      List<String> administrationCommands,
-      List<String> queryCommands,
-      List<String> writeCommands,
+      StorageSurfaceDescriptor storage,
+      CommandCatalogDescriptor commands,
       ContractRequestShapes.RequestInputDescriptor requestInput,
       ContractRequestShapes.RequestShapesDescriptor requestShapes,
       ContractResponse.ResponseModelDescriptor responseModel,
@@ -77,7 +78,6 @@ public final class ContractDiscovery {
       ContractResponse.AuditDescriptor audit,
       ContractResponse.AccountRegistryDescriptor accountRegistry,
       ContractResponse.ReversalDescriptor reversals,
-      String preflightSemantics,
       ContractResponse.PreflightDescriptor preflight,
       ContractResponse.CurrencyDescriptor currencyModel,
       EnvironmentDescriptor environment,
@@ -86,14 +86,8 @@ public final class ContractDiscovery {
     public CapabilitiesDescriptor {
       application = ContractDescriptorValidation.requireText(application, "application");
       version = ContractDescriptorValidation.requireText(version, "version");
-      storage = ContractDescriptorValidation.copyList(storage, "storage");
-      bookBoundary = ContractDescriptorValidation.requireText(bookBoundary, "bookBoundary");
-      discoveryCommands =
-          ContractDescriptorValidation.copyList(discoveryCommands, "discoveryCommands");
-      administrationCommands =
-          ContractDescriptorValidation.copyList(administrationCommands, "administrationCommands");
-      queryCommands = ContractDescriptorValidation.copyList(queryCommands, "queryCommands");
-      writeCommands = ContractDescriptorValidation.copyList(writeCommands, "writeCommands");
+      storage = ContractDescriptorValidation.requireValue(storage, "storage");
+      commands = ContractDescriptorValidation.requireValue(commands, "commands");
       requestInput = ContractDescriptorValidation.requireValue(requestInput, "requestInput");
       requestShapes = ContractDescriptorValidation.requireValue(requestShapes, "requestShapes");
       responseModel = ContractDescriptorValidation.requireValue(responseModel, "responseModel");
@@ -102,12 +96,31 @@ public final class ContractDiscovery {
       accountRegistry =
           ContractDescriptorValidation.requireValue(accountRegistry, "accountRegistry");
       reversals = ContractDescriptorValidation.requireValue(reversals, "reversals");
-      preflightSemantics =
-          ContractDescriptorValidation.requireText(preflightSemantics, "preflightSemantics");
       preflight = ContractDescriptorValidation.requireValue(preflight, "preflight");
       currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
       environment = ContractDescriptorValidation.requireValue(environment, "environment");
       timestamp = ContractDescriptorValidation.requireText(timestamp, "timestamp");
+    }
+  }
+
+  /** Descriptor for the storage surface published by the CLI capabilities contract. */
+  public record StorageSurfaceDescriptor(List<String> engines, String bookBoundary) {
+    /** Validates one storage-surface descriptor payload. */
+    public StorageSurfaceDescriptor {
+      engines = ContractDescriptorValidation.copyList(engines, "engines");
+      bookBoundary = ContractDescriptorValidation.requireText(bookBoundary, "bookBoundary");
+    }
+  }
+
+  /** Descriptor for the grouped command catalog published by the CLI capabilities contract. */
+  public record CommandCatalogDescriptor(
+      List<String> discovery, List<String> administration, List<String> query, List<String> write) {
+    /** Validates one command-catalog descriptor payload. */
+    public CommandCatalogDescriptor {
+      discovery = ContractDescriptorValidation.copyList(discovery, "discovery");
+      administration = ContractDescriptorValidation.copyList(administration, "administration");
+      query = ContractDescriptorValidation.copyList(query, "query");
+      write = ContractDescriptorValidation.copyList(write, "write");
     }
   }
 
@@ -163,30 +176,37 @@ public final class ContractDiscovery {
     }
   }
 
-  /** Descriptor for the active SQLite runtime environment. */
-  public record EnvironmentDescriptor(
+  /** Stable verification states for the required SQLite compile-option contract. */
+  public enum SqliteCompileOptionsVerificationStatus {
+    VERIFIED("verified"),
+    NOT_VERIFIED("not-verified");
+
+    private final String wireValue;
+
+    SqliteCompileOptionsVerificationStatus(String wireValue) {
+      this.wireValue = ContractDescriptorValidation.requireText(wireValue, "wireValue");
+    }
+
+    /** Returns the stable public wire value for this verification state. */
+    public String wireValue() {
+      return wireValue;
+    }
+
+    @Override
+    public String toString() {
+      return wireValue;
+    }
+  }
+
+  /** Descriptor for the public CLI distribution and runtime packaging contract. */
+  public record EnvironmentDistributionDescriptor(
       String runtimeDistribution,
       String publicCliDistribution,
       List<String> supportedPublicCliBundleTargets,
       List<String> unsupportedPublicCliOperatingSystems,
-      String sourceCheckoutJava,
-      String storageDriver,
-      String storageEngine,
-      String bookProtectionMode,
-      String defaultBookCipher,
-      String sqliteLibraryMode,
-      String sqliteLibraryEnvironmentVariable,
-      String sqliteLibraryBundleHomeSystemProperty,
-      List<String> requiredSqliteCompileOptions,
-      boolean sqliteCompileOptionsVerified,
-      String requiredMinimumSqliteVersion,
-      String requiredSqlite3mcVersion,
-      String sqliteRuntimeStatus,
-      @Nullable String loadedSqliteVersion,
-      @Nullable String loadedSqlite3mcVersion,
-      @Nullable String sqliteRuntimeIssue) {
-    /** Validates one runtime environment descriptor payload. */
-    public EnvironmentDescriptor {
+      String sourceCheckoutJava) {
+    /** Validates one distribution descriptor payload. */
+    public EnvironmentDistributionDescriptor {
       runtimeDistribution =
           ContractDescriptorValidation.requireText(runtimeDistribution, "runtimeDistribution");
       publicCliDistribution =
@@ -199,40 +219,80 @@ public final class ContractDiscovery {
               unsupportedPublicCliOperatingSystems, "unsupportedPublicCliOperatingSystems");
       sourceCheckoutJava =
           ContractDescriptorValidation.requireText(sourceCheckoutJava, "sourceCheckoutJava");
+    }
+  }
+
+  /** Descriptor for the storage engine exposed by the active runtime environment. */
+  public record EnvironmentStorageDescriptor(
+      String storageDriver,
+      String storageEngine,
+      String bookProtectionMode,
+      String defaultBookCipher) {
+    /** Validates one environment storage descriptor payload. */
+    public EnvironmentStorageDescriptor {
       storageDriver = ContractDescriptorValidation.requireText(storageDriver, "storageDriver");
       storageEngine = ContractDescriptorValidation.requireText(storageEngine, "storageEngine");
       bookProtectionMode =
           ContractDescriptorValidation.requireText(bookProtectionMode, "bookProtectionMode");
       defaultBookCipher =
           ContractDescriptorValidation.requireText(defaultBookCipher, "defaultBookCipher");
-      sqliteLibraryMode =
-          ContractDescriptorValidation.requireText(sqliteLibraryMode, "sqliteLibraryMode");
-      sqliteLibraryEnvironmentVariable =
+    }
+  }
+
+  /** Descriptor for the managed SQLite runtime contract exposed by the active environment. */
+  public record EnvironmentSqliteDescriptor(
+      String libraryMode,
+      String libraryEnvironmentVariable,
+      String bundleHomeSystemProperty,
+      List<String> requiredCompileOptions,
+      SqliteCompileOptionsVerificationStatus compileOptionsVerification,
+      String requiredMinimumSqliteVersion,
+      String requiredSqlite3mcVersion,
+      String runtimeStatus,
+      @Nullable String loadedSqliteVersion,
+      @Nullable String loadedSqlite3mcVersion,
+      @Nullable String runtimeIssue) {
+    /** Validates one environment SQLite descriptor payload. */
+    public EnvironmentSqliteDescriptor {
+      libraryMode = ContractDescriptorValidation.requireText(libraryMode, "libraryMode");
+      libraryEnvironmentVariable =
           ContractDescriptorValidation.requireText(
-              sqliteLibraryEnvironmentVariable, "sqliteLibraryEnvironmentVariable");
-      sqliteLibraryBundleHomeSystemProperty =
+              libraryEnvironmentVariable, "libraryEnvironmentVariable");
+      bundleHomeSystemProperty =
           ContractDescriptorValidation.requireText(
-              sqliteLibraryBundleHomeSystemProperty, "sqliteLibraryBundleHomeSystemProperty");
-      requiredSqliteCompileOptions =
-          ContractDescriptorValidation.copyList(
-              requiredSqliteCompileOptions, "requiredSqliteCompileOptions");
+              bundleHomeSystemProperty, "bundleHomeSystemProperty");
+      requiredCompileOptions =
+          ContractDescriptorValidation.copyList(requiredCompileOptions, "requiredCompileOptions");
+      compileOptionsVerification =
+          ContractDescriptorValidation.requireValue(
+              compileOptionsVerification, "compileOptionsVerification");
       requiredMinimumSqliteVersion =
           ContractDescriptorValidation.requireText(
               requiredMinimumSqliteVersion, "requiredMinimumSqliteVersion");
       requiredSqlite3mcVersion =
           ContractDescriptorValidation.requireText(
               requiredSqlite3mcVersion, "requiredSqlite3mcVersion");
-      sqliteRuntimeStatus =
-          ContractDescriptorValidation.requireText(sqliteRuntimeStatus, "sqliteRuntimeStatus");
+      runtimeStatus = ContractDescriptorValidation.requireText(runtimeStatus, "runtimeStatus");
       loadedSqliteVersion =
           ContractDescriptorValidation.requireOptionalText(
               loadedSqliteVersion, "loadedSqliteVersion");
       loadedSqlite3mcVersion =
           ContractDescriptorValidation.requireOptionalText(
               loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
-      sqliteRuntimeIssue =
-          ContractDescriptorValidation.requireOptionalText(
-              sqliteRuntimeIssue, "sqliteRuntimeIssue");
+      runtimeIssue = ContractDescriptorValidation.requireOptionalText(runtimeIssue, "runtimeIssue");
+    }
+  }
+
+  /** Descriptor for the active SQLite runtime environment. */
+  public record EnvironmentDescriptor(
+      EnvironmentDistributionDescriptor distribution,
+      EnvironmentStorageDescriptor storage,
+      EnvironmentSqliteDescriptor sqlite) {
+    /** Validates one runtime environment descriptor payload. */
+    public EnvironmentDescriptor {
+      distribution = ContractDescriptorValidation.requireValue(distribution, "distribution");
+      storage = ContractDescriptorValidation.requireValue(storage, "storage");
+      sqlite = ContractDescriptorValidation.requireValue(sqlite, "sqlite");
     }
   }
 }

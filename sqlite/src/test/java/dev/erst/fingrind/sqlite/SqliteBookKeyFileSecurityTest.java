@@ -46,9 +46,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for platform-specific key-file security branches. */
+@NullUnmarked
 class SqliteBookKeyFileSecurityTest {
   @Test
   void aclFilesystemBranchesUseOwnerOnlyAclDescriptorsAndGeneration() throws Exception {
@@ -60,7 +62,7 @@ class SqliteBookKeyFileSecurityTest {
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
       SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
-      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
 
       assertTrue(keyPath.exists);
       assertTrue(keyPath.regularFile);
@@ -82,7 +84,7 @@ class SqliteBookKeyFileSecurityTest {
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
       SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
-      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath);
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
 
       assertTrue(keyPath.exists);
       assertTrue(keyPath.regularFile);
@@ -103,7 +105,9 @@ class SqliteBookKeyFileSecurityTest {
       IllegalStateException ownerUnreadableException =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(ownerUnreadable));
+              () ->
+                  SqliteBookKeyFileSecurity.requireSecureKeyFile(ownerUnreadable)
+                      .requireAccepted());
 
       assertTrue(ownerUnreadableException.getMessage().contains("owner-readable"));
 
@@ -119,7 +123,8 @@ class SqliteBookKeyFileSecurityTest {
       IllegalStateException groupReadableException =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(groupReadable));
+              () ->
+                  SqliteBookKeyFileSecurity.requireSecureKeyFile(groupReadable).requireAccepted());
 
       assertTrue(groupReadableException.getMessage().contains("owner-only permissions"));
     }
@@ -133,14 +138,14 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
 
       assertThrows(
-          IllegalStateException.class,
+          IllegalArgumentException.class,
           () -> SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       assertThrows(
           IllegalStateException.class,
           () -> SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath));
       assertThrows(
           IllegalStateException.class,
-          () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath));
+          () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
   }
 
@@ -155,7 +160,7 @@ class SqliteBookKeyFileSecurityTest {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath));
+              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
 
       assertTrue(exception.getMessage().contains("supports POSIX owner-only permissions"));
     }

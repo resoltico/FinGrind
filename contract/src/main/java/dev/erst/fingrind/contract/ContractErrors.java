@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable deterministic error vocabulary for FinGrind CLI failures. */
 public final class ContractErrors {
@@ -64,6 +65,12 @@ public final class ContractErrors {
         case BOOK_AUTHENTICATION_FAILED ->
             "Book access refused because FinGrind could not authenticate the selected protected book with the supplied passphrase source.";
       };
+    }
+
+    /** Creates one deterministic failure with this canonical contract descriptor. */
+    public ContractFailure failure(
+        String message, @Nullable String hint, @Nullable String argument) {
+      return new ContractFailure(this, message, hint, argument);
     }
 
     private ContractResponse.ErrorDescriptor descriptor() {

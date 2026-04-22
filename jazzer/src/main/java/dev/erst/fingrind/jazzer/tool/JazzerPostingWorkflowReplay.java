@@ -1,6 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.cli.CliFuzzSupport;
+import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostEntryCommand;
@@ -35,56 +35,56 @@ final class JazzerPostingWorkflowReplay {
     String duplicateStatus = "NOT_RUN";
     boolean storedFactPresent = false;
     try {
-      command = CliFuzzSupport.readPostEntryCommand(input);
+      command = CliFuzzFixtures.readPostEntryCommand(input);
       InMemoryBookSession bookSession = new InMemoryBookSession();
       BookAdministrationService administrationService =
-          CliFuzzSupport.administrationService(bookSession);
+          CliFuzzFixtures.administrationService(bookSession);
       PostingApplicationService applicationService =
           new PostingApplicationService(
               bookSession,
-              CliFuzzSupport.postingIdGenerator(input),
-              CliFuzzSupport.fixedClock());
+              CliFuzzFixtures.postingIdGenerator(input),
+              CliFuzzFixtures.fixedClock());
 
       uninitializedPreflightStatus =
-          JazzerReplayDetailsSupport.rejectionStatus(
-              JazzerReplayDetailsSupport
+          JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayDetailsMapper
                   .requiredPreflightRejected(applicationService.preflight(command))
                   .rejection());
       uninitializedCommitStatus =
-          JazzerReplayDetailsSupport.rejectionStatus(
-              JazzerReplayDetailsSupport.requiredCommitRejected(applicationService.commit(command))
+          JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
                   .rejection());
 
-      CliFuzzSupport.openBook(administrationService);
+      CliFuzzFixtures.openBook(administrationService);
 
       undeclaredPreflightStatus =
-          JazzerReplayDetailsSupport.rejectionStatus(
-              JazzerReplayDetailsSupport
+          JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayDetailsMapper
                   .requiredPreflightRejected(applicationService.preflight(command))
                   .rejection());
       undeclaredCommitStatus =
-          JazzerReplayDetailsSupport.rejectionStatus(
-              JazzerReplayDetailsSupport.requiredCommitRejected(applicationService.commit(command))
+          JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
                   .rejection());
 
       List<DeclaredAccount> declaredAccounts =
-          CliFuzzSupport.declarePostingAccounts(administrationService, command);
-      if (CliFuzzSupport.listAccounts(bookSession).size() != declaredAccounts.size()) {
+          CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+      if (CliFuzzFixtures.listAccounts(bookSession).size() != declaredAccounts.size()) {
         throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
       }
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       bookSession.deactivateAccount(primaryAccount.accountCode());
       inactivePreflightStatus =
-          JazzerReplayDetailsSupport.rejectionStatus(
-              JazzerReplayDetailsSupport
+          JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayDetailsMapper
                   .requiredPreflightRejected(applicationService.preflight(command))
                   .rejection());
       inactiveCommitStatus =
-          JazzerReplayDetailsSupport.rejectionStatus(
-              JazzerReplayDetailsSupport.requiredCommitRejected(applicationService.commit(command))
+          JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
                   .rejection());
 
-      CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
+      CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
 
       PreflightEntryResult preflight = applicationService.preflight(command);
       CommitEntryResult committedResult = applicationService.commit(command);
@@ -120,7 +120,7 @@ final class JazzerPostingWorkflowReplay {
           throw new IllegalStateException(
               "Stored request provenance differs from the parsed command.");
         }
-        if (!postingFact.provenance().recordedAt().equals(CliFuzzSupport.fixedClock().instant())) {
+        if (!postingFact.provenance().recordedAt().equals(CliFuzzFixtures.fixedClock().instant())) {
           throw new IllegalStateException(
               "Stored recorded-at differs from the deterministic clock.");
         }
@@ -136,24 +136,24 @@ final class JazzerPostingWorkflowReplay {
         if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
           throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
         }
-        duplicateStatus = JazzerReplayDetailsSupport.rejectionStatus(rejected.rejection());
+        duplicateStatus = JazzerReplayDetailsMapper.rejectionStatus(rejected.rejection());
       } else if (preflight instanceof PreflightRejected preflightRejected) {
         finalPreflightStatus =
-            JazzerReplayDetailsSupport.rejectionStatus(preflightRejected.rejection());
+            JazzerReplayDetailsMapper.rejectionStatus(preflightRejected.rejection());
         if (!(committedResult instanceof CommitRejected commitRejected)) {
           throw new IllegalStateException("Rejected preflight should remain rejected on commit.");
         }
         if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
           throw new IllegalStateException("Commit changed the deterministic rejection.");
         }
-        finalCommitStatus = JazzerReplayDetailsSupport.rejectionStatus(commitRejected.rejection());
+        finalCommitStatus = JazzerReplayDetailsMapper.rejectionStatus(commitRejected.rejection());
       } else {
         throw new IllegalStateException("Unexpected preflight result type.");
       }
 
       return new ReplayOutcome.Success(
           JazzerHarness.postingWorkflow().key(),
-          JazzerReplayDetailsSupport.postingWorkflowDetails(
+          JazzerReplayDetailsMapper.postingWorkflowDetails(
               command,
               "PARSED",
               uninitializedPreflightStatus,
@@ -166,13 +166,13 @@ final class JazzerPostingWorkflowReplay {
               finalCommitStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.NONE));
+              JazzerReplayDetailsMapper.NONE));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.postingWorkflow().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsSupport.normalizedMessage(expected),
-          JazzerReplayDetailsSupport.postingWorkflowDetails(
+          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayDetailsMapper.postingWorkflowDetails(
               command,
               "INVALID_REQUEST",
               uninitializedPreflightStatus,
@@ -185,12 +185,12 @@ final class JazzerPostingWorkflowReplay {
               finalCommitStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.normalizedMessage(expected)));
+              JazzerReplayDetailsMapper.normalizedMessage(expected)));
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsSupport.unexpectedFailure(
+      return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.postingWorkflow(),
           unexpected,
-          JazzerReplayDetailsSupport.postingWorkflowDetails(
+          JazzerReplayDetailsMapper.postingWorkflowDetails(
               command,
               command == null ? "UNEXPECTED_FAILURE" : "PARSED",
               uninitializedPreflightStatus,
@@ -203,7 +203,7 @@ final class JazzerPostingWorkflowReplay {
               finalCommitStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.normalizedMessage(unexpected)));
+              JazzerReplayDetailsMapper.normalizedMessage(unexpected)));
     }
   }
 }

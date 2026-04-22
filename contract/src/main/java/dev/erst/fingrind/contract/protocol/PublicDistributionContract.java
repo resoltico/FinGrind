@@ -23,10 +23,12 @@ public record PublicDistributionContract(
   private static final PublicDistributionContract CURRENT = loadCurrent();
 
   /** Validates and copies one shared public-distribution contract snapshot. */
-  public PublicDistributionContract {
-    supportedPublicCliBundleTargets =
+  public PublicDistributionContract(
+      @Nullable List<String> supportedPublicCliBundleTargets,
+      @Nullable List<String> unsupportedPublicCliOperatingSystems) {
+    this.supportedPublicCliBundleTargets =
         normalize(supportedPublicCliBundleTargets, SUPPORTED_BUNDLE_TARGETS_KEY);
-    unsupportedPublicCliOperatingSystems =
+    this.unsupportedPublicCliOperatingSystems =
         normalize(unsupportedPublicCliOperatingSystems, UNSUPPORTED_OPERATING_SYSTEMS_KEY);
   }
 
@@ -70,7 +72,7 @@ public record PublicDistributionContract(
     return values;
   }
 
-  private static List<String> normalize(List<String> values, String fieldName) {
+  private static List<String> normalize(@Nullable List<String> values, String fieldName) {
     if (values == null) {
       return List.of();
     }

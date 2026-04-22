@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -21,31 +20,13 @@ class MachineContractTest {
     ContractDiscovery.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
             new ContractDiscovery.ApplicationIdentity("FinGrind", "0.9.0", "desc"),
-            new ContractDiscovery.EnvironmentDescriptor(
-                "self-contained-bundle",
-                "self-contained-bundle",
-                ProtocolCatalog.supportedPublicCliBundleTargets(),
-                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                ProtocolCatalog.sourceCheckoutJava(),
-                "sqlite-ffm-sqlite3mc",
-                "sqlite",
-                "required",
-                "chacha20",
-                "managed-only",
-                "FINGRIND_SQLITE_LIBRARY",
-                "fingrind.bundle.home",
-                List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-                true,
-                "3.53.0",
-                "2.3.3",
-                "ready",
-                "3.53.0",
-                "2.3.3",
-                null),
+            readyEnvironmentDescriptor(),
             Instant.parse("2026-04-13T12:00:00Z"));
 
-    assertEquals("advisory", capabilities.preflightSemantics());
-    assertFalse(capabilities.preflight().isCommitGuarantee());
+    assertEquals("advisory", capabilities.preflight().semantics());
+    assertEquals(
+        ContractResponse.CommitGuarantee.NOT_GUARANTEED,
+        capabilities.preflight().commitGuarantee());
     assertEquals("single-currency-per-entry", capabilities.currencyModel().scope());
     assertEquals("not-supported", capabilities.currencyModel().multiCurrencyStatus());
     assertEquals(
@@ -108,28 +89,7 @@ class MachineContractTest {
   void helpVersionAndRequestTemplate_publishCanonicalDiscoveryMetadata() {
     ContractDiscovery.ApplicationIdentity identity =
         new ContractDiscovery.ApplicationIdentity("FinGrind", "0.9.0", "desc");
-    ContractDiscovery.EnvironmentDescriptor environment =
-        new ContractDiscovery.EnvironmentDescriptor(
-            "self-contained-bundle",
-            "self-contained-bundle",
-            ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-            ProtocolCatalog.sourceCheckoutJava(),
-            "sqlite-ffm-sqlite3mc",
-            "sqlite",
-            "required",
-            "chacha20",
-            "managed-only",
-            "FINGRIND_SQLITE_LIBRARY",
-            "fingrind.bundle.home",
-            List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-            true,
-            "3.53.0",
-            "2.3.3",
-            "ready",
-            "3.53.0",
-            "2.3.3",
-            null);
+    ContractDiscovery.EnvironmentDescriptor environment = readyEnvironmentDescriptor();
 
     ContractDiscovery.HelpDescriptor help = MachineContract.help(identity, environment);
     ContractDiscovery.VersionDescriptor version = MachineContract.version(identity);
@@ -154,15 +114,24 @@ class MachineContractTest {
     assertEquals(List.of("json", "human", "csv"), help.commands().get(14).outputModes());
     assertEquals("pdf", help.commands().get(14).artifactOutputs().getFirst().format());
     assertEquals("--pdf-out <path>", help.commands().get(14).artifactOutputs().getFirst().option());
-    assertEquals(4, help.exitCodes().size());
+    assertEquals(5, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());
+    assertTrue(help.quickStart().stream().noneMatch(example -> example.contains("docs/examples/")));
+    assertTrue(
+        help.quickStart().stream()
+            .anyMatch(example -> example.contains("./declare-account-cash.json")));
+    assertTrue(
+        help.quickStart().stream()
+            .anyMatch(example -> example.contains("./declare-account-revenue.json")));
 
     assertEquals("0.9.0", version.version());
     assertEquals(
-        environment.supportedPublicCliBundleTargets(),
+        environment.distribution().supportedPublicCliBundleTargets(),
         ProtocolCatalog.supportedPublicCliBundleTargets());
-    assertEquals(List.of(), ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+    assertEquals(
+        environment.distribution().unsupportedPublicCliOperatingSystems(),
+        ProtocolCatalog.unsupportedPublicCliOperatingSystems());
     assertEquals("2026-04-13", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals("HUMAN", template.provenance().actorType());
@@ -180,5 +149,29 @@ class MachineContractTest {
         .findFirst()
         .orElseThrow(() -> new AssertionError("Missing vocabulary: " + name))
         .values();
+  }
+
+  private static ContractDiscovery.EnvironmentDescriptor readyEnvironmentDescriptor() {
+    return new ContractDiscovery.EnvironmentDescriptor(
+        new ContractDiscovery.EnvironmentDistributionDescriptor(
+            "self-contained-bundle",
+            "self-contained-bundle",
+            ProtocolCatalog.supportedPublicCliBundleTargets(),
+            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.sourceCheckoutJava()),
+        new ContractDiscovery.EnvironmentStorageDescriptor(
+            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new ContractDiscovery.EnvironmentSqliteDescriptor(
+            "managed-only",
+            "FINGRIND_SQLITE_LIBRARY",
+            "fingrind.bundle.home",
+            List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+            ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
+            "3.53.0",
+            "2.3.3",
+            "ready",
+            "3.53.0",
+            "2.3.3",
+            null));
   }
 }

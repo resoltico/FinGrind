@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractErrorException;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
 import java.util.Objects;
 
@@ -16,12 +16,8 @@ final class CliFailureMapper {
     };
   }
 
-  static CliFailure contractErrorFailure(ContractErrorException exception) {
-    return new CliFailure(
-        exception.code(),
-        Objects.requireNonNullElse(exception.getMessage(), exception.descriptor().description()),
-        exception.hint(),
-        exception.argument());
+  static CliFailure contractFailure(ContractFailure failure) {
+    return CliFailure.fromContractFailure(Objects.requireNonNull(failure, "failure"));
   }
 
   static CliFailure runtimeFailure(RuntimeException exception) {

@@ -12,9 +12,11 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the core-owned protocol catalog. */
+@NullUnmarked
 class ProtocolCatalogTest {
   @Test
   void operations_followCanonicalPublicOrder() {
@@ -98,8 +100,8 @@ class ProtocolCatalogTest {
             "fingrind help",
             "summary",
             null);
-    ProtocolOperationSupport.OperationDefinition definition =
-        new ProtocolOperationSupport.OperationDefinition(
+    ProtocolOperationDefinitions.OperationDefinition definition =
+        new ProtocolOperationDefinitions.OperationDefinition(
             OperationId.HELP,
             OperationCategory.DISCOVERY,
             "Help",
@@ -139,7 +141,7 @@ class ProtocolCatalogTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ProtocolOperationSupport.OperationDefinition(
+            new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.HELP,
                 OperationCategory.DISCOVERY,
                 " ",

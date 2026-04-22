@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER
 updated: "2026-04-21"
 route:
@@ -258,12 +258,14 @@ bundle and container publication stay on the same public runtime contract.
 
 During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight test-progress heartbeats instead of relying only on stale Gradle task banners.
 
-During Stage 2, `./check.sh` tracks nested Jazzer support tests and regression replay through `[JAZZER-PULSE]` lines, including support-test heartbeats plus regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
+During Stage 2, `./check.sh` tracks nested Jazzer deterministic tests and regression replay
+through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
+regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
 source, compiles its own managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library
 from `../third_party/sqlite/`, and injects that path through `FINGRIND_SQLITE_LIBRARY` for its
-support tests, regression replay, and local active fuzzing commands.
+deterministic tests, regression replay, and local active fuzzing commands.
 
 For active fuzzing, the supported operator surface is now `jazzer/bin/*`.
 Those wrappers force active fuzz runs onto `--no-daemon`, serialize Jazzer commands through one
@@ -298,7 +300,8 @@ the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0, S
 Ciphers 2.3.3, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
-GitHub workflows do not run active fuzzing, standalone Jazzer support tests, or regression replay.
+GitHub workflows do not run active fuzzing, standalone Jazzer deterministic tests, or regression
+replay.
 Jazzer remains a local-only verification surface through `./check.sh` and the nested `jazzer/`
 build. Active harness execution also hard-fails when `GITHUB_ACTIONS=true`, so a future workflow
 cannot silently become a live-fuzz surface by mistake.

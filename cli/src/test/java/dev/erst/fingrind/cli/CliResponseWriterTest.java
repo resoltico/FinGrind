@@ -80,11 +80,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link CliResponseWriter}. */
+@NullUnmarked
 class CliResponseWriterTest {
   @Test
   void planRejectionStatus_rejectsSucceededPlansAndMapsFailures() {
@@ -440,23 +442,9 @@ class CliResponseWriterTest {
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
-            new ContractDiscovery.EnvironmentDescriptor(
+            environmentDescriptor(
                 "self-contained-bundle",
-                "self-contained-bundle",
-                ProtocolCatalog.supportedPublicCliBundleTargets(),
-                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                ProtocolCatalog.sourceCheckoutJava(),
-                "sqlite-ffm-sqlite3mc",
-                "sqlite",
-                "required",
-                "chacha20",
-                "managed-only",
-                "FINGRIND_SQLITE_LIBRARY",
-                "fingrind.bundle.home",
-                List.of("THREADSAFE=1"),
-                true,
-                "3.53.0",
-                "2.3.3",
+                ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "loaded",
                 "3.53.0",
                 "2.3.3",
@@ -489,23 +477,9 @@ class CliResponseWriterTest {
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
-            new ContractDiscovery.EnvironmentDescriptor(
+            environmentDescriptor(
                 "container-image",
-                "self-contained-bundle",
-                ProtocolCatalog.supportedPublicCliBundleTargets(),
-                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                ProtocolCatalog.sourceCheckoutJava(),
-                "sqlite-ffm-sqlite3mc",
-                "sqlite",
-                "required",
-                "chacha20",
-                "managed-only",
-                "FINGRIND_SQLITE_LIBRARY",
-                "fingrind.bundle.home",
-                List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-                false,
-                "3.53.0",
-                "2.3.3",
+                ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                 "unavailable",
                 null,
                 null,
@@ -516,19 +490,24 @@ class CliResponseWriterTest {
     JsonNode payload = json.path("payload");
     JsonNode environment = payload.path("environment");
 
-    assertTrue(payload.has("preflightSemantics"));
+    assertTrue(payload.has("preflight"));
     assertTrue(payload.has("currencyModel"));
-    assertEquals("required", environment.path("bookProtectionMode").asString());
-    assertEquals("container-image", environment.path("runtimeDistribution").asString());
-    assertEquals("self-contained-bundle", environment.path("publicCliDistribution").asString());
+    assertEquals("advisory", payload.path("preflight").path("semantics").asString());
+    assertEquals("required", environment.path("storage").path("bookProtectionMode").asString());
+    assertEquals(
+        "container-image", environment.path("distribution").path("runtimeDistribution").asString());
+    assertEquals(
+        "self-contained-bundle",
+        environment.path("distribution").path("publicCliDistribution").asString());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets(),
-        readTextArray(environment.path("supportedPublicCliBundleTargets")));
+        readTextArray(environment.path("distribution").path("supportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        readTextArray(environment.path("unsupportedPublicCliOperatingSystems")));
-    assertFalse(environment.has("loadedSqliteVersion"));
-    assertFalse(environment.has("loadedSqlite3mcVersion"));
+        readTextArray(
+            environment.path("distribution").path("unsupportedPublicCliOperatingSystems")));
+    assertFalse(environment.path("sqlite").has("loadedSqliteVersion"));
+    assertFalse(environment.path("sqlite").has("loadedSqlite3mcVersion"));
   }
 
   @Test
@@ -539,23 +518,9 @@ class CliResponseWriterTest {
                 "FinGrind",
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
-            new ContractDiscovery.EnvironmentDescriptor(
+            environmentDescriptor(
                 "self-contained-bundle",
-                "self-contained-bundle",
-                ProtocolCatalog.supportedPublicCliBundleTargets(),
-                ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-                ProtocolCatalog.sourceCheckoutJava(),
-                "sqlite-ffm-sqlite3mc",
-                "sqlite",
-                "required",
-                "chacha20",
-                "managed-only",
-                "FINGRIND_SQLITE_LIBRARY",
-                "fingrind.bundle.home",
-                List.of("THREADSAFE=1"),
-                true,
-                "3.53.0",
-                "2.3.3",
+                ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "loaded",
                 "3.53.0",
                 "2.3.3",
@@ -1234,6 +1199,36 @@ class CliResponseWriterTest {
 
   private static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {
     return new PrintStream(outputStream, false, StandardCharsets.UTF_8);
+  }
+
+  private static ContractDiscovery.EnvironmentDescriptor environmentDescriptor(
+      String runtimeDistribution,
+      ContractDiscovery.SqliteCompileOptionsVerificationStatus compileOptionsVerification,
+      String state,
+      String loadedSqliteVersion,
+      String loadedSqlite3mcVersion,
+      String diagnostics) {
+    return new ContractDiscovery.EnvironmentDescriptor(
+        new ContractDiscovery.EnvironmentDistributionDescriptor(
+            runtimeDistribution,
+            "self-contained-bundle",
+            ProtocolCatalog.supportedPublicCliBundleTargets(),
+            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.sourceCheckoutJava()),
+        new ContractDiscovery.EnvironmentStorageDescriptor(
+            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new ContractDiscovery.EnvironmentSqliteDescriptor(
+            "managed-only",
+            "FINGRIND_SQLITE_LIBRARY",
+            "fingrind.bundle.home",
+            List.of("THREADSAFE=1"),
+            compileOptionsVerification,
+            "3.53.0",
+            "2.3.3",
+            state,
+            loadedSqliteVersion,
+            loadedSqlite3mcVersion,
+            diagnostics));
   }
 
   private static String rejectedJson(PostingRejection rejection) {

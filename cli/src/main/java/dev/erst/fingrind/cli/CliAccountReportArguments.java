@@ -20,7 +20,7 @@ final class CliAccountReportArguments {
   static CliCommand parseAccountBalanceCommand(List<String> arguments) {
     ParsedAccountReportArguments parsedArguments = parseAccountScopedReportArguments(arguments);
     EffectiveDateRange resolvedEffectiveDateRange =
-        CliArgumentSupport.requireValidArgument(
+        CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             () ->
                 EffectiveDateRange.of(
@@ -35,7 +35,7 @@ final class CliAccountReportArguments {
   static CliCommand parseAccountLedgerCommand(List<String> arguments) {
     ParsedAccountReportArguments parsedArguments = parseAccountScopedReportArguments(arguments);
     EffectiveDateRange resolvedEffectiveDateRange =
-        CliArgumentSupport.requireValidArgument(
+        CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             () ->
                 EffectiveDateRange.of(
@@ -49,8 +49,8 @@ final class CliAccountReportArguments {
 
   private static ParsedAccountReportArguments parseAccountScopedReportArguments(
       List<String> arguments) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseBookAndCommandArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
     @Nullable String accountCodeValue = null;
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
@@ -62,12 +62,12 @@ final class CliAccountReportArguments {
       switch (argument) {
         case ProtocolOptions.ACCOUNT_CODE -> {
           if (accountCodeValue != null) {
-            throw CliArgumentSupport.invalid(
+            throw CliArgumentValueParser.invalid(
                 ProtocolOptions.ACCOUNT_CODE,
                 "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
           }
           accountCodeValue =
-              CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
         }
         case ProtocolOptions.EFFECTIVE_DATE_FROM ->
             effectiveDateFrom =
@@ -80,25 +80,26 @@ final class CliAccountReportArguments {
         case ProtocolOptions.OUTPUT ->
             outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         case ProtocolOptions.PDF_OUT ->
-            pdfOutPath = CliArgumentSupport.requirePdfOutPath(pdfOutPath, argumentIterator);
-        default -> throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+            pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
     }
     if (accountCodeValue == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.ACCOUNT_CODE,
           "A " + ProtocolOptions.ACCOUNT_CODE + " argument is required.");
     }
     String requiredAccountCodeValue = accountCodeValue;
     AccountCode resolvedAccountCode =
-        CliArgumentSupport.requireValidArgument(
+        CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.ACCOUNT_CODE, () -> new AccountCode(requiredAccountCodeValue));
     return new ParsedAccountReportArguments(
         parsedArguments.bookAccess(),
         resolvedAccountCode,
         effectiveDateFrom,
         effectiveDateTo,
-        CliArgumentSupport.resolvedReportOutput(outputMode, pdfOutPath));
+        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   private record ParsedAccountReportArguments(

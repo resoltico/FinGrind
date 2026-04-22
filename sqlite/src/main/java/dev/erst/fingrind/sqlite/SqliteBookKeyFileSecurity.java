@@ -1,7 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailure;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -71,12 +72,12 @@ final class SqliteBookKeyFileSecurity {
     if (supportsAcl(normalizedPath)) {
       return WINDOWS_OWNER_ONLY_ACL_DESCRIPTOR;
     }
-    throw unsupportedSecureFilesystem(normalizedPath);
+    throw new IllegalArgumentException(unsupportedSecureFilesystemMessage(normalizedPath));
   }
 
   static void requireSupportedSecureFilesystem(Path normalizedPath) {
     if (!supportsPosix(normalizedPath) && !supportsAcl(normalizedPath)) {
-      throw unsupportedSecureFilesystem(normalizedPath);
+      throw new IllegalArgumentException(unsupportedSecureFilesystemMessage(normalizedPath));
     }
   }
 
@@ -104,33 +105,35 @@ final class SqliteBookKeyFileSecurity {
       applyOwnerOnlyAcl(normalizedPath);
       return;
     }
-    throw unsupportedSecureFilesystem(normalizedPath);
+    throw new IllegalStateException(unsupportedSecureFilesystemMessage(normalizedPath));
   }
 
-  static void requireSecureKeyFile(Path bookKeyFilePath) {
-    requireSecureKeyFile(bookKeyFilePath, SqliteBookKeyFileSecurity::inspectSecurity);
+  static ContractDecision<Path> requireSecureKeyFile(Path bookKeyFilePath) {
+    return requireSecureKeyFile(bookKeyFilePath, SqliteBookKeyFileSecurity::inspectSecurity);
   }
 
-  static void requireSecureKeyFile(Path bookKeyFilePath, SecurityInspector securityInspector) {
+  static ContractDecision<Path> requireSecureKeyFile(
+      Path bookKeyFilePath, SecurityInspector securityInspector) {
     Objects.requireNonNull(securityInspector, "securityInspector");
     try {
       if (Files.notExists(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        return;
+        return ContractDecision.accepted(bookKeyFilePath);
       }
       if (!Files.isRegularFile(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        throw invalidBookKeyFile(
-            "The FinGrind book key file must be a regular non-symlink file: " + bookKeyFilePath);
+        return ContractDecision.rejected(
+            invalidBookKeyFile(
+                "The FinGrind book key file must be a regular non-symlink file: "
+                    + bookKeyFilePath));
       }
-      requireSecureSecurity(bookKeyFilePath, securityInspector.inspect(bookKeyFilePath));
+      return requireSecureSecurity(bookKeyFilePath, securityInspector.inspect(bookKeyFilePath));
     } catch (UnsupportedOperationException exception) {
-      throw unsupportedSecureFilesystem(bookKeyFilePath, exception);
+      return ContractDecision.rejected(unsupportedSecureFilesystem(bookKeyFilePath, exception));
     } catch (IOException exception) {
-      throw new ContractErrorException(
-          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
-          "Failed to inspect the FinGrind book key file permissions: " + bookKeyFilePath,
-          "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
-          null,
-          exception);
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+              "Failed to inspect the FinGrind book key file permissions: " + bookKeyFilePath,
+              "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
+              null));
     }
   }
 
@@ -146,51 +149,65 @@ final class SqliteBookKeyFileSecurity {
     throw new UnsupportedOperationException("no owner-only file security view is available");
   }
 
-  private static void requireSecureSecurity(Path bookKeyFilePath, KeyFileSecurity security) {
+  private static ContractDecision<Path> requireSecureSecurity(
+      Path bookKeyFilePath, KeyFileSecurity security) {
     switch (Objects.requireNonNull(security, "security")) {
-      case PosixSecurity posixSecurity ->
-          requireSecurePosixPermissions(bookKeyFilePath, posixSecurity.permissions());
-      case AclSecurity aclSecurity -> requireSecureAcl(bookKeyFilePath, aclSecurity);
+      case PosixSecurity posixSecurity -> {
+        return requireSecurePosixPermissions(bookKeyFilePath, posixSecurity.permissions());
+      }
+      case AclSecurity aclSecurity -> {
+        return requireSecureAcl(bookKeyFilePath, aclSecurity);
+      }
     }
   }
 
-  private static void requireSecurePosixPermissions(
+  private static ContractDecision<Path> requireSecurePosixPermissions(
       Path bookKeyFilePath, Set<PosixFilePermission> permissions) {
     if (!permissions.contains(PosixFilePermission.OWNER_READ)) {
-      throw invalidBookKeyFile(
-          "The FinGrind book key file must be owner-readable: " + bookKeyFilePath);
+      return ContractDecision.rejected(
+          invalidBookKeyFile(
+              "The FinGrind book key file must be owner-readable: " + bookKeyFilePath));
     }
     if (!POSIX_KEY_FILE_PERMISSIONS.containsAll(permissions)) {
-      throw invalidBookKeyFile(
-          "The FinGrind book key file must use owner-only permissions (0400 or 0600): "
-              + bookKeyFilePath);
+      return ContractDecision.rejected(
+          invalidBookKeyFile(
+              "The FinGrind book key file must use owner-only permissions (0400 or 0600): "
+                  + bookKeyFilePath));
     }
+    return ContractDecision.accepted(bookKeyFilePath);
   }
 
-  private static void requireSecureAcl(Path bookKeyFilePath, AclSecurity security) {
+  private static ContractDecision<Path> requireSecureAcl(
+      Path bookKeyFilePath, AclSecurity security) {
     if (security.acl().stream()
         .filter(entry -> entry.type() == AclEntryType.ALLOW)
         .filter(entry -> security.owner().equals(entry.principal()))
         .noneMatch(entry -> entry.permissions().containsAll(ACL_READ_PERMISSIONS))) {
-      throw invalidBookKeyFile(
-          "The FinGrind book key file ACL must grant the file owner read access: "
-              + bookKeyFilePath);
+      return ContractDecision.rejected(
+          invalidBookKeyFile(
+              "The FinGrind book key file ACL must grant the file owner read access: "
+                  + bookKeyFilePath));
     }
-    security.acl().stream()
-        .filter(entry -> entry.type() == AclEntryType.ALLOW)
-        .filter(entry -> !security.owner().equals(entry.principal()))
-        .filter(
-            entry ->
-                !java.util.Collections.disjoint(entry.permissions(), ACL_SECRET_ACCESS_PERMISSIONS))
-        .findFirst()
-        .ifPresent(
-            entry -> {
-              throw invalidBookKeyFile(
-                  "The FinGrind book key file ACL must grant secret access only to the file owner: "
-                      + bookKeyFilePath
-                      + " grants access to "
-                      + entry.principal().getName());
-            });
+    java.util.Optional<ContractFailure> nonOwnerAccessFailure =
+        security.acl().stream()
+            .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(entry -> !security.owner().equals(entry.principal()))
+            .filter(
+                entry ->
+                    !java.util.Collections.disjoint(
+                        entry.permissions(), ACL_SECRET_ACCESS_PERMISSIONS))
+            .findFirst()
+            .map(
+                entry ->
+                    invalidBookKeyFile(
+                        "The FinGrind book key file ACL must grant secret access only to the file owner: "
+                            + bookKeyFilePath
+                            + " grants access to "
+                            + entry.principal().getName()));
+    if (nonOwnerAccessFailure.isPresent()) {
+      return ContractDecision.rejected(nonOwnerAccessFailure.orElseThrow());
+    }
+    return ContractDecision.accepted(bookKeyFilePath);
   }
 
   private static void applyOwnerOnlyAcl(Path normalizedPath) throws IOException {
@@ -222,26 +239,16 @@ final class SqliteBookKeyFileSecurity {
     return path.getFileSystem().supportedFileAttributeViews().contains(ACL_VIEW);
   }
 
-  private static ContractErrorException invalidBookKeyFile(String message) {
-    return new ContractErrorException(
-        ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
+  private static ContractFailure invalidBookKeyFile(String message) {
+    return ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
         message,
         "Use one regular non-symlink key file protected by POSIX owner-only permissions or a Windows owner-only ACL, then rerun the command.",
         null);
   }
 
-  private static ContractErrorException unsupportedSecureFilesystem(Path path) {
+  private static ContractFailure unsupportedSecureFilesystem(Path path, RuntimeException cause) {
+    Objects.requireNonNull(cause, "cause");
     return invalidBookKeyFile(unsupportedSecureFilesystemMessage(path));
-  }
-
-  private static ContractErrorException unsupportedSecureFilesystem(
-      Path path, RuntimeException cause) {
-    return new ContractErrorException(
-        ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
-        unsupportedSecureFilesystemMessage(path),
-        "Use one regular non-symlink key file protected by POSIX owner-only permissions or a Windows owner-only ACL, then rerun the command.",
-        null,
-        cause);
   }
 
   private static String unsupportedSecureFilesystemMessage(Path path) {

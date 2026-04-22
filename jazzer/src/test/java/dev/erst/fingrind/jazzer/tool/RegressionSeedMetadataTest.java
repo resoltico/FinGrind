@@ -57,7 +57,7 @@ class RegressionSeedMetadataTest {
             .flatMap(
                 harness -> {
                   try {
-                    return RegressionSeedSupport.orphanedInputs(projectDirectory, harness).stream();
+                    return RegressionSeedCatalog.orphanedInputs(projectDirectory, harness).stream();
                   } catch (IOException exception) {
                     throw new RuntimeException(exception);
                   }

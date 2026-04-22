@@ -36,6 +36,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -233,7 +234,7 @@ class InMemoryBookSessionTest {
               IllegalArgumentException.class,
               () -> bookSession.deactivateAccount(new AccountCode("9999")));
 
-      assertTrue(thrown.getMessage().contains("9999"));
+      assertTrue(Objects.requireNonNull(thrown.getMessage()).contains("9999"));
     }
   }
 

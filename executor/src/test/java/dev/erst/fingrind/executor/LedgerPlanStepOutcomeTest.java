@@ -7,9 +7,11 @@ import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerStepFailure;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Covers constructor invariants for internal ledger-plan step outcomes. */
+@NullUnmarked
 class LedgerPlanStepOutcomeTest {
   @Test
   void succeeded_coalescesNullFactsToEmptyImmutableList() {

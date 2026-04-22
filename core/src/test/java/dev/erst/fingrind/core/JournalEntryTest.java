@@ -7,9 +7,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link JournalEntry}. */
+@NullUnmarked
 class JournalEntryTest {
   @Test
   void constructor_defensivelyCopiesLines() {

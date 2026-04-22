@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,9 +29,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for reporting contract value types and deterministic CLI error descriptors. */
+@NullUnmarked
 class ReportingContractTypesTest {
   private static final DeclaredAccount CASH_ACCOUNT =
       new DeclaredAccount(
@@ -274,22 +275,16 @@ class ReportingContractTypesTest {
   }
 
   @Test
-  void contractErrorsAndExceptions_exposeCanonicalDeterministicFailureMetadata() {
+  void contractErrorsAndDecisions_exposeCanonicalDeterministicFailureMetadata() {
     List<ContractResponse.ErrorDescriptor> descriptors = ContractErrors.descriptors();
-    ContractErrorException withoutCause =
-        new ContractErrorException(
-            ContractErrors.Descriptor.INVALID_PAGE_CURSOR,
-            "Bad cursor",
-            "Retry without --cursor.",
-            "--cursor");
-    IllegalArgumentException cause = new IllegalArgumentException("boom");
-    ContractErrorException withCause =
-        new ContractErrorException(
-            ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED,
-            "Wrong key",
-            "Use the correct key file.",
-            "--book-key-file",
-            cause);
+    ContractFailure withoutCause =
+        ContractErrors.Descriptor.INVALID_PAGE_CURSOR.failure(
+            "Bad cursor", "Retry without --cursor.", "--cursor");
+    ContractFailure withCause =
+        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.failure(
+            "Wrong key", "Use the correct key file.", "--book-key-file");
+    ContractDecision<String> accepted = ContractDecision.accepted("ok");
+    ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
 
     assertEquals(10, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
@@ -306,20 +301,60 @@ class ReportingContractTypesTest {
     assertEquals("invalid-page-cursor", withoutCause.code());
     assertEquals("Retry without --cursor.", withoutCause.hint());
     assertEquals("--cursor", withoutCause.argument());
-    assertNull(withoutCause.getCause());
-    assertEquals("Bad cursor", withoutCause.getMessage());
+    assertEquals("Bad cursor", withoutCause.message());
 
     assertSame(ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED, withCause.descriptor());
     assertEquals("book-authentication-failed", withCause.code());
     assertEquals("Use the correct key file.", withCause.hint());
     assertEquals("--book-key-file", withCause.argument());
-    assertSame(cause, withCause.getCause());
+    assertEquals("accepted:ok", accepted.fold(value -> "accepted:" + value, ignored -> "rejected"));
+    assertEquals(
+        "rejected:invalid-page-cursor",
+        rejected.fold(ignored -> "accepted", failure -> "rejected:" + failure.code()));
+    assertEquals("ok", accepted.requireAccepted());
+    assertSame(withoutCause, rejected.requireRejected());
+    assertEquals(
+        "Bad cursor",
+        assertThrows(IllegalStateException.class, rejected::requireAccepted).getMessage());
+    assertEquals(
+        "Expected a rejected contract decision.",
+        assertThrows(IllegalStateException.class, accepted::requireRejected).getMessage());
 
     assertThrows(
-        NullPointerException.class, () -> new ContractErrorException(null, "message", null, null));
-    assertThrows(
-        NullPointerException.class,
-        () -> new ContractErrorException(null, "message", null, null, cause));
+        NullPointerException.class, () -> new ContractFailure(null, "message", null, null));
+    assertThrows(NullPointerException.class, () -> ContractDecision.accepted(null));
+    assertThrows(NullPointerException.class, () -> accepted.fold(null, ignored -> "rejected"));
+    assertThrows(NullPointerException.class, () -> accepted.fold(value -> value, null));
+  }
+
+  @Test
+  void descriptorEnums_publishStableWireValuesAndLegacyBooleanMappings() {
+    assertEquals(
+        "requires-open-book",
+        ContractResponse.InitializationRequirement.REQUIRES_OPEN_BOOK.wireValue());
+    assertEquals(
+        "requires-open-book",
+        ContractResponse.InitializationRequirement.REQUIRES_OPEN_BOOK.toString());
+    assertEquals("guaranteed", ContractResponse.CommitGuarantee.GUARANTEED.wireValue());
+    assertEquals("guaranteed", ContractResponse.CommitGuarantee.GUARANTEED.toString());
+    assertEquals("not-guaranteed", ContractResponse.CommitGuarantee.NOT_GUARANTEED.wireValue());
+    assertEquals("not-guaranteed", ContractResponse.CommitGuarantee.NOT_GUARANTEED.toString());
+    assertEquals(
+        ContractResponse.CommitGuarantee.GUARANTEED,
+        ContractResponse.CommitGuarantee.fromGuaranteed(true));
+    assertEquals(
+        ContractResponse.CommitGuarantee.NOT_GUARANTEED,
+        ContractResponse.CommitGuarantee.fromGuaranteed(false));
+    assertEquals(
+        "verified", ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED.wireValue());
+    assertEquals(
+        "verified", ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED.toString());
+    assertEquals(
+        "not-verified",
+        ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.wireValue());
+    assertEquals(
+        "not-verified",
+        ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.toString());
   }
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {

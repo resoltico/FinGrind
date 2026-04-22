@@ -25,10 +25,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for the SQLite FFM binding layer. */
+@NullUnmarked
 class SqliteNativeLibraryTest {
   private static final String TEST_BOOK_KEY = "native-library-test-book-key";
 
@@ -775,6 +777,23 @@ class SqliteNativeLibraryTest {
     assertEquals(
         "SQLite same-package file-backed open requires a --book-key-file access selection.",
         exception.getMessage());
+  }
+
+  @Test
+  void open_rejectsInvalidKeyFilePayloadBeforeNativeOpen() throws Exception {
+    Path bookPath = tempDirectory.resolve("invalid-key-payload.sqlite");
+    Path keyPath = tempDirectory.resolve("invalid-key-payload.key");
+    writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
+    Files.write(keyPath, new byte[] {(byte) 0xFF});
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeLibrary.open(
+                    new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
+
+    assertTrue(exception.getMessage().contains("must contain a UTF-8 passphrase"));
   }
 
   @Test
@@ -1833,8 +1852,7 @@ class SqliteNativeLibraryTest {
     Files.writeString(keyPath, keyText, StandardCharsets.UTF_8);
   }
 
-  private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action)
-      throws SqliteNativeException {
+  private static void withOpenDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
     try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess)) {
       action.run(database);
     }
@@ -1843,6 +1861,6 @@ class SqliteNativeLibraryTest {
   /** Performs one checked action against a temporary native SQLite handle. */
   @FunctionalInterface
   private interface SqliteDatabaseAction {
-    void run(SqliteNativeDatabase database) throws SqliteNativeException;
+    void run(SqliteNativeDatabase database);
   }
 }

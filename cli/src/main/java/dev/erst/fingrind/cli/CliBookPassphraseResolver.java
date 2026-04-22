@@ -1,8 +1,9 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.IOException;
@@ -29,66 +30,78 @@ final class CliBookPassphraseResolver {
   }
 
   /** Resolves the selected book passphrase source for one CLI command invocation. */
-  SqliteBookPassphrase resolve(BookAccess bookAccess) {
+  ContractDecision<SqliteBookPassphrase> resolve(BookAccess bookAccess) {
     return resolve(bookAccess, PromptStyle.SINGLE);
   }
 
   /** Resolves the selected book passphrase source for one CLI command invocation. */
-  SqliteBookPassphrase resolve(BookAccess bookAccess, PromptStyle promptStyle) {
+  ContractDecision<SqliteBookPassphrase> resolve(BookAccess bookAccess, PromptStyle promptStyle) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     return resolve(bookAccess.bookFilePath(), bookAccess.passphraseSource(), promptStyle);
   }
 
   /** Resolves one explicit passphrase source for the selected book path. */
-  SqliteBookPassphrase resolve(
+  ContractDecision<SqliteBookPassphrase> resolve(
       Path bookFilePath, BookAccess.PassphraseSource passphraseSource, PromptStyle promptStyle) {
     Objects.requireNonNull(bookFilePath, "bookFilePath");
     Objects.requireNonNull(passphraseSource, "passphraseSource");
     Objects.requireNonNull(promptStyle, "promptStyle");
     return switch (passphraseSource) {
       case BookAccess.PassphraseSource.KeyFile keyFile ->
-          SqliteBookKeyFile.load(keyFile.bookKeyFilePath());
+          SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
       case BookAccess.PassphraseSource.StandardInput _ -> readFromStandardInput();
       case BookAccess.PassphraseSource.InteractivePrompt _ ->
           readFromInteractivePrompt(bookFilePath, promptStyle);
     };
   }
 
-  private SqliteBookPassphrase readFromStandardInput() {
+  private ContractDecision<SqliteBookPassphrase> readFromStandardInput() {
     try {
-      return SqliteBookPassphrase.fromUtf8Bytes("standard input", inputStream.readAllBytes());
+      return SqliteBookPassphrase.fromUtf8BytesDecision(
+          "standard input", inputStream.readAllBytes());
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to read the FinGrind book passphrase from standard input.", exception);
     }
   }
 
-  private SqliteBookPassphrase readFromInteractivePrompt(
+  private ContractDecision<SqliteBookPassphrase> readFromInteractivePrompt(
       Path bookFilePath, PromptStyle promptStyle) {
     Path normalizedPath = bookFilePath.toAbsolutePath().normalize();
-    char[] password = terminal.readPassword(promptStyle.primaryPrompt(normalizedPath));
-    if (password == null) {
-      throw interactivePromptFailure(
-          "FinGrind did not receive a book passphrase from the interactive console.");
+    ContractDecision<char[]> passwordDecision =
+        terminal.readPassword(promptStyle.primaryPrompt(normalizedPath));
+    char[] password;
+    switch (passwordDecision) {
+      case ContractDecision.Accepted<char[]>(char[] acceptedPassword) ->
+          password = acceptedPassword;
+      case ContractDecision.Rejected<char[]>(ContractFailure failure) -> {
+        return rejectedPassphrase(failure);
+      }
     }
     if (promptStyle == PromptStyle.SINGLE) {
-      return SqliteBookPassphrase.fromCharacters(
+      return SqliteBookPassphrase.fromCharactersDecision(
           "interactive prompt for " + normalizedPath, password);
     }
-    char[] confirmation = terminal.readPassword(promptStyle.confirmationPrompt(normalizedPath));
-    if (confirmation == null) {
-      Arrays.fill(password, '\0');
-      throw interactivePromptFailure(
-          "FinGrind did not receive a confirmed book passphrase from the interactive console.");
+    ContractDecision<char[]> confirmationDecision =
+        terminal.readPassword(promptStyle.confirmationPrompt(normalizedPath));
+    char[] confirmation;
+    switch (confirmationDecision) {
+      case ContractDecision.Accepted<char[]>(char[] acceptedConfirmation) ->
+          confirmation = acceptedConfirmation;
+      case ContractDecision.Rejected<char[]>(ContractFailure failure) -> {
+        Arrays.fill(password, '\0');
+        return rejectedPassphrase(failure);
+      }
     }
     if (!Arrays.equals(password, confirmation)) {
       Arrays.fill(password, '\0');
       Arrays.fill(confirmation, '\0');
-      throw interactivePromptFailure(
-          "FinGrind did not receive matching book passphrases from the interactive console.");
+      return ContractDecision.rejected(
+          interactivePromptFailure(
+              "FinGrind did not receive matching book passphrases from the interactive console."));
     }
     Arrays.fill(confirmation, '\0');
-    return SqliteBookPassphrase.fromCharacters(
+    return SqliteBookPassphrase.fromCharactersDecision(
         "interactive prompt for " + normalizedPath, password);
   }
 
@@ -96,7 +109,7 @@ final class CliBookPassphraseResolver {
   @FunctionalInterface
   interface Terminal {
     /** Prompts for one passphrase and returns the entered characters. */
-    char[] readPassword(String prompt);
+    ContractDecision<char[]> readPassword(String prompt);
   }
 
   static Terminal systemTerminal() {
@@ -120,11 +133,11 @@ final class CliBookPassphraseResolver {
     }
 
     @Override
-    public char[] readPassword(String prompt) {
+    public ContractDecision<char[]> readPassword(String prompt) {
       Objects.requireNonNull(prompt, "prompt");
       Optional<Terminal> reader = Objects.requireNonNull(readerSupplier.get(), "reader");
       if (reader.isEmpty()) {
-        throw noConsole();
+        return ContractDecision.rejected(noConsole());
       }
       return reader.orElseThrow().readPassword(prompt);
     }
@@ -141,17 +154,17 @@ final class CliBookPassphraseResolver {
     }
 
     @Override
-    public char[] readPassword(String prompt) {
+    public ContractDecision<char[]> readPassword(String prompt) {
       Objects.requireNonNull(prompt, "prompt");
       try {
-        return (char[]) readPasswordMethod.invoke(consoleHandle, "%s", new Object[] {prompt});
+        return ContractDecision.accepted(
+            (char[]) readPasswordMethod.invoke(consoleHandle, "%s", new Object[] {prompt}));
       } catch (ReflectiveOperationException exception) {
-        throw new ContractErrorException(
-            ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED,
-            "Failed to prompt for a book passphrase from the interactive console.",
-            "Rerun the command from a supported interactive terminal, or use --book-key-file or --book-passphrase-stdin instead.",
-            null,
-            exception);
+        return ContractDecision.rejected(
+            ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED.failure(
+                "Failed to prompt for a book passphrase from the interactive console.",
+                "Rerun the command from a supported interactive terminal, or use --book-key-file or --book-passphrase-stdin instead.",
+                null));
       }
     }
 
@@ -170,20 +183,23 @@ final class CliBookPassphraseResolver {
     }
   }
 
-  private static ContractErrorException noConsole() {
-    return new ContractErrorException(
-        ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE,
+  private static ContractFailure noConsole() {
+    return ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.failure(
         NO_INTERACTIVE_CONSOLE_MESSAGE,
         "Rerun the command from an interactive terminal, or use --book-key-file or --book-passphrase-stdin instead.",
         null);
   }
 
-  private static ContractErrorException interactivePromptFailure(String message) {
-    return new ContractErrorException(
-        ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED,
+  private static ContractFailure interactivePromptFailure(String message) {
+    return ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED.failure(
         message,
         "Rerun the command from a supported interactive terminal and provide one valid passphrase, or use --book-key-file or --book-passphrase-stdin instead.",
         null);
+  }
+
+  private static ContractDecision<SqliteBookPassphrase> rejectedPassphrase(
+      ContractFailure failure) {
+    return ContractDecision.rejected(failure);
   }
 
   /** Prompt modes for existing-book secrets versus newly entered replacement secrets. */

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.cli.CliFuzzSupport;
+import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostEntryCommand;
@@ -32,37 +32,37 @@ final class JazzerSqliteBookRoundTripReplay {
     String duplicateStatus = "NOT_RUN";
     boolean storedFactPresent = false;
     try {
-      command = CliFuzzSupport.readPostEntryCommand(input);
+      command = CliFuzzFixtures.readPostEntryCommand(input);
       try (JazzerReplayScratchDirectory scratchDirectory =
               JazzerReplayScratchDirectory.create("fingrind-jazzer-replay-")) {
         Path bookPath = scratchDirectory.resolve(Path.of("nested", "entity-book.sqlite"));
 
         try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
           BookAdministrationService administrationService =
-              CliFuzzSupport.administrationService(postingFactStore.administrationSession());
+              CliFuzzFixtures.administrationService(postingFactStore.administrationSession());
           PostingApplicationService applicationService =
               new PostingApplicationService(
                   postingFactStore.postingSession(),
-                  CliFuzzSupport.postingIdGenerator(input),
-                  CliFuzzSupport.fixedClock());
+                  CliFuzzFixtures.postingIdGenerator(input),
+                  CliFuzzFixtures.fixedClock());
 
           uninitializedCommitStatus =
-              JazzerReplayDetailsSupport.rejectionStatus(
-                  JazzerReplayDetailsSupport
+              JazzerReplayDetailsMapper.rejectionStatus(
+                  JazzerReplayDetailsMapper
                       .requiredCommitRejected(applicationService.commit(command))
                       .rejection());
 
-          CliFuzzSupport.openBook(administrationService);
+          CliFuzzFixtures.openBook(administrationService);
 
           undeclaredCommitStatus =
-              JazzerReplayDetailsSupport.rejectionStatus(
-                  JazzerReplayDetailsSupport
+              JazzerReplayDetailsMapper.rejectionStatus(
+                  JazzerReplayDetailsMapper
                       .requiredCommitRejected(applicationService.commit(command))
                       .rejection());
 
           List<DeclaredAccount> declaredAccounts =
-              CliFuzzSupport.declarePostingAccounts(administrationService, command);
-          if (CliFuzzSupport.listAccounts(postingFactStore.readSession()).size()
+              CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+          if (CliFuzzFixtures.listAccounts(postingFactStore.readSession()).size()
               != declaredAccounts.size()) {
             throw new IllegalStateException(
                 "Declared-account listing drifted from setup declarations.");
@@ -70,12 +70,12 @@ final class JazzerSqliteBookRoundTripReplay {
           DeclaredAccount primaryAccount = declaredAccounts.getFirst();
           SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
           inactiveCommitStatus =
-              JazzerReplayDetailsSupport.rejectionStatus(
-                  JazzerReplayDetailsSupport
+              JazzerReplayDetailsMapper.rejectionStatus(
+                  JazzerReplayDetailsMapper
                       .requiredCommitRejected(applicationService.commit(command))
                       .rejection());
 
-          CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
+          CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
 
           CommitEntryResult committedResult = applicationService.commit(command);
           if (committedResult instanceof Committed committed) {
@@ -107,7 +107,7 @@ final class JazzerSqliteBookRoundTripReplay {
               if (!postingFact
                   .provenance()
                   .recordedAt()
-                  .equals(CliFuzzSupport.fixedClock().instant())) {
+                  .equals(CliFuzzFixtures.fixedClock().instant())) {
                 throw new IllegalStateException(
                     "Reloaded recorded-at differs from the deterministic clock.");
               }
@@ -121,8 +121,8 @@ final class JazzerSqliteBookRoundTripReplay {
               PostingApplicationService duplicateService =
                   new PostingApplicationService(
                       reloadedStore.postingSession(),
-                      CliFuzzSupport.postingIdGenerator(input),
-                      CliFuzzSupport.fixedClock());
+                      CliFuzzFixtures.postingIdGenerator(input),
+                      CliFuzzFixtures.fixedClock());
               CommitEntryResult duplicateResult = duplicateService.commit(command);
               if (!(duplicateResult instanceof CommitRejected rejected)) {
                 throw new IllegalStateException("Duplicate SQLite commit should be rejected.");
@@ -131,10 +131,10 @@ final class JazzerSqliteBookRoundTripReplay {
                 throw new IllegalStateException(
                     "Duplicate SQLite commit returned the wrong rejection code.");
               }
-              duplicateStatus = JazzerReplayDetailsSupport.rejectionStatus(rejected.rejection());
+              duplicateStatus = JazzerReplayDetailsMapper.rejectionStatus(rejected.rejection());
             }
           } else if (committedResult instanceof CommitRejected rejected) {
-            finalCommitStatus = JazzerReplayDetailsSupport.rejectionStatus(rejected.rejection());
+            finalCommitStatus = JazzerReplayDetailsMapper.rejectionStatus(rejected.rejection());
             CommitEntryResult repeatedResult = applicationService.commit(command);
             if (!(repeatedResult instanceof CommitRejected repeatedRejected)) {
               throw new IllegalStateException("Rejected SQLite command should remain rejected.");
@@ -143,7 +143,7 @@ final class JazzerSqliteBookRoundTripReplay {
               throw new IllegalStateException("Repeated SQLite rejection changed unexpectedly.");
             }
             duplicateStatus =
-                JazzerReplayDetailsSupport.rejectionStatus(repeatedRejected.rejection());
+                JazzerReplayDetailsMapper.rejectionStatus(repeatedRejected.rejection());
           } else {
             throw new IllegalStateException("Unexpected SQLite commit result type.");
           }
@@ -152,7 +152,7 @@ final class JazzerSqliteBookRoundTripReplay {
 
       return new ReplayOutcome.Success(
           JazzerHarness.sqliteBookRoundTrip().key(),
-          JazzerReplayDetailsSupport.sqliteBookRoundTripDetails(
+          JazzerReplayDetailsMapper.sqliteBookRoundTripDetails(
               command,
               "PARSED",
               uninitializedCommitStatus,
@@ -162,13 +162,13 @@ final class JazzerSqliteBookRoundTripReplay {
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.NONE));
+              JazzerReplayDetailsMapper.NONE));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.sqliteBookRoundTrip().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsSupport.normalizedMessage(expected),
-          JazzerReplayDetailsSupport.sqliteBookRoundTripDetails(
+          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayDetailsMapper.sqliteBookRoundTripDetails(
               command,
               "INVALID_REQUEST",
               uninitializedCommitStatus,
@@ -178,12 +178,12 @@ final class JazzerSqliteBookRoundTripReplay {
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.normalizedMessage(expected)));
+              JazzerReplayDetailsMapper.normalizedMessage(expected)));
     } catch (IOException unexpected) {
-      return JazzerReplayDetailsSupport.unexpectedFailure(
+      return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.sqliteBookRoundTrip(),
           unexpected,
-          JazzerReplayDetailsSupport.sqliteBookRoundTripDetails(
+          JazzerReplayDetailsMapper.sqliteBookRoundTripDetails(
               command,
               command == null ? "UNEXPECTED_FAILURE" : "PARSED",
               uninitializedCommitStatus,
@@ -193,12 +193,12 @@ final class JazzerSqliteBookRoundTripReplay {
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.normalizedMessage(unexpected)));
+              JazzerReplayDetailsMapper.normalizedMessage(unexpected)));
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsSupport.unexpectedFailure(
+      return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.sqliteBookRoundTrip(),
           unexpected,
-          JazzerReplayDetailsSupport.sqliteBookRoundTripDetails(
+          JazzerReplayDetailsMapper.sqliteBookRoundTripDetails(
               command,
               command == null ? "UNEXPECTED_FAILURE" : "PARSED",
               uninitializedCommitStatus,
@@ -208,7 +208,7 @@ final class JazzerSqliteBookRoundTripReplay {
               reloadStatus,
               duplicateStatus,
               storedFactPresent,
-              JazzerReplayDetailsSupport.normalizedMessage(unexpected)));
+              JazzerReplayDetailsMapper.normalizedMessage(unexpected)));
     }
   }
 }

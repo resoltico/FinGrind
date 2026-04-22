@@ -5,6 +5,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-04-22
+
+### Changed
+- Renamed the remaining generic internal `Support` seams, SQLite reader collaborators, Jazzer
+  deterministic-test pulse listener, and related docs so the codebase now uses role-owned names
+  consistently instead of catch-all helper terminology.
+
+### Fixed
+- Aligned `check.sh`, Jazzer build pulses, and developer docs around the canonical
+  deterministic-tests pulse vocabulary, so the local full gate and the documented operator
+  surface now describe the same Jazzer verification phases.
+- Reworked `check.sh` stall diagnostics and timeout teardown around a shared process-tree helper,
+  so bounded `jcmd` and `lsof` probes can no longer outlive the watchdog shell as orphaned
+  descendants; the root gate now executes a dedicated TERM-ignoring process-tree regression to
+  keep that cleanup contract from drifting.
+- Closed the remaining review-driven contract, CLI, and SQLite verification gaps by making
+  SQLite store opening an explicit ownership-transfer seam, removing impossible interactive
+  prompt null branches, and asserting deterministic `generate-book-key-file` failure and
+  passphrase/key-file edge flows through the regression suite.
+- Realigned the bundle smoke, Docker smoke, CI runtime-contract verifiers, and packaged CLI docs
+  with the nested `capabilities.commands` and
+  `capabilities.environment.distribution|storage|sqlite` schema plus the current exit-code
+  contract, so public-distribution acceptance checks no longer drift behind the published machine
+  contract.
+- Reworked the quick-start and example guides so public bundle users no longer depend on
+  repo-local `docs/examples/` paths, and tightened contributor documentation to keep bundle-safe
+  walkthroughs and source-checkout review fixtures clearly separated.
+- Fixed the live `help` quick-start examples and packaged CLI docs so they now point at
+  bundle-safe local request files instead of repo-only `docs/examples/` paths that do not exist
+  inside extracted public release archives.
+
 ## [0.20.0] - 2026-04-21
 
 ### Changed
@@ -660,7 +691,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.21.0
 [0.20.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.20.0
 [0.19.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.19.0
 [0.18.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.18.0

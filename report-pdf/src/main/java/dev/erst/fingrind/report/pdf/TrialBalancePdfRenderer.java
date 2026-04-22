@@ -13,7 +13,8 @@ final class TrialBalancePdfRenderer {
     pageWriter.writeKeyValueTable(
         "Parameters",
         List.of(
-            List.of("Effective date to", PdfRenderSupport.optionalDate(report.effectiveDateTo()))));
+            List.of(
+                "Effective date to", PdfValueFormatter.optionalDate(report.effectiveDateTo()))));
     pageWriter.writeTable(
         "Trial Balance",
         List.of(
@@ -35,9 +36,9 @@ final class TrialBalancePdfRenderer {
                         row.account().normalBalance().wireValue(),
                         Boolean.toString(row.account().active()),
                         row.balance().netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(row.balance().debitTotal()),
-                        PdfRenderSupport.displayMoney(row.balance().creditTotal()),
-                        PdfRenderSupport.displayMoney(row.balance().netAmount()),
+                        PdfValueFormatter.displayMoney(row.balance().debitTotal()),
+                        PdfValueFormatter.displayMoney(row.balance().creditTotal()),
+                        PdfValueFormatter.displayMoney(row.balance().netAmount()),
                         row.balance().balanceSide().wireValue()))
             .toList());
   }

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Canonical running-balance ledger report for one declared account. */
 public record AccountLedgerReport(
@@ -11,11 +12,16 @@ public record AccountLedgerReport(
     List<AccountLedgerEntry> entries,
     List<CurrencyBalance> closingBalances) {
   /** Validates one account-ledger report. */
-  public AccountLedgerReport {
-    Objects.requireNonNull(account, "account");
-    Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
-    openingBalances = openingBalances == null ? List.of() : List.copyOf(openingBalances);
-    entries = entries == null ? List.of() : List.copyOf(entries);
-    closingBalances = closingBalances == null ? List.of() : List.copyOf(closingBalances);
+  public AccountLedgerReport(
+      DeclaredAccount account,
+      EffectiveDateRange effectiveDateRange,
+      @Nullable List<CurrencyBalance> openingBalances,
+      @Nullable List<AccountLedgerEntry> entries,
+      @Nullable List<CurrencyBalance> closingBalances) {
+    this.account = Objects.requireNonNull(account, "account");
+    this.effectiveDateRange = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    this.openingBalances = openingBalances == null ? List.of() : List.copyOf(openingBalances);
+    this.entries = entries == null ? List.of() : List.copyOf(entries);
+    this.closingBalances = closingBalances == null ? List.of() : List.copyOf(closingBalances);
   }
 }

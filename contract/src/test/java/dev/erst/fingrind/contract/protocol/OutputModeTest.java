@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link OutputMode}. */
+@NullUnmarked
 class OutputModeTest {
   @Test
   void wireValuesAndParsing_followTheCanonicalVocabulary() {

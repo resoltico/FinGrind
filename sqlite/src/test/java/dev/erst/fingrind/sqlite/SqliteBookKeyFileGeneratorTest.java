@@ -17,10 +17,12 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for {@link SqliteBookKeyFileGenerator}. */
+@NullUnmarked
 class SqliteBookKeyFileGeneratorTest {
   @TempDir Path tempDirectory;
 
@@ -83,6 +85,20 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generate_customMaterializerFactoryReturnsAcceptedMetadataOnSuccess() throws Exception {
+    Path keyFile = tempDirectory.resolve("custom-materializer.book-key");
+
+    SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
+        SqliteBookKeyFileGenerator.generate(
+            keyFile,
+            deterministicRandom(),
+            (normalizedPath, encodedPassphrase) -> Files.write(normalizedPath, encodedPassphrase));
+
+    assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
+    assertTrue(Files.isRegularFile(keyFile));
+  }
+
+  @Test
   void generate_wrapsIoFailureBeforeKeyFileCreation() throws Exception {
     Path blockingParent = tempDirectory.resolve("blocking-parent");
     Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
@@ -130,9 +146,9 @@ class SqliteBookKeyFileGeneratorTest {
     try (FileSystem zipFileSystem =
         FileSystems.newFileSystem(
             URI.create("jar:" + zipArchive.toUri()), Map.of("create", "true"))) {
-      IllegalStateException nonSecureFilesystemException =
+      IllegalArgumentException nonSecureFilesystemException =
           assertThrows(
-              IllegalStateException.class,
+              IllegalArgumentException.class,
               () ->
                   SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                       zipFileSystem.getPath("/keys/acme.book-key")));

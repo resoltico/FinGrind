@@ -51,6 +51,12 @@ final class CliPlanPayloadMapper {
 
   private static CliPlanJsonModels.LedgerJournalEntryPayload ledgerJournalEntryPayload(
       LedgerJournalEntry entry) {
+    CliPlanJsonModels.LedgerStepFailurePayload failurePayload =
+        switch (entry) {
+          case LedgerJournalEntry.Succeeded _ -> null;
+          case LedgerJournalEntry.Failed failed ->
+              ledgerStepFailurePayload(failed.requiredFailure());
+        };
     return new CliPlanJsonModels.LedgerJournalEntryPayload(
         entry.stepId().value(),
         entry.kind().wireValue(),
@@ -59,9 +65,7 @@ final class CliPlanPayloadMapper {
         entry.startedAt().toString(),
         entry.finishedAt().toString(),
         factPayloads(entry.facts()),
-        entry instanceof LedgerJournalEntry.Failed
-            ? ledgerStepFailurePayload(entry.requiredFailure())
-            : null);
+        failurePayload);
   }
 
   private static CliPlanJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(

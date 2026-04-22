@@ -17,7 +17,7 @@ import tools.jackson.databind.node.NullNode;
 
 /** Parses FinGrind CLI request payloads into application commands. */
 final class CliRequestReader {
-  private final ObjectMapper objectMapper = CliJsonRequestSupport.configuredObjectMapper();
+  private final ObjectMapper objectMapper = CliJsonRequestCodec.configuredObjectMapper();
   private final InputStream inputStream;
 
   CliRequestReader(InputStream inputStream) {
@@ -28,7 +28,7 @@ final class CliRequestReader {
   PostEntryCommand readPostEntryCommand(Path requestFile) {
     try {
       return CliPostingRequestParser.readPostEntryCommand(
-          CliJsonRequestSupport.requireRootObject(readRootNode(requestFile)));
+          CliJsonRequestCodec.requireRootObject(readRootNode(requestFile)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (java.time.DateTimeException exception) {
@@ -40,8 +40,8 @@ final class CliRequestReader {
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
           ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestSupport.normalizedMessage(exception),
-          CliJsonRequestSupport.invalidRequestHint(),
+          CliJsonRequestCodec.normalizedMessage(exception),
+          CliJsonRequestCodec.invalidRequestHint(),
           exception);
     }
   }
@@ -50,14 +50,14 @@ final class CliRequestReader {
   DeclareAccountCommand readDeclareAccountCommand(Path requestFile) {
     try {
       return CliPostingRequestParser.readDeclareAccountCommand(
-          CliJsonRequestSupport.requireRootObject(readRootNode(requestFile)));
+          CliJsonRequestCodec.requireRootObject(readRootNode(requestFile)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (IllegalArgumentException exception) {
       throw new CliRequestException(
           ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestSupport.normalizedMessage(exception),
-          CliJsonRequestSupport.invalidRequestHint(),
+          CliJsonRequestCodec.normalizedMessage(exception),
+          CliJsonRequestCodec.invalidRequestHint(),
           exception);
     }
   }
@@ -66,7 +66,7 @@ final class CliRequestReader {
   LedgerPlan readLedgerPlan(Path requestFile) {
     try {
       return CliLedgerPlanParser.readLedgerPlan(
-          CliJsonRequestSupport.requireRootObject(readRootNode(requestFile)));
+          CliJsonRequestCodec.requireRootObject(readRootNode(requestFile)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (java.time.DateTimeException exception) {
@@ -78,8 +78,8 @@ final class CliRequestReader {
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
           ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestSupport.normalizedMessage(exception),
-          CliJsonRequestSupport.invalidRequestHint(),
+          CliJsonRequestCodec.normalizedMessage(exception),
+          CliJsonRequestCodec.invalidRequestHint(),
           exception);
     }
   }
@@ -95,7 +95,7 @@ final class CliRequestReader {
             objectMapper.readTree(requestStream), NullNode::getInstance);
       }
     } catch (IOException | JacksonException exception) {
-      throw CliJsonRequestSupport.requestReadFailure(exception);
+      throw CliJsonRequestCodec.requestReadFailure(exception);
     }
   }
 }

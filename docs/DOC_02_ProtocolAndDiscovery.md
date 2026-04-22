@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: CONTRACT_PROTOCOL
 updated: "2026-04-21"
 route:
@@ -204,8 +204,11 @@ public final class ContractTemplates
 - `ContractDiscovery`: help, capabilities, version, environment, exit-code, and command
   descriptors
 - `ContractDiscovery.ApplicationIdentity`, `.HelpDescriptor`, `.CapabilitiesDescriptor`,
-  `.VersionDescriptor`, `.ArtifactOutputDescriptor`, `.CommandDescriptor`,
-  `.ExitCodeDescriptor`, and `.EnvironmentDescriptor` are the nested typed discovery payloads
+  `.StorageSurfaceDescriptor`, `.CommandCatalogDescriptor`, `.VersionDescriptor`,
+  `.ArtifactOutputDescriptor`, `.CommandDescriptor`, `.ExitCodeDescriptor`,
+  `.EnvironmentDistributionDescriptor`, `.EnvironmentStorageDescriptor`,
+  `.EnvironmentSqliteDescriptor`, `.EnvironmentDescriptor`, and
+  `.SqliteCompileOptionsVerificationStatus` are the nested typed discovery payloads
 - `ContractRequestShapes`: request-input plumbing plus posting, account-declaration, and ledger-plan
   request-shape descriptors
 - `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,
@@ -216,8 +219,9 @@ public final class ContractTemplates
   descriptors
 - `ContractResponse.BookModelDescriptor`, `.FieldDescriptor`, `.ErrorDescriptor`,
   `.ResponseModelDescriptor`, `.PlanExecutionDescriptor`, `.RejectionDescriptor`,
-  `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.ReversalDescriptor`,
-  `.PreflightDescriptor`, and `.CurrencyDescriptor` are the nested typed response descriptors
+  `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
+  `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, and
+  `.CurrencyDescriptor` are the nested typed response descriptors
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
   `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
@@ -225,18 +229,24 @@ public final class ContractTemplates
   `.DeclareAccountTemplateDescriptor`, and `.LedgerAssertionTemplateDescriptor` are the nested
   typed template descriptors
 
-## `ContractErrors` And `ContractErrorException`
+## `ContractErrors`, `ContractFailure`, And `ContractDecision`
 
-These types own deterministic CLI-visible error vocabulary outside ordinary business rejections.
+These contract-owned types publish deterministic non-rejection failures and the accepted-or-rejected
+decision seam used by low-level contract boundaries.
 
 ```java
 public final class ContractErrors
-public final class ContractErrorException extends IllegalStateException
+public record ContractFailure(...)
+public sealed interface ContractDecision<T>
 ```
 
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
   `invalid-page-cursor`, `book-authentication-failed`, and `interactive-prompt-unavailable`
+- `ContractFailure` carries the stable descriptor plus the caller-facing message, optional hint,
+  and optional argument name without routing expected failures through exceptions
+- `ContractDecision` carries either the accepted typed payload or one deterministic
+  `ContractFailure`, letting internal seams return structured failures directly
 
 ## `BookMigrationPolicy`
 

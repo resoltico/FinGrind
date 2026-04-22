@@ -24,16 +24,14 @@ final class SqliteBookStateReader {
     this.postingFactTable = postingFactTable;
   }
 
-  SqliteBookState bookState(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+  SqliteBookState bookState(SqliteNativeDatabase activeDatabase) {
     return snapshot(activeDatabase).state();
   }
 
-  SqliteBookStateSnapshot snapshot(SqliteNativeDatabase activeDatabase)
-      throws SqliteNativeException {
+  SqliteBookStateSnapshot snapshot(SqliteNativeDatabase activeDatabase) {
     int applicationId =
-        SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma application_id");
-    int userVersion =
-        SqliteStatementQuerySupport.querySingleInt(activeDatabase, "pragma user_version");
+        SqliteStatementQueries.querySingleInt(activeDatabase, "pragma application_id");
+    int userVersion = SqliteStatementQueries.querySingleInt(activeDatabase, "pragma user_version");
     if (applicationId == 0 && userVersion == 0 && !hasUserSchemaObjects(activeDatabase)) {
       return new SqliteBookStateSnapshot(applicationId, userVersion, SqliteBookState.BLANK_SQLITE);
     }
@@ -52,30 +50,28 @@ final class SqliteBookStateReader {
     return new SqliteBookStateSnapshot(applicationId, userVersion, SqliteBookState.FOREIGN_SQLITE);
   }
 
-  private boolean hasUserSchemaObjects(SqliteNativeDatabase activeDatabase)
-      throws SqliteNativeException {
-    return SqliteStatementQuerySupport.existsRow(
+  private boolean hasUserSchemaObjects(SqliteNativeDatabase activeDatabase) {
+    return SqliteStatementQueries.existsRow(
         activeDatabase, SqlitePostingSql.USER_SCHEMA_EXISTS, statement -> {});
   }
 
-  boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+  boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase) {
     return existsTable(activeDatabase, bookMetaTable)
         && existsTable(activeDatabase, accountTable)
         && existsTable(activeDatabase, postingFactTable)
         && existsTable(activeDatabase, journalLineTable);
   }
 
-  boolean hasInitializedMarker(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+  boolean hasInitializedMarker(SqliteNativeDatabase activeDatabase) {
     return existsTable(activeDatabase, bookMetaTable)
-        && SqliteStatementQuerySupport.existsRow(
+        && SqliteStatementQueries.existsRow(
             activeDatabase,
             SqlitePostingSql.BOOK_INITIALIZED_EXISTS,
             statement -> statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY));
   }
 
-  private boolean existsTable(SqliteNativeDatabase activeDatabase, String tableName)
-      throws SqliteNativeException {
-    return SqliteStatementQuerySupport.existsRow(
+  private boolean existsTable(SqliteNativeDatabase activeDatabase, String tableName) {
+    return SqliteStatementQueries.existsRow(
         activeDatabase,
         SqlitePostingSql.TABLE_EXISTS,
         statement -> statement.bindText(1, tableName));

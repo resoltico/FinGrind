@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER_DISTRIBUTION
 updated: "2026-04-21"
 route:
@@ -129,7 +129,7 @@ Current rules:
 - the container image ships the same application JAR plus a private `jlink` runtime, not a full
   inherited distro JRE
 - the container image advertises itself through
-  `capabilities.environment.runtimeDistribution = "container-image"`
+  `capabilities.environment.distribution.runtimeDistribution = "container-image"`
 - the bundle remains the canonical public CLI artifact; the container is an additional supported
   public runtime surface, not a weaker or differently pinned path
 

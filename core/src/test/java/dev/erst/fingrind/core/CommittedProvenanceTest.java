@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CommittedProvenance}. */
+@NullUnmarked
 class CommittedProvenanceTest {
   @Test
   void constructor_keepsCommittedAuditPayload() {

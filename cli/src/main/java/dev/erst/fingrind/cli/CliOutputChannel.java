@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Low-level JSON and text output channel for deterministic CLI response rendering. */
@@ -78,6 +79,7 @@ final class CliOutputChannel {
     return JsonMapper.builder()
         .changeDefaultPropertyInclusion(
             value -> value.withValueInclusion(JsonInclude.Include.NON_NULL))
+        .enable(EnumFeature.WRITE_ENUMS_USING_TO_STRING)
         .build();
   }
 }

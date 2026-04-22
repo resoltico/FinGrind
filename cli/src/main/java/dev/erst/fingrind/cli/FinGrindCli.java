@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.ContractDiscovery;
-import dev.erst.fingrind.contract.ContractErrorException;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
@@ -72,7 +71,7 @@ final class FinGrindCli {
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */
   int run(String[] args) {
-    OutputMode failureOutputMode = CliExecutionSupport.inferredFailureOutputMode(args);
+    OutputMode failureOutputMode = CliExecutionPolicy.inferredFailureOutputMode(args);
     try {
       CliCommand command = CliArguments.parse(args);
       failureOutputMode = command.failureOutputMode();
@@ -137,20 +136,16 @@ final class FinGrindCli {
       };
     } catch (CliArgumentsException | CliRequestException exception) {
       responseWriter.writeFailure(CliFailureMapper.cliFailure(exception), failureOutputMode);
-      return 2;
-    } catch (ContractErrorException exception) {
-      responseWriter.writeFailure(
-          CliFailureMapper.contractErrorFailure(exception), failureOutputMode);
-      return 2;
+      return CliExecutionPolicy.invalidInvocationExitCode();
     } catch (RuntimeException exception) {
       responseWriter.writeFailure(CliFailureMapper.runtimeFailure(exception), failureOutputMode);
-      return 1;
+      return CliExecutionPolicy.runtimeFailureExitCode();
     }
   }
 
   static ContractDiscovery.EnvironmentDescriptor environmentDescriptor(
       SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
-    return CliRuntimeContractSupport.environmentDescriptor(runtimeProbe, runtimeDistribution);
+    return CliRuntimeContractDescriptors.environmentDescriptor(runtimeProbe, runtimeDistribution);
   }
 
   static String runtimeDistribution() {

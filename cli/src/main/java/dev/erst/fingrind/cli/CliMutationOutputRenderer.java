@@ -47,7 +47,7 @@ final class CliMutationOutputRenderer {
             List.of(
                 List.of("Account code", account.accountCode().value()),
                 List.of("Account name", account.accountName().value()),
-                List.of("Normal balance", account.normalBalance().name()),
+                List.of("Normal balance", account.normalBalance().wireValue()),
                 List.of("Active", Boolean.toString(account.active())),
                 List.of("Declared at", account.declaredAt().toString()))));
   }

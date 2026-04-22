@@ -19,7 +19,7 @@ final class AccountBalancePdfRenderer {
             List.of("Active", Boolean.toString(snapshot.account().active())),
             List.of(
                 "Effective date range",
-                PdfRenderSupport.optionalDateRange(
+                PdfValueFormatter.optionalDateRange(
                     snapshot.effectiveDateFrom(), snapshot.effectiveDateTo()))));
     pageWriter.writeTable(
         "Per-Currency Balances",
@@ -34,9 +34,9 @@ final class AccountBalancePdfRenderer {
                 balance ->
                     List.of(
                         balance.netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(balance.debitTotal()),
-                        PdfRenderSupport.displayMoney(balance.creditTotal()),
-                        PdfRenderSupport.displayMoney(balance.netAmount()),
+                        PdfValueFormatter.displayMoney(balance.debitTotal()),
+                        PdfValueFormatter.displayMoney(balance.creditTotal()),
+                        PdfValueFormatter.displayMoney(balance.netAmount()),
                         balance.balanceSide().wireValue()))
             .toList());
   }

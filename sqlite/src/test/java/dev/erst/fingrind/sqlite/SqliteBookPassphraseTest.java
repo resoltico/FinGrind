@@ -11,6 +11,21 @@ import org.junit.jupiter.api.Test;
 /** Tests for {@link SqliteBookPassphrase}. */
 class SqliteBookPassphraseTest {
   @Test
+  void fromUtf8Bytes_normalizesPayloadAndZeroizesSourceBytes() {
+    byte[] sourceBytes = "secret\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(" fixture ", sourceBytes)) {
+      assertEquals("fixture", passphrase.sourceDescription());
+      assertEquals(
+          "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8).length,
+          passphrase.byteLength());
+    }
+
+    assertArrayEquals(new byte[sourceBytes.length], sourceBytes);
+  }
+
+  @Test
   void normalizeSourceDescription_trimsAndRejectsBlankSourceDescriptions() {
     assertEquals(
         "secret source", SqliteBookPassphrase.normalizeSourceDescription("  secret source  "));

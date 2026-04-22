@@ -28,13 +28,12 @@ final class SqliteBookSchemaBootstrap {
   }
 
   /** Applies the canonical schema to the supplied connection exactly once per opened session. */
-  static void initializeBook(SqliteNativeDatabase database) throws SqliteNativeException {
+  static void initializeBook(SqliteNativeDatabase database) {
     database.executeScript(canonicalSchemaSql());
   }
 
   static void initializeBook(
-      SqliteNativeDatabase database, Supplier<InputStream> schemaStreamSupplier)
-      throws SqliteNativeException {
+      SqliteNativeDatabase database, Supplier<InputStream> schemaStreamSupplier) {
     database.executeScript(readSchema(schemaStreamSupplier));
   }
 

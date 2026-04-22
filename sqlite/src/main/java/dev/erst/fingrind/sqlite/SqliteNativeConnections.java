@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -23,26 +24,32 @@ final class SqliteNativeConnections {
 
   private SqliteNativeConnections() {}
 
-  static SqliteNativeDatabase open(BookAccess bookAccess) throws SqliteNativeException {
+  static SqliteNativeDatabase open(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     if (!(bookAccess.passphraseSource() instanceof BookAccess.PassphraseSource.KeyFile keyFile)) {
       throw new IllegalArgumentException(
           "SQLite same-package file-backed open requires a --book-key-file access selection.");
     }
-    try (SqliteBookPassphrase bookPassphrase = SqliteBookKeyFile.load(keyFile.bookKeyFilePath())) {
-      return open(
-          bookAccess.bookFilePath(), bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
-    }
+    ContractDecision<SqliteBookPassphrase> passphraseDecision =
+        SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
+    return switch (passphraseDecision) {
+      case ContractDecision.Accepted<SqliteBookPassphrase>(SqliteBookPassphrase bookPassphrase) -> {
+        try (bookPassphrase) {
+          yield open(
+              bookAccess.bookFilePath(), bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
+        }
+      }
+      case ContractDecision.Rejected<SqliteBookPassphrase>(var failure) ->
+          throw new IllegalStateException(failure.message());
+    };
   }
 
-  static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase)
-      throws SqliteNativeException {
+  static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase) {
     return open(bookPath, bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
   }
 
   static SqliteNativeDatabase open(
-      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode)
-      throws SqliteNativeException {
+      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode) {
     return open(bookPath, bookPassphrase, openMode, SqliteNativeLibrary.api());
   }
 
@@ -50,8 +57,7 @@ final class SqliteNativeConnections {
       Path bookPath,
       SqliteBookPassphrase bookPassphrase,
       SqliteNativeOpenMode openMode,
-      SqliteNativeApi sqliteApi)
-      throws SqliteNativeException {
+      SqliteNativeApi sqliteApi) {
     Objects.requireNonNull(bookPath, "bookPath");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     Objects.requireNonNull(openMode, "openMode");
@@ -71,7 +77,7 @@ final class SqliteNativeConnections {
     }
   }
 
-  static void close(MemorySegment databaseHandle) throws SqliteNativeException {
+  static void close(MemorySegment databaseHandle) {
     SqliteNativeApi sqliteApi = SqliteNativeLibrary.api();
     SqliteNativeInvocation.runSqlite(
         "Failed to close the SQLite native library bridge.",
@@ -88,8 +94,7 @@ final class SqliteNativeConnections {
         });
   }
 
-  static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase)
-      throws SqliteNativeException {
+  static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase) {
     Objects.requireNonNull(database, "database");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     SqliteNativeApi sqliteApi = SqliteNativeLibrary.api();
@@ -144,8 +149,7 @@ final class SqliteNativeConnections {
       MemorySegment databaseHandle,
       SqliteBookPassphrase bookPassphrase,
       SqliteNativeApi sqliteApi,
-      Arena arena)
-      throws SqliteNativeException {
+      Arena arena) {
     try {
       applyKey(databaseHandle, bookPassphrase, sqliteApi, arena);
       int timeoutResult =
@@ -190,8 +194,7 @@ final class SqliteNativeConnections {
     return Objects.requireNonNullElseGet(SQLITE3_REKEY_OVERRIDE.get(), sqliteApi::sqlite3Rekey);
   }
 
-  static void requireOpenConfigurationSuccess(int resultCode, SqliteNativeApi sqliteApi)
-      throws SqliteNativeException {
+  static void requireOpenConfigurationSuccess(int resultCode, SqliteNativeApi sqliteApi) {
     if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
       throw SqliteNativeErrors.failure(resultCode, sqliteApi);
     }
@@ -217,8 +220,7 @@ final class SqliteNativeConnections {
       MemorySegment databaseHandle,
       SqliteBookPassphrase bookPassphrase,
       SqliteNativeApi sqliteApi,
-      Arena arena)
-      throws SqliteNativeException {
+      Arena arena) {
     SqliteNativeInvocation.runSqlite(
         "Failed to apply the FinGrind SQLite book passphrase from "
             + bookPassphrase.sourceDescription()
@@ -232,8 +234,8 @@ final class SqliteNativeConnections {
         });
   }
 
-  private static void validateConfiguredKey(MemorySegment databaseHandle, SqliteNativeApi sqliteApi)
-      throws SqliteNativeException {
+  private static void validateConfiguredKey(
+      MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
     try (Arena arena = Arena.ofConfined()) {
       SqliteNativeStatements.executeScript(
           databaseHandle, arena.allocateFrom(KEY_VALIDATION_QUERY), sqliteApi);

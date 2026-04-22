@@ -8,7 +8,7 @@ final class ProtocolQueryOperations {
 
   static List<ProtocolOperation> operations() {
     return List.of(
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.INSPECT_BOOK,
             OperationCategory.QUERY,
             "Inspect Book",
@@ -27,7 +27,7 @@ final class ProtocolQueryOperations {
                         OperationId.INSPECT_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.LIST_ACCOUNTS,
             OperationCategory.QUERY,
             "List Accounts",
@@ -49,7 +49,7 @@ final class ProtocolQueryOperations {
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.LIMIT,
                         ProtocolLimits.DEFAULT_PAGE_LIMIT))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.GET_POSTING,
             OperationCategory.QUERY,
             "Get Posting",
@@ -70,7 +70,7 @@ final class ProtocolQueryOperations {
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.POSTING_ID))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.LIST_POSTINGS,
             OperationCategory.QUERY,
             "List Postings",
@@ -95,8 +95,8 @@ final class ProtocolQueryOperations {
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.ACCOUNT_CODE,
                         ProtocolOptions.LIMIT))),
-        ProtocolOperationSupport.operation(
-            new ProtocolOperationSupport.OperationDefinition(
+        ProtocolOperationDefinitions.operation(
+            new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.ACCOUNT_BALANCE,
                 OperationCategory.QUERY,
                 "Account Balance",
@@ -121,8 +121,8 @@ final class ProtocolQueryOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.ACCOUNT_CODE,
                             ProtocolOptions.PDF_OUT)))),
-        ProtocolOperationSupport.operation(
-            new ProtocolOperationSupport.OperationDefinition(
+        ProtocolOperationDefinitions.operation(
+            new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.TRIAL_BALANCE,
                 OperationCategory.QUERY,
                 "Trial Balance",
@@ -146,8 +146,8 @@ final class ProtocolQueryOperations {
                             ProtocolOptions.EFFECTIVE_DATE_TO,
                             ProtocolOptions.PDF_OUT,
                             ProtocolOptions.OUTPUT)))),
-        ProtocolOperationSupport.operation(
-            new ProtocolOperationSupport.OperationDefinition(
+        ProtocolOperationDefinitions.operation(
+            new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.ACCOUNT_LEDGER,
                 OperationCategory.QUERY,
                 "Account Ledger",
@@ -175,8 +175,8 @@ final class ProtocolQueryOperations {
                             ProtocolOptions.EFFECTIVE_DATE_TO,
                             ProtocolOptions.PDF_OUT,
                             ProtocolOptions.OUTPUT)))),
-        ProtocolOperationSupport.operation(
-            new ProtocolOperationSupport.OperationDefinition(
+        ProtocolOperationDefinitions.operation(
+            new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.PERIOD_SUMMARY,
                 OperationCategory.QUERY,
                 "Period Summary",

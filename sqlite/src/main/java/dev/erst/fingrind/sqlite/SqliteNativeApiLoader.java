@@ -16,7 +16,7 @@ final class SqliteNativeApiLoader {
 
   static SqliteNativeApi loadApi() {
     return loadApi(
-        SqliteNativeRuntimeSupport.configuredLibraryTarget(
+        SqliteNativeRuntimePolicy.configuredLibraryTarget(
             System.getenv(SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE),
             System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
   }
@@ -35,16 +35,16 @@ final class SqliteNativeApiLoader {
               "sqlite3_compileoption_used",
               FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
       String loadedVersion =
-          SqliteNativeRuntimeSupport.requireSupportedVersion(
+          SqliteNativeRuntimePolicy.requireSupportedVersion(
               SqliteNativeBootstrap.sqliteVersion(
                   sqlite3Libversion, SqliteNativeBootstrap.strlen()),
               libraryTarget.mode());
       String loadedSqlite3mcVersion =
-          SqliteNativeRuntimeSupport.requireSupportedSqlite3mcVersion(
+          SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(
               SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
                   sqlite3mcVersion, SqliteNativeBootstrap.strlen()),
               libraryTarget.mode());
-      SqliteNativeRuntimeSupport.requireSupportedCompileOptions(
+      SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
           sqlite3CompileoptionUsed, loadedVersion, loadedSqlite3mcVersion, libraryTarget.mode());
       return new SqliteNativeApi(
           libraryArena,

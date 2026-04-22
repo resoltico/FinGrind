@@ -63,7 +63,7 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
         command += "--print-module-deps"
         command += applicationJar.get().asFile.absolutePath
         val detectedModuleList =
-            CommandLineSupport.run(command)
+            CommandLineRunner.run(command)
                 .trim()
         if (detectedModuleList.isEmpty()) {
             throw IllegalStateException(

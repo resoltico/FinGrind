@@ -15,30 +15,30 @@ final class CliRequestMutationArguments {
   private CliRequestMutationArguments() {}
 
   static CliCommand parseDeclareAccountCommand(List<String> arguments) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseRequestBoundCommandArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
       outputMode =
-          CliArgumentSupport.requireOutputMode(
+          CliArgumentValueParser.requireOutputMode(
               outputMode,
-              CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
     return new CliCommand.DeclareAccount(
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
-        CliArgumentSupport.resolvedOutputMode(outputMode));
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseRequestBoundArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundArguments(arguments);
     return new CliCommand.ExecutePlan(
         parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
   }
@@ -53,25 +53,25 @@ final class CliRequestMutationArguments {
 
   private static CliCommand parseRequestBoundOutputCommand(
       List<String> arguments, RequestBoundOutputCommandFactory commandFactory) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseRequestBoundCommandArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
       outputMode =
-          CliArgumentSupport.requireOutputMode(
+          CliArgumentValueParser.requireOutputMode(
               outputMode,
-              CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
     return commandFactory.create(
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
-        CliArgumentSupport.resolvedOutputMode(outputMode));
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
   /** Factory for one request-bound write command that also carries an output mode. */

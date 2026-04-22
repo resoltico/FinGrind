@@ -47,7 +47,7 @@ abstract class CreateRuntimeImageTask : DefaultTask() {
         runtimeDirectory.deleteRecursively()
         runtimeDirectory.parentFile.mkdirs()
 
-        CommandLineSupport.run(
+        CommandLineRunner.run(
             listOf(
                 jlinkExecutable.absolutePath,
                 "--module-path",

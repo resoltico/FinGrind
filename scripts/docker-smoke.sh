@@ -276,19 +276,22 @@ import sys
 
 payload = json.load(sys.stdin)["payload"]
 environment = payload["environment"]
-query_commands = payload["queryCommands"]
+distribution = environment["distribution"]
+storage = environment["storage"]
+sqlite = environment["sqlite"]
+query_commands = payload["commands"]["query"]
 query_output_modes = payload["requestInput"]["queryOutputModes"]
 error_codes = [descriptor["code"] for descriptor in payload["responseModel"]["errorDescriptors"]]
 
 checks = [
-    (environment["runtimeDistribution"] == "container-image", "capabilities output did not report the container runtime distribution"),
-    (environment["publicCliDistribution"] == "self-contained-bundle", "capabilities output did not report the public bundle distribution contract"),
-    ("windows-x86_64" in environment["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
-    (environment["unsupportedPublicCliOperatingSystems"] == [], "capabilities output did not report the current unsupported public operating systems"),
-    (environment["sqliteLibraryMode"] == "managed-only", "capabilities output did not report the managed-only SQLite runtime mode"),
-    (environment["storageDriver"] == "sqlite-ffm-sqlite3mc", "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
-    (environment["bookProtectionMode"] == "required", "capabilities output did not report required book protection"),
-    (environment["defaultBookCipher"] == "chacha20", "capabilities output did not report the default chacha20 cipher"),
+    (distribution["runtimeDistribution"] == "container-image", "capabilities output did not report the container runtime distribution"),
+    (distribution["publicCliDistribution"] == "self-contained-bundle", "capabilities output did not report the public bundle distribution contract"),
+    ("windows-x86_64" in distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
+    (distribution["unsupportedPublicCliOperatingSystems"] == [], "capabilities output did not report the current unsupported public operating systems"),
+    (sqlite["libraryMode"] == "managed-only", "capabilities output did not report the managed-only SQLite runtime mode"),
+    (storage["storageDriver"] == "sqlite-ffm-sqlite3mc", "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
+    (storage["bookProtectionMode"] == "required", "capabilities output did not report required book protection"),
+    (storage["defaultBookCipher"] == "chacha20", "capabilities output did not report the default chacha20 cipher"),
     ("trial-balance" in query_commands, "capabilities output did not report the trial-balance query command"),
     ("account-ledger" in query_commands, "capabilities output did not report the account-ledger query command"),
     ("period-summary" in query_commands, "capabilities output did not report the period-summary query command"),
@@ -625,8 +628,8 @@ invalid_request_output="$(docker_with_repo_config run --rm \
     --request-file "${invalid_request_rel}" | tr -d '\r')"
 invalid_request_status=$?
 set -e
-[[ "${invalid_cursor_status}" -eq 2 ]] || die \
-    "docker acceptance invalid cursor exited with ${invalid_cursor_status} instead of 2"
+[[ "${invalid_cursor_status}" -eq 1 ]] || die \
+    "docker acceptance invalid cursor exited with ${invalid_cursor_status} instead of 1"
 require_match "${invalid_cursor_output}" '"code"[[:space:]]*:[[:space:]]*"invalid-page-cursor"' \
     "docker acceptance invalid cursor did not report invalid-page-cursor"
 require_no_match "${invalid_cursor_output}" '"code"[[:space:]]*:[[:space:]]*"runtime-failure"' \
@@ -637,8 +640,8 @@ require_match "${prompt_failure_output}" '"code"[[:space:]]*:[[:space:]]*"intera
     "docker acceptance prompt-unavailable did not report interactive-prompt-unavailable"
 require_match "${prompt_failure_output}" '--book-passphrase-stdin' \
     "docker acceptance prompt-unavailable did not report a repair hint"
-[[ "${invalid_request_status}" -eq 2 ]] || die \
-    "docker acceptance invalid request exited with ${invalid_request_status} instead of 2"
+[[ "${invalid_request_status}" -eq 1 ]] || die \
+    "docker acceptance invalid request exited with ${invalid_request_status} instead of 1"
 require_match "${invalid_request_output}" '"code"[[:space:]]*:[[:space:]]*"invalid-request"' \
     "docker acceptance invalid request did not report invalid-request"
 require_match "${invalid_request_output}" 'Unexpected fields: nonsenseOne, nonsenseTwo' \

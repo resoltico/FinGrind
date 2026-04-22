@@ -15,40 +15,46 @@ final class CliBookQueryOutputRenderer {
   private CliBookQueryOutputRenderer() {}
 
   static String renderBookInspectionHuman(Path bookFilePath, BookInspection inspection) {
+    BookInspection.Status status = inspection.status();
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Book file", CliQueryOutputSupport.absolutePath(bookFilePath)));
-    rows.add(List.of("State", inspection.status().wireValue()));
-    rows.add(List.of("Initialized", Boolean.toString(inspection.initialized())));
+    rows.add(List.of("Book file", CliQueryOutputFormatter.absolutePath(bookFilePath)));
+    rows.add(List.of("State", status.wireValue()));
+    rows.add(List.of("Initialized", Boolean.toString(status.initialized())));
     rows.add(
         List.of(
             "Compatible with current binary",
-            Boolean.toString(inspection.compatibleWithCurrentBinary())));
+            Boolean.toString(status.compatibleWithCurrentBinary())));
     rows.add(
         List.of(
             CliOperationText.initializeWithOpenBookLabel(),
-            Boolean.toString(inspection.canInitializeWithOpenBook())));
+            Boolean.toString(status.canInitializeWithOpenBook())));
     rows.add(
         List.of(
             "Supported book format version",
             Integer.toString(inspection.supportedBookFormatVersion())));
     rows.add(List.of("Migration policy", inspection.migrationPolicy().wireValue()));
-    if (inspection instanceof BookInspection.Existing existing) {
-      rows.add(List.of("SQLite applicationId", Integer.toString(existing.applicationId())));
-      rows.add(
-          List.of(
-              "Detected book format version",
-              Integer.toString(existing.detectedBookFormatVersion())));
-    }
-    if (inspection instanceof BookInspection.Initialized initialized) {
-      rows.add(List.of("SQLite applicationId", Integer.toString(initialized.applicationId())));
-      rows.add(
-          List.of(
-              "Detected book format version",
-              Integer.toString(initialized.detectedBookFormatVersion())));
-      rows.add(List.of("Initialized at", initialized.initializedAt().toString()));
-    }
+    rows.addAll(inspectionDetailRows(inspection));
     return CliTextFormat.renderTitledBlock(
         "Book Inspection", CliTextFormat.renderKeyValueBlock(rows));
+  }
+
+  private static List<List<String>> inspectionDetailRows(BookInspection inspection) {
+    return switch (inspection) {
+      case BookInspection.Missing _ -> List.of();
+      case BookInspection.Existing existing ->
+          List.of(
+              List.of("SQLite applicationId", Integer.toString(existing.applicationId())),
+              List.of(
+                  "Detected book format version",
+                  Integer.toString(existing.detectedBookFormatVersion())));
+      case BookInspection.Initialized initialized ->
+          List.of(
+              List.of("SQLite applicationId", Integer.toString(initialized.applicationId())),
+              List.of(
+                  "Detected book format version",
+                  Integer.toString(initialized.detectedBookFormatVersion())),
+              List.of("Initialized at", initialized.initializedAt().toString()));
+    };
   }
 
   static String renderAccountsHuman(AccountPage page) {
@@ -171,7 +177,7 @@ final class CliBookQueryOutputRenderer {
                 "Total amount",
                 "Accounts",
                 "Reversal target"),
-            page.postings().stream().map(CliQueryOutputSupport::postingRegisterRow).toList(),
+            page.postings().stream().map(CliQueryOutputFormatter::postingRegisterRow).toList(),
             4);
     return CliTextFormat.renderTitledBlock(
         "Postings", summary + System.lineSeparator() + System.lineSeparator() + table);
@@ -187,7 +193,7 @@ final class CliBookQueryOutputRenderer {
             "totalAmount",
             "accountCodes",
             "reversalTarget"),
-        page.postings().stream().map(CliQueryOutputSupport::postingRegisterRow).toList());
+        page.postings().stream().map(CliQueryOutputFormatter::postingRegisterRow).toList());
   }
 
   static String renderAccountBalanceHuman(AccountBalanceSnapshot snapshot) {
@@ -200,12 +206,12 @@ final class CliBookQueryOutputRenderer {
                 List.of("Active", Boolean.toString(snapshot.account().active())),
                 List.of(
                     "Range",
-                    CliQueryOutputSupport.dateRange(
+                    CliQueryOutputFormatter.dateRange(
                         snapshot.effectiveDateFrom(), snapshot.effectiveDateTo()))));
     String balances =
         CliTextFormat.renderTable(
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
-            snapshot.balances().stream().map(CliQueryOutputSupport::balanceRow).toList(),
+            snapshot.balances().stream().map(CliQueryOutputFormatter::balanceRow).toList(),
             1,
             2,
             3);
@@ -236,9 +242,9 @@ final class CliBookQueryOutputRenderer {
                         snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
                         snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),
                         balance.netAmount().currencyCode().value(),
-                        CliQueryOutputSupport.displayMoney(balance.debitTotal()),
-                        CliQueryOutputSupport.displayMoney(balance.creditTotal()),
-                        CliQueryOutputSupport.displayMoney(balance.netAmount()),
+                        CliQueryOutputFormatter.displayMoney(balance.debitTotal()),
+                        CliQueryOutputFormatter.displayMoney(balance.creditTotal()),
+                        CliQueryOutputFormatter.displayMoney(balance.netAmount()),
                         balance.balanceSide().wireValue()))
             .toList());
   }

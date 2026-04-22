@@ -19,6 +19,7 @@ import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -673,7 +674,9 @@ class CliArgumentsTest {
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--limit", exception.argument());
-    assertTrue(exception.getMessage().contains("Posting list limit must be between"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("Posting list limit must be between"));
   }
 
   @Test

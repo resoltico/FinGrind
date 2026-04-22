@@ -1,14 +1,14 @@
 package dev.erst.fingrind.cli;
 
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.optionalText;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.parseAmount;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.parseWireValue;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.rejectForbiddenField;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.rejectUnexpectedFields;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.requireObjectNode;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.requiredArray;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.requiredObject;
-import static dev.erst.fingrind.cli.CliJsonRequestSupport.requiredText;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.optionalText;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.parseAmount;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.parseWireValue;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.rejectForbiddenField;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.rejectUnexpectedFields;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.requireObjectNode;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredArray;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredObject;
+import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredText;
 
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.PostEntryCommand;
@@ -45,7 +45,7 @@ final class CliPostingRequestParser {
 
   static PostEntryCommand readPostEntryCommand(ObjectNode rootNode) {
     rejectForbiddenField(rootNode, ProtocolPostEntryFields.TopLevel.CORRECTION);
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestSupport.POST_ENTRY_TOP_LEVEL_FIELDS);
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestCodec.POST_ENTRY_TOP_LEVEL_FIELDS);
     ObjectNode provenanceNode =
         requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.PROVENANCE);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.REASON);
@@ -54,7 +54,7 @@ final class CliPostingRequestParser {
     rejectUnexpectedFields(
         provenanceNode,
         ProtocolPostEntryFields.TopLevel.PROVENANCE,
-        CliJsonRequestSupport.PROVENANCE_FIELDS);
+        CliJsonRequestCodec.PROVENANCE_FIELDS);
     return new PostEntryCommand(
         new JournalEntry(
             LocalDate.parse(
@@ -80,7 +80,7 @@ final class CliPostingRequestParser {
   }
 
   static DeclareAccountCommand readDeclareAccountCommand(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestSupport.DECLARE_ACCOUNT_FIELDS);
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestCodec.DECLARE_ACCOUNT_FIELDS);
     return new DeclareAccountCommand(
         new AccountCode(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_CODE)),
         new AccountName(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_NAME)),
@@ -97,7 +97,7 @@ final class CliPostingRequestParser {
     for (JsonNode lineNode : linesNode) {
       ObjectNode lineObject = requireObjectNode(lineNode, "lines[%d]".formatted(index));
       rejectUnexpectedFields(
-          lineObject, "lines[%d]".formatted(index), CliJsonRequestSupport.JOURNAL_LINE_FIELDS);
+          lineObject, "lines[%d]".formatted(index), CliJsonRequestCodec.JOURNAL_LINE_FIELDS);
       lines.add(
           new JournalLine(
               new AccountCode(
@@ -127,7 +127,7 @@ final class CliPostingRequestParser {
     rejectUnexpectedFields(
         reversalObject,
         ProtocolPostEntryFields.TopLevel.REVERSAL,
-        CliJsonRequestSupport.REVERSAL_FIELDS);
+        CliJsonRequestCodec.REVERSAL_FIELDS);
     return PostingLineage.reversal(
         new ReversalReference(
             new PostingId(

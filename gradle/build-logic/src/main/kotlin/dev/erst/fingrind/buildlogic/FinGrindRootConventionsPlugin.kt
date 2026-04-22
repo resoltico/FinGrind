@@ -63,7 +63,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             val managedSqliteSourceSha3 = requiredGradleProperty("fingrindManagedSqliteSourceSha3")
 
             val managedSqlite =
-                ManagedSqliteSupport.register(
+                ManagedSqliteProvisioningLogic.register(
                     project = this,
                     sourceDirectory = layout.projectDirectory.dir("third_party/sqlite/$managedSqlitePackageId"),
                     sqliteVersionValue = managedSqliteVersion,
@@ -73,7 +73,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
 
             subprojects.forEach { subproject ->
                 subproject.pluginManager.withPlugin("java-base") {
-                    ManagedSqliteSupport.configureConsumers(subproject, managedSqlite)
+                    ManagedSqliteProvisioningLogic.configureConsumers(subproject, managedSqlite)
                 }
             }
 

@@ -7,9 +7,11 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.time.LocalDate;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostEntryResult}. */
+@NullUnmarked
 class PostEntryResultTest {
   @Test
   void preflightAccepted_holdsItsPayload() {

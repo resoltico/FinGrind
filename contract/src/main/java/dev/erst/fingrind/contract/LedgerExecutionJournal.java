@@ -17,15 +17,19 @@ public record LedgerExecutionJournal(
     }
     LedgerJournalEntry terminalStep = steps.getLast();
     List<LedgerJournalEntry> priorSteps = steps.subList(0, steps.size() - 1);
-    if (terminalStep instanceof LedgerJournalEntry.Succeeded
-        && steps.stream().anyMatch(step -> !(step instanceof LedgerJournalEntry.Succeeded))) {
-      throw new IllegalArgumentException(
-          "Succeeded ledger journals may contain only succeeded steps.");
-    }
-    if (terminalStep instanceof LedgerJournalEntry.Failed
-        && priorSteps.stream().anyMatch(step -> !(step instanceof LedgerJournalEntry.Succeeded))) {
-      throw new IllegalArgumentException(
-          "Failed ledger journals may contain succeeded steps only before the terminal failure.");
+    switch (terminalStep) {
+      case LedgerJournalEntry.Succeeded _ -> {
+        if (!steps.stream().allMatch(LedgerExecutionJournal::succeededStep)) {
+          throw new IllegalArgumentException(
+              "Succeeded ledger journals may contain only succeeded steps.");
+        }
+      }
+      case LedgerJournalEntry.Failed _ -> {
+        if (!priorSteps.stream().allMatch(LedgerExecutionJournal::succeededStep)) {
+          throw new IllegalArgumentException(
+              "Failed ledger journals may contain succeeded steps only before the terminal failure.");
+        }
+      }
     }
     if (finishedAt.isBefore(startedAt)) {
       throw new IllegalArgumentException("Ledger journal finishedAt must not precede startedAt.");
@@ -52,6 +56,13 @@ public record LedgerExecutionJournal(
       case LedgerJournalEntry.Succeeded _ ->
           throw new IllegalStateException("Succeeded ledger journals do not have a failed step.");
       case LedgerJournalEntry.Failed failed -> failed;
+    };
+  }
+
+  private static boolean succeededStep(LedgerJournalEntry step) {
+    return switch (step) {
+      case LedgerJournalEntry.Succeeded _ -> true;
+      case LedgerJournalEntry.Failed _ -> false;
     };
   }
 }

@@ -31,9 +31,9 @@ final class PeriodSummaryPdfRenderer {
                 summary ->
                     List.of(
                         summary.totals().netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(summary.totals().debitTotal()),
-                        PdfRenderSupport.displayMoney(summary.totals().creditTotal()),
-                        PdfRenderSupport.displayMoney(summary.totals().netAmount()),
+                        PdfValueFormatter.displayMoney(summary.totals().debitTotal()),
+                        PdfValueFormatter.displayMoney(summary.totals().creditTotal()),
+                        PdfValueFormatter.displayMoney(summary.totals().netAmount()),
                         summary.totals().balanceSide().wireValue()))
             .toList());
     pageWriter.writeTable(
@@ -57,9 +57,9 @@ final class PeriodSummaryPdfRenderer {
                         row.account().normalBalance().wireValue(),
                         Boolean.toString(row.account().active()),
                         row.movement().netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(row.movement().debitTotal()),
-                        PdfRenderSupport.displayMoney(row.movement().creditTotal()),
-                        PdfRenderSupport.displayMoney(row.movement().netAmount()),
+                        PdfValueFormatter.displayMoney(row.movement().debitTotal()),
+                        PdfValueFormatter.displayMoney(row.movement().creditTotal()),
+                        PdfValueFormatter.displayMoney(row.movement().netAmount()),
                         row.movement().balanceSide().wireValue()))
             .toList());
   }

@@ -29,7 +29,7 @@ final class CliReportOutputRenderer {
                 "Credit total",
                 "Net amount",
                 "Balance side"),
-            report.rows().stream().map(CliQueryOutputSupport::trialBalanceRow).toList(),
+            report.rows().stream().map(CliQueryOutputFormatter::trialBalanceRow).toList(),
             5,
             6,
             7);
@@ -60,9 +60,9 @@ final class CliReportOutputRenderer {
                         row.account().normalBalance().wireValue(),
                         Boolean.toString(row.account().active()),
                         row.balance().netAmount().currencyCode().value(),
-                        CliQueryOutputSupport.displayMoney(row.balance().debitTotal()),
-                        CliQueryOutputSupport.displayMoney(row.balance().creditTotal()),
-                        CliQueryOutputSupport.displayMoney(row.balance().netAmount()),
+                        CliQueryOutputFormatter.displayMoney(row.balance().debitTotal()),
+                        CliQueryOutputFormatter.displayMoney(row.balance().creditTotal()),
+                        CliQueryOutputFormatter.displayMoney(row.balance().netAmount()),
                         row.balance().balanceSide().wireValue()))
             .toList());
   }
@@ -76,15 +76,15 @@ final class CliReportOutputRenderer {
                 List.of("Normal balance", report.account().normalBalance().wireValue()),
                 List.of(
                     "Range",
-                    CliQueryOutputSupport.dateRange(
+                    CliQueryOutputFormatter.dateRange(
                         report.effectiveDateRange().effectiveDateFrom(),
                         report.effectiveDateRange().effectiveDateTo())),
                 List.of(
                     "Opening balances",
-                    CliQueryOutputSupport.joinedBalances(report.openingBalances())),
+                    CliQueryOutputFormatter.joinedBalances(report.openingBalances())),
                 List.of(
                     "Closing balances",
-                    CliQueryOutputSupport.joinedBalances(report.closingBalances()))));
+                    CliQueryOutputFormatter.joinedBalances(report.closingBalances()))));
     String table =
         CliTextFormat.renderTable(
             List.of(
@@ -98,7 +98,7 @@ final class CliReportOutputRenderer {
                 "Balance side",
                 "Counterpart accounts"),
             report.entries().stream()
-                .map(entry -> CliQueryOutputSupport.accountLedgerRow(report.account(), entry))
+                .map(entry -> CliQueryOutputFormatter.accountLedgerRow(report.account(), entry))
                 .toList(),
             4,
             5,
@@ -143,11 +143,11 @@ final class CliReportOutputRenderer {
                         entry.postingFact().journalEntry().effectiveDate().toString(),
                         entry.postingFact().provenance().recordedAt().toString(),
                         entry.movement().netAmount().currencyCode().value(),
-                        CliQueryOutputSupport.displayMoney(entry.movement().debitTotal()),
-                        CliQueryOutputSupport.displayMoney(entry.movement().creditTotal()),
-                        CliQueryOutputSupport.displayMoney(entry.runningNetAmount()),
+                        CliQueryOutputFormatter.displayMoney(entry.movement().debitTotal()),
+                        CliQueryOutputFormatter.displayMoney(entry.movement().creditTotal()),
+                        CliQueryOutputFormatter.displayMoney(entry.runningNetAmount()),
                         entry.runningBalanceSide().wireValue(),
-                        CliQueryOutputSupport.counterpartAccounts(
+                        CliQueryOutputFormatter.counterpartAccounts(
                             report.account(), entry.postingFact())))
             .toList());
   }
@@ -164,7 +164,7 @@ final class CliReportOutputRenderer {
         CliTextFormat.renderTable(
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),
             report.currencyTotals().stream()
-                .map(summary -> CliQueryOutputSupport.balanceRow(summary.totals()))
+                .map(summary -> CliQueryOutputFormatter.balanceRow(summary.totals()))
                 .toList(),
             1,
             2,
@@ -181,7 +181,7 @@ final class CliReportOutputRenderer {
                 "Net amount",
                 "Balance side"),
             report.accountActivity().stream()
-                .map(CliQueryOutputSupport::periodActivityRow)
+                .map(CliQueryOutputFormatter::periodActivityRow)
                 .toList(),
             4,
             5,
@@ -226,9 +226,9 @@ final class CliReportOutputRenderer {
                         row.account().accountName().value(),
                         row.account().normalBalance().wireValue(),
                         row.movement().netAmount().currencyCode().value(),
-                        CliQueryOutputSupport.displayMoney(row.movement().debitTotal()),
-                        CliQueryOutputSupport.displayMoney(row.movement().creditTotal()),
-                        CliQueryOutputSupport.displayMoney(row.movement().netAmount()),
+                        CliQueryOutputFormatter.displayMoney(row.movement().debitTotal()),
+                        CliQueryOutputFormatter.displayMoney(row.movement().creditTotal()),
+                        CliQueryOutputFormatter.displayMoney(row.movement().netAmount()),
                         row.movement().balanceSide().wireValue()))
             .toList());
   }

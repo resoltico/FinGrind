@@ -12,9 +12,11 @@ import dev.erst.fingrind.core.NormalBalance;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link BookAdministrationService}. */
+@NullUnmarked
 class BookAdministrationServiceTest {
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-04-07T10:15:30Z"), ZoneOffset.UTC);

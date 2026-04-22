@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -27,12 +27,27 @@ public final class SqliteBookPassphrase implements AutoCloseable {
 
   /** Normalizes one raw UTF-8 passphrase payload and zeroizes the supplied source bytes. */
   public static SqliteBookPassphrase fromUtf8Bytes(String sourceDescription, byte[] loadedBytes) {
+    return fromUtf8BytesDecision(sourceDescription, loadedBytes).requireAccepted();
+  }
+
+  /**
+   * Normalizes one raw UTF-8 passphrase payload and returns the explicit accepted/rejected form.
+   */
+  public static ContractDecision<SqliteBookPassphrase> fromUtf8BytesDecision(
+      String sourceDescription, byte[] loadedBytes) {
     String normalizedSource = normalizeSourceDescription(sourceDescription);
     Objects.requireNonNull(loadedBytes, "loadedBytes");
     try {
-      byte[] normalizedBytes = stripTrailingLineEnding(loadedBytes, normalizedSource);
-      validateTextPassphrase(normalizedBytes, normalizedSource);
-      return new SqliteBookPassphrase(normalizedSource, normalizedBytes);
+      return stripTrailingLineEnding(loadedBytes, normalizedSource)
+          .fold(
+              normalizedBytes ->
+                  validateTextPassphrase(normalizedBytes, normalizedSource)
+                      .fold(
+                          ignored ->
+                              ContractDecision.accepted(
+                                  new SqliteBookPassphrase(normalizedSource, normalizedBytes)),
+                          ContractDecision::rejected),
+              ContractDecision::rejected);
     } finally {
       Arrays.fill(loadedBytes, (byte) 0);
     }
@@ -40,13 +55,19 @@ public final class SqliteBookPassphrase implements AutoCloseable {
 
   /** Encodes one in-memory passphrase to UTF-8 and zeroizes the supplied characters. */
   public static SqliteBookPassphrase fromCharacters(String sourceDescription, char[] characters) {
+    return fromCharactersDecision(sourceDescription, characters).requireAccepted();
+  }
+
+  /** Encodes one in-memory passphrase to UTF-8 and returns the explicit accepted/rejected form. */
+  public static ContractDecision<SqliteBookPassphrase> fromCharactersDecision(
+      String sourceDescription, char[] characters) {
     String normalizedSource = normalizeSourceDescription(sourceDescription);
     Objects.requireNonNull(characters, "characters");
     ByteBuffer encodedBytes = StandardCharsets.UTF_8.encode(CharBuffer.wrap(characters));
     try {
       byte[] copiedBytes = new byte[encodedBytes.remaining()];
       encodedBytes.get(copiedBytes);
-      return fromUtf8Bytes(normalizedSource, copiedBytes);
+      return fromUtf8BytesDecision(normalizedSource, copiedBytes);
     } finally {
       zeroize(encodedBytes);
       Arrays.fill(characters, '\0');
@@ -90,7 +111,8 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return normalized;
   }
 
-  private static byte[] stripTrailingLineEnding(byte[] loadedBytes, String sourceDescription) {
+  private static ContractDecision<byte[]> stripTrailingLineEnding(
+      byte[] loadedBytes, String sourceDescription) {
     int endIndex = loadedBytes.length;
     if (endIndex > 0 && loadedBytes[endIndex - 1] == '\n') {
       endIndex--;
@@ -99,17 +121,18 @@ public final class SqliteBookPassphrase implements AutoCloseable {
       }
     }
     if (endIndex == 0) {
-      throw new ContractErrorException(
-          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
-          "The FinGrind book passphrase source must contain a non-empty UTF-8 passphrase: "
-              + sourceDescription,
-          "Provide one non-empty UTF-8 passphrase through the selected key file, standard input, or interactive prompt route.",
-          null);
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+              "The FinGrind book passphrase source must contain a non-empty UTF-8 passphrase: "
+                  + sourceDescription,
+              "Provide one non-empty UTF-8 passphrase through the selected key file, standard input, or interactive prompt route.",
+              null));
     }
-    return Arrays.copyOf(loadedBytes, endIndex);
+    return ContractDecision.accepted(Arrays.copyOf(loadedBytes, endIndex));
   }
 
-  private static void validateTextPassphrase(byte[] keyBytes, String sourceDescription) {
+  private static ContractDecision<String> validateTextPassphrase(
+      byte[] keyBytes, String sourceDescription) {
     CharBuffer decoded;
     try {
       decoded =
@@ -119,28 +142,28 @@ public final class SqliteBookPassphrase implements AutoCloseable {
               .onUnmappableCharacter(CodingErrorAction.REPORT)
               .decode(ByteBuffer.wrap(keyBytes));
     } catch (CharacterCodingException exception) {
-      throw new ContractErrorException(
-          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
-          "The FinGrind book passphrase source must contain a UTF-8 passphrase: "
-              + sourceDescription,
-          "Provide one UTF-8 passphrase payload through the selected passphrase source and rerun the command.",
-          null,
-          exception);
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+              "The FinGrind book passphrase source must contain a UTF-8 passphrase: "
+                  + sourceDescription,
+              "Provide one UTF-8 passphrase payload through the selected passphrase source and rerun the command.",
+              null));
     }
     try {
       int offset = 0;
       while (offset < decoded.length()) {
         int codePoint = Character.codePointAt(decoded, offset);
         if (Character.isISOControl(codePoint)) {
-          throw new ContractErrorException(
-              ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
-              "The FinGrind book passphrase source must contain a single-line UTF-8 text passphrase without control characters: "
-                  + sourceDescription,
-              "Provide one single-line passphrase without control characters through the selected passphrase source and rerun the command.",
-              null);
+          return ContractDecision.rejected(
+              ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+                  "The FinGrind book passphrase source must contain a single-line UTF-8 text passphrase without control characters: "
+                      + sourceDescription,
+                  "Provide one single-line passphrase without control characters through the selected passphrase source and rerun the command.",
+                  null));
         }
         offset += Character.charCount(codePoint);
       }
+      return ContractDecision.accepted(sourceDescription);
     } finally {
       zeroize(decoded);
     }

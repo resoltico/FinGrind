@@ -10,14 +10,12 @@ import org.jspecify.annotations.Nullable;
 final class SqliteNativeStatements {
   private SqliteNativeStatements() {}
 
-  static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer)
-      throws SqliteNativeException {
+  static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer) {
     executeScript(databaseHandle, sqlPointer, SqliteNativeBootstrap.api());
   }
 
   static void executeScript(
-      MemorySegment databaseHandle, MemorySegment sqlPointer, SqliteNativeApi sqliteApi)
-      throws SqliteNativeException {
+      MemorySegment databaseHandle, MemorySegment sqlPointer, SqliteNativeApi sqliteApi) {
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment errorPointer = arena.allocate(ValueLayout.ADDRESS);
       int resultCode =
@@ -49,8 +47,7 @@ final class SqliteNativeStatements {
   }
 
   static int prepareStatement(
-      MemorySegment databaseHandle, MemorySegment sql, MemorySegment statementPointer)
-      throws SqliteNativeException {
+      MemorySegment databaseHandle, MemorySegment sql, MemorySegment statementPointer) {
     SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     try (Arena arena = Arena.ofConfined()) {
       return SqliteNativeInvocation.invokeSqlite(
@@ -68,8 +65,7 @@ final class SqliteNativeStatements {
     }
   }
 
-  static void bindNull(MemorySegment statementHandle, int parameterIndex)
-      throws SqliteNativeException {
+  static void bindNull(MemorySegment statementHandle, int parameterIndex) {
     SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite null parameter.",
@@ -83,8 +79,7 @@ final class SqliteNativeStatements {
         });
   }
 
-  static void bindInt(MemorySegment statementHandle, int parameterIndex, int value)
-      throws SqliteNativeException {
+  static void bindInt(MemorySegment statementHandle, int parameterIndex, int value) {
     SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite integer parameter.",
@@ -100,8 +95,10 @@ final class SqliteNativeStatements {
   }
 
   static void bindText(
-      MemorySegment statementHandle, int parameterIndex, MemorySegment textPointer, int byteLength)
-      throws SqliteNativeException {
+      MemorySegment statementHandle,
+      int parameterIndex,
+      MemorySegment textPointer,
+      int byteLength) {
     SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     SqliteNativeInvocation.runSqlite(
         "Failed to bind a SQLite text parameter.",
@@ -120,8 +117,7 @@ final class SqliteNativeStatements {
         });
   }
 
-  static int step(MemorySegment databaseHandle, MemorySegment statementHandle)
-      throws SqliteNativeException {
+  static int step(MemorySegment databaseHandle, MemorySegment statementHandle) {
     SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
     return SqliteNativeInvocation.invokeSqlite(
         "Failed to step a SQLite statement.",

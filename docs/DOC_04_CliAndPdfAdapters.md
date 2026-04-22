@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: CLI_PDF_ADAPTERS
 updated: "2026-04-21"
 route:

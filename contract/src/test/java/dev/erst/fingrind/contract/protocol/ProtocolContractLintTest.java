@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -382,7 +383,8 @@ class ProtocolContractLintTest {
 
   private static Path repositoryRoot() {
     Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-    while (!Files.exists(directory.resolve("settings.gradle.kts"))) {
+    while (!Files.exists(
+        Objects.requireNonNull(directory, "directory").resolve("settings.gradle.kts"))) {
       directory = directory.getParent();
     }
     return directory;

@@ -44,7 +44,7 @@ public final class JazzerRegressionRunner {
     Objects.requireNonNull(outputWriter, "outputWriter must not be null");
     Objects.requireNonNull(errorWriter, "errorWriter must not be null");
 
-    List<Path> metadataPaths = RegressionSeedSupport.metadataPaths(projectDirectory, harness);
+    List<Path> metadataPaths = RegressionSeedCatalog.metadataPaths(projectDirectory, harness);
     if (metadataPaths.isEmpty()) {
       errorWriter.println("No regression metadata entries were found for harness: " + harness.key());
       return 1;
@@ -75,8 +75,8 @@ public final class JazzerRegressionRunner {
         errorWriter.println("Committed regression input does not exist: " + inputPath);
         return 1;
       }
-      ReplayOutcome outcome = JazzerReplaySupport.replay(harness, Files.readAllBytes(inputPath));
-      ReplayExpectation actualExpectation = JazzerReplaySupport.expectationFor(outcome);
+      ReplayOutcome outcome = JazzerReplayRunner.replay(harness, Files.readAllBytes(inputPath));
+      ReplayExpectation actualExpectation = JazzerReplayRunner.expectationFor(outcome);
       if (!metadata.expectation().equals(actualExpectation)) {
         errorWriter.println(
             "Regression mismatch for "

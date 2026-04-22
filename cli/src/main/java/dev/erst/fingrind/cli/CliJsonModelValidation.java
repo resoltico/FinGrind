@@ -28,7 +28,7 @@ final class CliJsonModelValidation {
     return Objects.requireNonNull(value, fieldName + " must not be null.");
   }
 
-  static <T> List<T> copyList(List<T> values) {
+  static <T> List<T> copyList(@Nullable List<T> values) {
     return values == null ? List.of() : List.copyOf(values);
   }
 

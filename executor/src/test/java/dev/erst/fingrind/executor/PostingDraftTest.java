@@ -25,9 +25,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the executor-owned posting draft. */
+@NullUnmarked
 class PostingDraftTest {
   @Test
   void postingDraft_keepsExplicitMissingReversalAndMaterializesPostingFacts() {

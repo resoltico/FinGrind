@@ -14,9 +14,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Covers shared collection normalization paths across public contract records. */
+@NullUnmarked
 class ContractNormalizationTest {
   private static final DeclaredAccount CASH_ACCOUNT =
       new DeclaredAccount(

@@ -15,11 +15,13 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Integration tests for the low-level SQLite FFM bridge failure paths. */
+@NullUnmarked
 class SqliteNativeInteropTest {
   private static final String TEST_BOOK_KEY = "interop-test-book-key";
 

@@ -34,9 +34,11 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Targeted bundle-coverage tests for contract-only records and template metadata. */
+@NullUnmarked
 class ContractCoverageTest {
   @Test
   void resultRecordsExposePayloadsAcrossAdministrationAndQuerySurfaces() {
@@ -123,7 +125,7 @@ class ContractCoverageTest {
 
     ContractDiscovery.CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.20.0", "test"),
+            new ContractDiscovery.ApplicationIdentity("FinGrind", "0.21.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());
@@ -237,16 +239,14 @@ class ContractCoverageTest {
             BookInspection.Status.INCOMPLETE_FINGRIND);
     List<Boolean> initialized = List.of(false, false, true, false, false, false);
     List<Boolean> compatibleWithCurrentBinary = List.of(false, false, true, false, false, false);
-    List<Boolean> canInitializeWithOpenBook = List.of(true, true, false, false, false, false);
+    List<Boolean> canInitializeWithOpenBook = List.of(false, true, false, false, false, false);
 
     for (int index = 0; index < inspections.size(); index++) {
       assertEquals(statuses.get(index), inspections.get(index).status());
-      assertEquals(initialized.get(index), inspections.get(index).initialized());
-      assertEquals(
-          compatibleWithCurrentBinary.get(index),
-          inspections.get(index).compatibleWithCurrentBinary());
-      assertEquals(
-          canInitializeWithOpenBook.get(index), inspections.get(index).canInitializeWithOpenBook());
+      BookInspection.Status status = inspections.get(index).status();
+      assertEquals(initialized.get(index), status.initialized());
+      assertEquals(compatibleWithCurrentBinary.get(index), status.compatibleWithCurrentBinary());
+      assertEquals(canInitializeWithOpenBook.get(index), status.canInitializeWithOpenBook());
       assertEquals(1, inspections.get(index).supportedBookFormatVersion());
       assertEquals(
           BookMigrationPolicy.SEQUENTIAL_IN_PLACE, inspections.get(index).migrationPolicy());

@@ -115,7 +115,7 @@ public final class SqliteFuzzAssertions {
   }
 
   private static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue)
-      throws SqliteNativeException {
+      {
     try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
       if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
@@ -133,7 +133,7 @@ public final class SqliteFuzzAssertions {
   }
 
   private static void assertQueryText(
-      SqliteNativeDatabase database, String sql, String expectedValue) throws SqliteNativeException {
+      SqliteNativeDatabase database, String sql, String expectedValue) {
     try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
       if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);

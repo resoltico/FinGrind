@@ -2,7 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import org.jspecify.annotations.Nullable;
 
-/** Narrow wrapper around typed SQLite bridge calls that preserves checked-failure semantics. */
+/** Narrow wrapper around typed SQLite bridge calls that preserve structured native failures. */
 final class SqliteNativeInvocation {
   private SqliteNativeInvocation() {}
 
@@ -24,14 +24,14 @@ final class SqliteNativeInvocation {
   @FunctionalInterface
   interface NativeSqliteCall<T extends @Nullable Object> {
     /** Executes one native SQLite bridge call. */
-    T invoke() throws SqliteNativeException;
+    T invoke();
   }
 
   /** One native bridge side effect that may report a typed SQLite failure. */
   @FunctionalInterface
   interface NativeSqliteAction {
     /** Executes one native SQLite bridge side effect. */
-    void run() throws SqliteNativeException;
+    void run();
   }
 
   static <T extends @Nullable Object> T invoke(String failureMessage, NativeCall<T> nativeCall) {
@@ -52,16 +52,17 @@ final class SqliteNativeInvocation {
   }
 
   static <T extends @Nullable Object> T invokeSqlite(
-      String failureMessage, NativeSqliteCall<T> nativeCall) throws SqliteNativeException {
+      String failureMessage, NativeSqliteCall<T> nativeCall) {
     try {
       return nativeCall.invoke();
+    } catch (SqliteNativeException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       throw new IllegalStateException(failureMessage, exception);
     }
   }
 
-  static void runSqlite(String failureMessage, NativeSqliteAction nativeAction)
-      throws SqliteNativeException {
+  static void runSqlite(String failureMessage, NativeSqliteAction nativeAction) {
     invokeSqlite(
         failureMessage,
         () -> {

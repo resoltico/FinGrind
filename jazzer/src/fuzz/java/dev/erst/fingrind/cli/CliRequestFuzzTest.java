@@ -10,7 +10,7 @@ public class CliRequestFuzzTest {
   void readPostEntryCommand(FuzzedDataProvider data) {
     byte[] input = data.consumeRemainingAsBytes();
     try {
-      PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
+      PostEntryCommand command = CliFuzzFixtures.readPostEntryCommand(input);
       if (command == null) {
         throw new IllegalStateException("readPostEntryCommand returned null");
       }

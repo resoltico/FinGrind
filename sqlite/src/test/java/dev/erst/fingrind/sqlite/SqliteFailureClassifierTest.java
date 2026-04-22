@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.BookMigrationPolicy;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link SqliteFailureClassifier}. */
+@NullUnmarked
 class SqliteFailureClassifierTest {
   @Test
   void classify_distinguishesManagedRuntimeStorageAndOtherFailures() {

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: USER_CLI
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -108,19 +108,19 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.20.0-macos-aarch64.tar.gz
-./fingrind-0.20.0-macos-aarch64/bin/fingrind help
-./fingrind-0.20.0-macos-aarch64/bin/fingrind \
-  print-request-template > /tmp/fingrind-request.json
+tar -xzf fingrind-0.21.0-macos-aarch64.tar.gz
+./fingrind-0.21.0-macos-aarch64/bin/fingrind help
+./fingrind-0.21.0-macos-aarch64/bin/fingrind \
+  print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.20.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.20.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.20.0-windows-x86_64\bin\fingrind.ps1 `
-  print-request-template > $env:TEMP\fingrind-request.json
+Expand-Archive fingrind-0.21.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.21.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.21.0-windows-x86_64\bin\fingrind.ps1 `
+  print-request-template > .\request.json
 ```
 
 In the examples below, `fingrind` means the extracted bundle launcher.
@@ -159,26 +159,27 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | Exit Code | Meaning | Typical Output |
 |:----------|:--------|:---------------|
 | `0` | successful command | `ok`, raw request or plan template JSON, `preflight-accepted`, `committed` |
-| `1` | runtime or environment failure | `error` with code `runtime-failure` |
-| `2` | invalid request or deterministic rejection | `error`, `rejected`, `plan-rejected` |
+| `1` | invalid invocation or malformed request | `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar |
+| `2` | deterministic refusal after the command was understood | `error`, `rejected`, `plan-rejected` |
 | `3` | valid `execute-plan` request whose assertion step failed | `plan-assertion-failed` |
+| `4` | runtime or environment failure | `error` with code `runtime-failure` |
 
 ## Common Failures
 
 | Situation | Exit | Envelope Code | Typical Message |
 |:----------|:-----|:--------------|:----------------|
-| unsupported command | `2` | `unknown-command` | `Unsupported command: ...` |
-| missing `--book-file` | `2` | `invalid-request` | `A --book-file argument is required.` |
+| unsupported command | `1` | `unknown-command` | `Unsupported command: ...` |
+| missing `--book-file` | `1` | `invalid-request` | `A --book-file argument is required.` |
 | key-file generation target already exists | `2` | `book-key-file-already-exists` | `The FinGrind book key file already exists and will not be overwritten.` |
-| missing book passphrase source | `2` | `invalid-request` | `Exactly one book passphrase source is required: ...` |
-| missing replacement passphrase source on `rekey-book` | `2` | `invalid-request` | `Exactly one replacement book passphrase source is required: ...` |
-| missing `--request-file` | `2` | `invalid-request` | `A --request-file argument is required.` |
-| multiple passphrase sources | `2` | `invalid-request` | `Exactly one book passphrase source is permitted per command.` |
-| multiple replacement passphrase sources on `rekey-book` | `2` | `invalid-request` | `Exactly one replacement book passphrase source is permitted per command.` |
-| same path used for both files | `2` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
-| stdin requested for both passphrase and JSON | `2` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
-| malformed JSON or invalid request shape | `2` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
-| malformed `list-postings --cursor` | `2` | `invalid-page-cursor` | `Unsupported posting page cursor: ...` |
+| missing book passphrase source | `1` | `invalid-request` | `Exactly one book passphrase source is required: ...` |
+| missing replacement passphrase source on `rekey-book` | `1` | `invalid-request` | `Exactly one replacement book passphrase source is required: ...` |
+| missing `--request-file` | `1` | `invalid-request` | `A --request-file argument is required.` |
+| multiple passphrase sources | `1` | `invalid-request` | `Exactly one book passphrase source is permitted per command.` |
+| multiple replacement passphrase sources on `rekey-book` | `1` | `invalid-request` | `Exactly one replacement book passphrase source is permitted per command.` |
+| same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
+| stdin requested for both passphrase and JSON | `1` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
+| malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
+| malformed `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported posting page cursor: ...` |
 | book is missing or never opened | `2` | `administration-book-not-initialized`, `query-book-not-initialized`, or `posting-book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
 | posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
@@ -186,8 +187,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | wrong book key or plaintext legacy book | `2` | `book-authentication-failed` | `FinGrind could not authenticate the selected protected book with the supplied passphrase source.` |
 | invalid key-file contents or permissions | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.` |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
-| extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `1` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
-| runtime environment failure | `1` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
+| extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `4` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
+| runtime environment failure | `4` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
 ## Notes
 
@@ -212,12 +213,12 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /
   SQLite3 Multiple Ciphers 2.3.3 native library.
-- `capabilities.environment.runtimeDistribution` tells you whether the current process is running
-  from a self-contained bundle, container image, source-checkout Gradle launch, or direct
-  `java -jar` invocation.
-- `capabilities.environment.supportedPublicCliBundleTargets` and
-  `capabilities.environment.unsupportedPublicCliOperatingSystems` expose the public distribution
-  matrix directly to automation.
+- `capabilities.environment.distribution.runtimeDistribution` tells you whether the current
+  process is running from a self-contained bundle, container image, source-checkout Gradle launch,
+  or direct `java -jar` invocation.
+- `capabilities.environment.distribution.supportedPublicCliBundleTargets` and
+  `capabilities.environment.distribution.unsupportedPublicCliOperatingSystems` expose the public
+  distribution matrix directly to automation.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
   object level.
 - `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or
@@ -242,16 +243,24 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `payload.journal` with `status: "plan-committed"` on success, or in `details.plan.journal` with
   `status: "plan-rejected"` / `status: "plan-assertion-failed"` on deterministic plan failure.
   Journal facts are typed objects with `kind`, `name`, and either `value` or nested grouped `facts`.
-- `capabilities` reports `publicCliDistribution`, `sourceCheckoutJava`,
-  `runtimeDistribution`, `supportedPublicCliBundleTargets`,
-  `unsupportedPublicCliOperatingSystems`,
-  `sqliteLibraryEnvironmentVariable`, `sqliteLibraryBundleHomeSystemProperty`,
-  `requiredMinimumSqliteVersion`, `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`,
-  `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and
-  `defaultBookCipher` so agents can verify the runtime contract directly.
-- `capabilities` also reports `preflightSemantics`, `preflight.isCommitGuarantee`, and
-  `currencyModel` so agents can discover the advisory preflight contract and single-currency scope
-  without reading source code.
+- `capabilities` reports runtime-contract details under nested environment descriptors:
+  `environment.distribution.publicCliDistribution`,
+  `environment.distribution.sourceCheckoutJava`,
+  `environment.distribution.runtimeDistribution`,
+  `environment.distribution.supportedPublicCliBundleTargets`,
+  `environment.distribution.unsupportedPublicCliOperatingSystems`,
+  `environment.sqlite.libraryEnvironmentVariable`,
+  `environment.sqlite.bundleHomeSystemProperty`,
+  `environment.sqlite.requiredMinimumSqliteVersion`,
+  `environment.sqlite.requiredSqlite3mcVersion`,
+  `environment.sqlite.runtimeStatus`,
+  `environment.sqlite.loadedSqliteVersion`,
+  `environment.sqlite.loadedSqlite3mcVersion`,
+  `environment.storage.bookProtectionMode`, and
+  `environment.storage.defaultBookCipher`.
+- `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and
+  `currencyModel` so agents can discover the advisory preflight contract and single-currency
+  scope without reading source code.
 - Gradle-driven local runs and the container image use a managed SQLite 3.53.0 / SQLite3 Multiple
   Ciphers 2.3.3 shared library.
 - The developer-only `java -jar` path relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
@@ -275,4 +284,5 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   structured issue objects in `details.violations`
 - Wrong passphrases and non-FinGrind plaintext SQLite files are reported as the deterministic
   `book-authentication-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`.
-- Example payloads live under [docs/examples/](./examples/).
+- In a source checkout, example payloads live under [docs/examples/](./examples/).
+  Public release bundles do not ship those repository fixture paths.

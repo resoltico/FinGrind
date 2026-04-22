@@ -13,7 +13,7 @@ on:
 
 concurrency:
   group: publication-${{ github.workflow }}-${{ inputs.release_tag || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/fingrind
@@ -95,10 +95,23 @@ jobs:
           set -euo pipefail
           output="$(./gradlew :cli:run --args='capabilities --output json' --no-daemon --console=plain)"
           printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -Eq '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"'
-          printf '%s\n' "$output" | grep -Eq '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
-          printf '%s\n' "$output" | grep -Eq '"sqliteRuntimeStatus"[[:space:]]*:[[:space:]]*"ready"'
-          printf '%s\n' "$output" | grep -Eq '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
+          printf '%s\n' "$output" | python3 -c '
+          import json
+          import sys
+
+          payload = json.load(sys.stdin)["payload"]
+          sqlite = payload["environment"]["sqlite"]
+          checks = [
+              (sqlite["libraryMode"] == "managed-only", "missing managed-only sqlite library mode"),
+              (sqlite["requiredMinimumSqliteVersion"] == "3.53.0", "missing required minimum SQLite version"),
+              (sqlite["runtimeStatus"] == "ready", "missing ready sqlite runtime status"),
+              (sqlite["loadedSqliteVersion"] == "3.53.0", "missing loaded SQLite version"),
+          ]
+
+          for passed, message in checks:
+              if not passed:
+                  raise SystemExit(message)
+          '
 
       - name: Smoke test the Docker image before publishing
         run: ./scripts/docker-smoke.sh

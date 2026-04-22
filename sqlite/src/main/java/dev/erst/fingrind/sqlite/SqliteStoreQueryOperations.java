@@ -24,7 +24,7 @@ final class SqliteStoreQueryOperations {
   @FunctionalInterface
   private interface NativeQuery<T> {
     /** Runs one point query against the active SQLite handle. */
-    T run(SqliteNativeDatabase activeDatabase) throws SqliteNativeException;
+    T run(SqliteNativeDatabase activeDatabase);
   }
 
   private final SqlitePostingFactStore store;
@@ -56,7 +56,7 @@ final class SqliteStoreQueryOperations {
                 snapshot.userVersion(),
                 SqliteBookContract.FORMAT_VERSION,
                 SqliteBookContract.MIGRATION_POLICY,
-                SqliteStatementQuerySupport.loadInitializedAt(activeDatabase.nativeDatabase())
+                SqliteStatementQueries.loadInitializedAt(activeDatabase.nativeDatabase())
                     .orElseThrow());
         case FOREIGN_SQLITE ->
             new BookInspection.Existing(
@@ -81,7 +81,7 @@ final class SqliteStoreQueryOperations {
                 SqliteBookContract.MIGRATION_POLICY);
       };
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure("Failed to inspect SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure("Failed to inspect SQLite book.", exception);
     }
   }
 
@@ -95,14 +95,14 @@ final class SqliteStoreQueryOperations {
       return switch (snapshot.state()) {
         case BLANK_SQLITE -> false;
         case INITIALIZED_FINGRIND -> true;
-        case FOREIGN_SQLITE -> throw SqliteStoreSupport.foreignBookFailure();
+        case FOREIGN_SQLITE -> throw SqliteStoreOperations.foreignBookFailure();
         case UNSUPPORTED_FINGRIND_VERSION ->
-            throw SqliteStoreSupport.unsupportedBookVersionFailure(
+            throw SqliteStoreOperations.unsupportedBookVersionFailure(
                 snapshot.userVersion(), SqliteBookContract.FORMAT_VERSION);
-        case INCOMPLETE_FINGRIND -> throw SqliteStoreSupport.incompleteBookFailure();
+        case INCOMPLETE_FINGRIND -> throw SqliteStoreOperations.incompleteBookFailure();
       };
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure("Failed to query SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
@@ -113,7 +113,7 @@ final class SqliteStoreQueryOperations {
     }
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> SqliteStatementQuerySupport.findOneAccount(activeDatabase, accountCode));
+        activeDatabase -> SqliteStatementQueries.findOneAccount(activeDatabase, accountCode));
   }
 
   Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
@@ -125,8 +125,7 @@ final class SqliteStoreQueryOperations {
     }
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase ->
-            SqliteStatementQuerySupport.findAccounts(activeDatabase, requestedAccounts));
+        activeDatabase -> SqliteStatementQueries.findAccounts(activeDatabase, requestedAccounts));
   }
 
   AccountPage listAccounts(ListAccountsQuery query) {
@@ -136,7 +135,7 @@ final class SqliteStoreQueryOperations {
     }
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> SqliteStatementQuerySupport.loadAccountPage(activeDatabase, query));
+        activeDatabase -> SqliteStatementQueries.loadAccountPage(activeDatabase, query));
   }
 
   Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
@@ -148,7 +147,7 @@ final class SqliteStoreQueryOperations {
         "Failed to query SQLite book.",
         activeDatabase ->
             store
-                .postingReadSupport()
+                .postingReader()
                 .findOnePosting(
                     activeDatabase,
                     SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
@@ -164,7 +163,7 @@ final class SqliteStoreQueryOperations {
         "Failed to query SQLite book.",
         activeDatabase ->
             store
-                .postingReadSupport()
+                .postingReader()
                 .findOnePosting(
                     activeDatabase,
                     SqlitePostingSql.FIND_POSTING_BY_ID,
@@ -180,7 +179,7 @@ final class SqliteStoreQueryOperations {
         "Failed to query SQLite book.",
         activeDatabase ->
             store
-                .postingReadSupport()
+                .postingReader()
                 .findOnePosting(
                     activeDatabase,
                     SqlitePostingSql.FIND_REVERSAL_FOR,
@@ -194,7 +193,7 @@ final class SqliteStoreQueryOperations {
     }
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> store.postingReadSupport().loadPostingPage(activeDatabase, query));
+        activeDatabase -> store.postingReader().loadPostingPage(activeDatabase, query));
   }
 
   private boolean missingOrBlankBook() {
@@ -205,11 +204,11 @@ final class SqliteStoreQueryOperations {
       return store.stateSnapshot(store.database().nativeDatabase()).state()
           == SqliteBookState.BLANK_SQLITE;
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure("Failed to query SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
-  private SqliteNativeDatabase initializedDatabase() throws SqliteNativeException {
+  private SqliteNativeDatabase initializedDatabase() {
     SqliteSessionDatabase activeDatabase = store.database();
     store.requireInitializedBook(activeDatabase.nativeDatabase());
     return activeDatabase.nativeDatabase();
@@ -219,7 +218,7 @@ final class SqliteStoreQueryOperations {
     try {
       return query.run(initializedDatabase());
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure(failureMessage, exception);
+      throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
     }
   }
 }

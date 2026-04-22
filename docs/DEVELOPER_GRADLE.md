@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -64,8 +64,10 @@ gradle/
         ├── FinGrindJavaConventionsPlugin.kt
         ├── FinGrindRootConventionsPlugin.kt
         ├── FinGrindJazzerConventionsPlugin.kt
-        ├── ManagedSqliteSupport.kt
+        ├── ManagedSqliteProvisioningLogic.kt
         ├── ScheduledPulseTestListener.kt
+        ├── GradleTestPulseListener.kt
+        ├── JazzerDeterministicTestPulseListener.kt
         └── ...
 core/
 contract/
@@ -84,7 +86,7 @@ Each layer owns a different concern:
   `report-pdf`, and `cli`
 - shared included build logic: houses reusable Gradle plugins, managed-SQLite tasks, and shared
   pulse infrastructure
-- nested Jazzer build: runs Jazzer support tests, regression replay, and local fuzzing flows
+- nested Jazzer build: runs deterministic Jazzer tests, regression replay, and local fuzzing flows
 
 The root build intentionally does not include `jazzer/` as a normal subproject. Jazzer remains a
 separate nested build because its runtime model, local state, and operator flows are intentionally
@@ -277,7 +279,7 @@ Use this routing table before changing the build:
 | repository-wide quality gates, root Spotless, aggregated coverage | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` |
 | shared Java subproject conventions | `gradle/build-logic/.../FinGrindJavaConventionsPlugin.kt` |
 | managed-SQLite Gradle provisioning for root modules | `gradle/build-logic/.../FinGrindRootConventionsPlugin.kt` |
-| managed-SQLite task types and shared helpers | `gradle/build-logic/.../ManagedSqliteSupport.kt` and task classes nearby |
+| managed-SQLite task types and shared helpers | `gradle/build-logic/.../ManagedSqliteProvisioningLogic.kt` and task classes nearby |
 | shared Jazzer build behavior, Jazzer task registration, cleanup tasks | `gradle/build-logic/.../FinGrindJazzerConventionsPlugin.kt` |
 | shared pulse scheduling | `gradle/build-logic/.../ScheduledPulseTestListener.kt` and concrete listeners |
 | dependency versions shared across product and Jazzer | `gradle/libs.versions.toml` |
