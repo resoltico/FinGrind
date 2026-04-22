@@ -459,7 +459,7 @@ class CliResponseWriterTest {
             IllegalStateException.class,
             () -> outputChannel.writeJson(new MissingWireValuePayload(MissingWireValue.UNSAFE)));
 
-    assertTrue(exception.getMessage().contains("must declare wireValue()"));
+    assertTrue(exception.getMessage().contains("must implement WireValue"));
   }
 
   @Test
@@ -479,17 +479,14 @@ class CliResponseWriterTest {
   }
 
   @Test
-  void outputChannel_rejectsNonStringProjectEnumWireValues() {
+  void outputChannel_rejectsNullProjectEnumWireValues() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
-    assertEquals(Integer.valueOf(7), CliNonStringWireValueFixture.UNSAFE.wireValue());
 
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                outputChannel.writeJson(
-                    new NonStringWireValuePayload(CliNonStringWireValueFixture.UNSAFE)));
+            () -> outputChannel.writeJson(new NullWireValuePayload(NullWireValue.UNSAFE)));
 
     assertTrue(exception.getMessage().contains("must return a non-blank String"));
   }
@@ -1414,15 +1411,25 @@ class CliResponseWriterTest {
   /** Payload whose enum returns blank wire text to verify validation. */
   private record BlankWireValuePayload(CliBlankWireValueFixture value) {}
 
+  /** Payload whose enum returns null wire text to verify validation. */
+  private record NullWireValuePayload(NullWireValue value) {}
+
   /** Payload whose enum throws during wireValue() resolution. */
   private record ExplodingWireValuePayload(CliExplodingWireValueFixture value) {}
-
-  /** Payload whose enum returns a non-string wire value to verify validation. */
-  private record NonStringWireValuePayload(CliNonStringWireValueFixture value) {}
 
   /** Test-only enum that intentionally omits wireValue() to verify CLI JSON enforcement. */
   private enum MissingWireValue {
     UNSAFE
+  }
+
+  /** Test-only enum that intentionally returns null to verify CLI JSON validation. */
+  private enum NullWireValue implements dev.erst.fingrind.core.WireValue {
+    UNSAFE;
+
+    @Override
+    public String wireValue() {
+      return null;
+    }
   }
 
   /** Value whose accessor throws so unrelated serializer failures are not rewritten. */

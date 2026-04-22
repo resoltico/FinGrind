@@ -1,4 +1,3 @@
-import java.io.File
 import java.util.Properties
 import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -52,24 +51,9 @@ kotlin {
 }
 
 tasks.withType<KotlinCompile>().configureEach {
-    incremental = false
     compilerOptions.jvmTarget.set(JvmTarget.JVM_25)
-    doFirst {
-        cleanDirectoryContents(destinationDirectory.get().asFile)
-    }
 }
 
 tasks.withType<JavaCompile>().configureEach {
     options.release = 25
-    doFirst {
-        cleanDirectoryContents(destinationDirectory.get().asFile)
-    }
-}
-
-fun cleanDirectoryContents(directory: File) {
-    if (!directory.exists()) {
-        directory.mkdirs()
-        return
-    }
-    directory.listFiles()?.forEach(File::deleteRecursively)
 }

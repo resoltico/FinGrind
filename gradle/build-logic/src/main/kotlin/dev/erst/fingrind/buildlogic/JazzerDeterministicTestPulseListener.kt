@@ -47,8 +47,8 @@ internal class JazzerDeterministicTestPulseListener(
                 "deterministic-tests phase=finish completed-classes=$completedClasses/$totalClasses completed-tests=$completedTests result=${result.resultType}",
             )
             rootFinished = true
+            stopPulseLoop()
         }
-        stopPulseLoop()
     }
 
     override fun beforeTest(testDescriptor: TestDescriptor) {

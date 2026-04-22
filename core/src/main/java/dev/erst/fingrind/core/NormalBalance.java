@@ -5,11 +5,12 @@ import java.util.List;
 import java.util.Objects;
 
 /** Side of the journal equation that increases one declared account. */
-public enum NormalBalance {
+public enum NormalBalance implements WireValue {
   DEBIT,
   CREDIT;
 
   /** Returns the stable public wire value for this normal-balance side. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case DEBIT -> "DEBIT";

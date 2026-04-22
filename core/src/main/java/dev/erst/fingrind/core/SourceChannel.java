@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Objects;
 
 /** Operating surface through which one posting request entered FinGrind. */
-public enum SourceChannel {
+public enum SourceChannel implements WireValue {
   CLI;
 
   /** Returns the stable public wire value for this source channel. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case CLI -> "CLI";

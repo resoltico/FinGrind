@@ -102,16 +102,16 @@ final class SqliteNativeErrors {
 
   static String resultName(int resultCode) {
     return switch (resultCode) {
-      case SqliteNativeLibrary.SQLITE_OK -> "SQLITE_OK";
-      case SqliteNativeLibrary.SQLITE_ROW -> "SQLITE_ROW";
-      case SqliteNativeLibrary.SQLITE_DONE -> "SQLITE_DONE";
-      case SqliteNativeLibrary.SQLITE_CONSTRAINT_UNIQUE -> "SQLITE_CONSTRAINT_UNIQUE";
-      case SqliteNativeLibrary.SQLITE_CONSTRAINT_PRIMARYKEY -> "SQLITE_CONSTRAINT_PRIMARYKEY";
-      case SqliteNativeLibrary.SQLITE_CONSTRAINT_DATATYPE -> "SQLITE_CONSTRAINT_DATATYPE";
-      case SqliteNativeLibrary.SQLITE_CONSTRAINT_FOREIGNKEY -> "SQLITE_CONSTRAINT_FOREIGNKEY";
-      case SqliteNativeLibrary.SQLITE_CANTOPEN -> "SQLITE_CANTOPEN";
-      case SqliteNativeLibrary.SQLITE_CANTOPEN_ISDIR -> "SQLITE_CANTOPEN_ISDIR";
-      case SqliteNativeLibrary.SQLITE_NOTADB -> "SQLITE_NOTADB";
+      case SqliteNativeResultCodes.OK -> "SQLITE_OK";
+      case SqliteNativeResultCodes.ROW -> "SQLITE_ROW";
+      case SqliteNativeResultCodes.DONE -> "SQLITE_DONE";
+      case SqliteNativeResultCodes.CONSTRAINT_UNIQUE -> "SQLITE_CONSTRAINT_UNIQUE";
+      case SqliteNativeResultCodes.CONSTRAINT_PRIMARYKEY -> "SQLITE_CONSTRAINT_PRIMARYKEY";
+      case SqliteNativeResultCodes.CONSTRAINT_DATATYPE -> "SQLITE_CONSTRAINT_DATATYPE";
+      case SqliteNativeResultCodes.CONSTRAINT_FOREIGNKEY -> "SQLITE_CONSTRAINT_FOREIGNKEY";
+      case SqliteNativeResultCodes.CANTOPEN -> "SQLITE_CANTOPEN";
+      case SqliteNativeResultCodes.CANTOPEN_ISDIR -> "SQLITE_CANTOPEN_ISDIR";
+      case SqliteNativeResultCodes.NOTADB -> "SQLITE_NOTADB";
       default -> "SQLITE_" + resultCode;
     };
   }

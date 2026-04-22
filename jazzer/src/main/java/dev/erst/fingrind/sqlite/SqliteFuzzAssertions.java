@@ -13,42 +13,33 @@ public final class SqliteFuzzAssertions {
 
   /** Asserts that a committed FinGrind book file uses the canonical strict-table schema. */
   public static void assertCommittedBookUsesStrictTables(Path bookPath) {
-    try (SqliteBookPassphrase passphrase = bookPassphrase()) {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
-      try {
-        assertQueryInt(
-            database,
-            "select strict from pragma_table_list('book_meta') where name = 'book_meta'",
-            1);
-        assertQueryInt(
-            database,
-            "select strict from pragma_table_list('account') where name = 'account'",
-            1);
-        assertQueryInt(
-            database,
-            "select strict from pragma_table_list('posting_fact') where name = 'posting_fact'",
-            1);
-        assertQueryInt(
-            database,
-            "select strict from pragma_table_list('journal_line') where name = 'journal_line'",
-            1);
-        assertQueryInt(
-            database,
-            "select count(*) from book_meta where key = 'initialized_at'",
-            1);
-        assertQueryInt(
-            database,
-            """
-            select count(*)
-            from pragma_foreign_key_list('journal_line')
-            where "table" = 'account'
-              and "from" = 'account_code'
-              and "to" = 'account_code'
-            """,
-            1);
-      } finally {
-        database.close();
-      }
+    try (SqliteBookPassphrase passphrase = bookPassphrase();
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
+      assertQueryInt(
+          database,
+          "select strict from pragma_table_list('book_meta') where name = 'book_meta'",
+          1);
+      assertQueryInt(
+          database, "select strict from pragma_table_list('account') where name = 'account'", 1);
+      assertQueryInt(
+          database,
+          "select strict from pragma_table_list('posting_fact') where name = 'posting_fact'",
+          1);
+      assertQueryInt(
+          database,
+          "select strict from pragma_table_list('journal_line') where name = 'journal_line'",
+          1);
+      assertQueryInt(database, "select count(*) from book_meta where key = 'initialized_at'", 1);
+      assertQueryInt(
+          database,
+          """
+          select count(*)
+          from pragma_foreign_key_list('journal_line')
+          where "table" = 'account'
+            and "from" = 'account_code'
+            and "to" = 'account_code'
+          """,
+          1);
     } catch (SqliteNativeException exception) {
       throw new IllegalStateException(
           "Committed SQLite book did not satisfy the strict-schema invariant.", exception);
@@ -71,21 +62,18 @@ public final class SqliteFuzzAssertions {
     if (!Files.exists(bookPath)) {
       throw new IllegalArgumentException("SQLite book does not exist: " + bookPath);
     }
-    try (SqliteBookPassphrase passphrase = bookPassphrase()) {
-      SqliteNativeDatabase database = SqliteNativeLibrary.open(bookPath, passphrase);
-      try {
-        database.executeStatement(
-            """
-            update account
-               set active = %d
-             where account_code = '%s'
-            """
-                .formatted(activeFlag, escapeSqlLiteral(accountCode)));
-      } finally {
-        database.close();
-      }
+    try (SqliteBookPassphrase passphrase = bookPassphrase();
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
+      database.executeStatement(
+          """
+          update account
+             set active = %d
+           where account_code = '%s'
+          """
+              .formatted(activeFlag, escapeSqlLiteral(accountCode)));
     } catch (SqliteNativeException exception) {
-      throw new IllegalStateException("Failed to update account active flag for SQLite fuzz setup.", exception);
+      throw new IllegalStateException(
+          "Failed to update account active flag for SQLite fuzz setup.", exception);
     }
   }
 
@@ -116,12 +104,12 @@ public final class SqliteFuzzAssertions {
 
   private static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue)
       {
-    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
-      if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+    try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
+      if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
       }
       int actualValue = statement.columnInt(0);
-      if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+      if (statement.step() != SqliteNativeResultCodes.DONE) {
         throw new IllegalStateException(
             "Expected one SQLite row only for hardening assertion: " + sql);
       }
@@ -134,12 +122,12 @@ public final class SqliteFuzzAssertions {
 
   private static void assertQueryText(
       SqliteNativeDatabase database, String sql, String expectedValue) {
-    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
-      if (statement.step() != SqliteNativeLibrary.SQLITE_ROW) {
+    try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
+      if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
       }
       String actualValue = statement.columnText(0);
-      if (statement.step() != SqliteNativeLibrary.SQLITE_DONE) {
+      if (statement.step() != SqliteNativeResultCodes.DONE) {
         throw new IllegalStateException(
             "Expected one SQLite row only for hardening assertion: " + sql);
       }

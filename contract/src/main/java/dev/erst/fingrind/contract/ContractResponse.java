@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 
 /** Response and model descriptor namespace for the public machine-readable CLI contract. */
@@ -24,7 +25,7 @@ public final class ContractResponse {
   }
 
   /** Stable initialization requirements for account-registry operations. */
-  public enum InitializationRequirement {
+  public enum InitializationRequirement implements WireValue {
     REQUIRES_OPEN_BOOK("requires-open-book");
 
     private final String wireValue;
@@ -34,6 +35,7 @@ public final class ContractResponse {
     }
 
     /** Returns the stable public wire value for this requirement. */
+    @Override
     public String wireValue() {
       return wireValue;
     }
@@ -45,7 +47,7 @@ public final class ContractResponse {
   }
 
   /** Stable relationship between preflight acceptance and the later commit attempt. */
-  public enum CommitGuarantee {
+  public enum CommitGuarantee implements WireValue {
     NOT_GUARANTEED("not-guaranteed"),
     GUARANTEED("guaranteed");
 
@@ -56,6 +58,7 @@ public final class ContractResponse {
     }
 
     /** Returns the stable public wire value for this guarantee status. */
+    @Override
     public String wireValue() {
       return wireValue;
     }

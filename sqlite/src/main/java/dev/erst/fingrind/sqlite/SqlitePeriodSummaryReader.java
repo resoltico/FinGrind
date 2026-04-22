@@ -27,7 +27,7 @@ final class SqlitePeriodSummaryReader {
         activeDatabase.prepare(SqlitePostingSql.loadPeriodSummaryLines())) {
       statement.bindText(1, query.effectiveDateFrom().toString());
       statement.bindText(2, query.effectiveDateTo().toString());
-      while (statement.step() == SqliteNativeLibrary.SQLITE_ROW) {
+      while (statement.step() == SqliteNativeResultCodes.ROW) {
         postingIds.add(
             SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_POSTING_ID));
         postingLineCount++;

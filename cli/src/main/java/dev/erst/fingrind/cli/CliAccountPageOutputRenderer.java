@@ -8,14 +8,14 @@ final class CliAccountPageOutputRenderer {
   private CliAccountPageOutputRenderer() {}
 
   static String renderHuman(AccountPage page) {
+    String nextCursor =
+        page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
     String summary =
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Returned accounts", Integer.toString(page.accounts().size())),
                 List.of("Limit", Integer.toString(page.limit())),
-                List.of(
-                    "Next cursor",
-                    page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
+                List.of("Next cursor", nextCursor)));
     String table =
         CliTextFormat.renderTable(
             List.of("Account", "Name", "Normal balance", "Active", "Declared at"),

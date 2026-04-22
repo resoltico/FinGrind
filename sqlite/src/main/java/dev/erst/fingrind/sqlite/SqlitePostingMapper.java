@@ -68,7 +68,7 @@ final class SqlitePostingMapper {
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
     List<JournalLine> lines = new ArrayList<>();
-    while (lineRows.step() == SqliteNativeLibrary.SQLITE_ROW) {
+    while (lineRows.step() == SqliteNativeResultCodes.ROW) {
       lines.add(
           new JournalLine(
               new AccountCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_ACCOUNT_CODE)),

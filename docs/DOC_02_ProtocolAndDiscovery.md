@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -71,18 +71,19 @@ public enum OperationCategory {
 `ExecutionMode` describes the public envelope shape of one operation.
 
 ```java
-public enum ExecutionMode
+public enum ExecutionMode implements WireValue
 ```
 
 - Members: `JSON_ENVELOPE`, `RAW_JSON`
 - Purpose: distinguish normal envelopes from raw template JSON
+- Wire contract: `wireValue()` owns the stable machine-readable execution-mode vocabulary
 
 ## `OutputMode`
 
 `OutputMode` is the public output-selection vocabulary for commands that advertise `--output`.
 
 ```java
-public enum OutputMode
+public enum OutputMode implements WireValue
 ```
 
 - Members: `JSON`, `HUMAN`, `CSV`

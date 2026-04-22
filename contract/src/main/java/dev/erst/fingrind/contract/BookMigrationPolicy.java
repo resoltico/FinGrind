@@ -1,14 +1,16 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.WireValue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 /** Canonical migration policy vocabulary for on-disk FinGrind books. */
-public enum BookMigrationPolicy {
+public enum BookMigrationPolicy implements WireValue {
   SEQUENTIAL_IN_PLACE;
 
   /** Returns the stable wire value exposed to callers. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case SEQUENTIAL_IN_PLACE -> "sequential-in-place";

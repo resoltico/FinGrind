@@ -125,7 +125,7 @@ class ContractCoverageTest {
 
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.22.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.23.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());

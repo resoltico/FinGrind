@@ -166,7 +166,7 @@ final class SqliteStoreLifecycle {
       SqliteSessionDatabase openedDatabase =
           new SqliteSessionDatabase(
               SqliteConnectionConfigurer.configureOpenedDatabase(
-                  SqliteNativeLibrary.open(bookPath, passphrase, accessMode.nativeOpenMode()),
+                  SqliteNativeConnections.open(bookPath, passphrase, accessMode.nativeOpenMode()),
                   accessMode));
       database = openedDatabase;
       beginLedgerPlanTransactionIfNeeded(openedDatabase);

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-04-22"
 route:
@@ -109,8 +109,9 @@ The current setup replaces `buildSrc` with one explicit included build under `gr
 That gives the repository one home for shared plugins, one review surface for Gradle behavior, and
 one place to fix infrastructure concerns such as test pulses or managed-SQLite provisioning.
 
-The included build also clears its compile output directories before recompiling. That is a
-deliberate defense against stale hidden classes surviving after source deletion.
+The included build now relies on Gradle's normal up-to-date and incremental compilation behavior.
+It no longer force-disables Kotlin incremental compilation or wipes compile output directories
+before every build.
 
 The consumer scripts are intentionally thin now:
 - root `build.gradle.kts` is a single root-conventions plugin application
@@ -329,6 +330,8 @@ the changelog instead of letting the system drift silently.
 Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazzer upgrades:
 
 - Can the shared build logic move from JVM 25 bytecode output to JVM 26 output yet?
+- Has anyone reintroduced manual output wiping or disabled incremental compilation in
+  `gradle/build-logic`?
 - Is any dependency version duplicated outside `gradle/libs.versions.toml`?
 - Has any typed logic crept back into a leaf `.gradle.kts` script?
 - Are root and nested verification scopes still cleanly separated?

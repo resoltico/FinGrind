@@ -2,8 +2,8 @@ package dev.erst.fingrind.cli;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.core.WireValue;
 import java.io.PrintStream;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonGenerator;
@@ -113,41 +113,55 @@ final class CliOutputChannel {
   private static String wireValue(Enum<?> value) {
     Objects.requireNonNull(value, "value");
     Class<?> enumType = value.getDeclaringClass();
-    try {
-      Object wireValue = enumType.getMethod("wireValue").invoke(value);
-      if (wireValue instanceof String serialized && !serialized.isBlank()) {
-        return serialized;
+    if (value instanceof WireValue wireValue) {
+      try {
+        String serialized = wireValue.wireValue();
+        if (serialized != null && !serialized.isBlank()) {
+          return serialized;
+        }
+        throw new WireValueSerializationException(
+            "CLI JSON wireValue() must return a non-blank String for " + enumType.getName() + ".");
+      } catch (WireValueSerializationException exception) {
+        throw exception;
+      } catch (RuntimeException exception) {
+        throw new WireValueSerializationException(
+            "Failed to resolve CLI JSON wireValue() for " + enumType.getName() + ".", exception);
       }
-      throw new IllegalStateException(
-          "CLI JSON wireValue() must return a non-blank String for " + enumType.getName() + ".");
-    } catch (NoSuchMethodException exception) {
-      if (enumType.getPackageName().startsWith("dev.erst.fingrind.")) {
-        throw new IllegalStateException(
-            "FinGrind enum " + enumType.getName() + " must declare wireValue() for CLI JSON.",
-            exception);
-      }
-      return value.name();
-    } catch (IllegalAccessException | InvocationTargetException exception) {
-      throw new IllegalStateException(
-          "Failed to resolve CLI JSON wireValue() for " + enumType.getName() + ".", exception);
     }
+    if (enumType.getPackageName().startsWith("dev.erst.fingrind.")) {
+      throw new WireValueSerializationException(
+          "FinGrind enum " + enumType.getName() + " must implement WireValue for CLI JSON.");
+    }
+    return value.name();
   }
 
   private static RuntimeException unwrapWireValueFailure(RuntimeException exception) {
-    IllegalStateException wireValueFailure = findWireValueFailure(exception);
+    WireValueSerializationException wireValueFailure = findWireValueFailure(exception);
     return wireValueFailure == null ? exception : wireValueFailure;
   }
 
-  private static @Nullable IllegalStateException findWireValueFailure(Throwable exception) {
+  private static @Nullable WireValueSerializationException findWireValueFailure(
+      Throwable exception) {
     Throwable current = exception;
     while (current != null) {
-      if (current instanceof IllegalStateException illegalStateException
-          && illegalStateException.getMessage() != null
-          && illegalStateException.getMessage().contains("wireValue()")) {
-        return illegalStateException;
+      if (current instanceof WireValueSerializationException wireValueFailure) {
+        return wireValueFailure;
       }
       current = current.getCause();
     }
     return null;
+  }
+
+  /** Dedicated failure type for invalid FinGrind enum wire-value serialization contracts. */
+  private static final class WireValueSerializationException extends IllegalStateException {
+    private static final long serialVersionUID = 1L;
+
+    private WireValueSerializationException(String message) {
+      super(message);
+    }
+
+    private WireValueSerializationException(String message, Throwable cause) {
+      super(message, cause);
+    }
   }
 }

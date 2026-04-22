@@ -5,12 +5,13 @@ import java.util.List;
 import java.util.Objects;
 
 /** Side of a computed net balance, including the balanced zero state. */
-public enum BalanceSide {
+public enum BalanceSide implements WireValue {
   DEBIT,
   CREDIT,
   ZERO;
 
   /** Returns the stable public wire value for this balance side. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case DEBIT -> "DEBIT";

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: CORE
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -53,7 +53,7 @@ public record ActorId(String value)
 `ActorType` classifies the actor that initiated one posting request.
 
 ```java
-public enum ActorType {
+public enum ActorType implements WireValue {
   HUMAN,
   SYSTEM,
   AGENT
@@ -61,13 +61,15 @@ public enum ActorType {
 ```
 
 - Purpose: distinguish human, system, and agent callers without free-form strings
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
 
 ## `BalanceSide`
 
 `BalanceSide` is the side of one computed net balance, including the balanced zero state.
 
 ```java
-public enum BalanceSide {
+public enum BalanceSide implements WireValue {
   DEBIT,
   CREDIT,
   ZERO
@@ -178,13 +180,15 @@ public record JournalLine(AccountCode accountCode, EntrySide side, PositiveMoney
 `EntrySide` is the closed set of journal-equation sides.
 
 ```java
-public enum EntrySide {
+public enum EntrySide implements WireValue {
   DEBIT,
   CREDIT
 }
 ```
 
 - Purpose: make line polarity explicit in the type system and wire vocabulary
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
 
 ## `Money`
 
@@ -216,7 +220,7 @@ public record PositiveMoney(Money value)
 `NormalBalance` is the side that increases a declared account.
 
 ```java
-public enum NormalBalance {
+public enum NormalBalance implements WireValue {
   DEBIT,
   CREDIT
 }
@@ -224,6 +228,8 @@ public enum NormalBalance {
 
 - Purpose: keep account-behavior metadata explicit for validation and reporting
 - Scope: bookkeeping-native and legislation-agnostic
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
 
 ## `PostingId`
 
@@ -281,10 +287,27 @@ public record ReversalReference(PostingId priorPostingId)
 `SourceChannel` is the operating surface through which one posting entered FinGrind.
 
 ```java
-public enum SourceChannel {
+public enum SourceChannel implements WireValue {
   CLI
 }
 ```
 
 - Purpose: record committed ingress explicitly
 - Current scope: only `CLI` is currently supported
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `WireValue`
+
+`WireValue` is the explicit contract for stable machine-facing enum vocabulary owned by FinGrind.
+
+```java
+public interface WireValue {
+  String wireValue();
+}
+```
+
+- Purpose: make stable JSON and protocol tokens a compile-time contract instead of a reflective
+  convention
+- Scope: implemented by exported enums whose public wire form must remain decoupled from Java enum
+  constant names

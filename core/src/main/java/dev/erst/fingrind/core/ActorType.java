@@ -5,12 +5,13 @@ import java.util.List;
 import java.util.Objects;
 
 /** Classifies the actor that initiated one posting request. */
-public enum ActorType {
+public enum ActorType implements WireValue {
   HUMAN,
   SYSTEM,
   AGENT;
 
   /** Returns the stable public wire value for this actor type. */
+  @Override
   public String wireValue() {
     return switch (this) {
       case HUMAN -> "HUMAN";

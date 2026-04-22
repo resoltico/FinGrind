@@ -159,7 +159,7 @@ final class SqliteStoreMutationOperations {
       if (!store.isInitializedBook(activeDatabase.nativeDatabase())) {
         return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
       }
-      SqliteNativeLibrary.rekey(
+      SqliteNativeConnections.rekey(
           activeDatabase.nativeDatabase(), activeReplacementPassphrase.nativePassphrase());
       SqliteStoreContext.closeOwnedDatabase(activeDatabase.nativeDatabase());
       store.clearDatabaseState();
@@ -168,7 +168,7 @@ final class SqliteStoreMutationOperations {
         reopenedDatabase =
             new SqliteSessionDatabase(
                 SqliteConnectionConfigurer.configureOpenedDatabase(
-                    SqliteNativeLibrary.open(
+                    SqliteNativeConnections.open(
                         store.bookPath(),
                         activeReplacementPassphrase.nativePassphrase(),
                         store.accessMode().nativeOpenMode()),

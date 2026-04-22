@@ -8,7 +8,13 @@ import org.jspecify.annotations.Nullable;
 
 /** Statement and column operations for the SQLite FFM bridge. */
 final class SqliteNativeStatements {
+  private static final MemorySegment SQLITE_TRANSIENT = MemorySegment.ofAddress(-1L);
+
   private SqliteNativeStatements() {}
+
+  static SqliteNativeStatement prepare(SqliteNativeDatabase database, String sql) {
+    return new SqliteNativeStatement(database, sql);
+  }
 
   static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer) {
     executeScript(databaseHandle, sqlPointer, SqliteNativeBootstrap.api());
@@ -31,7 +37,7 @@ final class SqliteNativeStatements {
                           errorPointer));
       MemorySegment execErrorPointer = errorPointer.get(ValueLayout.ADDRESS, 0);
       try {
-        if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+        if (resultCode != SqliteNativeResultCodes.OK) {
           throw new SqliteNativeException(
               resultCode,
               SqliteNativeErrors.scriptErrorMessage(
@@ -57,7 +63,7 @@ final class SqliteNativeStatements {
             int resultCode =
                 SqliteNativeCalls.prepareV2(sqliteApi.sqlite3PrepareV2())
                     .invoke(databaseHandle, sql, -1, statementPointer, tailPointer);
-            if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+            if (resultCode != SqliteNativeResultCodes.OK) {
               throw SqliteNativeErrors.failure(resultCode, sqliteApi);
             }
             return resultCode;
@@ -73,7 +79,7 @@ final class SqliteNativeStatements {
           int resultCode =
               SqliteNativeCalls.addressIntToInt(sqliteApi.sqlite3BindNull())
                   .invoke(statementHandle, parameterIndex);
-          if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+          if (resultCode != SqliteNativeResultCodes.OK) {
             throw new SqliteNativeException(resultCode, "Failed to bind a SQLite null parameter.");
           }
         });
@@ -87,7 +93,7 @@ final class SqliteNativeStatements {
           int resultCode =
               SqliteNativeCalls.addressIntIntToInt(sqliteApi.sqlite3BindInt())
                   .invoke(statementHandle, parameterIndex, value);
-          if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+          if (resultCode != SqliteNativeResultCodes.OK) {
             throw new SqliteNativeException(
                 resultCode, "Failed to bind a SQLite integer parameter.");
           }
@@ -106,12 +112,8 @@ final class SqliteNativeStatements {
           int resultCode =
               SqliteNativeCalls.bindText(sqliteApi.sqlite3BindText())
                   .invoke(
-                      statementHandle,
-                      parameterIndex,
-                      textPointer,
-                      byteLength,
-                      SqliteNativeLibrary.sqliteTransient());
-          if (resultCode != SqliteNativeLibrary.SQLITE_OK) {
+                      statementHandle, parameterIndex, textPointer, byteLength, SQLITE_TRANSIENT);
+          if (resultCode != SqliteNativeResultCodes.OK) {
             throw new SqliteNativeException(resultCode, "Failed to bind a SQLite text parameter.");
           }
         });
@@ -124,8 +126,8 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCalls.addressToInt(sqliteApi.sqlite3Step()).invoke(statementHandle);
-          if (resultCode == SqliteNativeLibrary.SQLITE_ROW
-              || resultCode == SqliteNativeLibrary.SQLITE_DONE) {
+          if (resultCode == SqliteNativeResultCodes.ROW
+              || resultCode == SqliteNativeResultCodes.DONE) {
             return resultCode;
           }
           throw SqliteNativeErrors.failure(resultCode, sqliteApi);

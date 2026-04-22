@@ -602,7 +602,7 @@ class SqlitePostingFactStoreTest {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(beginFailurePath))) {
       try (SqliteNativeDatabase closedDatabase =
-          SqliteNativeLibrary.open(bookAccess(beginFailurePath))) {
+          SqliteNativeConnections.open(bookAccess(beginFailurePath))) {
         closedDatabase.close();
         setStoreDatabase(postingFactStore, closedDatabase);
       }
@@ -740,7 +740,7 @@ class SqlitePostingFactStoreTest {
       MemorySegment activeHandle = requireStoreDatabase(postingFactStore).handle();
 
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3CloseV2HandleForTesting(
+          SqliteNativeConnections.overrideSqlite3CloseV2HandleForTesting(
               constantMethodHandle(14, MemorySegment.class))) {
         IllegalStateException exception =
             assertThrows(IllegalStateException.class, postingFactStore::close);
@@ -2303,8 +2303,7 @@ class SqlitePostingFactStoreTest {
                                   )
                                   """));
 
-                  assertEquals(
-                      SqliteNativeLibrary.SQLITE_CONSTRAINT_DATATYPE, exception.resultCode());
+                  assertEquals(SqliteNativeResultCodes.CONSTRAINT_DATATYPE, exception.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_DATATYPE", exception.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
                 }));
@@ -2534,10 +2533,10 @@ class SqlitePostingFactStoreTest {
                   database.executeStatement("insert into sample (id, note) values (1, 'ok')");
 
                   try (SqliteNativeStatement statement =
-                      SqliteNativeLibrary.prepare(database, "select note from sample_audit")) {
-                    assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+                      SqliteNativeStatements.prepare(database, "select note from sample_audit")) {
+                    assertEquals(SqliteNativeResultCodes.ROW, statement.step());
                     assertEquals("semi;colon", statement.columnText(0));
-                    assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
+                    assertEquals(SqliteNativeResultCodes.DONE, statement.step());
                   }
                 }));
   }
@@ -2924,7 +2923,7 @@ class SqlitePostingFactStoreTest {
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(blankBookPath))) {
-      setStoreDatabase(postingFactStore, SqliteNativeLibrary.open(bookAccess(blankBookPath)));
+      setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(blankBookPath)));
       assertEquals(
           Optional.of(new PostingRejection.BookNotInitialized()),
           PostingValidation.rejectionFor(
@@ -3018,7 +3017,7 @@ class SqlitePostingFactStoreTest {
       initializeBookWithDefaultAccounts(postingFactStore);
 
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3OpenV2HandleForTesting(
+          SqliteNativeConnections.overrideSqlite3OpenV2HandleForTesting(
               constantMethodHandle(
                   14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class))) {
         try (SqliteBookPassphrase replacementPassphrase =
@@ -3045,7 +3044,7 @@ class SqlitePostingFactStoreTest {
       initializeBookWithDefaultAccounts(postingFactStore);
 
       try (AutoCloseable ignored =
-          SqliteNativeLibrary.overrideSqlite3RekeyHandleForTesting(
+          SqliteNativeConnections.overrideSqlite3RekeyHandleForTesting(
               constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))) {
         try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
@@ -3278,7 +3277,7 @@ class SqlitePostingFactStoreTest {
     Path publishedPath = tempDirectory.resolve("prime-published.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(publishedPath))) {
-      setStoreDatabase(postingFactStore, SqliteNativeLibrary.open(bookAccess(publishedPath)));
+      setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(publishedPath)));
       assertSame(
           postingFactStore.lifecycle(), postingFactStore.lifecycle().prime().requireAccepted());
     }
@@ -3367,7 +3366,7 @@ class SqlitePostingFactStoreTest {
   @Test
   void closeAfterConfigurationFailure_closesOpenDatabase() throws Exception {
     Path bookPath = tempDirectory.resolve("configured-close.sqlite");
-    try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess(bookPath))) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess(bookPath))) {
       assertDoesNotThrow(() -> SqliteConnectionConfigurer.closeAfterConfigurationFailure(database));
     }
   }
@@ -3728,19 +3727,19 @@ class SqlitePostingFactStoreTest {
   }
 
   private static int queryInt(SqliteNativeDatabase database, String sql) {
-    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
-      assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+    try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
+      assertEquals(SqliteNativeResultCodes.ROW, statement.step());
       int value = statement.columnInt(0);
-      assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
+      assertEquals(SqliteNativeResultCodes.DONE, statement.step());
       return value;
     }
   }
 
   private static String queryText(SqliteNativeDatabase database, String sql) {
-    try (SqliteNativeStatement statement = SqliteNativeLibrary.prepare(database, sql)) {
-      assertEquals(SqliteNativeLibrary.SQLITE_ROW, statement.step());
+    try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
+      assertEquals(SqliteNativeResultCodes.ROW, statement.step());
       String value = statement.columnText(0);
-      assertEquals(SqliteNativeLibrary.SQLITE_DONE, statement.step());
+      assertEquals(SqliteNativeResultCodes.DONE, statement.step());
       return value;
     }
   }
@@ -4221,7 +4220,7 @@ class SqlitePostingFactStoreTest {
         tempDirectory.resolve(expectedMessage.replace(' ', '-').replace('.', '_') + ".sqlite");
     try (SqliteNativeDatabase database =
         SqliteConnectionConfigurer.configureOpenedDatabase(
-            SqliteNativeLibrary.open(bookAccess(bookPath)),
+            SqliteNativeConnections.open(bookAccess(bookPath)),
             SqliteStoreAccessMode.READ_WRITE_CREATE)) {
       database.executeScript(driftSql + ";");
 
@@ -4237,14 +4236,14 @@ class SqlitePostingFactStoreTest {
   }
 
   private static void withStandaloneDatabase(BookAccess bookAccess, SqliteDatabaseAction action) {
-    try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess)) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess)) {
       action.run(database);
     }
   }
 
   private static <T> T withStandaloneDatabaseResult(
       BookAccess bookAccess, SqliteDatabaseQuery<T> query) {
-    try (SqliteNativeDatabase database = SqliteNativeLibrary.open(bookAccess)) {
+    try (SqliteNativeDatabase database = SqliteNativeConnections.open(bookAccess)) {
       return query.run(database);
     }
   }

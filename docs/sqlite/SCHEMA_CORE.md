@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.22.0"
+version: "0.23.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -16,6 +16,9 @@ route:
 ## Canonical SQL
 
 ```sql
+pragma application_id = 1179079236;
+pragma user_version = 1;
+
 create table if not exists book_meta (
     key text primary key,
     value text not null
@@ -84,7 +87,7 @@ create unique index if not exists posting_fact_one_reversal_per_target
 `book_meta` stores singleton book-level metadata values keyed by stable string names.
 
 Important rules:
-- `initializedAt` is stored here when `open-book` creates one initialized FinGrind book
+- the durable key name for book initialization time is `initialized_at`
 - the table is `STRICT`, so SQLite rejects non-lossless type mismatches at the storage layer
 
 ### `account`
@@ -164,6 +167,8 @@ Important rules:
 
 ## Schema Posture
 
+- the canonical schema file sets `pragma application_id = 1179079236` and
+  `pragma user_version = 1` before any table DDL
 - This is the only current schema file for new books.
 - There is no schema version table.
 - There are no migration files.
