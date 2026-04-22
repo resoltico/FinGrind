@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -22,7 +22,7 @@ route:
 The Jazzer work lives in a dedicated nested Gradle build under `jazzer/`.
 That separation is deliberate:
 - root `./gradlew check` stays CI-friendly
-- fuzzing support dependencies stay isolated
+- fuzzing-only dependencies stay isolated
 - committed regression replay remains explicit
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
@@ -30,7 +30,7 @@ That separation is deliberate:
   2.3.3 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
-FinGrind now has two distinct Jazzer entrypoint classes of its own:
+FinGrind now has two distinct Jazzer operator surfaces of its own:
 - deterministic nested-build verification through `./gradlew -p jazzer ...`
 - active local fuzzing through `jazzer/bin/*`
 
@@ -47,7 +47,8 @@ Use these surfaces intentionally:
 - `./gradlew -p jazzer check`
 
 Those Gradle commands are the deterministic nested-build surface. They are the supported way to
-run Jazzer support tests and committed-seed replay locally, and they are the only Jazzer-shaped
+run Jazzer deterministic tests and committed-seed replay locally, and they are the only
+Jazzer-shaped
 surface that GitHub should ever exercise.
 
 For active fuzzing, use only:
@@ -122,9 +123,9 @@ jazzer/bin/clean-local-corpus
 | `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
 | `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using deterministic UTF-8 passphrase material, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
-## Deterministic Support Tests
+## Deterministic Nested Tests
 
-The nested Jazzer build also includes normal JUnit support tests that cover:
+The nested Jazzer build also includes normal JUnit deterministic tests that cover:
 - harness runner argument parsing and progress pulses
 - explicit single-`@FuzzTest` harness discovery and failure shaping
 - regression runner replay semantics

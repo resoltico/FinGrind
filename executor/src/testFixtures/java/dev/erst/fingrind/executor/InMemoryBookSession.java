@@ -36,11 +36,13 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /** In-memory book session for tests and non-durable harness composition. */
 public final class InMemoryBookSession
@@ -54,7 +56,7 @@ public final class InMemoryBookSession
   private final Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey = mutableMap();
   private final Map<PostingId, PostingFact> postingsByPostingId = mutableMap();
   private final Map<PostingId, PostingFact> reversalsByPriorPostingId = mutableMap();
-  private Snapshot transactionSnapshot;
+  private @Nullable Snapshot transactionSnapshot;
   private boolean initialized;
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
 
@@ -411,7 +413,8 @@ public final class InMemoryBookSession
                   .sorted(Comparator.comparing(entry -> entry.getKey().value()))
                   .flatMap(
                       entry -> {
-                        DeclaredAccount account = accountsByCode.get(entry.getKey());
+                        DeclaredAccount account =
+                            Objects.requireNonNull(accountsByCode.get(entry.getKey()), "account");
                         return entry.getValue().entrySet().stream()
                             .sorted(Comparator.comparing(currency -> currency.getKey().value()))
                             .map(

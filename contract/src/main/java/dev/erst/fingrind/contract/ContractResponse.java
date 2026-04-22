@@ -23,6 +23,54 @@ public final class ContractResponse {
         CurrencyDescriptor.class);
   }
 
+  /** Stable initialization requirements for account-registry operations. */
+  public enum InitializationRequirement {
+    REQUIRES_OPEN_BOOK("requires-open-book");
+
+    private final String wireValue;
+
+    InitializationRequirement(String wireValue) {
+      this.wireValue = ContractDescriptorValidation.requireText(wireValue, "wireValue");
+    }
+
+    /** Returns the stable public wire value for this requirement. */
+    public String wireValue() {
+      return wireValue;
+    }
+
+    @Override
+    public String toString() {
+      return wireValue;
+    }
+  }
+
+  /** Stable relationship between preflight acceptance and the later commit attempt. */
+  public enum CommitGuarantee {
+    NOT_GUARANTEED("not-guaranteed"),
+    GUARANTEED("guaranteed");
+
+    private final String wireValue;
+
+    CommitGuarantee(String wireValue) {
+      this.wireValue = ContractDescriptorValidation.requireText(wireValue, "wireValue");
+    }
+
+    /** Returns the stable public wire value for this guarantee status. */
+    public String wireValue() {
+      return wireValue;
+    }
+
+    /** Maps one legacy boolean guarantee flag onto the stable enum contract. */
+    public static CommitGuarantee fromGuaranteed(boolean guaranteed) {
+      return guaranteed ? GUARANTEED : NOT_GUARANTEED;
+    }
+
+    @Override
+    public String toString() {
+      return wireValue;
+    }
+  }
+
   /** Descriptor for the machine-readable book model. */
   public record BookModelDescriptor(
       String boundary,
@@ -139,13 +187,16 @@ public final class ContractResponse {
 
   /** Descriptor for the book-local account registry contract. */
   public record AccountRegistryDescriptor(
-      boolean requiresOpenBook,
+      InitializationRequirement initializationRequirement,
       String redeclarationBehavior,
       List<FieldDescriptor> declareAccountFields,
       List<FieldDescriptor> listFields,
       List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies) {
     /** Validates one account-registry descriptor payload. */
     public AccountRegistryDescriptor {
+      initializationRequirement =
+          ContractDescriptorValidation.requireValue(
+              initializationRequirement, "initializationRequirement");
       redeclarationBehavior =
           ContractDescriptorValidation.requireText(redeclarationBehavior, "redeclarationBehavior");
       declareAccountFields =
@@ -167,10 +218,12 @@ public final class ContractResponse {
 
   /** Descriptor for preflight semantics. */
   public record PreflightDescriptor(
-      String semantics, boolean isCommitGuarantee, String description) {
+      String semantics, CommitGuarantee commitGuarantee, String description) {
     /** Validates one preflight descriptor payload. */
     public PreflightDescriptor {
       semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
+      commitGuarantee =
+          ContractDescriptorValidation.requireValue(commitGuarantee, "commitGuarantee");
       description = ContractDescriptorValidation.requireText(description, "description");
     }
   }

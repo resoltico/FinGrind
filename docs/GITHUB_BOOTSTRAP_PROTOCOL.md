@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
 updated: "2026-04-21"
 route:
@@ -147,4 +147,5 @@ FinGrind already carries the matching workflow surfaces locally:
   GitHub must never invoke `jazzer/bin/*`, and active harness execution hard-fails when
   `GITHUB_ACTIONS=true` as a defense-in-depth backstop.
 - GitHub CI currently keeps Jazzer on the deterministic side only by running the root build and
-  CLI runtime checks, not standalone Jazzer support tests, regression replay, or active fuzzing.
+  CLI runtime checks, not standalone Jazzer deterministic tests, regression replay, or active
+  fuzzing.

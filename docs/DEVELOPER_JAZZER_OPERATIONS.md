@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
 updated: "2026-04-21"
 route:
@@ -18,9 +18,9 @@ route:
 
 | Task | Purpose |
 |:-----|:--------|
-| `./gradlew -p jazzer test` | run deterministic Jazzer support tests |
+| `./gradlew -p jazzer test` | run deterministic Jazzer tests |
 | `./gradlew -p jazzer jazzerRegression` | replay the committed seed floor |
-| `./gradlew -p jazzer check` | run support tests plus regression replay |
+| `./gradlew -p jazzer check` | run deterministic tests plus regression replay |
 | `jazzer/bin/regression` | replay the committed seed floor through the supported wrapper surface |
 | `jazzer/bin/fuzz-cli-request` | fuzz raw request parsing |
 | `jazzer/bin/fuzz-ledger-plan-request` | fuzz ledger-plan request parsing |
@@ -129,16 +129,16 @@ There is still no promotion or corpus-summary CLI. Today the primary operator su
 
 ## Progress Pulses
 
-The nested build emits `[JAZZER-PULSE]` lines during support tests, regression replay, and active
+The nested build emits `[JAZZER-PULSE]` lines during deterministic tests, regression replay, and active
 fuzzing. Treat them as the canonical semantic progress markers.
 
 Interpretation:
 - active fuzzing now emits `phase=plan total-tests=1 fuzz-test=...` and
   `phase=finish status=... fuzz-test=... exit-code=...`, because the standalone harness runner
   resolves one concrete `@FuzzTest` method before delegating to Jazzer's official JUnit runner
-- support tests now emit `class-start`, `test-complete`, `class-complete`, and throttled
-  `test-progress` heartbeats so `./check.sh` can observe long-running support tests without false
-  stalls
+- deterministic tests now emit deterministic-tests `phase=class-start`, `phase=test-complete`,
+  `phase=class-complete`, and throttled `phase=test-progress` heartbeats so `./check.sh` can observe
+  long-running deterministic tests without false stalls
 - regression replay now emits `regression-target phase=plan total-inputs=...`, one
   `regression-input ... completed=...` pulse per committed seed, and a final
   `regression-target phase=finish ...` pulse per harness

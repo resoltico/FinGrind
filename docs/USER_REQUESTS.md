@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -12,6 +12,9 @@ route:
 
 **Purpose**: Show the accepted JSON request shapes and the output documents returned by the CLI.
 **Prerequisites**: Familiarity with the packaged CLI in [USER_CLI.md](./USER_CLI.md).
+
+The checked-in `docs/examples/*.json` fixtures mentioned below exist only in a source checkout.
+The public release bundle does not ship those repo paths.
 
 Book-bound commands pair these JSON payloads with `--book-file` plus exactly one passphrase
 source:
@@ -28,7 +31,7 @@ Inspect the minimal valid posting request:
 fingrind print-request-template
 ```
 
-Or inspect the checked-in example payload:
+Or, in a source checkout, inspect the checked-in example payload:
 
 ```bash
 cat docs/examples/basic-posting-request.json
@@ -81,7 +84,7 @@ Inspect the canonical AI-agent scaffold:
 fingrind print-plan-template
 ```
 
-Or inspect the checked-in runnable example:
+Or, in a source checkout, inspect the checked-in runnable example:
 
 ```bash
 cat docs/examples/ledger-plan-request.json
@@ -173,8 +176,8 @@ rendered:
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
   descriptors such as `invalid-page-cursor`, `book-authentication-failed`, and
   `interactive-prompt-unavailable`
-- `preflightSemantics` is the short machine hint and `preflight` expands it with
-  `isCommitGuarantee`
+- `preflight.semantics` carries the short machine hint and `preflight.commitGuarantee`
+  carries the advisory-versus-guaranteed commit relationship
 - `currencyModel` declares the current single-currency scope and the explicit
   `multiCurrencyStatus: "not-supported"`
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes

@@ -41,6 +41,24 @@ function Require-NoMatch {
     }
 }
 
+function Require-Java26 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $JavaCommand
+    )
+
+    $versionOutput = (& $JavaCommand --version 2>&1 | Out-String) -replace "`r", ""
+    $versionLines = @($versionOutput -split "`n" | Where-Object { $_ -ne "" })
+    $versionTokens = @()
+    if ($versionLines.Count -gt 0) {
+        $versionTokens = @($versionLines[0] -split '\s+' | Where-Object { $_ -ne "" })
+    }
+    if ($versionTokens.Count -lt 2 -or ($versionTokens[1] -ne "26" -and -not $versionTokens[1].StartsWith("26."))) {
+        Write-Host $versionOutput
+        Fail "bundled Java runtime did not report Java 26"
+    }
+}
+
 function Read-AsciiPrefix {
     param(
         [Parameter(Mandatory = $true)]
@@ -219,10 +237,7 @@ try {
         Fail "bundle manifest still reported unsupported public operating systems"
     }
 
-    $runtimeVersionOutput = (& $runtimeJava --version | Out-String) -replace "`r", ""
-    if ($runtimeVersionOutput -notmatch '^openjdk 26 ') {
-        Fail "bundled Java runtime did not report Java 26"
-    }
+    Require-Java26 $runtimeJava
     $runtimeModulesOutput = (& $runtimeJava --list-modules | Out-String) -replace "`r", ""
     foreach ($forbiddenModule in @('jdk.jlink@', 'jdk.jpackage@', 'jdk.jdeps@')) {
         if ($runtimeModulesOutput -match ('^' + [regex]::Escape($forbiddenModule))) {
@@ -351,40 +366,44 @@ try {
 
     Write-Host "Bundle acceptance: verifying self-contained runtime contract"
     $capabilitiesPayload = (Invoke-BundleCommand -Arguments @("capabilities", "--output", "json")).Output | ConvertFrom-Json
-    if ($capabilitiesPayload.payload.environment.runtimeDistribution -ne "self-contained-bundle") {
+    $environment = $capabilitiesPayload.payload.environment
+    $distribution = $environment.distribution
+    $storage = $environment.storage
+    $sqlite = $environment.sqlite
+    if ($distribution.runtimeDistribution -ne "self-contained-bundle") {
         Fail "capabilities output did not report the self-contained runtime distribution"
     }
-    if ($capabilitiesPayload.payload.environment.publicCliDistribution -ne "self-contained-bundle") {
+    if ($distribution.publicCliDistribution -ne "self-contained-bundle") {
         Fail "capabilities output did not report the public bundle distribution contract"
     }
-    if ($capabilitiesPayload.payload.environment.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {
+    if ($distribution.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {
         Fail "capabilities output did not report the supported public bundle targets"
     }
-    if (@($capabilitiesPayload.payload.environment.unsupportedPublicCliOperatingSystems).Count -ne 0) {
+    if (@($distribution.unsupportedPublicCliOperatingSystems).Count -ne 0) {
         Fail "capabilities output still reported unsupported public operating systems"
     }
-    if ($capabilitiesPayload.payload.environment.sqliteLibraryMode -ne "managed-only") {
+    if ($sqlite.libraryMode -ne "managed-only") {
         Fail "capabilities output did not report the managed-only SQLite runtime mode"
     }
-    if ($capabilitiesPayload.payload.environment.storageDriver -ne "sqlite-ffm-sqlite3mc") {
+    if ($storage.storageDriver -ne "sqlite-ffm-sqlite3mc") {
         Fail "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"
     }
-    if ($capabilitiesPayload.payload.environment.bookProtectionMode -ne "required") {
+    if ($storage.bookProtectionMode -ne "required") {
         Fail "capabilities output did not report required book protection"
     }
-    if ($capabilitiesPayload.payload.environment.defaultBookCipher -ne "chacha20") {
+    if ($storage.defaultBookCipher -ne "chacha20") {
         Fail "capabilities output did not report the default chacha20 cipher"
     }
-    if ($capabilitiesPayload.payload.environment.requiredMinimumSqliteVersion -ne "3.53.0") {
+    if ($sqlite.requiredMinimumSqliteVersion -ne "3.53.0") {
         Fail "capabilities output did not report the required SQLite 3.53.0 minimum"
     }
-    if ($capabilitiesPayload.payload.environment.requiredSqlite3mcVersion -ne "2.3.3") {
+    if ($sqlite.requiredSqlite3mcVersion -ne "2.3.3") {
         Fail "capabilities output did not report the required SQLite3 Multiple Ciphers 2.3.3 version"
     }
-    if ($capabilitiesPayload.payload.environment.sqliteRuntimeStatus -ne "ready") {
+    if ($sqlite.runtimeStatus -ne "ready") {
         Fail "capabilities output did not report a ready SQLite runtime"
     }
-    $queryCommands = @($capabilitiesPayload.payload.queryCommands)
+    $queryCommands = @($capabilitiesPayload.payload.commands.query)
     foreach ($command in @("trial-balance", "account-ledger", "period-summary")) {
         if ($queryCommands -notcontains $command) {
             Fail "capabilities output did not report query command $command"
@@ -634,8 +653,8 @@ try {
         "--book-key-file", $replacementBookKeyPath,
         "--cursor", "definitely-not-a-valid-cursor"
     ) -AllowFailure
-    if ($invalidCursorResult.ExitCode -ne 2) {
-        Fail "invalid cursor exited with $($invalidCursorResult.ExitCode) instead of 2"
+    if ($invalidCursorResult.ExitCode -ne 1) {
+        Fail "invalid cursor exited with $($invalidCursorResult.ExitCode) instead of 1"
     }
     $invalidCursorPayload = $invalidCursorResult.Output | ConvertFrom-Json
     if ($invalidCursorPayload.code -ne "invalid-page-cursor") {
@@ -664,8 +683,8 @@ try {
         "--book-key-file", $replacementBookKeyPath,
         "--request-file", $invalidRequestPath
     ) -AllowFailure
-    if ($invalidRequestResult.ExitCode -ne 2) {
-        Fail "invalid request exited with $($invalidRequestResult.ExitCode) instead of 2"
+    if ($invalidRequestResult.ExitCode -ne 1) {
+        Fail "invalid request exited with $($invalidRequestResult.ExitCode) instead of 1"
     }
     $invalidRequestPayload = $invalidRequestResult.Output | ConvertFrom-Json
     if ($invalidRequestPayload.code -ne "invalid-request") {

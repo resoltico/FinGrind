@@ -23,29 +23,29 @@ public class PostingWorkflowFuzzTest {
   void exercisePostingWorkflow(FuzzedDataProvider data) {
     byte[] input = data.consumeRemainingAsBytes();
     try {
-      PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
+      PostEntryCommand command = CliFuzzFixtures.readPostEntryCommand(input);
       InMemoryBookSession bookSession = new InMemoryBookSession();
       BookAdministrationService administrationService =
-          CliFuzzSupport.administrationService(bookSession);
+          CliFuzzFixtures.administrationService(bookSession);
       PostingApplicationService applicationService =
           new PostingApplicationService(
               bookSession,
-              CliFuzzSupport.postingIdGenerator(input),
-              CliFuzzSupport.fixedClock());
+              CliFuzzFixtures.postingIdGenerator(input),
+              CliFuzzFixtures.fixedClock());
 
       assertRejected(
           applicationService.preflight(command), PostingRejection.BookNotInitialized.class);
       assertRejected(applicationService.commit(command), PostingRejection.BookNotInitialized.class);
 
-      CliFuzzSupport.openBook(administrationService);
+      CliFuzzFixtures.openBook(administrationService);
 
       assertAccountStateRejected(
           applicationService.preflight(command), PostingRejection.UnknownAccount.class);
       assertAccountStateRejected(
           applicationService.commit(command), PostingRejection.UnknownAccount.class);
 
-      var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
-      if (CliFuzzSupport.listAccounts(bookSession).size() != declaredAccounts.size()) {
+      var declaredAccounts = CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+      if (CliFuzzFixtures.listAccounts(bookSession).size() != declaredAccounts.size()) {
         throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
       }
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
@@ -56,8 +56,8 @@ public class PostingWorkflowFuzzTest {
       assertAccountStateRejected(
           applicationService.commit(command), PostingRejection.InactiveAccount.class);
 
-      CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
-      if (!CliFuzzSupport
+      CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
+      if (!CliFuzzFixtures
           .listAccounts(bookSession)
           .stream()
           .anyMatch(account -> account.accountCode().equals(primaryAccount.accountCode()) && account.active())) {
@@ -96,7 +96,7 @@ public class PostingWorkflowFuzzTest {
           throw new IllegalStateException(
               "Stored request provenance differs from the parsed command.");
         }
-        if (!postingFact.provenance().recordedAt().equals(CliFuzzSupport.fixedClock().instant())) {
+        if (!postingFact.provenance().recordedAt().equals(CliFuzzFixtures.fixedClock().instant())) {
           throw new IllegalStateException(
               "Stored recorded-at differs from the deterministic clock.");
         }

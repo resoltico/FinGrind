@@ -8,7 +8,7 @@ final class ProtocolWriteOperations {
 
   static List<ProtocolOperation> operations() {
     return List.of(
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.EXECUTE_PLAN,
             OperationCategory.WRITE,
             "Execute Plan",
@@ -26,7 +26,7 @@ final class ProtocolWriteOperations {
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.REQUEST_FILE))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.PREFLIGHT_ENTRY,
             OperationCategory.WRITE,
             "Preflight Entry",
@@ -45,7 +45,7 @@ final class ProtocolWriteOperations {
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.REQUEST_FILE))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.POST_ENTRY,
             OperationCategory.WRITE,
             "Post Entry",

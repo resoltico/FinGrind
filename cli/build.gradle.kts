@@ -1,6 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
-import dev.erst.fingrind.buildlogic.DistributionSupport
+import dev.erst.fingrind.buildlogic.DistributionContractReader
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
 import org.gradle.api.GradleException
@@ -39,18 +39,18 @@ application {
 
 val fingrindJavaVersion = providers.gradleProperty("fingrindJavaVersion").map(String::toInt).get()
 val repositoryRootDirectory = rootProject.projectDir.toPath()
-val publicCliBundleTargets = DistributionSupport.publicCliBundleTargets(repositoryRootDirectory)
+val publicCliBundleTargets = DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
 val unsupportedPublicCliOperatingSystems =
-    DistributionSupport.unsupportedPublicCliOperatingSystems(repositoryRootDirectory)
+    DistributionContractReader.unsupportedPublicCliOperatingSystems(repositoryRootDirectory)
 val bundleClassifier =
     providers.gradleProperty("fingrindBundleClassifier").orElse(
-        providers.provider { DistributionSupport.hostClassifier() },
+        providers.provider { DistributionContractReader.hostClassifier() },
     )
 val bundleName = bundleClassifier.map { classifier -> "fingrind-${project.version}-$classifier" }
 val currentJavaHomeDirectory = layout.dir(providers.provider { file(System.getProperty("java.home")) })
 val compileOnlyConfiguration = configurations.named("compileOnly")
-val jdepsSupportConfiguration =
-    configurations.create("jdepsSupport") {
+val jdepsInputsConfiguration =
+    configurations.create("jdepsInputs") {
         isCanBeConsumed = false
         isCanBeResolved = true
         extendsFrom(compileOnlyConfiguration.get())
@@ -76,15 +76,15 @@ val bundleClassifierValue = bundleClassifier.get()
 val bundleOperatingSystemId = bundleClassifierValue.substringBefore('-')
 val bundleArchitectureId = bundleClassifierValue.substringAfter('-')
 val bundleArchiveExtension =
-    providers.provider { DistributionSupport.archiveExtensionForOperatingSystemId(bundleOperatingSystemId) }
+    providers.provider { DistributionContractReader.archiveExtensionForOperatingSystemId(bundleOperatingSystemId) }
 val bundleArchiveFileName = bundleName.zip(bundleArchiveExtension) { name, extension -> "$name.$extension" }
 val bundleSha256File =
     bundleArchiveFileName.flatMap { fileName -> layout.buildDirectory.file("distributions/$fileName.sha256") }
-val hostBundleClassifier = DistributionSupport.hostClassifier()
+val hostBundleClassifier = DistributionContractReader.hostClassifier()
 val bundleLauncherPath =
-    providers.provider { DistributionSupport.launcherPathForOperatingSystemId(bundleOperatingSystemId) }
+    providers.provider { DistributionContractReader.launcherPathForOperatingSystemId(bundleOperatingSystemId) }
 val bundleLauncherCommand =
-    providers.provider { DistributionSupport.launcherCommandForOperatingSystemId(bundleOperatingSystemId) }
+    providers.provider { DistributionContractReader.launcherCommandForOperatingSystemId(bundleOperatingSystemId) }
 val bundleTemplateProperties =
     mapOf(
         "version" to project.version.toString(),
@@ -95,27 +95,27 @@ val bundleTemplateProperties =
         "bundleLauncherPath" to bundleLauncherPath.get(),
         "bundleLauncherCommand" to bundleLauncherCommand.get(),
         "helpOperation" to
-            DistributionSupport.protocolOperationName(repositoryRootDirectory, "HELP"),
+            DistributionContractReader.protocolOperationName(repositoryRootDirectory, "HELP"),
         "capabilitiesOperation" to
-            DistributionSupport.protocolOperationName(repositoryRootDirectory, "CAPABILITIES"),
+            DistributionContractReader.protocolOperationName(repositoryRootDirectory, "CAPABILITIES"),
         "requestTemplateOperation" to
-            DistributionSupport.protocolOperationName(
+            DistributionContractReader.protocolOperationName(
                 repositoryRootDirectory,
                 "PRINT_REQUEST_TEMPLATE",
             ),
         "planTemplateOperation" to
-            DistributionSupport.protocolOperationName(
+            DistributionContractReader.protocolOperationName(
                 repositoryRootDirectory,
                 "PRINT_PLAN_TEMPLATE",
             ),
         "publicBundleTargetsJson" to
-            DistributionSupport.jsonStringArray(publicCliBundleTargets),
+            DistributionContractReader.jsonStringArray(publicCliBundleTargets),
         "unsupportedPublicOperatingSystemsJson" to
-            DistributionSupport.jsonStringArray(unsupportedPublicCliOperatingSystems),
+            DistributionContractReader.jsonStringArray(unsupportedPublicCliOperatingSystems),
         "publicBundleTargetsMarkdown" to
-            DistributionSupport.markdownBulletList(publicCliBundleTargets),
+            DistributionContractReader.markdownBulletList(publicCliBundleTargets),
         "unsupportedPublicOperatingSystemsMarkdown" to
-            DistributionSupport.markdownBulletList(unsupportedPublicCliOperatingSystems),
+            DistributionContractReader.markdownBulletList(unsupportedPublicCliOperatingSystems),
     )
 
 if (bundleClassifierValue != hostBundleClassifier) {
@@ -210,7 +210,7 @@ val writeRuntimeModuleList =
         applicationJar.set(shadowJarArchiveFile)
         javaVersion.set(fingrindJavaVersion)
         additionalModules.set(listOf("jdk.unsupported"))
-        dependencyClasspath.from(jdepsSupportConfiguration)
+        dependencyClasspath.from(jdepsInputsConfiguration)
         outputFile.set(runtimeModuleListOutputFile)
     }
 
@@ -363,15 +363,15 @@ tasks.register("bundleCliArchive") {
 }
 
 fun hostBundleClassifier(): String {
-    return DistributionSupport.hostClassifier()
+    return DistributionContractReader.hostClassifier()
 }
 
 fun managedSqliteHostClassifier(): String =
-    DistributionSupport.hostClassifier()
+    DistributionContractReader.hostClassifier()
 
 fun managedSqliteLibraryFileNameForHost(): String =
-    DistributionSupport.libraryFileNameForOperatingSystemId(operatingSystemId())
+    DistributionContractReader.libraryFileNameForOperatingSystemId(operatingSystemId())
 
 fun operatingSystemId(): String {
-    return DistributionSupport.operatingSystemId()
+    return DistributionContractReader.operatingSystemId()
 }

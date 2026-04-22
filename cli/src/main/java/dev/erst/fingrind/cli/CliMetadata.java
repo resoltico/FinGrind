@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
 import java.util.Properties;
+import org.jspecify.annotations.Nullable;
 
 /** Reads the packaged CLI metadata that is expanded during the Gradle resource phase. */
 final class CliMetadata {
@@ -42,7 +43,8 @@ final class CliMetadata {
         properties.getProperty(propertyName), "Missing CLI metadata property: " + propertyName);
   }
 
-  static String versionFrom(String implementationVersion, String fallbackVersion) {
+  static String versionFrom(
+      @Nullable String implementationVersion, @Nullable String fallbackVersion) {
     if (implementationVersion != null && !implementationVersion.isBlank()) {
       return implementationVersion;
     }

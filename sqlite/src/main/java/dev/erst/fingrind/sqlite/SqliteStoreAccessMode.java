@@ -42,7 +42,7 @@ public enum SqliteStoreAccessMode {
   }
 
   boolean preservesMissingBookStateUntilMutation() {
-    return this == PLAN_EXECUTION;
+    return createsFiles;
   }
 
   void requireWritableMutation() {

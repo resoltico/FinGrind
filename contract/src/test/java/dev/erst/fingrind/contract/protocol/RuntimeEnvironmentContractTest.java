@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and defensive-path tests for the generated runtime-environment contract helper. */
@@ -47,7 +48,7 @@ class RuntimeEnvironmentContractTest {
     assertEquals(
         "Failed to load runtime-environment contract resource: /broken.properties",
         exception.getMessage());
-    assertEquals("boom", exception.getCause().getMessage());
+    assertEquals("boom", Objects.requireNonNull(exception.getCause()).getMessage());
   }
 
   @Test

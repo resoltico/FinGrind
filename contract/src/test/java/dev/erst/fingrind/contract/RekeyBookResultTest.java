@@ -3,9 +3,11 @@ package dev.erst.fingrind.contract;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link RekeyBookResult}. */
+@NullUnmarked
 class RekeyBookResultTest {
   @Test
   void variants_validateNonNullState() {

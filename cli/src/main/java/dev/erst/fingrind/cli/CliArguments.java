@@ -18,7 +18,7 @@ final class CliArguments {
     }
     ProtocolOperation operation =
         ProtocolCatalog.findByToken(arguments.getFirst())
-            .orElseThrow(() -> CliArgumentSupport.unknownCommand(arguments.getFirst()));
+            .orElseThrow(() -> CliArgumentValueParser.unknownCommand(arguments.getFirst()));
     return switch (operation.id()) {
       case HELP -> CliDiscoveryArguments.parseHelp(arguments);
       case VERSION -> CliDiscoveryArguments.parseVersion(arguments);

@@ -8,9 +8,11 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link RejectionNarrative}. */
+@NullUnmarked
 class RejectionNarrativeTest {
   @Test
   void administrationMessagesAndFactsCoverEveryRejection() {

@@ -8,7 +8,7 @@ final class ProtocolDiscoveryOperations {
 
   static List<ProtocolOperation> operations() {
     return List.of(
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.HELP,
             OperationCategory.DISCOVERY,
             "Help",
@@ -18,7 +18,7 @@ final class ProtocolDiscoveryOperations {
             List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
             "Print command usage, examples, and workflow guidance.",
             List.of()),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.VERSION,
             OperationCategory.DISCOVERY,
             "Version",
@@ -28,7 +28,7 @@ final class ProtocolDiscoveryOperations {
             List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
             "Print application identity, version, and description.",
             List.of()),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.CAPABILITIES,
             OperationCategory.DISCOVERY,
             "Capabilities",
@@ -38,7 +38,7 @@ final class ProtocolDiscoveryOperations {
             List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
             List.of()),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.PRINT_REQUEST_TEMPLATE,
             OperationCategory.DISCOVERY,
             "Print Request Template",
@@ -49,7 +49,7 @@ final class ProtocolDiscoveryOperations {
             List.of(
                 "fingrind %s > request.json"
                     .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,
             "Print Plan Template",

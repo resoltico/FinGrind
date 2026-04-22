@@ -32,7 +32,7 @@ public final class ContractDescriptorValidation {
   }
 
   /** Copies one descriptor-owned list defensively. */
-  public static <T> List<T> copyList(List<T> values, String fieldName) {
+  public static <T> List<T> copyList(@Nullable List<T> values, String fieldName) {
     Objects.requireNonNull(fieldName, "fieldName");
     return values == null ? List.of() : List.copyOf(values);
   }

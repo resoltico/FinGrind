@@ -21,58 +21,59 @@ final class CliLifecycleMutationArguments {
       switch (argument) {
         case ProtocolOptions.BOOK_KEY_FILE -> {
           if (bookKeyFilePath != null) {
-            throw CliArgumentSupport.invalid(
+            throw CliArgumentValueParser.invalid(
                 ProtocolOptions.BOOK_KEY_FILE,
                 "Duplicate argument: " + ProtocolOptions.BOOK_KEY_FILE);
           }
           bookKeyFilePath =
-              CliArgumentSupport.requirePathOptionValue(
+              CliArgumentValueParser.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
         }
         case ProtocolOptions.OUTPUT ->
             outputMode =
-                CliArgumentSupport.requireOutputMode(
+                CliArgumentValueParser.requireOutputMode(
                     outputMode,
-                    CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
-        default -> throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
     }
     if (bookKeyFilePath == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.BOOK_KEY_FILE,
           "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
     }
     return new CliCommand.GenerateBookKeyFile(
-        bookKeyFilePath, CliArgumentSupport.resolvedOutputMode(outputMode));
+        bookKeyFilePath, CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
   static CliCommand parseOpenBookCommand(List<String> arguments) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseBookAndCommandArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
       outputMode =
-          CliArgumentSupport.requireOutputMode(
+          CliArgumentValueParser.requireOutputMode(
               outputMode,
-              CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
     return new CliCommand.OpenBook(
-        parsedArguments.bookAccess(), CliArgumentSupport.resolvedOutputMode(outputMode));
+        parsedArguments.bookAccess(), CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
   static CliCommand parseRekeyBookCommand(List<String> arguments) {
     Path bookFilePath = null;
     Path currentBookKeyFilePath = null;
     Path replacementBookKeyFilePath = null;
-    CliBookPassphraseArgumentSupport.PassphraseSourceKind currentPassphraseSourceKind = null;
-    CliBookPassphraseArgumentSupport.PassphraseSourceKind replacementPassphraseSourceKind = null;
+    CliBookPassphraseParser.PassphraseSourceKind currentPassphraseSourceKind = null;
+    CliBookPassphraseParser.PassphraseSourceKind replacementPassphraseSourceKind = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
@@ -80,70 +81,71 @@ final class CliLifecycleMutationArguments {
       switch (argument) {
         case ProtocolOptions.BOOK_FILE -> {
           if (bookFilePath != null) {
-            throw CliArgumentSupport.invalid(
+            throw CliArgumentValueParser.invalid(
                 ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
           }
           bookFilePath =
-              CliArgumentSupport.requirePathOptionValue(
+              CliArgumentValueParser.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.BOOK_FILE);
         }
         case ProtocolOptions.BOOK_KEY_FILE -> {
           currentPassphraseSourceKind =
-              CliBookPassphraseArgumentSupport.requireSinglePassphraseSource(
+              CliBookPassphraseParser.requireSinglePassphraseSource(
                   currentPassphraseSourceKind,
-                  CliBookPassphraseArgumentSupport.PassphraseSourceKind.KEY_FILE);
+                  CliBookPassphraseParser.PassphraseSourceKind.KEY_FILE);
           currentBookKeyFilePath =
-              CliArgumentSupport.requirePathOptionValue(
+              CliArgumentValueParser.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
         }
         case ProtocolOptions.BOOK_PASSPHRASE_STDIN -> {
           currentPassphraseSourceKind =
-              CliBookPassphraseArgumentSupport.requireSinglePassphraseSource(
+              CliBookPassphraseParser.requireSinglePassphraseSource(
                   currentPassphraseSourceKind,
-                  CliBookPassphraseArgumentSupport.PassphraseSourceKind.STANDARD_INPUT);
+                  CliBookPassphraseParser.PassphraseSourceKind.STANDARD_INPUT);
         }
         case ProtocolOptions.BOOK_PASSPHRASE_PROMPT -> {
           currentPassphraseSourceKind =
-              CliBookPassphraseArgumentSupport.requireSinglePassphraseSource(
+              CliBookPassphraseParser.requireSinglePassphraseSource(
                   currentPassphraseSourceKind,
-                  CliBookPassphraseArgumentSupport.PassphraseSourceKind.INTERACTIVE_PROMPT);
+                  CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
         case ProtocolOptions.NEW_BOOK_KEY_FILE -> {
           replacementPassphraseSourceKind =
-              CliBookPassphraseArgumentSupport.requireSingleReplacementPassphraseSource(
+              CliBookPassphraseParser.requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind,
-                  CliBookPassphraseArgumentSupport.PassphraseSourceKind.KEY_FILE);
+                  CliBookPassphraseParser.PassphraseSourceKind.KEY_FILE);
           replacementBookKeyFilePath =
-              CliArgumentSupport.requirePathOptionValue(
+              CliArgumentValueParser.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.NEW_BOOK_KEY_FILE);
         }
         case ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN -> {
           replacementPassphraseSourceKind =
-              CliBookPassphraseArgumentSupport.requireSingleReplacementPassphraseSource(
+              CliBookPassphraseParser.requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind,
-                  CliBookPassphraseArgumentSupport.PassphraseSourceKind.STANDARD_INPUT);
+                  CliBookPassphraseParser.PassphraseSourceKind.STANDARD_INPUT);
         }
         case ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT -> {
           replacementPassphraseSourceKind =
-              CliBookPassphraseArgumentSupport.requireSingleReplacementPassphraseSource(
+              CliBookPassphraseParser.requireSingleReplacementPassphraseSource(
                   replacementPassphraseSourceKind,
-                  CliBookPassphraseArgumentSupport.PassphraseSourceKind.INTERACTIVE_PROMPT);
+                  CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
         }
         case ProtocolOptions.OUTPUT ->
             outputMode =
-                CliArgumentSupport.requireOutputMode(
+                CliArgumentValueParser.requireOutputMode(
                     outputMode,
-                    CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
-        default -> throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
     }
     if (bookFilePath == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
     }
     if (currentPassphraseSourceKind == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.BOOK_KEY_FILE,
           "Exactly one current book passphrase source is required: "
               + ProtocolOptions.BOOK_KEY_FILE
@@ -154,7 +156,7 @@ final class CliLifecycleMutationArguments {
               + ".");
     }
     if (replacementPassphraseSourceKind == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.NEW_BOOK_KEY_FILE,
           "Exactly one replacement book passphrase source is required: "
               + ProtocolOptions.NEW_BOOK_KEY_FILE
@@ -165,18 +167,18 @@ final class CliLifecycleMutationArguments {
               + ".");
     }
     BookAccess.PassphraseSource currentPassphraseSource =
-        CliBookPassphraseArgumentSupport.passphraseSource(
+        CliBookPassphraseParser.passphraseSource(
             currentPassphraseSourceKind, currentBookKeyFilePath);
     BookAccess.PassphraseSource replacementPassphraseSource =
-        CliBookPassphraseArgumentSupport.passphraseSource(
+        CliBookPassphraseParser.passphraseSource(
             replacementPassphraseSourceKind, replacementBookKeyFilePath);
-    CliBookPathValidationSupport.validateDistinctRekeyPaths(
+    CliBookPathValidator.validateDistinctRekeyPaths(
         bookFilePath, currentPassphraseSource, replacementPassphraseSource);
-    CliBookPathValidationSupport.validateRekeyStandardInputUsage(
+    CliBookPathValidator.validateRekeyStandardInputUsage(
         currentPassphraseSource, replacementPassphraseSource);
     return new CliCommand.RekeyBook(
         new BookAccess(bookFilePath, currentPassphraseSource),
         replacementPassphraseSource,
-        CliArgumentSupport.resolvedOutputMode(outputMode));
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 }

@@ -66,8 +66,7 @@ final class SqlitePostingMapper {
     return new PostingFact(postingId, journalEntry, readPostingLineage(postingRow), provenance);
   }
 
-  static List<JournalLine> journalLines(SqliteNativeStatement lineRows)
-      throws SqliteNativeException {
+  static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
     List<JournalLine> lines = new ArrayList<>();
     while (lineRows.step() == SqliteNativeLibrary.SQLITE_ROW) {
       lines.add(

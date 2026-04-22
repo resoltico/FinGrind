@@ -18,6 +18,7 @@ import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.CommitEntryResult;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
@@ -83,11 +84,13 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.ObjectMapper;
 
 /** Coverage-focused tests for CLI formatting, rendering, and report command dispatch. */
+@NullUnmarked
 class CliCoverageTest {
   private static final String TEST_BOOK_KEY = "cli-coverage-test-book-key";
 
@@ -132,6 +135,10 @@ class CliCoverageTest {
   void queryOutputRenderer_rendersInspectionAccountAndPostingViews() {
     PostingFact postingFact = reversalPostingFact();
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
+    String missingInspection =
+        CliQueryOutputRenderer.renderBookInspectionHuman(
+            Path.of("office/report.sqlite"),
+            new BookInspection.Missing(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
     String existingInspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
@@ -169,6 +176,10 @@ class CliCoverageTest {
         CliQueryOutputRenderer.renderPostingRegisterCsv(
             new PostingPage(List.of(postingFact), 10, Optional.empty()));
 
+    assertTrue(missingInspection.contains("missing"));
+    assertTrue(missingInspection.contains("Migration policy"));
+    assertTrue(missingInspection.contains("Supported book format version"));
+    assertTrue(existingInspection.contains("SQLite applicationId"));
     assertTrue(existingInspection.contains("State"));
     assertTrue(existingInspection.contains("blank-sqlite"));
     assertTrue(initializedInspection.contains("Initialized at"));
@@ -1427,75 +1438,90 @@ class CliCoverageTest {
   /** Minimal workflow stub that only serves deterministic report rejections. */
   private static final class RecordingReportWorkflow implements CliBookWorkflow {
     @Override
-    public OpenBookResult openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
       throw new AssertionError("openBook should not be called in this test");
     }
 
     @Override
-    public RekeyBookResult rekeyBook(
+    public ContractDecision<RekeyBookResult> rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       throw new AssertionError("rekeyBook should not be called in this test");
     }
 
     @Override
-    public DeclareAccountResult declareAccount(
+    public ContractDecision<DeclareAccountResult> declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
       throw new AssertionError("declareAccount should not be called in this test");
     }
 
     @Override
-    public BookInspection inspectBook(BookAccess bookAccess) {
+    public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
       throw new AssertionError("inspectBook should not be called in this test");
     }
 
     @Override
-    public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+    public ContractDecision<ListAccountsResult> listAccounts(
+        BookAccess bookAccess, ListAccountsQuery query) {
       throw new AssertionError("listAccounts should not be called in this test");
     }
 
     @Override
-    public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
+    public ContractDecision<GetPostingResult> getPosting(
+        BookAccess bookAccess, PostingId postingId) {
       throw new AssertionError("getPosting should not be called in this test");
     }
 
     @Override
-    public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
+    public ContractDecision<ListPostingsResult> listPostings(
+        BookAccess bookAccess, ListPostingsQuery query) {
       throw new AssertionError("listPostings should not be called in this test");
     }
 
     @Override
-    public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
+    public ContractDecision<AccountBalanceResult> accountBalance(
+        BookAccess bookAccess, AccountBalanceQuery query) {
       throw new AssertionError("accountBalance should not be called in this test");
     }
 
     @Override
-    public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
-      return new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
+    public ContractDecision<TrialBalanceResult> trialBalance(
+        BookAccess bookAccess, TrialBalanceQuery query) {
+      return accepted(new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()));
     }
 
     @Override
-    public AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query) {
-      return new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized());
+    public ContractDecision<AccountLedgerResult> accountLedger(
+        BookAccess bookAccess, AccountLedgerQuery query) {
+      return accepted(
+          new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()));
     }
 
     @Override
-    public PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query) {
-      return new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized());
+    public ContractDecision<PeriodSummaryResult> periodSummary(
+        BookAccess bookAccess, PeriodSummaryQuery query) {
+      return accepted(
+          new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()));
     }
 
     @Override
-    public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+    public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
       throw new AssertionError("executePlan should not be called in this test");
     }
 
     @Override
-    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<PreflightEntryResult> preflight(
+        BookAccess bookAccess, PostEntryCommand command) {
       throw new AssertionError("preflight should not be called in this test");
     }
 
     @Override
-    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<CommitEntryResult> commit(
+        BookAccess bookAccess, PostEntryCommand command) {
       throw new AssertionError("commit should not be called in this test");
     }
+  }
+
+  private static <T> ContractDecision<T> accepted(T value) {
+    return ContractDecision.accepted(value);
   }
 }

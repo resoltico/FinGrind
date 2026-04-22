@@ -19,7 +19,7 @@ final class SqliteNativeStatement implements AutoCloseable {
 
   private boolean closed;
 
-  SqliteNativeStatement(SqliteNativeDatabase database, String sql) throws SqliteNativeException {
+  SqliteNativeStatement(SqliteNativeDatabase database, String sql) {
     this.database = Objects.requireNonNull(database, "database");
     this.arena = Arena.ofConfined();
     try {
@@ -27,16 +27,13 @@ final class SqliteNativeStatement implements AutoCloseable {
       MemorySegment sqlPointer = arena.allocateFrom(sql);
       SqliteNativeLibrary.prepareStatement(database.handle(), sqlPointer, statementPointer);
       this.statementHandle = statementPointer.get(ValueLayout.ADDRESS, 0);
-    } catch (RuntimeException | Error throwable) {
-      arena.close();
-      throw throwable;
-    } catch (SqliteNativeException exception) {
+    } catch (RuntimeException | Error exception) {
       arena.close();
       throw exception;
     }
   }
 
-  void bindText(int parameterIndex, @Nullable String value) throws SqliteNativeException {
+  void bindText(int parameterIndex, @Nullable String value) {
     if (value == null) {
       SqliteNativeLibrary.bindNull(statementHandle, parameterIndex);
       return;
@@ -46,11 +43,11 @@ final class SqliteNativeStatement implements AutoCloseable {
         statementHandle, parameterIndex, valuePointer, utf8ByteLength(valuePointer));
   }
 
-  void bindInt(int parameterIndex, int value) throws SqliteNativeException {
+  void bindInt(int parameterIndex, int value) {
     SqliteNativeLibrary.bindInt(statementHandle, parameterIndex, value);
   }
 
-  int step() throws SqliteNativeException {
+  int step() {
     return SqliteNativeLibrary.step(database.handle(), statementHandle);
   }
 

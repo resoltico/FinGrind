@@ -29,27 +29,24 @@ final class SqliteNativeLibrary {
 
   private SqliteNativeLibrary() {}
 
-  static SqliteNativeDatabase open(BookAccess bookAccess) throws SqliteNativeException {
+  static SqliteNativeDatabase open(BookAccess bookAccess) {
     return SqliteNativeConnections.open(bookAccess);
   }
 
-  static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase)
-      throws SqliteNativeException {
+  static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase) {
     return SqliteNativeConnections.open(bookPath, bookPassphrase);
   }
 
   static SqliteNativeDatabase open(
-      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode)
-      throws SqliteNativeException {
+      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode) {
     return SqliteNativeConnections.open(bookPath, bookPassphrase, openMode);
   }
 
-  static void close(MemorySegment databaseHandle) throws SqliteNativeException {
+  static void close(MemorySegment databaseHandle) {
     SqliteNativeConnections.close(databaseHandle);
   }
 
-  static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase)
-      throws SqliteNativeException {
+  static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase) {
     SqliteNativeConnections.rekey(database, bookPassphrase);
   }
 
@@ -65,40 +62,36 @@ final class SqliteNativeLibrary {
     return SqliteNativeConnections.overrideSqlite3CloseV2HandleForTesting(sqlite3CloseV2Handle);
   }
 
-  static SqliteNativeStatement prepare(SqliteNativeDatabase database, String sql)
-      throws SqliteNativeException {
+  static SqliteNativeStatement prepare(SqliteNativeDatabase database, String sql) {
     return new SqliteNativeStatement(database, sql);
   }
 
-  static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer)
-      throws SqliteNativeException {
+  static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer) {
     SqliteNativeStatements.executeScript(databaseHandle, sqlPointer);
   }
 
   static int prepareStatement(
-      MemorySegment databaseHandle, MemorySegment sql, MemorySegment statementPointer)
-      throws SqliteNativeException {
+      MemorySegment databaseHandle, MemorySegment sql, MemorySegment statementPointer) {
     return SqliteNativeStatements.prepareStatement(databaseHandle, sql, statementPointer);
   }
 
-  static void bindNull(MemorySegment statementHandle, int parameterIndex)
-      throws SqliteNativeException {
+  static void bindNull(MemorySegment statementHandle, int parameterIndex) {
     SqliteNativeStatements.bindNull(statementHandle, parameterIndex);
   }
 
-  static void bindInt(MemorySegment statementHandle, int parameterIndex, int value)
-      throws SqliteNativeException {
+  static void bindInt(MemorySegment statementHandle, int parameterIndex, int value) {
     SqliteNativeStatements.bindInt(statementHandle, parameterIndex, value);
   }
 
   static void bindText(
-      MemorySegment statementHandle, int parameterIndex, MemorySegment textPointer, int byteLength)
-      throws SqliteNativeException {
+      MemorySegment statementHandle,
+      int parameterIndex,
+      MemorySegment textPointer,
+      int byteLength) {
     SqliteNativeStatements.bindText(statementHandle, parameterIndex, textPointer, byteLength);
   }
 
-  static int step(MemorySegment databaseHandle, MemorySegment statementHandle)
-      throws SqliteNativeException {
+  static int step(MemorySegment databaseHandle, MemorySegment statementHandle) {
     return SqliteNativeStatements.step(databaseHandle, statementHandle);
   }
 
@@ -195,15 +188,15 @@ final class SqliteNativeLibrary {
   }
 
   static int compareVersions(String leftVersion, String rightVersion) {
-    return SqliteNativeRuntimeSupport.compareVersions(leftVersion, rightVersion);
+    return SqliteNativeRuntimePolicy.compareVersions(leftVersion, rightVersion);
   }
 
   static String requireSupportedVersion(String loadedVersion, String libraryMode) {
-    return SqliteNativeRuntimeSupport.requireSupportedVersion(loadedVersion, libraryMode);
+    return SqliteNativeRuntimePolicy.requireSupportedVersion(loadedVersion, libraryMode);
   }
 
   static String requireSupportedSqlite3mcVersion(String loadedVersion, String libraryMode) {
-    return SqliteNativeRuntimeSupport.requireSupportedSqlite3mcVersion(loadedVersion, libraryMode);
+    return SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(loadedVersion, libraryMode);
   }
 
   static void requireSupportedCompileOptions(
@@ -211,12 +204,12 @@ final class SqliteNativeLibrary {
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
       String libraryMode) {
-    SqliteNativeRuntimeSupport.requireSupportedCompileOptions(
+    SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
         compileOptionUsedHandle, loadedSqliteVersion, loadedSqlite3mcVersion, libraryMode);
   }
 
   static boolean compileOptionUsed(MethodHandle compileOptionUsedHandle, String compileOption) {
-    return SqliteNativeRuntimeSupport.compileOptionUsed(compileOptionUsedHandle, compileOption);
+    return SqliteNativeRuntimePolicy.compileOptionUsed(compileOptionUsedHandle, compileOption);
   }
 
   static String resultName(int resultCode) {
@@ -236,17 +229,16 @@ final class SqliteNativeLibrary {
   }
 
   static SqliteLibraryTarget configuredLibraryTarget(@Nullable String configuredLibraryPath) {
-    return SqliteNativeRuntimeSupport.configuredLibraryTarget(configuredLibraryPath);
+    return SqliteNativeRuntimePolicy.configuredLibraryTarget(configuredLibraryPath);
   }
 
   static SqliteLibraryTarget configuredLibraryTarget(
       @Nullable String configuredLibraryPath, @Nullable String bundleHomePath) {
-    return SqliteNativeRuntimeSupport.configuredLibraryTarget(
-        configuredLibraryPath, bundleHomePath);
+    return SqliteNativeRuntimePolicy.configuredLibraryTarget(configuredLibraryPath, bundleHomePath);
   }
 
   static String supportedNativeLibraryFileName() {
-    return SqliteNativeRuntimeSupport.supportedNativeLibraryFileName();
+    return SqliteNativeRuntimePolicy.supportedNativeLibraryFileName();
   }
 
   static void freeSqliteBuffer(MemorySegment pointer, MethodHandle freeHandle) {

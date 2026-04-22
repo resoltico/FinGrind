@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: USER_EXAMPLES
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -13,10 +13,17 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.20.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.20.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.21.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.21.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
+
+The public release bundle does not include `docs/examples/`. The runnable commands below therefore
+use local working files such as `./declare-account-cash.json` and `./basic-posting-request.json`.
+If you are in a source checkout, you can populate those files by copying the matching checked-in
+fixtures under [examples/](./examples/). The command blocks below use POSIX shell line continuation
+for readability; on Windows PowerShell, keep the same launcher, local file names, and command
+order, but use PowerShell line continuation or one-line invocations.
 
 ## Choose A Book Passphrase Source
 
@@ -25,7 +32,7 @@ For humans, the best non-persistent route is the interactive prompt:
 ```bash
 fingrind \
   open-book \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
+  --book-file ./acme.sqlite \
   --book-passphrase-prompt
 ```
 
@@ -34,7 +41,7 @@ For automation, generate a dedicated key file:
 ```bash
 fingrind \
   generate-book-key-file \
-  --book-key-file /tmp/fingrind/keys/acme.book-key
+  --book-key-file ./acme.book-key
 ```
 
 The generated key file contains one non-empty single-line UTF-8 passphrase.
@@ -49,8 +56,14 @@ For pipeline automation without a persistent file:
 printf '%s\n' 'acme-demo-passphrase' | \
   fingrind \
     open-book \
-    --book-file /tmp/fingrind/books/acme/acme.sqlite \
+    --book-file ./acme.sqlite \
     --book-passphrase-stdin
+```
+
+On Windows PowerShell, the same stdin route is:
+
+```powershell
+"acme-demo-passphrase" | fingrind open-book --book-file .\acme.sqlite --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -58,8 +71,8 @@ printf '%s\n' 'acme-demo-passphrase' | \
 ```bash
 fingrind \
   open-book \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key
 ```
 
 One successful response:
@@ -73,8 +86,8 @@ One successful response:
 ```bash
 fingrind \
   inspect-book \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key
 ```
 
 One successful response is checked in at
@@ -87,8 +100,8 @@ with the current binary, and safe for `open-book`, `declare-account`, or `post-e
 ```bash
 fingrind \
   rekey-book \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --new-book-passphrase-prompt
 ```
 
@@ -100,23 +113,27 @@ One successful response:
 
 ## Declare Accounts And Page The Registry
 
+Create these local files first:
+- `./declare-account-cash.json`: copy [examples/declare-account-cash.json](./examples/declare-account-cash.json)
+- `./declare-account-revenue.json`: copy [examples/declare-account-revenue.json](./examples/declare-account-revenue.json)
+
 ```bash
 fingrind \
   declare-account \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/declare-account-cash.json
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./declare-account-cash.json
 
 fingrind \
   declare-account \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/declare-account-revenue.json
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./declare-account-revenue.json
 
 fingrind \
   list-accounts \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --limit 50 \
   --offset 0
 ```
@@ -130,23 +147,25 @@ You can generate a new template at any time:
 
 ```bash
 fingrind \
-  print-request-template > /tmp/fingrind-request.json
+  print-request-template > ./request.json
 ```
 
 For the concrete walkthrough below, reuse the checked-in example request:
 
+- `./basic-posting-request.json`: copy [examples/basic-posting-request.json](./examples/basic-posting-request.json)
+
 ```bash
 fingrind \
   preflight-entry \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/basic-posting-request.json
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./basic-posting-request.json
 
 fingrind \
   post-entry \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/basic-posting-request.json
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./basic-posting-request.json
 ```
 
 One successful preflight response:
@@ -177,17 +196,19 @@ Generate the canonical plan scaffold:
 
 ```bash
 fingrind \
-  print-plan-template > /tmp/fingrind-plan.json
+  print-plan-template > ./plan.json
 ```
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
+- `./ledger-plan-request.json`: copy [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
+
 ```bash
 fingrind \
   execute-plan \
-  --book-file /tmp/fingrind/books/acme/acme-plan.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/ledger-plan-request.json
+  --book-file ./acme-plan.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./ledger-plan-request.json
 ```
 
 That plan:
@@ -207,21 +228,21 @@ Checked-in plan examples:
 ```bash
 fingrind \
   get-posting \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --posting-id 01963c70-8d65-7b56-8a64-3c92745d8f72
 
 fingrind \
   list-postings \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --account-code 1000 \
   --limit 25
 
 fingrind \
   account-balance \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --account-code 1000
 ```
 
@@ -236,8 +257,8 @@ If the posting-history response includes `payload.nextCursor`, pass that opaque 
 ```bash
 fingrind \
   list-postings \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --account-code 1000 \
   --limit 25 \
   --cursor "<nextCursor-from-the-prior-page>"
@@ -248,15 +269,15 @@ fingrind \
 ```bash
 fingrind \
   trial-balance \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --effective-date-to 2026-04-08 \
   --output human
 
 fingrind \
   account-ledger \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --account-code 1000 \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-08 \
@@ -264,19 +285,19 @@ fingrind \
 
 fingrind \
   period-summary \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-08 \
   --output human
 
 fingrind \
   trial-balance \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --effective-date-to 2026-04-08 \
   --output human \
-  --pdf-out /tmp/fingrind/reports/acme-trial-balance.pdf
+  --pdf-out ./acme-trial-balance.pdf
 ```
 
 Checked-in report examples:
@@ -298,9 +319,9 @@ fixtures.
 ```bash
 fingrind \
   preflight-entry \
-  --book-file /tmp/fingrind/books/missing/missing.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/basic-posting-request.json
+  --book-file ./missing.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./basic-posting-request.json
 ```
 
 One deterministic rejection:
@@ -311,12 +332,15 @@ One deterministic rejection:
 
 ## Accounts Must Be Declared First
 
+Create this local file first:
+- `./unknown-account-request.json`: copy [examples/unknown-account-request.json](./examples/unknown-account-request.json)
+
 ```bash
 fingrind \
   preflight-entry \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/unknown-account-request.json
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./unknown-account-request.json
 ```
 
 One deterministic rejection is checked in at
@@ -329,9 +353,9 @@ repair every reported account issue before retrying.
 ```bash
 fingrind \
   post-entry \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/basic-posting-request.json
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./basic-posting-request.json
 ```
 
 One repeat commit response:
@@ -343,12 +367,18 @@ One repeat commit response:
 ## Read The Request From Standard Input
 
 ```bash
-cat docs/examples/basic-posting-request.json | \
+cat ./basic-posting-request.json | \
   fingrind \
     preflight-entry \
-    --book-file /tmp/fingrind/books/stdin/stdin.sqlite \
-    --book-key-file /tmp/fingrind/keys/acme.book-key \
+    --book-file ./stdin.sqlite \
+    --book-key-file ./acme.book-key \
     --request-file -
+```
+
+On Windows PowerShell, the same stdin flow is:
+
+```powershell
+Get-Content .\basic-posting-request.json -Raw | fingrind preflight-entry --book-file .\stdin.sqlite --book-key-file .\acme.book-key --request-file -
 ```
 
 Remember that the selected book must already be initialized and the referenced accounts must
@@ -358,8 +388,11 @@ already be declared before that stdin-driven preflight can succeed.
 
 ## Reversal Request Template
 
+Create this local file first:
+- `./reversal-request.json`: copy [examples/reversal-request.json](./examples/reversal-request.json)
+
 ```bash
-cat docs/examples/reversal-request.json
+cat ./reversal-request.json
 ```
 
 That file is a template. Replace `reversal.priorPostingId` with a real `postingId` returned by an
@@ -368,19 +401,22 @@ earlier commit in the same book, then preflight or commit it:
 ```bash
 fingrind \
   preflight-entry \
-  --book-file /tmp/fingrind/books/reversals/reversals.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/reversal-request.json
+  --book-file ./reversals.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./reversal-request.json
 ```
 
 ## Trigger A Deterministic Invalid Request
 
+Create this local file first:
+- `./invalid-empty-lines-request.json`: copy [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json)
+
 ```bash
 fingrind \
   preflight-entry \
-  --book-file /tmp/fingrind/books/errors/errors.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
-  --request-file docs/examples/invalid-empty-lines-request.json
+  --book-file ./errors.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./invalid-empty-lines-request.json
 ```
 
 One invalid-request response:
@@ -394,8 +430,8 @@ One invalid-request response:
 ```bash
 fingrind \
   list-postings \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/acme.book-key \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
   --cursor definitely-not-a-valid-cursor
 ```
 
@@ -405,13 +441,11 @@ One deterministic error example is checked in at
 ## Wrong Key Fails Deterministically
 
 ```bash
-printf '%s\n' 'wrong-passphrase' > /tmp/fingrind/keys/wrong.book-key
-chmod 600 /tmp/fingrind/keys/wrong.book-key
-
+fingrind generate-book-key-file --book-key-file ./wrong.book-key
 fingrind \
   list-accounts \
-  --book-file /tmp/fingrind/books/acme/acme.sqlite \
-  --book-key-file /tmp/fingrind/keys/wrong.book-key
+  --book-file ./acme.sqlite \
+  --book-key-file ./wrong.book-key
 ```
 
 One deterministic error example is checked in at
@@ -424,7 +458,7 @@ such as `SQLITE_NOTADB` do not leak to callers.
 ```bash
 fingrind \
   open-book \
-  --book-file /tmp/fingrind/books/prompt/prompt.sqlite \
+  --book-file ./prompt.sqlite \
   --book-passphrase-prompt
 ```
 

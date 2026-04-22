@@ -13,7 +13,7 @@ on:
 
 concurrency:
   group: publication-${{ github.workflow }}-${{ inputs.release_tag || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   prepare-release:

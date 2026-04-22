@@ -14,7 +14,7 @@ final class SqliteSessionDatabase {
     return nativeDatabase;
   }
 
-  void executeStatement(String sql) throws SqliteNativeException {
+  void executeStatement(String sql) {
     nativeDatabase.executeStatement(sql);
   }
 }

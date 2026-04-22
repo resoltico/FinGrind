@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -25,6 +25,9 @@ Then choose one of the user, developer, or reference tracks below.
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, exit codes, and runtime requirements
 - [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, deterministic error codes, and response envelopes
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
+
+The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
+Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
 - [examples/declare-account-cash.json](./examples/declare-account-cash.json): minimal account-declaration request for a debit-balance cash account
 - [examples/declare-account-revenue.json](./examples/declare-account-revenue.json): minimal account-declaration request for a credit-balance revenue account

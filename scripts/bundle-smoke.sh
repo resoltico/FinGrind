@@ -29,6 +29,21 @@ require_match() {
     fi
 }
 
+require_java_26() {
+    local java_command=$1
+    local version_output version_token
+
+    version_output="$("${java_command}" --version 2>&1 | tr -d '\r')"
+    version_token="$(printf '%s\n' "${version_output}" | awk 'NR == 1 { print $2 }')"
+    case "${version_token}" in
+        26|26.*) ;;
+        *)
+            printf '%s\n' "${version_output}" >&2
+            die "bundled Java runtime did not report Java 26"
+            ;;
+    esac
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -212,9 +227,7 @@ require_no_match "${bundle_manifest_compact}" '"queryCommands":' \
 require_no_match "${bundle_manifest_compact}" '"writeCommands":' \
     "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
 
-runtime_version_output="$("${bundle_root}/runtime/bin/java" --version | tr -d '\r')"
-require_match "${runtime_version_output}" '^openjdk 26 ' \
-    "bundled Java runtime did not report Java 26"
+require_java_26 "${bundle_root}/runtime/bin/java"
 runtime_modules_output="$("${bundle_root}/runtime/bin/java" --list-modules | tr -d '\r')"
 require_no_match "${runtime_modules_output}" '^jdk\.jlink@' \
     "bundled Java runtime still contains jdk.jlink"
@@ -344,20 +357,26 @@ import sys
 
 payload = json.load(sys.stdin)["payload"]
 environment = payload["environment"]
-query_commands = payload["queryCommands"]
+distribution = environment["distribution"]
+storage = environment["storage"]
+sqlite = environment["sqlite"]
+query_commands = payload["commands"]["query"]
 query_output_modes = payload["requestInput"]["queryOutputModes"]
 error_codes = [descriptor["code"] for descriptor in payload["responseModel"]["errorDescriptors"]]
 
 checks = [
-    (environment["runtimeDistribution"] == "self-contained-bundle", "capabilities output did not report the self-contained bundle runtime"),
-    (environment["publicCliDistribution"] == "self-contained-bundle", "capabilities output did not report the self-contained bundle distribution"),
-    ("windows-x86_64" in environment["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
-    (environment["unsupportedPublicCliOperatingSystems"] == [], "capabilities output did not report the current unsupported public operating systems"),
-    (environment["sqliteLibraryMode"] == "managed-only", "capabilities output did not report the managed-only SQLite runtime mode"),
-    (environment["sqliteLibraryBundleHomeSystemProperty"] == "fingrind.bundle.home", "capabilities output did not report the bundle-home system property"),
-    (environment["sqliteRuntimeStatus"] == "ready", "capabilities output did not report a ready SQLite runtime"),
-    (environment["loadedSqliteVersion"] == "3.53.0", "capabilities output did not report SQLite 3.53.0"),
-    (environment["loadedSqlite3mcVersion"] == "2.3.3", "capabilities output did not report SQLite3 Multiple Ciphers 2.3.3"),
+    (distribution["runtimeDistribution"] == "self-contained-bundle", "capabilities output did not report the self-contained bundle runtime"),
+    (distribution["publicCliDistribution"] == "self-contained-bundle", "capabilities output did not report the self-contained bundle distribution"),
+    ("windows-x86_64" in distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
+    (distribution["unsupportedPublicCliOperatingSystems"] == [], "capabilities output did not report the current unsupported public operating systems"),
+    (storage["storageDriver"] == "sqlite-ffm-sqlite3mc", "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
+    (storage["bookProtectionMode"] == "required", "capabilities output did not report required book protection"),
+    (storage["defaultBookCipher"] == "chacha20", "capabilities output did not report the default chacha20 cipher"),
+    (sqlite["libraryMode"] == "managed-only", "capabilities output did not report the managed-only SQLite runtime mode"),
+    (sqlite["bundleHomeSystemProperty"] == "fingrind.bundle.home", "capabilities output did not report the bundle-home system property"),
+    (sqlite["runtimeStatus"] == "ready", "capabilities output did not report a ready SQLite runtime"),
+    (sqlite["loadedSqliteVersion"] == "3.53.0", "capabilities output did not report SQLite 3.53.0"),
+    (sqlite["loadedSqlite3mcVersion"] == "2.3.3", "capabilities output did not report SQLite3 Multiple Ciphers 2.3.3"),
     ("trial-balance" in query_commands, "capabilities output did not report the trial-balance query command"),
     ("account-ledger" in query_commands, "capabilities output did not report the account-ledger query command"),
     ("period-summary" in query_commands, "capabilities output did not report the period-summary query command"),
@@ -506,8 +525,8 @@ prompt_failure_status=$?
 invalid_request_output="$(run_bundle_command declare-account --book-file "${book_path}" --book-key-file "${replacement_book_key_path}" --request-file "${invalid_request_path}" | tr -d '\r')"
 invalid_request_status=$?
 set -e
-[[ "${invalid_cursor_status}" -eq 2 ]] || die \
-    "bundle acceptance invalid cursor exited with ${invalid_cursor_status} instead of 2"
+[[ "${invalid_cursor_status}" -eq 1 ]] || die \
+    "bundle acceptance invalid cursor exited with ${invalid_cursor_status} instead of 1"
 require_match "${invalid_cursor_output}" '"code"[[:space:]]*:[[:space:]]*"invalid-page-cursor"' \
     "bundle acceptance invalid cursor did not report invalid-page-cursor"
 require_no_match "${invalid_cursor_output}" '"code"[[:space:]]*:[[:space:]]*"runtime-failure"' \
@@ -518,8 +537,8 @@ require_match "${prompt_failure_output}" '"code"[[:space:]]*:[[:space:]]*"intera
     "bundle acceptance prompt-unavailable did not report interactive-prompt-unavailable"
 require_match "${prompt_failure_output}" '--book-passphrase-stdin' \
     "bundle acceptance prompt-unavailable did not report a repair hint"
-[[ "${invalid_request_status}" -eq 2 ]] || die \
-    "bundle acceptance invalid request exited with ${invalid_request_status} instead of 2"
+[[ "${invalid_request_status}" -eq 1 ]] || die \
+    "bundle acceptance invalid request exited with ${invalid_request_status} instead of 1"
 require_match "${invalid_request_output}" '"code"[[:space:]]*:[[:space:]]*"invalid-request"' \
     "bundle acceptance invalid request did not report invalid-request"
 require_match "${invalid_request_output}" 'Unexpected fields: nonsenseOne, nonsenseTwo' \

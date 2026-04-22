@@ -1,6 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.cli.CliFuzzSupport;
+import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
@@ -11,43 +11,43 @@ final class JazzerRequestReplay {
 
   static ReplayOutcome replayCliRequest(byte[] input) {
     try {
-      PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
+      PostEntryCommand command = CliFuzzFixtures.readPostEntryCommand(input);
       return new ReplayOutcome.Success(
           JazzerHarness.cliRequest().key(),
-          JazzerReplayDetailsSupport.cliRequestDetails(
-              command, "PARSED", JazzerReplayDetailsSupport.normalizedMessage(null)));
+          JazzerReplayDetailsMapper.cliRequestDetails(
+              command, "PARSED", JazzerReplayDetailsMapper.normalizedMessage(null)));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.cliRequest().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsSupport.normalizedMessage(expected),
-          JazzerReplayDetailsSupport.cliRequestFailureDetails("INVALID_REQUEST", expected));
+          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayDetailsMapper.cliRequestFailureDetails("INVALID_REQUEST", expected));
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsSupport.unexpectedFailure(
+      return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.cliRequest(),
           unexpected,
-          JazzerReplayDetailsSupport.cliRequestFailureDetails("UNEXPECTED_FAILURE", unexpected));
+          JazzerReplayDetailsMapper.cliRequestFailureDetails("UNEXPECTED_FAILURE", unexpected));
     }
   }
 
   static ReplayOutcome replayLedgerPlanRequest(byte[] input) {
     try {
-      LedgerPlan plan = CliFuzzSupport.readLedgerPlan(input);
+      LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(input);
       return new ReplayOutcome.Success(
           JazzerHarness.ledgerPlanRequest().key(),
-          JazzerReplayDetailsSupport.ledgerPlanDetails(
-              plan, "PARSED", JazzerReplayDetailsSupport.normalizedMessage(null)));
+          JazzerReplayDetailsMapper.ledgerPlanDetails(
+              plan, "PARSED", JazzerReplayDetailsMapper.normalizedMessage(null)));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.ledgerPlanRequest().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsSupport.normalizedMessage(expected),
-          JazzerReplayDetailsSupport.ledgerPlanFailureDetails("INVALID_REQUEST", expected));
+          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayDetailsMapper.ledgerPlanFailureDetails("INVALID_REQUEST", expected));
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsSupport.unexpectedFailure(
+      return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.ledgerPlanRequest(),
           unexpected,
-          JazzerReplayDetailsSupport.ledgerPlanFailureDetails("UNEXPECTED_FAILURE", unexpected));
+          JazzerReplayDetailsMapper.ledgerPlanFailureDetails("UNEXPECTED_FAILURE", unexpected));
     }
   }
 }

@@ -30,17 +30,18 @@ final class CliReportArguments {
   static @Nullable LocalDate requireDateOption(
       @Nullable LocalDate currentValue, ListIterator<String> argumentIterator, String optionName) {
     if (currentValue != null) {
-      throw CliArgumentSupport.invalid(optionName, "Duplicate argument: " + optionName);
+      throw CliArgumentValueParser.invalid(optionName, "Duplicate argument: " + optionName);
     }
-    return CliArgumentSupport.parseLocalDateOption(
-        CliArgumentSupport.requireValue(argumentIterator, optionName), optionName);
+    return CliArgumentValueParser.parseLocalDateOption(
+        CliArgumentValueParser.requireValue(argumentIterator, optionName), optionName);
   }
 
   static @Nullable OutputMode requireReportOutputMode(
       @Nullable OutputMode currentOutputMode, ListIterator<String> argumentIterator) {
-    return CliArgumentSupport.requireOutputMode(
+    return CliArgumentValueParser.requireOutputMode(
         currentOutputMode,
-        CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-        CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
+        CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+        CliArgumentValueParser.supportedOutputModes(
+            OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
   }
 }

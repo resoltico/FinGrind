@@ -55,9 +55,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link BookReadService}. */
+@NullUnmarked
 class BookReadServiceTest {
   private static final Instant FIXED_INSTANT = Instant.parse("2026-04-07T10:15:30Z");
   private static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-04-07");

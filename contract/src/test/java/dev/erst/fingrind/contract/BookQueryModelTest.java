@@ -31,9 +31,11 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for query-side model records and sealed families. */
+@NullUnmarked
 class BookQueryModelTest {
   @Test
   void accountBalanceQuery_rejectsNullOptionalsAndRejectsDescendingDateRange() {
@@ -373,7 +375,7 @@ class BookQueryModelTest {
   }
 
   private static <T> Optional<T> nullOptional() {
-    return Optional.class.cast(null);
+    return null;
   }
 
   private static CommittedProvenance committedProvenance(String idempotencyKey) {

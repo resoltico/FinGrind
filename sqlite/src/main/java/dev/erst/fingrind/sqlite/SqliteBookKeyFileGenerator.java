@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -35,14 +35,34 @@ public final class SqliteBookKeyFileGenerator {
 
   /** Creates one new key file and returns non-secret metadata about the created artifact. */
   public static GeneratedKeyFile generate(Path bookKeyFilePath) {
-    return generate(bookKeyFilePath, SECURE_RANDOM, SqliteBookKeyFileGenerator::writeAndVerifyFile);
+    return generateDecision(bookKeyFilePath).requireAccepted();
+  }
+
+  /** Creates one new key file and returns the explicit accepted/rejected result. */
+  public static ContractDecision<GeneratedKeyFile> generateDecision(Path bookKeyFilePath) {
+    return generateDecision(
+        bookKeyFilePath, SECURE_RANDOM, SqliteBookKeyFileGenerator::writeAndVerifyFile);
   }
 
   static GeneratedKeyFile generate(Path bookKeyFilePath, SecureRandom secureRandom) {
-    return generate(bookKeyFilePath, secureRandom, SqliteBookKeyFileGenerator::writeAndVerifyFile);
+    return generateDecision(bookKeyFilePath, secureRandom).requireAccepted();
   }
 
   static GeneratedKeyFile generate(
+      Path bookKeyFilePath,
+      SecureRandom secureRandom,
+      GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
+    return generateDecision(bookKeyFilePath, secureRandom, generatedKeyFileMaterializer)
+        .requireAccepted();
+  }
+
+  static ContractDecision<GeneratedKeyFile> generateDecision(
+      Path bookKeyFilePath, SecureRandom secureRandom) {
+    return generateDecision(
+        bookKeyFilePath, secureRandom, SqliteBookKeyFileGenerator::writeAndVerifyFile);
+  }
+
+  static ContractDecision<GeneratedKeyFile> generateDecision(
       Path bookKeyFilePath,
       SecureRandom secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
@@ -54,14 +74,21 @@ public final class SqliteBookKeyFileGenerator {
     boolean created = false;
     try {
       ensureParentDirectory(normalizedPath);
-      createFile(normalizedPath);
+      ContractDecision<Path> createdFile = createFile(normalizedPath);
+      switch (createdFile) {
+        case ContractDecision.Accepted<Path> _ -> {}
+        case ContractDecision.Rejected<Path>(var failure) -> {
+          return ContractDecision.rejected(failure);
+        }
+      }
       created = true;
       generatedKeyFileMaterializer.materialize(normalizedPath, encodedPassphrase);
-      return new GeneratedKeyFile(
-          normalizedPath,
-          GENERATED_ENCODING,
-          GENERATED_ENTROPY_BITS,
-          SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath));
+      return ContractDecision.accepted(
+          new GeneratedKeyFile(
+              normalizedPath,
+              GENERATED_ENCODING,
+              GENERATED_ENTROPY_BITS,
+              SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath)));
     } catch (IOException exception) {
       if (created) {
         deleteQuietly(normalizedPath);
@@ -76,7 +103,7 @@ public final class SqliteBookKeyFileGenerator {
   private static void writeAndVerifyFile(Path normalizedPath, byte[] encodedPassphrase)
       throws IOException {
     writeFile(normalizedPath, encodedPassphrase);
-    SqliteBookKeyFile.requireSecureKeyFile(normalizedPath);
+    SqliteBookKeyFile.requireSecureKeyFile(normalizedPath).requireAccepted();
   }
 
   private static Path normalize(Path bookKeyFilePath) {
@@ -88,19 +115,19 @@ public final class SqliteBookKeyFileGenerator {
     SqliteBookKeyFileSecurity.ensureSecureParentDirectory(normalizedPath);
   }
 
-  private static void createFile(Path normalizedPath) throws IOException {
+  private static ContractDecision<Path> createFile(Path normalizedPath) throws IOException {
     try {
       SqliteBookKeyFileSecurity.createSecureEmptyFile(normalizedPath);
+      return ContractDecision.accepted(normalizedPath);
     } catch (FileAlreadyExistsException exception) {
-      throw new ContractErrorException(
-          ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS,
-          "The FinGrind book key file already exists and will not be overwritten: "
-              + normalizedPath,
-          "Choose a different destination path for "
-              + ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)
-              + ", or remove the existing file yourself before rerunning.",
-          null,
-          exception);
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.failure(
+              "The FinGrind book key file already exists and will not be overwritten: "
+                  + normalizedPath,
+              "Choose a different destination path for "
+                  + ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)
+                  + ", or remove the existing file yourself before rerunning.",
+              null));
     }
   }
 

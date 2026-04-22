@@ -27,11 +27,11 @@ final class CliReportPayloadMapper {
         report.account().declaredAt().toString(),
         report.effectiveDateRange().effectiveDateFrom().map(Object::toString).orElse(null),
         report.effectiveDateRange().effectiveDateTo().map(Object::toString).orElse(null),
-        report.openingBalances().stream().map(CliPayloadSupport::balancePayload).toList(),
+        report.openingBalances().stream().map(CliPayloadAssembler::balancePayload).toList(),
         report.entries().stream()
             .map(entry -> accountLedgerEntryPayload(report.account(), entry))
             .toList(),
-        report.closingBalances().stream().map(CliPayloadSupport::balancePayload).toList());
+        report.closingBalances().stream().map(CliPayloadAssembler::balancePayload).toList());
   }
 
   static CliReportJsonModels.PeriodSummaryPayload periodSummaryPayload(PeriodSummaryReport report) {
@@ -42,7 +42,7 @@ final class CliReportPayloadMapper {
         report.postingLineCount(),
         report.accountsTouched(),
         report.currencyTotals().stream()
-            .map(summary -> CliPayloadSupport.balancePayload(summary.totals()))
+            .map(summary -> CliPayloadAssembler.balancePayload(summary.totals()))
             .toList(),
         report.accountActivity().stream()
             .map(CliReportPayloadMapper::periodAccountActivityPayload)

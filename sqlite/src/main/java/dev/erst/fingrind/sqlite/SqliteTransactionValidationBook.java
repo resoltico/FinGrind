@@ -14,12 +14,12 @@ import java.util.Set;
 /** Transaction-scoped validation view that rechecks posting invariants inside SQLite writes. */
 final class SqliteTransactionValidationBook implements PostingValidationBook {
   private final SqliteNativeDatabase activeDatabase;
-  private final SqlitePostingReadSupport postingReadSupport;
+  private final SqlitePostingReader postingReader;
 
   SqliteTransactionValidationBook(
-      SqliteNativeDatabase activeDatabase, SqlitePostingReadSupport postingReadSupport) {
+      SqliteNativeDatabase activeDatabase, SqlitePostingReader postingReader) {
     this.activeDatabase = Objects.requireNonNull(activeDatabase, "activeDatabase");
-    this.postingReadSupport = Objects.requireNonNull(postingReadSupport, "postingReadSupport");
+    this.postingReader = Objects.requireNonNull(postingReader, "postingReader");
   }
 
   @Override
@@ -28,7 +28,7 @@ final class SqliteTransactionValidationBook implements PostingValidationBook {
       return SqliteBookState.INITIALIZED_FINGRIND
           == SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase).state();
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure("Failed to query SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
@@ -40,9 +40,9 @@ final class SqliteTransactionValidationBook implements PostingValidationBook {
   @Override
   public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
     try {
-      return SqliteStatementQuerySupport.findAccounts(activeDatabase, accountCodes);
+      return SqliteStatementQueries.findAccounts(activeDatabase, accountCodes);
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure("Failed to query SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
@@ -67,11 +67,11 @@ final class SqliteTransactionValidationBook implements PostingValidationBook {
   }
 
   private Optional<PostingFact> findPostingWithBinder(
-      String sql, SqliteStatementQuerySupport.Binder binder) {
+      String sql, SqliteStatementQueries.Binder binder) {
     try {
-      return postingReadSupport.findOnePosting(activeDatabase, sql, binder);
+      return postingReader.findOnePosting(activeDatabase, sql, binder);
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure("Failed to query SQLite book.", exception);
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 }

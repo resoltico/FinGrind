@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-/** Checked failure raised by the in-process SQLite native adapter. */
-final class SqliteNativeException extends Exception {
+/** Structured failure raised by the in-process SQLite native adapter. */
+final class SqliteNativeException extends RuntimeException {
   private static final long serialVersionUID = 1L;
 
   private final int resultCode;

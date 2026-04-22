@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.CommitEntryResult;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.GetPostingResult;
@@ -30,10 +31,12 @@ import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
+import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import dev.erst.fingrind.sqlite.SqliteStoreAccessMode;
 import java.time.Clock;
 import java.util.Objects;
+import java.util.function.Function;
 
 /** SQLite-backed CLI workflow that opens one book session per command. */
 final class SqliteCliBookWorkflow implements CliBookWorkflow {
@@ -46,177 +49,206 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   }
 
   @Override
-  public OpenBookResult openBook(BookAccess bookAccess) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_WRITE_CREATE,
-            CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
-      return new BookAdministrationService(bookSession.administrationSession(), clock).openBook();
-    }
+  public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_WRITE_CREATE,
+        CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET,
+        bookSession ->
+            new BookAdministrationService(bookSession.administrationSession(), clock).openBook());
   }
 
   @Override
-  public RekeyBookResult rekeyBook(
+  public ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
-    try (SqlitePostingFactStore bookSession =
-            openBookSession(
-                bookAccess,
-                SqliteStoreAccessMode.READ_WRITE_EXISTING,
-                CliBookPassphraseResolver.PromptStyle.SINGLE);
-        var replacementPassphrase =
-            passphraseResolver.resolve(
-                bookAccess.bookFilePath(),
-                replacementPassphraseSource,
-                CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)) {
-      return bookSession.rekeyBook(replacementPassphrase);
-    }
+    return withBookSessionDecision(
+        bookAccess,
+        SqliteStoreAccessMode.READ_WRITE_EXISTING,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession ->
+            passphraseResolver
+                .resolve(
+                    bookAccess.bookFilePath(),
+                    replacementPassphraseSource,
+                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
+                .fold(
+                    replacementPassphrase -> {
+                      try (SqliteBookPassphrase ignored = replacementPassphrase) {
+                        return ContractDecision.accepted(
+                            bookSession.rekeyBook(replacementPassphrase));
+                      }
+                    },
+                    ContractDecision::rejected));
   }
 
   @Override
-  public DeclareAccountResult declareAccount(BookAccess bookAccess, DeclareAccountCommand command) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_WRITE_EXISTING,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookAdministrationService(bookSession.administrationSession(), clock)
-          .declareAccount(command);
-    }
+  public ContractDecision<DeclareAccountResult> declareAccount(
+      BookAccess bookAccess, DeclareAccountCommand command) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_WRITE_EXISTING,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession ->
+            new BookAdministrationService(bookSession.administrationSession(), clock)
+                .declareAccount(command));
   }
 
   @Override
-  public BookInspection inspectBook(BookAccess bookAccess) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).inspectBook();
-    }
+  public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).inspectBook());
   }
 
   @Override
-  public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).listAccounts(query);
-    }
+  public ContractDecision<ListAccountsResult> listAccounts(
+      BookAccess bookAccess, ListAccountsQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).listAccounts(query));
   }
 
   @Override
-  public GetPostingResult getPosting(
+  public ContractDecision<GetPostingResult> getPosting(
       BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).getPosting(postingId);
-    }
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).getPosting(postingId));
   }
 
   @Override
-  public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).listPostings(query);
-    }
+  public ContractDecision<ListPostingsResult> listPostings(
+      BookAccess bookAccess, ListPostingsQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).listPostings(query));
   }
 
   @Override
-  public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).accountBalance(query);
-    }
+  public ContractDecision<AccountBalanceResult> accountBalance(
+      BookAccess bookAccess, AccountBalanceQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).accountBalance(query));
   }
 
   @Override
-  public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).trialBalance(query);
-    }
+  public ContractDecision<TrialBalanceResult> trialBalance(
+      BookAccess bookAccess, TrialBalanceQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).trialBalance(query));
   }
 
   @Override
-  public AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).accountLedger(query);
-    }
+  public ContractDecision<AccountLedgerResult> accountLedger(
+      BookAccess bookAccess, AccountLedgerQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).accountLedger(query));
   }
 
   @Override
-  public PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new BookReadService(bookSession.readSession()).periodSummary(query);
-    }
+  public ContractDecision<PeriodSummaryResult> periodSummary(
+      BookAccess bookAccess, PeriodSummaryQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession -> new BookReadService(bookSession.readSession()).periodSummary(query));
   }
 
   @Override
-  public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+  public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
     boolean initializesBook = plan.beginsWithOpenBook();
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.PLAN_EXECUTION,
-            initializesBook
-                ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
-                : CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
-          .execute(plan);
-    }
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.PLAN_EXECUTION,
+        initializesBook
+            ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
+            : CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession ->
+            new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
+                .execute(plan));
   }
 
   @Override
-  public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_ONLY,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return postingApplicationService(bookSession.postingSession(), clock).preflight(command);
-    }
+  public ContractDecision<PreflightEntryResult> preflight(
+      BookAccess bookAccess, PostEntryCommand command) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_ONLY,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession ->
+            postingApplicationService(bookSession.postingSession(), clock).preflight(command));
   }
 
   @Override
-  public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
-    try (SqlitePostingFactStore bookSession =
-        openBookSession(
-            bookAccess,
-            SqliteStoreAccessMode.READ_WRITE_EXISTING,
-            CliBookPassphraseResolver.PromptStyle.SINGLE)) {
-      return postingApplicationService(bookSession.postingSession(), clock).commit(command);
-    }
+  public ContractDecision<CommitEntryResult> commit(
+      BookAccess bookAccess, PostEntryCommand command) {
+    return withBookSession(
+        bookAccess,
+        SqliteStoreAccessMode.READ_WRITE_EXISTING,
+        CliBookPassphraseResolver.PromptStyle.SINGLE,
+        bookSession ->
+            postingApplicationService(bookSession.postingSession(), clock).commit(command));
   }
 
-  private SqlitePostingFactStore openBookSession(
+  private ContractDecision<SqlitePostingFactStore> openBookSession(
       BookAccess bookAccess,
       SqliteStoreAccessMode accessMode,
       CliBookPassphraseResolver.PromptStyle promptStyle) {
-    return new SqlitePostingFactStore(
-        bookAccess.bookFilePath(), passphraseResolver.resolve(bookAccess, promptStyle), accessMode);
+    return passphraseResolver
+        .resolve(bookAccess, promptStyle)
+        .fold(
+            bookPassphrase ->
+                SqlitePostingFactStore.openResolved(
+                    bookAccess.bookFilePath(), bookPassphrase, accessMode),
+            ContractDecision::rejected);
+  }
+
+  private <T> ContractDecision<T> withBookSession(
+      BookAccess bookAccess,
+      SqliteStoreAccessMode accessMode,
+      CliBookPassphraseResolver.PromptStyle promptStyle,
+      Function<SqlitePostingFactStore, T> work) {
+    return openBookSession(bookAccess, accessMode, promptStyle)
+        .fold(
+            bookSession -> {
+              try (SqlitePostingFactStore ignored = bookSession) {
+                return ContractDecision.accepted(work.apply(bookSession));
+              }
+            },
+            ContractDecision::rejected);
+  }
+
+  private <T> ContractDecision<T> withBookSessionDecision(
+      BookAccess bookAccess,
+      SqliteStoreAccessMode accessMode,
+      CliBookPassphraseResolver.PromptStyle promptStyle,
+      Function<SqlitePostingFactStore, ContractDecision<T>> work) {
+    return openBookSession(bookAccess, accessMode, promptStyle)
+        .fold(
+            bookSession -> {
+              try (SqlitePostingFactStore ignored = bookSession) {
+                return work.apply(bookSession);
+              }
+            },
+            ContractDecision::rejected);
   }
 
   private static PostingApplicationService postingApplicationService(

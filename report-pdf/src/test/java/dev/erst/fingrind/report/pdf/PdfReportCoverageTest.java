@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -47,7 +48,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.20.0",
+                "0.21.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -63,7 +64,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.20.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.21.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -72,7 +73,8 @@ class PdfReportCoverageTest {
                 factory.create(
                     "Trial Balance", BOOK_PATH, GENERATED_AT, PageOrientation.LANDSCAPE));
 
-    assertTrue(exception.getMessage().contains("Missing bundled font resource"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage()).contains("Missing bundled font resource"));
   }
 
   @Test
@@ -168,7 +170,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.20.0");
+    return new PdfDocumentFactory("FinGrind", "0.21.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {

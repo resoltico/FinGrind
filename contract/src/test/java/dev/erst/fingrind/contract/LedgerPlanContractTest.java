@@ -19,9 +19,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the canonical ledger-plan contract. */
+@NullUnmarked
 class LedgerPlanContractTest {
   @Test
   void ledgerPlan_validatesMandatoryShape() {

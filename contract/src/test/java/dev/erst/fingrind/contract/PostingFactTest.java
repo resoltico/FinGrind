@@ -23,9 +23,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostingFact}. */
+@NullUnmarked
 class PostingFactTest {
   @Test
   void constructor_acceptsValidFact() {

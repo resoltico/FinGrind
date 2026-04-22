@@ -51,27 +51,24 @@ public sealed interface BookInspection
       };
     }
 
+    /** Returns whether this status identifies a fully initialized FinGrind book. */
+    public boolean initialized() {
+      return this == INITIALIZED;
+    }
+
+    /** Returns whether the current FinGrind binary can operate on this state without migration. */
+    public boolean compatibleWithCurrentBinary() {
+      return this == INITIALIZED;
+    }
+
     /** Returns whether `open-book` may initialize an existing file in this state. */
-    boolean canInitializeWithOpenBook() {
+    public boolean canInitializeWithOpenBook() {
       return this == BLANK_SQLITE;
     }
   }
 
   /** Stable lifecycle state for this inspection snapshot. */
   Status status();
-
-  /** Whether the selected book already carries the explicit FinGrind initialization marker. */
-  default boolean initialized() {
-    return false;
-  }
-
-  /** Whether the current binary can safely operate on the selected book as-is. */
-  default boolean compatibleWithCurrentBinary() {
-    return false;
-  }
-
-  /** Whether `open-book` can initialize the selected path in place. */
-  boolean canInitializeWithOpenBook();
 
   /** Book format version supported by the current FinGrind binary. */
   int supportedBookFormatVersion();
@@ -109,11 +106,6 @@ public sealed interface BookInspection
     public Status status() {
       return Status.MISSING;
     }
-
-    @Override
-    public boolean canInitializeWithOpenBook() {
-      return true;
-    }
   }
 
   /** Shared inspection state for existing non-initialized or incompatible SQLite files. */
@@ -136,11 +128,6 @@ public sealed interface BookInspection
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
       Objects.requireNonNull(migrationPolicy, "migrationPolicy");
     }
-
-    @Override
-    public boolean canInitializeWithOpenBook() {
-      return status.canInitializeWithOpenBook();
-    }
   }
 
   /** Inspection state for a fully initialized FinGrind book. */
@@ -162,21 +149,6 @@ public sealed interface BookInspection
     @Override
     public Status status() {
       return Status.INITIALIZED;
-    }
-
-    @Override
-    public boolean initialized() {
-      return true;
-    }
-
-    @Override
-    public boolean compatibleWithCurrentBinary() {
-      return true;
-    }
-
-    @Override
-    public boolean canInitializeWithOpenBook() {
-      return false;
     }
   }
 }

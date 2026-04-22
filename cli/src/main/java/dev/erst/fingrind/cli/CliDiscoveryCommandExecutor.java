@@ -50,11 +50,11 @@ final class CliDiscoveryCommandExecutor {
   }
 
   private ContractDiscovery.ApplicationIdentity applicationIdentity() {
-    return CliRuntimeContractSupport.applicationIdentity(metadata);
+    return CliRuntimeContractDescriptors.applicationIdentity(metadata);
   }
 
   private ContractDiscovery.EnvironmentDescriptor environmentDescriptor() {
-    return CliRuntimeContractSupport.environmentDescriptor(
+    return CliRuntimeContractDescriptors.environmentDescriptor(
         SqliteRuntime.probe(), FinGrindCli.runtimeDistribution());
   }
 }

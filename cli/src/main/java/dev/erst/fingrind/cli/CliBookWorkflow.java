@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.CommitEntryResult;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.GetPostingResult;
@@ -28,45 +29,50 @@ import dev.erst.fingrind.contract.TrialBalanceResult;
 /** Execution seam for routing CLI commands through the selected book adapter. */
 interface CliBookWorkflow {
   /** Opens the selected book and installs the canonical FinGrind schema when possible. */
-  OpenBookResult openBook(BookAccess bookAccess);
+  ContractDecision<OpenBookResult> openBook(BookAccess bookAccess);
 
   /** Rotates the passphrase that protects one existing book file. */
-  RekeyBookResult rekeyBook(
+  ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource);
 
   /** Declares or reactivates one account inside the selected book. */
-  DeclareAccountResult declareAccount(BookAccess bookAccess, DeclareAccountCommand command);
+  ContractDecision<DeclareAccountResult> declareAccount(
+      BookAccess bookAccess, DeclareAccountCommand command);
 
   /** Inspects one selected book for lifecycle and compatibility state. */
-  BookInspection inspectBook(BookAccess bookAccess);
+  ContractDecision<BookInspection> inspectBook(BookAccess bookAccess);
 
   /** Lists the declared accounts currently stored in the selected book. */
-  ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query);
+  ContractDecision<ListAccountsResult> listAccounts(BookAccess bookAccess, ListAccountsQuery query);
 
   /** Returns one committed posting by durable posting identity. */
-  GetPostingResult getPosting(BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId);
+  ContractDecision<GetPostingResult> getPosting(
+      BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId);
 
   /** Lists one filtered page of committed postings. */
-  ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query);
+  ContractDecision<ListPostingsResult> listPostings(BookAccess bookAccess, ListPostingsQuery query);
 
   /** Computes per-currency balances for one declared account. */
-  AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query);
+  ContractDecision<AccountBalanceResult> accountBalance(
+      BookAccess bookAccess, AccountBalanceQuery query);
 
   /** Computes the trial balance for one selected book. */
-  TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query);
+  ContractDecision<TrialBalanceResult> trialBalance(BookAccess bookAccess, TrialBalanceQuery query);
 
   /** Computes the running ledger for one selected account. */
-  AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query);
+  ContractDecision<AccountLedgerResult> accountLedger(
+      BookAccess bookAccess, AccountLedgerQuery query);
 
   /** Computes the bounded period summary for one selected book. */
-  PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query);
+  ContractDecision<PeriodSummaryResult> periodSummary(
+      BookAccess bookAccess, PeriodSummaryQuery query);
 
   /** Executes one ordered AI-agent ledger plan atomically. */
-  LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan);
+  ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan);
 
   /** Validates a posting request without mutating the selected book. */
-  PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command);
+  ContractDecision<PreflightEntryResult> preflight(BookAccess bookAccess, PostEntryCommand command);
 
   /** Commits a posting request into the selected book. */
-  CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command);
+  ContractDecision<CommitEntryResult> commit(BookAccess bookAccess, PostEntryCommand command);
 }

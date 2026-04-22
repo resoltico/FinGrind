@@ -11,7 +11,7 @@
 #   coverage -> per-module and aggregated JaCoCo HTML/XML reports
 #
 # Stage 2 runs the nested Jazzer verification build:
-#   jazzer check -> deterministic Jazzer support tests plus committed-seed regression replay
+#   jazzer check -> deterministic Jazzer tests plus committed-seed regression replay
 #
 # CI runs only the root check task (verification without report generation).
 #
@@ -23,8 +23,13 @@
 #                              output-mode selection, PDF artifact export, and deterministic-failure
 #                              behavior without ambient Java or a preconfigured SQLite library path
 #
-# Stage 5 syntax-checks the release-surface shell scripts:
+# Stage 5 syntax-checks the release-surface shell scripts, runs targeted shell regressions, and
+# verifies the source-checkout managed SQLite runtime contract through the same helper scripts used
+# by the GitHub workflows:
 #   bash -n check.sh scripts/*.sh jazzer/bin/*
+#   scripts/test-check-process-support.sh
+#   scripts/test-verify-managed-sqlite-runtime.sh
+#   scripts/verify-managed-sqlite-runtime.sh
 #
 # Stage 6 exercises the Docker release surface from a non-default working directory:
 #   scripts/docker-smoke.sh -> build the image and verify discovery, explicit book lifecycle,
@@ -101,6 +106,7 @@ resolve_script_dir() {
 
 readonly repo_root="$(resolve_script_dir)"
 readonly gradlew="${repo_root}/gradlew"
+readonly process_support_script="${repo_root}/scripts/check-process-support.sh"
 current_stage_id='startup'
 current_stage_label='starting'
 current_stage_log_path=''
@@ -113,6 +119,10 @@ readonly jazzer_regression_target_count=3
 readonly diagnostics_command_timeout_seconds=5
 readonly diagnostics_process_capture_limit=6
 readonly stall_exit_code=124
+
+[[ -f "${process_support_script}" ]] || die "missing process support helper at ${process_support_script}"
+# shellcheck source=/dev/null
+source "${process_support_script}"
 
 format_duration() {
     local total_seconds=$1
@@ -140,7 +150,7 @@ print_usage() {
         '  2. jazzer check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
-        '  5. bash -n check.sh scripts/*.sh jazzer/bin/*' \
+        '  5. bash -n check.sh scripts/*.sh jazzer/bin/* && scripts/test-check-process-support.sh && scripts/test-verify-managed-sqlite-runtime.sh && scripts/verify-managed-sqlite-runtime.sh' \
         '  6. scripts/docker-smoke.sh (Docker acceptance workflow)' \
         '' \
         'Supported options:' \
@@ -286,16 +296,16 @@ stage_progress_summary_quality_gates() {
 stage_progress_summary_jazzer() {
     local project_dir=$1
     local log_path=$2
-    local support_total_classes
-    local completed_support_classes
+    local deterministic_total_classes
+    local completed_deterministic_classes
     local finished_regression_targets
     local latest_pulse
 
-    support_total_classes="$(
+    deterministic_total_classes="$(
         find "${project_dir}/src/test/java" -type f -name '*Test.java' | wc -l | tr -d '[:space:]'
     )"
-    completed_support_classes="$(
-        grep -c '^\[JAZZER-PULSE\] support-tests phase=class-complete ' "${log_path}" 2>/dev/null || true
+    completed_deterministic_classes="$(
+        grep -c '^\[JAZZER-PULSE\] deterministic-tests phase=class-complete ' "${log_path}" 2>/dev/null || true
     )"
     finished_regression_targets="$(
         grep -c '^\[JAZZER-PULSE\] harness-class=.* phase=finish ' "${log_path}" 2>/dev/null || true
@@ -305,9 +315,9 @@ stage_progress_summary_jazzer() {
         latest_pulse="$(latest_task_line "${log_path}")"
     fi
 
-    printf 'support-classes=%s/%s regression-targets=%s/%s latest=%s' \
-        "${completed_support_classes}" \
-        "${support_total_classes}" \
+    printf 'deterministic-classes=%s/%s regression-targets=%s/%s latest=%s' \
+        "${completed_deterministic_classes}" \
+        "${deterministic_total_classes}" \
         "${finished_regression_targets}" \
         "${jazzer_regression_target_count}" \
         "$(compact_text "${latest_pulse}")"
@@ -369,38 +379,6 @@ stage_progress_marker() {
     esac
 }
 
-collect_descendant_pids() {
-    local parent_pid=$1
-    local child_pid=''
-    while IFS= read -r child_pid; do
-        [[ -n "${child_pid}" ]] || continue
-        printf '%s\n' "${child_pid}"
-        collect_descendant_pids "${child_pid}"
-    done < <(pgrep -P "${parent_pid}" 2>/dev/null || true)
-}
-
-capture_with_timeout() {
-    local output_path=$1
-    local timeout_seconds=$2
-    shift 2
-
-    (
-        "$@" >"${output_path}" 2>&1
-    ) &
-    local command_pid=$!
-    (
-        sleep "${timeout_seconds}"
-        if kill -0 "${command_pid}" 2>/dev/null; then
-            kill -TERM "${command_pid}" 2>/dev/null || true
-        fi
-    ) &
-    local watchdog_pid=$!
-
-    wait "${command_pid}" 2>/dev/null || true
-    kill "${watchdog_pid}" 2>/dev/null || true
-    wait "${watchdog_pid}" 2>/dev/null || true
-}
-
 capture_stage_diagnostics() {
     local stage_id=$1
     local child_pid=$2
@@ -422,12 +400,7 @@ capture_stage_diagnostics() {
     while IFS= read -r process_id; do
         [[ -n "${process_id}" ]] || continue
         process_ids+=("${process_id}")
-    done < <(
-        {
-            printf '%s\n' "${child_pid}"
-            collect_descendant_pids "${child_pid}"
-        } | awk '!seen[$0]++'
-    )
+    done < <(collect_process_tree_pids "${child_pid}")
 
     {
         printf 'process_count=%s\n' "${#process_ids[@]}"
@@ -471,35 +444,7 @@ capture_stage_diagnostics() {
 
 terminate_stage_process() {
     local child_pid=$1
-    local process_ids=()
-    local process_id=''
-    while IFS= read -r process_id; do
-        [[ -n "${process_id}" ]] || continue
-        process_ids+=("${process_id}")
-    done < <(
-        {
-            printf '%s\n' "${child_pid}"
-            collect_descendant_pids "${child_pid}"
-        } | awk '!seen[$0]++'
-    )
-
-    if ((${#process_ids[@]} == 0)); then
-        return
-    fi
-
-    kill -TERM "${process_ids[@]}" 2>/dev/null || true
-    sleep 5
-
-    local remaining_process_ids=()
-    for process_id in "${process_ids[@]}"; do
-        if kill -0 "${process_id}" 2>/dev/null; then
-            remaining_process_ids+=("${process_id}")
-        fi
-    done
-
-    if ((${#remaining_process_ids[@]} > 0)); then
-        kill -KILL "${remaining_process_ids[@]}" 2>/dev/null || true
-    fi
+    terminate_process_tree "${child_pid}" 5
 }
 
 monitor_stage_process() {
@@ -782,7 +727,7 @@ run_shell_stage() {
 run_stage 'quality-gates' 'Stage 1/6: running quality gates' "${repo_root}" check coverage
 run_stage \
     'jazzer-check' \
-    'Stage 2/6: running Jazzer support tests and regression replay' \
+    'Stage 2/6: running Jazzer deterministic tests and regression replay' \
     "${repo_root}/jazzer" \
     check
 run_stage 'cli-bundle' 'Stage 3/6: building self-contained CLI bundle archive' "${repo_root}" :cli:bundleCliArchive
@@ -801,6 +746,12 @@ if [[ -d "${repo_root}/jazzer/bin" ]]; then
     done < <(find "${repo_root}/jazzer/bin" -maxdepth 1 -type f | sort)
 fi
 
-run_shell_stage 'shell-syntax' 'Stage 5/6: syntax-checking release-surface shell scripts' \
-    bash -n "${shell_syntax_targets[@]}"
+run_shell_stage 'shell-syntax' 'Stage 5/6: checking release-surface shell scripts' \
+    bash -c '
+        set -euo pipefail
+        bash -n "$@"
+        "'"${repo_root}"'/scripts/test-check-process-support.sh"
+        "'"${repo_root}"'/scripts/test-verify-managed-sqlite-runtime.sh"
+        "'"${repo_root}"'/scripts/verify-managed-sqlite-runtime.sh"
+    ' bash "${shell_syntax_targets[@]}"
 run_shell_stage 'docker-smoke' 'Stage 6/6: running Docker acceptance test' "${repo_root}/scripts/docker-smoke.sh"

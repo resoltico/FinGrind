@@ -29,14 +29,14 @@ public final class MachineContract {
         identity.version(),
         identity.description(),
         ProtocolCatalog.operations().stream().map(ProtocolOperation::usage).toList(),
-        MachineContractSupport.bookModel(),
-        MachineContractSupport.commandDescriptors(),
+        MachineContractDescriptors.bookModel(),
+        MachineContractDescriptors.commandDescriptors(),
         ProtocolCatalog.operations().stream()
             .flatMap(operation -> operation.examples().stream())
             .toList(),
-        MachineContractSupport.exitCodes(),
-        MachineContractSupport.preflight(),
-        MachineContractSupport.currencyModel(),
+        MachineContractDescriptors.exitCodes(),
+        MachineContractDescriptors.preflight(),
+        MachineContractDescriptors.currencyModel(),
         environment);
   }
 
@@ -51,22 +51,22 @@ public final class MachineContract {
     return new ContractDiscovery.CapabilitiesDescriptor(
         identity.application(),
         identity.version(),
-        ProtocolCatalog.storageEngines(),
-        "single-sqlite-file",
-        ProtocolCatalog.operationNames(OperationCategory.DISCOVERY),
-        ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION),
-        ProtocolCatalog.operationNames(OperationCategory.QUERY),
-        ProtocolCatalog.operationNames(OperationCategory.WRITE),
-        MachineContractSupport.requestInput(),
-        MachineContractSupport.requestShapes(),
-        MachineContractSupport.responseModel(),
-        MachineContractSupport.planExecution(),
-        MachineContractSupport.audit(),
-        MachineContractSupport.accountRegistry(),
-        MachineContractSupport.reversals(),
-        MachineContractSupport.preflight().semantics(),
-        MachineContractSupport.preflight(),
-        MachineContractSupport.currencyModel(),
+        new ContractDiscovery.StorageSurfaceDescriptor(
+            ProtocolCatalog.storageEngines(), "single-sqlite-file"),
+        new ContractDiscovery.CommandCatalogDescriptor(
+            ProtocolCatalog.operationNames(OperationCategory.DISCOVERY),
+            ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION),
+            ProtocolCatalog.operationNames(OperationCategory.QUERY),
+            ProtocolCatalog.operationNames(OperationCategory.WRITE)),
+        MachineContractDescriptors.requestInput(),
+        MachineContractDescriptors.requestShapes(),
+        MachineContractDescriptors.responseModel(),
+        MachineContractDescriptors.planExecution(),
+        MachineContractDescriptors.audit(),
+        MachineContractDescriptors.accountRegistry(),
+        MachineContractDescriptors.reversals(),
+        MachineContractDescriptors.preflight(),
+        MachineContractDescriptors.currencyModel(),
         environment,
         timestamp.toString());
   }

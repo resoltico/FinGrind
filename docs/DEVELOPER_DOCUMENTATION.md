@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -55,6 +55,9 @@ When behavior changes, update the matching docs in the same change:
 - keep the reference spine limited to main-source public surfaces; test fixtures do not belong in
   `DOC_*.md`
 - CLI surface or JSON behavior changes: update user guides and any affected example payloads
+- public bundle user guides must not assume repo-local `docs/examples/` paths exist inside an
+  extracted release archive; if a checked-in fixture is referenced, label it as source-checkout
+  material and keep the runnable walkthrough pointed at bundle-safe local filenames instead
 - tooling or workflow changes: update developer guides
 - schema changes: update `docs/sqlite/` and any affected rationale docs
 

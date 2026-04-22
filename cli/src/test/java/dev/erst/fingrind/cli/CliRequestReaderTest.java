@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -1424,7 +1425,9 @@ class CliRequestReaderTest {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertTrue(exception.getMessage().startsWith("Unsupported value for kind: unsupported-step."));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .startsWith("Unsupported value for kind: unsupported-step."));
   }
 
   @Test
@@ -1456,8 +1459,7 @@ class CliRequestReaderTest {
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
     assertTrue(
-        exception
-            .getMessage()
+        Objects.requireNonNull(exception.getMessage())
             .startsWith("Unsupported value for assertion.kind: assert-sideways."));
   }
 

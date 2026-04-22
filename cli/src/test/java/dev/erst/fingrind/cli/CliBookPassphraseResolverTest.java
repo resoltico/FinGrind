@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractDecision;
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.ByteArrayInputStream;
@@ -14,6 +16,7 @@ import java.lang.foreign.Arena;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -32,9 +35,11 @@ class CliBookPassphraseResolverTest {
             new ByteArrayInputStream(new byte[0]), prompt -> failPrompt(prompt));
 
     try (SqliteBookPassphrase passphrase =
-            resolver.resolve(
-                new BookAccess(
-                    Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)));
+            resolver
+                .resolve(
+                    new BookAccess(
+                        Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
+                .requireAccepted();
         Arena arena = Arena.ofConfined()) {
       assertEquals(keyFile.toAbsolutePath().normalize().toString(), passphrase.sourceDescription());
       assertEquals(
@@ -56,9 +61,11 @@ class CliBookPassphraseResolverTest {
             prompt -> failPrompt(prompt));
 
     try (SqliteBookPassphrase passphrase =
-            resolver.resolve(
-                new BookAccess(
-                    Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE));
+            resolver
+                .resolve(
+                    new BookAccess(
+                        Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                .requireAccepted();
         Arena arena = Arena.ofConfined()) {
       assertEquals("standard input", passphrase.sourceDescription());
       assertEquals(
@@ -76,12 +83,16 @@ class CliBookPassphraseResolverTest {
   void resolve_readsPromptPassphraseFromTerminal() throws Exception {
     CliBookPassphraseResolver resolver =
         new CliBookPassphraseResolver(
-            new ByteArrayInputStream(new byte[0]), prompt -> "prompt-passphrase".toCharArray());
+            new ByteArrayInputStream(new byte[0]),
+            prompt -> ContractDecision.accepted("prompt-passphrase".toCharArray()));
     Path bookPath = tempDirectory.resolve("books").resolve("acme.sqlite");
 
     try (SqliteBookPassphrase passphrase =
-            resolver.resolve(
-                new BookAccess(bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE));
+            resolver
+                .resolve(
+                    new BookAccess(
+                        bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                .requireAccepted();
         Arena arena = Arena.ofConfined()) {
       assertTrue(
           passphrase
@@ -101,16 +112,22 @@ class CliBookPassphraseResolverTest {
   @Test
   void resolve_rejectsMissingPromptPassphrase() {
     CliBookPassphraseResolver resolver =
-        new CliBookPassphraseResolver(new ByteArrayInputStream(new byte[0]), prompt -> null);
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            prompt ->
+                missingPrompt(
+                    "FinGrind did not receive a book passphrase from the interactive console."));
 
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () ->
-                resolver.resolve(
-                    new BookAccess(
-                        Path.of("book.sqlite"),
-                        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE)));
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                    .requireAccepted());
 
     assertEquals(
         "FinGrind did not receive a book passphrase from the interactive console.",
@@ -127,22 +144,24 @@ class CliBookPassphraseResolverTest {
               private int readCount;
 
               @Override
-              public char[] readPassword(String prompt) {
+              public ContractDecision<char[]> readPassword(String prompt) {
                 readCount++;
                 if (readCount == 1) {
                   assertTrue(prompt.startsWith("New FinGrind book passphrase for "));
-                  return "confirmed-secret".toCharArray();
+                  return ContractDecision.accepted("confirmed-secret".toCharArray());
                 }
                 assertTrue(prompt.startsWith("Confirm new FinGrind book passphrase for "));
-                return "confirmed-secret".toCharArray();
+                return ContractDecision.accepted("confirmed-secret".toCharArray());
               }
             });
 
     try (SqliteBookPassphrase passphrase =
-            resolver.resolve(
-                bookPath,
-                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-                CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET);
+            resolver
+                .resolve(
+                    bookPath,
+                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
+                .requireAccepted();
         Arena arena = Arena.ofConfined()) {
       assertTrue(
           passphrase
@@ -168,9 +187,12 @@ class CliBookPassphraseResolverTest {
               private int readCount;
 
               @Override
-              public char[] readPassword(String prompt) {
+              public ContractDecision<char[]> readPassword(String prompt) {
                 readCount++;
-                return readCount == 1 ? "secret".toCharArray() : null;
+                return readCount == 1
+                    ? ContractDecision.accepted("secret".toCharArray())
+                    : missingPrompt(
+                        "FinGrind did not receive a confirmed book passphrase from the interactive console.");
               }
             });
 
@@ -178,10 +200,12 @@ class CliBookPassphraseResolverTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                resolver.resolve(
-                    Path.of("book.sqlite"),
-                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET));
+                resolver
+                    .resolve(
+                        Path.of("book.sqlite"),
+                        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                        CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
+                    .requireAccepted());
 
     assertEquals(
         "FinGrind did not receive a confirmed book passphrase from the interactive console.",
@@ -197,9 +221,10 @@ class CliBookPassphraseResolverTest {
               private int readCount;
 
               @Override
-              public char[] readPassword(String prompt) {
+              public ContractDecision<char[]> readPassword(String prompt) {
                 readCount++;
-                return readCount == 1 ? "first".toCharArray() : "second".toCharArray();
+                return ContractDecision.accepted(
+                    readCount == 1 ? "first".toCharArray() : "second".toCharArray());
               }
             });
 
@@ -207,10 +232,12 @@ class CliBookPassphraseResolverTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                resolver.resolve(
-                    Path.of("book.sqlite"),
-                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-                    CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET));
+                resolver
+                    .resolve(
+                        Path.of("book.sqlite"),
+                        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                        CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
+                    .requireAccepted());
 
     assertEquals(
         "FinGrind did not receive matching book passphrases from the interactive console.",
@@ -238,10 +265,12 @@ class CliBookPassphraseResolverTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                resolver.resolve(
-                    new BookAccess(
-                        Path.of("book.sqlite"),
-                        BookAccess.PassphraseSource.StandardInput.INSTANCE)));
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                    .requireAccepted());
 
     assertEquals(
         "Failed to read the FinGrind book passphrase from standard input.", exception.getMessage());
@@ -258,14 +287,15 @@ class CliBookPassphraseResolverTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                resolver.resolve(
-                    new BookAccess(
-                        Path.of("book.sqlite"),
-                        BookAccess.PassphraseSource.StandardInput.INSTANCE)));
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                    .requireAccepted());
 
     assertTrue(
-        exception
-            .getMessage()
+        Objects.requireNonNull(exception.getMessage())
             .contains(
                 "must contain a single-line UTF-8 text passphrase without control characters"));
   }
@@ -280,7 +310,8 @@ class CliBookPassphraseResolverTest {
     CliBookPassphraseResolver.Terminal terminal =
         CliBookPassphraseResolver.systemConsoleReader(new FakeConsoleHandle()).orElseThrow();
 
-    assertEquals("console-secret", new String(terminal.readPassword("book.sqlite")));
+    assertEquals(
+        "console-secret", new String(terminal.readPassword("book.sqlite").requireAccepted()));
   }
 
   @Test
@@ -301,12 +332,13 @@ class CliBookPassphraseResolverTest {
         CliBookPassphraseResolver.systemConsoleReader(new ThrowingConsoleHandle()).orElseThrow();
 
     IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> terminal.readPassword("book.sqlite"));
+        assertThrows(
+            IllegalStateException.class,
+            () -> terminal.readPassword("book.sqlite").requireAccepted());
 
     assertEquals(
         "Failed to prompt for a book passphrase from the interactive console.",
         exception.getMessage());
-    assertEquals("boom", exception.getCause().getCause().getMessage());
   }
 
   @Test
@@ -326,7 +358,10 @@ class CliBookPassphraseResolverTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> CliBookPassphraseResolver.systemTerminal().readPassword("prompt"));
+            () ->
+                CliBookPassphraseResolver.systemTerminal()
+                    .readPassword("prompt")
+                    .requireAccepted());
 
     assertEquals(
         "FinGrind cannot prompt for a book passphrase because no interactive console is available.",
@@ -337,7 +372,7 @@ class CliBookPassphraseResolverTest {
   void consoleBackedTerminal_readsPasswordFromProvidedReader() {
     CliBookPassphraseResolver.ConsoleBackedTerminal terminal =
         new CliBookPassphraseResolver.ConsoleBackedTerminal(readerSupplier("secret"));
-    char[] password = terminal.readPassword("book.sqlite");
+    char[] password = terminal.readPassword("book.sqlite").requireAccepted();
 
     assertEquals("secret", new String(password));
   }
@@ -347,7 +382,8 @@ class CliBookPassphraseResolverTest {
     CliBookPassphraseResolver.ConsoleBackedTerminal terminal =
         new CliBookPassphraseResolver.ConsoleBackedTerminal(Optional::empty);
     IllegalStateException exception =
-        assertThrows(IllegalStateException.class, () -> terminal.readPassword("prompt"));
+        assertThrows(
+            IllegalStateException.class, () -> terminal.readPassword("prompt").requireAccepted());
 
     assertEquals(
         "FinGrind cannot prompt for a book passphrase because no interactive console is available.",
@@ -376,8 +412,13 @@ class CliBookPassphraseResolverTest {
     assertEquals("boom", exception.getMessage());
   }
 
-  private static char[] failPrompt(String prompt) {
+  private static ContractDecision<char[]> failPrompt(String prompt) {
     throw new AssertionError("Unexpected prompt usage: " + prompt);
+  }
+
+  private static ContractDecision<char[]> missingPrompt(String message) {
+    return ContractDecision.rejected(
+        ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED.failure(message, null, null));
   }
 
   private static void writeSecureString(Path keyFile, String content) throws IOException {
@@ -391,7 +432,7 @@ class CliBookPassphraseResolverTest {
         Optional.of(
             prompt -> {
               assertEquals("book.sqlite", prompt);
-              return password.toCharArray();
+              return ContractDecision.accepted(password.toCharArray());
             });
   }
 

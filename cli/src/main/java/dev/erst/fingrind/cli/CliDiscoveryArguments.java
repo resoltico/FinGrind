@@ -32,7 +32,7 @@ final class CliDiscoveryArguments {
 
   private static CliCommand parseSingleToken(List<String> arguments, CliCommand command) {
     if (arguments.size() != 1) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           arguments.get(1), "This command does not accept additional arguments.");
     }
     return command;
@@ -45,15 +45,15 @@ final class CliDiscoveryArguments {
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
       outputMode =
-          CliArgumentSupport.requireOutputMode(
+          CliArgumentValueParser.requireOutputMode(
               outputMode,
-              CliArgumentSupport.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliArgumentSupport.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
-    return commandFactory.create(CliArgumentSupport.resolvedDiscoveryOutputMode(outputMode));
+    return commandFactory.create(CliArgumentValueParser.resolvedDiscoveryOutputMode(outputMode));
   }
 
   /** Factory for one discovery command that only varies by the selected output mode. */

@@ -19,7 +19,7 @@ final class SqliteStoreReportOperations {
   @FunctionalInterface
   private interface NativeReport<T> {
     /** Runs one report query against the active SQLite handle. */
-    T run(SqliteNativeDatabase activeDatabase) throws SqliteNativeException;
+    T run(SqliteNativeDatabase activeDatabase);
   }
 
   private final SqlitePostingFactStore store;
@@ -32,31 +32,31 @@ final class SqliteStoreReportOperations {
     store.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.postingReadSupport().accountBalance(activeDatabase, query));
+        activeDatabase -> store.postingReader().accountBalance(activeDatabase, query));
   }
 
   TrialBalanceReport trialBalance(TrialBalanceQuery query) {
     store.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.reportReadSupport().trialBalance(activeDatabase, query));
+        activeDatabase -> store.reportReader().trialBalance(activeDatabase, query));
   }
 
   AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
     store.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.reportReadSupport().accountLedger(activeDatabase, query, account));
+        activeDatabase -> store.reportReader().accountLedger(activeDatabase, query, account));
   }
 
   PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
     store.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.reportReadSupport().periodSummary(activeDatabase, query));
+        activeDatabase -> store.reportReader().periodSummary(activeDatabase, query));
   }
 
-  private SqliteNativeDatabase initializedReportDatabase() throws SqliteNativeException {
+  private SqliteNativeDatabase initializedReportDatabase() {
     if (Files.notExists(store.bookPath())) {
       throw new IllegalStateException(SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE);
     }
@@ -69,7 +69,7 @@ final class SqliteStoreReportOperations {
     try {
       return query.run(initializedReportDatabase());
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreSupport.sqliteFailure(failureMessage, exception);
+      throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
     }
   }
 }

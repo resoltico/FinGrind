@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-04-21"
 route:
@@ -35,6 +35,44 @@ Do not attempt to resolve missing `gh` or authentication failures autonomously.
 ### Step 1
 
 Pre-flight: verify release readiness.
+
+Before any build, version edit, or release-branch work, identify the checkout the user will keep
+using after the release. Call it the primary checkout.
+
+Run:
+
+```bash
+git rev-parse --show-toplevel
+git branch --show-current
+git status --short
+git fetch origin --prune --tags
+git rev-list --left-right --count HEAD...origin/main
+```
+
+Requirements before continuing:
+
+- the primary checkout path is known explicitly
+- the primary checkout must not be left behind `origin/main` at release closeout
+- if the primary checkout is already clean and current, release from it directly
+- if the primary checkout has local work, is intentionally dirty, or lives on a problematic or slow
+  filesystem, create a clean release worktree from the same repository and do the release there:
+
+```bash
+PRIMARY_CHECKOUT=$(git rev-parse --show-toplevel)
+git fetch origin --prune --tags
+RELEASE_WORKTREE="$(mktemp -d -t fingrind-release-XXXXXX)"
+git worktree add "$RELEASE_WORKTREE" origin/main
+cd "$RELEASE_WORKTREE"
+```
+
+Use a Git worktree, not a disconnected clone, whenever possible. A worktree shares refs with the
+primary checkout and makes post-release reconciliation mechanically obvious. A separate clone is a
+last resort and, if used, must still be reconciled back into the primary checkout before the
+release session ends.
+
+If the primary checkout has unpublished local work, decide before the release whether that work is
+real or stale. Real work must move onto a named branch or exported patch before closeout. Stale
+work must be dropped. Never leave the primary checkout on stale `main` plus unpublished overlays.
 
 Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 
@@ -72,7 +110,7 @@ rejected and wastes time. Always commit on a release branch.
 
 ```bash
 git checkout -b release/X.Y.Z
-git add <every modified file that belongs in the release — never .claude/>
+git add <every modified file that belongs in the release — never .codex/>
 git status --short
 git diff --cached --name-status
 git diff --cached --stat
@@ -461,3 +499,38 @@ Requirements before declaring the release session complete:
 - No merged or closed Dependabot branch may remain on GitHub.
 - Any remaining non-`main` branch on GitHub must correspond to an intentional still-open PR that
   was reviewed during this step and deliberately kept alive.
+
+### Step 11
+
+Reconcile the primary checkout.
+
+If the release used a dedicated release worktree or any checkout other than the primary checkout,
+the session is not complete until the primary checkout is truthful again.
+
+Run:
+
+```bash
+git -C "$PRIMARY_CHECKOUT" fetch origin --prune --tags
+git -C "$PRIMARY_CHECKOUT" checkout main
+git -C "$PRIMARY_CHECKOUT" rev-list --left-right --count HEAD...origin/main
+git -C "$PRIMARY_CHECKOUT" merge --ff-only origin/main
+git -C "$PRIMARY_CHECKOUT" rev-parse HEAD
+git -C "$PRIMARY_CHECKOUT" status --short
+```
+
+Requirements before declaring the release session complete:
+
+- the primary checkout `HEAD` equals `origin/main`
+- the primary checkout version-bearing files, including `gradle.properties` and `CHANGELOG.md`,
+  reflect the released version
+- no stale release-only checkout may be left behind with the appearance of being authoritative
+- if unpublished local work from the primary checkout is still needed, replay it deliberately onto
+  a named branch based on current `main`; do not leave it only in a stash
+- if that unpublished local work is stale, superseded, or regresses the shipped release state,
+  delete it instead of preserving misleading debris
+
+If a disposable release worktree was created and is no longer needed:
+
+```bash
+git worktree remove "$RELEASE_WORKTREE"
+```

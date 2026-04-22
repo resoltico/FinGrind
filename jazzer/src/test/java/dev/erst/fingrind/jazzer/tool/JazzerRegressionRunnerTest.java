@@ -126,7 +126,7 @@ class JazzerRegressionRunnerTest {
           """);
 
       Path metadataPath =
-          RegressionSeedSupport.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+          RegressionSeedCatalog.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("invalid_missing_provenance.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
       JazzerJson.write(
@@ -157,9 +157,9 @@ class JazzerRegressionRunnerTest {
           new RegressionSeedMetadata(
               harness.key(),
               projectDirectory.relativize(inputPath).toString(),
-              JazzerReplaySupport.expectationFor(
-                  JazzerReplaySupport.replay(harness, Files.readAllBytes(inputPath))));
-      Path metadataPath = RegressionSeedSupport.metadataDirectory(projectDirectory, harness).resolve(fileName);
+              JazzerReplayRunner.expectationFor(
+                  JazzerReplayRunner.replay(harness, Files.readAllBytes(inputPath))));
+      Path metadataPath = RegressionSeedCatalog.metadataDirectory(projectDirectory, harness).resolve(fileName);
       Files.createDirectories(metadataPath.getParent());
       JazzerJson.write(metadataPath, metadata);
     }

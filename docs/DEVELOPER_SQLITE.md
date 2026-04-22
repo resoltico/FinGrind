@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-04-21"
 route:
@@ -133,10 +133,10 @@ The SQLite adapter is split into focused collaborators:
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
   owns one thread-confined protected-book session, lifecycle inspection, paged query paths,
   transaction-scoped validation, and durable commit outcomes
-- [`SqliteConnectionSupport`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteConnectionSupport.java),
+- [`SqliteConnectionConfigurer`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteConnectionConfigurer.java),
   [`SqliteBookStateReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookStateReader.java),
-  [`SqliteStatementQuerySupport`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStatementQuerySupport.java),
-  [`SqlitePostingReadSupport`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingReadSupport.java),
+  [`SqliteStatementQueries`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStatementQueries.java),
+  [`SqlitePostingReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingReader.java),
   and [`SqliteMutationWriter`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteMutationWriter.java):
   focused collaborators for open-configuration hardening, lifecycle probing, single-row queries,
   posting reads, and durable writes
@@ -196,9 +196,13 @@ The SQLite adapter is split into focused collaborators:
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
 - runtime probes distinguish `managed` versus `system` library source and report
-  `requiredMinimumSqliteVersion`, `requiredSqlite3mcVersion`, `sqliteRuntimeStatus`,
-  `loadedSqliteVersion`, `loadedSqlite3mcVersion`, `bookProtectionMode`, and `defaultBookCipher`
-  through `capabilities`
+  `environment.sqlite.requiredMinimumSqliteVersion`,
+  `environment.sqlite.requiredSqlite3mcVersion`,
+  `environment.sqlite.runtimeStatus`,
+  `environment.sqlite.loadedSqliteVersion`,
+  `environment.sqlite.loadedSqlite3mcVersion`,
+  `environment.storage.bookProtectionMode`, and
+  `environment.storage.defaultBookCipher` through `capabilities`
 
 The posting seam distinguishes ordinary domain outcomes from true runtime failures:
 - accepted commits return `PostingCommitResult.Committed`

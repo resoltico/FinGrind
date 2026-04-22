@@ -19,7 +19,7 @@ final class AccountLedgerPdfRenderer {
             List.of("Active", Boolean.toString(report.account().active())),
             List.of(
                 "Effective date range",
-                PdfRenderSupport.effectiveDateRange(report.effectiveDateRange()))));
+                PdfValueFormatter.effectiveDateRange(report.effectiveDateRange()))));
     pageWriter.writeTable(
         "Opening Balances",
         List.of(
@@ -33,9 +33,9 @@ final class AccountLedgerPdfRenderer {
                 balance ->
                     List.of(
                         balance.netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(balance.debitTotal()),
-                        PdfRenderSupport.displayMoney(balance.creditTotal()),
-                        PdfRenderSupport.displayMoney(balance.netAmount()),
+                        PdfValueFormatter.displayMoney(balance.debitTotal()),
+                        PdfValueFormatter.displayMoney(balance.creditTotal()),
+                        PdfValueFormatter.displayMoney(balance.netAmount()),
                         balance.balanceSide().wireValue()))
             .toList());
     pageWriter.writeTable(
@@ -56,12 +56,12 @@ final class AccountLedgerPdfRenderer {
                     List.of(
                         entry.postingFact().journalEntry().effectiveDate().toString(),
                         entry.postingFact().postingId().value(),
-                        PdfRenderSupport.reversalTarget(entry.postingFact()),
+                        PdfValueFormatter.reversalTarget(entry.postingFact()),
                         entry.movement().netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(entry.movement().debitTotal()),
-                        PdfRenderSupport.displayMoney(entry.movement().creditTotal()),
-                        PdfRenderSupport.displayMoney(entry.movement().netAmount()),
-                        PdfRenderSupport.displayMoney(entry.runningNetAmount()),
+                        PdfValueFormatter.displayMoney(entry.movement().debitTotal()),
+                        PdfValueFormatter.displayMoney(entry.movement().creditTotal()),
+                        PdfValueFormatter.displayMoney(entry.movement().netAmount()),
+                        PdfValueFormatter.displayMoney(entry.runningNetAmount()),
                         entry.runningBalanceSide().wireValue()))
             .toList());
     pageWriter.writeTable(
@@ -77,9 +77,9 @@ final class AccountLedgerPdfRenderer {
                 balance ->
                     List.of(
                         balance.netAmount().currencyCode().value(),
-                        PdfRenderSupport.displayMoney(balance.debitTotal()),
-                        PdfRenderSupport.displayMoney(balance.creditTotal()),
-                        PdfRenderSupport.displayMoney(balance.netAmount()),
+                        PdfValueFormatter.displayMoney(balance.debitTotal()),
+                        PdfValueFormatter.displayMoney(balance.creditTotal()),
+                        PdfValueFormatter.displayMoney(balance.netAmount()),
                         balance.balanceSide().wireValue()))
             .toList());
   }

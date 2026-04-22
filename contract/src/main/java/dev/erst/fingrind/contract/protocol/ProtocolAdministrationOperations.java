@@ -8,7 +8,7 @@ final class ProtocolAdministrationOperations {
 
   static List<ProtocolOperation> operations() {
     return List.of(
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.GENERATE_BOOK_KEY_FILE,
             OperationCategory.ADMINISTRATION,
             "Generate Book Key File",
@@ -22,7 +22,7 @@ final class ProtocolAdministrationOperations {
                     .formatted(
                         OperationId.GENERATE_BOOK_KEY_FILE.wireName(),
                         ProtocolOptions.BOOK_KEY_FILE))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.OPEN_BOOK,
             OperationCategory.ADMINISTRATION,
             "Open Book",
@@ -50,7 +50,7 @@ final class ProtocolAdministrationOperations {
                         OperationId.OPEN_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_PASSPHRASE_STDIN))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.REKEY_BOOK,
             OperationCategory.ADMINISTRATION,
             "Rekey Book",
@@ -69,7 +69,7 @@ final class ProtocolAdministrationOperations {
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT))),
-        ProtocolOperationSupport.operation(
+        ProtocolOperationDefinitions.operation(
             OperationId.DECLARE_ACCOUNT,
             OperationCategory.ADMINISTRATION,
             "Declare Account",
@@ -82,13 +82,13 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
             "Declare or reactivate one account in the selected book.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./docs/examples/declare-account-cash.json"
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-cash.json"
                     .formatted(
                         OperationId.DECLARE_ACCOUNT.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.REQUEST_FILE),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./docs/examples/declare-account-revenue.json"
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-revenue.json"
                     .formatted(
                         OperationId.DECLARE_ACCOUNT.wireName(),
                         ProtocolOptions.BOOK_FILE,

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: ADAPTERS
 updated: "2026-04-21"
 route:
@@ -219,5 +219,5 @@ public final class SqlitePostingFactStore implements LedgerPlanSession
   sessions through the same durable adapter
 - Inspection: exposes lifecycle, format-version, compatibility, and migration-policy metadata
 - Helper split: lower-level concerns are factored into focused collaborators such as
-  `SqliteConnectionSupport`, `SqliteBookStateReader`, `SqliteStatementQuerySupport`,
-  `SqlitePostingReadSupport`, and `SqliteMutationWriter`
+  `SqliteConnectionConfigurer`, `SqliteBookStateReader`, `SqliteStatementQueries`,
+  `SqlitePostingReader`, and `SqliteMutationWriter`

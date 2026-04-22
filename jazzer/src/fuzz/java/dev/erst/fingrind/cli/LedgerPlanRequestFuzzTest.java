@@ -12,7 +12,7 @@ public class LedgerPlanRequestFuzzTest {
   void readLedgerPlan(FuzzedDataProvider data) {
     byte[] input = data.consumeRemainingAsBytes();
     try {
-      LedgerPlan plan = CliFuzzSupport.readLedgerPlan(input);
+      LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(input);
       if (plan == null) {
         throw new IllegalStateException("readLedgerPlan returned null");
       }

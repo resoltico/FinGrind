@@ -8,9 +8,11 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for Phase 2 book-administration model records. */
+@NullUnmarked
 class BookAdministrationModelTest {
   @Test
   void declaredAccount_holdsItsPayload() {

@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.CommitEntryResult;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractDiscovery;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
@@ -87,12 +88,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
+@NullUnmarked
 class FinGrindCliTest {
   private static final String TEST_BOOK_KEY = "cli-test-book-key";
 
@@ -127,8 +130,8 @@ class FinGrindCliTest {
     assertEquals(0, exitCode);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     JsonNode payload = new ObjectMapper().readTree(json).path("payload");
-    assertTrue(json.contains("\"administrationCommands\""));
-    assertTrue(json.contains("\"queryCommands\""));
+    assertTrue(json.contains("\"administration\""));
+    assertTrue(json.contains("\"query\""));
     assertTrue(json.contains("\"administration-book-not-initialized\""));
     assertTrue(json.contains("\"query-book-not-initialized\""));
     assertTrue(json.contains("\"posting-book-not-initialized\""));
@@ -136,14 +139,14 @@ class FinGrindCliTest {
     assertTrue(json.contains("\"posting-not-found\""));
     assertEquals(
         "[\"generate-book-key-file\",\"open-book\",\"rekey-book\",\"declare-account\"]",
-        payload.path("administrationCommands").toString());
+        payload.path("commands").path("administration").toString());
     assertEquals(
         "[\"inspect-book\",\"list-accounts\",\"get-posting\",\"list-postings\",\"account-balance\",\"trial-balance\",\"account-ledger\",\"period-summary\"]",
-        payload.path("queryCommands").toString());
+        payload.path("commands").path("query").toString());
     assertTrue(payload.path("requestShapes").has("postEntry"));
     assertTrue(payload.path("requestShapes").has("declareAccount"));
-    assertEquals("advisory", payload.path("preflightSemantics").asString());
-    assertFalse(payload.path("preflight").path("isCommitGuarantee").asBoolean(true));
+    assertEquals("advisory", payload.path("preflight").path("semantics").asString());
+    assertEquals("not-guaranteed", payload.path("preflight").path("commitGuarantee").asString());
     assertEquals(
         "single-currency-per-entry", payload.path("currencyModel").path("scope").asString());
     assertEquals(
@@ -170,34 +173,54 @@ class FinGrindCliTest {
     assertTrue(payload.path("responseModel").path("rejections").isArray());
     assertFalse(payload.path("responseModel").has("rejectionCodes"));
     assertEquals(
-        "sqlite-ffm-sqlite3mc", payload.path("environment").path("storageDriver").asString());
-    assertEquals("required", payload.path("environment").path("bookProtectionMode").asString());
-    assertEquals("chacha20", payload.path("environment").path("defaultBookCipher").asString());
-    assertEquals("managed-only", payload.path("environment").path("sqliteLibraryMode").asString());
+        "sqlite-ffm-sqlite3mc",
+        payload.path("environment").path("storage").path("storageDriver").asString());
+    assertEquals(
+        "required",
+        payload.path("environment").path("storage").path("bookProtectionMode").asString());
+    assertEquals(
+        "chacha20",
+        payload.path("environment").path("storage").path("defaultBookCipher").asString());
+    assertEquals(
+        "managed-only", payload.path("environment").path("sqlite").path("libraryMode").asString());
     assertEquals(
         "self-contained-bundle",
-        payload.path("environment").path("publicCliDistribution").asString());
+        payload.path("environment").path("distribution").path("publicCliDistribution").asString());
     assertEquals(
-        "direct-java-invocation",
-        payload.path("environment").path("runtimeDistribution").asString());
+        FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
+        payload.path("environment").path("distribution").path("runtimeDistribution").asString());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets(),
-        readTextArray(payload.path("environment").path("supportedPublicCliBundleTargets")));
+        readTextArray(
+            payload
+                .path("environment")
+                .path("distribution")
+                .path("supportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        readTextArray(payload.path("environment").path("unsupportedPublicCliOperatingSystems")));
+        readTextArray(
+            payload
+                .path("environment")
+                .path("distribution")
+                .path("unsupportedPublicCliOperatingSystems")));
     assertEquals(
         "FINGRIND_SQLITE_LIBRARY",
-        payload.path("environment").path("sqliteLibraryEnvironmentVariable").asString());
+        payload.path("environment").path("sqlite").path("libraryEnvironmentVariable").asString());
     assertEquals(
         "fingrind.bundle.home",
-        payload.path("environment").path("sqliteLibraryBundleHomeSystemProperty").asString());
+        payload.path("environment").path("sqlite").path("bundleHomeSystemProperty").asString());
     assertEquals(
         "[\"THREADSAFE=1\",\"OMIT_LOAD_EXTENSION\",\"TEMP_STORE=3\",\"SECURE_DELETE\"]",
-        payload.path("environment").path("requiredSqliteCompileOptions").toString());
-    assertTrue(payload.path("environment").path("sqliteCompileOptionsVerified").asBoolean());
-    assertEquals("2.3.3", payload.path("environment").path("requiredSqlite3mcVersion").asString());
-    assertEquals("2.3.3", payload.path("environment").path("loadedSqlite3mcVersion").asString());
+        payload.path("environment").path("sqlite").path("requiredCompileOptions").toString());
+    assertEquals(
+        "verified",
+        payload.path("environment").path("sqlite").path("compileOptionsVerification").asString());
+    assertEquals(
+        "2.3.3",
+        payload.path("environment").path("sqlite").path("requiredSqlite3mcVersion").asString());
+    assertEquals(
+        "2.3.3",
+        payload.path("environment").path("sqlite").path("loadedSqlite3mcVersion").asString());
     assertEquals(
         "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
         payload.path("requestInput").path("bookPassphraseOptions").toString());
@@ -254,34 +277,39 @@ class FinGrindCliTest {
                 "managed sqlite unavailable"),
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
 
-    assertEquals("source-checkout-gradle", environmentDescriptor.runtimeDistribution());
-    assertEquals("sqlite-ffm-sqlite3mc", environmentDescriptor.storageDriver());
-    assertEquals("sqlite", environmentDescriptor.storageEngine());
-    assertEquals("required", environmentDescriptor.bookProtectionMode());
-    assertEquals("chacha20", environmentDescriptor.defaultBookCipher());
-    assertEquals("managed-only", environmentDescriptor.sqliteLibraryMode());
-    assertEquals("self-contained-bundle", environmentDescriptor.publicCliDistribution());
+    assertEquals(
+        "source-checkout-gradle", environmentDescriptor.distribution().runtimeDistribution());
+    assertEquals("sqlite-ffm-sqlite3mc", environmentDescriptor.storage().storageDriver());
+    assertEquals("sqlite", environmentDescriptor.storage().storageEngine());
+    assertEquals("required", environmentDescriptor.storage().bookProtectionMode());
+    assertEquals("chacha20", environmentDescriptor.storage().defaultBookCipher());
+    assertEquals("managed-only", environmentDescriptor.sqlite().libraryMode());
+    assertEquals(
+        "self-contained-bundle", environmentDescriptor.distribution().publicCliDistribution());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets(),
-        environmentDescriptor.supportedPublicCliBundleTargets());
+        environmentDescriptor.distribution().supportedPublicCliBundleTargets());
     assertEquals(
         ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        environmentDescriptor.unsupportedPublicCliOperatingSystems());
-    assertEquals(ProtocolCatalog.sourceCheckoutJava(), environmentDescriptor.sourceCheckoutJava());
+        environmentDescriptor.distribution().unsupportedPublicCliOperatingSystems());
     assertEquals(
-        "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqliteLibraryEnvironmentVariable());
+        ProtocolCatalog.sourceCheckoutJava(),
+        environmentDescriptor.distribution().sourceCheckoutJava());
     assertEquals(
-        "fingrind.bundle.home", environmentDescriptor.sqliteLibraryBundleHomeSystemProperty());
+        "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqlite().libraryEnvironmentVariable());
+    assertEquals("fingrind.bundle.home", environmentDescriptor.sqlite().bundleHomeSystemProperty());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
-        environmentDescriptor.requiredSqliteCompileOptions());
-    assertFalse(environmentDescriptor.sqliteCompileOptionsVerified());
-    assertEquals("3.53.0", environmentDescriptor.requiredMinimumSqliteVersion());
-    assertEquals("2.3.3", environmentDescriptor.requiredSqlite3mcVersion());
-    assertEquals("unavailable", environmentDescriptor.sqliteRuntimeStatus());
-    assertEquals("managed sqlite unavailable", environmentDescriptor.sqliteRuntimeIssue());
-    assertNull(environmentDescriptor.loadedSqliteVersion());
-    assertNull(environmentDescriptor.loadedSqlite3mcVersion());
+        environmentDescriptor.sqlite().requiredCompileOptions());
+    assertEquals(
+        ContractDiscovery.SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        environmentDescriptor.sqlite().compileOptionsVerification());
+    assertEquals("3.53.0", environmentDescriptor.sqlite().requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", environmentDescriptor.sqlite().requiredSqlite3mcVersion());
+    assertEquals("unavailable", environmentDescriptor.sqlite().runtimeStatus());
+    assertEquals("managed sqlite unavailable", environmentDescriptor.sqlite().runtimeIssue());
+    assertNull(environmentDescriptor.sqlite().loadedSqliteVersion());
+    assertNull(environmentDescriptor.sqlite().loadedSqlite3mcVersion());
   }
 
   @Test
@@ -306,6 +334,27 @@ class FinGrindCliTest {
     assertEquals(256, payload.path("entropyBits").asInt());
     assertFalse(
         outputStream.toString(StandardCharsets.UTF_8).contains(Files.readString(keyFilePath)));
+  }
+
+  @Test
+  void run_reportsDeterministicFailureWhenGeneratedKeyFileAlreadyExists() throws IOException {
+    Path keyFilePath = tempDirectory.resolve("secrets").resolve("existing.book-key");
+    Files.createDirectories(keyFilePath.getParent());
+    Files.writeString(keyFilePath, "already-present", StandardCharsets.UTF_8);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        new FinGrindCli(
+            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
+
+    assertEquals(2, exitCode);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals(
+        ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.code(),
+        failureEnvelope.path("code").asString());
+    assertTrue(failureEnvelope.path("message").asString().contains("already exists"));
   }
 
   @Test
@@ -554,7 +603,7 @@ class FinGrindCliTest {
         new CliCommand.ExecutePlan(bookAccess, Path.of("plan.json")).failureOutputMode());
     assertEquals(
         OutputMode.JSON,
-        CliExecutionSupport.inferredFailureOutputMode(
+        CliExecutionPolicy.inferredFailureOutputMode(
             new String[] {
               "open-book",
               "--book-file",
@@ -566,7 +615,7 @@ class FinGrindCliTest {
             }));
     assertEquals(
         OutputMode.HUMAN,
-        CliExecutionSupport.inferredFailureOutputMode(
+        CliExecutionPolicy.inferredFailureOutputMode(
             new String[] {
               "open-book",
               "--book-file",
@@ -579,7 +628,7 @@ class FinGrindCliTest {
   }
 
   @Test
-  void run_rejectsPreflightAgainstUninitializedBookThroughDefaultSqliteWorkflow()
+  void run_mapsPreflightAgainstMissingBookToRuntimeFailureThroughDefaultSqliteWorkflow()
       throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("live-books").resolve("entity.sqlite");
@@ -601,11 +650,9 @@ class FinGrindCliTest {
               requestFile.toString()
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(4, exitCode);
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("\"code\":\"posting-book-not-initialized\""));
+        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
     assertFalse(Files.exists(bookFilePath));
   }
 
@@ -626,7 +673,8 @@ class FinGrindCliTest {
         openCli.run(
             new String[] {
               "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
-            }));
+            }),
+        openOutput.toString(StandardCharsets.UTF_8));
     assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
 
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
@@ -678,7 +726,8 @@ class FinGrindCliTest {
   void run_openBookAndListAccountsThroughDefaultSqliteWorkflowSupportsInteractivePromptPassphrase()
       throws IOException {
     Path bookFilePath = tempDirectory.resolve("prompt-books").resolve("entity.sqlite");
-    CliBookPassphraseResolver.Terminal terminal = prompt -> TEST_BOOK_KEY.toCharArray();
+    CliBookPassphraseResolver.Terminal terminal =
+        prompt -> ContractDecision.accepted(TEST_BOOK_KEY.toCharArray());
 
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
@@ -693,7 +742,8 @@ class FinGrindCliTest {
         openCli.run(
             new String[] {
               "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
-            }));
+            }),
+        openOutput.toString(StandardCharsets.UTF_8));
     assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
 
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
@@ -1480,7 +1530,7 @@ class FinGrindCliTest {
               pdfOutputPath.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"argument\":\"--pdf-out\""));
     assertTrue(
@@ -1719,83 +1769,94 @@ class FinGrindCliTest {
     CliBookWorkflow workflow =
         new CliBookWorkflow() {
           @Override
-          public OpenBookResult openBook(BookAccess bookAccess) {
+          public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
             throw new AssertionError("openBook should not be called in this test");
           }
 
           @Override
-          public RekeyBookResult rekeyBook(
+          public ContractDecision<RekeyBookResult> rekeyBook(
               BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
             throw new AssertionError("rekeyBook should not be called in this test");
           }
 
           @Override
-          public DeclareAccountResult declareAccount(
+          public ContractDecision<DeclareAccountResult> declareAccount(
               BookAccess bookAccess, DeclareAccountCommand command) {
             throw new AssertionError("declareAccount should not be called in this test");
           }
 
           @Override
-          public BookInspection inspectBook(BookAccess bookAccess) {
-            return new BookInspection.Initialized(
-                1_179_079_236,
-                1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                Instant.parse("2026-04-07T10:15:30Z"));
+          public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
+            return accepted(
+                new BookInspection.Initialized(
+                    1_179_079_236,
+                    1,
+                    1,
+                    BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
+                    Instant.parse("2026-04-07T10:15:30Z")));
           }
 
           @Override
-          public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+          public ContractDecision<ListAccountsResult> listAccounts(
+              BookAccess bookAccess, ListAccountsQuery query) {
             throw new AssertionError("listAccounts should not be called in this test");
           }
 
           @Override
-          public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
-            return new GetPostingResult.Rejected(new BookQueryRejection.PostingNotFound(postingId));
+          public ContractDecision<GetPostingResult> getPosting(
+              BookAccess bookAccess, PostingId postingId) {
+            return accepted(
+                new GetPostingResult.Rejected(new BookQueryRejection.PostingNotFound(postingId)));
           }
 
           @Override
-          public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
-            return new ListPostingsResult.Rejected(
-                new BookQueryRejection.UnknownAccount(new AccountCode("9999")));
+          public ContractDecision<ListPostingsResult> listPostings(
+              BookAccess bookAccess, ListPostingsQuery query) {
+            return accepted(
+                new ListPostingsResult.Rejected(
+                    new BookQueryRejection.UnknownAccount(new AccountCode("9999"))));
           }
 
           @Override
-          public AccountBalanceResult accountBalance(
+          public ContractDecision<AccountBalanceResult> accountBalance(
               BookAccess bookAccess, AccountBalanceQuery query) {
-            return new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
+            return accepted(
+                new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()));
           }
 
           @Override
-          public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
+          public ContractDecision<TrialBalanceResult> trialBalance(
+              BookAccess bookAccess, TrialBalanceQuery query) {
             throw new AssertionError("trialBalance should not be called in this test");
           }
 
           @Override
-          public AccountLedgerResult accountLedger(
+          public ContractDecision<AccountLedgerResult> accountLedger(
               BookAccess bookAccess, AccountLedgerQuery query) {
             throw new AssertionError("accountLedger should not be called in this test");
           }
 
           @Override
-          public PeriodSummaryResult periodSummary(
+          public ContractDecision<PeriodSummaryResult> periodSummary(
               BookAccess bookAccess, PeriodSummaryQuery query) {
             throw new AssertionError("periodSummary should not be called in this test");
           }
 
           @Override
-          public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+          public ContractDecision<LedgerPlanResult> executePlan(
+              BookAccess bookAccess, LedgerPlan plan) {
             throw new AssertionError("executePlan should not be called in this test");
           }
 
           @Override
-          public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+          public ContractDecision<PreflightEntryResult> preflight(
+              BookAccess bookAccess, PostEntryCommand command) {
             throw new AssertionError("preflight should not be called in this test");
           }
 
           @Override
-          public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+          public ContractDecision<CommitEntryResult> commit(
+              BookAccess bookAccess, PostEntryCommand command) {
             throw new AssertionError("commit should not be called in this test");
           }
         };
@@ -1877,7 +1938,7 @@ class FinGrindCliTest {
 
     int exitCode = cli.run(new String[] {"open-book"});
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"argument\":\"--book-file\""));
   }
@@ -1903,7 +1964,7 @@ class FinGrindCliTest {
               "definitely-not-a-valid-cursor"
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
@@ -1940,7 +2001,7 @@ class FinGrindCliTest {
               requestFile.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
@@ -1972,7 +2033,7 @@ class FinGrindCliTest {
               tempDirectory.resolve("replacement.key").toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
@@ -2007,7 +2068,7 @@ class FinGrindCliTest {
               bookKeyFilePath.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
@@ -2043,7 +2104,7 @@ class FinGrindCliTest {
               bookKeyFilePath.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
@@ -2079,7 +2140,7 @@ class FinGrindCliTest {
               bookKeyFilePath.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
@@ -2115,7 +2176,7 @@ class FinGrindCliTest {
               requestFile.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
     assertTrue(
@@ -2150,7 +2211,7 @@ class FinGrindCliTest {
               requestFile.toString()
             });
 
-    assertEquals(1, exitCode);
+    assertEquals(4, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
@@ -2200,7 +2261,7 @@ class FinGrindCliTest {
               requestFile.toString()
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
     assertTrue(
@@ -2254,7 +2315,7 @@ class FinGrindCliTest {
               "human"
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("invalid-request"));
     assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\""));
@@ -2308,7 +2369,7 @@ class FinGrindCliTest {
               "2026-04-01"
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
     assertTrue(
@@ -2362,7 +2423,7 @@ class FinGrindCliTest {
               "--bogus"
             });
 
-    assertEquals(2, exitCode);
+    assertEquals(1, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("Unsupported argument: --bogus"));
@@ -2612,84 +2673,94 @@ class FinGrindCliTest {
     }
 
     @Override
-    public OpenBookResult openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
       openBookAccesses.add(bookAccess);
-      return openBookResult;
+      return accepted(openBookResult);
     }
 
     @Override
-    public RekeyBookResult rekeyBook(
+    public ContractDecision<RekeyBookResult> rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       rekeyBookAccesses.add(bookAccess);
       rekeyReplacementPassphraseSources.add(replacementPassphraseSource);
-      return rekeyBookResult;
+      return accepted(rekeyBookResult);
     }
 
     @Override
-    public DeclareAccountResult declareAccount(
+    public ContractDecision<DeclareAccountResult> declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
       declareAccountAccesses.add(bookAccess);
-      return declareAccountResult;
+      return accepted(declareAccountResult);
     }
 
     @Override
-    public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+    public ContractDecision<ListAccountsResult> listAccounts(
+        BookAccess bookAccess, ListAccountsQuery query) {
       listAccountAccesses.add(bookAccess);
       listAccountQueries.add(query);
-      return listAccountsResult;
+      return accepted(listAccountsResult);
     }
 
     @Override
-    public BookInspection inspectBook(BookAccess bookAccess) {
+    public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
       throw new AssertionError("inspectBook should not be called in this test");
     }
 
     @Override
-    public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
+    public ContractDecision<GetPostingResult> getPosting(
+        BookAccess bookAccess, PostingId postingId) {
       throw new AssertionError("getPosting should not be called in this test");
     }
 
     @Override
-    public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
+    public ContractDecision<ListPostingsResult> listPostings(
+        BookAccess bookAccess, ListPostingsQuery query) {
       throw new AssertionError("listPostings should not be called in this test");
     }
 
     @Override
-    public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
+    public ContractDecision<AccountBalanceResult> accountBalance(
+        BookAccess bookAccess, AccountBalanceQuery query) {
       throw new AssertionError("accountBalance should not be called in this test");
     }
 
     @Override
-    public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
+    public ContractDecision<TrialBalanceResult> trialBalance(
+        BookAccess bookAccess, TrialBalanceQuery query) {
       throw new AssertionError("trialBalance should not be called in this test");
     }
 
     @Override
-    public AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query) {
+    public ContractDecision<AccountLedgerResult> accountLedger(
+        BookAccess bookAccess, AccountLedgerQuery query) {
       throw new AssertionError("accountLedger should not be called in this test");
     }
 
     @Override
-    public PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query) {
+    public ContractDecision<PeriodSummaryResult> periodSummary(
+        BookAccess bookAccess, PeriodSummaryQuery query) {
       throw new AssertionError("periodSummary should not be called in this test");
     }
 
     @Override
-    public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+    public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
       executePlanAccesses.add(bookAccess);
-      return executePlanResult == null ? successfulPlanResult(plan.planId()) : executePlanResult;
+      return accepted(
+          executePlanResult == null ? successfulPlanResult(plan.planId()) : executePlanResult);
     }
 
     @Override
-    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<PreflightEntryResult> preflight(
+        BookAccess bookAccess, PostEntryCommand command) {
       preflightAccesses.add(bookAccess);
-      return preflightResult;
+      return accepted(preflightResult);
     }
 
     @Override
-    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<CommitEntryResult> commit(
+        BookAccess bookAccess, PostEntryCommand command) {
       commitAccesses.add(bookAccess);
-      return commitResult;
+      return accepted(commitResult);
     }
 
     private List<BookAccess> openBookAccesses() {
@@ -2752,74 +2823,83 @@ class FinGrindCliTest {
     }
 
     @Override
-    public OpenBookResult openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
       throw failure;
     }
 
     @Override
-    public RekeyBookResult rekeyBook(
+    public ContractDecision<RekeyBookResult> rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       throw failure;
     }
 
     @Override
-    public DeclareAccountResult declareAccount(
+    public ContractDecision<DeclareAccountResult> declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
       throw failure;
     }
 
     @Override
-    public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+    public ContractDecision<ListAccountsResult> listAccounts(
+        BookAccess bookAccess, ListAccountsQuery query) {
       throw failure;
     }
 
     @Override
-    public BookInspection inspectBook(BookAccess bookAccess) {
+    public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
       throw failure;
     }
 
     @Override
-    public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
+    public ContractDecision<GetPostingResult> getPosting(
+        BookAccess bookAccess, PostingId postingId) {
       throw failure;
     }
 
     @Override
-    public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
+    public ContractDecision<ListPostingsResult> listPostings(
+        BookAccess bookAccess, ListPostingsQuery query) {
       throw failure;
     }
 
     @Override
-    public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
+    public ContractDecision<AccountBalanceResult> accountBalance(
+        BookAccess bookAccess, AccountBalanceQuery query) {
       throw failure;
     }
 
     @Override
-    public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
+    public ContractDecision<TrialBalanceResult> trialBalance(
+        BookAccess bookAccess, TrialBalanceQuery query) {
       throw failure;
     }
 
     @Override
-    public AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query) {
+    public ContractDecision<AccountLedgerResult> accountLedger(
+        BookAccess bookAccess, AccountLedgerQuery query) {
       throw failure;
     }
 
     @Override
-    public PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query) {
+    public ContractDecision<PeriodSummaryResult> periodSummary(
+        BookAccess bookAccess, PeriodSummaryQuery query) {
       throw failure;
     }
 
     @Override
-    public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+    public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
       throw failure;
     }
 
     @Override
-    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<PreflightEntryResult> preflight(
+        BookAccess bookAccess, PostEntryCommand command) {
       throw failure;
     }
 
     @Override
-    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<CommitEntryResult> commit(
+        BookAccess bookAccess, PostEntryCommand command) {
       throw failure;
     }
   }
@@ -2827,74 +2907,83 @@ class FinGrindCliTest {
   /** Workflow stub that always throws an invalid-request style exception. */
   private static final class IllegalArgumentWorkflow implements CliBookWorkflow {
     @Override
-    public OpenBookResult openBook(BookAccess bookAccess) {
+    public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public RekeyBookResult rekeyBook(
+    public ContractDecision<RekeyBookResult> rekeyBook(
         BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public DeclareAccountResult declareAccount(
+    public ContractDecision<DeclareAccountResult> declareAccount(
         BookAccess bookAccess, DeclareAccountCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+    public ContractDecision<ListAccountsResult> listAccounts(
+        BookAccess bookAccess, ListAccountsQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public BookInspection inspectBook(BookAccess bookAccess) {
+    public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
+    public ContractDecision<GetPostingResult> getPosting(
+        BookAccess bookAccess, PostingId postingId) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
+    public ContractDecision<ListPostingsResult> listPostings(
+        BookAccess bookAccess, ListPostingsQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
+    public ContractDecision<AccountBalanceResult> accountBalance(
+        BookAccess bookAccess, AccountBalanceQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
+    public ContractDecision<TrialBalanceResult> trialBalance(
+        BookAccess bookAccess, TrialBalanceQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query) {
+    public ContractDecision<AccountLedgerResult> accountLedger(
+        BookAccess bookAccess, AccountLedgerQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query) {
+    public ContractDecision<PeriodSummaryResult> periodSummary(
+        BookAccess bookAccess, PeriodSummaryQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+    public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<PreflightEntryResult> preflight(
+        BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
 
     @Override
-    public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+    public ContractDecision<CommitEntryResult> commit(
+        BookAccess bookAccess, PostEntryCommand command) {
       throw new IllegalArgumentException("workflow boom");
     }
   }
@@ -2918,74 +3007,84 @@ class FinGrindCliTest {
       PeriodSummaryResult periodSummaryResult) {
     return new CliBookWorkflow() {
       @Override
-      public OpenBookResult openBook(BookAccess bookAccess) {
+      public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
         throw new AssertionError("openBook should not be called in this test");
       }
 
       @Override
-      public RekeyBookResult rekeyBook(
+      public ContractDecision<RekeyBookResult> rekeyBook(
           BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
         throw new AssertionError("rekeyBook should not be called in this test");
       }
 
       @Override
-      public DeclareAccountResult declareAccount(
+      public ContractDecision<DeclareAccountResult> declareAccount(
           BookAccess bookAccess, DeclareAccountCommand command) {
         throw new AssertionError("declareAccount should not be called in this test");
       }
 
       @Override
-      public BookInspection inspectBook(BookAccess bookAccess) {
+      public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
         throw new AssertionError("inspectBook should not be called in this test");
       }
 
       @Override
-      public ListAccountsResult listAccounts(BookAccess bookAccess, ListAccountsQuery query) {
+      public ContractDecision<ListAccountsResult> listAccounts(
+          BookAccess bookAccess, ListAccountsQuery query) {
         throw new AssertionError("listAccounts should not be called in this test");
       }
 
       @Override
-      public GetPostingResult getPosting(BookAccess bookAccess, PostingId postingId) {
+      public ContractDecision<GetPostingResult> getPosting(
+          BookAccess bookAccess, PostingId postingId) {
         throw new AssertionError("getPosting should not be called in this test");
       }
 
       @Override
-      public ListPostingsResult listPostings(BookAccess bookAccess, ListPostingsQuery query) {
+      public ContractDecision<ListPostingsResult> listPostings(
+          BookAccess bookAccess, ListPostingsQuery query) {
         throw new AssertionError("listPostings should not be called in this test");
       }
 
       @Override
-      public AccountBalanceResult accountBalance(BookAccess bookAccess, AccountBalanceQuery query) {
-        return accountBalanceResult;
+      public ContractDecision<AccountBalanceResult> accountBalance(
+          BookAccess bookAccess, AccountBalanceQuery query) {
+        return accepted(accountBalanceResult);
       }
 
       @Override
-      public TrialBalanceResult trialBalance(BookAccess bookAccess, TrialBalanceQuery query) {
-        return trialBalanceResult;
+      public ContractDecision<TrialBalanceResult> trialBalance(
+          BookAccess bookAccess, TrialBalanceQuery query) {
+        return accepted(trialBalanceResult);
       }
 
       @Override
-      public AccountLedgerResult accountLedger(BookAccess bookAccess, AccountLedgerQuery query) {
-        return accountLedgerResult;
+      public ContractDecision<AccountLedgerResult> accountLedger(
+          BookAccess bookAccess, AccountLedgerQuery query) {
+        return accepted(accountLedgerResult);
       }
 
       @Override
-      public PeriodSummaryResult periodSummary(BookAccess bookAccess, PeriodSummaryQuery query) {
-        return periodSummaryResult;
+      public ContractDecision<PeriodSummaryResult> periodSummary(
+          BookAccess bookAccess, PeriodSummaryQuery query) {
+        return accepted(periodSummaryResult);
       }
 
       @Override
-      public LedgerPlanResult executePlan(BookAccess bookAccess, LedgerPlan plan) {
+      public ContractDecision<LedgerPlanResult> executePlan(
+          BookAccess bookAccess, LedgerPlan plan) {
         throw new AssertionError("executePlan should not be called in this test");
       }
 
       @Override
-      public PreflightEntryResult preflight(BookAccess bookAccess, PostEntryCommand command) {
+      public ContractDecision<PreflightEntryResult> preflight(
+          BookAccess bookAccess, PostEntryCommand command) {
         throw new AssertionError("preflight should not be called in this test");
       }
 
       @Override
-      public CommitEntryResult commit(BookAccess bookAccess, PostEntryCommand command) {
+      public ContractDecision<CommitEntryResult> commit(
+          BookAccess bookAccess, PostEntryCommand command) {
         throw new AssertionError("commit should not be called in this test");
       }
     };
@@ -3120,5 +3219,9 @@ class FinGrindCliTest {
 
   private static LedgerStepId stepId(String value) {
     return new LedgerStepId(value);
+  }
+
+  private static <T> ContractDecision<T> accepted(T value) {
+    return ContractDecision.accepted(value);
   }
 }

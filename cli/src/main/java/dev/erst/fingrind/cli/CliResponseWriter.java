@@ -28,15 +28,15 @@ import java.util.Objects;
  */
 final class CliResponseWriter {
   private final CliOutputChannel outputChannel;
-  private final CliDiscoveryResponseSupport discoveryWriter;
-  private final CliMutationResponseSupport mutationWriter;
-  private final CliQueryResponseSupport queryWriter;
+  private final CliDiscoveryResponseWriter discoveryWriter;
+  private final CliMutationResponseWriter mutationWriter;
+  private final CliQueryResponseWriter queryWriter;
 
   CliResponseWriter(PrintStream outputStream) {
     this.outputChannel = new CliOutputChannel(Objects.requireNonNull(outputStream, "outputStream"));
-    this.discoveryWriter = new CliDiscoveryResponseSupport(outputChannel);
-    this.mutationWriter = new CliMutationResponseSupport(outputChannel);
-    this.queryWriter = new CliQueryResponseSupport(outputChannel);
+    this.discoveryWriter = new CliDiscoveryResponseWriter(outputChannel);
+    this.mutationWriter = new CliMutationResponseWriter(outputChannel);
+    this.queryWriter = new CliQueryResponseWriter(outputChannel);
   }
 
   void writeHelp(ContractDiscovery.HelpDescriptor helpDescriptor) {
@@ -191,6 +191,6 @@ final class CliResponseWriter {
   }
 
   static String planRejectionStatus(LedgerPlanStatus status) {
-    return CliQueryResponseSupport.planRejectionStatus(status);
+    return CliQueryResponseWriter.planRejectionStatus(status);
   }
 }

@@ -52,30 +52,30 @@ final class CliDiscoveryOutputRenderer {
   static String renderCapabilitiesHuman(
       ContractDiscovery.CapabilitiesDescriptor capabilitiesDescriptor) {
     Objects.requireNonNull(capabilitiesDescriptor, "capabilitiesDescriptor");
+    ContractDiscovery.StorageSurfaceDescriptor storageDescriptor = capabilitiesDescriptor.storage();
+    ContractDiscovery.CommandCatalogDescriptor commandCatalog = capabilitiesDescriptor.commands();
     String header =
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Application", capabilitiesDescriptor.application()),
                 List.of("Version", capabilitiesDescriptor.version()),
-                List.of("Book boundary", capabilitiesDescriptor.bookBoundary()),
-                List.of("Storage", String.join(", ", capabilitiesDescriptor.storage())),
+                List.of("Book boundary", storageDescriptor.bookBoundary()),
+                List.of("Storage", String.join(", ", storageDescriptor.engines())),
                 List.of("Timestamp", capabilitiesDescriptor.timestamp())));
     String commands =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Discovery", String.join(", ", capabilitiesDescriptor.discoveryCommands())),
-                List.of(
-                    "Administration",
-                    String.join(", ", capabilitiesDescriptor.administrationCommands())),
-                List.of("Query", String.join(", ", capabilitiesDescriptor.queryCommands())),
-                List.of("Write", String.join(", ", capabilitiesDescriptor.writeCommands()))));
+                List.of("Discovery", String.join(", ", commandCatalog.discovery())),
+                List.of("Administration", String.join(", ", commandCatalog.administration())),
+                List.of("Query", String.join(", ", commandCatalog.query())),
+                List.of("Write", String.join(", ", commandCatalog.write()))));
     String outputModes =
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
                     "Query/report stdout",
                     String.join(", ", capabilitiesDescriptor.requestInput().queryOutputModes())),
-                List.of("Preflight semantics", capabilitiesDescriptor.preflightSemantics())));
+                List.of("Preflight semantics", capabilitiesDescriptor.preflight().semantics())));
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         joinSections(

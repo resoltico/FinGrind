@@ -24,7 +24,7 @@ public class SqliteBookRoundTripFuzzTest {
   void roundTripSingleBook(FuzzedDataProvider data) throws IOException {
     byte[] input = data.consumeRemainingAsBytes();
     try {
-      PostEntryCommand command = CliFuzzSupport.readPostEntryCommand(input);
+      PostEntryCommand command = CliFuzzFixtures.readPostEntryCommand(input);
       Path bookPath =
           Files.createTempDirectory("fingrind-jazzer-book-")
               .resolve("arbitrary")
@@ -32,22 +32,22 @@ public class SqliteBookRoundTripFuzzTest {
 
       try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
         BookAdministrationService administrationService =
-            CliFuzzSupport.administrationService(postingFactStore.administrationSession());
+            CliFuzzFixtures.administrationService(postingFactStore.administrationSession());
         PostingApplicationService applicationService =
             new PostingApplicationService(
                 postingFactStore.postingSession(),
-                CliFuzzSupport.postingIdGenerator(input),
-                CliFuzzSupport.fixedClock());
+                CliFuzzFixtures.postingIdGenerator(input),
+                CliFuzzFixtures.fixedClock());
 
         assertRejected(applicationService.commit(command), PostingRejection.BookNotInitialized.class);
 
-        CliFuzzSupport.openBook(administrationService);
+        CliFuzzFixtures.openBook(administrationService);
 
         assertAccountStateRejected(
             applicationService.commit(command), PostingRejection.UnknownAccount.class);
 
-        var declaredAccounts = CliFuzzSupport.declarePostingAccounts(administrationService, command);
-        if (CliFuzzSupport.listAccounts(postingFactStore.readSession()).size()
+        var declaredAccounts = CliFuzzFixtures.declarePostingAccounts(administrationService, command);
+        if (CliFuzzFixtures.listAccounts(postingFactStore.readSession()).size()
             != declaredAccounts.size()) {
           throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
         }
@@ -60,7 +60,7 @@ public class SqliteBookRoundTripFuzzTest {
         assertAccountStateRejected(
             applicationService.commit(command), PostingRejection.InactiveAccount.class);
 
-        CliFuzzSupport.reactivateAccount(administrationService, primaryAccount);
+        CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
         if (!(postingFactStore.findAccount(primaryAccount.accountCode()).orElseThrow().active())) {
           throw new IllegalStateException("Account reactivation did not persist to SQLite.");
         }
@@ -94,7 +94,7 @@ public class SqliteBookRoundTripFuzzTest {
             if (!postingFact
                 .provenance()
                 .recordedAt()
-                .equals(CliFuzzSupport.fixedClock().instant())) {
+                .equals(CliFuzzFixtures.fixedClock().instant())) {
               throw new IllegalStateException(
                   "Reloaded recorded-at differs from the deterministic clock.");
             }
@@ -106,8 +106,8 @@ public class SqliteBookRoundTripFuzzTest {
             PostingApplicationService duplicateService =
                 new PostingApplicationService(
                     reloadedStore.postingSession(),
-                    CliFuzzSupport.postingIdGenerator(input),
-                    CliFuzzSupport.fixedClock());
+                    CliFuzzFixtures.postingIdGenerator(input),
+                    CliFuzzFixtures.fixedClock());
             CommitEntryResult duplicateResult = duplicateService.commit(command);
             if (!(duplicateResult instanceof CommitRejected rejected)) {
               throw new IllegalStateException("Duplicate SQLite commit should be rejected.");

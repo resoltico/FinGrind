@@ -12,8 +12,7 @@ import org.jspecify.annotations.Nullable;
 final class SqliteMutationWriter {
   private SqliteMutationWriter() {}
 
-  static void insertInitializedAt(SqliteNativeDatabase activeDatabase, Instant initializedAt)
-      throws SqliteNativeException {
+  static void insertInitializedAt(SqliteNativeDatabase activeDatabase, Instant initializedAt) {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_INITIALIZED_AT)) {
       statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY);
@@ -22,8 +21,7 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void upsertAccount(SqliteNativeDatabase activeDatabase, DeclaredAccount account)
-      throws SqliteNativeException {
+  static void upsertAccount(SqliteNativeDatabase activeDatabase, DeclaredAccount account) {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.UPSERT_ACCOUNT)) {
       statement.bindText(1, account.accountCode().value());
@@ -35,8 +33,7 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void insertPostingFact(SqliteNativeDatabase activeDatabase, PostingFact postingFact)
-      throws SqliteNativeException {
+  static void insertPostingFact(SqliteNativeDatabase activeDatabase, PostingFact postingFact) {
     RequestProvenance requestProvenance = postingFact.provenance().requestProvenance();
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
@@ -67,8 +64,7 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void insertJournalLines(SqliteNativeDatabase activeDatabase, PostingFact postingFact)
-      throws SqliteNativeException {
+  static void insertJournalLines(SqliteNativeDatabase activeDatabase, PostingFact postingFact) {
     List<JournalLine> lines = postingFact.journalEntry().lines();
     for (int index = 0; index < lines.size(); index++) {
       JournalLine line = lines.get(index);
@@ -86,8 +82,7 @@ final class SqliteMutationWriter {
   }
 
   private static void bindOptionalText(
-      SqliteNativeStatement statement, int parameterIndex, @Nullable String value)
-      throws SqliteNativeException {
+      SqliteNativeStatement statement, int parameterIndex, @Nullable String value) {
     statement.bindText(parameterIndex, value);
   }
 }

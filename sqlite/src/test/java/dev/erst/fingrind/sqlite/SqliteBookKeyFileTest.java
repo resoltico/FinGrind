@@ -18,10 +18,12 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Set;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for the SQLite book-key file loader. */
+@NullUnmarked
 class SqliteBookKeyFileTest {
   @TempDir Path tempDirectory;
 
@@ -202,10 +204,11 @@ class SqliteBookKeyFileTest {
             IllegalStateException.class,
             () ->
                 SqliteBookKeyFileSecurity.requireSecureKeyFile(
-                    keyFile,
-                    path -> {
-                      throw new UnsupportedOperationException("no owner-only security view");
-                    }));
+                        keyFile,
+                        path -> {
+                          throw new UnsupportedOperationException("no owner-only security view");
+                        })
+                    .requireAccepted());
 
     assertTrue(
         exception
@@ -223,10 +226,11 @@ class SqliteBookKeyFileTest {
             IllegalStateException.class,
             () ->
                 SqliteBookKeyFileSecurity.requireSecureKeyFile(
-                    keyFile,
-                    path -> {
-                      throw new IOException("boom");
-                    }));
+                        keyFile,
+                        path -> {
+                          throw new IOException("boom");
+                        })
+                    .requireAccepted());
 
     assertTrue(
         exception
@@ -244,14 +248,15 @@ class SqliteBookKeyFileTest {
     assertDoesNotThrow(
         () ->
             SqliteBookKeyFileSecurity.requireSecureKeyFile(
-                keyFile,
-                path ->
-                    new SqliteBookKeyFileSecurity.AclSecurity(
-                        owner,
-                        List.of(
-                            deny(other, AclEntryPermission.READ_DATA),
-                            allow(other, Set.of()),
-                            allow(owner, AclEntryPermission.READ_DATA)))));
+                    keyFile,
+                    path ->
+                        new SqliteBookKeyFileSecurity.AclSecurity(
+                            owner,
+                            List.of(
+                                deny(other, AclEntryPermission.READ_DATA),
+                                allow(other, Set.of()),
+                                allow(owner, AclEntryPermission.READ_DATA))))
+                .requireAccepted());
   }
 
   @Test
@@ -265,10 +270,11 @@ class SqliteBookKeyFileTest {
             IllegalStateException.class,
             () ->
                 SqliteBookKeyFileSecurity.requireSecureKeyFile(
-                    keyFile,
-                    path ->
-                        new SqliteBookKeyFileSecurity.AclSecurity(
-                            owner, List.of(allow(owner, AclEntryPermission.WRITE_DATA)))));
+                        keyFile,
+                        path ->
+                            new SqliteBookKeyFileSecurity.AclSecurity(
+                                owner, List.of(allow(owner, AclEntryPermission.WRITE_DATA))))
+                    .requireAccepted());
 
     assertTrue(exception.getMessage().contains("ACL must grant the file owner read access"));
   }
@@ -285,13 +291,14 @@ class SqliteBookKeyFileTest {
             IllegalStateException.class,
             () ->
                 SqliteBookKeyFileSecurity.requireSecureKeyFile(
-                    keyFile,
-                    path ->
-                        new SqliteBookKeyFileSecurity.AclSecurity(
-                            owner,
-                            List.of(
-                                allow(owner, AclEntryPermission.READ_DATA),
-                                allow(other, AclEntryPermission.READ_DATA)))));
+                        keyFile,
+                        path ->
+                            new SqliteBookKeyFileSecurity.AclSecurity(
+                                owner,
+                                List.of(
+                                    allow(owner, AclEntryPermission.READ_DATA),
+                                    allow(other, AclEntryPermission.READ_DATA))))
+                    .requireAccepted());
 
     assertTrue(exception.getMessage().contains("ACL must grant secret access only"));
     assertTrue(exception.getMessage().contains("other"));

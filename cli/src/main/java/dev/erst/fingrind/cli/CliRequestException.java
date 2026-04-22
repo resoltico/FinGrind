@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Signals one invalid request document or request-shape failure. */
 final class CliRequestException extends IllegalArgumentException implements CliCommandException {
@@ -9,7 +10,7 @@ final class CliRequestException extends IllegalArgumentException implements CliC
   private final String code;
   private final String hint;
 
-  CliRequestException(String code, String message, String hint, Throwable cause) {
+  CliRequestException(String code, String message, String hint, @Nullable Throwable cause) {
     super(message, cause);
     this.code = code;
     this.hint = hint;

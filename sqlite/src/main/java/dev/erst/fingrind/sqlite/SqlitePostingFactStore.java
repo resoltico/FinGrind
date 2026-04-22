@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
@@ -46,8 +47,8 @@ import java.util.Set;
 public final class SqlitePostingFactStore implements LedgerPlanSession, AutoCloseable {
   private final Path bookPath;
   private final SqliteStoreAccessMode accessMode;
-  private final SqlitePostingReadSupport postingReadSupport;
-  private final SqliteReportReadSupport reportReadSupport;
+  private final SqlitePostingReader postingReader;
+  private final SqliteReportReader reportReader;
   private final SqliteStoreReadOperations readOperations;
   private final SqliteStoreMutationOperations mutationOperations;
   private final BookAdministrationSession administrationView;
@@ -66,8 +67,8 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     this.bookPath = Objects.requireNonNull(bookPath, "bookPath").toAbsolutePath().normalize();
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
-    this.postingReadSupport = new SqlitePostingReadSupport();
-    this.reportReadSupport = new SqliteReportReadSupport(postingReadSupport);
+    this.postingReader = new SqlitePostingReader();
+    this.reportReader = new SqliteReportReader(postingReader);
     this.readOperations = new SqliteStoreReadOperations(this);
     this.mutationOperations = new SqliteStoreMutationOperations(this);
     this.administrationView = new SqliteBookAdministrationSessionView(this);
@@ -88,7 +89,21 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   }
 
   SqlitePostingFactStore(BookAccess bookAccess, SqliteStoreAccessMode accessMode) {
-    this(bookAccess.bookFilePath(), passphraseFor(bookAccess), accessMode);
+    this(
+        bookAccess.bookFilePath(),
+        passphraseFor(bookAccess)
+            .fold(
+                resolvedPassphrase -> resolvedPassphrase,
+                failure -> {
+                  throw new IllegalStateException(failure.message());
+                }),
+        accessMode);
+  }
+
+  /** Opens and primes one SQLite-backed book session for explicit CLI/workflow result handling. */
+  public static ContractDecision<SqlitePostingFactStore> openResolved(
+      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteStoreAccessMode accessMode) {
+    return SqliteStoreOpening.openResolved(bookPath, bookPassphrase, accessMode);
   }
 
   @Override
@@ -225,16 +240,15 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     return mutationOperations.rekeyBook(replacementPassphrase);
   }
 
-  boolean isInitializedBook(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+  boolean isInitializedBook(SqliteNativeDatabase activeDatabase) {
     return lifecycle.isInitializedBook(activeDatabase);
   }
 
-  void requireInitializedBook(SqliteNativeDatabase activeDatabase) throws SqliteNativeException {
+  void requireInitializedBook(SqliteNativeDatabase activeDatabase) {
     lifecycle.requireInitializedBook(activeDatabase);
   }
 
-  SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase)
-      throws SqliteNativeException {
+  SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
     return lifecycle.stateSnapshot(activeDatabase);
   }
 
@@ -250,29 +264,32 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     lifecycle.ensureOpenSession();
   }
 
-  SqliteNativeDatabase initializedQueryDatabase() throws SqliteNativeException {
+  SqliteNativeDatabase initializedQueryDatabase() {
     return lifecycle.initializedQueryDatabase();
   }
 
-  SqlitePostingReadSupport postingReadSupport() {
-    return postingReadSupport;
+  SqlitePostingReader postingReader() {
+    return postingReader;
   }
 
-  SqliteReportReadSupport reportReadSupport() {
-    return reportReadSupport;
+  SqliteReportReader reportReader() {
+    return reportReader;
   }
 
-  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase)
-      throws SqliteNativeException {
+  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase) {
     return lifecycle.beginImmediateIfNeeded(activeDatabase);
   }
 
-  static void closeOwnedDatabase(SqliteNativeDatabase database) throws SqliteNativeException {
+  static void closeOwnedDatabase(SqliteNativeDatabase database) {
     database.close();
   }
 
-  static SqliteBookPassphrase passphraseFor(BookAccess bookAccess) {
-    return SqliteStoreSupport.passphraseFor(bookAccess);
+  static ContractDecision<SqliteBookPassphrase> passphraseFor(BookAccess bookAccess) {
+    return passphraseDecisionFor(bookAccess);
+  }
+
+  static ContractDecision<SqliteBookPassphrase> passphraseDecisionFor(BookAccess bookAccess) {
+    return SqliteStoreOperations.passphraseFor(bookAccess);
   }
 
   Path bookPath() {

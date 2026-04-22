@@ -8,9 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.BookAccess;
 import java.nio.file.Path;
 import java.util.List;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Pins constructor invariants for package-private CLI JSON transport models. */
+@NullUnmarked
 class CliJsonModelValidationTest {
   @Test
   void responseModels_trimTextAndRejectBlankValues() {
@@ -72,8 +74,8 @@ class CliJsonModelValidationTest {
 
   @Test
   void parsedBookArguments_coalesceNullCommandArguments() {
-    CliBookArgumentSupport.ParsedBookArguments parsedBookArguments =
-        new CliBookArgumentSupport.ParsedBookArguments(
+    CliBookArgumentParser.ParsedBookArguments parsedBookArguments =
+        new CliBookArgumentParser.ParsedBookArguments(
             new BookAccess(
                 Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE),
             null,

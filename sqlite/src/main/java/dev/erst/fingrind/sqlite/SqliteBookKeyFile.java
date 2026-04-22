@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.ContractErrorException;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,9 +13,22 @@ public final class SqliteBookKeyFile {
 
   /** Reads and normalizes one UTF-8 passphrase file. */
   public static SqliteBookPassphrase load(Path bookKeyFilePath) {
+    return loadDecision(bookKeyFilePath).requireAccepted();
+  }
+
+  /** Reads and normalizes one UTF-8 passphrase file with an explicit accepted/rejected result. */
+  public static ContractDecision<SqliteBookPassphrase> loadDecision(Path bookKeyFilePath) {
     Path normalizedPath = normalize(bookKeyFilePath);
-    requireSecureKeyFile(normalizedPath);
-    return SqliteBookPassphrase.fromUtf8Bytes(normalizedPath.toString(), readBytes(normalizedPath));
+    return requireSecureKeyFile(normalizedPath)
+        .fold(
+            validatedPath ->
+                readBytes(validatedPath)
+                    .fold(
+                        loadedBytes ->
+                            SqliteBookPassphrase.fromUtf8BytesDecision(
+                                validatedPath.toString(), loadedBytes),
+                        ContractDecision::rejected),
+            ContractDecision::rejected);
   }
 
   private static Path normalize(Path bookKeyFilePath) {
@@ -23,20 +36,19 @@ public final class SqliteBookKeyFile {
     return bookKeyFilePath.toAbsolutePath().normalize();
   }
 
-  private static byte[] readBytes(Path bookKeyFilePath) {
+  private static ContractDecision<byte[]> readBytes(Path bookKeyFilePath) {
     try {
-      return Files.readAllBytes(bookKeyFilePath);
+      return ContractDecision.accepted(Files.readAllBytes(bookKeyFilePath));
     } catch (IOException exception) {
-      throw new ContractErrorException(
-          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE,
-          "Failed to read the FinGrind book key file: " + bookKeyFilePath,
-          "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
-          null,
-          exception);
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+              "Failed to read the FinGrind book key file: " + bookKeyFilePath,
+              "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
+              null));
     }
   }
 
-  static void requireSecureKeyFile(Path bookKeyFilePath) {
-    SqliteBookKeyFileSecurity.requireSecureKeyFile(bookKeyFilePath);
+  static ContractDecision<Path> requireSecureKeyFile(Path bookKeyFilePath) {
+    return SqliteBookKeyFileSecurity.requireSecureKeyFile(bookKeyFilePath);
   }
 }

@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link RequestProvenance}. */
+@NullUnmarked
 class RequestProvenanceTest {
   @Test
   void constructor_acceptsNormalizedBoundaryValues() {

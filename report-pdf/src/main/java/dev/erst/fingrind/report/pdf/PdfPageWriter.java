@@ -40,7 +40,7 @@ final class PdfPageWriter implements AutoCloseable {
     Objects.requireNonNull(orientation, "orientation");
     this.reportTitle = Objects.requireNonNull(reportTitle, "reportTitle");
     this.bookFilePath =
-        PdfRenderSupport.absolutePath(Objects.requireNonNull(bookFilePath, "bookFilePath"));
+        PdfValueFormatter.absolutePath(Objects.requireNonNull(bookFilePath, "bookFilePath"));
     this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt");
     this.preparedBy = Objects.requireNonNull(preparedBy, "preparedBy");
     this.currentPageSize = orientation.pageSize();

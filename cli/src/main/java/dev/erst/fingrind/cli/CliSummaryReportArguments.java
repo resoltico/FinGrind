@@ -16,8 +16,8 @@ final class CliSummaryReportArguments {
   private CliSummaryReportArguments() {}
 
   static CliCommand parseTrialBalanceCommand(List<String> arguments) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseBookAndCommandArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
@@ -32,22 +32,23 @@ final class CliSummaryReportArguments {
         case ProtocolOptions.OUTPUT ->
             outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         case ProtocolOptions.PDF_OUT ->
-            pdfOutPath = CliArgumentSupport.requirePdfOutPath(pdfOutPath, argumentIterator);
-        default -> throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+            pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
     return new CliCommand.TrialBalance(
         parsedArguments.bookAccess(),
-        CliArgumentSupport.requireValidArgument(
+        CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_TO,
             () -> new TrialBalanceQuery(Optional.ofNullable(resolvedEffectiveDateTo))),
-        CliArgumentSupport.resolvedReportOutput(outputMode, pdfOutPath));
+        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
   static CliCommand parsePeriodSummaryCommand(List<String> arguments) {
-    CliBookArgumentSupport.ParsedBookArguments parsedArguments =
-        CliBookArgumentSupport.parseBookAndCommandArguments(arguments);
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable OutputMode outputMode = null;
@@ -67,17 +68,18 @@ final class CliSummaryReportArguments {
         case ProtocolOptions.OUTPUT ->
             outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         case ProtocolOptions.PDF_OUT ->
-            pdfOutPath = CliArgumentSupport.requirePdfOutPath(pdfOutPath, argumentIterator);
-        default -> throw CliArgumentSupport.invalid(argument, "Unsupported argument: " + argument);
+            pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
+        default ->
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
       }
     }
     if (effectiveDateFrom == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.EFFECTIVE_DATE_FROM,
           "A " + ProtocolOptions.EFFECTIVE_DATE_FROM + " argument is required.");
     }
     if (effectiveDateTo == null) {
-      throw CliArgumentSupport.invalid(
+      throw CliArgumentValueParser.invalid(
           ProtocolOptions.EFFECTIVE_DATE_TO,
           "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
     }
@@ -85,9 +87,9 @@ final class CliSummaryReportArguments {
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
     return new CliCommand.PeriodSummary(
         parsedArguments.bookAccess(),
-        CliArgumentSupport.requireValidArgument(
+        CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             () -> new PeriodSummaryQuery(requiredEffectiveDateFrom, requiredEffectiveDateTo)),
-        CliArgumentSupport.resolvedReportOutput(outputMode, pdfOutPath));
+        CliArgumentValueParser.resolvedReportOutput(outputMode, pdfOutPath));
   }
 }

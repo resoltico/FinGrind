@@ -18,7 +18,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new ContractDiscovery.HelpDescriptor(
                 "FinGrind",
-                "0.20.0",
+                "0.21.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -41,7 +41,8 @@ class CliDiscoveryOutputRendererTest {
                         "Show help")),
                 List.of(),
                 List.of(new ContractDiscovery.ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor("advisory", false, "desc"),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
                 environment()));
 
@@ -73,37 +74,37 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.20.0"));
+    assertTrue(rendered.contains("0.21.0"));
   }
 
   private static ContractDiscovery.ApplicationIdentity identity() {
     return new ContractDiscovery.ApplicationIdentity(
         "FinGrind",
-        "0.20.0",
+        "0.21.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 
   private static ContractDiscovery.EnvironmentDescriptor environment() {
     return new ContractDiscovery.EnvironmentDescriptor(
-        "self-contained-bundle",
-        "self-contained-bundle",
-        List.of("macos-aarch64", "windows-x86_64"),
-        List.of(),
-        ProtocolCatalog.sourceCheckoutJava(),
-        "sqlite-ffm-sqlite3mc",
-        "sqlite",
-        "required",
-        "chacha20",
-        "managed-only",
-        "FINGRIND_SQLITE_LIBRARY",
-        "fingrind.bundle.home",
-        List.of("THREADSAFE=1"),
-        true,
-        "3.53.0",
-        "2.3.3",
-        "loaded",
-        "3.53.0",
-        "2.3.3",
-        null);
+        new ContractDiscovery.EnvironmentDistributionDescriptor(
+            "self-contained-bundle",
+            "self-contained-bundle",
+            List.of("macos-aarch64", "windows-x86_64"),
+            List.of(),
+            ProtocolCatalog.sourceCheckoutJava()),
+        new ContractDiscovery.EnvironmentStorageDescriptor(
+            "sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new ContractDiscovery.EnvironmentSqliteDescriptor(
+            "managed-only",
+            "FINGRIND_SQLITE_LIBRARY",
+            "fingrind.bundle.home",
+            List.of("THREADSAFE=1"),
+            ContractDiscovery.SqliteCompileOptionsVerificationStatus.VERIFIED,
+            "3.53.0",
+            "2.3.3",
+            "loaded",
+            "3.53.0",
+            "2.3.3",
+            null));
   }
 }

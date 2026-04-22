@@ -111,10 +111,11 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                         "JavaLangClash",
                         "MissingCasesInEnumSwitch",
                         "MissingOverride",
+                        "NullAway",
                         "ReferenceEquality",
+                        "RequireExplicitNullMarking",
                         "StringCaseLocaleUsage"
                     )
-                    options.errorprone.disable("NullAway", "RequireExplicitNullMarking")
                 }
             }
 

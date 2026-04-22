@@ -37,14 +37,7 @@ jobs:
         run: ./gradlew check --no-daemon
 
       - name: Verify managed SQLite CLI runtime
-        run: |
-          set -euo pipefail
-          output="$(./gradlew :cli:run --args='capabilities --output json' --no-daemon --console=plain)"
-          printf '%s\n' "$output"
-          printf '%s\n' "$output" | grep -Eq '"sqliteLibraryMode"[[:space:]]*:[[:space:]]*"managed-only"'
-          printf '%s\n' "$output" | grep -Eq '"requiredMinimumSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
-          printf '%s\n' "$output" | grep -Eq '"sqliteRuntimeStatus"[[:space:]]*:[[:space:]]*"ready"'
-          printf '%s\n' "$output" | grep -Eq '"loadedSqliteVersion"[[:space:]]*:[[:space:]]*"3\.53\.0"'
+        run: ./scripts/verify-managed-sqlite-runtime.sh
 
       - name: Build self-contained CLI bundle
         run: ./gradlew :cli:bundleCliArchive --no-daemon --console=plain
@@ -83,12 +76,9 @@ jobs:
       - name: Verify managed SQLite CLI runtime on Windows
         shell: pwsh
         run: |
-          $output = .\gradlew.bat :cli:run --args='capabilities --output json' --no-daemon --console=plain | Out-String
+          $output = .\gradlew.bat -q :cli:run "--args=capabilities --output json" --no-daemon --console=plain | Out-String
           Write-Host $output
-          if ($output -notmatch '"sqliteLibraryMode"\s*:\s*"managed-only"') { throw "missing managed-only sqlite library mode" }
-          if ($output -notmatch '"requiredMinimumSqliteVersion"\s*:\s*"3\.53\.0"') { throw "missing required minimum SQLite version" }
-          if ($output -notmatch '"sqliteRuntimeStatus"\s*:\s*"ready"') { throw "missing ready sqlite runtime status" }
-          if ($output -notmatch '"loadedSqliteVersion"\s*:\s*"3\.53\.0"') { throw "missing loaded SQLite version" }
+          $output | python .\scripts\verify-managed-sqlite-runtime.py
 
       - name: Build self-contained Windows CLI bundle
         shell: pwsh

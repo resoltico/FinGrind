@@ -43,7 +43,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                     ?: throw IllegalArgumentException("Missing shared FinGrind property '$name' in ../gradle.properties.")
 
             val managedSqlite =
-                ManagedSqliteSupport.register(
+                ManagedSqliteProvisioningLogic.register(
                     project = this,
                     sourceDirectory =
                         repoRootDirectory.dir(
@@ -54,7 +54,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                         sharedFingrindProperty("fingrindManagedSqlite3mcVersion"),
                     sourceSha3 = sharedFingrindProperty("fingrindManagedSqliteSourceSha3"),
                 )
-            ManagedSqliteSupport.configureConsumers(this, managedSqlite)
+            ManagedSqliteProvisioningLogic.configureConsumers(this, managedSqlite)
 
             extensions.configure<JavaPluginExtension> {
                 toolchain.languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
@@ -185,17 +185,17 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 }
 
             tasks.named<Test>("test") {
-                val supportTestClassCount =
+                val deterministicTestClassCount =
                     fileTree("src/test/java") {
                         include("**/*Test.java")
                     }.files.size
-                description = "Runs deterministic Jazzer support tests."
+                description = "Runs deterministic Jazzer replay and harness tests."
                 group = "verification"
                 useJUnitPlatform()
                 maxParallelForks = 1
                 enableNativeAccess()
                 doFirst {
-                    addTestListener(JazzerSupportTestPulseListener(supportTestClassCount))
+                    addTestListener(JazzerDeterministicTestPulseListener(deterministicTestClassCount))
                 }
             }
 
@@ -217,15 +217,15 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 }
             }
 
-            val jazzerSupportTests = tasks.named<Test>("test")
+            val jazzerDeterministicTests = tasks.named<Test>("test")
             regressionTasks.windowed(size = 2, step = 1, partialWindows = false).forEach { (first, second) ->
                 second.configure {
                     mustRunAfter(first)
-                    mustRunAfter(jazzerSupportTests)
+                    mustRunAfter(jazzerDeterministicTests)
                 }
             }
             regressionTasks.firstOrNull()?.configure {
-                mustRunAfter(jazzerSupportTests)
+                mustRunAfter(jazzerDeterministicTests)
             }
 
             tasks.register<CleanLocalCorpusTask>("cleanLocalCorpus") {

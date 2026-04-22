@@ -74,7 +74,7 @@ final class PdfDocumentFactory {
     information.setTitle(reportTitle);
     information.setAuthor(applicationName);
     information.setCreator(applicationName + " " + applicationVersion);
-    information.setSubject(PdfRenderSupport.absolutePath(bookFilePath));
+    information.setSubject(PdfValueFormatter.absolutePath(bookFilePath));
     information.setCreationDate(calendar(generatedAt));
     information.setModificationDate(calendar(generatedAt));
   }

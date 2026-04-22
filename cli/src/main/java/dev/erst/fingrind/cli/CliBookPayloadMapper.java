@@ -15,23 +15,24 @@ final class CliBookPayloadMapper {
   private CliBookPayloadMapper() {}
 
   static Object bookInspectionPayload(Path bookFilePath, BookInspection inspection) {
+    BookInspection.Status status = inspection.status();
     return switch (inspection) {
       case BookInspection.Missing missing ->
           new CliAdministrationJsonModels.MissingBookInspectionPayload(
               absolutePath(bookFilePath),
-              missing.status().wireValue(),
-              missing.initialized(),
-              missing.compatibleWithCurrentBinary(),
-              missing.canInitializeWithOpenBook(),
+              status.wireValue(),
+              status.initialized(),
+              status.compatibleWithCurrentBinary(),
+              status.canInitializeWithOpenBook(),
               missing.supportedBookFormatVersion(),
               missing.migrationPolicy().wireValue());
       case BookInspection.Existing existing ->
           new CliAdministrationJsonModels.ExistingBookInspectionPayload(
               absolutePath(bookFilePath),
-              existing.status().wireValue(),
-              existing.initialized(),
-              existing.compatibleWithCurrentBinary(),
-              existing.canInitializeWithOpenBook(),
+              status.wireValue(),
+              status.initialized(),
+              status.compatibleWithCurrentBinary(),
+              status.canInitializeWithOpenBook(),
               existing.applicationId(),
               existing.detectedBookFormatVersion(),
               existing.supportedBookFormatVersion(),
@@ -39,10 +40,10 @@ final class CliBookPayloadMapper {
       case BookInspection.Initialized initialized ->
           new CliAdministrationJsonModels.InitializedBookInspectionPayload(
               absolutePath(bookFilePath),
-              initialized.status().wireValue(),
-              initialized.initialized(),
-              initialized.compatibleWithCurrentBinary(),
-              initialized.canInitializeWithOpenBook(),
+              status.wireValue(),
+              status.initialized(),
+              status.compatibleWithCurrentBinary(),
+              status.canInitializeWithOpenBook(),
               initialized.applicationId(),
               initialized.detectedBookFormatVersion(),
               initialized.supportedBookFormatVersion(),
@@ -116,7 +117,7 @@ final class CliBookPayloadMapper {
         snapshot.account().declaredAt().toString(),
         snapshot.effectiveDateFrom().map(Object::toString).orElse(null),
         snapshot.effectiveDateTo().map(Object::toString).orElse(null),
-        snapshot.balances().stream().map(CliPayloadSupport::balancePayload).toList());
+        snapshot.balances().stream().map(CliPayloadAssembler::balancePayload).toList());
   }
 
   static List<String> counterpartAccounts(DeclaredAccount account, PostingFact postingFact) {

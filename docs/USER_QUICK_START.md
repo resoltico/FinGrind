@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.20.0"
+version: "0.21.0"
 domain: USER_QUICK_START
-updated: "2026-04-21"
+updated: "2026-04-22"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -14,7 +14,10 @@ route:
 **Prerequisites**: Download one public FinGrind release bundle and unpack it. The public download
 already includes what it needs to run.
 
-In the examples below, `fingrind` means the launcher inside the extracted download.
+In the examples below, `fingrind` means the launcher inside the extracted download. The commands
+use relative paths in the current working directory so the same file layout works from a public
+bundle on macOS, Linux, and Windows PowerShell. The public bundle does not include the repository's
+`docs/examples/` fixtures, so this guide creates the needed JSON files directly.
 
 ## 1. Check That The Download Runs
 
@@ -40,9 +43,7 @@ FinGrind protects each book. Start by creating one key file that will hold the s
 book:
 
 ```bash
-fingrind \
-  generate-book-key-file \
-  --book-key-file /tmp/fingrind/acme.book-key
+fingrind generate-book-key-file --book-key-file ./acme.book-key
 ```
 
 That command creates the file for you and refuses to overwrite an existing one.
@@ -52,50 +53,85 @@ That command creates the file for you and refuses to overwrite an existing one.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind \
-  open-book \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key
+fingrind open-book --book-file ./acme.sqlite --book-key-file ./acme.book-key
 ```
 
 ## 4. Declare The Accounts You Need
 
-Declare the accounts that your first entry will use:
+Create `./declare-account-cash.json` with:
+
+```json
+{
+  "accountCode": "1000",
+  "accountName": "Cash",
+  "normalBalance": "DEBIT"
+}
+```
+
+Create `./declare-account-revenue.json` with:
+
+```json
+{
+  "accountCode": "2000",
+  "accountName": "Revenue",
+  "normalBalance": "CREDIT"
+}
+```
+
+Then declare the accounts that your first entry will use:
 
 ```bash
-fingrind \
-  declare-account \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key \
-  --request-file docs/examples/declare-account-cash.json
-
-fingrind \
-  declare-account \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key \
-  --request-file docs/examples/declare-account-revenue.json
+fingrind declare-account --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-cash.json
+fingrind declare-account --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-revenue.json
 ```
 
 ## 5. Post Your First Entry
 
-First check the request:
+Start from the canonical posting template:
 
 ```bash
-fingrind \
-  preflight-entry \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key \
-  --request-file docs/examples/basic-posting-request.json
+fingrind print-request-template > ./request.json
+```
+
+Replace the contents of `./request.json` with one balanced entry, for example:
+
+```json
+{
+  "effectiveDate": "2026-04-08",
+  "lines": [
+    {
+      "accountCode": "1000",
+      "side": "DEBIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    },
+    {
+      "accountCode": "2000",
+      "side": "CREDIT",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    }
+  ],
+  "provenance": {
+    "actorId": "quick-start",
+    "actorType": "AGENT",
+    "commandId": "quick-start-posting",
+    "idempotencyKey": "quick-start-idem-1",
+    "causationId": "quick-start-cause-1"
+  }
+}
+```
+
+Then check the request:
+
+```bash
+fingrind preflight-entry --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json
 ```
 
 Then commit it:
 
 ```bash
-fingrind \
-  post-entry \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key \
-  --request-file docs/examples/basic-posting-request.json
+fingrind post-entry --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json
 ```
 
 ## 6. Read The Result Back
@@ -103,22 +139,13 @@ fingrind \
 Ask for a quick reporting view:
 
 ```bash
-fingrind \
-  trial-balance \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key \
-  --output human
+fingrind trial-balance --book-file ./acme.sqlite --book-key-file ./acme.book-key --output human
 ```
 
 Or check one account directly:
 
 ```bash
-fingrind \
-  account-balance \
-  --book-file /tmp/fingrind/acme.sqlite \
-  --book-key-file /tmp/fingrind/acme.book-key \
-  --account-code 1000 \
-  --output human
+fingrind account-balance --book-file ./acme.sqlite --book-key-file ./acme.book-key --account-code 1000 --output human
 ```
 
 ## 7. Where To Go Next

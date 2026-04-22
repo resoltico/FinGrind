@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Computed per-currency balances for one declared account. */
 public record AccountBalanceSnapshot(
@@ -12,10 +13,14 @@ public record AccountBalanceSnapshot(
     Optional<LocalDate> effectiveDateTo,
     List<CurrencyBalance> balances) {
   /** Validates one account-balance snapshot. */
-  public AccountBalanceSnapshot {
-    Objects.requireNonNull(account, "account");
-    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    balances = balances == null ? List.of() : List.copyOf(balances);
+  public AccountBalanceSnapshot(
+      DeclaredAccount account,
+      Optional<LocalDate> effectiveDateFrom,
+      Optional<LocalDate> effectiveDateTo,
+      @Nullable List<CurrencyBalance> balances) {
+    this.account = Objects.requireNonNull(account, "account");
+    this.effectiveDateFrom = Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
+    this.effectiveDateTo = Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    this.balances = balances == null ? List.of() : List.copyOf(balances);
   }
 }
