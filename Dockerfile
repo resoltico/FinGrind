@@ -47,7 +47,7 @@ RUN jlink \
     --compress=zip-6 \
     --output /opt/fingrind/runtime
 
-FROM alpine:3.22
+FROM alpine:3.23
 
 WORKDIR /workdir
 
