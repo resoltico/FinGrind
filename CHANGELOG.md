@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the release protocol and its shell regression coverage so oversized release PRs now fall
   back from `gh pr diff --name-only` to GitHub's paginated pull-files API instead of stalling on
   `PullRequest.diff too_large`.
+- Reworked `gradlew.bat` to use a simpler argument scan plus a hashed Windows project-cache key
+  instead of parser-fragile inline character substitutions, and added a dedicated local
+  regression so the Windows CI wrapper path now fails in a named guard before release time.
 - Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
   back into the repository-visible build context on fragile mounted filesystems, so release
   version bumps and other Docker-surface changes cannot silently reuse stale local container
