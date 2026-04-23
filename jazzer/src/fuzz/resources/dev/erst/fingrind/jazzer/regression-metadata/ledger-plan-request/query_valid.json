@@ -1,0 +1,22 @@
+{
+  "targetKey" : "ledger-plan-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/query_valid.json",
+  "expectation" : {
+    "outcomeKind" : "SUCCESS",
+    "details" : {
+      "type" : "LEDGER_PLAN_REQUEST",
+      "requestStatus" : "PARSED",
+      "planId" : "plan-query-1",
+      "stepCount" : 6,
+      "firstStepKind" : "open-book",
+      "lastStepKind" : "list-postings",
+      "assertionStepCount" : 0,
+      "beginsWithOpenBook" : true,
+      "executionStatus" : "SUCCEEDED",
+      "journalStepCount" : 6,
+      "listQueryStepCount" : 2,
+      "structuredListQueryStepCount" : 2,
+      "failureMessage" : "NONE"
+    }
+  }
+}

@@ -28,6 +28,6 @@ Active harness execution hard-fails when `GITHUB_ACTIONS=true`.
 
 More detail lives in:
 
-- [../docs/DEVELOPER_JAZZER.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER.md)
-- [../docs/DEVELOPER_JAZZER_OPERATIONS.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER_OPERATIONS.md)
-- [../docs/DEVELOPER_JAZZER_COVERAGE.md](/Users/erst/Tools/FinGrind/docs/DEVELOPER_JAZZER_COVERAGE.md)
+- [../docs/DEVELOPER_JAZZER.md](../docs/DEVELOPER_JAZZER.md)
+- [../docs/DEVELOPER_JAZZER_OPERATIONS.md](../docs/DEVELOPER_JAZZER_OPERATIONS.md)
+- [../docs/DEVELOPER_JAZZER_COVERAGE.md](../docs/DEVELOPER_JAZZER_COVERAGE.md)

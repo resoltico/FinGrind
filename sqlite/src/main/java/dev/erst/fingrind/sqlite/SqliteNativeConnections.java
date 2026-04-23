@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractDecision;
+import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -28,7 +29,7 @@ final class SqliteNativeConnections {
         }
       }
       case ContractDecision.Rejected<SqliteBookPassphrase>(var failure) ->
-          throw new IllegalStateException(failure.message());
+          throw new ContractFailureException(failure);
     };
   }
 

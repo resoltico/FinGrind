@@ -93,7 +93,9 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"runtime-failure\""));
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"code\":\"storage-runtime-failure\""));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
   }
 
@@ -125,7 +127,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
         failureEnvelope
             .path("hint")
@@ -160,7 +162,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
         failureEnvelope
             .path("hint")
@@ -196,7 +198,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
         failureEnvelope
             .path("hint")
@@ -232,7 +234,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
     assertTrue(
         failureEnvelope
             .path("hint")

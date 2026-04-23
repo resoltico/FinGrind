@@ -134,9 +134,9 @@ Container posture should follow the same hardened publication stance already pro
 - prune old GHCR package versions conservatively by anchored tagged releases
 
 FinGrind already carries the matching workflow surfaces locally:
-- [../.github/workflows/ci.yml](/Users/erst/Tools/FinGrind/.github/workflows/ci.yml)
-- [../.github/workflows/release.yml](/Users/erst/Tools/FinGrind/.github/workflows/release.yml)
-- [../.github/workflows/container.yml](/Users/erst/Tools/FinGrind/.github/workflows/container.yml)
+- [../.github/workflows/ci.yml](../.github/workflows/ci.yml)
+- [../.github/workflows/release.yml](../.github/workflows/release.yml)
+- [../.github/workflows/container.yml](../.github/workflows/container.yml)
 
 ## Notes
 

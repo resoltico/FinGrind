@@ -35,7 +35,7 @@ final class CliBookQueryArguments {
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
               CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
-    return new CliCommand.InspectBook(
+    return new InspectBook(
         parsedArguments.bookAccess(), CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
@@ -71,7 +71,7 @@ final class CliBookQueryArguments {
           ProtocolOptions.POSTING_ID, "A " + ProtocolOptions.POSTING_ID + " argument is required.");
     }
     String requiredPostingIdValue = postingIdValue;
-    return new CliCommand.GetPosting(
+    return new GetPosting(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.POSTING_ID, () -> new PostingId(requiredPostingIdValue)),
@@ -119,7 +119,7 @@ final class CliBookQueryArguments {
     int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
     Optional<AccountPageCursor> resolvedCursor =
         Optional.ofNullable(cursor).map(CliArgumentValueParser::accountPageCursor);
-    return new CliCommand.ListAccounts(
+    return new ListAccounts(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.LIMIT, () -> new ListAccountsQuery(resolvedLimit, resolvedCursor)),
@@ -217,7 +217,7 @@ final class CliBookQueryArguments {
             () -> EffectiveDateRange.of(resolvedEffectiveDateFrom, resolvedEffectiveDateTo));
     Optional<dev.erst.fingrind.contract.PostingPageCursor> resolvedPostingPageCursor =
         Optional.ofNullable(resolvedCursor).map(CliArgumentValueParser::postingPageCursor);
-    return new CliCommand.ListPostings(
+    return new ListPostings(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.LIMIT,

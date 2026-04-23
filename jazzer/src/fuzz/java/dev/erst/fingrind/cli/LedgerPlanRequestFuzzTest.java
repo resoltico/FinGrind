@@ -35,6 +35,7 @@ public class LedgerPlanRequestFuzzTest {
           throw new IllegalStateException("Plan journal step kind must not collapse to execute-plan.");
         }
       }
+      LedgerPlanFuzzAssertions.executeAndAssert(plan, input);
     } catch (IllegalArgumentException expected) {
       // Malformed JSON and invalid plan/domain shapes are expected for many fuzz inputs.
     }

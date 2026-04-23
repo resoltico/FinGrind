@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -190,8 +191,10 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         SqliteStoreAccessMode.READ_WRITE_EXISTING::requireWritableInitialization);
     assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_CREATE::requireWritableInitialization);
     assertDoesNotThrow(SqliteStoreAccessMode.PLAN_EXECUTION::requireWritableInitialization);
-    assertTrue(SqliteStoreAccessMode.PLAN_EXECUTION.preservesMissingBookStateUntilMutation());
-    assertTrue(SqliteStoreAccessMode.READ_WRITE_CREATE.preservesMissingBookStateUntilMutation());
+    assertTrue(SqliteStoreAccessMode.READ_ONLY.defersMissingBookOpen());
+    assertTrue(SqliteStoreAccessMode.READ_WRITE_EXISTING.defersMissingBookOpen());
+    assertFalse(SqliteStoreAccessMode.READ_WRITE_CREATE.defersMissingBookOpen());
+    assertTrue(SqliteStoreAccessMode.PLAN_EXECUTION.defersMissingBookOpen());
 
     Path existingBookPath = tempDirectory.resolve("read-write-existing.sqlite");
     initializeBookOnDisk(existingBookPath);

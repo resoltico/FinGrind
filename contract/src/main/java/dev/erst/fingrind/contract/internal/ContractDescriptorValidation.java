@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.internal;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -35,5 +36,13 @@ public final class ContractDescriptorValidation {
   public static <T> List<T> copyList(@Nullable List<T> values, String fieldName) {
     Objects.requireNonNull(fieldName, "fieldName");
     return values == null ? List.of() : List.copyOf(values);
+  }
+
+  /** Copies one descriptor-owned map defensively while preserving insertion order. */
+  public static <K, V> Map<K, V> copyMap(@Nullable Map<K, V> values, String fieldName) {
+    Objects.requireNonNull(fieldName, "fieldName");
+    return values == null
+        ? Map.of()
+        : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(values));
   }
 }

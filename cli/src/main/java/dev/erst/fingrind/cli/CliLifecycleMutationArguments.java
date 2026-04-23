@@ -44,7 +44,7 @@ final class CliLifecycleMutationArguments {
           ProtocolOptions.BOOK_KEY_FILE,
           "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
     }
-    return new CliCommand.GenerateBookKeyFile(
+    return new GenerateBookKeyFile(
         bookKeyFilePath, CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
@@ -64,7 +64,7 @@ final class CliLifecycleMutationArguments {
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
               CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
-    return new CliCommand.OpenBook(
+    return new OpenBook(
         parsedArguments.bookAccess(), CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
@@ -176,7 +176,7 @@ final class CliLifecycleMutationArguments {
         bookFilePath, currentPassphraseSource, replacementPassphraseSource);
     CliBookPathValidator.validateRekeyStandardInputUsage(
         currentPassphraseSource, replacementPassphraseSource);
-    return new CliCommand.RekeyBook(
+    return new RekeyBook(
         new BookAccess(bookFilePath, currentPassphraseSource),
         replacementPassphraseSource,
         CliArgumentValueParser.resolvedOutputMode(outputMode));

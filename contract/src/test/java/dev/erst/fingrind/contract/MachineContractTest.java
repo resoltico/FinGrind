@@ -11,6 +11,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link MachineContract}. */
@@ -50,6 +52,14 @@ class MachineContractTest {
         enumValues(NormalBalance.values()),
         vocabularyValues(
             capabilities.requestShapes().declareAccount().enumVocabularies(), "normalBalance"));
+    assertEquals(
+        "https://json-schema.org/draft/2020-12/schema",
+        capabilities.requestShapes().schemaDialect());
+    assertEquals("object", capabilities.requestShapes().postEntry().schema().get("type"));
+    assertEquals("object", capabilities.requestShapes().declareAccount().schema().get("type"));
+    assertEquals(
+        "array",
+        nestedSchemaProperty(capabilities.requestShapes().ledgerPlan().schema(), "steps", "type"));
 
     List<String> rejectionCodes =
         capabilities.responseModel().rejections().stream()
@@ -69,6 +79,9 @@ class MachineContractTest {
     assertTrue(errorCodes.contains("invalid-page-cursor"));
     assertTrue(errorCodes.contains("interactive-prompt-unavailable"));
     assertTrue(errorCodes.contains("book-authentication-failed"));
+    assertTrue(errorCodes.contains("managed-runtime-failure"));
+    assertTrue(errorCodes.contains("storage-runtime-failure"));
+    assertTrue(errorCodes.contains("pdf-export-failure"));
     assertEquals(errorCodes.size(), errorCodes.stream().distinct().count());
   }
 
@@ -148,6 +161,13 @@ class MachineContractTest {
         .findFirst()
         .orElseThrow(() -> new AssertionError("Missing vocabulary: " + name))
         .values();
+  }
+
+  private static Object nestedSchemaProperty(
+      Map<String, Object> schema, String propertyName, String nestedField) {
+    Map<?, ?> properties = (Map<?, ?>) Objects.requireNonNull(schema.get("properties"));
+    Map<?, ?> propertySchema = (Map<?, ?>) Objects.requireNonNull(properties.get(propertyName));
+    return Objects.requireNonNull(propertySchema.get(nestedField));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {

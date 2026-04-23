@@ -87,6 +87,9 @@ jazzer/bin/clean-local-findings
 jazzer/bin/clean-local-corpus
 ```
 
+If the host filesystem leaves one preserved corpus root unreadable or temporarily undeletable,
+the cleanup commands now emit a warning and continue instead of aborting the whole wrapper run.
+
 ## Output Model
 
 FinGrind intentionally keeps the current local output model simple and file-based.

@@ -6,6 +6,8 @@ import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
+import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
+import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,7 +19,7 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** Resolves one CLI-visible passphrase source into one zeroizable UTF-8 passphrase payload. */
-final class CliBookPassphraseResolver {
+final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private static final String NO_INTERACTIVE_CONSOLE_MESSAGE =
       "FinGrind cannot prompt for a book passphrase because no interactive console is available.";
 
@@ -38,6 +40,15 @@ final class CliBookPassphraseResolver {
   ContractDecision<SqliteBookPassphrase> resolve(BookAccess bookAccess, PromptStyle promptStyle) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     return resolve(bookAccess.bookFilePath(), bookAccess.passphraseSource(), promptStyle);
+  }
+
+  /** Resolves one explicit passphrase source for the selected book path. */
+  @Override
+  public ContractDecision<SqliteBookPassphrase> resolve(
+      Path bookFilePath,
+      BookAccess.PassphraseSource passphraseSource,
+      SqlitePassphraseIntent intent) {
+    return resolve(bookFilePath, passphraseSource, promptStyle(intent));
   }
 
   /** Resolves one explicit passphrase source for the selected book path. */
@@ -197,6 +208,13 @@ final class CliBookPassphraseResolver {
   private static ContractDecision<SqliteBookPassphrase> rejectedPassphrase(
       ContractFailure failure) {
     return ContractDecision.rejected(failure);
+  }
+
+  private static PromptStyle promptStyle(SqlitePassphraseIntent intent) {
+    return switch (Objects.requireNonNull(intent, "intent")) {
+      case EXISTING_SECRET -> PromptStyle.SINGLE;
+      case NEW_SECRET -> PromptStyle.CONFIRMED_NEW_SECRET;
+    };
   }
 
   /** Prompt modes for existing-book secrets versus newly entered replacement secrets. */

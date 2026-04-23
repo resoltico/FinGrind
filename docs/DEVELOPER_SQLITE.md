@@ -140,8 +140,8 @@ The SQLite adapter is split into focused collaborators:
   and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
   stable public session contract and factory for CLI, tooling, and fuzz harnesses
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
-  package-private backing implementation for one thread-confined protected-book session root that
-  returns narrowed administration, posting, and read views over one shared store context
+  thin package-private session wrapper for one thread-confined protected-book boundary; the shared
+  lifecycle, query, report, and mutation behavior now lives on `SqliteStoreContext`
 - [`SqliteStoreOpening`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreOpening.java),
   [`SqliteStoreContext`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreContext.java),
   [`SqliteStoreLifecycle`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreLifecycle.java),
@@ -189,7 +189,10 @@ The SQLite adapter is split into focused collaborators:
 
 ## Runtime Behavior
 
-- reads and preflight against a missing book return empty state and do not create a file
+- opening a read-oriented session against a missing book stays lazy and does not create a file;
+  `inspect-book` reports the `missing` lifecycle state, query/report commands reject
+  deterministically as book-not-initialized, and `preflight-entry` rejects as
+  `PostingRejection.BookNotInitialized`
 - `inspect-book` exposes missing, blank, initialized, foreign, unsupported-version, and incomplete
   states before mutating commands proceed
 - `open-book` creates parent directories if needed, applies the canonical schema, inserts the
@@ -235,7 +238,8 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
   errors such as `book-authentication-failed`, `invalid-book-key-file`, or
   `interactive-prompt-unavailable`
 - other SQLite-native, bridge, or filesystem failures stay `IllegalStateException` and become CLI
-  `runtime-failure`
+  `storage-runtime-failure`, while managed runtime bootstrap failures become
+  `managed-runtime-failure`
 
 ## Book Protection Contract
 
@@ -262,8 +266,8 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 
 ## Transaction Model
 
-- one `SqliteBookSession` instance, backed internally by one `SqlitePostingFactStore`, owns at
-  most one open native SQLite handle
+- one `SqliteBookSession` instance, implemented by one thin `SqlitePostingFactStore` over one
+  `SqliteStoreContext`, owns at most one open native SQLite handle
 - read methods reuse that handle when it exists
 - commit uses SQLite's `begin immediate` transaction mode and performs ordinary duplicate checks
   before insert on the same native handle

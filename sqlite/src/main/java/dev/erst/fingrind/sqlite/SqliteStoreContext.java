@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.ContractDecision;
+import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
@@ -25,6 +26,9 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.BookAdministrationSession;
+import dev.erst.fingrind.executor.BookReadSession;
+import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.PostingDraft;
 import dev.erst.fingrind.executor.PostingIdGenerator;
@@ -37,7 +41,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /** Internal dependency bundle and operation owner for one SQLite-backed book session. */
-final class SqliteStoreContext {
+class SqliteStoreContext implements SqliteBookSession {
   private final Path bookPath;
   private final SqliteStoreAccessMode accessMode;
   private final SqlitePostingReader postingReader;
@@ -46,6 +50,9 @@ final class SqliteStoreContext {
   private final SqliteStoreMutationOperations mutationOperations;
   private final SqliteStoreLifecycle lifecycle;
   private final Supplier<SqliteNativeApi> sqliteApiSupplier;
+  private final BookAdministrationSession administrationView;
+  private final PostingBookSession postingView;
+  private final BookReadSession readView;
 
   SqliteStoreContext(Path bookPath, SqliteBookPassphrase bookPassphrase) {
     this(bookPath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_CREATE);
@@ -78,6 +85,9 @@ final class SqliteStoreContext {
             SqliteBookContract.FORMAT_VERSION,
             SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE,
             this.sqliteApiSupplier);
+    this.administrationView = new SqliteBookAdministrationSessionView(this);
+    this.postingView = new SqlitePostingBookSessionView(this);
+    this.readView = new SqliteBookReadSessionView(this);
   }
 
   SqliteStoreContext(BookAccess bookAccess, SqliteStoreAccessMode accessMode) {
@@ -90,11 +100,11 @@ final class SqliteStoreContext {
       Supplier<SqliteNativeApi> sqliteApiSupplier) {
     this(
         bookAccess.bookFilePath(),
-        SqlitePostingFactStore.passphraseDecisionFor(bookAccess)
+        SqliteStoreOperations.passphraseFor(bookAccess)
             .fold(
                 resolvedPassphrase -> resolvedPassphrase,
                 failure -> {
-                  throw new IllegalStateException(failure.message());
+                  throw new ContractFailureException(failure);
                 }),
         accessMode,
         sqliteApiSupplier);
@@ -106,6 +116,21 @@ final class SqliteStoreContext {
         .fold(ignored -> ContractDecision.accepted(this), ContractDecision::rejected);
   }
 
+  @Override
+  public BookAdministrationSession administrationSession() {
+    return administrationView;
+  }
+
+  @Override
+  public PostingBookSession postingSession() {
+    return postingView;
+  }
+
+  @Override
+  public BookReadSession readSession() {
+    return readView;
+  }
+
   BookInspection inspectBook() {
     return readOperations.inspectBook();
   }
@@ -114,7 +139,8 @@ final class SqliteStoreContext {
     return readOperations.isInitialized();
   }
 
-  Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  @Override
+  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
     return readOperations.findAccount(accountCode);
   }
 
@@ -126,7 +152,8 @@ final class SqliteStoreContext {
     return readOperations.listAccounts(query);
   }
 
-  Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+  @Override
+  public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
     return readOperations.findExistingPosting(idempotencyKey);
   }
 
@@ -178,19 +205,36 @@ final class SqliteStoreContext {
     return mutationOperations.rekeyBook(replacementPassphrase);
   }
 
-  void beginLedgerPlanTransaction() {
+  @Override
+  public ContractDecision<RekeyBookResult> rekeyBook(
+      BookAccess.PassphraseSource replacementPassphraseSource,
+      SqlitePassphraseResolver passphraseResolver) {
+    Objects.requireNonNull(replacementPassphraseSource, "replacementPassphraseSource");
+    Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    return passphraseResolver
+        .resolve(bookPath(), replacementPassphraseSource, SqlitePassphraseIntent.NEW_SECRET)
+        .fold(
+            replacementPassphrase -> ContractDecision.accepted(rekeyBook(replacementPassphrase)),
+            ContractDecision::rejected);
+  }
+
+  @Override
+  public void beginLedgerPlanTransaction() {
     lifecycle.beginLedgerPlanTransaction();
   }
 
-  void commitLedgerPlanTransaction() {
+  @Override
+  public void commitLedgerPlanTransaction() {
     lifecycle.commitLedgerPlanTransaction();
   }
 
-  void rollbackLedgerPlanTransaction() {
+  @Override
+  public void rollbackLedgerPlanTransaction() {
     lifecycle.rollbackLedgerPlanTransaction();
   }
 
-  void close() {
+  @Override
+  public void close() {
     lifecycle.close();
   }
 

@@ -25,9 +25,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsListAccountsForValidBookOnlyCommand() {
-    CliCommand.ListAccounts command =
+    ListAccounts command =
         assertInstanceOf(
-            CliCommand.ListAccounts.class,
+            ListAccounts.class,
             CliArguments.parse(
                 new String[] {
                   "list-accounts", "--book-file", "book.sqlite", "--book-key-file", "book.key"
@@ -41,9 +41,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
   @Test
   void parse_returnsListAccountsWithCursorOption() {
     AccountPageCursor cursor = new AccountPageCursor(new AccountCode("1000"));
-    CliCommand.ListAccounts command =
+    ListAccounts command =
         assertInstanceOf(
-            CliCommand.ListAccounts.class,
+            ListAccounts.class,
             CliArguments.parse(
                 new String[] {
                   "list-accounts",
@@ -62,16 +62,16 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsInspectBookAndGetPostingForValidBookOnlyCommands() {
-    CliCommand.InspectBook inspectBook =
+    InspectBook inspectBook =
         assertInstanceOf(
-            CliCommand.InspectBook.class,
+            InspectBook.class,
             CliArguments.parse(
                 new String[] {
                   "inspect-book", "--book-file", "book.sqlite", "--book-key-file", "book.key"
                 }));
-    CliCommand.GetPosting getPosting =
+    GetPosting getPosting =
         assertInstanceOf(
-            CliCommand.GetPosting.class,
+            GetPosting.class,
             CliArguments.parse(
                 new String[] {
                   "get-posting",
@@ -94,9 +94,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
             LocalDate.parse("2026-04-15"),
             Instant.parse("2026-04-15T10:15:30Z"),
             new PostingId("posting-20"));
-    CliCommand.ListPostings command =
+    ListPostings command =
         assertInstanceOf(
-            CliCommand.ListPostings.class,
+            ListPostings.class,
             CliArguments.parse(
                 new String[] {
                   "list-postings",
@@ -128,9 +128,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsAccountBalanceWithDateFilters() {
-    CliCommand.AccountBalance command =
+    AccountBalance command =
         assertInstanceOf(
-            CliCommand.AccountBalance.class,
+            AccountBalance.class,
             CliArguments.parse(
                 new String[] {
                   "account-balance",
@@ -154,9 +154,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsAccountBalanceWithPdfOutput() {
-    CliCommand.AccountBalance command =
+    AccountBalance command =
         assertInstanceOf(
-            CliCommand.AccountBalance.class,
+            AccountBalance.class,
             CliArguments.parse(
                 new String[] {
                   "account-balance",
@@ -178,9 +178,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_supportsOutputModesForReadAndReportCommands() {
-    CliCommand.InspectBook inspectBook =
+    InspectBook inspectBook =
         assertInstanceOf(
-            CliCommand.InspectBook.class,
+            InspectBook.class,
             CliArguments.parse(
                 new String[] {
                   "inspect-book",
@@ -191,9 +191,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--output",
                   "human"
                 }));
-    CliCommand.TrialBalance trialBalance =
+    TrialBalance trialBalance =
         assertInstanceOf(
-            CliCommand.TrialBalance.class,
+            TrialBalance.class,
             CliArguments.parse(
                 new String[] {
                   "trial-balance",
@@ -208,9 +208,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--output",
                   "csv"
                 }));
-    CliCommand.AccountLedger accountLedger =
+    AccountLedger accountLedger =
         assertInstanceOf(
-            CliCommand.AccountLedger.class,
+            AccountLedger.class,
             CliArguments.parse(
                 new String[] {
                   "account-ledger",
@@ -229,9 +229,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--output",
                   "human"
                 }));
-    CliCommand.PeriodSummary periodSummary =
+    PeriodSummary periodSummary =
         assertInstanceOf(
-            CliCommand.PeriodSummary.class,
+            PeriodSummary.class,
             CliArguments.parse(
                 new String[] {
                   "period-summary",
@@ -269,9 +269,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsListPostingsWithDefaultPagingWhenOmitted() {
-    CliCommand.ListPostings command =
+    ListPostings command =
         assertInstanceOf(
-            CliCommand.ListPostings.class,
+            ListPostings.class,
             CliArguments.parse(
                 new String[] {
                   "list-postings", "--book-file", "book.sqlite", "--book-key-file", "book.key"

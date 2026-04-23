@@ -1,5 +1,6 @@
 import java.util.Properties
 import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -30,6 +31,8 @@ repositories {
 dependencies {
     implementation("com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}")
     implementation("net.ltgt.gradle:gradle-errorprone-plugin:${libs.versions.errorprone.plugin.get()}")
+
+    testImplementation(kotlin("test-junit5"))
 }
 
 gradlePlugin {
@@ -62,4 +65,8 @@ tasks.withType<KotlinCompile>().configureEach {
 
 tasks.withType<JavaCompile>().configureEach {
     options.release = 25
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }

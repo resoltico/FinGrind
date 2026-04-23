@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
+import java.util.Map;
 
 /** Request-shape descriptor namespace for the public machine-readable CLI contract. */
 public final class ContractRequestShapes {
@@ -57,11 +58,13 @@ public final class ContractRequestShapes {
 
   /** Descriptor grouping the current request shapes. */
   public record RequestShapesDescriptor(
+      String schemaDialect,
       PostEntryRequestShapeDescriptor postEntry,
       DeclareAccountRequestShapeDescriptor declareAccount,
       LedgerPlanRequestShapeDescriptor ledgerPlan) {
     /** Validates one grouped request-shape descriptor payload. */
     public RequestShapesDescriptor {
+      schemaDialect = ContractDescriptorValidation.requireText(schemaDialect, "schemaDialect");
       postEntry = ContractDescriptorValidation.requireValue(postEntry, "postEntry");
       declareAccount = ContractDescriptorValidation.requireValue(declareAccount, "declareAccount");
       ledgerPlan = ContractDescriptorValidation.requireValue(ledgerPlan, "ledgerPlan");
@@ -74,7 +77,8 @@ public final class ContractRequestShapes {
       List<RequestFieldDescriptor> lineFields,
       List<RequestFieldDescriptor> provenanceFields,
       List<RequestFieldDescriptor> reversalFields,
-      List<EnumVocabularyDescriptor> enumVocabularies) {
+      List<EnumVocabularyDescriptor> enumVocabularies,
+      Map<String, Object> schema) {
     /** Validates one post-entry request-shape descriptor payload. */
     public PostEntryRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
@@ -84,18 +88,21 @@ public final class ContractRequestShapes {
       reversalFields = ContractDescriptorValidation.copyList(reversalFields, "reversalFields");
       enumVocabularies =
           ContractDescriptorValidation.copyList(enumVocabularies, "enumVocabularies");
+      schema = ContractDescriptorValidation.copyMap(schema, "schema");
     }
   }
 
   /** Descriptor for the declare-account request shape. */
   public record DeclareAccountRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
-      List<EnumVocabularyDescriptor> enumVocabularies) {
+      List<EnumVocabularyDescriptor> enumVocabularies,
+      Map<String, Object> schema) {
     /** Validates one declare-account request-shape descriptor payload. */
     public DeclareAccountRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
       enumVocabularies =
           ContractDescriptorValidation.copyList(enumVocabularies, "enumVocabularies");
+      schema = ContractDescriptorValidation.copyMap(schema, "schema");
     }
   }
 
@@ -110,7 +117,8 @@ public final class ContractRequestShapes {
       List<String> writeStepKinds,
       String assertStepKind,
       List<String> assertionKinds,
-      ContractResponse.PlanExecutionDescriptor execution) {
+      ContractResponse.PlanExecutionDescriptor execution,
+      Map<String, Object> schema) {
     /** Validates one ledger-plan request-shape descriptor payload. */
     public LedgerPlanRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
@@ -124,6 +132,7 @@ public final class ContractRequestShapes {
       assertStepKind = ContractDescriptorValidation.requireText(assertStepKind, "assertStepKind");
       assertionKinds = ContractDescriptorValidation.copyList(assertionKinds, "assertionKinds");
       execution = ContractDescriptorValidation.requireValue(execution, "execution");
+      schema = ContractDescriptorValidation.copyMap(schema, "schema");
     }
   }
 

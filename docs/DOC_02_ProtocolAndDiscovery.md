@@ -239,7 +239,7 @@ public final class ContractTemplates
   `.DeclareAccountTemplateDescriptor`, and `.LedgerAssertionTemplateDescriptor` are the nested
   typed template descriptors
 
-## `ContractErrors`, `ContractFailure`, And `ContractDecision`
+## `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException`
 
 These contract-owned types publish deterministic non-rejection failures and the accepted-or-rejected
 decision seam used by low-level contract boundaries.
@@ -248,15 +248,20 @@ decision seam used by low-level contract boundaries.
 public final class ContractErrors
 public record ContractFailure(...)
 public sealed interface ContractDecision<T>
+public final class ContractFailureException extends IllegalStateException
 ```
 
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
-  `invalid-page-cursor`, `book-authentication-failed`, and `interactive-prompt-unavailable`
+  `invalid-page-cursor`, `book-authentication-failed`, `managed-runtime-failure`,
+  `storage-runtime-failure`, `pdf-export-failure`, and `interactive-prompt-unavailable`
 - `ContractFailure` carries the stable descriptor plus the caller-facing message, optional hint,
   and optional argument name without routing expected failures through exceptions
 - `ContractDecision` carries either the accepted typed payload or one deterministic
   `ContractFailure`, letting internal seams return structured failures directly
+- `ContractFailureException` is the imperative bridge for seams that still must throw while
+  preserving an exact deterministic `ContractFailure` for higher layers to map back into the
+  public machine contract
 
 ## `BookMigrationPolicy`
 

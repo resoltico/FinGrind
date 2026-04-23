@@ -126,7 +126,7 @@ the preferred explicit state yet.
 Optional toolchain setup files should never be sourced unconditionally. A missing optional file can
 break every shell invocation before FinGrind commands even start.
 
-In [~/.zshenv](/Users/erst/.zshenv), prefer:
+In `~/.zshenv`, prefer:
 
 ```zsh
 if [[ -f "$HOME/.cargo/env" ]]; then
@@ -141,7 +141,7 @@ been installed yet.
 
 The current shell setup is intentionally duplicated across login and interactive zsh startup.
 
-In [~/.zprofile](/Users/erst/.zprofile):
+In `~/.zprofile`:
 
 ```zsh
 if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -154,7 +154,7 @@ if /usr/libexec/java_home -v 26 >/dev/null 2>&1; then
 fi
 ```
 
-In [~/.zshrc](/Users/erst/.zshrc):
+In `~/.zshrc`:
 
 ```zsh
 if [[ -z "${JAVA_HOME:-}" ]] && /usr/libexec/java_home -v 26 >/dev/null 2>&1; then

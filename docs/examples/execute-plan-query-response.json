@@ -1,0 +1,327 @@
+{
+  "status": "plan-committed",
+  "payload": {
+    "planId": "plan-query-demo-1",
+    "status": "succeeded",
+    "journal": {
+      "startedAt": "2026-04-23T09:51:06.115760Z",
+      "finishedAt": "2026-04-23T09:51:06.255498Z",
+      "steps": [
+        {
+          "stepId": "initialize-book",
+          "kind": "open-book",
+          "status": "succeeded",
+          "startedAt": "2026-04-23T09:51:06.115800Z",
+          "finishedAt": "2026-04-23T09:51:06.225888Z",
+          "facts": [
+            {
+              "kind": "text",
+              "name": "initializedAt",
+              "value": "2026-04-23T09:51:06.116007Z"
+            }
+          ]
+        },
+        {
+          "stepId": "declare-cash",
+          "kind": "declare-account",
+          "status": "succeeded",
+          "startedAt": "2026-04-23T09:51:06.226485Z",
+          "finishedAt": "2026-04-23T09:51:06.228711Z",
+          "facts": [
+            {
+              "kind": "text",
+              "name": "accountCode",
+              "value": "1000"
+            },
+            {
+              "kind": "text",
+              "name": "accountName",
+              "value": "Cash"
+            },
+            {
+              "kind": "text",
+              "name": "normalBalance",
+              "value": "DEBIT"
+            },
+            {
+              "kind": "flag",
+              "name": "active",
+              "value": true
+            },
+            {
+              "kind": "text",
+              "name": "declaredAt",
+              "value": "2026-04-23T09:51:06.226492Z"
+            }
+          ]
+        },
+        {
+          "stepId": "declare-revenue",
+          "kind": "declare-account",
+          "status": "succeeded",
+          "startedAt": "2026-04-23T09:51:06.228716Z",
+          "finishedAt": "2026-04-23T09:51:06.228995Z",
+          "facts": [
+            {
+              "kind": "text",
+              "name": "accountCode",
+              "value": "2000"
+            },
+            {
+              "kind": "text",
+              "name": "accountName",
+              "value": "Revenue"
+            },
+            {
+              "kind": "text",
+              "name": "normalBalance",
+              "value": "CREDIT"
+            },
+            {
+              "kind": "flag",
+              "name": "active",
+              "value": true
+            },
+            {
+              "kind": "text",
+              "name": "declaredAt",
+              "value": "2026-04-23T09:51:06.228717Z"
+            }
+          ]
+        },
+        {
+          "stepId": "post-journal",
+          "kind": "post-entry",
+          "status": "succeeded",
+          "startedAt": "2026-04-23T09:51:06.228998Z",
+          "finishedAt": "2026-04-23T09:51:06.234732Z",
+          "facts": [
+            {
+              "kind": "text",
+              "name": "postingId",
+              "value": "019db9c0-13f8-74b4-9b56-e21e03eb39c9"
+            },
+            {
+              "kind": "text",
+              "name": "idempotencyKey",
+              "value": "idem-query-demo-1"
+            },
+            {
+              "kind": "text",
+              "name": "effectiveDate",
+              "value": "2026-04-17"
+            },
+            {
+              "kind": "text",
+              "name": "recordedAt",
+              "value": "2026-04-23T09:51:06.229107Z"
+            }
+          ]
+        },
+        {
+          "stepId": "page-accounts",
+          "kind": "list-accounts",
+          "status": "succeeded",
+          "startedAt": "2026-04-23T09:51:06.234738Z",
+          "finishedAt": "2026-04-23T09:51:06.236253Z",
+          "facts": [
+            {
+              "kind": "count",
+              "name": "count",
+              "value": 1
+            },
+            {
+              "kind": "count",
+              "name": "pageLimit",
+              "value": 1
+            },
+            {
+              "kind": "text",
+              "name": "nextCursor",
+              "value": "AQAAAAQxMDAw"
+            },
+            {
+              "kind": "flag",
+              "name": "hasMore",
+              "value": true
+            },
+            {
+              "kind": "group",
+              "name": "account",
+              "facts": [
+                {
+                  "kind": "text",
+                  "name": "accountCode",
+                  "value": "1000"
+                },
+                {
+                  "kind": "text",
+                  "name": "accountName",
+                  "value": "Cash"
+                },
+                {
+                  "kind": "text",
+                  "name": "normalBalance",
+                  "value": "DEBIT"
+                },
+                {
+                  "kind": "flag",
+                  "name": "active",
+                  "value": true
+                },
+                {
+                  "kind": "text",
+                  "name": "declaredAt",
+                  "value": "2026-04-23T09:51:06.226492Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "stepId": "page-postings",
+          "kind": "list-postings",
+          "status": "succeeded",
+          "startedAt": "2026-04-23T09:51:06.236259Z",
+          "finishedAt": "2026-04-23T09:51:06.237731Z",
+          "facts": [
+            {
+              "kind": "count",
+              "name": "count",
+              "value": 1
+            },
+            {
+              "kind": "count",
+              "name": "pageLimit",
+              "value": 1
+            },
+            {
+              "kind": "flag",
+              "name": "hasMore",
+              "value": false
+            },
+            {
+              "kind": "group",
+              "name": "posting",
+              "facts": [
+                {
+                  "kind": "text",
+                  "name": "postingId",
+                  "value": "019db9c0-13f8-74b4-9b56-e21e03eb39c9"
+                },
+                {
+                  "kind": "text",
+                  "name": "idempotencyKey",
+                  "value": "idem-query-demo-1"
+                },
+                {
+                  "kind": "text",
+                  "name": "effectiveDate",
+                  "value": "2026-04-17"
+                },
+                {
+                  "kind": "text",
+                  "name": "recordedAt",
+                  "value": "2026-04-23T09:51:06.229107Z"
+                },
+                {
+                  "kind": "group",
+                  "name": "provenance",
+                  "facts": [
+                    {
+                      "kind": "text",
+                      "name": "actorId",
+                      "value": "operator-1"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "actorType",
+                      "value": "HUMAN"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "commandId",
+                      "value": "command-query-1"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "idempotencyKey",
+                      "value": "idem-query-demo-1"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "causationId",
+                      "value": "cause-query-1"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "recordedAt",
+                      "value": "2026-04-23T09:51:06.229107Z"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "sourceChannel",
+                      "value": "CLI"
+                    }
+                  ]
+                },
+                {
+                  "kind": "group",
+                  "name": "line",
+                  "facts": [
+                    {
+                      "kind": "text",
+                      "name": "accountCode",
+                      "value": "1000"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "side",
+                      "value": "DEBIT"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "currencyCode",
+                      "value": "EUR"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "amount",
+                      "value": "10"
+                    }
+                  ]
+                },
+                {
+                  "kind": "group",
+                  "name": "line",
+                  "facts": [
+                    {
+                      "kind": "text",
+                      "name": "accountCode",
+                      "value": "2000"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "side",
+                      "value": "CREDIT"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "currencyCode",
+                      "value": "EUR"
+                    },
+                    {
+                      "kind": "text",
+                      "name": "amount",
+                      "value": "10"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

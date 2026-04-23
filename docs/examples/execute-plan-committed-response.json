@@ -4,20 +4,20 @@
     "planId": "plan-demo-1",
     "status": "succeeded",
     "journal": {
-      "startedAt": "2026-04-21T01:38:12.715415Z",
-      "finishedAt": "2026-04-21T01:38:12.839472Z",
+      "startedAt": "2026-04-23T09:56:46.551513Z",
+      "finishedAt": "2026-04-23T09:56:46.693869Z",
       "steps": [
         {
           "stepId": "initialize-book",
           "kind": "open-book",
           "status": "succeeded",
-          "startedAt": "2026-04-21T01:38:12.715806Z",
-          "finishedAt": "2026-04-21T01:38:12.819101Z",
+          "startedAt": "2026-04-23T09:56:46.551556Z",
+          "finishedAt": "2026-04-23T09:56:46.663476Z",
           "facts": [
             {
               "kind": "text",
               "name": "initializedAt",
-              "value": "2026-04-21T01:38:12.716080Z"
+              "value": "2026-04-23T09:56:46.551795Z"
             }
           ]
         },
@@ -25,13 +25,18 @@
           "stepId": "declare-cash",
           "kind": "declare-account",
           "status": "succeeded",
-          "startedAt": "2026-04-21T01:38:12.819488Z",
-          "finishedAt": "2026-04-21T01:38:12.823486Z",
+          "startedAt": "2026-04-23T09:56:46.663911Z",
+          "finishedAt": "2026-04-23T09:56:46.666160Z",
           "facts": [
             {
               "kind": "text",
               "name": "accountCode",
               "value": "1000"
+            },
+            {
+              "kind": "text",
+              "name": "accountName",
+              "value": "Cash"
             },
             {
               "kind": "text",
@@ -42,6 +47,11 @@
               "kind": "flag",
               "name": "active",
               "value": true
+            },
+            {
+              "kind": "text",
+              "name": "declaredAt",
+              "value": "2026-04-23T09:56:46.663917Z"
             }
           ]
         },
@@ -49,13 +59,18 @@
           "stepId": "declare-revenue",
           "kind": "declare-account",
           "status": "succeeded",
-          "startedAt": "2026-04-21T01:38:12.823499Z",
-          "finishedAt": "2026-04-21T01:38:12.823938Z",
+          "startedAt": "2026-04-23T09:56:46.666167Z",
+          "finishedAt": "2026-04-23T09:56:46.666482Z",
           "facts": [
             {
               "kind": "text",
               "name": "accountCode",
               "value": "2000"
+            },
+            {
+              "kind": "text",
+              "name": "accountName",
+              "value": "Revenue"
             },
             {
               "kind": "text",
@@ -66,6 +81,11 @@
               "kind": "flag",
               "name": "active",
               "value": true
+            },
+            {
+              "kind": "text",
+              "name": "declaredAt",
+              "value": "2026-04-23T09:56:46.666168Z"
             }
           ]
         },
@@ -73,13 +93,13 @@
           "stepId": "post-journal",
           "kind": "post-entry",
           "status": "succeeded",
-          "startedAt": "2026-04-21T01:38:12.823942Z",
-          "finishedAt": "2026-04-21T01:38:12.831703Z",
+          "startedAt": "2026-04-23T09:56:46.666485Z",
+          "finishedAt": "2026-04-23T09:56:46.672752Z",
           "facts": [
             {
               "kind": "text",
               "name": "postingId",
-              "value": "019dadb0-1adc-7400-8554-57616ae1bd66"
+              "value": "019db9c5-45ce-70a9-834f-efa93727f748"
             },
             {
               "kind": "text",
@@ -94,7 +114,7 @@
             {
               "kind": "text",
               "name": "recordedAt",
-              "value": "2026-04-21T01:38:12.824153Z"
+              "value": "2026-04-23T09:56:46.666609Z"
             }
           ]
         },
@@ -103,13 +123,39 @@
           "kind": "assert",
           "detailKind": "assert-account-balance",
           "status": "succeeded",
-          "startedAt": "2026-04-21T01:38:12.831711Z",
-          "finishedAt": "2026-04-21T01:38:12.837821Z",
+          "startedAt": "2026-04-23T09:56:46.672759Z",
+          "finishedAt": "2026-04-23T09:56:46.677251Z",
           "facts": [
             {
-              "kind": "text",
-              "name": "accountCode",
-              "value": "1000"
+              "kind": "group",
+              "name": "account",
+              "facts": [
+                {
+                  "kind": "text",
+                  "name": "accountCode",
+                  "value": "1000"
+                },
+                {
+                  "kind": "text",
+                  "name": "accountName",
+                  "value": "Cash"
+                },
+                {
+                  "kind": "text",
+                  "name": "normalBalance",
+                  "value": "DEBIT"
+                },
+                {
+                  "kind": "flag",
+                  "name": "active",
+                  "value": true
+                },
+                {
+                  "kind": "text",
+                  "name": "declaredAt",
+                  "value": "2026-04-23T09:56:46.663917Z"
+                }
+              ]
             },
             {
               "kind": "count",

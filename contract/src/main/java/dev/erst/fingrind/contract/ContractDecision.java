@@ -22,8 +22,7 @@ public sealed interface ContractDecision<T>
   default T requireAccepted() {
     return switch (this) {
       case Accepted<T>(T value) -> value;
-      case Rejected<T>(ContractFailure failure) ->
-          throw new IllegalStateException(failure.message());
+      case Rejected<T>(ContractFailure failure) -> throw new ContractFailureException(failure);
     };
   }
 

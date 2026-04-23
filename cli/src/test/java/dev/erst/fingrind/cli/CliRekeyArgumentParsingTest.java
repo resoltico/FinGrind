@@ -13,9 +13,9 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsRekeyBookForKeyFilePassphraseSources() {
-    CliCommand.RekeyBook command =
+    RekeyBook command =
         assertInstanceOf(
-            CliCommand.RekeyBook.class,
+            RekeyBook.class,
             CliArguments.parse(
                 new String[] {
                   "rekey-book",
@@ -39,9 +39,9 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsRekeyBookForStandardInputAndPromptPassphraseSources() {
-    CliCommand.RekeyBook currentStandardInputCommand =
+    RekeyBook currentStandardInputCommand =
         assertInstanceOf(
-            CliCommand.RekeyBook.class,
+            RekeyBook.class,
             CliArguments.parse(
                 new String[] {
                   "rekey-book",
@@ -57,9 +57,9 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
         BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
         currentStandardInputCommand.replacementPassphraseSource());
 
-    CliCommand.RekeyBook currentPromptCommand =
+    RekeyBook currentPromptCommand =
         assertInstanceOf(
-            CliCommand.RekeyBook.class,
+            RekeyBook.class,
             CliArguments.parse(
                 new String[] {
                   "rekey-book",
@@ -78,9 +78,9 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsRekeyBookForKeyFileAndPromptPassphraseSources() {
-    CliCommand.RekeyBook command =
+    RekeyBook command =
         assertInstanceOf(
-            CliCommand.RekeyBook.class,
+            RekeyBook.class,
             CliArguments.parse(
                 new String[] {
                   "rekey-book",

@@ -242,8 +242,27 @@ That plan:
 Checked-in plan examples:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
+- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
+
+If you want the plan itself to inspect paginated state before it finishes, use the checked-in
+query example:
+
+- `./ledger-plan-query-request.json`: copy [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
+
+```bash
+fingrind \
+  execute-plan \
+  --book-file ./acme-plan.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./ledger-plan-query-request.json
+```
+
+That committed journal keeps `count`, `pageLimit`, optional `nextCursor`, `hasMore`, and grouped
+`account` / `posting` facts for the successful query steps. One checked-in response is at
+[examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json).
 
 ## Query The Committed History
 

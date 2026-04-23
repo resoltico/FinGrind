@@ -5,28 +5,31 @@ import java.util.Objects;
 /** SQLite open policies mapped from FinGrind command-level access intents. */
 enum SqliteStoreAccessMode {
   /** Opens one existing book in read-only mode. */
-  READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false),
+  READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true),
   /** Opens one existing book for read/write mutations without creating new files. */
-  READ_WRITE_EXISTING(SqliteNativeOpenMode.READ_WRITE_EXISTING, false, true, false),
+  READ_WRITE_EXISTING(SqliteNativeOpenMode.READ_WRITE_EXISTING, false, true, false, true),
   /** Opens one book for read/write access and creates the file when needed. */
-  READ_WRITE_CREATE(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true),
+  READ_WRITE_CREATE(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true, false),
   /** Defers file creation until a plan mutation actually requires it. */
-  PLAN_EXECUTION(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true);
+  PLAN_EXECUTION(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true, true);
 
   private final SqliteNativeOpenMode nativeOpenMode;
   private final boolean queryOnly;
   private final boolean writable;
   private final boolean createsFiles;
+  private final boolean defersMissingBookOpen;
 
   SqliteStoreAccessMode(
       SqliteNativeOpenMode nativeOpenMode,
       boolean queryOnly,
       boolean writable,
-      boolean createsFiles) {
+      boolean createsFiles,
+      boolean defersMissingBookOpen) {
     this.nativeOpenMode = Objects.requireNonNull(nativeOpenMode, "nativeOpenMode");
     this.queryOnly = queryOnly;
     this.writable = writable;
     this.createsFiles = createsFiles;
+    this.defersMissingBookOpen = defersMissingBookOpen;
   }
 
   SqliteNativeOpenMode nativeOpenMode() {
@@ -41,8 +44,12 @@ enum SqliteStoreAccessMode {
     return writable;
   }
 
-  boolean preservesMissingBookStateUntilMutation() {
+  boolean createsFiles() {
     return createsFiles;
+  }
+
+  boolean defersMissingBookOpen() {
+    return defersMissingBookOpen;
   }
 
   void requireWritableMutation() {

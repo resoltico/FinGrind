@@ -15,31 +15,12 @@
       }
     },
     {
-      "stepId": "preflight-sale",
-      "kind": "preflight-entry",
-      "posting": {
-        "effectiveDate": "2026-04-07",
-        "lines": [
-          {
-            "accountCode": "1000",
-            "side": "DEBIT",
-            "currencyCode": "EUR",
-            "amount": "10.00"
-          },
-          {
-            "accountCode": "4000",
-            "side": "CREDIT",
-            "currencyCode": "EUR",
-            "amount": "10.00"
-          }
-        ],
-        "provenance": {
-          "actorId": "agent-1",
-          "actorType": "AGENT",
-          "commandId": "command-1",
-          "idempotencyKey": "idem-plan-1",
-          "causationId": "cause-1"
-        }
+      "stepId": "declare-revenue",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "2000",
+        "accountName": "Revenue",
+        "normalBalance": "CREDIT"
       }
     },
     {
@@ -55,7 +36,7 @@
             "amount": "10.00"
           },
           {
-            "accountCode": "4000",
+            "accountCode": "2000",
             "side": "CREDIT",
             "currencyCode": "EUR",
             "amount": "10.00"
@@ -64,8 +45,8 @@
         "provenance": {
           "actorId": "agent-1",
           "actorType": "AGENT",
-          "commandId": "command-2",
-          "idempotencyKey": "idem-plan-2",
+          "commandId": "command-1",
+          "idempotencyKey": "idem-plan-1",
           "causationId": "cause-1"
         }
       }

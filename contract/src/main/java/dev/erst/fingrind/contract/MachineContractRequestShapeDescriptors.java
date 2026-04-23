@@ -18,7 +18,10 @@ final class MachineContractRequestShapeDescriptors {
 
   static ContractRequestShapes.RequestShapesDescriptor requestShapes() {
     return new ContractRequestShapes.RequestShapesDescriptor(
-        postEntryShape(), declareAccountShape(), ledgerPlanShape());
+        MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+        postEntryShape(),
+        declareAccountShape(),
+        ledgerPlanShape());
   }
 
   private static ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape() {
@@ -89,7 +92,8 @@ final class MachineContractRequestShapeDescriptors {
                 "Legacy reversal-kind routing is removed; FinGrind is reversal-only.")),
         List.of(
             enumVocabulary("lineSide", JournalLine.EntrySide.wireValues()),
-            enumVocabulary("actorType", ActorType.wireValues())));
+            enumVocabulary("actorType", ActorType.wireValues())),
+        MachineContractRequestSchemas.postEntrySchema());
   }
 
   private static ContractRequestShapes.DeclareAccountRequestShapeDescriptor declareAccountShape() {
@@ -104,7 +108,8 @@ final class MachineContractRequestShapeDescriptors {
             requiredField(
                 ProtocolDeclareAccountFields.NORMAL_BALANCE,
                 "Side of the journal equation that increases the account.")),
-        List.of(enumVocabulary("normalBalance", NormalBalance.wireValues())));
+        List.of(enumVocabulary("normalBalance", NormalBalance.wireValues())),
+        MachineContractRequestSchemas.declareAccountSchema());
   }
 
   private static ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape() {
@@ -208,7 +213,8 @@ final class MachineContractRequestShapeDescriptors {
         List.of(LedgerStepKind.PREFLIGHT_ENTRY.wireValue(), LedgerStepKind.POST_ENTRY.wireValue()),
         LedgerStepKind.ASSERT.wireValue(),
         LedgerAssertionKind.wireValues(),
-        MachineContractDomainDescriptors.planExecution());
+        MachineContractDomainDescriptors.planExecution(),
+        MachineContractRequestSchemas.ledgerPlanSchema());
   }
 
   private static ContractRequestShapes.EnumVocabularyDescriptor enumVocabulary(

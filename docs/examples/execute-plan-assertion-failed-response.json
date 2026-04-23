@@ -7,20 +7,20 @@
       "planId": "plan-demo-1",
       "status": "assertion-failed",
       "journal": {
-        "startedAt": "2026-04-21T01:38:33.071043Z",
-        "finishedAt": "2026-04-21T01:38:33.191747Z",
+        "startedAt": "2026-04-23T09:56:46.990036Z",
+        "finishedAt": "2026-04-23T09:56:47.117316Z",
         "steps": [
           {
             "stepId": "initialize-book",
             "kind": "open-book",
             "status": "succeeded",
-            "startedAt": "2026-04-21T01:38:33.165531Z",
-            "finishedAt": "2026-04-21T01:38:33.173640Z",
+            "startedAt": "2026-04-23T09:56:46.990079Z",
+            "finishedAt": "2026-04-23T09:56:47.099819Z",
             "facts": [
               {
                 "kind": "text",
                 "name": "initializedAt",
-                "value": "2026-04-21T01:38:33.165754Z"
+                "value": "2026-04-23T09:56:46.990298Z"
               }
             ]
           },
@@ -28,13 +28,18 @@
             "stepId": "declare-cash",
             "kind": "declare-account",
             "status": "succeeded",
-            "startedAt": "2026-04-21T01:38:33.174058Z",
-            "finishedAt": "2026-04-21T01:38:33.176723Z",
+            "startedAt": "2026-04-23T09:56:47.100192Z",
+            "finishedAt": "2026-04-23T09:56:47.102378Z",
             "facts": [
               {
                 "kind": "text",
                 "name": "accountCode",
                 "value": "1000"
+              },
+              {
+                "kind": "text",
+                "name": "accountName",
+                "value": "Cash"
               },
               {
                 "kind": "text",
@@ -45,6 +50,11 @@
                 "kind": "flag",
                 "name": "active",
                 "value": true
+              },
+              {
+                "kind": "text",
+                "name": "declaredAt",
+                "value": "2026-04-23T09:56:47.100199Z"
               }
             ]
           },
@@ -52,13 +62,18 @@
             "stepId": "declare-revenue",
             "kind": "declare-account",
             "status": "succeeded",
-            "startedAt": "2026-04-21T01:38:33.176729Z",
-            "finishedAt": "2026-04-21T01:38:33.177110Z",
+            "startedAt": "2026-04-23T09:56:47.102384Z",
+            "finishedAt": "2026-04-23T09:56:47.102680Z",
             "facts": [
               {
                 "kind": "text",
                 "name": "accountCode",
                 "value": "2000"
+              },
+              {
+                "kind": "text",
+                "name": "accountName",
+                "value": "Revenue"
               },
               {
                 "kind": "text",
@@ -69,6 +84,11 @@
                 "kind": "flag",
                 "name": "active",
                 "value": true
+              },
+              {
+                "kind": "text",
+                "name": "declaredAt",
+                "value": "2026-04-23T09:56:47.102385Z"
               }
             ]
           },
@@ -76,13 +96,13 @@
             "stepId": "post-journal",
             "kind": "post-entry",
             "status": "succeeded",
-            "startedAt": "2026-04-21T01:38:33.177113Z",
-            "finishedAt": "2026-04-21T01:38:33.184370Z",
+            "startedAt": "2026-04-23T09:56:47.102683Z",
+            "finishedAt": "2026-04-23T09:56:47.109990Z",
             "facts": [
               {
                 "kind": "text",
                 "name": "postingId",
-                "value": "019dadb0-6a5d-732b-8427-982cc8549bd6"
+                "value": "019db9c5-4782-7d8d-ada6-194a117dfbdf"
               },
               {
                 "kind": "text",
@@ -97,7 +117,7 @@
               {
                 "kind": "text",
                 "name": "recordedAt",
-                "value": "2026-04-21T01:38:33.177259Z"
+                "value": "2026-04-23T09:56:47.102870Z"
               }
             ]
           },
@@ -106,8 +126,8 @@
             "kind": "assert",
             "detailKind": "assert-account-balance",
             "status": "assertion-failed",
-            "startedAt": "2026-04-21T01:38:33.184376Z",
-            "finishedAt": "2026-04-21T01:38:33.190837Z",
+            "startedAt": "2026-04-23T09:56:47.109997Z",
+            "finishedAt": "2026-04-23T09:56:47.114033Z",
             "facts": [
               {
                 "kind": "text",

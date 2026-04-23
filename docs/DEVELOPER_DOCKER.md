@@ -91,7 +91,7 @@ Then the supported local gates are:
 ./check.sh
 ```
 
-`./check.sh` Stage 5 invokes `scripts/docker-smoke.sh`, which:
+`./check.sh` Stage 6 invokes `scripts/docker-smoke.sh`, which:
 - builds the local image from the repository root through `docker buildx build --load`
 - refreshes `:cli:shadowJar` first and, on fragile mounted filesystems, syncs the fresh
   relocated `fingrind.jar` and `runtime-modules.txt` back into the repository-visible Docker

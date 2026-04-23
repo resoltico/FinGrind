@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailure;
+import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
 import java.util.Objects;
 
@@ -21,9 +22,12 @@ final class CliFailureMapper {
   }
 
   static CliFailure runtimeFailure(RuntimeException exception) {
+    if (exception instanceof ContractFailureException contractFailureException) {
+      return contractFailure(contractFailureException.failure());
+    }
     if (exception instanceof CliPdfExportException pdfExportException) {
       return new CliFailure(
-          ContractErrors.Descriptor.RUNTIME_FAILURE.code(),
+          ContractErrors.Descriptor.PDF_EXPORT_FAILURE.code(),
           message(pdfExportException),
           "Inspect the selected --pdf-out destination, its parent directory permissions, and the available filesystem space, then rerun the command.",
           "--pdf-out");
@@ -38,7 +42,13 @@ final class CliFailureMapper {
           case OTHER ->
               "Inspect the message and rerun after fixing the underlying runtime problem.";
         };
-    return new CliFailure(ContractErrors.Descriptor.RUNTIME_FAILURE.code(), message, hint, null);
+    ContractErrors.Descriptor descriptor =
+        switch (SqliteFailureClassifier.classify(exception)) {
+          case MANAGED_RUNTIME -> ContractErrors.Descriptor.MANAGED_RUNTIME_FAILURE;
+          case STORAGE -> ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE;
+          case OTHER -> ContractErrors.Descriptor.RUNTIME_FAILURE;
+        };
+    return new CliFailure(descriptor.code(), message, hint, null);
   }
 
   private static String message(Exception exception) {

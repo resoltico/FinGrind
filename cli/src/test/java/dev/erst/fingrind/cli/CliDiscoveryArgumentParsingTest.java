@@ -12,30 +12,28 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_returnsHelpWhenArgumentsAreEmpty() {
-    assertInstanceOf(CliCommand.Help.class, CliArguments.parse(new String[0]));
+    assertInstanceOf(Help.class, CliArguments.parse(new String[0]));
   }
 
   @Test
   void parse_returnsCapabilitiesWhenCommandIsCapabilities() {
-    assertInstanceOf(
-        CliCommand.Capabilities.class, CliArguments.parse(new String[] {"capabilities"}));
+    assertInstanceOf(Capabilities.class, CliArguments.parse(new String[] {"capabilities"}));
   }
 
   @Test
   void parse_returnsHelpForFlagAlias() {
-    assertInstanceOf(CliCommand.Help.class, CliArguments.parse(new String[] {"--help"}));
+    assertInstanceOf(Help.class, CliArguments.parse(new String[] {"--help"}));
   }
 
   @Test
   void parse_returnsVersionForFlagAlias() {
-    assertInstanceOf(CliCommand.Version.class, CliArguments.parse(new String[] {"--version"}));
+    assertInstanceOf(Version.class, CliArguments.parse(new String[] {"--version"}));
   }
 
   @Test
   void parse_returnsPrintRequestTemplateForCommand() {
     assertInstanceOf(
-        CliCommand.PrintRequestTemplate.class,
-        CliArguments.parse(new String[] {"print-request-template"}));
+        PrintRequestTemplate.class, CliArguments.parse(new String[] {"print-request-template"}));
   }
 
   @Test
