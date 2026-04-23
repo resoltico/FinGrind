@@ -28,9 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PullRequest.diff too_large`.
 - Reworked `gradlew.bat` to use a simpler argument scan, cmd-native Windows project-cache key,
   dedicated setup subroutines, and correct JVM-vs-Gradle argument placement instead of
-  parser-fragile inline substitutions, early block-expanded variables, and misplaced
-  `--project-cache-dir`, and added a dedicated local regression so the Windows CI wrapper path
-  now fails in a named guard before release time.
+  parser-fragile inline substitutions, early block-expanded variables, misplaced
+  `--project-cache-dir`, and cross-drive `%LOCALAPPDATA%` cache defaults, and added a dedicated
+  local regression so the Windows CI wrapper path now fails in a named guard before release time.
 - Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
   back into the repository-visible build context on fragile mounted filesystems, so release
   version bumps and other Docker-surface changes cannot silently reuse stale local container

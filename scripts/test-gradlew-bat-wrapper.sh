@@ -64,6 +64,16 @@ printf '%s' "${wrapper_contents}" | grep -Fq -- 'set "FINGRIND_PROJECT_CACHE_KEY
     "expected gradlew.bat to replace forward slashes in the project-cache key"
 printf '%s' "${wrapper_contents}" | grep -Fq -- '%FINGRIND_GRADLE_BUILD_LOGIC_ARG% %FINGRIND_GRADLE_JACOCO_ARG% %FINGRIND_GRADLE_PROJECT_BUILD_ROOT_ARG% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %FINGRIND_GRADLE_PROJECT_CACHE_ARG% %*' || die \
     "expected gradlew.bat to pass the project-cache argument to Gradle after -jar instead of to the JVM"
+python3 - <<'PY' "${wrapper_path}" || die \
+    "expected gradlew.bat to prefer TEMP over LOCALAPPDATA for the Windows project-cache root"
+from pathlib import Path
+import sys
+
+text = Path(sys.argv[1]).read_text()
+temp_index = text.find(') else if defined TEMP (')
+localappdata_index = text.find(') else if defined LOCALAPPDATA (')
+raise SystemExit(0 if temp_index != -1 and localappdata_index != -1 and temp_index < localappdata_index else 1)
+PY
 [[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_PROJECT_CACHE%"=="true" ('* ]] || die \
     "gradlew.bat must not expand the project-cache path inside a parenthesized block"
 [[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_BUILD_LOGIC_DIR%"=="true" ('* ]] || die \
