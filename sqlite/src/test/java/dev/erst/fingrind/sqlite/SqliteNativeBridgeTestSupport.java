@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -214,6 +215,14 @@ class SqliteNativeBridgeTestSupport {
     return closeCalls.get() == 1 ? 14 : 0;
   }
 
+  static int failThenDelegateCloseCall(
+      AtomicInteger closeCalls,
+      SqliteNativeCalls.AddressToIntCall delegateClose,
+      MemorySegment databaseHandle) {
+    closeCalls.incrementAndGet();
+    return closeCalls.get() == 1 ? 14 : delegateClose.invoke(databaseHandle);
+  }
+
   static int throwIllegalStateThenSucceedCloseCall(
       AtomicInteger closeCalls, MemorySegment databaseHandle) {
     if (closeCalls.getAndIncrement() == 0) {
@@ -222,12 +231,32 @@ class SqliteNativeBridgeTestSupport {
     return 0;
   }
 
+  static int throwIllegalStateThenDelegateCloseCall(
+      AtomicInteger closeCalls,
+      SqliteNativeCalls.AddressToIntCall delegateClose,
+      MemorySegment databaseHandle) {
+    if (closeCalls.getAndIncrement() == 0) {
+      throw new IllegalStateException("boom");
+    }
+    return delegateClose.invoke(databaseHandle);
+  }
+
   static int throwAssertionThenSucceedCloseCall(
       AtomicInteger closeCalls, MemorySegment databaseHandle) {
     if (closeCalls.getAndIncrement() == 0) {
       throw new AssertionError("boom");
     }
     return 0;
+  }
+
+  static int throwAssertionThenDelegateCloseCall(
+      AtomicInteger closeCalls,
+      SqliteNativeCalls.AddressToIntCall delegateClose,
+      MemorySegment databaseHandle) {
+    if (closeCalls.getAndIncrement() == 0) {
+      throw new AssertionError("boom");
+    }
+    return delegateClose.invoke(databaseHandle);
   }
 
   static int openWithDatabaseHandle(

@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--project-cache-dir`, and cross-drive temp-cache defaults, and added a dedicated local
   regression so the wrapper stays on the working drive and fails in a named guard before release
   time.
+- Fixed the SQLite native close-retry test doubles so successful retries now delegate to the real
+  native close instead of only pretending to succeed, which keeps Windows temp-book cleanup from
+  depending on Unix-style unlink behavior during CI.
 - Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
   back into the repository-visible build context on fragile mounted filesystems, so release
   version bumps and other Docker-surface changes cannot silently reuse stale local container
