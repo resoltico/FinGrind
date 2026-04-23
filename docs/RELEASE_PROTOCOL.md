@@ -170,9 +170,21 @@ gh pr diff <N> --name-only
 gh pr view <N> --json number,state,mergeStateStatus,statusCheckRollup,url
 ```
 
+If `gh pr diff <N> --name-only` fails with GitHub's oversized-diff response
+(`PullRequest.diff too_large` / HTTP 406), fall back to the paginated pull-files API instead of
+guessing:
+
+```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[].filename'
+```
+
 Treat the PR itself as a second scope-verification checkpoint:
 
 - `gh pr diff <N> --name-only` must match the intended release file set.
+- If `gh pr diff <N> --name-only` returns `PullRequest.diff too_large`, the paginated
+  `gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[].filename'` fallback becomes the
+  authoritative file-set check for this step.
 - If the PR diff is missing files or includes unintended files, fix the release branch before
   waiting on CI or merging.
 - Every new commit pushed to the release branch reopens both the Step 2 staging checkpoint and

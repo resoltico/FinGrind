@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a canonical `scripts/prepare-release-version.sh` helper plus regression coverage, and
   updated the release protocol to require that scripted version sweep instead of ad hoc
   hand-edits across docs, changelog, examples, and version-pinned tests.
+- Updated the release protocol and its shell regression coverage so oversized release PRs now fall
+  back from `gh pr diff --name-only` to GitHub's paginated pull-files API instead of stalling on
+  `PullRequest.diff too_large`.
 - Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
   back into the repository-visible build context on fragile mounted filesystems, so release
   version bumps and other Docker-surface changes cannot silently reuse stale local container
