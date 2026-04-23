@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk-alpine:26.0.0-jdk AS builder
+FROM azul/zulu-openjdk-alpine:26.0.1-jdk AS builder
 
 WORKDIR /build
 
