@@ -65,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wrapper it is after the lifecycle/context collapse, and so they route storage failures to the
   current `storage-runtime-failure` / `managed-runtime-failure` taxonomy instead of the old single
   `runtime-failure` bucket.
+- Tightened the release protocol so a dirty primary checkout with the intended release payload now
+  has an explicit recovery path when Step 1 first merges a release-critical PR and changes
+  `origin/main` underneath the pending release work.
 
 ## [0.24.0] - 2026-04-23
 

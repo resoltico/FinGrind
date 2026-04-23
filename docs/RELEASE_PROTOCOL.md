@@ -109,6 +109,24 @@ If you merge or close one release-critical PR, re-enumerate the remaining open P
 on the next one. A changed `main` branch can invalidate sibling merge state or required-check
 evaluations.
 
+If Step 1 merges a release-critical PR and the primary checkout already contains the intended
+release payload as uncommitted local changes, do **not** try to `git pull` that dirty `main`
+checkout in place. Instead:
+
+```bash
+git checkout -b release/X.Y.Z
+git add <intended release payload>
+git commit -m "<descriptive payload commit>"
+git fetch origin --prune --tags
+```
+
+Then integrate the newly changed `origin/main` onto `release/X.Y.Z` before running the release
+version sweep. Prefer a normal rebase or merge when Git allows it. If local platform or Git
+checkout behavior makes those operations fail despite a clean index, replay the newly landed
+release-critical commit(s) onto `release/X.Y.Z` explicitly, resolve any conflicts deliberately,
+and only then continue with Step 2. Never leave the intended release payload on dirty `main`, and
+never assume a pre-merge Step 1 check remains authoritative after `origin/main` changed.
+
 ### Step 2
 
 Commit on a release branch.
