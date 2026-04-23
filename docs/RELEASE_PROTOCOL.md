@@ -382,76 +382,34 @@ incomplete, treat that as a release-system defect and fix the repository before 
 
 Verify public availability.
 
-Do not declare the release done until the GitHub Release exists and the following anonymous
-Docker verification succeeds. Use a temporary Docker config directory so you are testing the
-public surface, not cached owner credentials, and so you do not mutate the operator's normal
-Docker login state:
+Do not declare the release done until the GitHub Release exists and the operator-side public
+container surface verifier succeeds. The verifier uses a temporary Docker config directory so you
+are testing the public surface, not cached owner credentials, and so you do not mutate the
+operator's normal Docker login state. It also uses machine-readable `version --output json`
+checks plus exact human trial-balance row assertions so the operator is not left guessing about
+free-form CLI text:
 
 ```bash
-ANON_DOCKER_CONFIG="$(mktemp -d)"
-PUBLIC_REPORT_ROOT="$(mktemp -d)"
 gh release view vX.Y.Z
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker pull ghcr.io/resoltico/fingrind:X.Y.Z
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker pull ghcr.io/resoltico/fingrind:latest
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm ghcr.io/resoltico/fingrind:X.Y.Z version
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm ghcr.io/resoltico/fingrind:latest version
-cat > "$PUBLIC_REPORT_ROOT/declare-cash.json" <<'JSON'
-{"accountCode":"1000","accountName":"Cash","normalBalance":"DEBIT"}
-JSON
-cat > "$PUBLIC_REPORT_ROOT/declare-revenue.json" <<'JSON'
-{"accountCode":"2000","accountName":"Revenue","normalBalance":"CREDIT"}
-JSON
-cat > "$PUBLIC_REPORT_ROOT/posting.json" <<'JSON'
-{
-  "effectiveDate": "2026-04-08",
-  "lines": [
-    {"accountCode":"1000","side":"DEBIT","currencyCode":"EUR","amount":"10.00"},
-    {"accountCode":"2000","side":"CREDIT","currencyCode":"EUR","amount":"10.00"}
-  ],
-  "provenance": {
-    "actorId": "release-protocol",
-    "actorType": "AGENT",
-    "commandId": "release-protocol-posting",
-    "idempotencyKey": "release-protocol-idem-1",
-    "causationId": "release-protocol-cause-1"
-  }
-}
-JSON
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  generate-book-key-file --book-key-file /work/book.key
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  open-book --book-file /work/book.sqlite --book-key-file /work/book.key
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  post-entry --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key --effective-date-to 2026-04-08 --output human
-DOCKER_CONFIG="$ANON_DOCKER_CONFIG" docker run --rm -v "$PUBLIC_REPORT_ROOT:/work" ghcr.io/resoltico/fingrind:X.Y.Z \
-  trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key --effective-date-to 2026-04-08 --output human --pdf-out /work/trial-balance.pdf
-[[ -f "$PUBLIC_REPORT_ROOT/trial-balance.pdf" ]]
-[[ "$(head -c 5 "$PUBLIC_REPORT_ROOT/trial-balance.pdf")" == "%PDF-" ]]
-rm -rf "$PUBLIC_REPORT_ROOT"
-rm -rf "$ANON_DOCKER_CONFIG"
+./scripts/verify-public-container-surface.sh ghcr.io/resoltico/fingrind X.Y.Z
 ```
 
-Both `docker run ... version` commands must report the target release version exactly. A
-successful `docker pull` alone is not sufficient verification. In particular: a multi-arch
-`docker pull` can succeed even when the platform manifests have been deleted — the index
-manifest is still present but the image is not actually runnable. The `docker run ... version`
-check is the definitive test.
+The verifier retries anonymous exact-tag and `latest` pulls until both containers report the
+target release version through `version --output json`. A successful `docker pull` alone is not
+sufficient verification. In particular: a multi-arch `docker pull` can succeed even when the
+platform manifests have been deleted — the index manifest is still present but the image is not
+actually runnable. The `docker run ... version --output json` check is the definitive test.
 
 The temporary mounted-book workflow is also mandatory. It proves that the published public image
 can still perform one end-to-end bookkeeping/reporting loop, not just print discovery metadata.
-`trial-balance --output human` must render the posted `EUR 10.00` balance rather than failing in
-book initialization, key handling, or reporting. The same anonymous verification must also prove
-that `--pdf-out` writes one valid PDF artifact to the mounted workspace.
+`trial-balance --output human` must render the posted Cash and Revenue rows for the seeded EUR
+10.00 entry rather than failing in book initialization, key handling, or reporting. The same
+anonymous verification must also prove that `--pdf-out` writes one valid PDF artifact to the
+mounted workspace.
 
-If any anonymous Docker command fails, remove the temporary config directory, inspect the
-published state, and rerun the full anonymous verification sequence after the fix. Do not switch
-to the operator's normal Docker config as a fallback.
+If the public verifier fails, inspect the reported step, fix the published state, and rerun the
+same anonymous verification command. Do not switch to the operator's normal Docker config as a
+fallback.
 
 These checks are a second handoff checkpoint. Workflow success is not enough; public pull and run
 behavior is the authoritative state.
