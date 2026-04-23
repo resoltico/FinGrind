@@ -51,6 +51,9 @@ Full verification now depends on the wrapper-managed filesystem layout:
   macOS, `$XDG_CACHE_HOME/fingrind/gradle-project-cache/<repo-hash>` on other Unix-like systems
   when `XDG_CACHE_HOME` is set, then `~/.cache/fingrind/gradle-project-cache/<repo-hash>`, then a
   `TMPDIR` or `/tmp` fallback
+- on Windows the wrapper prefers an explicit `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, then
+  `RUNNER_TEMP`, then `TEMP`, then `LOCALAPPDATA`, so GitHub-hosted runners keep wrapper-owned
+  cache state on the working drive instead of drifting onto a cross-drive temp root
 - mounted external volumes can still host the checkout because the lock-sensitive Gradle state no
   longer needs to live there
 - the wrapper honors `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, `FINGRIND_GRADLE_PROJECT_CACHE_DIR`,

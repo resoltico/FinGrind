@@ -59,6 +59,8 @@ jobs:
     runs-on: windows-latest
     needs: check
     timeout-minutes: 25
+    env:
+      FINGRIND_GRADLE_PROJECT_CACHE_ROOT: ${{ runner.temp }}\fingrind-gradle-project-cache
 
     permissions:
       contents: read

@@ -186,6 +186,8 @@ exit /b 0
 if defined FINGRIND_GRADLE_PROJECT_CACHE_DIR goto projectCacheDirResolved
 if defined FINGRIND_GRADLE_PROJECT_CACHE_ROOT (
     set "FINGRIND_PROJECT_CACHE_ROOT=%FINGRIND_GRADLE_PROJECT_CACHE_ROOT%"
+) else if defined RUNNER_TEMP (
+    set "FINGRIND_PROJECT_CACHE_ROOT=%RUNNER_TEMP%\fingrind-gradle-project-cache"
 ) else if defined TEMP (
     set "FINGRIND_PROJECT_CACHE_ROOT=%TEMP%\fingrind-gradle-project-cache"
 ) else if defined LOCALAPPDATA (
