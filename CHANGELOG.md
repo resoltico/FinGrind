@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Added `scripts/verify-public-container-surface.sh` plus mock-backed shell regression coverage,
+  and updated the release protocol to use that deterministic operator-side verifier so public
+  container checks now assert machine-readable `version --output json`, exact human
+  trial-balance rows, and PDF output instead of relying on ambiguous ad hoc terminal parsing.
+
 ## [0.24.0] - 2026-04-23
 
 ### Changed
