@@ -30,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dedicated setup subroutines, and correct JVM-vs-Gradle argument placement instead of
   parser-fragile inline substitutions, early block-expanded variables, misplaced
   `--project-cache-dir`, and cross-drive temp-cache defaults, and added a dedicated local
-  regression plus an explicit Windows CI cache-root override so the wrapper stays on the working
-  drive and fails in a named guard before release time.
+  regression so the wrapper stays on the working drive and fails in a named guard before release
+  time.
 - Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
   back into the repository-visible build context on fragile mounted filesystems, so release
   version bumps and other Docker-surface changes cannot silently reuse stale local container
