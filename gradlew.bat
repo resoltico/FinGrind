@@ -190,7 +190,7 @@ if "%ERRORLEVEL%"=="0" set "FINGRIND_GRADLE_HASH_SHELL=powershell.exe"
 :hashShellResolved
 if not defined FINGRIND_GRADLE_HASH_SHELL goto sanitizeProjectCacheKey
 set "FINGRIND_GRADLE_HASH_INPUT=%APP_HOME%"
-for /f "usebackq delims=" %%i in (`"%FINGRIND_GRADLE_HASH_SHELL%" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$bytes = [System.Text.Encoding]::UTF8.GetBytes($env:FINGRIND_GRADLE_HASH_INPUT); $sha = [System.Security.Cryptography.SHA256]::Create(); try { ($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }) -join '' } finally { $sha.Dispose() }"` ) do set "FINGRIND_PROJECT_CACHE_KEY=%%i"
+for /f "delims=" %%i in ('%FINGRIND_GRADLE_HASH_SHELL% -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$bytes = [System.Text.Encoding]::UTF8.GetBytes($env:FINGRIND_GRADLE_HASH_INPUT); $sha = [System.Security.Cryptography.SHA256]::Create(); try { ($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }) -join '' } finally { $sha.Dispose() }"') do set "FINGRIND_PROJECT_CACHE_KEY=%%i"
 if defined FINGRIND_PROJECT_CACHE_KEY exit /b 0
 :sanitizeProjectCacheKey
 set "FINGRIND_PROJECT_CACHE_KEY=%APP_HOME%"

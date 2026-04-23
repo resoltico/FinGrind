@@ -42,11 +42,15 @@ wrapper_contents="$(<"${wrapper_path}")"
     "expected gradlew.bat to define the cache-key resolver"
 [[ "${wrapper_contents}" == *'System.Security.Cryptography.SHA256'* ]] || die \
     "expected gradlew.bat to hash APP_HOME for the project-cache key on Windows"
+[[ "${wrapper_contents}" == *'for /f "delims=" %%i in ('\''%FINGRIND_GRADLE_HASH_SHELL% -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '* ]] || die \
+    "expected gradlew.bat to invoke the PowerShell hash helper through a cmd-safe for /f command"
 [[ "${wrapper_contents}" != *':==_%'* ]] || die \
     "gradlew.bat must not use the fragile equals-sign replacement that breaks cmd parsing"
 [[ "${wrapper_contents}" != *':!=_%'* ]] || die \
     "gradlew.bat must not use the fragile exclamation-mark replacement that breaks cmd parsing"
 [[ "${wrapper_contents}" != *':^=_%'* ]] || die \
     "gradlew.bat must not use the fragile caret replacement that breaks cmd parsing"
+[[ "${wrapper_contents}" != *'"%FINGRIND_GRADLE_HASH_SHELL%" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command'* ]] || die \
+    "gradlew.bat must not quote the hash-helper executable inside the for /f command string"
 
 printf 'gradlew.bat wrapper regression: success\n'
