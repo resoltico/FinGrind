@@ -13,6 +13,11 @@ final class CliFailureOutputRenderer {
         "Error", failure.code(), failure.message(), failure.hint(), failure.argument(), null);
   }
 
+  static String renderWarningHuman(CliFailure failure) {
+    return renderHumanDocument(
+        "Warning", failure.code(), failure.message(), failure.hint(), failure.argument(), null);
+  }
+
   static String renderRejectedHuman(String code, String message, @Nullable String idempotencyKey) {
     return renderHumanDocument("Rejected", code, message, null, null, idempotencyKey);
   }

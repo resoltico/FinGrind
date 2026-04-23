@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import java.util.Objects;
 
 /** SQLite open policies mapped from FinGrind command-level access intents. */
-public enum SqliteStoreAccessMode {
+enum SqliteStoreAccessMode {
   /** Opens one existing book in read-only mode. */
   READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false),
   /** Opens one existing book for read/write mutations without creating new files. */

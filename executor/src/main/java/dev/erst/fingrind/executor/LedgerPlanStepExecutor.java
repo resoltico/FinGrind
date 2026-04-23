@@ -62,17 +62,11 @@ final class LedgerPlanStepExecutor {
     return switch (outcome) {
       case LedgerPlanStepOutcome.Succeeded succeeded ->
           new LedgerJournalEntry.Succeeded(
-              step.stepId(),
-              step.kind(),
-              step.detailKind(),
-              startedAt,
-              finishedAt,
-              succeeded.facts());
+              step.stepId(), step.journalStep(), startedAt, finishedAt, succeeded.facts());
       case LedgerPlanStepOutcome.Rejected rejected ->
           new LedgerJournalEntry.Rejected(
               step.stepId(),
-              step.kind(),
-              step.detailKind(),
+              step.journalStep(),
               startedAt,
               finishedAt,
               rejected.facts(),
@@ -80,8 +74,7 @@ final class LedgerPlanStepExecutor {
       case LedgerPlanStepOutcome.AssertionFailed assertionFailed ->
           new LedgerJournalEntry.AssertionFailed(
               step.stepId(),
-              step.kind(),
-              step.detailKind(),
+              step.journalStep(),
               startedAt,
               finishedAt,
               assertionFailed.facts(),
@@ -92,8 +85,7 @@ final class LedgerPlanStepExecutor {
   LedgerJournalEntry.Rejected missingBookEntry(LedgerStep step, Instant startedAt) {
     return new LedgerJournalEntry.Rejected(
         step.stepId(),
-        step.kind(),
-        step.detailKind(),
+        step.journalStep(),
         startedAt,
         Instant.now(clock),
         List.of(),

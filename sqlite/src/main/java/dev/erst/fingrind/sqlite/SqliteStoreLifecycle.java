@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** Owns connection, transaction, cached state, and terminal-failure lifecycle for one store. */
@@ -15,6 +16,7 @@ final class SqliteStoreLifecycle {
   private final SqliteBookStateReader bookStateReader;
   private final int bookFormatVersion;
   private final String notInitializedBookMessage;
+  private final Supplier<SqliteNativeApi> sqliteApiSupplier;
   private @Nullable SqliteBookPassphrase bookPassphrase;
 
   private @Nullable SqliteSessionDatabase database;
@@ -30,7 +32,8 @@ final class SqliteStoreLifecycle {
       SqliteStoreAccessMode accessMode,
       SqliteBookStateReader bookStateReader,
       int bookFormatVersion,
-      String notInitializedBookMessage) {
+      String notInitializedBookMessage,
+      Supplier<SqliteNativeApi> sqliteApiSupplier) {
     this.bookPath = Objects.requireNonNull(bookPath, "bookPath");
     this.bookPassphrase = Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
@@ -38,6 +41,7 @@ final class SqliteStoreLifecycle {
     this.bookFormatVersion = bookFormatVersion;
     this.notInitializedBookMessage =
         Objects.requireNonNull(notInitializedBookMessage, "notInitializedBookMessage");
+    this.sqliteApiSupplier = Objects.requireNonNull(sqliteApiSupplier, "sqliteApiSupplier");
   }
 
   void beginLedgerPlanTransaction() {
@@ -76,6 +80,9 @@ final class SqliteStoreLifecycle {
       ledgerPlanTransactionBegunInDatabase = false;
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure(
+          "Failed to commit SQLite ledger plan transaction.", exception);
+    } catch (IllegalStateException exception) {
+      throw new IllegalStateException(
           "Failed to commit SQLite ledger plan transaction.", exception);
     }
   }
@@ -163,10 +170,12 @@ final class SqliteStoreLifecycle {
 
   private ContractDecision<SqliteSessionDatabase> openDatabase() {
     try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
+      SqliteNativeApi sqliteApi = sqliteApiSupplier.get();
       SqliteSessionDatabase openedDatabase =
           new SqliteSessionDatabase(
               SqliteConnectionConfigurer.configureOpenedDatabase(
-                  SqliteNativeConnections.open(bookPath, passphrase, accessMode.nativeOpenMode()),
+                  SqliteNativeConnections.open(
+                      bookPath, passphrase, accessMode.nativeOpenMode(), sqliteApi),
                   accessMode));
       database = openedDatabase;
       beginLedgerPlanTransactionIfNeeded(openedDatabase);
@@ -215,11 +224,15 @@ final class SqliteStoreLifecycle {
     return accessMode;
   }
 
+  SqliteNativeApi sqliteApi() {
+    return sqliteApiSupplier.get();
+  }
+
   void cacheState(SqliteBookStateSnapshot snapshot) {
     cachedBookState = Objects.requireNonNull(snapshot, "snapshot");
   }
 
-  void setCachedStateForTesting(@Nullable SqliteBookStateSnapshot snapshot) {
+  void replaceCachedState(@Nullable SqliteBookStateSnapshot snapshot) {
     cachedBookState = snapshot;
   }
 
@@ -232,7 +245,7 @@ final class SqliteStoreLifecycle {
     database = new SqliteSessionDatabase(Objects.requireNonNull(activeDatabase, "activeDatabase"));
   }
 
-  void publishNativeDatabaseForTesting(@Nullable SqliteNativeDatabase nativeDatabase) {
+  void replaceDatabase(@Nullable SqliteNativeDatabase nativeDatabase) {
     database = nativeDatabase == null ? null : new SqliteSessionDatabase(nativeDatabase);
   }
 
@@ -240,11 +253,11 @@ final class SqliteStoreLifecycle {
     return database == null ? null : database.nativeDatabase();
   }
 
-  void setPendingPassphraseForTesting(@Nullable SqliteBookPassphrase passphrase) {
+  void replacePendingPassphrase(@Nullable SqliteBookPassphrase passphrase) {
     bookPassphrase = passphrase;
   }
 
-  SqliteBookPassphrase takePendingPassphraseForTesting() {
+  SqliteBookPassphrase takePendingPassphrase() {
     return takeBookPassphrase();
   }
 

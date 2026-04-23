@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: ADAPTERS
-updated: "2026-04-21"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -203,21 +203,28 @@ public final class SqliteStorageFailureException extends IllegalStateException
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
-## `SqlitePostingFactStore` And `SqliteStoreAccessMode`
+## `SqliteBookSession`, `SqliteBookSessionMode`, And `SqliteBookSessions`
 
-`SqlitePostingFactStore` is the durable SQLite-backed implementation of FinGrind's administration,
-posting, unified-read, and ledger-plan seams.
+`SqliteBookSession` is the public SQLite-backed FinGrind session surface, while
+`SqliteBookSessionMode` names the caller intent and `SqliteBookSessions` owns session creation.
 
 ```java
-public final class SqlitePostingFactStore implements LedgerPlanSession
+public interface SqliteBookSession extends LedgerPlanSession, AutoCloseable
+public enum SqliteBookSessionMode
+public final class SqliteBookSessions
 ```
 
-- Purpose: persist one protected entity book into one selected SQLite file
-- `SqliteStoreAccessMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
+- Purpose: expose one stable public session API for CLI, tooling, and fuzz harnesses without
+  exporting the internal store/lifecycle implementation types
+- `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
   `READ_WRITE_CREATE`, and `PLAN_EXECUTION`
-- Access modes: support read-only reporting sessions plus writable administration and posting
-  sessions through the same durable adapter
-- Inspection: exposes lifecycle, format-version, compatibility, and migration-policy metadata
-- Helper split: lower-level concerns are factored into focused collaborators such as
-  `SqliteConnectionConfigurer`, `SqliteBookStateReader`, `SqliteStatementQueries`,
-  `SqlitePostingReader`, and `SqliteMutationWriter`
+- `SqliteBookSessions.open(...)`: opens one book session immediately for the selected caller
+  intent
+- `SqliteBookSessions.openResolved(...)`: primes the session and transfers ownership only after the
+  selected book can be opened successfully
+- Session shape: `SqliteBookSession` keeps the administration, posting, read, and ledger-plan
+  seams on one boundary while still exposing direct `findAccount(...)`, `findExistingPosting(...)`,
+  and `rekeyBook(...)` helpers needed by CLI/tooling flows
+- Internal split: `SqlitePostingFactStore`, `SqliteStoreContext`, `SqliteStoreLifecycle`,
+  `SqliteStoreReadOperations`, `SqliteStoreMutationOperations`, `SqlitePostingReader`, and
+  `SqliteReportReader` now remain implementation collaborators behind the public session API

@@ -11,8 +11,8 @@ import dev.erst.fingrind.contract.PostEntryResult.Committed;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
-import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +30,7 @@ public class SqliteBookRoundTripFuzzTest {
               .resolve("arbitrary")
               .resolve("entity-book.sqlite");
 
-      try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
+      try (SqliteBookSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
         BookAdministrationService administrationService =
             CliFuzzFixtures.administrationService(postingFactStore.administrationSession());
         PostingApplicationService applicationService =
@@ -68,7 +68,7 @@ public class SqliteBookRoundTripFuzzTest {
         CommitEntryResult committedResult = applicationService.commit(command);
         if (committedResult instanceof Committed committed) {
           SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
-          try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
+          try (SqliteBookSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
             Optional<PostingFact> storedPosting =
                 reloadedStore.findExistingPosting(command.requestProvenance().idempotencyKey());
             SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);

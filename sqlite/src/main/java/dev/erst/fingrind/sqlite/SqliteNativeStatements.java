@@ -16,10 +16,6 @@ final class SqliteNativeStatements {
     return new SqliteNativeStatement(database, sql);
   }
 
-  static void executeScript(MemorySegment databaseHandle, MemorySegment sqlPointer) {
-    executeScript(databaseHandle, sqlPointer, SqliteNativeBootstrap.api());
-  }
-
   static void executeScript(
       MemorySegment databaseHandle, MemorySegment sqlPointer, SqliteNativeApi sqliteApi) {
     try (Arena arena = Arena.ofConfined()) {

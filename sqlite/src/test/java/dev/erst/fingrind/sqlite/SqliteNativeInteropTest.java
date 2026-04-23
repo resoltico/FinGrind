@@ -34,8 +34,10 @@ class SqliteNativeInteropTest {
       MemorySegment statementPointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment textPointer = arena.allocateFrom("x");
 
-      assertBridgeFailure(() -> SqliteNativeConnections.close(null));
-      assertBridgeFailure(() -> SqliteNativeStatements.executeScript(null, sqlPointer));
+      assertBridgeFailure(() -> SqliteNativeConnections.close(null, SqliteNativeBootstrap.api()));
+      assertBridgeFailure(
+          () ->
+              SqliteNativeStatements.executeScript(null, sqlPointer, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () -> SqliteNativeStatements.prepareStatement(null, sqlPointer, statementPointer));
       assertBridgeFailure(() -> SqliteNativeStatements.bindNull(null, 1));

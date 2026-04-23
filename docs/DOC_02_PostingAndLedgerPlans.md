@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -153,11 +153,12 @@ public enum LedgerPlanStatus
 - Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult`
+## `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult`
 
 These types carry the durable execution record returned by `execute-plan`.
 
 ```java
+public sealed interface LedgerJournalStep
 public sealed interface LedgerJournalEntry
 public record LedgerExecutionJournal(...)
 public record LedgerStepFailure(String code, String message, List<LedgerFact> facts)
@@ -165,6 +166,8 @@ public sealed interface LedgerPlanResult
 ```
 
 - Purpose: return one plan-level result plus one per-step journal that agents can inspect safely
+- Structure: `LedgerJournalStep` owns the canonical `kind` plus assertion-only `detailKind`
+  pairing, so assertion detail is structural rather than `Optional`-encoded state
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
 
 ## `PostingApplicationService`

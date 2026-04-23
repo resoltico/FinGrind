@@ -22,7 +22,6 @@ final class CliBookPayloadMapper {
           new CliAdministrationJsonModels.MissingBookInspectionPayload(
               absolutePath(bookFilePath),
               status.wireValue(),
-              status.initialized(),
               status.compatibleWithCurrentBinary(),
               status.canInitializeWithOpenBook(),
               missing.supportedBookFormatVersion(),
@@ -31,7 +30,6 @@ final class CliBookPayloadMapper {
           new CliAdministrationJsonModels.ExistingBookInspectionPayload(
               absolutePath(bookFilePath),
               status.wireValue(),
-              status.initialized(),
               status.compatibleWithCurrentBinary(),
               status.canInitializeWithOpenBook(),
               existing.applicationId(),
@@ -42,7 +40,6 @@ final class CliBookPayloadMapper {
           new CliAdministrationJsonModels.InitializedBookInspectionPayload(
               absolutePath(bookFilePath),
               status.wireValue(),
-              status.initialized(),
               status.compatibleWithCurrentBinary(),
               status.canInitializeWithOpenBook(),
               initialized.applicationId(),

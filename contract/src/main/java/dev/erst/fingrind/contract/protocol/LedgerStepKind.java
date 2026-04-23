@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.core.WireValue;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -32,16 +31,12 @@ public enum LedgerStepKind implements WireValue {
 
   /** Returns every stable wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(LedgerStepKind::wireValue).toList();
+    return WireValue.wireValues(LedgerStepKind.class);
   }
 
   /** Parses one stable wire step kind. */
   public static LedgerStepKind fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(kind -> kind.wireValue.equals(wireValue))
-        .findFirst()
-        .orElseThrow(
-            () -> new IllegalArgumentException("Unsupported ledger plan step kind: " + wireValue));
+    return WireValue.fromWireValue(
+        LedgerStepKind.class, wireValue, "Unsupported ledger plan step kind");
   }
 }

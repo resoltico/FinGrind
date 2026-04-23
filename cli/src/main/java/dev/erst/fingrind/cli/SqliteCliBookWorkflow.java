@@ -32,8 +32,9 @@ import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
-import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
-import dev.erst.fingrind.sqlite.SqliteStoreAccessMode;
+import dev.erst.fingrind.sqlite.SqliteBookSession;
+import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
+import dev.erst.fingrind.sqlite.SqliteBookSessions;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.function.Function;
@@ -52,7 +53,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_WRITE_CREATE,
+        SqliteBookSessionMode.READ_WRITE_CREATE,
         CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET,
         bookSession ->
             new BookAdministrationService(bookSession.administrationSession(), clock).openBook());
@@ -63,7 +64,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
     return withBookSessionDecision(
         bookAccess,
-        SqliteStoreAccessMode.READ_WRITE_EXISTING,
+        SqliteBookSessionMode.READ_WRITE_EXISTING,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession ->
             passphraseResolver
@@ -86,7 +87,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, DeclareAccountCommand command) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_WRITE_EXISTING,
+        SqliteBookSessionMode.READ_WRITE_EXISTING,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession ->
             new BookAdministrationService(bookSession.administrationSession(), clock)
@@ -97,7 +98,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).inspectBook());
   }
@@ -107,7 +108,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, ListAccountsQuery query) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).listAccounts(query));
   }
@@ -117,7 +118,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, dev.erst.fingrind.core.PostingId postingId) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).getPosting(postingId));
   }
@@ -127,7 +128,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, ListPostingsQuery query) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).listPostings(query));
   }
@@ -137,7 +138,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, AccountBalanceQuery query) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).accountBalance(query));
   }
@@ -147,7 +148,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, TrialBalanceQuery query) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).trialBalance(query));
   }
@@ -157,7 +158,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, AccountLedgerQuery query) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).accountLedger(query));
   }
@@ -167,7 +168,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, PeriodSummaryQuery query) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession -> new BookReadService(bookSession.readSession()).periodSummary(query));
   }
@@ -177,7 +178,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
     boolean initializesBook = plan.beginsWithOpenBook();
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.PLAN_EXECUTION,
+        SqliteBookSessionMode.PLAN_EXECUTION,
         initializesBook
             ? CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET
             : CliBookPassphraseResolver.PromptStyle.SINGLE,
@@ -191,7 +192,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, PostEntryCommand command) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_ONLY,
+        SqliteBookSessionMode.READ_ONLY,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession ->
             postingApplicationService(bookSession.postingSession(), clock).preflight(command));
@@ -202,34 +203,34 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
       BookAccess bookAccess, PostEntryCommand command) {
     return withBookSession(
         bookAccess,
-        SqliteStoreAccessMode.READ_WRITE_EXISTING,
+        SqliteBookSessionMode.READ_WRITE_EXISTING,
         CliBookPassphraseResolver.PromptStyle.SINGLE,
         bookSession ->
             postingApplicationService(bookSession.postingSession(), clock).commit(command));
   }
 
-  private ContractDecision<SqlitePostingFactStore> openBookSession(
+  private ContractDecision<SqliteBookSession> openBookSession(
       BookAccess bookAccess,
-      SqliteStoreAccessMode accessMode,
+      SqliteBookSessionMode accessMode,
       CliBookPassphraseResolver.PromptStyle promptStyle) {
     return passphraseResolver
         .resolve(bookAccess, promptStyle)
         .fold(
             bookPassphrase ->
-                SqlitePostingFactStore.openResolved(
+                SqliteBookSessions.openResolved(
                     bookAccess.bookFilePath(), bookPassphrase, accessMode),
             ContractDecision::rejected);
   }
 
   private <T> ContractDecision<T> withBookSession(
       BookAccess bookAccess,
-      SqliteStoreAccessMode accessMode,
+      SqliteBookSessionMode accessMode,
       CliBookPassphraseResolver.PromptStyle promptStyle,
-      Function<SqlitePostingFactStore, T> work) {
+      Function<SqliteBookSession, T> work) {
     return openBookSession(bookAccess, accessMode, promptStyle)
         .fold(
             bookSession -> {
-              try (SqlitePostingFactStore ignored = bookSession) {
+              try (SqliteBookSession ignored = bookSession) {
                 return ContractDecision.accepted(work.apply(bookSession));
               }
             },
@@ -238,13 +239,13 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
 
   private <T> ContractDecision<T> withBookSessionDecision(
       BookAccess bookAccess,
-      SqliteStoreAccessMode accessMode,
+      SqliteBookSessionMode accessMode,
       CliBookPassphraseResolver.PromptStyle promptStyle,
-      Function<SqlitePostingFactStore, ContractDecision<T>> work) {
+      Function<SqliteBookSession, ContractDecision<T>> work) {
     return openBookSession(bookAccess, accessMode, promptStyle)
         .fold(
             bookSession -> {
-              try (SqlitePostingFactStore ignored = bookSession) {
+              try (SqliteBookSession ignored = bookSession) {
                 return work.apply(bookSession);
               }
             },

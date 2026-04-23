@@ -16,6 +16,12 @@ plugins {
     `java-gradle-plugin`
 }
 
+System.getProperty("fingrind.gradle.build-logic-dir")
+    ?.takeIf { it.isNotBlank() }
+    ?.let { buildLogicDirectory ->
+        layout.buildDirectory.set(file(buildLogicDirectory))
+    }
+
 repositories {
     gradlePluginPortal()
     mavenCentral()

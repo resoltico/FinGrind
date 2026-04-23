@@ -24,6 +24,10 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
             description = "Local-only Jazzer fuzzing layer for FinGrind"
 
+            gradle.startParameter.projectCacheDir?.let { projectCacheDir ->
+                layout.buildDirectory.set(file(projectCacheDir.resolve("jazzer-build")))
+            }
+
             repositories.mavenCentral()
 
             val topology = JazzerTopology.load(this)

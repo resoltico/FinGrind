@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -114,8 +114,10 @@ FinGrind's current public model is:
   on-disk format is `1`
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
-- contributor verification belongs on the local filesystem; mounted external volumes are outside the
-  supported setup because Gradle project-cache and JaCoCo file locking can fail there on macOS
+- `./gradlew` relocates per-checkout project cache, included build output, and JaCoCo execution
+  data outside the checkout automatically, and it also relocates the project `build/` tree itself
+  when the repo lives on a fragile mounted filesystem such as `smbfs`, so contributor
+  verification can still run there; local disk remains the fastest path
 
 ## Foundations
 
@@ -230,7 +232,8 @@ the top-level archive bootstrap files and the trimmed `jlink` runtime-image cont
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
 Java surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
 `FINGRIND_SQLITE_LIBRARY` at
-the resulting file under `build/managed-sqlite/`, for example:
+the resulting file under `build/managed-sqlite/` when the project build tree stays in-checkout,
+or under the wrapper-owned relocated build root on fragile mounted filesystems, for example:
 
 ```bash
 export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"

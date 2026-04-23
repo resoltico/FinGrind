@@ -12,6 +12,10 @@ import org.gradle.kotlin.dsl.register
 class FinGrindRootConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
+            FinGrindFilesystemLayout.projectBuildDirectory(this)?.let { projectBuildDirectory ->
+                layout.buildDirectory.set(projectBuildDirectory)
+            }
+
             pluginManager.apply("base")
             pluginManager.apply("jacoco")
             pluginManager.apply("com.diffplug.spotless")
@@ -34,19 +38,23 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 lineEndings = LineEnding.UNIX
                 format("projectFiles") {
                     target(
-                        ".gitattributes",
-                        ".gitignore",
-                        ".dockerignore",
-                        "Dockerfile",
-                        "**/*.gradle.kts",
-                        "**/*.md",
-                        "**/*.yml",
-                        "gradle.properties",
-                        "gradle/**/*.toml",
-                        "docs/**/*.json",
-                        "examples/**/*.json",
+                        fileTree(projectDir) {
+                            include(
+                                ".gitattributes",
+                                ".gitignore",
+                                ".dockerignore",
+                                "Dockerfile",
+                                "**/*.gradle.kts",
+                                "**/*.md",
+                                "**/*.yml",
+                                "gradle.properties",
+                                "gradle/**/*.toml",
+                                "docs/**/*.json",
+                                "examples/**/*.json",
+                            )
+                            exclude("**/build/**", "**/.claude/**", "**/.codex/**", "**/.gradle/**")
+                        }
                     )
-                    targetExclude("**/build/**", "**/.gradle/**")
                     trimTrailingWhitespace()
                     endWithNewline()
                 }
@@ -87,19 +95,15 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
 
                 executionData.from(
                     coverageProjects.map { subproject ->
-                        subproject.fileTree("${subproject.projectDir}/build/jacoco") {
-                            include("*.exec")
-                        }
+                        FinGrindFilesystemLayout.jacocoDestinationFile(subproject, "test")
                     }
                 )
                 sourceDirectories.from(
-                    coverageProjects.map { file("${it.projectDir}/src/main/java") }
+                    coverageProjects.map { it.layout.projectDirectory.dir("src/main/java").asFile }
                 )
                 classDirectories.from(
                     coverageProjects.map {
-                        fileTree("${it.projectDir}/build/classes/java/main") {
-                            exclude("**/module-info.class")
-                        }
+                        it.layout.buildDirectory.dir("classes/java/main").get().asFile
                     }
                 )
 

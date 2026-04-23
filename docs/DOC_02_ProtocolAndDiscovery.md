@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -197,6 +197,9 @@ public final class MachineContract
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
 - Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
   `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
+- Template behavior: `requestTemplate(clock)` and `planTemplate(clock)` stamp their example
+  `effectiveDate` fields from `LocalDate.now(clock)`, so checked-in template fixtures mirror the
+  live request shape without promising byte-identical current-date output forever
 
 ## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
 

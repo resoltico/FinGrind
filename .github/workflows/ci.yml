@@ -57,6 +57,7 @@ jobs:
   windows-bundle-smoke:
     name: Windows bundle smoke
     runs-on: windows-latest
+    needs: check
     timeout-minutes: 25
 
     permissions:

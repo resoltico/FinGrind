@@ -252,10 +252,10 @@ class ProtocolCatalogTest {
         ProtocolCatalog.planExecution().hardLimitations().stream()
             .anyMatch(limitation -> limitation.contains("100 steps")));
     assertEquals(
-        PublicDistributionContract.current().supportedPublicCliBundleTargets(),
+        PublicDistributionContracts.current().supportedPublicCliBundleTargets(),
         ProtocolCatalog.supportedPublicCliBundleTargets());
     assertEquals(
-        PublicDistributionContract.current().unsupportedPublicCliOperatingSystems(),
+        PublicDistributionContracts.current().unsupportedPublicCliOperatingSystems(),
         ProtocolCatalog.unsupportedPublicCliOperatingSystems());
   }
 
@@ -332,7 +332,7 @@ class ProtocolCatalogTest {
   @Test
   void publicDistributionContractLoaderValidatesResourceAndNormalizationEdges() {
     PublicDistributionContract loaded =
-        PublicDistributionContract.loadFromResource(
+        PublicDistributionContracts.loadFromResource(
             new ByteArrayInputStream(
                 """
                 supportedPublicCliBundleTargets=macos-aarch64, linux-x86_64
@@ -346,15 +346,15 @@ class ProtocolCatalogTest {
     assertEquals(List.of("windows-arm64"), loaded.unsupportedPublicCliOperatingSystems());
     assertEquals(
         List.of(),
-        PublicDistributionContract.loadFromResource(
+        PublicDistributionContracts.loadFromResource(
                 new ByteArrayInputStream(new byte[0]), "blank-resource")
             .supportedPublicCliBundleTargets());
     assertThrows(
         IllegalStateException.class,
-        () -> PublicDistributionContract.loadFromResource(null, "missing-resource"));
+        () -> PublicDistributionContracts.loadFromResource(null, "missing-resource"));
     assertThrows(
         UncheckedIOException.class,
-        () -> PublicDistributionContract.loadFromResource(failingInputStream(), "bad-resource"));
+        () -> PublicDistributionContracts.loadFromResource(failingInputStream(), "bad-resource"));
     assertEquals(
         List.of(),
         new PublicDistributionContract(null, List.of()).supportedPublicCliBundleTargets());

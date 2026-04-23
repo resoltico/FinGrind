@@ -128,6 +128,10 @@ tasks.named<ShadowJar>("shadowJar") {
     archiveBaseName = "fingrind"
     archiveVersion = ""
     archiveClassifier = ""
+    inputs.property("shadowJarImplementationTitle", "FinGrind")
+    inputs.property("shadowJarImplementationVersion", project.version.toString())
+    inputs.property("shadowJarImplementationVendor", buildMetadata.implementationVendor)
+    inputs.property("shadowJarImplementationLicense", buildMetadata.implementationLicense)
 
     // Merge ServiceLoader registrations from all bundled JARs.
     mergeServiceFiles()

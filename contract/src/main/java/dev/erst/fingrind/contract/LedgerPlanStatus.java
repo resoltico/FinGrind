@@ -1,9 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.core.WireValue;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /** Final status for one ledger-plan execution. */
 public enum LedgerPlanStatus implements WireValue {
@@ -26,16 +24,12 @@ public enum LedgerPlanStatus implements WireValue {
 
   /** Returns every stable wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(LedgerPlanStatus::wireValue).toList();
+    return WireValue.wireValues(LedgerPlanStatus.class);
   }
 
   /** Parses one stable wire value. */
   public static LedgerPlanStatus fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(value -> value.wireValue().equals(wireValue))
-        .findFirst()
-        .orElseThrow(
-            () -> new IllegalArgumentException("Unsupported ledger plan status: " + wireValue));
+    return WireValue.fromWireValue(
+        LedgerPlanStatus.class, wireValue, "Unsupported ledger plan status");
   }
 }

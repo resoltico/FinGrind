@@ -32,7 +32,6 @@ interface CliAdministrationJsonModels {
   record MissingBookInspectionPayload(
       String bookFile,
       String state,
-      boolean initialized,
       boolean compatibleWithCurrentBinary,
       boolean canInitializeWithOpenBook,
       int supportedBookFormatVersion,
@@ -48,7 +47,6 @@ interface CliAdministrationJsonModels {
   record ExistingBookInspectionPayload(
       String bookFile,
       String state,
-      boolean initialized,
       boolean compatibleWithCurrentBinary,
       boolean canInitializeWithOpenBook,
       int applicationId,
@@ -68,7 +66,6 @@ interface CliAdministrationJsonModels {
   record InitializedBookInspectionPayload(
       String bookFile,
       String state,
-      boolean initialized,
       boolean compatibleWithCurrentBinary,
       boolean canInitializeWithOpenBook,
       int applicationId,

@@ -92,7 +92,7 @@ class LedgerPlanContractTest {
                 stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .kind());
     assertEquals(
-        Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
+        LedgerAssertionKind.ACCOUNT_DECLARED,
         new LedgerStep.Assert(
                 stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .detailKind());
@@ -142,16 +142,14 @@ class LedgerPlanContractTest {
     LedgerJournalEntry success =
         new LedgerJournalEntry.Succeeded(
             stepId("post"),
-            LedgerStepKind.POST_ENTRY,
-            Optional.empty(),
+            LedgerJournalStep.standard(LedgerStepKind.POST_ENTRY),
             startedAt,
             finishedAt,
             List.of(fact));
     LedgerJournalEntry rejected =
         new LedgerJournalEntry.Rejected(
             stepId("post"),
-            LedgerStepKind.ASSERT,
-            Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+            LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
             startedAt,
             finishedAt,
             List.of(),
@@ -159,8 +157,7 @@ class LedgerPlanContractTest {
     LedgerJournalEntry assertionFailed =
         new LedgerJournalEntry.AssertionFailed(
             stepId("assert"),
-            LedgerStepKind.ASSERT,
-            Optional.of(LedgerAssertionKind.ACCOUNT_DECLARED),
+            LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_DECLARED),
             startedAt,
             finishedAt,
             List.of(),
@@ -176,7 +173,7 @@ class LedgerPlanContractTest {
     assertEquals(failure, ((LedgerJournalEntry.Rejected) rejected).failure());
     assertEquals(LedgerPlanStatus.REJECTED, rejectedJournal.status());
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, assertionFailedJournal.status());
-    assertEquals(Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS), rejected.detailKind());
+    assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, rejected.detailKind());
     assertEquals(
         planId("plan-1"), new LedgerPlanResult.Succeeded(planId("plan-1"), journal).planId());
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("", "value"));

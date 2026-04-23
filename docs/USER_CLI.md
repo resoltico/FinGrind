@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: USER_CLI
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -57,7 +57,9 @@ Commands that advertise `--output` keep JSON as the default machine surface. Dis
 administration, write, and query/report commands can render operator-facing `--output human`,
 and the tabular read/report commands also accept `--output csv`. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
-one PDF artifact through `--pdf-out <path>`.
+one PDF artifact through `--pdf-out <path>`. If the report itself succeeds but the PDF write later
+fails, FinGrind still returns the primary report on stdout and emits a repair warning on the
+diagnostics stream instead of changing the command exit to `runtime-failure`.
 
 ## Commands
 
@@ -109,18 +111,18 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.23.0-macos-aarch64.tar.gz
-./fingrind-0.23.0-macos-aarch64/bin/fingrind help
-./fingrind-0.23.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.24.0-macos-aarch64.tar.gz
+./fingrind-0.24.0-macos-aarch64/bin/fingrind help
+./fingrind-0.24.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.23.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.23.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.23.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.24.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.24.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.24.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -141,6 +143,9 @@ For local bundle verification from a source checkout:
 
 The raw `java -jar` path is still available for advanced contributor work, but it is not the
 public FinGrind download contract:
+
+These example paths assume the project `build/` tree stays inside the checkout. On fragile mounted
+filesystems, `./gradlew` may relocate that tree into the wrapper-owned local cache.
 
 ```bash
 ./gradlew :cli:shadowJar
@@ -188,6 +193,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | wrong book key or plaintext legacy book | `2` | `book-authentication-failed` | `FinGrind could not authenticate the selected protected book with the supplied passphrase source.` |
 | invalid key-file contents or permissions | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.` |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
+| requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
 | extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `4` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime environment failure | `4` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 
@@ -239,7 +245,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   commands except `inspect-book` and `get-posting` also accept `--output csv`.
 - `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can also write one
   PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout
-  output mode.
+  output mode. If the primary report succeeds but the PDF artifact fails, stdout still carries the
+  report result and diagnostics emit a human warning with code pdf-export-warning.
 - JSON amount fields remain canonical decimal strings without forced display scale, while
   `--output human` and `--output csv` render accounting-grade currency scale for operators and
   spreadsheet import.

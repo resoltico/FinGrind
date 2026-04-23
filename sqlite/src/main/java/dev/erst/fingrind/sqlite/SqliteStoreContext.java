@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /** Internal dependency bundle and operation owner for one SQLite-backed book session. */
 final class SqliteStoreContext {
@@ -44,6 +45,7 @@ final class SqliteStoreContext {
   private final SqliteStoreReadOperations readOperations;
   private final SqliteStoreMutationOperations mutationOperations;
   private final SqliteStoreLifecycle lifecycle;
+  private final Supplier<SqliteNativeApi> sqliteApiSupplier;
 
   SqliteStoreContext(Path bookPath, SqliteBookPassphrase bookPassphrase) {
     this(bookPath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_CREATE);
@@ -51,9 +53,18 @@ final class SqliteStoreContext {
 
   SqliteStoreContext(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteStoreAccessMode accessMode) {
+    this(bookPath, bookPassphrase, accessMode, SqliteNativeBootstrap::api);
+  }
+
+  SqliteStoreContext(
+      Path bookPath,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteStoreAccessMode accessMode,
+      Supplier<SqliteNativeApi> sqliteApiSupplier) {
     this.bookPath = Objects.requireNonNull(bookPath, "bookPath").toAbsolutePath().normalize();
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
+    this.sqliteApiSupplier = Objects.requireNonNull(sqliteApiSupplier, "sqliteApiSupplier");
     this.postingReader = new SqlitePostingReader();
     this.reportReader = new SqliteReportReader(postingReader);
     this.readOperations = new SqliteStoreReadOperations(this);
@@ -65,10 +76,18 @@ final class SqliteStoreContext {
             this.accessMode,
             SqliteBookContract.BOOK_STATE_READER,
             SqliteBookContract.FORMAT_VERSION,
-            SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE);
+            SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE,
+            this.sqliteApiSupplier);
   }
 
   SqliteStoreContext(BookAccess bookAccess, SqliteStoreAccessMode accessMode) {
+    this(bookAccess, accessMode, SqliteNativeBootstrap::api);
+  }
+
+  SqliteStoreContext(
+      BookAccess bookAccess,
+      SqliteStoreAccessMode accessMode,
+      Supplier<SqliteNativeApi> sqliteApiSupplier) {
     this(
         bookAccess.bookFilePath(),
         SqlitePostingFactStore.passphraseDecisionFor(bookAccess)
@@ -77,7 +96,8 @@ final class SqliteStoreContext {
                 failure -> {
                   throw new IllegalStateException(failure.message());
                 }),
-        accessMode);
+        accessMode,
+        sqliteApiSupplier);
   }
 
   ContractDecision<SqliteStoreContext> prime() {
@@ -228,6 +248,14 @@ final class SqliteStoreContext {
 
   void publishDatabase(SqliteNativeDatabase activeDatabase) {
     lifecycle.publishDatabase(activeDatabase);
+  }
+
+  SqliteSessionDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
+    return new SqliteSessionDatabase(
+        SqliteConnectionConfigurer.configureOpenedDatabase(
+            SqliteNativeConnections.open(
+                bookPath(), bookPassphrase, accessMode().nativeOpenMode(), lifecycle.sqliteApi()),
+            accessMode()));
   }
 
   SqliteStoreLifecycle lifecycle() {

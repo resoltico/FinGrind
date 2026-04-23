@@ -1,0 +1,339 @@
+package dev.erst.fingrind.sqlite;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.NullUnmarked;
+import org.junit.jupiter.api.Test;
+
+/** Tests for the SQLite FFM binding layer. */
+@NullUnmarked
+class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
+
+  @Test
+  void errorMessage_returnsGenericTextForNullHandle() {
+    try (Arena arena = Arena.ofConfined()) {
+      MethodHandle errorHandle =
+          MethodHandles.dropArguments(
+              MethodHandles.constant(MemorySegment.class, arena.allocateFrom("boom")),
+              0,
+              MemorySegment.class);
+
+      assertEquals("SQLite native failure.", SqliteNativeErrors.errorMessage(null, errorHandle));
+      assertEquals(
+          "SQLite native failure.",
+          SqliteNativeErrors.errorMessage(MemorySegment.NULL, errorHandle));
+    }
+    assertEquals("SQLite native failure.", SqliteNativeErrors.errorMessage(null));
+    assertEquals("SQLite native failure.", SqliteNativeErrors.errorMessage(MemorySegment.NULL));
+    assertEquals(
+        "SQLite native failure.",
+        SqliteNativeErrors.scriptErrorMessage(MemorySegment.NULL, MemorySegment.NULL));
+  }
+
+  @Test
+  void errorMessage_readsMessageForNonNullHandle() {
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment fakeHandle = arena.allocate(1);
+      MethodHandle errorHandle =
+          MethodHandles.dropArguments(
+              MethodHandles.constant(MemorySegment.class, arena.allocateFrom("boom")),
+              0,
+              MemorySegment.class);
+
+      assertEquals("boom", SqliteNativeErrors.errorMessage(fakeHandle, errorHandle));
+    }
+  }
+
+  @Test
+  void errorMessage_andSqliteVersion_coverDefaultConvenienceOverloads() throws Exception {
+    Path bookPath = tempDirectory.resolve("error-message.sqlite");
+
+    assertDoesNotThrow(
+        () ->
+            withOpenDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  try (Arena arena = Arena.ofConfined()) {
+                    MethodHandle versionHandle =
+                        MethodHandles.constant(MemorySegment.class, arena.allocateFrom("3.53.0"));
+                    MethodHandle sqlite3mcVersionHandle =
+                        MethodHandles.constant(
+                            MemorySegment.class,
+                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.3"));
+
+                    assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
+                    assertEquals("3.53.0", SqliteNativeBootstrap.sqliteVersion(versionHandle));
+                    assertEquals(
+                        "2.3.3",
+                        SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                            sqlite3mcVersionHandle));
+                    assertDoesNotThrow(
+                        () ->
+                            SqliteNativeErrors.freeSqliteBuffer(
+                                null,
+                                MethodHandles.dropArguments(
+                                    MethodHandles.empty(
+                                        java.lang.invoke.MethodType.methodType(void.class)),
+                                    0,
+                                    MemorySegment.class)));
+                    assertDoesNotThrow(
+                        () ->
+                            SqliteNativeErrors.freeSqliteBuffer(
+                                MemorySegment.NULL,
+                                MethodHandles.dropArguments(
+                                    MethodHandles.empty(
+                                        java.lang.invoke.MethodType.methodType(void.class)),
+                                    0,
+                                    MemorySegment.class)));
+                  }
+                }));
+  }
+
+  @Test
+  void errorString_convenienceOverload_readsConfiguredApi() {
+    assertFalse(SqliteNativeErrors.errorString(14).isBlank());
+  }
+
+  @Test
+  void wrapperDelegates_supportSuccessfulFacadeCalls() {
+    try (Arena arena = Arena.ofConfined()) {
+      MethodHandle errorMessageHandle =
+          constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class);
+      MethodHandle errorStrlenHandle = constantMethodHandle(4L, MemorySegment.class);
+      MethodHandle sqliteVersionHandle = constantMethodHandle(arena.allocateFrom("3.53.0"));
+      MethodHandle sqliteVersionStrlenHandle = constantMethodHandle(6L, MemorySegment.class);
+      MethodHandle sqlite3mcVersionHandle =
+          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.3"));
+      MethodHandle sqlite3mcVersionStrlenHandle =
+          constantMethodHandle(
+              (long) "SQLite3 Multiple Ciphers 2.3.3".length(), MemorySegment.class);
+
+      assertEquals(
+          "boom",
+          SqliteNativeErrors.errorMessage(
+              MemorySegment.ofAddress(1L), errorMessageHandle, errorStrlenHandle));
+      assertEquals(
+          "3.53.0",
+          SqliteNativeBootstrap.sqliteVersion(sqliteVersionHandle, sqliteVersionStrlenHandle));
+      assertEquals(
+          "2.3.3",
+          SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+              sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
+      assertEquals(
+          "3.53.0", SqliteNativeRuntimePolicy.requireSupportedVersion("3.53.0", "managed-only"));
+      assertEquals(
+          "2.3.3",
+          SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion("2.3.3", "managed-only"));
+      assertDoesNotThrow(
+          () ->
+              SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
+                  constantMethodHandle(1, MemorySegment.class), "3.53.0", "2.3.3", "managed-only"));
+      assertEquals("ok", SqliteNativeBootstrap.initialize(() -> "ok"));
+    }
+  }
+
+  @Test
+  void compileOptionUsed_wrapsUnexpectedThrowableFromNativeInvocation() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeRuntimePolicy.compileOptionUsed(
+                    throwingMethodHandle(
+                        new IllegalStateException("boom"), int.class, MemorySegment.class),
+                    "SECURE_DELETE"));
+
+    assertEquals("Failed to read the SQLite compile option: SECURE_DELETE", exception.getMessage());
+    assertEquals("boom", exception.getCause().getMessage());
+  }
+
+  @Test
+  void compileOptionUsed_reportsEnabledCompileOption() {
+    assertTrue(
+        SqliteNativeRuntimePolicy.compileOptionUsed(
+            constantMethodHandle(1, MemorySegment.class), "SECURE_DELETE"));
+  }
+
+  @Test
+  void compileOptionUsed_rethrowsErrorsFromNativeInvocation() {
+    AssertionError error =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                SqliteNativeRuntimePolicy.compileOptionUsed(
+                    throwingMethodHandle(
+                        new AssertionError("boom"), int.class, MemorySegment.class),
+                    "SECURE_DELETE"));
+
+    assertEquals("boom", error.getMessage());
+  }
+
+  @Test
+  void errorString_returnsResultNameWhenPointerIsJavaNull() {
+    MethodHandle nullErrorStringHandle =
+        MethodHandles.dropArguments(
+            MethodHandles.constant(MemorySegment.class, null), 0, int.class);
+
+    assertEquals(
+        "SQLITE_CANTOPEN",
+        SqliteNativeErrors.errorString(
+            14, nullErrorStringHandle, constantMethodHandle(0L, MemorySegment.class)));
+  }
+
+  @Test
+  void errorString_returnsResultNameWhenPointerIsNullSegment() {
+    assertEquals(
+        "SQLITE_CANTOPEN",
+        SqliteNativeErrors.errorString(
+            14,
+            constantMethodHandle(MemorySegment.NULL, int.class),
+            constantMethodHandle(0L, MemorySegment.class)));
+  }
+
+  @Test
+  void errorString_returnsResultNameWhenPointerIsBlank() {
+    try (Arena arena = Arena.ofConfined()) {
+      assertEquals(
+          "SQLITE_CANTOPEN",
+          SqliteNativeErrors.errorString(
+              14,
+              constantMethodHandle(arena.allocateFrom(""), int.class),
+              constantMethodHandle(0L, MemorySegment.class)));
+    }
+  }
+
+  @Test
+  void errorString_wrapsThrowableFromErrorStringHandle() {
+    MethodHandle throwingErrorStringHandle =
+        MethodHandles.dropArguments(
+            MethodHandles.throwException(MemorySegment.class, IllegalStateException.class)
+                .bindTo(new IllegalStateException("boom")),
+            0,
+            int.class);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeErrors.errorString(
+                    14, throwingErrorStringHandle, constantMethodHandle(0L, MemorySegment.class)));
+
+    assertEquals("Failed to read the SQLite error string.", exception.getMessage());
+    assertTrue(exception.getCause() instanceof IllegalStateException);
+    assertEquals("boom", exception.getCause().getMessage());
+  }
+
+  @Test
+  void scriptErrorMessage_resultCodeOverload_prefersExecBufferAndFallsBackToErrorString() {
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment boom = arena.allocateFrom("boom");
+      MethodHandle errorStringHandle = constantMethodHandle(boom, int.class);
+      MethodHandle strlenHandle = constantMethodHandle(4L, MemorySegment.class);
+
+      assertEquals(
+          "boom", SqliteNativeErrors.scriptErrorMessage(14, boom, errorStringHandle, strlenHandle));
+      assertEquals(
+          "boom",
+          SqliteNativeErrors.scriptErrorMessage(
+              14, MemorySegment.NULL, errorStringHandle, strlenHandle));
+      assertEquals(
+          "boom", SqliteNativeErrors.scriptErrorMessage(14, null, errorStringHandle, strlenHandle));
+    }
+  }
+
+  @Test
+  void sqlite3MultipleCiphersVersion_wrapsUnexpectedLookupFailure() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                    throwingMethodHandle(new IllegalStateException("boom"), MemorySegment.class)));
+
+    assertTrue(
+        exception
+            .getMessage()
+            .contains("Failed to read the SQLite3 Multiple Ciphers library version."));
+  }
+
+  @Test
+  void sqlite3MultipleCiphersVersion_rethrowsErrorsFromLookupFailure() {
+    AssertionError error =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+                    throwingMethodHandle(new AssertionError("boom"), MemorySegment.class)));
+
+    assertEquals("boom", error.getMessage());
+  }
+
+  @Test
+  void shutdownQuietly_ignoresThrowablesFromNativeShutdown() {
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeBootstrap.shutdownQuietly(
+                throwingMethodHandle(new IllegalStateException("boom"), int.class)));
+  }
+
+  @Test
+  void shutdownIfQuiescent_runsShutdownOnlyWhenNoConnectionsRemain() throws Throwable {
+    AtomicInteger shutdownCalls = new AtomicInteger();
+    MethodHandle shutdownHandle =
+        MethodHandles.insertArguments(
+            MethodHandles.lookup()
+                .findStatic(
+                    SqliteNativeBridgeTestSupport.class,
+                    "recordShutdownCall",
+                    java.lang.invoke.MethodType.methodType(int.class, AtomicInteger.class)),
+            0,
+            shutdownCalls);
+
+    SqliteNativeBootstrap.shutdownIfQuiescent(shutdownHandle, 1);
+    assertEquals(0, shutdownCalls.get());
+
+    SqliteNativeBootstrap.shutdownIfQuiescent(shutdownHandle, 0);
+    assertEquals(1, shutdownCalls.get());
+  }
+
+  @Test
+  void downcall_throwsForMissingSymbol() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeApiLoader.downcall(
+                    Linker.nativeLinker().defaultLookup(),
+                    "sqlite3_missing_symbol_for_test",
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT)));
+
+    assertTrue(exception.getMessage().contains("Missing SQLite symbol"));
+  }
+
+  @Test
+  void loadApi_reraisesLookupFailureForConfiguredMissingLibrary() {
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteNativeApiLoader.loadApi(
+                    new SqliteLibraryTarget(
+                        "managed", tempDirectory.resolve("missing/libsqlite3.dylib").toString())));
+
+    assertNotNull(exception.getMessage());
+  }
+}

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-21"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -19,7 +19,7 @@ route:
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, duplicate-key rejection, unexpected-field rejection, and legacy-field hard breaks | `10` |
 | `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` | ledger-plan parsing, canonical step-kind preservation, removal of the inert execution-policy block, open-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `5` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
-| `sqlite-book-roundtrip` | `SqlitePostingFactStore` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
+| `sqlite-book-roundtrip` | `SqliteBookSession` via `SqliteBookSessions` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
 ## `cli-request`
 
@@ -76,7 +76,7 @@ What it asserts:
 
 Surface:
 - request parsing through the same CLI seam
-- explicit `open-book` initialization through the SQLite-backed session
+- explicit `open-book` initialization through the public SQLite session factory
 - explicit account declaration before durable posting
 - commit and reload against a real filesystem path plus deterministic protected-book passphrase
   material

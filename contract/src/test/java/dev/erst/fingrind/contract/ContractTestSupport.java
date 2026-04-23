@@ -1,0 +1,75 @@
+package dev.erst.fingrind.contract;
+
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.CausationId;
+import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.JournalEntry;
+import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceChannel;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import org.jspecify.annotations.NullUnmarked;
+
+/** Shared contract-model fixtures for split behavior-owned tests. */
+@NullUnmarked
+class ContractTestSupport {
+  protected LedgerPlanId planId(String value) {
+    return new LedgerPlanId(value);
+  }
+
+  protected LedgerStepId stepId(String value) {
+    return new LedgerStepId(value);
+  }
+
+  protected DeclaredAccount declaredAccount(String accountCode) {
+    return new DeclaredAccount(
+        new AccountCode(accountCode),
+        new AccountName("Cash"),
+        NormalBalance.DEBIT,
+        true,
+        Instant.parse("2026-04-07T10:15:30Z"));
+  }
+
+  protected PostingFact postingFact(String postingId, String idempotencyKey) {
+    return new PostingFact(
+        new PostingId(postingId),
+        journalEntry(),
+        PostingLineage.direct(),
+        new CommittedProvenance(
+            new RequestProvenance(
+                new ActorId("actor-1"),
+                ActorType.AGENT,
+                new CommandId("command-1"),
+                new IdempotencyKey(idempotencyKey),
+                new CausationId("cause-1"),
+                Optional.empty()),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            SourceChannel.CLI));
+  }
+
+  protected JournalEntry journalEntry() {
+    return new JournalEntry(
+        LocalDate.parse("2026-04-07"),
+        List.of(
+            new JournalLine(new AccountCode("1000"), JournalLine.EntrySide.DEBIT, money("10.00")),
+            new JournalLine(
+                new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("10.00"))));
+  }
+
+  protected Money money(String amount) {
+    return new Money(new CurrencyCode("EUR"), new BigDecimal(amount));
+  }
+}

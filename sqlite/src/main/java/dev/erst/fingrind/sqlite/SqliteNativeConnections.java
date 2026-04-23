@@ -6,32 +6,20 @@ import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 /** Owns SQLite native connection open, close, and rekey behavior for the FFM bridge. */
 final class SqliteNativeConnections {
   private static final int SQLITE_BUSY_TIMEOUT_MILLIS = 5_000;
   private static final String KEY_VALIDATION_QUERY = "SELECT count(*) FROM sqlite_master;";
-  private static final AtomicReference<MethodHandle> SQLITE3_OPEN_V2_OVERRIDE =
-      new AtomicReference<>();
-  private static final AtomicReference<MethodHandle> SQLITE3_CLOSE_V2_OVERRIDE =
-      new AtomicReference<>();
-  private static final AtomicReference<MethodHandle> SQLITE3_REKEY_OVERRIDE =
-      new AtomicReference<>();
 
   private SqliteNativeConnections() {}
 
   static SqliteNativeDatabase open(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    if (!(bookAccess.passphraseSource() instanceof BookAccess.PassphraseSource.KeyFile keyFile)) {
-      throw new IllegalArgumentException(
-          "SQLite same-package file-backed open requires a --book-key-file access selection.");
-    }
     ContractDecision<SqliteBookPassphrase> passphraseDecision =
-        SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
+        SqliteBookKeyFile.loadDecision(SqliteBookAccessRules.requireKeyFile(bookAccess));
     return switch (passphraseDecision) {
       case ContractDecision.Accepted<SqliteBookPassphrase>(SqliteBookPassphrase bookPassphrase) -> {
         try (bookPassphrase) {
@@ -77,14 +65,13 @@ final class SqliteNativeConnections {
     }
   }
 
-  static void close(MemorySegment databaseHandle) {
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+  static void close(MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
+    Objects.requireNonNull(sqliteApi, "sqliteApi");
     SqliteNativeInvocation.runSqlite(
         "Failed to close the SQLite native library bridge.",
         () -> {
           int resultCode =
-              SqliteNativeCalls.addressToInt(effectiveSqlite3CloseV2(sqliteApi))
-                  .invoke(databaseHandle);
+              SqliteNativeCalls.addressToInt(sqliteApi.sqlite3CloseV2()).invoke(databaseHandle);
           if (resultCode != SqliteNativeResultCodes.OK) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
           }
@@ -97,7 +84,7 @@ final class SqliteNativeConnections {
   static void rekey(SqliteNativeDatabase database, SqliteBookPassphrase bookPassphrase) {
     Objects.requireNonNull(database, "database");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
-    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+    SqliteNativeApi sqliteApi = database.sqliteApi();
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment keyPointer = bookPassphrase.copyToCString(arena);
       int resultCode =
@@ -106,31 +93,13 @@ final class SqliteNativeConnections {
                   + bookPassphrase.sourceDescription()
                   + ".",
               () ->
-                  SqliteNativeCalls.addressAddressIntToInt(effectiveSqlite3Rekey(sqliteApi))
+                  SqliteNativeCalls.addressAddressIntToInt(sqliteApi.sqlite3Rekey())
                       .invoke(database.handle(), keyPointer, bookPassphrase.byteLength()));
       if (resultCode != SqliteNativeResultCodes.OK) {
         throw SqliteNativeErrors.failure(resultCode, sqliteApi);
       }
       validateConfiguredKey(database.handle(), sqliteApi);
     }
-  }
-
-  static AutoCloseable overrideSqlite3RekeyHandleForTesting(MethodHandle sqlite3RekeyHandle) {
-    Objects.requireNonNull(sqlite3RekeyHandle, "sqlite3RekeyHandle");
-    MethodHandle previousHandle = SQLITE3_REKEY_OVERRIDE.getAndSet(sqlite3RekeyHandle);
-    return () -> SQLITE3_REKEY_OVERRIDE.set(previousHandle);
-  }
-
-  static AutoCloseable overrideSqlite3OpenV2HandleForTesting(MethodHandle sqlite3OpenV2Handle) {
-    Objects.requireNonNull(sqlite3OpenV2Handle, "sqlite3OpenV2Handle");
-    MethodHandle previousHandle = SQLITE3_OPEN_V2_OVERRIDE.getAndSet(sqlite3OpenV2Handle);
-    return () -> SQLITE3_OPEN_V2_OVERRIDE.set(previousHandle);
-  }
-
-  static AutoCloseable overrideSqlite3CloseV2HandleForTesting(MethodHandle sqlite3CloseV2Handle) {
-    Objects.requireNonNull(sqlite3CloseV2Handle, "sqlite3CloseV2Handle");
-    MethodHandle previousHandle = SQLITE3_CLOSE_V2_OVERRIDE.getAndSet(sqlite3CloseV2Handle);
-    return () -> SQLITE3_CLOSE_V2_OVERRIDE.set(previousHandle);
   }
 
   private static int openNativeDatabase(
@@ -141,7 +110,7 @@ final class SqliteNativeConnections {
     return SqliteNativeInvocation.invoke(
         "Failed to open the SQLite native library bridge.",
         () ->
-            SqliteNativeCalls.openV2(effectiveSqlite3OpenV2(sqliteApi))
+            SqliteNativeCalls.openV2(sqliteApi.sqlite3OpenV2())
                 .invoke(filename, databasePointer, openMode.flags(), MemorySegment.NULL));
   }
 
@@ -168,7 +137,7 @@ final class SqliteNativeConnections {
       requireOpenConfigurationSuccess(extendedCodeResult, sqliteApi);
       validateConfiguredKey(databaseHandle, sqliteApi);
       SqliteNativeBootstrap.recordOpenedConnection();
-      return new SqliteNativeDatabase(databaseHandle);
+      return new SqliteNativeDatabase(databaseHandle, sqliteApi);
     } catch (SqliteNativeException exception) {
       suppressCloseFailure(databaseHandle, sqliteApi, exception);
       throw exception;
@@ -179,19 +148,6 @@ final class SqliteNativeConnections {
       suppressCloseFailure(databaseHandle, sqliteApi, exception);
       throw exception;
     }
-  }
-
-  private static MethodHandle effectiveSqlite3OpenV2(SqliteNativeApi sqliteApi) {
-    return Objects.requireNonNullElseGet(SQLITE3_OPEN_V2_OVERRIDE.get(), sqliteApi::sqlite3OpenV2);
-  }
-
-  private static MethodHandle effectiveSqlite3CloseV2(SqliteNativeApi sqliteApi) {
-    return Objects.requireNonNullElseGet(
-        SQLITE3_CLOSE_V2_OVERRIDE.get(), sqliteApi::sqlite3CloseV2);
-  }
-
-  private static MethodHandle effectiveSqlite3Rekey(SqliteNativeApi sqliteApi) {
-    return Objects.requireNonNullElseGet(SQLITE3_REKEY_OVERRIDE.get(), sqliteApi::sqlite3Rekey);
   }
 
   static void requireOpenConfigurationSuccess(int resultCode, SqliteNativeApi sqliteApi) {

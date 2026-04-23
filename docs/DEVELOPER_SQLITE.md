@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -47,7 +47,11 @@ yet.
 
 ## Current Adapter Choice
 
-FinGrind's durable adapter is
+FinGrind's public durable SQLite session surface is
+[`SqliteBookSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSession.java),
+opened through
+[`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java).
+The package-private backing implementation remains
 [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
 
 Current implementation choice:
@@ -120,8 +124,9 @@ License and attribution stance:
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
   wants the managed native library must also run `prepareManagedSqlite` first and point
-  `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/`, then launch the
-  JAR with `--enable-native-access=ALL-UNNAMED`
+  `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/` when the build
+  tree remains in-checkout, or under the wrapper-owned relocated build root on fragile mounted
+  filesystems, then launch the JAR with `--enable-native-access=ALL-UNNAMED`
 
 ## Adapter Composition
 
@@ -130,16 +135,26 @@ The SQLite adapter is split into focused collaborators:
   durable book file plus one explicit passphrase-source selection
 - [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
   normalized zeroizable UTF-8 passphrase bytes after CLI-side source resolution
+- [`SqliteBookSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSession.java),
+  [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),
+  and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
+  stable public session contract and factory for CLI, tooling, and fuzz harnesses
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
-  owns one thread-confined protected-book session, lifecycle inspection, paged query paths,
-  transaction-scoped validation, and durable commit outcomes
-- [`SqliteConnectionConfigurer`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteConnectionConfigurer.java),
-  [`SqliteBookStateReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookStateReader.java),
-  [`SqliteStatementQueries`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStatementQueries.java),
-  [`SqlitePostingReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingReader.java),
-  and [`SqliteMutationWriter`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteMutationWriter.java):
-  focused collaborators for open-configuration hardening, lifecycle probing, single-row queries,
-  posting reads, and durable writes
+  package-private backing implementation for one thread-confined protected-book session root that
+  returns narrowed administration, posting, and read views over one shared store context
+- [`SqliteStoreOpening`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreOpening.java),
+  [`SqliteStoreContext`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreContext.java),
+  [`SqliteStoreLifecycle`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreLifecycle.java),
+  [`SqliteStoreReadOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreReadOperations.java),
+  and [`SqliteStoreMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreMutationOperations.java):
+  focused collaborators for open-time ownership transfer, lifecycle hardening, query/report reads,
+  rekeying, and durable writes
+- [`SqliteBookAccessRules`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookAccessRules.java):
+  canonical same-package rule owner for SQLite file-backed key-file access requirements
+- [`SqliteBookAdministrationSessionView`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookAdministrationSessionView.java),
+  [`SqlitePostingBookSessionView`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingBookSessionView.java),
+  and [`SqliteBookReadSessionView`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookReadSessionView.java):
+  narrow session façades over that shared store context
 - [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
 - [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java),
@@ -164,6 +179,11 @@ The SQLite adapter is split into focused collaborators:
   holds canonical lookup and insert SQL strings
 - [`SqlitePostingMapper`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingMapper.java):
   reconstructs domain facts from native SQLite result rows
+- [`SqliteStatementQueries`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStatementQueries.java),
+  [`SqlitePostingReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingReader.java),
+  and [`SqliteReportReader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportReader.java):
+  keep single-row lookup, posting-history reconstruction, and report row assembly focused and
+  reusable under the store context
 - [`SqliteRuntime`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRuntime.java):
   exposes machine-readable runtime probe metadata to the CLI surface
 
@@ -242,7 +262,8 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 
 ## Transaction Model
 
-- one `SqlitePostingFactStore` instance owns at most one open native SQLite handle
+- one `SqliteBookSession` instance, backed internally by one `SqlitePostingFactStore`, owns at
+  most one open native SQLite handle
 - read methods reuse that handle when it exists
 - commit uses SQLite's `begin immediate` transaction mode and performs ordinary duplicate checks
   before insert on the same native handle

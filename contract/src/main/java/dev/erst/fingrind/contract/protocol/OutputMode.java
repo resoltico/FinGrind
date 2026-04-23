@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.core.WireValue;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,15 +45,11 @@ public enum OutputMode implements WireValue {
 
   /** Returns every stable output-mode wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(OutputMode::wireValue).toList();
+    return WireValue.wireValues(OutputMode.class);
   }
 
   /** Parses one stable public output-mode wire value. */
   public static OutputMode fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(mode -> mode.wireValue().equals(wireValue))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported output mode: " + wireValue));
+    return WireValue.fromWireValue(OutputMode.class, wireValue, "Unsupported output mode");
   }
 }
