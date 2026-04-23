@@ -50,7 +50,7 @@ class MachineContractPlanTemplateTest {
 
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.24.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.25.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals("atomic", capabilities.planExecution().transactionMode());

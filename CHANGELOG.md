@@ -5,11 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Added `scripts/verify-public-container-surface.sh` plus mock-backed shell regression coverage,
-  and updated the release protocol to use that deterministic operator-side verifier so public
-  container checks now assert machine-readable `version --output json`, exact human
-  trial-balance rows, and PDF output instead of relying on ambiguous ad hoc terminal parsing.
+## [0.25.0] - 2026-04-23
 
 ### Changed
 
@@ -50,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remnants to explicit warnings instead of aborting the cleanup command. The root `spotless`
   project-file sweep now also excludes ignored `.local/` runtime state so one unreadable local
   corpus cannot poison `./check.sh`.
+- Added `scripts/verify-public-container-surface.sh` plus mock-backed shell regression coverage,
+  and updated the release protocol to use that deterministic operator-side verifier so public
+  container checks now assert machine-readable `version --output json`, exact human
+  trial-balance rows, and PDF output instead of relying on ambiguous ad hoc terminal parsing.
 
 ### Documentation
 
@@ -879,7 +879,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.25.0
 [0.24.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.24.0
 [0.23.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.23.0
 [0.22.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.22.0
