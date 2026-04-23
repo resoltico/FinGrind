@@ -56,8 +56,14 @@ wrapper_contents="$(<"${wrapper_path}")"
     "expected gradlew.bat to define the project-build-root setup helper"
 [[ "${wrapper_contents}" == *':resolveFinGrindProjectCacheKey'* ]] || die \
     "expected gradlew.bat to define the cache-key resolver"
-[[ "${wrapper_contents}" == *'for %%i in ("%APP_HOME%") do set "FINGRIND_PROJECT_CACHE_KEY=%%~di_%%~nxi"'* ]] || die \
-    "expected gradlew.bat to derive a deterministic cmd-safe project-cache key from APP_HOME metadata"
+[[ "${wrapper_contents}" == *'set "FINGRIND_PROJECT_CACHE_KEY=%APP_HOME%"'* ]] || die \
+    "expected gradlew.bat to seed the project-cache key from the full APP_HOME path"
+printf '%s' "${wrapper_contents}" | grep -Fq -- 'set "FINGRIND_PROJECT_CACHE_KEY=%FINGRIND_PROJECT_CACHE_KEY:\=_%"' || die \
+    "expected gradlew.bat to replace backslashes in the project-cache key"
+printf '%s' "${wrapper_contents}" | grep -Fq -- 'set "FINGRIND_PROJECT_CACHE_KEY=%FINGRIND_PROJECT_CACHE_KEY:/=_%"' || die \
+    "expected gradlew.bat to replace forward slashes in the project-cache key"
+printf '%s' "${wrapper_contents}" | grep -Fq -- '%FINGRIND_GRADLE_BUILD_LOGIC_ARG% %FINGRIND_GRADLE_JACOCO_ARG% %FINGRIND_GRADLE_PROJECT_BUILD_ROOT_ARG% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %FINGRIND_GRADLE_PROJECT_CACHE_ARG% %*' || die \
+    "expected gradlew.bat to pass the project-cache argument to Gradle after -jar instead of to the JVM"
 [[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_PROJECT_CACHE%"=="true" ('* ]] || die \
     "gradlew.bat must not expand the project-cache path inside a parenthesized block"
 [[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_BUILD_LOGIC_DIR%"=="true" ('* ]] || die \

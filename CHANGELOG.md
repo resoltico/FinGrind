@@ -27,8 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   back from `gh pr diff --name-only` to GitHub's paginated pull-files API instead of stalling on
   `PullRequest.diff too_large`.
 - Reworked `gradlew.bat` to use a simpler argument scan, cmd-native Windows project-cache key,
-  and dedicated setup subroutines instead of parser-fragile inline substitutions and early
-  block-expanded variables, and added a dedicated local regression so the Windows CI wrapper path
+  dedicated setup subroutines, and correct JVM-vs-Gradle argument placement instead of
+  parser-fragile inline substitutions, early block-expanded variables, and misplaced
+  `--project-cache-dir`, and added a dedicated local regression so the Windows CI wrapper path
   now fails in a named guard before release time.
 - Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
   back into the repository-visible build context on fragile mounted filesystems, so release
