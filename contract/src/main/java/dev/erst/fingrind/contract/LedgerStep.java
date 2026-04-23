@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
-import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** One executable step inside an AI-agent-authored ledger plan. */
 public sealed interface LedgerStep
@@ -24,9 +24,14 @@ public sealed interface LedgerStep
   /** Canonical request and journal kind represented by this step. */
   LedgerStepKind kind();
 
-  /** Optional assertion detail emitted alongside the step kind in execution journals. */
-  default Optional<LedgerAssertionKind> detailKind() {
-    return Optional.empty();
+  /** Canonical journal-visible step identity emitted for this plan step. */
+  default LedgerJournalStep journalStep() {
+    return LedgerJournalStep.standard(kind());
+  }
+
+  /** Returns the nested assertion kind emitted for assertion steps only. */
+  default @Nullable LedgerAssertionKind detailKind() {
+    return journalStep().detailKind();
   }
 
   /** Validates a step identifier. */
@@ -172,8 +177,8 @@ public sealed interface LedgerStep
     }
 
     @Override
-    public Optional<LedgerAssertionKind> detailKind() {
-      return Optional.of(assertion.kind());
+    public LedgerJournalStep journalStep() {
+      return LedgerJournalStep.assertion(assertion.kind());
     }
   }
 }

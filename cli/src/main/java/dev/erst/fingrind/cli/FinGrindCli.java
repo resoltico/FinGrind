@@ -19,6 +19,7 @@ final class FinGrindCli {
 
   private final CliRequestReader requestReader;
   private final CliResponseWriter responseWriter;
+  private final CliDiagnosticsWriter diagnosticsWriter;
   private final CliMetadata metadata;
   private final Clock clock;
   private final CliAdministrativeCommandExecutor administrativeCommandExecutor;
@@ -28,9 +29,18 @@ final class FinGrindCli {
   private final CliReportCommandExecutor reportCommandExecutor;
 
   FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
+    this(inputStream, outputStream, System.err, clock);
+  }
+
+  FinGrindCli(
+      InputStream inputStream,
+      PrintStream outputStream,
+      PrintStream diagnosticsStream,
+      Clock clock) {
     this(
         inputStream,
         outputStream,
+        diagnosticsStream,
         clock,
         new SqliteCliBookWorkflow(
             clock,
@@ -43,8 +53,18 @@ final class FinGrindCli {
       PrintStream outputStream,
       Clock clock,
       CliBookWorkflow bookWorkflow) {
+    this(inputStream, outputStream, System.err, clock, bookWorkflow);
+  }
+
+  FinGrindCli(
+      InputStream inputStream,
+      PrintStream outputStream,
+      PrintStream diagnosticsStream,
+      Clock clock,
+      CliBookWorkflow bookWorkflow) {
     this.requestReader = new CliRequestReader(inputStream);
     this.responseWriter = new CliResponseWriter(outputStream);
+    this.diagnosticsWriter = new CliDiagnosticsWriter(diagnosticsStream);
     this.metadata = new CliMetadata();
     this.clock = Objects.requireNonNull(clock, "clock");
     CliBookWorkflow resolvedBookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
@@ -59,7 +79,8 @@ final class FinGrindCli {
         new CliMutationCommandExecutor(requestReader, responseWriter, resolvedBookWorkflow);
     this.queryCommandExecutor = new CliQueryCommandExecutor(responseWriter, resolvedBookWorkflow);
     this.reportCommandExecutor =
-        new CliReportCommandExecutor(responseWriter, resolvedBookWorkflow, pdfExporter);
+        new CliReportCommandExecutor(
+            responseWriter, diagnosticsWriter, resolvedBookWorkflow, pdfExporter);
   }
 
   FinGrindCli(
@@ -67,9 +88,19 @@ final class FinGrindCli {
       PrintStream outputStream,
       Clock clock,
       CliBookPassphraseResolver.Terminal terminal) {
+    this(inputStream, outputStream, System.err, clock, terminal);
+  }
+
+  FinGrindCli(
+      InputStream inputStream,
+      PrintStream outputStream,
+      PrintStream diagnosticsStream,
+      Clock clock,
+      CliBookPassphraseResolver.Terminal terminal) {
     this(
         inputStream,
         outputStream,
+        diagnosticsStream,
         clock,
         new SqliteCliBookWorkflow(
             clock,

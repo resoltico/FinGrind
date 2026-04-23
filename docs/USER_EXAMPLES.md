@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: USER_EXAMPLES
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.23.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.23.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.24.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.24.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -164,6 +164,10 @@ fingrind \
   print-request-template > ./request.json
 ```
 
+That generated scaffold stamps its sample `effectiveDate` from the current clock date, so the
+checked-in fixture below matches the accepted shape but not necessarily the exact bytes from
+today's run.
+
 For the concrete walkthrough below, reuse the checked-in example request:
 
 - `./basic-posting-request.json`: copy [examples/basic-posting-request.json](./examples/basic-posting-request.json)
@@ -212,6 +216,10 @@ Generate the canonical plan scaffold:
 fingrind \
   print-plan-template > ./plan.json
 ```
+
+Like `print-request-template`, this scaffold uses the current clock date for its nested example
+posting `effectiveDate`, so the checked-in fixture is a shape-stable example rather than a
+forever byte-identical capture.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -324,9 +332,10 @@ Checked-in report examples:
 
 These report commands keep JSON as the default machine surface, while `--output human` and
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
-`--pdf-out` writes a parallel PDF artifact to the requested path. FinGrind does not check PDF
-binaries into `docs/examples`; the checked-in text and CSV examples remain the canonical review
-fixtures.
+`--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds but that
+artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
+diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
+the checked-in text and CSV examples remain the canonical review fixtures.
 
 ## Book Must Exist And Be Opened
 

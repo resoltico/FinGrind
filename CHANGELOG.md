@@ -5,6 +5,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-04-23
+
+### Changed
+- Refactored ledger-plan journal typing so assertion detail is now owned structurally by
+  `LedgerJournalStep` instead of being propagated through `Optional` record components on
+  `LedgerJournalEntry`.
+- Hard-broke the public SQLite entrypoint down to `SqliteBookSession`,
+  `SqliteBookSessionMode`, and `SqliteBookSessions`, keeping `SqlitePostingFactStore` and the
+  store-lifecycle collaborators as package-private implementation detail instead of exported
+  adapter surface.
+
+### Fixed
+- Removed the remaining SQLite production test backdoors by replacing global native-handle
+  overrides and `src/main` test-access shims with same-package injected native API seams and
+  test-owned helpers.
+- Added a canonical `scripts/prepare-release-version.sh` helper plus regression coverage, and
+  updated the release protocol to require that scripted version sweep instead of ad hoc
+  hand-edits across docs, changelog, examples, and version-pinned tests.
+- Updated the release protocol and its shell regression coverage so oversized release PRs now fall
+  back from `gh pr diff --name-only` to GitHub's paginated pull-files API instead of stalling on
+  `PullRequest.diff too_large`.
+- Reworked `gradlew.bat` to use a simpler argument scan, cmd-native Windows project-cache key,
+  dedicated setup subroutines, and correct JVM-vs-Gradle argument placement instead of
+  parser-fragile inline substitutions, early block-expanded variables, misplaced
+  `--project-cache-dir`, and cross-drive temp-cache defaults, and added a dedicated local
+  regression so the wrapper stays on the working drive and fails in a named guard before release
+  time.
+- Fixed the SQLite native close-retry test doubles so successful retries now delegate to the real
+  native close instead of only pretending to succeed, which keeps Windows temp-book cleanup from
+  depending on Unix-style unlink behavior during CI.
+- Made `scripts/docker-smoke.sh` refresh `:cli:shadowJar` and sync relocated Docker build inputs
+  back into the repository-visible build context on fragile mounted filesystems, so release
+  version bumps and other Docker-surface changes cannot silently reuse stale local container
+  inputs from an older checkout build.
+- Made `./gradlew` and the nested Jazzer build self-relocate per-checkout project cache,
+  build-logic output, JaCoCo execution data, and mounted-checkout project `build/` trees into the
+  wrapper-owned local cache when the checkout lives on a fragile network filesystem, so full
+  verification and live fuzzing now work from `smbfs` and similar mounts without in-repo cleanup
+  failures.
+- Moved the release-checkout and Docker smoke regression scratch trees out of the repository and
+  made Docker smoke cleanup retry-and-warn instead of escalating to interactive `sudo`, so
+  mounted-workspace tombstones no longer poison later `check.sh` stage-1 runs after successful
+  acceptance verification.
+- Changed report-command `--pdf-out` handling so successful primary report results stay on stdout
+  even when the optional PDF artifact later fails; those artifact failures now surface as
+  diagnostics warnings instead of converting the whole command into `runtime-failure`.
+- Split the remaining CLI and SQLite god-test buckets into behavior-named suites with shared
+  support bases, replacing monolithic `FinGrindCliTest` / `SqlitePostingFactStoreTest` coverage
+  sinks with narrower discovery, workflow, lifecycle, query, and commit seams.
+- Broke the last oversized CLI request/argument and SQLite native/store verification buckets into
+  narrower suites such as `CliPostEntryRequestReader*`, `Cli*ArgumentParsing*`,
+  `SqliteNative*`, and `SqliteBookRekeyAndValidationTest`, and extracted the fake filesystem
+  scaffold behind `SqliteBookKeyFileSecurity*` into dedicated fixture support so those tests now
+  read as behavior-owned suites instead of mixed behavior-plus-infrastructure god files.
+- Split the remaining large CLI workflow/response-writer, contract protocol-lint, and SQLite
+  reporting/runtime-probe suites into behavior-owned files, and replaced the single fake key-file
+  security filesystem helper with dedicated `TestAcl*` support classes so the last oversized test
+  buckets now fail in narrower, directly named seams.
+- Tightened SQLite native-handle lifecycle safety so closed database handles now fail fast before
+  re-entering FFM code, while store transaction cleanup and commit error translation still report
+  operation-scoped failures consistently.
+- Centralized `WireValue` enum parsing and vocabulary ownership so stable machine tokens are cached
+  and validated once instead of being reimplemented as repeated linear scans across enums.
+- Gated `Windows bundle smoke` on `Check` in CI, aligned Gradle wrapper validation to the same
+  `gradle/actions` release train, and removed the redundant `inspect-book.payload.initialized`
+  field from the machine JSON surface and checked-in examples.
+- Corrected the documentation spine so `WireValue` now documents its shared parsing helpers, the
+  SQLite adapter docs describe the current store-context and session-view composition, and the
+  template guides stop implying that checked-in `print-*template` fixtures are byte-stable across
+  changing current dates.
+
 ## [0.23.0] - 2026-04-22
 
 ### Changed
@@ -744,7 +815,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.24.0
 [0.23.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.23.0
 [0.22.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.22.0
 [0.21.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.21.0

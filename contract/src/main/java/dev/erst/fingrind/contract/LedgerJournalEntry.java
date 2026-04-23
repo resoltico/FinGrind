@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** One per-step journal entry emitted by ledger-plan execution. */
 public sealed interface LedgerJournalEntry
@@ -13,11 +14,8 @@ public sealed interface LedgerJournalEntry
   /** Returns the caller-visible step identifier for this journal entry. */
   LedgerStepId stepId();
 
-  /** Returns the canonical step kind executed for this journal entry. */
-  LedgerStepKind kind();
-
-  /** Returns the nested assertion kind for assertion steps only. */
-  Optional<LedgerAssertionKind> detailKind();
+  /** Returns the canonical journal-visible step identity for this journal entry. */
+  LedgerJournalStep journalStep();
 
   /** Returns the step start instant. */
   Instant startedAt();
@@ -30,6 +28,16 @@ public sealed interface LedgerJournalEntry
 
   /** Returns the stable per-step execution status. */
   LedgerStepStatus status();
+
+  /** Returns the canonical step kind executed for this journal entry. */
+  default LedgerStepKind kind() {
+    return journalStep().kind();
+  }
+
+  /** Returns the nested assertion kind for assertion steps only. */
+  default @Nullable LedgerAssertionKind detailKind() {
+    return journalStep().detailKind();
+  }
 
   /** Returns the optional failure payload for this step journal entry. */
   default Optional<LedgerStepFailure> optionalFailure() {
@@ -54,15 +62,14 @@ public sealed interface LedgerJournalEntry
   /** Successful journal entry with facts and no failure payload. */
   record Succeeded(
       LedgerStepId stepId,
-      LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      LedgerJournalStep journalStep,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts)
       implements LedgerJournalEntry {
     /** Validates one succeeded step journal entry. */
     public Succeeded {
-      requireCommon(stepId, kind, detailKind, startedAt, finishedAt, facts);
+      requireCommon(stepId, journalStep, startedAt, finishedAt, facts);
       facts = List.copyOf(facts);
     }
 
@@ -79,8 +86,7 @@ public sealed interface LedgerJournalEntry
   /** Deterministically rejected journal entry with a required failure payload. */
   record Rejected(
       LedgerStepId stepId,
-      LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      LedgerJournalStep journalStep,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts,
@@ -88,7 +94,7 @@ public sealed interface LedgerJournalEntry
       implements Failed {
     /** Validates one rejected step journal entry. */
     public Rejected {
-      requireCommon(stepId, kind, detailKind, startedAt, finishedAt, facts);
+      requireCommon(stepId, journalStep, startedAt, finishedAt, facts);
       facts = List.copyOf(facts);
       Objects.requireNonNull(failure, "failure");
     }
@@ -102,8 +108,7 @@ public sealed interface LedgerJournalEntry
   /** Assertion-failed journal entry with a required failure payload. */
   record AssertionFailed(
       LedgerStepId stepId,
-      LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      LedgerJournalStep journalStep,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts,
@@ -111,7 +116,11 @@ public sealed interface LedgerJournalEntry
       implements Failed {
     /** Validates one assertion-failed step journal entry. */
     public AssertionFailed {
-      requireCommon(stepId, kind, detailKind, startedAt, finishedAt, facts);
+      requireCommon(stepId, journalStep, startedAt, finishedAt, facts);
+      if (!(journalStep instanceof LedgerJournalStep.Assertion)) {
+        throw new IllegalArgumentException(
+            "Assertion-failed journal entries must carry an assertion journal step.");
+      }
       facts = List.copyOf(facts);
       Objects.requireNonNull(failure, "failure");
     }
@@ -124,24 +133,15 @@ public sealed interface LedgerJournalEntry
 
   private static void requireCommon(
       LedgerStepId stepId,
-      LedgerStepKind kind,
-      Optional<LedgerAssertionKind> detailKind,
+      LedgerJournalStep journalStep,
       Instant startedAt,
       Instant finishedAt,
       List<LedgerFact> facts) {
     Objects.requireNonNull(stepId, "stepId");
-    Objects.requireNonNull(kind, "kind");
-    Objects.requireNonNull(detailKind, "detailKind");
+    Objects.requireNonNull(journalStep, "journalStep");
     Objects.requireNonNull(startedAt, "startedAt");
     Objects.requireNonNull(finishedAt, "finishedAt");
     Objects.requireNonNull(facts, "facts");
-    if (kind == LedgerStepKind.ASSERT && detailKind.isEmpty()) {
-      throw new IllegalArgumentException("Assert ledger journal steps must carry a detail kind.");
-    }
-    if (kind != LedgerStepKind.ASSERT && detailKind.isPresent()) {
-      throw new IllegalArgumentException(
-          "Only assert ledger journal steps may carry a detail kind.");
-    }
     if (finishedAt.isBefore(startedAt)) {
       throw new IllegalArgumentException(
           "Ledger journal step finishedAt must not precede startedAt.");

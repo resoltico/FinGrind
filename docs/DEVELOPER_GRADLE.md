@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -22,7 +22,8 @@ FinGrind's machine-level setup rule is simple:
 - use `./gradlew` for every repo build command
 - treat `gradle` on `PATH` as outside the supported FinGrind workflow
 - let the wrapper download the official Gradle distribution pinned by the repository
-- keep the repository checkout on the local Mac filesystem as part of the normal supported setup
+- prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
+  cache relocation
 
 The wrapper version is currently `9.4.1`, as declared in
 [gradle/wrapper/gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties).
@@ -36,11 +37,29 @@ Wrapper integrity is part of the standard setup:
 - `.github/workflows/gradle-wrapper-validation.yml` validates wrapper changes in GitHub
 - contributors should treat wrapper-file edits as supply-chain-sensitive changes, not as routine noise
 
-Full verification is part of that local-filesystem rule:
-- Gradle project cache and JaCoCo execution data both rely on file locking
-- mounted external volumes on macOS can reject those locks with `Operation not supported`
-- if that happens, move the repository to local disk instead of standardizing a cache or build-dir
-  relocation workaround as the normal workflow
+Full verification now depends on the wrapper-managed filesystem layout:
+- `gradlew` injects one per-checkout `--project-cache-dir` outside the repository
+- `gradlew` also injects `-Dfingrind.gradle.build-logic-dir=...` and
+  `-Dfingrind.gradle.jacoco-root=...` so included-build output and JaCoCo execution data stay off
+  fragile checkout filesystems
+- when the checkout itself lives on a fragile mounted filesystem such as `smbfs`, `gradlew` also
+  injects `-Dfingrind.gradle.project-build-root=...` so the root build, subprojects, and nested
+  Jazzer include-build no longer try to delete or rewrite in-repo `build/` trees there
+- the bundle and Docker smoke scripts now resolve those conditional build directories through the
+  same wrapper helper instead of hardcoding `cli/build/...`
+- the default cache root is `~/Library/Caches/FinGrind/gradle-project-cache/<repo-hash>` on
+  macOS, `$XDG_CACHE_HOME/fingrind/gradle-project-cache/<repo-hash>` on other Unix-like systems
+  when `XDG_CACHE_HOME` is set, then `~/.cache/fingrind/gradle-project-cache/<repo-hash>`, then a
+  `TMPDIR` or `/tmp` fallback
+- on Windows the wrapper prefers an explicit `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, then
+  `RUNNER_TEMP`, then `TEMP`, then `LOCALAPPDATA`, so GitHub-hosted runners keep wrapper-owned
+  cache state on the working drive instead of drifting onto a cross-drive temp root
+- mounted external volumes can still host the checkout because the lock-sensitive Gradle state no
+  longer needs to live there
+- the wrapper honors `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, `FINGRIND_GRADLE_PROJECT_CACHE_DIR`,
+  `FINGRIND_GRADLE_BUILD_LOGIC_DIR`, `FINGRIND_GRADLE_JACOCO_ROOT`, and
+  `FINGRIND_GRADLE_PROJECT_BUILD_ROOT` for explicit override cases, but the wrapper defaults are
+  the canonical contributor path
 
 ---
 

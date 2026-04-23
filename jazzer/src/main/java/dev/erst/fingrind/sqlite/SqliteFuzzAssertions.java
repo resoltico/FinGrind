@@ -84,14 +84,14 @@ public final class SqliteFuzzAssertions {
   }
 
   /** Opens one deterministic protected-book store for fuzz and replay flows. */
-  public static SqlitePostingFactStore openStore(Path bookPath) {
-    return new SqlitePostingFactStore(bookPath, bookPassphrase());
+  public static SqliteBookSession openStore(Path bookPath) {
+    return SqliteBookSessions.open(bookPath, bookPassphrase());
   }
 
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */
-  public static void assertStoreConnectionHardening(SqlitePostingFactStore postingFactStore) {
+  public static void assertStoreConnectionHardening(SqliteBookSession postingFactStore) {
     try {
-      SqliteNativeDatabase database = postingFactStore.activeNativeDatabase();
+      SqliteNativeDatabase database = requireStoreImplementation(postingFactStore).activeNativeDatabase();
       assertQueryInt(database, "pragma foreign_keys", 1);
       assertQueryText(database, "pragma journal_mode", "delete");
       assertQueryInt(database, "pragma synchronous", 3);
@@ -140,5 +140,14 @@ public final class SqliteFuzzAssertions {
 
   private static String escapeSqlLiteral(String text) {
     return text.replace("'", "''");
+  }
+
+  private static SqlitePostingFactStore requireStoreImplementation(SqliteBookSession session) {
+    return switch (session) {
+      case SqlitePostingFactStore store -> store;
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported SQLite book session implementation: " + session.getClass().getName());
+    };
   }
 }

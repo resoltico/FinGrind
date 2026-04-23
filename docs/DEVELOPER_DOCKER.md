@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-04-21"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh"]
@@ -42,8 +42,11 @@ The container image itself also stays on the same managed-runtime policy as the 
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
 - it reuses the repository-built runtime module list staged at
-  `cli/build/docker/runtime-modules.txt`, so Docker and bundle publication cannot drift onto
-  competing private-runtime closures
+  `cli/build/docker/runtime-modules.txt` when the project build tree stays in-checkout, or the
+  wrapper-resolved relocated CLI build directory on fragile mounted filesystems and then syncs the
+  canonical Docker build-context files back under `cli/build/` before `docker buildx` runs, so
+  Docker and bundle publication cannot drift onto competing private-runtime closures or stale
+  in-checkout leftovers
 - it sets `fingrind.runtime.distribution=container-image` so `capabilities` discloses the active
   distribution surface explicitly
 
@@ -90,6 +93,11 @@ Then the supported local gates are:
 
 `./check.sh` Stage 5 invokes `scripts/docker-smoke.sh`, which:
 - builds the local image from the repository root through `docker buildx build --load`
+- refreshes `:cli:shadowJar` first and, on fragile mounted filesystems, syncs the fresh
+  relocated `fingrind.jar` and `runtime-modules.txt` back into the repository-visible Docker
+  build context before image build
+- stages its mounted-workspace scratch tree under system temp instead of the repository root so
+  SMB/WebDAV tombstones left behind by container cleanup cannot break later source-checkout gates
 - verifies that the image's private runtime stays trimmed and does not drag in `jdk.jdeps`,
   `jdk.jlink`, or `jdk.jpackage`
 - runs mounted-path container commands under the caller's UID:GID so generated key files and book

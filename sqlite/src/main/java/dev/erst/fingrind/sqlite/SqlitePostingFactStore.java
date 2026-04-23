@@ -27,7 +27,6 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadSession;
-import dev.erst.fingrind.executor.LedgerPlanSession;
 import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.PostingDraft;
@@ -38,25 +37,26 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * SQLite-backed book session that keeps one in-process database handle per opened book.
  *
  * <p>This session is thread-confined. One CLI command owns one instance and uses it on one thread.
  */
-public final class SqlitePostingFactStore implements LedgerPlanSession, AutoCloseable {
+final class SqlitePostingFactStore implements SqliteBookSession {
   private final SqliteStoreContext context;
   private final BookAdministrationSession administrationView;
   private final PostingBookSession postingView;
   private final BookReadSession readView;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
-  public SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
+  SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
     this(new SqliteStoreContext(bookPath, bookPassphrase));
   }
 
   /** Opens one SQLite-backed book boundary with the selected storage access mode. */
-  public SqlitePostingFactStore(
+  SqlitePostingFactStore(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteStoreAccessMode accessMode) {
     this(new SqliteStoreContext(bookPath, bookPassphrase, accessMode));
   }
@@ -69,6 +69,13 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
     this(new SqliteStoreContext(bookAccess, accessMode));
   }
 
+  SqlitePostingFactStore(
+      BookAccess bookAccess,
+      SqliteStoreAccessMode accessMode,
+      Supplier<SqliteNativeApi> sqliteApiSupplier) {
+    this(new SqliteStoreContext(bookAccess, accessMode, sqliteApiSupplier));
+  }
+
   private SqlitePostingFactStore(SqliteStoreContext context) {
     this.context = Objects.requireNonNull(context, "context");
     this.administrationView = new SqliteBookAdministrationSessionView(context);
@@ -77,7 +84,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   }
 
   /** Opens and primes one SQLite-backed book session for explicit CLI/workflow result handling. */
-  public static ContractDecision<SqlitePostingFactStore> openResolved(
+  static ContractDecision<SqlitePostingFactStore> openResolved(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteStoreAccessMode accessMode) {
     return SqliteStoreOpening.openResolved(bookPath, bookPassphrase, accessMode);
   }
@@ -98,32 +105,33 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   }
 
   /** Inspects the selected SQLite book without requiring prior initialization. */
-  public BookInspection inspectBook() {
+  BookInspection inspectBook() {
     return context.inspectBook();
   }
 
   /** Reports whether the selected SQLite book is initialized for posting and query operations. */
-  public boolean isInitialized() {
+  boolean isInitialized() {
     return context.isInitialized();
   }
 
   /** Initializes one writable SQLite book or reports why initialization was refused. */
-  public OpenBookResult openBook(Instant initializedAt) {
+  OpenBookResult openBook(Instant initializedAt) {
     return context.openBook(initializedAt);
   }
 
   /** Finds one declared account by code when the selected book is initialized. */
+  @Override
   public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
     return context.findAccount(accountCode);
   }
 
   /** Finds the supplied declared accounts by code when the selected book is initialized. */
-  public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
     return context.findAccounts(accountCodes);
   }
 
   /** Declares or reactivates one account inside the selected writable SQLite book. */
-  public DeclareAccountResult declareAccount(
+  DeclareAccountResult declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       NormalBalance normalBalance,
@@ -132,58 +140,58 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   }
 
   /** Lists declared accounts using the requested page window. */
-  public AccountPage listAccounts(ListAccountsQuery query) {
+  AccountPage listAccounts(ListAccountsQuery query) {
     return context.listAccounts(query);
   }
 
   /** Finds one committed posting by idempotency key when it exists in the selected book. */
+  @Override
   public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
     return context.findExistingPosting(idempotencyKey);
   }
 
   /** Finds one committed posting by posting identifier when it exists in the selected book. */
-  public Optional<PostingFact> findPosting(PostingId postingId) {
+  Optional<PostingFact> findPosting(PostingId postingId) {
     return context.findPosting(postingId);
   }
 
   /** Finds the committed reversal for one prior posting when it exists in the selected book. */
-  public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+  Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
     return context.findReversalFor(priorPostingId);
   }
 
   /** Lists committed postings using the requested page window and optional filters. */
-  public PostingPage listPostings(ListPostingsQuery query) {
+  PostingPage listPostings(ListPostingsQuery query) {
     return context.listPostings(query);
   }
 
   /** Computes the account balance snapshot for one declared account query. */
-  public Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
+  Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
     return context.accountBalance(query);
   }
 
   /** Computes one canonical trial-balance report for the selected initialized book. */
-  public TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+  TrialBalanceReport trialBalance(TrialBalanceQuery query) {
     return context.trialBalance(query);
   }
 
   /** Computes one canonical account-ledger report for the selected declared account. */
-  public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+  AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
     return context.accountLedger(query, account);
   }
 
   /** Computes one canonical bounded period summary for the selected initialized book. */
-  public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+  PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
     return context.periodSummary(query);
   }
 
   /** Commits one posting draft atomically inside the selected writable SQLite book. */
-  public PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+  PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
     return context.commit(postingDraft, postingIdGenerator);
   }
 
   /** Commits one fully materialized posting fact for fixture-oriented callers. */
-  public PostingCommitResult commit(PostingFact postingFact) {
+  PostingCommitResult commit(PostingFact postingFact) {
     Objects.requireNonNull(postingFact, "postingFact");
     return commit(
         new PostingDraft(
@@ -212,6 +220,7 @@ public final class SqlitePostingFactStore implements LedgerPlanSession, AutoClos
   }
 
   /** Rekeys one initialized FinGrind book and verifies the replacement passphrase durably. */
+  @Override
   public RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase) {
     return context.rekeyBook(replacementPassphrase);
   }

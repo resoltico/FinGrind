@@ -9,6 +9,10 @@ die() {
     exit 1
 }
 
+warn() {
+    printf 'warning: %s\n' "$1" >&2
+}
+
 require_no_match() {
     local text=$1
     local pattern=$2
@@ -44,11 +48,23 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly gradlew="${repo_root}/gradlew"
+readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly image_tag="fingrind-docker-acceptance:$$"
-readonly smoke_root="${repo_root}/tmp/docker acceptance.$$"
+readonly smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-acceptance.XXXXXX")"
 readonly docker_run_user="$(id -u):$(id -g)"
 anonymous_docker_config=''
 docker_endpoint=''
+is_darwin=false
+case "$(uname -s)" in
+    Darwin) is_darwin=true ;;
+esac
+
+[[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
+# shellcheck source=/dev/null
+source "${gradle_wrapper_support}"
+readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
+readonly repo_cli_build_dir="${repo_root}/cli/build"
 
 resolve_docker_buildx_plugin() {
     local docker_binary=''
@@ -94,9 +110,25 @@ docker_with_repo_config() {
     DOCKER_CONFIG="${anonymous_docker_config}" docker "$@"
 }
 
+remove_tree_with_retries() {
+    local target_dir=$1
+    local attempt=0
+
+    while (( attempt < 5 )); do
+        if rm -rf "${target_dir}" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
+
 cleanup() {
     local exit_code=$?
-    rm -rf "${smoke_root}" || sudo rm -rf "${smoke_root}" || true
+    if [[ -d "${smoke_root}" ]] && ! remove_tree_with_retries "${smoke_root}"; then
+        warn "leaving Docker acceptance scratch directory at ${smoke_root} because mounted-workspace tombstones remained busy during cleanup"
+    fi
     if command -v docker >/dev/null 2>&1 && [[ -n "${anonymous_docker_config}" ]]; then
         docker_with_repo_config image rm -f "${image_tag}" >/dev/null 2>&1 || true
         rm -rf "${anonymous_docker_config}" || true
@@ -108,11 +140,23 @@ trap cleanup EXIT
 
 command -v docker >/dev/null 2>&1 || die "docker is required for the Docker acceptance gate"
 docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the Docker acceptance gate"
+[[ -x "${gradlew}" ]] || die "missing Gradle wrapper at ${gradlew}"
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
-[[ -f "${repo_root}/cli/build/libs/fingrind.jar" ]] || die \
-    "missing internal application JAR at ${repo_root}/cli/build/libs/fingrind.jar; run ./gradlew :cli:shadowJar first"
-[[ -f "${repo_root}/cli/build/docker/runtime-modules.txt" ]] || die \
-    "missing Docker runtime module list at ${repo_root}/cli/build/docker/runtime-modules.txt; run ./gradlew :cli:shadowJar first"
+
+printf 'Docker acceptance: refreshing internal container build inputs\n'
+"${gradlew}" :cli:shadowJar --console=plain
+
+[[ -f "${cli_build_dir}/libs/fingrind.jar" ]] || die \
+    "missing internal application JAR at ${cli_build_dir}/libs/fingrind.jar after :cli:shadowJar"
+[[ -f "${cli_build_dir}/docker/runtime-modules.txt" ]] || die \
+    "missing Docker runtime module list at ${cli_build_dir}/docker/runtime-modules.txt after :cli:shadowJar"
+
+if [[ "${cli_build_dir}" != "${repo_cli_build_dir}" ]]; then
+    printf 'Docker acceptance: staging relocated Docker build inputs into repository context\n'
+    mkdir -p "${repo_cli_build_dir}/libs" "${repo_cli_build_dir}/docker"
+    cp -f "${cli_build_dir}/libs/fingrind.jar" "${repo_cli_build_dir}/libs/fingrind.jar"
+    cp -f "${cli_build_dir}/docker/runtime-modules.txt" "${repo_cli_build_dir}/docker/runtime-modules.txt"
+fi
 
 docker_endpoint="${DOCKER_HOST:-}"
 if [[ -z "${docker_endpoint}" ]]; then

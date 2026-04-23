@@ -16,14 +16,17 @@ import org.jspecify.annotations.Nullable;
 /** Executes reporting CLI commands and exports optional PDF artifacts. */
 final class CliReportCommandExecutor {
   private final CliResponseWriter responseWriter;
+  private final CliDiagnosticsWriter diagnosticsWriter;
   private final CliBookWorkflow bookWorkflow;
   private final CliPdfReportExporter pdfReportExporter;
 
   CliReportCommandExecutor(
       CliResponseWriter responseWriter,
+      CliDiagnosticsWriter diagnosticsWriter,
       CliBookWorkflow bookWorkflow,
       CliPdfReportExporter pdfReportExporter) {
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
+    this.diagnosticsWriter = Objects.requireNonNull(diagnosticsWriter, "diagnosticsWriter");
     this.bookWorkflow = Objects.requireNonNull(bookWorkflow, "bookWorkflow");
     this.pdfReportExporter = Objects.requireNonNull(pdfReportExporter, "pdfReportExporter");
   }
@@ -34,8 +37,8 @@ final class CliReportCommandExecutor {
         bookWorkflow.accountBalance(bookAccess, query),
         output.outputMode(),
         result -> {
-          exportAccountBalance(bookAccess.bookFilePath(), result, output.pdfOutPath());
           responseWriter.writeAccountBalanceResult(result, output.outputMode());
+          exportAccountBalance(bookAccess.bookFilePath(), result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -47,8 +50,8 @@ final class CliReportCommandExecutor {
         bookWorkflow.trialBalance(bookAccess, query),
         output.outputMode(),
         result -> {
-          exportTrialBalance(bookAccess.bookFilePath(), result, output.pdfOutPath());
           responseWriter.writeTrialBalanceResult(result, output.outputMode());
+          exportTrialBalance(bookAccess.bookFilePath(), result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -60,8 +63,8 @@ final class CliReportCommandExecutor {
         bookWorkflow.accountLedger(bookAccess, query),
         output.outputMode(),
         result -> {
-          exportAccountLedger(bookAccess.bookFilePath(), result, output.pdfOutPath());
           responseWriter.writeAccountLedgerResult(result, output.outputMode());
+          exportAccountLedger(bookAccess.bookFilePath(), result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -73,8 +76,8 @@ final class CliReportCommandExecutor {
         bookWorkflow.periodSummary(bookAccess, query),
         output.outputMode(),
         result -> {
-          exportPeriodSummary(bookAccess.bookFilePath(), result, output.pdfOutPath());
           responseWriter.writePeriodSummaryResult(result, output.outputMode());
+          exportPeriodSummary(bookAccess.bookFilePath(), result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -87,7 +90,10 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case AccountBalanceResult.Reported reported ->
-          pdfReportExporter.exportAccountBalance(outputPath, bookFilePath, reported.snapshot());
+          exportPdfWarningTolerant(
+              () ->
+                  pdfReportExporter.exportAccountBalance(
+                      outputPath, bookFilePath, reported.snapshot()));
       case AccountBalanceResult.Rejected _ -> {}
     }
   }
@@ -99,7 +105,10 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case TrialBalanceResult.Reported reported ->
-          pdfReportExporter.exportTrialBalance(outputPath, bookFilePath, reported.report());
+          exportPdfWarningTolerant(
+              () ->
+                  pdfReportExporter.exportTrialBalance(
+                      outputPath, bookFilePath, reported.report()));
       case TrialBalanceResult.Rejected _ -> {}
     }
   }
@@ -111,7 +120,10 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case AccountLedgerResult.Reported reported ->
-          pdfReportExporter.exportAccountLedger(outputPath, bookFilePath, reported.report());
+          exportPdfWarningTolerant(
+              () ->
+                  pdfReportExporter.exportAccountLedger(
+                      outputPath, bookFilePath, reported.report()));
       case AccountLedgerResult.Rejected _ -> {}
     }
   }
@@ -123,8 +135,19 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case PeriodSummaryResult.Reported reported ->
-          pdfReportExporter.exportPeriodSummary(outputPath, bookFilePath, reported.report());
+          exportPdfWarningTolerant(
+              () ->
+                  pdfReportExporter.exportPeriodSummary(
+                      outputPath, bookFilePath, reported.report()));
       case PeriodSummaryResult.Rejected _ -> {}
+    }
+  }
+
+  private void exportPdfWarningTolerant(Runnable pdfExport) {
+    try {
+      pdfExport.run();
+    } catch (RuntimeException exception) {
+      diagnosticsWriter.writePdfExportWarning(exception);
     }
   }
 }

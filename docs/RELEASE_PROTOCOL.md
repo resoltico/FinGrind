@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -118,7 +118,7 @@ rejected and wastes time. Always commit on a release branch.
 
 ```bash
 git checkout -b release/X.Y.Z
-# apply the target version across every version-bearing surface
+./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD
 ./check.sh
 git add <every modified file that belongs in the release — never .codex/>
 git status --short
@@ -132,9 +132,13 @@ Treat staging as a handoff checkpoint, not a formality. Before committing:
 
 - if Step 1 continued in place from a dirty primary checkout, the branch creation above is the
   point where the release payload stops living on `main`; do not switch back to dirty `main`
+- `./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD` must be the canonical release-prep
+  edit step; do not hand-edit scattered version-bearing files when the scripted sweep can do it
 - after the version sweep, `gradle.properties` `version=` equals the target release version
   exactly (for example `X.Y.Z`)
 - all `docs/*.md` frontmatter `version:` fields equal the target release version
+- all touched `docs/*.md` frontmatter `updated:` fields equal the release date used in the
+  scripted sweep
 - all user-facing archive names, release examples, and version-pinned tests now reference the
   target release version
 - the rerun of `./check.sh` exits 0 after the version-bearing edits
@@ -166,9 +170,21 @@ gh pr diff <N> --name-only
 gh pr view <N> --json number,state,mergeStateStatus,statusCheckRollup,url
 ```
 
+If `gh pr diff <N> --name-only` fails with GitHub's oversized-diff response
+(`PullRequest.diff too_large` / HTTP 406), fall back to the paginated pull-files API instead of
+guessing:
+
+```bash
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[].filename'
+```
+
 Treat the PR itself as a second scope-verification checkpoint:
 
 - `gh pr diff <N> --name-only` must match the intended release file set.
+- If `gh pr diff <N> --name-only` returns `PullRequest.diff too_large`, the paginated
+  `gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[].filename'` fallback becomes the
+  authoritative file-set check for this step.
 - If the PR diff is missing files or includes unintended files, fix the release branch before
   waiting on CI or merging.
 - Every new commit pushed to the release branch reopens both the Step 2 staging checkpoint and

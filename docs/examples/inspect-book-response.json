@@ -3,7 +3,6 @@
   "payload": {
     "bookFile": "/tmp/fingrind/books/acme/acme.sqlite",
     "state": "initialized",
-    "initialized": true,
     "compatibleWithCurrentBinary": true,
     "canInitializeWithOpenBook": false,
     "applicationId": 1179079236,

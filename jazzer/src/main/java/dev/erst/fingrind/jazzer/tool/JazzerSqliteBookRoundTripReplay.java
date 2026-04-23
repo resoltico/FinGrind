@@ -11,8 +11,8 @@ import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
-import dev.erst.fingrind.sqlite.SqlitePostingFactStore;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -37,7 +37,7 @@ final class JazzerSqliteBookRoundTripReplay {
               JazzerReplayScratchDirectory.create("fingrind-jazzer-replay-")) {
         Path bookPath = scratchDirectory.resolve(Path.of("nested", "entity-book.sqlite"));
 
-        try (SqlitePostingFactStore postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
+        try (SqliteBookSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
           BookAdministrationService administrationService =
               CliFuzzFixtures.administrationService(postingFactStore.administrationSession());
           PostingApplicationService applicationService =
@@ -80,7 +80,7 @@ final class JazzerSqliteBookRoundTripReplay {
           CommitEntryResult committedResult = applicationService.commit(command);
           if (committedResult instanceof Committed committed) {
             finalCommitStatus = "COMMITTED";
-            try (SqlitePostingFactStore reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
+            try (SqliteBookSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
               Optional<PostingFact> storedPosting =
                   reloadedStore.findExistingPosting(command.requestProvenance().idempotencyKey());
               if (storedPosting.isEmpty()) {

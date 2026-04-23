@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -151,6 +151,10 @@ On Windows PowerShell, use:
 ```
 
 Developer-only raw JAR entrypoints:
+
+These example paths assume the project `build/` tree stays inside the checkout. On fragile mounted
+filesystems, `./gradlew` may relocate that tree into the wrapper-owned local cache; the bundled
+smoke scripts resolve that automatically.
 
 ```bash
 ./gradlew :cli:shadowJar

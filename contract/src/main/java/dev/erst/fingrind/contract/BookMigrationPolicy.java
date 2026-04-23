@@ -1,9 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.core.WireValue;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /** Canonical migration policy vocabulary for on-disk FinGrind books. */
 public enum BookMigrationPolicy implements WireValue {
@@ -19,17 +17,13 @@ public enum BookMigrationPolicy implements WireValue {
 
   /** Returns every stable wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(BookMigrationPolicy::wireValue).toList();
+    return WireValue.wireValues(BookMigrationPolicy.class);
   }
 
   /** Parses one stable wire value. */
   public static BookMigrationPolicy fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(value -> value.wireValue().equals(wireValue))
-        .findFirst()
-        .orElseThrow(
-            () -> new IllegalArgumentException("Unsupported book migration policy: " + wireValue));
+    return WireValue.fromWireValue(
+        BookMigrationPolicy.class, wireValue, "Unsupported book migration policy");
   }
 
   @Override

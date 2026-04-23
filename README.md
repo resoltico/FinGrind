@@ -80,7 +80,8 @@ public downloads are self-contained, and the quick start walks through the first
 
 You can inspect the book, list accounts, look up postings, page through posting history, check one
 account balance, and generate a trial balance, account ledger, or period summary. Those readbacks
-can also be rendered as readable output, CSV, or PDF.
+can also be rendered as readable output, CSV, or PDF, and optional PDF write problems come back as
+warnings without replacing the primary report result.
 
 ### What is it not trying to be?
 

@@ -89,14 +89,11 @@ grep -Fq './scripts/verify-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "X.Y.
     "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the primary-checkout closeout verifier"
 
-readonly temp_parent="${repo_root}/tmp/test-verify-release-primary-checkout"
-mkdir -p "${temp_parent}"
-test_root="${temp_parent}/run.$$"
-rm -rf "${test_root}"
-mkdir -p "${test_root}"
+readonly temp_parent="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-release-primary-checkout.XXXXXX")"
+test_root="${temp_parent}/run"
 cleanup() {
-    chmod -R u+rwx "${test_root}" 2>/dev/null || true
-    rm -rf "${test_root}" 2>/dev/null || true
+    chmod -R u+rwx "${temp_parent}" 2>/dev/null || true
+    rm -rf "${temp_parent}" 2>/dev/null || true
 }
 trap cleanup EXIT
 

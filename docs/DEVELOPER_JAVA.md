@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-21"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -14,10 +14,10 @@ route:
 **Prerequisites**: macOS with zsh.
 
 Supported workstation shape:
-- the repository lives on the Mac's local filesystem
-- external, removable, or network-mounted volumes are outside the documented FinGrind setup standard
-  because full Gradle and JaCoCo verification require file-locking semantics that mounted volumes
-  can fail on macOS
+- the repository preferably lives on the Mac's local filesystem for best performance
+- mounted, removable, or network-backed checkouts are still supported when `./gradlew` can place
+  its project cache, included-build output, JaCoCo execution data, and any fragile mounted
+  project `build/` trees in a normal local cache location outside the checkout
 
 ## Overview
 
@@ -26,7 +26,8 @@ FinGrind targets Java 26 and uses the repository Gradle wrapper pinned in
 
 The supported setup is intentionally simple:
 - the machine provides Java 26
-- the repository checkout lives on the local Mac filesystem
+- the repository checkout can live on local or mounted storage, while the wrapper-owned transient
+  Gradle state lives outside the checkout
 - the repository provides Gradle through `./gradlew`
 - no global `gradle` install is required for FinGrind
 - no Homebrew-managed JDK is part of the supported FinGrind setup

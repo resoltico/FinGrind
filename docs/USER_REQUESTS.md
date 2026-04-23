@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -145,6 +145,10 @@ Current ledger-plan rules:
 
 Dynamic fields:
 - `capabilities.payload.timestamp` varies per invocation
+- `print-request-template.effectiveDate` and the nested `posting.effectiveDate` emitted by
+  `print-plan-template` are scaffold values rendered from the current clock date, so checked-in
+  template fixtures mirror the accepted shape but are not guaranteed to be byte-identical command
+  output forever
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
@@ -197,7 +201,6 @@ rendered:
 `inspect-book` success returns:
 - `payload.bookFile`
 - `payload.state`
-- `payload.initialized`
 - `payload.compatibleWithCurrentBinary`
 - `payload.canInitializeWithOpenBook`
 - optional `payload.applicationId`
@@ -208,6 +211,8 @@ rendered:
 
 `payload.state` uses the stable lower-case vocabulary `missing`, `blank-sqlite`, `initialized`,
 `foreign-sqlite`, `unsupported-format-version`, or `incomplete-fingrind`.
+That `state` field is the canonical lifecycle discriminator; the JSON payload does not duplicate it
+with a separate `initialized` flag.
 
 `list-accounts` success returns:
 - `payload.limit`
@@ -259,9 +264,10 @@ administration, write, and read/report commands can also render operator-facing 
 and the tabular read/report commands support `--output csv` for spreadsheet import.
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
 one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result
-model; it does not change the JSON payload contract. Deterministic failures for commands that
-accept `--output human` are rendered in the same human-facing format instead of falling back to
-JSON envelopes.
+model; it does not change the JSON payload contract. If the report result succeeds but the PDF
+artifact later fails, stdout still carries the same report payload while diagnostics emit a repair
+warning for the `--pdf-out` path. Deterministic failures for commands that accept `--output human`
+are rendered in the same human-facing format instead of falling back to JSON envelopes.
 
 Checked-in examples for the read/report surface:
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json)

@@ -1,8 +1,6 @@
 package dev.erst.fingrind.core;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /** Side of the journal equation that increases one declared account. */
 public enum NormalBalance implements WireValue {
@@ -20,15 +18,11 @@ public enum NormalBalance implements WireValue {
 
   /** Returns every stable public wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(NormalBalance::wireValue).toList();
+    return WireValue.wireValues(NormalBalance.class);
   }
 
   /** Parses one stable public wire value. */
   public static NormalBalance fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(value -> value.wireValue().equals(wireValue))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported normalBalance: " + wireValue));
+    return WireValue.fromWireValue(NormalBalance.class, wireValue, "Unsupported normalBalance");
   }
 }

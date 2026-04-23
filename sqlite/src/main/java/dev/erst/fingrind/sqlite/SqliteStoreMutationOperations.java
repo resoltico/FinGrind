@@ -166,13 +166,7 @@ final class SqliteStoreMutationOperations {
       SqliteSessionDatabase reopenedDatabase = null;
       try {
         reopenedDatabase =
-            new SqliteSessionDatabase(
-                SqliteConnectionConfigurer.configureOpenedDatabase(
-                    SqliteNativeConnections.open(
-                        store.bookPath(),
-                        activeReplacementPassphrase.nativePassphrase(),
-                        store.accessMode().nativeOpenMode()),
-                    store.accessMode()));
+            store.openConfiguredDatabase(activeReplacementPassphrase.nativePassphrase());
         store.requireInitializedBook(reopenedDatabase.nativeDatabase());
         store.publishDatabase(reopenedDatabase.nativeDatabase());
         return new RekeyBookResult.Rekeyed(store.bookPath());

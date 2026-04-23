@@ -1,8 +1,6 @@
 package dev.erst.fingrind.core;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /** Classifies the actor that initiated one posting request. */
 public enum ActorType implements WireValue {
@@ -22,15 +20,11 @@ public enum ActorType implements WireValue {
 
   /** Returns every stable public wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(ActorType::wireValue).toList();
+    return WireValue.wireValues(ActorType.class);
   }
 
   /** Parses one stable public wire value. */
   public static ActorType fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(value -> value.wireValue().equals(wireValue))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported actorType: " + wireValue));
+    return WireValue.fromWireValue(ActorType.class, wireValue, "Unsupported actorType");
   }
 }

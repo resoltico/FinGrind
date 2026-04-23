@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.23.0"
+version: "0.24.0"
 domain: CORE
-updated: "2026-04-22"
+updated: "2026-04-23"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -304,6 +304,9 @@ public enum SourceChannel implements WireValue {
 ```java
 public interface WireValue {
   String wireValue();
+  static <E extends Enum<E> & WireValue> List<String> wireValues(Class<E> enumType)
+  static <E extends Enum<E> & WireValue> E fromWireValue(
+      Class<E> enumType, String wireValue, String unsupportedValueLabel)
 }
 ```
 
@@ -311,3 +314,6 @@ public interface WireValue {
   convention
 - Scope: implemented by exported enums whose public wire form must remain decoupled from Java enum
   constant names
+- Parsing: `wireValues(...)` exposes the declaration-order public vocabulary, and
+  `fromWireValue(...)` resolves one stable token through the shared cached enum-vocabulary owner
+  instead of forcing each enum to reimplement its own lookup logic

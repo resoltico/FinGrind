@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -33,16 +32,12 @@ public sealed interface BookInspection
 
     /** Returns every stable public wire value in declaration order. */
     public static List<String> wireValues() {
-      return Arrays.stream(values()).map(Status::wireValue).toList();
+      return WireValue.wireValues(Status.class);
     }
 
     /** Parses one stable public wire value. */
     public static Status fromWireValue(String wireValue) {
-      Objects.requireNonNull(wireValue, "wireValue");
-      return Arrays.stream(values())
-          .filter(value -> value.wireValue().equals(wireValue))
-          .findFirst()
-          .orElseThrow(() -> new IllegalArgumentException("Unsupported book state: " + wireValue));
+      return WireValue.fromWireValue(Status.class, wireValue, "Unsupported book state");
     }
 
     /** Returns whether this status identifies an existing SQLite file with shared metadata. */

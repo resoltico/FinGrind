@@ -60,7 +60,7 @@ final class ProtocolCatalogFacts {
   private static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
       RuntimeEnvironmentContract.current();
   private static final PublicDistributionContract PUBLIC_DISTRIBUTION_CONTRACT =
-      PublicDistributionContract.current();
+      PublicDistributionContracts.current();
 
   private ProtocolCatalogFacts() {}
 

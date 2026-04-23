@@ -17,7 +17,7 @@ final class SqliteStoreOperations {
   static void rollbackQuietly(SqliteNativeDatabase activeDatabase) {
     try {
       activeDatabase.executeStatement("rollback");
-    } catch (SqliteNativeException exception) {
+    } catch (SqliteNativeException | IllegalStateException exception) {
       SqliteBestEffort.ignore(exception);
     }
   }
@@ -28,7 +28,7 @@ final class SqliteStoreOperations {
     }
     try {
       reopenedDatabase.close();
-    } catch (SqliteNativeException exception) {
+    } catch (SqliteNativeException | IllegalStateException exception) {
       SqliteBestEffort.ignore(exception);
     }
   }
@@ -99,10 +99,6 @@ final class SqliteStoreOperations {
 
   static ContractDecision<SqliteBookPassphrase> passphraseFor(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    if (!(bookAccess.passphraseSource() instanceof BookAccess.PassphraseSource.KeyFile keyFile)) {
-      throw new IllegalArgumentException(
-          "SQLite same-package file-backed stores require a --book-key-file access selection.");
-    }
-    return SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
+    return SqliteBookKeyFile.loadDecision(SqliteBookAccessRules.requireKeyFile(bookAccess));
   }
 }

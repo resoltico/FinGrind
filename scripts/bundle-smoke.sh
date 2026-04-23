@@ -129,11 +129,21 @@ run_bundle_command() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 bundle_archive_path="${1:-}"
+is_darwin=false
+case "$(uname -s)" in
+    Darwin) is_darwin=true ;;
+esac
+
+[[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
+# shellcheck source=/dev/null
+source "${gradle_wrapper_support}"
+readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
 
 if [[ -z "${bundle_archive_path}" ]]; then
     readonly expected_bundle_archive_name="fingrind-$(project_version)-$(host_bundle_classifier).tar.gz"
-    bundle_archive_path="${repo_root}/cli/build/distributions/${expected_bundle_archive_name}"
+    bundle_archive_path="${cli_build_dir}/distributions/${expected_bundle_archive_name}"
 fi
 
 [[ -f "${bundle_archive_path}" ]] || die "missing bundle archive at ${bundle_archive_path}"

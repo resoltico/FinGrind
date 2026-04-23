@@ -113,7 +113,7 @@ class LedgerPlanServiceTest {
       assertEquals(LedgerStepKind.OPEN_BOOK, result.journal().steps().getFirst().kind());
       assertEquals(LedgerStepKind.ASSERT, result.journal().steps().getLast().kind());
       assertEquals(
-          Optional.of(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+          LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
           result.journal().steps().getLast().detailKind());
       assertTrue(bookSession.findPosting(new PostingId("posting-1")).isPresent());
     }
@@ -193,8 +193,7 @@ class LedgerPlanServiceTest {
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
           result.journal().steps().getFirst().requiredFailure().code());
       assertEquals(
-          Optional.of(LedgerAssertionKind.POSTING_EXISTS),
-          result.journal().steps().getFirst().detailKind());
+          LedgerAssertionKind.POSTING_EXISTS, result.journal().steps().getFirst().detailKind());
     }
   }
 

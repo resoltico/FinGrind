@@ -142,7 +142,13 @@ function Invoke-BundleCommand {
 
 $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
 $expectedArchiveName = "fingrind-$(ProjectVersion)-windows-x86_64.zip"
-$bundleArchivePath = if ($args.Count -gt 0) { $args[0] } else { Join-Path $script:RepoRoot "cli/build/distributions/$expectedArchiveName" }
+$cliBuildDir =
+    if ([string]::IsNullOrWhiteSpace($env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT)) {
+        Join-Path $script:RepoRoot "cli/build"
+    } else {
+        Join-Path $env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT "cli"
+    }
+$bundleArchivePath = if ($args.Count -gt 0) { $args[0] } else { Join-Path $cliBuildDir "distributions/$expectedArchiveName" }
 $bundleArchivePath = [System.IO.Path]::GetFullPath($bundleArchivePath)
 $bundleChecksumPath = "$bundleArchivePath.sha256"
 

@@ -1,8 +1,6 @@
 package dev.erst.fingrind.core;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /** Side of a computed net balance, including the balanced zero state. */
 public enum BalanceSide implements WireValue {
@@ -22,15 +20,11 @@ public enum BalanceSide implements WireValue {
 
   /** Returns every stable public wire value in declaration order. */
   public static List<String> wireValues() {
-    return Arrays.stream(values()).map(BalanceSide::wireValue).toList();
+    return WireValue.wireValues(BalanceSide.class);
   }
 
   /** Parses one stable public wire value. */
   public static BalanceSide fromWireValue(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    return Arrays.stream(values())
-        .filter(value -> value.wireValue().equals(wireValue))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported balanceSide: " + wireValue));
+    return WireValue.fromWireValue(BalanceSide.class, wireValue, "Unsupported balanceSide");
   }
 }

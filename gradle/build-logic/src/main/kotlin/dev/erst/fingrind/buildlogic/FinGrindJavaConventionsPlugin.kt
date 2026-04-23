@@ -19,12 +19,17 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.withType
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 class FinGrindJavaConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
+            FinGrindFilesystemLayout.projectBuildDirectory(this)?.let { projectBuildDirectory ->
+                layout.buildDirectory.set(projectBuildDirectory)
+            }
+
             pluginManager.apply("java-base")
             pluginManager.apply("jacoco")
             pluginManager.apply("com.diffplug.spotless")
@@ -96,6 +101,10 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.withType<Jar>().configureEach {
+                inputs.property("manifestImplementationTitle", project.name)
+                inputs.property("manifestImplementationVersion", project.version.toString())
+                inputs.property("manifestImplementationVendor", implementationVendor)
+                inputs.property("manifestImplementationLicense", implementationLicense)
                 manifest.attributes(
                     mapOf(
                         "Implementation-Title" to project.name,
@@ -129,6 +138,14 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             tasks.withType<Test>().configureEach {
                 useJUnitPlatform()
                 enableNativeAccess()
+                val jacocoDestinationFile =
+                    FinGrindFilesystemLayout.jacocoDestinationFile(project, name)
+                extensions.configure(JacocoTaskExtension::class.java) {
+                    destinationFile = jacocoDestinationFile
+                }
+                doFirst {
+                    jacocoDestinationFile.parentFile.mkdirs()
+                }
 
                 val progressPulseEnabled =
                     providers.environmentVariable("FINGRIND_TEST_PULSE").map { it == "1" }.orElse(false).get()
@@ -162,12 +179,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.named<JacocoReport>("jacocoTestReport") {
-                dependsOn(tasks.withType<Test>())
-                executionData.from(
-                    layout.buildDirectory.dir("jacoco").map { dir ->
-                        fileTree(dir) { include("*.exec") }
-                    },
-                )
+                dependsOn(tasks.named("test"))
+                executionData.from(FinGrindFilesystemLayout.jacocoDestinationFile(project, "test"))
                 reports {
                     xml.required.set(true)
                     html.required.set(true)
@@ -175,12 +188,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
-                dependsOn(tasks.withType<Test>())
-                executionData.from(
-                    layout.buildDirectory.dir("jacoco").map { dir ->
-                        fileTree(dir) { include("*.exec") }
-                    },
-                )
+                dependsOn(tasks.named("test"))
+                executionData.from(FinGrindFilesystemLayout.jacocoDestinationFile(project, "test"))
                 violationRules {
                     rule {
                         limit {

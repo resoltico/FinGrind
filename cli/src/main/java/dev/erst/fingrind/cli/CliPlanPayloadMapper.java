@@ -3,11 +3,13 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
+import dev.erst.fingrind.contract.LedgerJournalStep;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Maps ledger-plan outcomes and journal entries into CLI JSON models. */
 final class CliPlanPayloadMapper {
@@ -60,12 +62,19 @@ final class CliPlanPayloadMapper {
     return new CliPlanJsonModels.LedgerJournalEntryPayload(
         entry.stepId().value(),
         entry.kind().wireValue(),
-        entry.detailKind().map(detailKind -> detailKind.wireValue()).orElse(null),
+        detailKind(entry.journalStep()),
         entry.status().wireValue(),
         entry.startedAt().toString(),
         entry.finishedAt().toString(),
         factPayloads(entry.facts()),
         failurePayload);
+  }
+
+  private static @Nullable String detailKind(LedgerJournalStep journalStep) {
+    return switch (journalStep) {
+      case LedgerJournalStep.Standard _ -> null;
+      case LedgerJournalStep.Assertion assertion -> assertion.detailKind().wireValue();
+    };
   }
 
   private static CliPlanJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(
