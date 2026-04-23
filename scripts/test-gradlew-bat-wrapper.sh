@@ -40,23 +40,19 @@ wrapper_contents="$(<"${wrapper_path}")"
     "expected gradlew.bat to define the argument scanner"
 [[ "${wrapper_contents}" == *':resolveFinGrindProjectCacheKey'* ]] || die \
     "expected gradlew.bat to define the cache-key resolver"
-[[ "${wrapper_contents}" == *'System.Security.Cryptography.SHA256'* ]] || die \
-    "expected gradlew.bat to hash APP_HOME for the project-cache key on Windows"
-[[ "${wrapper_contents}" == *'[Convert]::ToHexString'* ]] || die \
-    "expected gradlew.bat to use a quote-safe PowerShell hex conversion for the cache key"
-[[ "${wrapper_contents}" == *'for /f "delims=" %%i in ('\''%FINGRIND_GRADLE_HASH_SHELL% -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '* ]] || die \
-    "expected gradlew.bat to invoke the PowerShell hash helper through a cmd-safe for /f command"
+[[ "${wrapper_contents}" == *'for %%i in ("%APP_HOME%") do set "FINGRIND_PROJECT_CACHE_KEY=%%~di_%%~nxi"'* ]] || die \
+    "expected gradlew.bat to derive a deterministic cmd-safe project-cache key from APP_HOME metadata"
 [[ "${wrapper_contents}" != *':==_%'* ]] || die \
     "gradlew.bat must not use the fragile equals-sign replacement that breaks cmd parsing"
 [[ "${wrapper_contents}" != *':!=_%'* ]] || die \
     "gradlew.bat must not use the fragile exclamation-mark replacement that breaks cmd parsing"
 [[ "${wrapper_contents}" != *':^=_%'* ]] || die \
     "gradlew.bat must not use the fragile caret replacement that breaks cmd parsing"
-[[ "${wrapper_contents}" != *'"%FINGRIND_GRADLE_HASH_SHELL%" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command'* ]] || die \
-    "gradlew.bat must not quote the hash-helper executable inside the for /f command string"
-[[ "${wrapper_contents}" != *"ToString('x2')"* ]] || die \
-    "gradlew.bat must not embed single-quoted PowerShell format strings in the for /f command"
-[[ "${wrapper_contents}" != *"-join ''"* ]] || die \
-    "gradlew.bat must not embed single-quoted PowerShell joins in the for /f command"
+[[ "${wrapper_contents}" != *'System.Security.Cryptography.SHA256'* ]] || die \
+    "gradlew.bat must not depend on PowerShell hashing for the Windows project-cache key"
+[[ "${wrapper_contents}" != *'[Convert]::ToHexString'* ]] || die \
+    "gradlew.bat must not depend on PowerShell hex conversion for the Windows project-cache key"
+[[ "${wrapper_contents}" != *'FINGRIND_GRADLE_HASH_SHELL'* ]] || die \
+    "gradlew.bat must not carry the old PowerShell hash-launch plumbing"
 
 printf 'gradlew.bat wrapper regression: success\n'
