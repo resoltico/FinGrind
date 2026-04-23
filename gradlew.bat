@@ -36,53 +36,15 @@ set APP_HOME=%DIRNAME%
 for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 
 call :scanFinGrindArguments %*
-if /I not "%FINGRIND_HAS_PROJECT_CACHE%"=="true" (
-    call :resolveFinGrindProjectCacheDir
-    if not exist "%FINGRIND_GRADLE_PROJECT_CACHE_DIR%" mkdir "%FINGRIND_GRADLE_PROJECT_CACHE_DIR%" >NUL 2>&1
-    if not exist "%FINGRIND_GRADLE_PROJECT_CACHE_DIR%" (
-        echo. 1>&2
-        echo ERROR: Unable to create FinGrind Gradle project cache at %FINGRIND_GRADLE_PROJECT_CACHE_DIR% 1>&2
-        echo. 1>&2
-        goto fail
-    )
-    set "FINGRIND_GRADLE_PROJECT_CACHE_ARG=--project-cache-dir=%FINGRIND_GRADLE_PROJECT_CACHE_DIR%"
-)
-if /I not "%FINGRIND_HAS_BUILD_LOGIC_DIR%"=="true" (
-    call :resolveFinGrindBuildLogicDir
-    if not exist "%FINGRIND_GRADLE_BUILD_LOGIC_DIR%" mkdir "%FINGRIND_GRADLE_BUILD_LOGIC_DIR%" >NUL 2>&1
-    if not exist "%FINGRIND_GRADLE_BUILD_LOGIC_DIR%" (
-        echo. 1>&2
-        echo ERROR: Unable to create FinGrind Gradle build-logic directory at %FINGRIND_GRADLE_BUILD_LOGIC_DIR% 1>&2
-        echo. 1>&2
-        goto fail
-    )
-    set "FINGRIND_GRADLE_BUILD_LOGIC_ARG=-Dfingrind.gradle.build-logic-dir=%FINGRIND_GRADLE_BUILD_LOGIC_DIR%"
-)
-if /I not "%FINGRIND_HAS_JACOCO_ROOT%"=="true" (
-    call :resolveFinGrindJacocoRoot
-    if not exist "%FINGRIND_GRADLE_JACOCO_ROOT%" mkdir "%FINGRIND_GRADLE_JACOCO_ROOT%" >NUL 2>&1
-    if not exist "%FINGRIND_GRADLE_JACOCO_ROOT%" (
-        echo. 1>&2
-        echo ERROR: Unable to create FinGrind JaCoCo directory at %FINGRIND_GRADLE_JACOCO_ROOT% 1>&2
-        echo. 1>&2
-        goto fail
-    )
-    set "FINGRIND_GRADLE_JACOCO_ARG=-Dfingrind.gradle.jacoco-root=%FINGRIND_GRADLE_JACOCO_ROOT%"
-)
+call :ensureFinGrindProjectCacheArgument
+if not "%ERRORLEVEL%"=="0" goto fail
+call :ensureFinGrindBuildLogicArgument
+if not "%ERRORLEVEL%"=="0" goto fail
+call :ensureFinGrindJacocoArgument
+if not "%ERRORLEVEL%"=="0" goto fail
 call :resolveFinGrindProjectBuildExternalization
-if /I not "%FINGRIND_HAS_PROJECT_BUILD_ROOT%"=="true" (
-    if /I "%FINGRIND_SHOULD_EXTERNALIZE_PROJECT_BUILD_ROOT%"=="true" (
-        call :resolveFinGrindProjectBuildRoot
-        if not exist "%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%" mkdir "%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%" >NUL 2>&1
-        if not exist "%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%" (
-            echo. 1>&2
-            echo ERROR: Unable to create FinGrind project build root at %FINGRIND_GRADLE_PROJECT_BUILD_ROOT% 1>&2
-            echo. 1>&2
-            goto fail
-        )
-        set "FINGRIND_GRADLE_PROJECT_BUILD_ROOT_ARG=-Dfingrind.gradle.project-build-root=%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%"
-    )
-)
+call :ensureFinGrindProjectBuildRootArgument
+if not "%ERRORLEVEL%"=="0" goto fail
 
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
@@ -162,6 +124,63 @@ if /I "%FINGRIND_SCAN_ARG:~0,30%"=="-Dfingrind.gradle.jacoco-root=" set "FINGRIN
 if /I "%FINGRIND_SCAN_ARG:~0,37%"=="-Dfingrind.gradle.project-build-root=" set "FINGRIND_HAS_PROJECT_BUILD_ROOT=true"
 shift
 goto scanFinGrindArgumentsLoop
+
+:ensureFinGrindProjectCacheArgument
+if /I "%FINGRIND_HAS_PROJECT_CACHE%"=="true" exit /b 0
+call :resolveFinGrindProjectCacheDir
+if exist "%FINGRIND_GRADLE_PROJECT_CACHE_DIR%" goto projectCacheArgumentReady
+mkdir "%FINGRIND_GRADLE_PROJECT_CACHE_DIR%" >NUL 2>&1
+if exist "%FINGRIND_GRADLE_PROJECT_CACHE_DIR%" goto projectCacheArgumentReady
+echo. 1>&2
+echo ERROR: Unable to create FinGrind Gradle project cache at %FINGRIND_GRADLE_PROJECT_CACHE_DIR% 1>&2
+echo. 1>&2
+exit /b 1
+:projectCacheArgumentReady
+set "FINGRIND_GRADLE_PROJECT_CACHE_ARG=--project-cache-dir=%FINGRIND_GRADLE_PROJECT_CACHE_DIR%"
+exit /b 0
+
+:ensureFinGrindBuildLogicArgument
+if /I "%FINGRIND_HAS_BUILD_LOGIC_DIR%"=="true" exit /b 0
+call :resolveFinGrindBuildLogicDir
+if exist "%FINGRIND_GRADLE_BUILD_LOGIC_DIR%" goto buildLogicArgumentReady
+mkdir "%FINGRIND_GRADLE_BUILD_LOGIC_DIR%" >NUL 2>&1
+if exist "%FINGRIND_GRADLE_BUILD_LOGIC_DIR%" goto buildLogicArgumentReady
+echo. 1>&2
+echo ERROR: Unable to create FinGrind Gradle build-logic directory at %FINGRIND_GRADLE_BUILD_LOGIC_DIR% 1>&2
+echo. 1>&2
+exit /b 1
+:buildLogicArgumentReady
+set "FINGRIND_GRADLE_BUILD_LOGIC_ARG=-Dfingrind.gradle.build-logic-dir=%FINGRIND_GRADLE_BUILD_LOGIC_DIR%"
+exit /b 0
+
+:ensureFinGrindJacocoArgument
+if /I "%FINGRIND_HAS_JACOCO_ROOT%"=="true" exit /b 0
+call :resolveFinGrindJacocoRoot
+if exist "%FINGRIND_GRADLE_JACOCO_ROOT%" goto jacocoArgumentReady
+mkdir "%FINGRIND_GRADLE_JACOCO_ROOT%" >NUL 2>&1
+if exist "%FINGRIND_GRADLE_JACOCO_ROOT%" goto jacocoArgumentReady
+echo. 1>&2
+echo ERROR: Unable to create FinGrind JaCoCo directory at %FINGRIND_GRADLE_JACOCO_ROOT% 1>&2
+echo. 1>&2
+exit /b 1
+:jacocoArgumentReady
+set "FINGRIND_GRADLE_JACOCO_ARG=-Dfingrind.gradle.jacoco-root=%FINGRIND_GRADLE_JACOCO_ROOT%"
+exit /b 0
+
+:ensureFinGrindProjectBuildRootArgument
+if /I "%FINGRIND_HAS_PROJECT_BUILD_ROOT%"=="true" exit /b 0
+if /I not "%FINGRIND_SHOULD_EXTERNALIZE_PROJECT_BUILD_ROOT%"=="true" exit /b 0
+call :resolveFinGrindProjectBuildRoot
+if exist "%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%" goto projectBuildRootArgumentReady
+mkdir "%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%" >NUL 2>&1
+if exist "%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%" goto projectBuildRootArgumentReady
+echo. 1>&2
+echo ERROR: Unable to create FinGrind project build root at %FINGRIND_GRADLE_PROJECT_BUILD_ROOT% 1>&2
+echo. 1>&2
+exit /b 1
+:projectBuildRootArgumentReady
+set "FINGRIND_GRADLE_PROJECT_BUILD_ROOT_ARG=-Dfingrind.gradle.project-build-root=%FINGRIND_GRADLE_PROJECT_BUILD_ROOT%"
+exit /b 0
 
 :resolveFinGrindProjectCacheDir
 if defined FINGRIND_GRADLE_PROJECT_CACHE_DIR goto projectCacheDirResolved

@@ -36,12 +36,36 @@ wrapper_contents="$(<"${wrapper_path}")"
     "gradlew.bat must not rely on delayed expansion in the FinGrind wrapper prelude"
 [[ "${wrapper_contents}" == *'call :scanFinGrindArguments %*'* ]] || die \
     "expected gradlew.bat to scan arguments before injecting FinGrind defaults"
+[[ "${wrapper_contents}" == *'call :ensureFinGrindProjectCacheArgument'* ]] || die \
+    "expected gradlew.bat to route project-cache setup through a dedicated helper"
+[[ "${wrapper_contents}" == *'call :ensureFinGrindBuildLogicArgument'* ]] || die \
+    "expected gradlew.bat to route build-logic setup through a dedicated helper"
+[[ "${wrapper_contents}" == *'call :ensureFinGrindJacocoArgument'* ]] || die \
+    "expected gradlew.bat to route JaCoCo setup through a dedicated helper"
+[[ "${wrapper_contents}" == *'call :ensureFinGrindProjectBuildRootArgument'* ]] || die \
+    "expected gradlew.bat to route project-build-root setup through a dedicated helper"
 [[ "${wrapper_contents}" == *':scanFinGrindArguments'* ]] || die \
     "expected gradlew.bat to define the argument scanner"
+[[ "${wrapper_contents}" == *':ensureFinGrindProjectCacheArgument'* ]] || die \
+    "expected gradlew.bat to define the project-cache setup helper"
+[[ "${wrapper_contents}" == *':ensureFinGrindBuildLogicArgument'* ]] || die \
+    "expected gradlew.bat to define the build-logic setup helper"
+[[ "${wrapper_contents}" == *':ensureFinGrindJacocoArgument'* ]] || die \
+    "expected gradlew.bat to define the JaCoCo setup helper"
+[[ "${wrapper_contents}" == *':ensureFinGrindProjectBuildRootArgument'* ]] || die \
+    "expected gradlew.bat to define the project-build-root setup helper"
 [[ "${wrapper_contents}" == *':resolveFinGrindProjectCacheKey'* ]] || die \
     "expected gradlew.bat to define the cache-key resolver"
 [[ "${wrapper_contents}" == *'for %%i in ("%APP_HOME%") do set "FINGRIND_PROJECT_CACHE_KEY=%%~di_%%~nxi"'* ]] || die \
     "expected gradlew.bat to derive a deterministic cmd-safe project-cache key from APP_HOME metadata"
+[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_PROJECT_CACHE%"=="true" ('* ]] || die \
+    "gradlew.bat must not expand the project-cache path inside a parenthesized block"
+[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_BUILD_LOGIC_DIR%"=="true" ('* ]] || die \
+    "gradlew.bat must not expand the build-logic path inside a parenthesized block"
+[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_JACOCO_ROOT%"=="true" ('* ]] || die \
+    "gradlew.bat must not expand the JaCoCo path inside a parenthesized block"
+[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_PROJECT_BUILD_ROOT%"=="true" ('* ]] || die \
+    "gradlew.bat must not expand the project-build-root path inside a parenthesized block"
 [[ "${wrapper_contents}" != *':==_%'* ]] || die \
     "gradlew.bat must not use the fragile equals-sign replacement that breaks cmd parsing"
 [[ "${wrapper_contents}" != *':!=_%'* ]] || die \
