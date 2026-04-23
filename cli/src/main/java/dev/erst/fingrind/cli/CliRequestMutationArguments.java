@@ -30,7 +30,7 @@ final class CliRequestMutationArguments {
               CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
               CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
-    return new CliCommand.DeclareAccount(
+    return new DeclareAccount(
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
         CliArgumentValueParser.resolvedOutputMode(outputMode));
@@ -39,16 +39,16 @@ final class CliRequestMutationArguments {
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseRequestBoundArguments(arguments);
-    return new CliCommand.ExecutePlan(
+    return new ExecutePlan(
         parsedArguments.bookAccess(), parsedArguments.optionalRequestFile().orElseThrow());
   }
 
   static CliCommand parsePreflightEntryCommand(List<String> arguments) {
-    return parseRequestBoundOutputCommand(arguments, CliCommand.PreflightEntry::new);
+    return parseRequestBoundOutputCommand(arguments, PreflightEntry::new);
   }
 
   static CliCommand parsePostEntryCommand(List<String> arguments) {
-    return parseRequestBoundOutputCommand(arguments, CliCommand.PostEntry::new);
+    return parseRequestBoundOutputCommand(arguments, PostEntry::new);
   }
 
   private static CliCommand parseRequestBoundOutputCommand(

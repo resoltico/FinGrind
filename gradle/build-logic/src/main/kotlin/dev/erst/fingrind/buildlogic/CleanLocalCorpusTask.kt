@@ -1,7 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
 import java.nio.file.Files
-import java.util.Comparator
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.LocalState
@@ -14,18 +13,8 @@ abstract class CleanLocalCorpusTask : DefaultTask() {
     @TaskAction
     fun clean() {
         val localPath = localDirectory.asFile.orNull?.toPath() ?: return
-        if (!Files.exists(localPath)) {
-            return
-        }
-        Files.walk(localPath).use { localStream ->
-            localStream
-                .filter { path -> path.fileName.toString() == ".cifuzz-corpus" }
-                .sorted(Comparator.reverseOrder())
-                .forEach { corpusPath ->
-                    Files.walk(corpusPath).use { corpusStream ->
-                        corpusStream.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
-                    }
-                }
+        if (Files.exists(localPath)) {
+            LocalJazzerStateCleaner.deleteGeneratedCorpora(localPath, logger::warn)
         }
     }
 }

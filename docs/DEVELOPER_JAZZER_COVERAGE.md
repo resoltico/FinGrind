@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: DEVELOPER_JAZZER_COVERAGE
 updated: "2026-04-23"
 route:
@@ -17,7 +17,7 @@ route:
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, duplicate-key rejection, unexpected-field rejection, and legacy-field hard breaks | `10` |
-| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` | ledger-plan parsing, canonical step-kind preservation, removal of the inert execution-policy block, open-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `5` |
+| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` plus in-memory `LedgerPlanService.execute(...)` | ledger-plan parsing, canonical step-kind preservation, successful in-memory execution, structured list-query journal facts, removal of the inert execution-policy block, open-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `6` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
 | `sqlite-book-roundtrip` | `SqliteBookSession` via `SqliteBookSessions` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
@@ -50,6 +50,7 @@ What it asserts:
 - parsed plan ids and step kinds stay non-blank
 - `open-book` is accepted only as the first step when present
 - assertion steps keep their own canonical kind instead of collapsing to `execute-plan`
+- successful `list-accounts` and `list-postings` steps keep page metadata plus structured row groups
 - the removed `executionPolicy` block is rejected deterministically
 - oversize ledger plans are rejected at the 100-step protocol limit
 - unknown `kind` typos are reported as unsupported step kinds without requiring an `assertion` object first
@@ -111,6 +112,7 @@ What it asserts:
 | `cli-request` | `invalid_unexpected_top_level_field.json` | unexpected request field rejection |
 | `cli-request` | `invalid_unbalanced.json` | unbalanced journal entry |
 | `ledger-plan-request` | `basic_valid.json` | valid plan with operation, posting, and assertion steps |
+| `ledger-plan-request` | `query_valid.json` | valid plan with successful structured list-query journal facts |
 | `ledger-plan-request` | `invalid_execution_policy.json` | removed execution-policy block rejection |
 | `ledger-plan-request` | `invalid_open_book_not_first.json` | open-book ordering rejection |
 | `ledger-plan-request` | `invalid_too_many_steps.json` | 100-step protocol limit rejection |

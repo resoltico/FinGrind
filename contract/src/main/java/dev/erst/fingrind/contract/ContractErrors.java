@@ -17,6 +17,9 @@ public final class ContractErrors {
     UNKNOWN_COMMAND,
     INVALID_REQUEST,
     RUNTIME_FAILURE,
+    MANAGED_RUNTIME_FAILURE,
+    STORAGE_RUNTIME_FAILURE,
+    PDF_EXPORT_FAILURE,
     INVALID_PAGE_CURSOR,
     BOOK_KEY_FILE_ALREADY_EXISTS,
     INVALID_BOOK_KEY_FILE,
@@ -31,6 +34,9 @@ public final class ContractErrors {
         case UNKNOWN_COMMAND -> "unknown-command";
         case INVALID_REQUEST -> "invalid-request";
         case RUNTIME_FAILURE -> "runtime-failure";
+        case MANAGED_RUNTIME_FAILURE -> "managed-runtime-failure";
+        case STORAGE_RUNTIME_FAILURE -> "storage-runtime-failure";
+        case PDF_EXPORT_FAILURE -> "pdf-export-failure";
         case INVALID_PAGE_CURSOR -> "invalid-page-cursor";
         case BOOK_KEY_FILE_ALREADY_EXISTS -> "book-key-file-already-exists";
         case INVALID_BOOK_KEY_FILE -> "invalid-book-key-file";
@@ -50,6 +56,12 @@ public final class ContractErrors {
             "Invocation or request document refused because it does not match the accepted FinGrind command or request contract.";
         case RUNTIME_FAILURE ->
             "Command failed because of a genuine runtime or environment problem rather than deterministic caller input.";
+        case MANAGED_RUNTIME_FAILURE ->
+            "Command failed because the managed FinGrind runtime dependency surface is unavailable, incompatible, or misconfigured.";
+        case STORAGE_RUNTIME_FAILURE ->
+            "Command failed because SQLite storage or book-handle execution encountered a runtime problem outside the deterministic caller contract.";
+        case PDF_EXPORT_FAILURE ->
+            "Command completed its core work but failed while exporting the requested PDF artifact.";
         case INVALID_PAGE_CURSOR ->
             "Paginated query refused because the supplied cursor is not a valid FinGrind page cursor.";
         case BOOK_KEY_FILE_ALREADY_EXISTS ->

@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepFailure;
@@ -9,7 +8,6 @@ import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RejectionNarrative;
-import java.util.ArrayList;
 import java.util.List;
 
 /** Shared fact and failure mapping for ledger-plan execution steps. */
@@ -17,31 +15,11 @@ final class LedgerPlanOutcomeMapper {
   private LedgerPlanOutcomeMapper() {}
 
   static LedgerPlanStepOutcome balanceFacts(AccountBalanceSnapshot snapshot) {
-    List<LedgerFact> facts = new ArrayList<>();
-    facts.add(LedgerFact.text("accountCode", snapshot.account().accountCode().value()));
-    facts.add(LedgerFact.count("bucketCount", snapshot.balances().size()));
-    for (CurrencyBalance balance : snapshot.balances()) {
-      facts.add(
-          LedgerFact.group(
-              "balance",
-              List.of(
-                  LedgerFact.text("currencyCode", balance.netAmount().currencyCode().value()),
-                  LedgerFact.text("debitTotal", balance.debitTotal().amount().toPlainString()),
-                  LedgerFact.text("creditTotal", balance.creditTotal().amount().toPlainString()),
-                  LedgerFact.text("netAmount", balance.netAmount().amount().toPlainString()),
-                  LedgerFact.text("balanceSide", balance.balanceSide().wireValue()))));
-    }
-    return stepSucceeded(facts.toArray(LedgerFact[]::new));
+    return stepSucceeded(LedgerPlanFactMapper.balanceFacts(snapshot));
   }
 
   static List<LedgerFact> postingFacts(PostingFact postingFact) {
-    return List.of(
-        LedgerFact.text("postingId", postingFact.postingId().value()),
-        LedgerFact.text(
-            "idempotencyKey",
-            postingFact.provenance().requestProvenance().idempotencyKey().value()),
-        LedgerFact.text("effectiveDate", postingFact.journalEntry().effectiveDate().toString()),
-        LedgerFact.text("recordedAt", postingFact.provenance().recordedAt().toString()));
+    return LedgerPlanFactMapper.postingFacts(postingFact);
   }
 
   static LedgerPlanStepOutcome administrationRejection(
@@ -85,6 +63,10 @@ final class LedgerPlanOutcomeMapper {
 
   static LedgerPlanStepOutcome stepSucceeded(LedgerFact... facts) {
     return new LedgerPlanStepOutcome.Succeeded(List.of(facts));
+  }
+
+  static LedgerPlanStepOutcome stepSucceeded(List<LedgerFact> facts) {
+    return new LedgerPlanStepOutcome.Succeeded(facts);
   }
 
   static LedgerPlanStepOutcome stepRejected(String code, String message, List<LedgerFact> facts) {

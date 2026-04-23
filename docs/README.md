@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: DOCUMENTATION_INDEX
 updated: "2026-04-23"
 route:
@@ -23,7 +23,7 @@ Then choose one of the user, developer, or reference tracks below.
 
 - [USER_QUICK_START.md](./USER_QUICK_START.md): fastest path to create one protected book, post one entry, and read one report back
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, PDF artifact behavior, exit codes, and runtime requirements
-- [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, deterministic error codes, and response envelopes
+- [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, executable request schemas, deterministic error codes, and response envelopes
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
 
 The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
@@ -53,8 +53,10 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): example `print-plan-template` scaffold shape
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): runnable `execute-plan` request that pages accounts and postings inside the plan journal
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with a per-step journal
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with a bounded per-step journal
+- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response whose query steps retain pagination facts and structured row groups
 - [examples/reversal-request.json](./examples/reversal-request.json): reversal request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 

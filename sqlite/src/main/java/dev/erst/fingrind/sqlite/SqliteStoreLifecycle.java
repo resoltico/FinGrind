@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractFailure;
+import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -52,7 +53,7 @@ final class SqliteStoreLifecycle {
     }
     ledgerPlanTransactionActive = true;
     ledgerPlanTransactionBegunInDatabase = false;
-    if (accessMode.preservesMissingBookStateUntilMutation() && Files.notExists(bookPath)) {
+    if (accessMode.defersMissingBookOpen() && Files.notExists(bookPath)) {
       return;
     }
     SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
@@ -152,7 +153,7 @@ final class SqliteStoreLifecycle {
               SqliteSessionDatabase resolvedDatabase) ->
           resolvedDatabase;
       case ContractDecision.Rejected<SqliteSessionDatabase>(ContractFailure failure) ->
-          throw rememberTerminalFailure(new IllegalStateException(failure.message()));
+          throw rememberTerminalFailure(new ContractFailureException(failure));
     };
   }
 
@@ -161,7 +162,7 @@ final class SqliteStoreLifecycle {
     if (database != null) {
       return ContractDecision.accepted(this);
     }
-    if (accessMode.preservesMissingBookStateUntilMutation() && Files.notExists(bookPath)) {
+    if (accessMode.defersMissingBookOpen() && Files.notExists(bookPath)) {
       return ContractDecision.accepted(this);
     }
     return openDatabase()
@@ -170,6 +171,9 @@ final class SqliteStoreLifecycle {
 
   private ContractDecision<SqliteSessionDatabase> openDatabase() {
     try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
+      if (accessMode.createsFiles() && Files.notExists(bookPath)) {
+        SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
+      }
       SqliteNativeApi sqliteApi = sqliteApiSupplier.get();
       SqliteSessionDatabase openedDatabase =
           new SqliteSessionDatabase(
@@ -184,8 +188,7 @@ final class SqliteStoreLifecycle {
       Optional<ContractFailure> authenticationFailure =
           SqliteStoreOperations.authenticationFailure(exception);
       if (authenticationFailure.isPresent()) {
-        rememberTerminalFailure(
-            new IllegalStateException(authenticationFailure.orElseThrow().message()));
+        rememberTerminalFailure(new ContractFailureException(authenticationFailure.orElseThrow()));
         return ContractDecision.rejected(authenticationFailure.orElseThrow());
       }
       throw rememberTerminalFailure(SqliteStoreOperations.openRuntimeFailure(exception));

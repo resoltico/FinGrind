@@ -38,7 +38,7 @@ final class CliSummaryReportArguments {
       }
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
-    return new CliCommand.TrialBalance(
+    return new TrialBalance(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_TO,
@@ -85,7 +85,7 @@ final class CliSummaryReportArguments {
     }
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
-    return new CliCommand.PeriodSummary(
+    return new PeriodSummary(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_FROM,

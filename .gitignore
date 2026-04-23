@@ -33,6 +33,7 @@ replay_pid*
 *.iws
 
 # Temporary and scratch directories
+tmp/
 .tmp-*/
 /.local/
 /jazzer/.local/
@@ -45,7 +46,6 @@ replay_pid*
 *.swp
 *.swo
 *~
-.DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini

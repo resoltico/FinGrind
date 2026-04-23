@@ -11,23 +11,23 @@ final class CliDiscoveryArguments {
   private CliDiscoveryArguments() {}
 
   static CliCommand parseHelp(List<String> arguments) {
-    return parseDiscoveryCommand(arguments, CliCommand.Help::new);
+    return parseDiscoveryCommand(arguments, Help::new);
   }
 
   static CliCommand parseVersion(List<String> arguments) {
-    return parseDiscoveryCommand(arguments, CliCommand.Version::new);
+    return parseDiscoveryCommand(arguments, Version::new);
   }
 
   static CliCommand parseCapabilities(List<String> arguments) {
-    return parseDiscoveryCommand(arguments, CliCommand.Capabilities::new);
+    return parseDiscoveryCommand(arguments, Capabilities::new);
   }
 
   static CliCommand parsePrintRequestTemplate(List<String> arguments) {
-    return parseSingleToken(arguments, new CliCommand.PrintRequestTemplate());
+    return parseSingleToken(arguments, new PrintRequestTemplate());
   }
 
   static CliCommand parsePrintPlanTemplate(List<String> arguments) {
-    return parseSingleToken(arguments, new CliCommand.PrintPlanTemplate());
+    return parseSingleToken(arguments, new PrintPlanTemplate());
   }
 
   private static CliCommand parseSingleToken(List<String> arguments, CliCommand command) {

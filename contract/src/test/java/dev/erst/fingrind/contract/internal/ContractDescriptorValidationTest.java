@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
@@ -51,5 +53,20 @@ class ContractDescriptorValidationTest {
     assertThrows(UnsupportedOperationException.class, () -> copied.add("beta"));
     assertThrows(
         NullPointerException.class, () -> ContractDescriptorValidation.copyList(List.of(), null));
+  }
+
+  @Test
+  void copyMap_coalescesNullAndDefensivelyCopiesValues() {
+    assertEquals(Map.of(), ContractDescriptorValidation.copyMap(null, "field"));
+
+    Map<String, String> values = new ConcurrentHashMap<>(Map.of("alpha", "one"));
+    Map<String, String> copied = ContractDescriptorValidation.copyMap(values, "field");
+    values.clear();
+
+    assertEquals(Map.of("alpha", "one"), copied);
+    assertEquals(List.of("alpha"), List.copyOf(copied.keySet()));
+    assertThrows(UnsupportedOperationException.class, () -> copied.put("beta", "two"));
+    assertThrows(
+        NullPointerException.class, () -> ContractDescriptorValidation.copyMap(Map.of(), null));
   }
 }

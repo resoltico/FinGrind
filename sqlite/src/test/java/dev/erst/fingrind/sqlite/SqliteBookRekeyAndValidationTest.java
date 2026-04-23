@@ -7,8 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
+import dev.erst.fingrind.contract.ContractDecision;
+import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -25,6 +29,55 @@ import org.junit.jupiter.api.Test;
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 @NullUnmarked
 class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport {
+
+  @Test
+  void rekeyBook_contractLevelResolverUsesNewSecretIntentAndSurfacesRejections() throws Exception {
+    Path acceptedBookPath = tempDirectory.resolve("rekey-contract-level.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(acceptedBookPath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      BookAccess.PassphraseSource replacementSource =
+          BookAccess.PassphraseSource.StandardInput.INSTANCE;
+
+      ContractDecision<RekeyBookResult> acceptedDecision =
+          postingFactStore.rekeyBook(
+              replacementSource,
+              (resolvedBookPath, passphraseSource, intent) -> {
+                assertEquals(acceptedBookPath, resolvedBookPath);
+                assertEquals(replacementSource, passphraseSource);
+                assertEquals(SqlitePassphraseIntent.NEW_SECRET, intent);
+                return ContractDecision.accepted(
+                    SqliteBookPassphrase.fromCharacters(
+                        "contract-level replacement", "rotated-contract-key".toCharArray()));
+              });
+
+      assertEquals(
+          new RekeyBookResult.Rekeyed(acceptedBookPath.toAbsolutePath().normalize()),
+          acceptedDecision.requireAccepted());
+    }
+
+    try (SqlitePostingFactStore rejectedStore =
+        new SqlitePostingFactStore(
+            bookAccess(tempDirectory.resolve("rekey-contract-rejected.sqlite")))) {
+      initializeBookWithDefaultAccounts(rejectedStore);
+
+      ContractDecision<RekeyBookResult> rejectedDecision =
+          rejectedStore.rekeyBook(
+              BookAccess.PassphraseSource.StandardInput.INSTANCE,
+              (resolvedBookPath, passphraseSource, intent) ->
+                  ContractDecision.rejected(
+                      ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+                          "Rejected replacement secret", null, null)));
+
+      switch (rejectedDecision) {
+        case ContractDecision.Accepted<RekeyBookResult>(RekeyBookResult result) ->
+            throw new AssertionError("Expected rejected replacement secret but was " + result);
+        case ContractDecision.Rejected<RekeyBookResult>(var failure) ->
+            assertEquals(
+                ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(), failure.code());
+      }
+    }
+  }
 
   @Test
   void rekeyBook_rotatesPassphraseAndPreservesReadableState() throws Exception {

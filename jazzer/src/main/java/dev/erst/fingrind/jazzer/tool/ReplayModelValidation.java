@@ -18,4 +18,11 @@ final class ReplayModelValidation {
   static <T extends ReplayDetails> T requireDetails(T value, String fieldName) {
     return Objects.requireNonNull(value, fieldName + " must not be null");
   }
+
+  static int requireNonNegative(int value, String fieldName) {
+    if (value < 0) {
+      throw new IllegalArgumentException(fieldName + " must not be negative");
+    }
+    return value;
+  }
 }

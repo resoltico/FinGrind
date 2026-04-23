@@ -1,0 +1,75 @@
+package dev.erst.fingrind.cli;
+
+import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.protocol.OutputMode;
+import java.nio.file.Path;
+import java.util.Objects;
+
+/** Administrative CLI commands that create or reconfigure book state. */
+record GenerateBookKeyFile(Path bookKeyFilePath, OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  GenerateBookKeyFile {
+    Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runGenerateBookKeyFileCommand(bookKeyFilePath, outputMode);
+  }
+}
+
+/** Administrative CLI commands that create or reconfigure book state. */
+record OpenBook(BookAccess bookAccess, OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  OpenBook {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runOpenBookCommand(bookAccess, outputMode);
+  }
+}
+
+/** Administrative CLI commands that create or reconfigure book state. */
+record RekeyBook(
+    BookAccess bookAccess,
+    BookAccess.PassphraseSource replacementPassphraseSource,
+    OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  RekeyBook {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(replacementPassphraseSource, "replacementPassphraseSource");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runRekeyBookCommand(bookAccess, replacementPassphraseSource, outputMode);
+  }
+}
+
+/** Administrative CLI commands that create or reconfigure book state. */
+record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  DeclareAccount {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(requestFile, "requestFile");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runDeclareAccountCommand(bookAccess, requestFile, outputMode);
+  }
+}

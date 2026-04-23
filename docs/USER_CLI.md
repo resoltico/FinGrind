@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: USER_CLI
 updated: "2026-04-23"
 route:
@@ -67,7 +67,7 @@ diagnostics stream instead of changing the command exit to `runtime-failure`.
 |:--------|:--------|:----------------|:-------|
 | `help` | `--help`, `-h` | optional `--output` | returns application, version, usage, quick-start, and error guidance |
 | `version` | `--version` | optional `--output` | returns application name, version, and description |
-| `capabilities` | none | optional `--output` | returns storage, command, typed request-field descriptors, response descriptors, and account-registry capabilities |
+| `capabilities` | none | optional `--output` | returns storage, command, typed request-field descriptors, executable request schemas, response descriptors, and account-registry capabilities |
 | `print-request-template` | `--print-request-template` | none | returns a minimal valid posting request JSON document |
 | `print-plan-template` | `--print-plan-template` | none | returns a runnable AI-agent ledger-plan scaffold as raw JSON |
 | `generate-book-key-file` | none | `--book-key-file`, optional `--output` | creates one new owner-only key file and returns only non-secret metadata |
@@ -111,18 +111,18 @@ Each extracted archive also contains:
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.24.0-macos-aarch64.tar.gz
-./fingrind-0.24.0-macos-aarch64/bin/fingrind help
-./fingrind-0.24.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.25.0-macos-aarch64.tar.gz
+./fingrind-0.25.0-macos-aarch64/bin/fingrind help
+./fingrind-0.25.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.24.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.24.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.24.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.25.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -168,7 +168,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | `1` | invalid invocation or malformed request | `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar |
 | `2` | deterministic refusal after the command was understood | `error`, `rejected`, `plan-rejected` |
 | `3` | valid `execute-plan` request whose assertion step failed | `plan-assertion-failed` |
-| `4` | runtime or environment failure | `error` with code `runtime-failure` |
+| `4` | runtime or environment failure | `error` with code `managed-runtime-failure`, `storage-runtime-failure`, or `runtime-failure` |
 
 ## Common Failures
 
@@ -194,8 +194,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | invalid key-file contents or permissions | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.` |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
-| extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `4` | `runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
-| runtime environment failure | `4` | `runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
+| extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `4` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
+| runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
+| other unexpected runtime failure outside the managed-runtime and storage families | `4` | `runtime-failure` | generic runtime-failure envelope with the thrown message and repair hint |
 
 ## Notes
 
@@ -231,6 +232,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `capabilities.environment.distribution.supportedPublicCliBundleTargets` and
   `capabilities.environment.distribution.unsupportedPublicCliOperatingSystems` expose the public
   distribution matrix directly to automation.
+- `capabilities.requestShapes.schemaDialect` declares the JSON Schema dialect, and
+  `capabilities.requestShapes.*.schema` publishes executable request schemas alongside the field
+  descriptor arrays.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every
   object level.
 - `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or
@@ -256,7 +260,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   the whole plan inside one atomic transaction and returns the resulting journal in
   `payload.journal` with `status: "plan-committed"` on success, or in `details.plan.journal` with
   `status: "plan-rejected"` / `status: "plan-assertion-failed"` on deterministic plan failure.
-  Journal facts are typed objects with `kind`, `name`, and either `value` or nested grouped `facts`.
+  Journal facts are typed objects with `kind`, `name`, and either `value` or nested grouped
+  `facts`; successful `list-accounts` and `list-postings` steps keep both pagination facts and
+  structured row groups instead of collapsing to counts alone.
 - `capabilities` reports runtime-contract details under nested environment descriptors:
   `environment.distribution.publicCliDistribution`,
   `environment.distribution.sourceCheckoutJava`,

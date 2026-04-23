@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: HUMAN_REQUESTS
 updated: "2026-04-23"
 route:
@@ -105,9 +105,11 @@ Current ledger-plan rules:
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request
 - `list-accounts`, `list-postings`, and `account-balance` use nested `query`
-- `list-accounts.query` accepts `limit` plus optional opaque `cursor`
-- `list-postings.query` accepts optional `accountCode`, optional effective-date bounds, required
-  `limit`, and optional opaque `cursor`
+- `list-accounts.query` is optional; when present it accepts optional `limit` plus optional opaque
+  `cursor`, and omitted `limit` defaults to the standard page size
+- `list-postings.query` is optional; when present it accepts optional `accountCode`, optional
+  effective-date bounds, optional `limit`, and optional opaque `cursor`, and omitted `limit`
+  defaults to the standard page size
 - `account-balance.query` accepts `accountCode` plus optional effective-date bounds
 - `get-posting` uses `postingId`
 - assertion steps use `kind: "assert"` plus a nested `assertion` object
@@ -120,6 +122,11 @@ Current ledger-plan rules:
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, and
   return a complete per-step journal with canonical `kind` plus optional `detailKind`
 - plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
+- successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
+  `hasMore`, and repeated grouped `account` facts
+- successful `list-postings` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
+  `hasMore`, and repeated grouped `posting` facts with nested `provenance`, `line`, and optional
+  `reversal` groups
 
 ## Accepted Values
 
@@ -161,6 +168,10 @@ Dynamic fields:
   FinGrind execution clock
 - plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
   facts nest their child observations under `facts`
+- successful `declare-account` plan steps emit `accountCode`, `accountName`, `normalBalance`,
+  `active`, and `declaredAt`
+- successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
+  `balance` buckets
 - `execute-plan` accepts at most 100 steps, so returned plan journals are complete but bounded
 
 `preflight-accepted` is advisory. It confirms that the current request passed validation against
@@ -177,12 +188,17 @@ rendered:
 
 - `requestShapes.postEntry.topLevelFields`, `lineFields`, `provenanceFields`, and `reversalFields`
   are arrays of `{ "name", "presence", "description" }`
+- `requestShapes.schemaDialect` is the JSON Schema dialect URI used by the embedded executable
+  schemas
+- `requestShapes.postEntry.schema`, `declareAccount.schema`, and `ledgerPlan.schema` are
+  executable JSON Schema objects sourced from the live contract, not hand-maintained prose
 - `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live
   enum constants
 - `responseModel.rejections` is an array of deterministic business rejections rendered from the
   administration, query, and posting rejection families
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
-  descriptors such as `invalid-page-cursor`, `book-authentication-failed`, and
+  descriptors such as `invalid-page-cursor`, `book-authentication-failed`,
+  `managed-runtime-failure`, `storage-runtime-failure`, `pdf-export-failure`, and
   `interactive-prompt-unavailable`
 - `preflight.semantics` carries the short machine hint and `preflight.commitGuarantee`
   carries the advisory-versus-guaranteed commit relationship
@@ -288,8 +304,10 @@ bundle, and Docker smoke flows instead.
 Checked-in examples for the ledger-plan surface:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
+- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
 
 ## Deterministic Rejections
 

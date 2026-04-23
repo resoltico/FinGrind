@@ -12,6 +12,10 @@
       "lastStepKind" : "assert",
       "assertionStepCount" : 1,
       "beginsWithOpenBook" : true,
+      "executionStatus" : "SUCCEEDED",
+      "journalStepCount" : 5,
+      "listQueryStepCount" : 0,
+      "structuredListQueryStepCount" : 0,
       "failureMessage" : "NONE"
     }
   }

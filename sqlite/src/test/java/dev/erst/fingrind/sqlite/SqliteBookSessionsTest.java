@@ -2,10 +2,13 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.file.Path;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -77,6 +80,113 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
       case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
           assertEquals(ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(), failure.code());
     }
+  }
+
+  @Test
+  void openResolved_keepsMissingBookStateForReadOnlyAndReadWriteExistingSessions() {
+    Path readOnlyMissingPath = tempDirectory.resolve("open-resolved-read-only-missing.sqlite");
+    ContractDecision<SqliteBookSession> readOnlyDecision =
+        SqliteBookSessions.openResolved(
+            readOnlyMissingPath, passphrase("missing read only"), SqliteBookSessionMode.READ_ONLY);
+    switch (readOnlyDecision) {
+      case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
+        try (session) {
+          assertEquals(SqliteStoreAccessMode.READ_ONLY, store(session).lifecycle().accessMode());
+          assertFalse(java.nio.file.Files.exists(readOnlyMissingPath));
+          assertFalse(session.readSession().isInitialized());
+        }
+      }
+      case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
+          fail("Expected missing read-only session to stay lazy but was " + failure.code());
+    }
+
+    Path existingMissingPath =
+        tempDirectory.resolve("open-resolved-read-write-existing-missing.sqlite");
+    ContractDecision<SqliteBookSession> existingDecision =
+        SqliteBookSessions.openResolved(
+            existingMissingPath,
+            passphrase("missing read write existing"),
+            SqliteBookSessionMode.READ_WRITE_EXISTING);
+    switch (existingDecision) {
+      case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
+        try (session) {
+          assertEquals(
+              SqliteStoreAccessMode.READ_WRITE_EXISTING, store(session).lifecycle().accessMode());
+          assertFalse(java.nio.file.Files.exists(existingMissingPath));
+          assertFalse(session.readSession().isInitialized());
+        }
+      }
+      case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
+          fail(
+              "Expected missing read-write-existing session to stay lazy but was "
+                  + failure.code());
+    }
+  }
+
+  @Test
+  void openResolved_supportsContractLevelBookAccessAndResolver() {
+    Path bookPath = tempDirectory.resolve("resolved-from-book-access.sqlite");
+    BookAccess bookAccess = bookAccess(bookPath);
+
+    ContractDecision<SqliteBookSession> decision =
+        SqliteBookSessions.openResolved(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_CREATE,
+            (resolvedBookPath, passphraseSource, intent) -> {
+              assertEquals(bookPath, resolvedBookPath);
+              assertEquals(bookAccess.passphraseSource(), passphraseSource);
+              assertEquals(SqlitePassphraseIntent.NEW_SECRET, intent);
+              return ContractDecision.accepted(passphrase("resolver-secret"));
+            },
+            SqlitePassphraseIntent.NEW_SECRET);
+
+    switch (decision) {
+      case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
+        try (session) {
+          assertEquals(
+              SqliteStoreAccessMode.READ_WRITE_CREATE, store(session).lifecycle().accessMode());
+        }
+      }
+      case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
+          fail("Expected resolver-backed open to succeed but was " + failure.code());
+    }
+  }
+
+  @Test
+  void open_supportsContractLevelBookAccessAndThrowsWhenResolverRejects() {
+    Path acceptedPath = tempDirectory.resolve("open-from-book-access.sqlite");
+    BookAccess acceptedBookAccess = bookAccess(acceptedPath);
+
+    try (SqliteBookSession session =
+        SqliteBookSessions.open(
+            acceptedBookAccess,
+            SqliteBookSessionMode.READ_WRITE_CREATE,
+            (resolvedBookPath, passphraseSource, intent) -> {
+              assertEquals(acceptedPath, resolvedBookPath);
+              assertEquals(acceptedBookAccess.passphraseSource(), passphraseSource);
+              assertEquals(SqlitePassphraseIntent.NEW_SECRET, intent);
+              return ContractDecision.accepted(passphrase("open resolver secret"));
+            },
+            SqlitePassphraseIntent.NEW_SECRET)) {
+      assertEquals(
+          SqliteStoreAccessMode.READ_WRITE_CREATE, store(session).lifecycle().accessMode());
+    }
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookSessions.open(
+                    bookAccess(tempDirectory.resolve("open-from-book-access-rejected.sqlite")),
+                    SqliteBookSessionMode.READ_WRITE_CREATE,
+                    (resolvedBookPath, passphraseSource, intent) ->
+                        ContractDecision.rejected(
+                            ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+                                "Rejected resolver secret", null, null)),
+                    SqlitePassphraseIntent.NEW_SECRET));
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
+        exception.failure().code());
   }
 
   private SqliteBookPassphrase passphrase(String description) {

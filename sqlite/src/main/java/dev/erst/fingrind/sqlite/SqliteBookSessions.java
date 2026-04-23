@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractDecision;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -30,6 +31,32 @@ public final class SqliteBookSessions {
             bookPassphrase,
             toStoreAccessMode(Objects.requireNonNull(sessionMode, "sessionMode")))
         .fold(ContractDecision::accepted, ContractDecision::rejected);
+  }
+
+  /** Opens one SQLite-backed book session by resolving the selected contract-level access tuple. */
+  public static SqliteBookSession open(
+      BookAccess bookAccess,
+      SqliteBookSessionMode sessionMode,
+      SqlitePassphraseResolver passphraseResolver,
+      SqlitePassphraseIntent passphraseIntent) {
+    return openResolved(bookAccess, sessionMode, passphraseResolver, passphraseIntent)
+        .requireAccepted();
+  }
+
+  /** Opens and primes one contract-level SQLite book access tuple for explicit result handling. */
+  public static ContractDecision<SqliteBookSession> openResolved(
+      BookAccess bookAccess,
+      SqliteBookSessionMode sessionMode,
+      SqlitePassphraseResolver passphraseResolver,
+      SqlitePassphraseIntent passphraseIntent) {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    Objects.requireNonNull(passphraseIntent, "passphraseIntent");
+    return passphraseResolver
+        .resolve(bookAccess, passphraseIntent)
+        .fold(
+            bookPassphrase -> openResolved(bookAccess.bookFilePath(), bookPassphrase, sessionMode),
+            ContractDecision::rejected);
   }
 
   private static SqliteStoreAccessMode toStoreAccessMode(SqliteBookSessionMode sessionMode) {

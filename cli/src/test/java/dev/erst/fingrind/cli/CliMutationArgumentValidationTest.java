@@ -248,9 +248,9 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_allowsRequestJsonFromStandardInputWhenPassphraseUsesPrompt() {
-    CliCommand.PostEntry command =
+    PostEntry command =
         assertInstanceOf(
-            CliCommand.PostEntry.class,
+            PostEntry.class,
             CliArguments.parse(
                 new String[] {
                   "post-entry",

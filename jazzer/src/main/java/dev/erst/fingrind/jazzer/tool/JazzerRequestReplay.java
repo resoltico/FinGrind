@@ -1,6 +1,7 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
+import dev.erst.fingrind.cli.LedgerPlanFuzzAssertions;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
@@ -33,10 +34,15 @@ final class JazzerRequestReplay {
   static ReplayOutcome replayLedgerPlanRequest(byte[] input) {
     try {
       LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(input);
+      LedgerPlanFuzzAssertions.ExecutionSnapshot executionSnapshot =
+          LedgerPlanFuzzAssertions.executeAndAssert(plan, input);
       return new ReplayOutcome.Success(
           JazzerHarness.ledgerPlanRequest().key(),
           JazzerReplayDetailsMapper.ledgerPlanDetails(
-              plan, "PARSED", JazzerReplayDetailsMapper.normalizedMessage(null)));
+              plan,
+              executionSnapshot,
+              "PARSED",
+              JazzerReplayDetailsMapper.normalizedMessage(null)));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.ledgerPlanRequest().key(),

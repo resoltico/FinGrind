@@ -84,6 +84,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         payload.path("commands").path("query").toString());
     assertTrue(payload.path("requestShapes").has("postEntry"));
     assertTrue(payload.path("requestShapes").has("declareAccount"));
+    assertEquals(
+        "https://json-schema.org/draft/2020-12/schema",
+        payload.path("requestShapes").path("schemaDialect").asText());
     assertEquals("advisory", payload.path("preflight").path("semantics").asString());
     assertEquals("not-guaranteed", payload.path("preflight").path("commitGuarantee").asString());
     assertEquals(
@@ -109,6 +112,19 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .get(0)
             .path("presence")
             .asString());
+    assertEquals(
+        "object",
+        payload.path("requestShapes").path("postEntry").path("schema").path("type").asText());
+    assertEquals(
+        "array",
+        payload
+            .path("requestShapes")
+            .path("ledgerPlan")
+            .path("schema")
+            .path("properties")
+            .path("steps")
+            .path("type")
+            .asText());
     assertTrue(payload.path("responseModel").path("rejections").isArray());
     assertFalse(payload.path("responseModel").has("rejectionCodes"));
     assertEquals(
@@ -180,6 +196,24 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("errorDescriptors")
             .toString()
             .contains("book-authentication-failed"));
+    assertTrue(
+        payload
+            .path("responseModel")
+            .path("errorDescriptors")
+            .toString()
+            .contains("managed-runtime-failure"));
+    assertTrue(
+        payload
+            .path("responseModel")
+            .path("errorDescriptors")
+            .toString()
+            .contains("storage-runtime-failure"));
+    assertTrue(
+        payload
+            .path("responseModel")
+            .path("errorDescriptors")
+            .toString()
+            .contains("pdf-export-failure"));
     assertTrue(
         payload
             .path("requestInput")

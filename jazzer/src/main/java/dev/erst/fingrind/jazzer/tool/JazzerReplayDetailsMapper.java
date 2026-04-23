@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
+import dev.erst.fingrind.cli.LedgerPlanFuzzAssertions;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -46,7 +47,10 @@ final class JazzerReplayDetailsMapper {
   }
 
   static LedgerPlanReplayDetails ledgerPlanDetails(
-      LedgerPlan plan, String requestStatus, String failureMessage) {
+      LedgerPlan plan,
+      LedgerPlanFuzzAssertions.ExecutionSnapshot executionSnapshot,
+      String requestStatus,
+      String failureMessage) {
     return new LedgerPlanReplayDetails(
         requestStatus,
         plan.planId().value(),
@@ -55,12 +59,27 @@ final class JazzerReplayDetailsMapper {
         plan.steps().getLast().kind().wireValue(),
         assertionStepCount(plan),
         plan.beginsWithOpenBook(),
+        executionSnapshot.executionStatus(),
+        executionSnapshot.journalStepCount(),
+        executionSnapshot.listQueryStepCount(),
+        executionSnapshot.structuredListQueryStepCount(),
         failureMessage);
   }
 
   static LedgerPlanReplayDetails ledgerPlanFailureDetails(String requestStatus, Throwable error) {
     return new LedgerPlanReplayDetails(
-        requestStatus, NOT_PARSED, 0, NOT_PARSED, NOT_PARSED, 0, false, normalizedMessage(error));
+        requestStatus,
+        NOT_PARSED,
+        0,
+        NOT_PARSED,
+        NOT_PARSED,
+        0,
+        false,
+        NOT_PARSED,
+        0,
+        0,
+        0,
+        normalizedMessage(error));
   }
 
   static PostingWorkflowReplayDetails postingWorkflowDetails(

@@ -135,7 +135,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         case ContractDecision.Accepted<SqlitePostingFactStore>(
                 SqlitePostingFactStore postingFactStore) -> {
           try (postingFactStore) {
-            assertFalse(Files.exists(databasePath));
+            assertTrue(Files.exists(databasePath));
             assertFalse(postingFactStore.isInitialized());
           }
         }

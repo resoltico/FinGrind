@@ -24,7 +24,7 @@ final class CliAccountReportArguments {
             () ->
                 EffectiveDateRange.of(
                     parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo()));
-    return new CliCommand.AccountBalance(
+    return new AccountBalance(
         parsedArguments.bookAccess(),
         new AccountBalanceQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
         parsedArguments.output());
@@ -38,7 +38,7 @@ final class CliAccountReportArguments {
             () ->
                 EffectiveDateRange.of(
                     parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo()));
-    return new CliCommand.AccountLedger(
+    return new AccountLedger(
         parsedArguments.bookAccess(),
         new AccountLedgerQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
         parsedArguments.output());

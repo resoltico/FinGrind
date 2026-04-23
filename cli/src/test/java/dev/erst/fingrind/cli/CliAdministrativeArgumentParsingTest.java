@@ -14,9 +14,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsGenerateBookKeyFileForValidCommand() {
-    CliCommand.GenerateBookKeyFile command =
+    GenerateBookKeyFile command =
         assertInstanceOf(
-            CliCommand.GenerateBookKeyFile.class,
+            GenerateBookKeyFile.class,
             CliArguments.parse(
                 new String[] {
                   "generate-book-key-file", "--book-key-file", "books/entity.book-key"
@@ -28,9 +28,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_supportsHumanOutputForAdministrativeAndWriteCommands() {
-    CliCommand.GenerateBookKeyFile generateBookKeyFile =
+    GenerateBookKeyFile generateBookKeyFile =
         assertInstanceOf(
-            CliCommand.GenerateBookKeyFile.class,
+            GenerateBookKeyFile.class,
             CliArguments.parse(
                 new String[] {
                   "generate-book-key-file",
@@ -39,9 +39,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--output",
                   "human"
                 }));
-    CliCommand.OpenBook openBook =
+    OpenBook openBook =
         assertInstanceOf(
-            CliCommand.OpenBook.class,
+            OpenBook.class,
             CliArguments.parse(
                 new String[] {
                   "open-book",
@@ -52,9 +52,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--output",
                   "human"
                 }));
-    CliCommand.DeclareAccount declareAccount =
+    DeclareAccount declareAccount =
         assertInstanceOf(
-            CliCommand.DeclareAccount.class,
+            DeclareAccount.class,
             CliArguments.parse(
                 new String[] {
                   "declare-account",
@@ -67,9 +67,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--output",
                   "human"
                 }));
-    CliCommand.RekeyBook rekeyBook =
+    RekeyBook rekeyBook =
         assertInstanceOf(
-            CliCommand.RekeyBook.class,
+            RekeyBook.class,
             CliArguments.parse(
                 new String[] {
                   "rekey-book",
@@ -82,9 +82,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--output",
                   "human"
                 }));
-    CliCommand.PostEntry postEntry =
+    PostEntry postEntry =
         assertInstanceOf(
-            CliCommand.PostEntry.class,
+            PostEntry.class,
             CliArguments.parse(
                 new String[] {
                   "post-entry",
@@ -195,9 +195,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsOpenBookForValidBookOnlyCommand() {
-    CliCommand.OpenBook command =
+    OpenBook command =
         assertInstanceOf(
-            CliCommand.OpenBook.class,
+            OpenBook.class,
             CliArguments.parse(
                 new String[] {
                   "open-book", "--book-file", "book.sqlite", "--book-key-file", "book.key"
@@ -209,9 +209,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsDeclareAccountForValidRequestBoundCommand() {
-    CliCommand.DeclareAccount command =
+    DeclareAccount command =
         assertInstanceOf(
-            CliCommand.DeclareAccount.class,
+            DeclareAccount.class,
             CliArguments.parse(
                 new String[] {
                   "declare-account",
@@ -230,9 +230,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsPreflightEntryForValidEntryCommand() {
-    CliCommand.PreflightEntry command =
+    PreflightEntry command =
         assertInstanceOf(
-            CliCommand.PreflightEntry.class,
+            PreflightEntry.class,
             CliArguments.parse(
                 new String[] {
                   "preflight-entry",
@@ -251,9 +251,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsPostEntryForValidEntryCommand() {
-    CliCommand.PostEntry command =
+    PostEntry command =
         assertInstanceOf(
-            CliCommand.PostEntry.class,
+            PostEntry.class,
             CliArguments.parse(
                 new String[] {
                   "post-entry",
@@ -272,9 +272,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsOpenBookForStandardInputPassphraseSource() {
-    CliCommand.OpenBook command =
+    OpenBook command =
         assertInstanceOf(
-            CliCommand.OpenBook.class,
+            OpenBook.class,
             CliArguments.parse(
                 new String[] {
                   "open-book", "--book-file", "book.sqlite", "--book-passphrase-stdin"
@@ -288,9 +288,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
   @Test
   void parse_returnsOpenBookForInteractivePromptPassphraseSource() {
-    CliCommand.OpenBook command =
+    OpenBook command =
         assertInstanceOf(
-            CliCommand.OpenBook.class,
+            OpenBook.class,
             CliArguments.parse(
                 new String[] {
                   "open-book", "--book-file", "book.sqlite", "--book-passphrase-prompt"

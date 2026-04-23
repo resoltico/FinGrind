@@ -191,6 +191,24 @@ class CliIoFixtureSupport {
             """;
   }
 
+  protected static String listAccountsPlanJson(int limit) {
+    return """
+            {
+              "planId": "plan-list-accounts",
+              "steps": [
+                {
+                  "stepId": "accounts",
+                  "kind": "list-accounts",
+                  "query": {
+                    "limit": %d
+                  }
+                }
+              ]
+            }
+            """
+        .formatted(limit);
+  }
+
   protected static String declareAccountJson(
       String accountCode, String accountName, String normalBalance) {
     return """

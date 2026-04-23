@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailureException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
@@ -71,6 +73,23 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                     new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
 
     assertTrue(exception.getMessage().contains("must contain a UTF-8 passphrase"));
+  }
+
+  @Test
+  void open_wrapsRejectedKeyFileDecisionAsContractFailure() {
+    Path bookPath = tempDirectory.resolve("missing-key-file.sqlite");
+    Path missingKeyPath = tempDirectory.resolve("missing-key-file.key");
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteNativeConnections.open(
+                    new BookAccess(
+                        bookPath, new BookAccess.PassphraseSource.KeyFile(missingKeyPath))));
+
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code(), exception.failure().code());
   }
 
   @Test

@@ -30,7 +30,18 @@ class ReplayModelValidationTest {
         IllegalArgumentException.class,
         () ->
             new LedgerPlanReplayDetails(
-                "PARSED", "plan-1", 1, "open-book", "inspect-book", 0, true, " "));
+                "PARSED",
+                "plan-1",
+                1,
+                "open-book",
+                "inspect-book",
+                0,
+                true,
+                "SUCCEEDED",
+                1,
+                0,
+                0,
+                " "));
   }
 
   @Test

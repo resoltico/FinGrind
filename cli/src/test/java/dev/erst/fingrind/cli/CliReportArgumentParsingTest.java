@@ -19,9 +19,9 @@ class CliReportArgumentParsingTest {
     Path bookFile = Path.of("book.sqlite");
     Path keyFile = Path.of("book.key");
 
-    CliCommand.InspectBook defaultInspectBook =
+    InspectBook defaultInspectBook =
         assertInstanceOf(
-            CliCommand.InspectBook.class,
+            InspectBook.class,
             CliArguments.parse(
                 new String[] {
                   "inspect-book",
@@ -30,9 +30,9 @@ class CliReportArgumentParsingTest {
                   "--book-key-file",
                   keyFile.toString()
                 }));
-    CliCommand.InspectBook inspectBook =
+    InspectBook inspectBook =
         assertInstanceOf(
-            CliCommand.InspectBook.class,
+            InspectBook.class,
             CliArguments.parse(
                 new String[] {
                   "inspect-book",
@@ -43,9 +43,9 @@ class CliReportArgumentParsingTest {
                   "--output",
                   "human"
                 }));
-    CliCommand.TrialBalance defaultTrialBalance =
+    TrialBalance defaultTrialBalance =
         assertInstanceOf(
-            CliCommand.TrialBalance.class,
+            TrialBalance.class,
             CliArguments.parse(
                 new String[] {
                   "trial-balance",
@@ -54,9 +54,9 @@ class CliReportArgumentParsingTest {
                   "--book-key-file",
                   keyFile.toString()
                 }));
-    CliCommand.TrialBalance trialBalance =
+    TrialBalance trialBalance =
         assertInstanceOf(
-            CliCommand.TrialBalance.class,
+            TrialBalance.class,
             CliArguments.parse(
                 new String[] {
                   "trial-balance",
@@ -69,9 +69,9 @@ class CliReportArgumentParsingTest {
                   "--output",
                   "csv"
                 }));
-    CliCommand.AccountLedger defaultAccountLedger =
+    AccountLedger defaultAccountLedger =
         assertInstanceOf(
-            CliCommand.AccountLedger.class,
+            AccountLedger.class,
             CliArguments.parse(
                 new String[] {
                   "account-ledger",
@@ -82,9 +82,9 @@ class CliReportArgumentParsingTest {
                   "--account-code",
                   "1000"
                 }));
-    CliCommand.AccountLedger accountLedger =
+    AccountLedger accountLedger =
         assertInstanceOf(
-            CliCommand.AccountLedger.class,
+            AccountLedger.class,
             CliArguments.parse(
                 new String[] {
                   "account-ledger",
@@ -101,9 +101,9 @@ class CliReportArgumentParsingTest {
                   "--output",
                   "human"
                 }));
-    CliCommand.PeriodSummary periodSummary =
+    PeriodSummary periodSummary =
         assertInstanceOf(
-            CliCommand.PeriodSummary.class,
+            PeriodSummary.class,
             CliArguments.parse(
                 new String[] {
                   "period-summary",
@@ -118,9 +118,9 @@ class CliReportArgumentParsingTest {
                   "--output",
                   "csv"
                 }));
-    CliCommand.PeriodSummary defaultPeriodSummary =
+    PeriodSummary defaultPeriodSummary =
         assertInstanceOf(
-            CliCommand.PeriodSummary.class,
+            PeriodSummary.class,
             CliArguments.parse(
                 new String[] {
                   "period-summary",

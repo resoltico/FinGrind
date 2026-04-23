@@ -26,7 +26,9 @@ It is a good fit if you want:
 - one book file per business,
 - declared accounts before posting,
 - predictable rejection of bad input,
-- reporting you can read yourself or hand to automation.
+- reporting you can read yourself or hand to automation,
+- one machine-readable contract surface, via `capabilities` and the template commands, for the
+  same request and plan rules humans use.
 
 ## What Changes
 

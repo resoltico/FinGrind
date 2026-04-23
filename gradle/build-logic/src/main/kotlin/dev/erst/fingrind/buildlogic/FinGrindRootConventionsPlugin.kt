@@ -52,7 +52,14 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                                 "docs/**/*.json",
                                 "examples/**/*.json",
                             )
-                            exclude("**/build/**", "**/.claude/**", "**/.codex/**", "**/.gradle/**")
+                            exclude(
+                                "**/build/**",
+                                "**/.claude/**",
+                                "**/.codex/**",
+                                "**/.gradle/**",
+                                "**/.local/**",
+                                "tmp/**",
+                            )
                         }
                     )
                     trimTrailingWhitespace()

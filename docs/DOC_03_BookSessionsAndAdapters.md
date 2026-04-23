@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: ADAPTERS
 updated: "2026-04-23"
 route:
@@ -203,14 +203,18 @@ public final class SqliteStorageFailureException extends IllegalStateException
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
-## `SqliteBookSession`, `SqliteBookSessionMode`, And `SqliteBookSessions`
+## `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
 
 `SqliteBookSession` is the public SQLite-backed FinGrind session surface, while
-`SqliteBookSessionMode` names the caller intent and `SqliteBookSessions` owns session creation.
+`SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
+`SqlitePassphraseResolver` describe secret resolution without leaking CLI-specific prompt policy,
+and `SqliteBookSessions` owns session creation.
 
 ```java
 public interface SqliteBookSession extends LedgerPlanSession, AutoCloseable
 public enum SqliteBookSessionMode
+public enum SqlitePassphraseIntent
+public interface SqlitePassphraseResolver
 public final class SqliteBookSessions
 ```
 
@@ -218,13 +222,24 @@ public final class SqliteBookSessions
   exporting the internal store/lifecycle implementation types
 - `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
   `READ_WRITE_CREATE`, and `PLAN_EXECUTION`
-- `SqliteBookSessions.open(...)`: opens one book session immediately for the selected caller
-  intent
-- `SqliteBookSessions.openResolved(...)`: primes the session and transfers ownership only after the
-  selected book can be opened successfully
+- `SqlitePassphraseIntent`: distinguishes whether the caller is resolving an existing book secret
+  or a confirmed replacement/new secret before `openBook(...)` or `rekeyBook(...)`
+- `SqlitePassphraseResolver`: resolves the contract-level `BookAccess.PassphraseSource` plus one
+  `SqlitePassphraseIntent` into a zeroizable `SqliteBookPassphrase`, so external tooling can stay
+  on the neutral `BookAccess` seam instead of passing adapter-native secret objects around
+- `SqliteBookSessions.open(...)`: constructs one SQLite-backed session boundary for the selected
+  caller intent without requiring an eager SQLite open; overloads accept either an already-resolved
+  `SqliteBookPassphrase` or the higher-level `BookAccess` plus `SqlitePassphraseResolver`
+- `SqliteBookSessions.openResolved(...)`: primes the session according to the selected access mode
+  and transfers ownership only after that priming succeeds; missing books may still resolve lazily
+  for read-only or existing-only flows that intentionally defer opening, while create and plan
+  modes resolve secrets eagerly so initialization and rekey prompts can enforce new-secret policy
 - Session shape: `SqliteBookSession` keeps the administration, posting, read, and ledger-plan
   seams on one boundary while still exposing direct `findAccount(...)`, `findExistingPosting(...)`,
-  and `rekeyBook(...)` helpers needed by CLI/tooling flows
-- Internal split: `SqlitePostingFactStore`, `SqliteStoreContext`, `SqliteStoreLifecycle`,
-  `SqliteStoreReadOperations`, `SqliteStoreMutationOperations`, `SqlitePostingReader`, and
-  `SqliteReportReader` now remain implementation collaborators behind the public session API
+  and `rekeyBook(...)` helpers needed by CLI/tooling flows; rekeying now consumes a
+  `BookAccess.PassphraseSource` plus `SqlitePassphraseResolver` so the same safe source-resolution
+  policy applies to both open and rotate flows
+- Internal split: `SqlitePostingFactStore` is now a thin session wrapper over
+  `SqliteStoreContext`, while `SqliteStoreLifecycle`, `SqliteStoreReadOperations`,
+  `SqliteStoreMutationOperations`, `SqlitePostingReader`, and `SqliteReportReader` remain the
+  focused implementation collaborators behind the public session API

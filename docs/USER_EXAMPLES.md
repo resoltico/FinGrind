@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: USER_EXAMPLES
 updated: "2026-04-23"
 route:
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.24.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.24.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.25.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -242,8 +242,27 @@ That plan:
 Checked-in plan examples:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
+- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
+
+If you want the plan itself to inspect paginated state before it finishes, use the checked-in
+query example:
+
+- `./ledger-plan-query-request.json`: copy [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
+
+```bash
+fingrind \
+  execute-plan \
+  --book-file ./acme-plan.sqlite \
+  --book-key-file ./acme.book-key \
+  --request-file ./ledger-plan-query-request.json
+```
+
+That committed journal keeps `count`, `pageLimit`, optional `nextCursor`, `hasMore`, and grouped
+`account` / `posting` facts for the successful query steps. One checked-in response is at
+[examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json).
 
 ## Query The Committed History
 

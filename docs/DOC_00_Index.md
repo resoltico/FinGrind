@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: INDEX
 updated: "2026-04-23"
 route:
@@ -135,10 +135,11 @@ route:
 | `ContractTemplates.LedgerPlanStepTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.DeclareAccountTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.LedgerAssertionTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractErrors` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, And `ContractDecision` |
-| `ContractErrors.Descriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, And `ContractDecision` |
-| `ContractFailure` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, And `ContractDecision` |
-| `ContractDecision` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, And `ContractDecision` |
+| `ContractErrors` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
+| `ContractErrors.Descriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
+| `ContractFailure` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
+| `ContractDecision` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
+| `ContractFailureException` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `BookMigrationPolicy` | `DOC_02_ProtocolAndDiscovery.md` | `BookMigrationPolicy` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookReadService` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
@@ -227,8 +228,10 @@ route:
 | `ManagedSqliteRuntimeUnavailableException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException` |
 | `UnsupportedSqliteCompileOptionsException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException` |
 | `SqliteStorageFailureException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException` |
-| `SqliteBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, And `SqliteBookSessions` |
-| `SqliteBookSessionMode` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, And `SqliteBookSessions` |
-| `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, And `SqliteBookSessions` |
+| `SqliteBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqliteBookSessionMode` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePassphraseIntent` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqlitePassphraseResolver` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
+| `SqliteBookSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookSession`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `App` | `DOC_04_CliAndPdfAdapters.md` | `App` |
 | `PdfReportService` | `DOC_04_CliAndPdfAdapters.md` | `PdfReportService` |

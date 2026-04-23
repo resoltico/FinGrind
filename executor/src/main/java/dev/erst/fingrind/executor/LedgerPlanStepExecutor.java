@@ -112,9 +112,7 @@ final class LedgerPlanStepExecutor {
     return switch (bookAdministrationService.declareAccount(command)) {
       case DeclareAccountResult.Declared declared ->
           LedgerPlanOutcomeMapper.stepSucceeded(
-              LedgerFact.text("accountCode", declared.account().accountCode().value()),
-              LedgerFact.text("normalBalance", declared.account().normalBalance().wireValue()),
-              LedgerFact.flag("active", declared.account().active()));
+              LedgerPlanFactMapper.declaredAccountFacts(declared.account()));
       case DeclareAccountResult.Rejected rejected ->
           LedgerPlanOutcomeMapper.administrationRejection(rejected.rejection());
     };
@@ -157,8 +155,7 @@ final class LedgerPlanStepExecutor {
     return switch (bookReadService.listAccounts(step.query())) {
       case ListAccountsResult.Listed listed ->
           LedgerPlanOutcomeMapper.stepSucceeded(
-              LedgerFact.count("count", listed.page().accounts().size()),
-              LedgerFact.flag("hasMore", listed.page().hasMore()));
+              LedgerPlanFactMapper.accountPageFacts(listed.page()));
       case ListAccountsResult.Rejected rejected ->
           LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
     };
@@ -178,8 +175,7 @@ final class LedgerPlanStepExecutor {
     return switch (bookReadService.listPostings(step.query())) {
       case ListPostingsResult.Listed listed ->
           LedgerPlanOutcomeMapper.stepSucceeded(
-              LedgerFact.count("count", listed.page().postings().size()),
-              LedgerFact.flag("hasMore", listed.page().hasMore()));
+              LedgerPlanFactMapper.postingPageFacts(listed.page()));
       case ListPostingsResult.Rejected rejected ->
           LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
     };

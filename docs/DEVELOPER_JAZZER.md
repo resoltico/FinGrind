@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: DEVELOPER_JAZZER
 updated: "2026-04-23"
 route:
@@ -114,6 +114,10 @@ jazzer/bin/clean-local-findings
 jazzer/bin/clean-local-corpus
 ```
 
+The cleanup wrappers are intentionally best-effort around preserved corpus directories: they skip
+corpus subtrees when clearing findings, and they emit warnings instead of aborting if the host
+filesystem leaves one corpus root temporarily undeletable.
+
 ## Harness Inventory
 
 | Harness | Focus | Current Assertions |
@@ -138,7 +142,7 @@ The nested Jazzer build also includes normal JUnit deterministic tests that cove
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `ledger-plan-request` | `5` | valid plan parse, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
+| `ledger-plan-request` | `6` | valid plan execution, structured list-query journal facts, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `5` | explicit lifecycle setup plus success, invalid actor, exponent rejection, invalid missing reversal reason, missing reversal target |
 | `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, Unicode round-trip, exponent rejection, invalid type, invalid missing reversal reason, missing reversal target |
 

@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.24.0"
+version: "0.25.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
 updated: "2026-04-23"
 route:
@@ -86,6 +86,9 @@ jazzer/bin/regression --console=plain
 jazzer/bin/clean-local-findings
 jazzer/bin/clean-local-corpus
 ```
+
+If the host filesystem leaves one preserved corpus root unreadable or temporarily undeletable,
+the cleanup commands now emit a warning and continue instead of aborting the whole wrapper run.
 
 ## Output Model
 

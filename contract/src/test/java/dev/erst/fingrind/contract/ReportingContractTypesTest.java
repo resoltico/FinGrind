@@ -286,11 +286,20 @@ class ReportingContractTypesTest {
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
 
-    assertEquals(10, descriptors.size());
+    assertEquals(13, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
             .anyMatch(descriptor -> "interactive-prompt-unavailable".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream()
+            .anyMatch(descriptor -> "managed-runtime-failure".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream()
+            .anyMatch(descriptor -> "storage-runtime-failure".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream()
+            .anyMatch(descriptor -> "pdf-export-failure".equals(descriptor.code())));
     assertEquals("invalid-page-cursor", ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code());
     assertTrue(
         ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED
@@ -313,9 +322,10 @@ class ReportingContractTypesTest {
         rejected.fold(ignored -> "accepted", failure -> "rejected:" + failure.code()));
     assertEquals("ok", accepted.requireAccepted());
     assertSame(withoutCause, rejected.requireRejected());
-    assertEquals(
-        "Bad cursor",
-        assertThrows(IllegalStateException.class, rejected::requireAccepted).getMessage());
+    ContractFailureException failureException =
+        assertThrows(ContractFailureException.class, rejected::requireAccepted);
+    assertEquals("Bad cursor", failureException.getMessage());
+    assertSame(withoutCause, failureException.failure());
     assertEquals(
         "Expected a rejected contract decision.",
         assertThrows(IllegalStateException.class, accepted::requireRejected).getMessage());

@@ -5,11 +5,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-04-23
+
+### Changed
+
+- `capabilities.requestShapes` now publishes executable JSON Schema documents alongside the
+  existing field-descriptor arrays, so agents and external tooling can consume one authoritative
+  machine contract instead of re-implementing validation from prose.
+- The executable machine-contract schema builder is now split into focused posting,
+  declare-account, ledger-plan, and shared-support collaborators instead of one cross-domain
+  god-file.
+- The public SQLite session seam now accepts the contract-level `BookAccess` tuple together with
+  `SqlitePassphraseResolver` and `SqlitePassphraseIntent`, and `rekey-book` follows that same
+  safe source-resolution contract instead of exposing adapter-native secret objects at the public
+  boundary.
+
 ### Fixed
+
+- `open-book` now creates missing parent directories consistently even when the default SQLite CLI
+  workflow primes a create-capable session before initialization, so nested `--book-file` paths
+  work with key-file, stdin, and interactive-prompt passphrase sources instead of leaking
+  `SQLITE_CANTOPEN`.
+- Missing-book CLI workflows now preserve deterministic `administration-book-not-initialized`,
+  `query-book-not-initialized`, and `posting-book-not-initialized` outcomes instead of leaking
+  SQLite `runtime-failure` opens when the selected book file does not exist.
+- `execute-plan` now keeps structured success facts for declared accounts, balance assertions, and
+  list-query steps, including row groups and pagination state, instead of collapsing plan query
+  outcomes to bare counters.
+- Runtime CLI failures are now classified as `managed-runtime-failure`,
+  `storage-runtime-failure`, `pdf-export-failure`, or `runtime-failure` as appropriate, instead of
+  collapsing all thrown runtime problems into one coarse public code.
+- The split CLI command records now keep package-private constructors and an immutable parser
+  registry, and the remaining `SqlitePostingFactStore` pass-through overrides were collapsed into
+  `SqliteStoreContext`, so the refactor no longer carries PMD-hostile adapter shell layers.
+- The deterministic Jazzer ledger-plan harness now executes parsed plans against the in-memory
+  ledger-plan service, and the committed seed set includes a successful list-query plan that pins
+  structured journal facts.
+- `jazzer/bin/clean-local-findings` and `jazzer/bin/clean-local-corpus` now traverse local run
+  state without descending into preserved corpus subtrees, and they downgrade undeletable corpus
+  remnants to explicit warnings instead of aborting the cleanup command. The root `spotless`
+  project-file sweep now also excludes ignored `.local/` runtime state so one unreadable local
+  corpus cannot poison `./check.sh`.
 - Added `scripts/verify-public-container-surface.sh` plus mock-backed shell regression coverage,
   and updated the release protocol to use that deterministic operator-side verifier so public
   container checks now assert machine-readable `version --output json`, exact human
   trial-balance rows, and PDF output instead of relying on ambiguous ad hoc terminal parsing.
+
+### Documentation
+
+- Replaced machine-specific absolute Markdown links in contributor and Jazzer docs with portable
+  relative or home-path references.
+- Clarified the documented Docker smoke gate stage, ledger-plan list-query defaults, and SQLite
+  lazy-open versus missing-book semantics so the second-pass docs now match the live CLI parser
+  and store lifecycle behavior exactly.
+- Refreshed the checked-in ledger-plan response fixtures from live bundle runs, added a runnable
+  structured-query plan example, and updated the user/docs index guides for executable request
+  schemas plus the split runtime-failure vocabulary.
+- Corrected the SQLite architecture docs so they now describe `SqlitePostingFactStore` as the thin
+  wrapper it is after the lifecycle/context collapse, and so they route storage failures to the
+  current `storage-runtime-failure` / `managed-runtime-failure` taxonomy instead of the old single
+  `runtime-failure` bucket.
+- Tightened the release protocol so a dirty primary checkout with the intended release payload now
+  has an explicit recovery path when Step 1 first merges a release-critical PR and changes
+  `origin/main` underneath the pending release work.
 
 ## [0.24.0] - 2026-04-23
 
@@ -821,7 +879,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.25.0
 [0.24.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.24.0
 [0.23.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.23.0
 [0.22.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.22.0

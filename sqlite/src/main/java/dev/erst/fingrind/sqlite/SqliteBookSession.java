@@ -31,8 +31,10 @@ public interface SqliteBookSession extends LedgerPlanSession, AutoCloseable {
   /** Finds one committed posting by idempotency key when it exists. */
   Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey);
 
-  /** Rekeys one initialized FinGrind book and verifies the replacement secret durably. */
-  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase);
+  /** Rekeys one initialized FinGrind book using a contract-level replacement secret source. */
+  dev.erst.fingrind.contract.ContractDecision<RekeyBookResult> rekeyBook(
+      dev.erst.fingrind.contract.BookAccess.PassphraseSource replacementPassphraseSource,
+      SqlitePassphraseResolver passphraseResolver);
 
   @Override
   void close();
