@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Clock;
@@ -50,10 +51,10 @@ public final class MachineContract {
         identity.version(),
         new StorageSurfaceDescriptor(ProtocolCatalog.storageEngines(), "single-sqlite-file"),
         new CommandCatalogDescriptor(
-            ProtocolCatalog.operationNames(OperationCategory.DISCOVERY),
-            ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION),
-            ProtocolCatalog.operationNames(OperationCategory.QUERY),
-            ProtocolCatalog.operationNames(OperationCategory.WRITE)),
+            ProtocolCatalog.operationIds(OperationCategory.DISCOVERY),
+            ProtocolCatalog.operationIds(OperationCategory.ADMINISTRATION),
+            ProtocolCatalog.operationIds(OperationCategory.QUERY),
+            ProtocolCatalog.operationIds(OperationCategory.WRITE)),
         MachineContractDescriptors.requestInput(),
         MachineContractDescriptors.requestShapes(),
         MachineContractDescriptors.responseModel(),
@@ -81,11 +82,11 @@ public final class MachineContract {
         LocalDate.now(clock).toString(),
         List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(
-                "1000", JournalLine.EntrySide.DEBIT.wireValue(), "EUR", "10.00"),
+                "1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
             new ContractTemplates.JournalLineTemplateDescriptor(
-                "2000", JournalLine.EntrySide.CREDIT.wireValue(), "EUR", "10.00")),
+                "2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")),
         new ContractTemplates.ProvenanceTemplateDescriptor(
-            "operator-1", ActorType.HUMAN.wireValue(), "command-1", "idem-1", "cause-1", null),
+            "operator-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
         null);
   }
 
@@ -96,43 +97,47 @@ public final class MachineContract {
         "plan-1",
         List.of(
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
-                "initialize-book", LedgerStepKind.OPEN_BOOK.wireValue(), null, null, null, null),
+                "initialize-book", LedgerStepKind.OPEN_BOOK, null, null, null, null, null),
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "declare-cash",
-                LedgerStepKind.DECLARE_ACCOUNT.wireValue(),
+                LedgerStepKind.DECLARE_ACCOUNT,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "1000", "Cash", NormalBalance.DEBIT.wireValue()),
+                    "1000", "Cash", NormalBalance.DEBIT),
+                null,
                 null,
                 null),
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "declare-revenue",
-                LedgerStepKind.DECLARE_ACCOUNT.wireValue(),
+                LedgerStepKind.DECLARE_ACCOUNT,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "2000", "Revenue", NormalBalance.CREDIT.wireValue()),
+                    "2000", "Revenue", NormalBalance.CREDIT),
+                null,
                 null,
                 null),
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "post-journal",
-                LedgerStepKind.POST_ENTRY.wireValue(),
+                LedgerStepKind.POST_ENTRY,
                 requestTemplate(clock),
+                null,
                 null,
                 null,
                 null),
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "assert-cash-balance",
-                LedgerStepKind.ASSERT.wireValue(),
+                LedgerStepKind.ASSERT,
+                null,
                 null,
                 null,
                 new ContractTemplates.LedgerAssertionTemplateDescriptor(
-                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS.wireValue(),
+                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                     "1000",
                     null,
                     null,
                     "EUR",
                     "10.00",
-                    NormalBalance.DEBIT.wireValue(),
+                    BalanceSide.DEBIT,
                     null),
                 null)));
   }

@@ -1,0 +1,9 @@
+{
+  "planId": "play-1",
+  "steps": [
+    {
+      "stepId": "open",
+      "kind": "list-postings"
+    }
+  ]
+}

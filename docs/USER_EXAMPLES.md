@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: USER_EXAMPLES
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.25.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.26.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.26.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 

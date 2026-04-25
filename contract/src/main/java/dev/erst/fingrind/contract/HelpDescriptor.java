@@ -15,7 +15,8 @@ public record HelpDescriptor(
     List<ExitCodeDescriptor> exitCodes,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
-    EnvironmentDescriptor environment) {
+    EnvironmentDescriptor environment)
+    implements ContractDiscoveryDescriptor {
   /** Validates one help descriptor payload. */
   public HelpDescriptor {
     application = ContractDescriptorValidation.requireText(application, "application");

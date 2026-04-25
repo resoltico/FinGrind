@@ -47,24 +47,30 @@ public final class ProtocolCatalog {
   /** Returns operation names in stable order for one capabilities group. */
   public static List<String> operationNames(OperationCategory category) {
     Objects.requireNonNull(category, "category");
+    return operationIds(category).stream().map(OperationId::wireName).toList();
+  }
+
+  /** Returns canonical operation identifiers in stable order for one capabilities group. */
+  public static List<OperationId> operationIds(OperationCategory category) {
+    Objects.requireNonNull(category, "category");
     return OPERATIONS.stream()
         .filter(operation -> operation.category() == category)
-        .map(operation -> operation.id().wireName())
+        .map(ProtocolOperation::id)
         .toList();
   }
 
   /** Returns the canonical storage engine identifiers. */
-  public static List<String> storageEngines() {
+  public static List<StorageEngine> storageEngines() {
     return ProtocolCatalogFacts.storageEngines();
   }
 
   /** Returns the canonical success-status identifiers. */
-  public static List<String> successStatuses() {
+  public static List<ProtocolSuccessStatus> successStatuses() {
     return ProtocolCatalogFacts.successStatuses();
   }
 
   /** Returns the canonical deterministic rejection-status identifiers. */
-  public static List<String> rejectionStatuses() {
+  public static List<ProtocolRejectionStatus> rejectionStatuses() {
     return ProtocolCatalogFacts.rejectionStatuses();
   }
 
@@ -88,19 +94,89 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.planExecution();
   }
 
+  /** Returns the canonical direct-Java runtime-distribution identifier. */
+  public static RuntimeDistribution directJavaRuntimeDistribution() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().directJavaRuntimeDistribution();
+  }
+
+  /** Returns the canonical source-checkout runtime-distribution identifier. */
+  public static RuntimeDistribution sourceCheckoutRuntimeDistribution() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().sourceCheckoutRuntimeDistribution();
+  }
+
+  /** Returns the canonical container-image runtime-distribution identifier. */
+  public static RuntimeDistribution containerRuntimeDistribution() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().containerRuntimeDistribution();
+  }
+
+  /** Returns the canonical bundle runtime-distribution identifier. */
+  public static RuntimeDistribution bundleRuntimeDistribution() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().bundleRuntimeDistribution();
+  }
+
+  /** Returns the canonical public CLI distribution identifier. */
+  public static PublicCliDistribution publicCliDistribution() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().publicCliDistribution();
+  }
+
   /** Returns supported self-contained public CLI bundle targets. */
-  public static List<String> supportedPublicCliBundleTargets() {
+  public static List<PublicCliBundleTarget> supportedPublicCliBundleTargets() {
     return ProtocolCatalogFacts.publicDistributionContract().supportedPublicCliBundleTargets();
   }
 
-  /** Returns operating systems outside the current self-contained public CLI contract. */
-  public static List<String> unsupportedPublicCliOperatingSystems() {
-    return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliOperatingSystems();
+  /** Returns bundle targets outside the current self-contained public CLI contract. */
+  public static List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets() {
+    return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliBundleTargets();
   }
 
   /** Returns the canonical minimum Java line for source-checkout execution. */
   public static String sourceCheckoutJava() {
     return ProtocolCatalogFacts.runtimeEnvironmentContract().sourceCheckoutJava();
+  }
+
+  /** Returns the canonical storage-driver identifier. */
+  public static StorageDriver storageDriver() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().storageDriver();
+  }
+
+  /** Returns the canonical storage-engine identifier. */
+  public static StorageEngine storageEngine() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().storageEngine();
+  }
+
+  /** Returns the canonical book-protection mode. */
+  public static BookProtectionMode bookProtectionMode() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().bookProtectionMode();
+  }
+
+  /** Returns the canonical default book cipher. */
+  public static BookCipher defaultBookCipher() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().defaultBookCipher();
+  }
+
+  /** Returns the canonical SQLite library mode. */
+  public static SqliteLibraryMode sqliteLibraryMode() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteLibraryMode();
+  }
+
+  /** Returns the canonical SQLite library environment-variable name. */
+  public static String sqliteLibraryEnvironmentVariable() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteLibraryEnvironmentVariable();
+  }
+
+  /** Returns the canonical bundle-home system property name. */
+  public static String sqliteBundleHomeSystemProperty() {
+    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteBundleHomeSystemProperty();
+  }
+
+  /** Returns the canonical minimum SQLite version for the managed runtime surface. */
+  public static String requiredMinimumSqliteVersion() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiredMinimumSqliteVersion();
+  }
+
+  /** Returns the canonical SQLite3 Multiple Ciphers version for the managed runtime surface. */
+  public static String requiredSqlite3mcVersion() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiredSqlite3mcVersion();
   }
 
   private static Stream<Map.Entry<String, ProtocolOperation>> tokensFor(

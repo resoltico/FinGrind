@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh"]
@@ -47,6 +47,9 @@ The container image itself also stays on the same managed-runtime policy as the 
   canonical Docker build-context files back under `cli/build/` before `docker buildx` runs, so
   Docker and bundle publication cannot drift onto competing private-runtime closures or stale
   in-checkout leftovers
+- it generates the Docker entrypoint and verifies the image's runtime-surface disclosure from the
+  same protocol-owned contract resources that drive bundle metadata, so the container does not
+  carry a parallel handwritten runtime-distribution or storage contract
 - it sets `fingrind.runtime.distribution=container-image` so `capabilities` discloses the active
   distribution surface explicitly
 

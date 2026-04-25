@@ -1,0 +1,4 @@
+{
+  "requiredMinimumSqliteVersion": "3.53.0",
+  "requiredSqlite3mcVersion": "2.3.3"
+}

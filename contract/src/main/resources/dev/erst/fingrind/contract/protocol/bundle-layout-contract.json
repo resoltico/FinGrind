@@ -1,0 +1,52 @@
+{
+  "bundleTargets": {
+    "macos-aarch64": {
+      "operatingSystemId": "macos",
+      "architectureId": "aarch64",
+      "archiveFormat": "tar.gz",
+      "launcherPath": "bin/fingrind",
+      "launcherCommand": "./bin/fingrind",
+      "sqliteLibraryFileName": "libsqlite3.dylib"
+    },
+    "macos-x86_64": {
+      "operatingSystemId": "macos",
+      "architectureId": "x86_64",
+      "archiveFormat": "tar.gz",
+      "launcherPath": "bin/fingrind",
+      "launcherCommand": "./bin/fingrind",
+      "sqliteLibraryFileName": "libsqlite3.dylib"
+    },
+    "linux-x86_64": {
+      "operatingSystemId": "linux",
+      "architectureId": "x86_64",
+      "archiveFormat": "tar.gz",
+      "launcherPath": "bin/fingrind",
+      "launcherCommand": "./bin/fingrind",
+      "sqliteLibraryFileName": "libsqlite3.so.0"
+    },
+    "linux-aarch64": {
+      "operatingSystemId": "linux",
+      "architectureId": "aarch64",
+      "archiveFormat": "tar.gz",
+      "launcherPath": "bin/fingrind",
+      "launcherCommand": "./bin/fingrind",
+      "sqliteLibraryFileName": "libsqlite3.so.0"
+    },
+    "windows-x86_64": {
+      "operatingSystemId": "windows",
+      "architectureId": "x86_64",
+      "archiveFormat": "zip",
+      "launcherPath": "bin/fingrind.ps1",
+      "launcherCommand": ".\\bin\\fingrind.ps1",
+      "sqliteLibraryFileName": "sqlite3.dll"
+    },
+    "windows-aarch64": {
+      "operatingSystemId": "windows",
+      "architectureId": "aarch64",
+      "archiveFormat": "zip",
+      "launcherPath": "bin/fingrind.ps1",
+      "launcherCommand": ".\\bin\\fingrind.ps1",
+      "sqliteLibraryFileName": "sqlite3.dll"
+    }
+  }
+}

@@ -12,85 +12,145 @@ final class MachineContractPostEntrySchemas {
 
   static Map<String, Object> postEntrySchema() {
     return MachineContractSchemaSupport.rootObjectSchema(
-        "Canonical posting request JSON document.",
-        MachineContractSchemaSupport.orderedMap(
-            ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-            MachineContractSchemaSupport.dateStringSchema("ISO-8601 local effective date."),
-            ProtocolPostEntryFields.TopLevel.LINES,
-            MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty journal lines.", lineSchema(), 2),
-            ProtocolPostEntryFields.TopLevel.PROVENANCE,
-            provenanceSchema(),
-            ProtocolPostEntryFields.TopLevel.REVERSAL,
-            reversalSchema()),
-        List.of(
-            ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-            ProtocolPostEntryFields.TopLevel.LINES,
-            ProtocolPostEntryFields.TopLevel.PROVENANCE));
+        "Canonical posting request JSON document.", topLevelFields());
   }
 
   static Map<String, Object> postEntrySchemaWithoutDialect() {
     return MachineContractSchemaSupport.stripDialect(postEntrySchema());
   }
 
-  private static Map<String, Object> lineSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "One balanced journal line.",
-        MachineContractSchemaSupport.orderedMap(
-            ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE,
-            MachineContractSchemaSupport.nonBlankStringSchema("Declared book-local account code."),
-            ProtocolPostEntryFields.JournalLine.SIDE,
-            MachineContractSchemaSupport.enumStringSchema(
-                "Journal side carried by this line.", JournalLine.EntrySide.wireValues()),
-            ProtocolPostEntryFields.JournalLine.CURRENCY_CODE,
-            MachineContractSchemaSupport.nonBlankStringSchema("Three-letter ISO currency code."),
-            ProtocolPostEntryFields.JournalLine.AMOUNT,
-            MachineContractSchemaSupport.decimalAmountStringSchema(
-                "Plain decimal string greater than zero without exponent notation.")),
+  static ContractRequestShapes.PostEntryRequestShapeDescriptor descriptor() {
+    return new ContractRequestShapes.PostEntryRequestShapeDescriptor(
+        MachineContractSchemaSupport.requestFieldDescriptors(topLevelFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(lineFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(provenanceFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(reversalFields()),
         List.of(
-            ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE,
-            ProtocolPostEntryFields.JournalLine.SIDE,
-            ProtocolPostEntryFields.JournalLine.CURRENCY_CODE,
-            ProtocolPostEntryFields.JournalLine.AMOUNT));
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "lineSide", JournalLine.EntrySide.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "actorType", ActorType.wireValues())),
+        postEntrySchema());
+  }
+
+  private static Map<String, Object> lineSchema() {
+    return MachineContractSchemaSupport.objectSchema("One balanced journal line.", lineFields());
   }
 
   private static Map<String, Object> provenanceSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Caller-supplied provenance captured before commit.",
-        MachineContractSchemaSupport.orderedMap(
-            ProtocolPostEntryFields.Provenance.ACTOR_ID,
-            MachineContractSchemaSupport.nonBlankStringSchema("Stable actor identifier."),
-            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-            MachineContractSchemaSupport.enumStringSchema(
-                "Live actor type.", ActorType.wireValues()),
-            ProtocolPostEntryFields.Provenance.COMMAND_ID,
-            MachineContractSchemaSupport.nonBlankStringSchema("Caller-generated command identity."),
-            ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
-            MachineContractSchemaSupport.nonBlankStringSchema("Book-local idempotency key."),
-            ProtocolPostEntryFields.Provenance.CAUSATION_ID,
-            MachineContractSchemaSupport.nonBlankStringSchema("Upstream causation identifier."),
-            ProtocolPostEntryFields.Provenance.CORRELATION_ID,
-            MachineContractSchemaSupport.nonBlankStringSchema("Optional correlation identifier.")),
-        List.of(
-            ProtocolPostEntryFields.Provenance.ACTOR_ID,
-            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-            ProtocolPostEntryFields.Provenance.COMMAND_ID,
-            ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
-            ProtocolPostEntryFields.Provenance.CAUSATION_ID));
+        "Caller-supplied provenance captured before commit.", provenanceFields());
   }
 
   private static Map<String, Object> reversalSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Optional reversal target descriptor.",
-        MachineContractSchemaSupport.orderedMap(
-            ProtocolPostEntryFields.Reversal.PRIOR_POSTING_ID,
+        "Optional reversal target descriptor.", reversalFields());
+  }
+
+  private static List<MachineContractFieldSpec> topLevelFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+            "ISO-8601 local date that makes the journal entry effective.",
+            MachineContractSchemaSupport.dateStringSchema(
+                "ISO-8601 local date that makes the journal entry effective.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.TopLevel.LINES,
+            "Balanced non-empty array of journal lines for one currency.",
+            MachineContractSchemaSupport.arraySchema(
+                "Balanced non-empty array of journal lines for one currency.", lineSchema(), 2)),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.TopLevel.PROVENANCE,
+            "Caller-supplied request provenance captured before commit.",
+            provenanceSchema()),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.REVERSAL,
+            "Optional reversal target descriptor for additive reversal postings.",
+            reversalSchema()),
+        MachineContractFieldSpec.forbidden(
+            ProtocolPostEntryFields.TopLevel.CORRECTION,
+            "Legacy correction payloads are hard-broken and no longer accepted."));
+  }
+
+  private static List<MachineContractFieldSpec> lineFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE,
+            "Declared book-local account code for this journal line.",
             MachineContractSchemaSupport.nonBlankStringSchema(
-                "Committed posting identifier to reverse."),
+                "Declared book-local account code for this journal line.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.JournalLine.SIDE,
+            "Journal side that carries the line amount.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Journal side that carries the line amount.", JournalLine.EntrySide.wireValues())),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.JournalLine.CURRENCY_CODE,
+            "Three-letter ISO currency code shared by every line in the entry.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Three-letter ISO currency code shared by every line in the entry.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.JournalLine.AMOUNT,
+            "Plain decimal string greater than zero without exponent notation.",
+            MachineContractSchemaSupport.decimalAmountStringSchema(
+                "Plain decimal string greater than zero without exponent notation.")));
+  }
+
+  private static List<MachineContractFieldSpec> provenanceFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Provenance.ACTOR_ID,
+            "Stable identifier of the actor that initiated the request.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Stable identifier of the actor that initiated the request.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
+            "Actor classification from the live actorType enum vocabulary.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Actor classification from the live actorType enum vocabulary.",
+                ActorType.wireValues())),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Provenance.COMMAND_ID,
+            "Caller-generated command identity for this request.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Caller-generated command identity for this request.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
+            "Book-local idempotency key used to detect duplicate commit attempts.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Book-local idempotency key used to detect duplicate commit attempts.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Provenance.CAUSATION_ID,
+            "Caller-supplied causation identifier for upstream traceability.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Caller-supplied causation identifier for upstream traceability.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.Provenance.CORRELATION_ID,
+            "Optional correlation identifier for joining related calls.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Optional correlation identifier for joining related calls.")),
+        MachineContractFieldSpec.forbidden(
+            ProtocolPostEntryFields.Provenance.RECORDED_AT,
+            "Committed audit timestamps are generated by FinGrind, not caller input."),
+        MachineContractFieldSpec.forbidden(
+            ProtocolPostEntryFields.Provenance.SOURCE_CHANNEL,
+            "Committed source channel is generated by FinGrind, not caller input."));
+  }
+
+  private static List<MachineContractFieldSpec> reversalFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.Reversal.PRIOR_POSTING_ID,
+            "Existing committed posting identifier that this request reverses.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Existing committed posting identifier that this request reverses.")),
+        MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Reversal.REASON,
+            "Human-readable operator explanation attached to this reversal.",
             MachineContractSchemaSupport.nonBlankStringSchema(
-                "Human-readable operator explanation.")),
-        List.of(
-            ProtocolPostEntryFields.Reversal.PRIOR_POSTING_ID,
-            ProtocolPostEntryFields.Reversal.REASON));
+                "Human-readable operator explanation attached to this reversal.")),
+        MachineContractFieldSpec.forbidden(
+            ProtocolPostEntryFields.Reversal.KIND,
+            "Legacy reversal-kind routing is removed; FinGrind is reversal-only."));
   }
 }

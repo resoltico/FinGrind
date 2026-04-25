@@ -146,6 +146,7 @@ actual_filesystem_externalized_cli_build_dir="$(
     HOME='/tmp/fingrind-home' \
         XDG_CACHE_HOME='/cache-root' \
         TMPDIR='/tmp/fingrind-tmp' \
+        FINGRIND_GRADLE_FILESYSTEM_TYPE='smbfs' \
         FINGRIND_GRADLE_PROJECT_BUILD_ROOT='' \
         fg_gradle_project_build_dir "${sample_network_repo_root}" 'cli' false
 )"

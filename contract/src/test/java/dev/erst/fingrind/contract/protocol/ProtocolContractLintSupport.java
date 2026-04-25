@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.RequestFieldPresence;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -372,6 +373,8 @@ class ProtocolContractLintSupport {
                 "desktop-linux",
                 "docker-buildx",
                 "duplicate-idempotency-key",
+                "expected-invalid",
+                "export-ignore",
                 "inactive-account",
                 "invalid-request",
                 "json-envelope",
@@ -383,6 +386,7 @@ class ProtocolContractLintSupport {
                 "posting-workflow",
                 "regression-input",
                 "raw-json",
+                "replay-clean",
                 "reversal-already-exists",
                 "reversal-does-not-negate-target",
                 "reversal-target-not-found",
@@ -394,6 +398,7 @@ class ProtocolContractLintSupport {
                 "test-progress",
                 "unknown-account",
                 "unknown-command",
+                "unexpected-failure",
                 "report-pdf"));
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(
@@ -401,10 +406,21 @@ class ProtocolContractLintSupport {
             .map(dev.erst.fingrind.contract.ContractResponse.ErrorDescriptor::code)
             .toList());
     ids.addAll(LedgerAssertionKind.wireValues());
-    ids.addAll(ProtocolCatalog.successStatuses());
-    ids.addAll(ProtocolCatalog.rejectionStatuses());
-    ids.addAll(ProtocolCatalog.supportedPublicCliBundleTargets());
-    ids.addAll(ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+    ids.addAll(RequestFieldPresence.wireValues());
+    ids.addAll(RuntimeDistribution.wireValues());
+    ids.addAll(PublicCliDistribution.wireValues());
+    ids.addAll(StorageDriver.wireValues());
+    ids.addAll(StorageEngine.wireValues());
+    ids.addAll(BookProtectionMode.wireValues());
+    ids.addAll(BookCipher.wireValues());
+    ids.addAll(SqliteLibraryMode.wireValues());
+    ids.addAll(SqliteRuntimeStatus.wireValues());
+    ids.addAll(ProtocolSuccessStatus.wireValues());
+    ids.addAll(ProtocolRejectionStatus.wireValues());
+    ids.addAll(ProtocolFailureStatus.wireValues());
+    ids.addAll(PublicCliBundleTarget.wireValues());
+    ids.addAll(PlanTransactionMode.wireValues());
+    ids.addAll(PlanFailurePolicy.wireValues());
     return Set.copyOf(ids);
   }
 }

@@ -3,13 +3,16 @@ package dev.erst.fingrind.jazzer.support;
 import dev.erst.fingrind.jazzer.tool.JazzerJson;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
+/** Loads and validates the committed Jazzer topology model used by local tooling and wrappers. */
 final class JazzerTopology {
-  private static final String RESOURCE_PATH = "/dev/erst/fingrind/jazzer/support/jazzer-topology.json";
+  private static final String RESOURCE_PATH =
+      "/dev/erst/fingrind/jazzer/support/jazzer-topology.json";
   private static final Registry REGISTRY = load();
 
   private JazzerTopology() {}
@@ -19,75 +22,98 @@ final class JazzerTopology {
   }
 
   private static Registry load() {
+    return loadResource(RESOURCE_PATH);
+  }
+
+  static Registry loadResource(String resourcePath) {
+    Objects.requireNonNull(resourcePath, "resourcePath must not be null");
     TopologyDocument document;
     try {
-      document = JazzerJson.readResource(RESOURCE_PATH, TopologyDocument.class);
+      document = JazzerJson.readResource(resourcePath, TopologyDocument.class);
     } catch (IOException exception) {
       throw new UncheckedIOException("Failed to load Jazzer topology resource", exception);
     }
+    return load(document);
+  }
 
-    Map<String, JazzerHarness> harnessesByKey = new LinkedHashMap<>();
+  static Registry load(TopologyDocument document) {
+    List<JazzerHarness> harnesses = new ArrayList<>();
+    Map<String, JazzerHarness> harnessesByKey = new ConcurrentHashMap<>();
     for (HarnessDocument harnessDocument : document.harnesses()) {
-      JazzerHarness harness =
-          new JazzerHarness(
-              harnessDocument.key(),
-              harnessDocument.displayName(),
-              harnessDocument.className(),
-              harnessDocument.methodName());
-      JazzerHarness previous = harnessesByKey.put(harness.key(), harness);
-      if (previous != null) {
+      JazzerHarness harness = toHarness(harnessDocument);
+      if (harnessesByKey.putIfAbsent(harness.key(), harness) != null) {
         throw new IllegalArgumentException("Duplicate Jazzer harness key: " + harness.key());
       }
+      harnesses.add(harness);
     }
 
-    Map<String, JazzerRunTarget> runTargetsByKey = new LinkedHashMap<>();
-    Map<String, JazzerRunTarget> runTargetsByTaskName = new LinkedHashMap<>();
+    List<JazzerRunTarget> runTargets = new ArrayList<>();
+    Map<String, JazzerRunTarget> runTargetsByKey = new ConcurrentHashMap<>();
+    Map<String, JazzerRunTarget> runTargetsByTaskName = new ConcurrentHashMap<>();
     for (RunTargetDocument runTargetDocument : document.runTargets()) {
-      List<JazzerHarness> harnesses =
-          runTargetDocument.harnessKeys().stream()
-              .map(
-                  key -> {
-                    JazzerHarness harness = harnessesByKey.get(key);
-                    if (harness == null) {
-                      throw new IllegalArgumentException("Unknown Jazzer harness key in topology: " + key);
-                    }
-                    return harness;
-                  })
-              .toList();
-      JazzerRunTarget runTarget =
-          new JazzerRunTarget(
-              runTargetDocument.key(),
-              runTargetDocument.displayName(),
-              runTargetDocument.taskName(),
-              runTargetDocument.workingDirectory(),
-              runTargetDocument.activeFuzzing(),
-              harnesses);
-      JazzerRunTarget previousTarget = runTargetsByKey.put(runTarget.key(), runTarget);
-      if (previousTarget != null) {
+      JazzerRunTarget runTarget = toRunTarget(runTargetDocument, harnessesByKey);
+      if (runTargetsByKey.putIfAbsent(runTarget.key(), runTarget) != null) {
         throw new IllegalArgumentException("Duplicate Jazzer run target key: " + runTarget.key());
       }
-      JazzerRunTarget previousTask = runTargetsByTaskName.put(runTarget.taskName(), runTarget);
-      if (previousTask != null) {
+      if (runTargetsByTaskName.putIfAbsent(runTarget.taskName(), runTarget) != null) {
         throw new IllegalArgumentException("Duplicate Jazzer task name: " + runTarget.taskName());
       }
-      if (runTarget.activeFuzzing()) {
-        if (runTarget.harnesses().size() != 1) {
-          throw new IllegalArgumentException(
-              "Active Jazzer run target must reference exactly one harness: " + runTarget.key());
-        }
-        if (!runTarget.harnesses().getFirst().key().equals(runTarget.key())) {
-          throw new IllegalArgumentException(
-              "Active Jazzer run target key must match its harness key: " + runTarget.key());
-        }
-      }
+      validateActiveRunTarget(runTarget);
+      runTargets.add(runTarget);
     }
 
     return new Registry(
-        List.copyOf(harnessesByKey.values()),
+        List.copyOf(harnesses),
         Map.copyOf(harnessesByKey),
-        List.copyOf(runTargetsByKey.values()),
+        List.copyOf(runTargets),
         Map.copyOf(runTargetsByKey),
         Map.copyOf(runTargetsByTaskName));
+  }
+
+  private static JazzerHarness toHarness(HarnessDocument harnessDocument) {
+    return new JazzerHarness(
+        JazzerHarnessKind.fromKey(harnessDocument.key()),
+        harnessDocument.displayName(),
+        harnessDocument.className(),
+        harnessDocument.methodName());
+  }
+
+  private static JazzerRunTarget toRunTarget(
+      RunTargetDocument runTargetDocument, Map<String, JazzerHarness> harnessesByKey) {
+    List<JazzerHarness> harnesses =
+        runTargetDocument.harnessKeys().stream()
+            .map(key -> requireHarness(harnessesByKey, key))
+            .toList();
+    return new JazzerRunTarget(
+        runTargetDocument.key(),
+        runTargetDocument.displayName(),
+        runTargetDocument.taskName(),
+        runTargetDocument.workingDirectory(),
+        runTargetDocument.activeFuzzing(),
+        harnesses);
+  }
+
+  private static JazzerHarness requireHarness(
+      Map<String, JazzerHarness> harnessesByKey, String harnessKey) {
+    JazzerHarness harness = harnessesByKey.get(harnessKey);
+    if (harness == null) {
+      throw new IllegalArgumentException("Unknown Jazzer harness key in topology: " + harnessKey);
+    }
+    return harness;
+  }
+
+  private static void validateActiveRunTarget(JazzerRunTarget runTarget) {
+    if (!runTarget.activeFuzzing()) {
+      return;
+    }
+    if (runTarget.harnesses().size() != 1) {
+      throw new IllegalArgumentException(
+          "Active Jazzer run target must reference exactly one harness: " + runTarget.key());
+    }
+    if (!runTarget.harnesses().getFirst().key().equals(runTarget.key())) {
+      throw new IllegalArgumentException(
+          "Active Jazzer run target key must match its harness key: " + runTarget.key());
+    }
   }
 
   record Registry(
@@ -106,7 +132,7 @@ final class JazzerTopology {
     }
   }
 
-  private record TopologyDocument(List<HarnessDocument> harnesses, List<RunTargetDocument> runTargets) {
+  record TopologyDocument(List<HarnessDocument> harnesses, List<RunTargetDocument> runTargets) {
     TopologyDocument {
       harnesses = harnesses == null ? List.of() : List.copyOf(harnesses);
       runTargets = runTargets == null ? List.of() : List.copyOf(runTargets);
@@ -119,7 +145,7 @@ final class JazzerTopology {
     }
   }
 
-  private record HarnessDocument(String key, String displayName, String className, String methodName) {
+  record HarnessDocument(String key, String displayName, String className, String methodName) {
     HarnessDocument {
       key = requireNonBlank(key, "key");
       displayName = requireNonBlank(displayName, "displayName");
@@ -128,7 +154,7 @@ final class JazzerTopology {
     }
   }
 
-  private record RunTargetDocument(
+  record RunTargetDocument(
       String key,
       String displayName,
       String taskName,

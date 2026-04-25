@@ -3,24 +3,26 @@
   "version": "${version}",
   "artifactType": "self-contained-cli-bundle",
   "archiveFormat": "${bundleArchiveFormat}",
-  "runtimeDistribution": "self-contained-bundle",
-  "publicCliDistribution": "self-contained-bundle",
+  "runtimeDistribution": "${bundleRuntimeDistribution}",
+  "publicCliDistribution": "${publicCliDistribution}",
   "bundleTarget": {
     "classifier": "${bundleClassifier}",
     "operatingSystem": "${bundleOperatingSystem}",
     "architecture": "${bundleArchitecture}"
   },
   "supportedPublicCliBundleTargets": ${publicBundleTargetsJson},
-  "unsupportedPublicCliOperatingSystems": ${unsupportedPublicOperatingSystemsJson},
+  "unsupportedPublicCliBundleTargets": ${unsupportedPublicBundleTargetsJson},
   "launcher": "${bundleLauncherPath}",
   "noExternalJavaRequired": true,
   "requiresFingrindSqliteLibraryEnvironmentVariable": false,
   "managedSqlite": {
-    "storageDriver": "sqlite-ffm-sqlite3mc",
-    "storageEngine": "sqlite",
-    "bookProtectionMode": "required",
-    "defaultBookCipher": "chacha20",
-    "libraryMode": "managed-only"
+    "storageDriver": "${storageDriver}",
+    "storageEngine": "${storageEngine}",
+    "bookProtectionMode": "${bookProtectionMode}",
+    "defaultBookCipher": "${defaultBookCipher}",
+    "libraryMode": "${sqliteLibraryMode}",
+    "requiredMinimumSqliteVersion": "${requiredMinimumSqliteVersion}",
+    "requiredSqlite3mcVersion": "${requiredSqlite3mcVersion}"
   },
   "bootstrap": {
     "recommendedFirstCommand": [

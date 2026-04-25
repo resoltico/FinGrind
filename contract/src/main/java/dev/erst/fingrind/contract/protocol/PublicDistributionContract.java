@@ -1,54 +1,62 @@
 package dev.erst.fingrind.contract.protocol;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
-/** Protocol-owned metadata for public bundle targets and excluded operating systems. */
+/** Protocol-owned metadata for public bundle targets and excluded bundle targets. */
 public record PublicDistributionContract(
-    List<String> supportedPublicCliBundleTargets,
-    List<String> unsupportedPublicCliOperatingSystems) {
-  static final String SUPPORTED_BUNDLE_TARGETS_KEY = "supportedPublicCliBundleTargets";
-  static final String UNSUPPORTED_OPERATING_SYSTEMS_KEY = "unsupportedPublicCliOperatingSystems";
+    List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
+    List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets) {
+  private static final ProtocolContractSchemaKeys.PublicDistribution SCHEMA_KEYS =
+      ProtocolContractSchemaKeys.current().publicDistribution();
+  static final String SUPPORTED_BUNDLE_TARGETS_KEY = SCHEMA_KEYS.supportedPublicCliBundleTargets();
+  static final String UNSUPPORTED_BUNDLE_TARGETS_KEY =
+      SCHEMA_KEYS.unsupportedPublicCliBundleTargets();
 
-  /** Validates and copies one shared public-distribution contract snapshot. */
-  public PublicDistributionContract(
+  /** Parses one wire-value snapshot into the typed public-distribution contract. */
+  public static PublicDistributionContract fromWireValues(
       @Nullable List<String> supportedPublicCliBundleTargets,
-      @Nullable List<String> unsupportedPublicCliOperatingSystems) {
-    this.supportedPublicCliBundleTargets =
-        normalize(supportedPublicCliBundleTargets, SUPPORTED_BUNDLE_TARGETS_KEY);
-    this.unsupportedPublicCliOperatingSystems =
-        normalize(unsupportedPublicCliOperatingSystems, UNSUPPORTED_OPERATING_SYSTEMS_KEY);
+      @Nullable List<String> unsupportedPublicCliBundleTargets) {
+    return new PublicDistributionContract(
+        normalize(supportedPublicCliBundleTargets, SUPPORTED_BUNDLE_TARGETS_KEY),
+        normalize(unsupportedPublicCliBundleTargets, UNSUPPORTED_BUNDLE_TARGETS_KEY));
   }
 
-  static List<String> parseList(@Nullable String rawValue) {
-    if (rawValue == null || rawValue.isBlank()) {
-      return List.of();
-    }
-    List<String> values = new ArrayList<>();
-    for (String value : rawValue.split(",", -1)) {
-      values.add(value.trim());
-    }
-    return values;
+  /** Validates one typed shared public-distribution contract snapshot. */
+  public PublicDistributionContract {
+    supportedPublicCliBundleTargets = List.copyOf(supportedPublicCliBundleTargets);
+    unsupportedPublicCliBundleTargets = List.copyOf(unsupportedPublicCliBundleTargets);
+    requireNoOverlap(supportedPublicCliBundleTargets, unsupportedPublicCliBundleTargets);
   }
 
-  private static List<String> normalize(@Nullable List<String> values, String fieldName) {
+  private static List<PublicCliBundleTarget> normalize(
+      @Nullable List<String> values, String fieldName) {
     if (values == null) {
       return List.of();
     }
-    Set<String> unique = new LinkedHashSet<>();
+    Set<PublicCliBundleTarget> unique = new LinkedHashSet<>();
     for (String value : values) {
       Objects.requireNonNull(value, fieldName);
-      if (value.isBlank()) {
-        throw new IllegalArgumentException(fieldName + " must not contain blank values.");
-      }
-      if (!unique.add(value)) {
-        throw new IllegalArgumentException(fieldName + " must not contain duplicates: " + value);
+      PublicCliBundleTarget target = PublicCliBundleTarget.fromWireValue(value.strip());
+      if (!unique.add(target)) {
+        throw new IllegalArgumentException(fieldName + " must not contain duplicates: " + target);
       }
     }
     return List.copyOf(unique);
+  }
+
+  private static void requireNoOverlap(
+      List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
+      List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets) {
+    Set<PublicCliBundleTarget> overlap = new LinkedHashSet<>(supportedPublicCliBundleTargets);
+    overlap.retainAll(unsupportedPublicCliBundleTargets);
+    if (!overlap.isEmpty()) {
+      throw new IllegalArgumentException(
+          "supportedPublicCliBundleTargets and unsupportedPublicCliBundleTargets must be disjoint: "
+              + overlap);
+    }
   }
 }

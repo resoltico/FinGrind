@@ -4,6 +4,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import org.junit.jupiter.api.Test;
 
@@ -19,8 +21,12 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new CliRequestReplayDetails(
-            "PARSED", "2026-04-07", "idem-1", 2, false, "AGENT", "CLI", "NONE"),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
+            ActorType.AGENT,
+            SourceChannel.CLI),
         success.details());
+    assertEquals(ReplayOutcomeKind.SUCCESS, success.kind());
+    assertEquals(ReplayOutcome.SUCCESS_MESSAGE, success.message());
   }
 
   @Test
@@ -32,17 +38,9 @@ class JazzerReplayCliRequestTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new CliRequestReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            "Field is no longer accepted: recordedAt"),
-        invalid.details());
+    assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
+    assertEquals(ReplayOutcomeKind.EXPECTED_INVALID, invalid.kind());
+    assertEquals("Field is no longer accepted: recordedAt", invalid.message());
   }
 
   @Test
@@ -54,17 +52,8 @@ class JazzerReplayCliRequestTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new CliRequestReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            "Field is no longer accepted: sourceChannel"),
-        invalid.details());
+    assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
+    assertEquals("Field is no longer accepted: sourceChannel", invalid.message());
   }
 
   @Test
@@ -76,17 +65,8 @@ class JazzerReplayCliRequestTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new CliRequestReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            "Missing required field: provenance"),
-        invalid.details());
+    assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
+    assertEquals("Missing required field: provenance", invalid.message());
   }
 
   @Test
@@ -98,17 +78,10 @@ class JazzerReplayCliRequestTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
     assertEquals(
-        new CliRequestReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            "Money amount must be a plain decimal string without exponent notation."),
-        invalid.details());
+        "Money amount must be a plain decimal string without exponent notation.",
+        invalid.message());
   }
 
   @Test
@@ -120,17 +93,10 @@ class JazzerReplayCliRequestTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
     assertEquals(
-        new CliRequestReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey"),
-        invalid.details());
+        "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey",
+        invalid.message());
   }
 
   @Test
@@ -142,16 +108,7 @@ class JazzerReplayCliRequestTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new CliRequestReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            "Unexpected field: unexpectedField"),
-        invalid.details());
+    assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
+    assertEquals("Unexpected field: unexpectedField", invalid.message());
   }
 }

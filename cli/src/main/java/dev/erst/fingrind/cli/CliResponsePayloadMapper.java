@@ -15,7 +15,9 @@ import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
+import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import java.nio.file.Path;
 
 /** Facade that routes CLI payload mapping to concern-specific JSON mappers. */
@@ -23,12 +25,12 @@ final class CliResponsePayloadMapper {
   private CliResponsePayloadMapper() {}
 
   static CliEnvelopeJsonModels.SuccessEnvelope successEnvelope(Object payload) {
-    return new CliEnvelopeJsonModels.SuccessEnvelope(ProtocolStatuses.OK, payload);
+    return new CliEnvelopeJsonModels.SuccessEnvelope(ProtocolSuccessStatus.OK, payload);
   }
 
   static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
     return new CliEnvelopeJsonModels.FailureEnvelope(
-        ProtocolStatuses.ERROR,
+        ProtocolFailureStatus.ERROR,
         failure.code(),
         failure.message(),
         failure.hint(),
@@ -38,7 +40,7 @@ final class CliResponsePayloadMapper {
   static CliEnvelopeJsonModels.PreflightAcceptedEnvelope preflightEnvelope(
       PostEntryResult.PreflightAccepted accepted) {
     return new CliEnvelopeJsonModels.PreflightAcceptedEnvelope(
-        ProtocolStatuses.PREFLIGHT_ACCEPTED,
+        ProtocolSuccessStatus.PREFLIGHT_ACCEPTED,
         accepted.idempotencyKey().value(),
         accepted.effectiveDate().toString());
   }
@@ -46,7 +48,7 @@ final class CliResponsePayloadMapper {
   static CliEnvelopeJsonModels.CommittedEnvelope committedEnvelope(
       PostEntryResult.Committed committed) {
     return new CliEnvelopeJsonModels.CommittedEnvelope(
-        ProtocolStatuses.COMMITTED,
+        ProtocolSuccessStatus.COMMITTED,
         committed.postingId().value(),
         committed.idempotencyKey().value(),
         committed.effectiveDate().toString(),
@@ -110,11 +112,11 @@ final class CliResponsePayloadMapper {
   }
 
   static CliEnvelopeJsonModels.RejectedEnvelope rejectedPlanEnvelope(
-      LedgerPlanResult result, String status) {
+      LedgerPlanResult result, ProtocolRejectionStatus status) {
     return CliPlanPayloadMapper.rejectedPlanEnvelope(result, status);
   }
 
-  static String planRejectionStatus(LedgerPlanStatus status) {
+  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
     return CliPlanPayloadMapper.planRejectionStatus(status);
   }
 }

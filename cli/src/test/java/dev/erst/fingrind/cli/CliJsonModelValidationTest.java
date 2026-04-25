@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import java.nio.file.Path;
 import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
@@ -18,19 +19,19 @@ class CliJsonModelValidationTest {
   void responseModels_trimTextAndRejectBlankValues() {
     CliEnvelopeJsonModels.RejectedEnvelope envelope =
         new CliEnvelopeJsonModels.RejectedEnvelope(
-            " rejected ",
+            ProtocolRejectionStatus.REJECTED,
             " query-book-not-initialized ",
             " The book is not initialized. ",
             " idem-1 ",
             null);
 
-    assertEquals("rejected", envelope.status());
+    assertEquals(ProtocolRejectionStatus.REJECTED, envelope.status());
     assertEquals("query-book-not-initialized", envelope.code());
     assertEquals("The book is not initialized.", envelope.message());
     assertEquals("idem-1", envelope.idempotencyKey());
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new CliEnvelopeJsonModels.RejectedEnvelope(" ", "code", "message", null, null));
+        NullPointerException.class,
+        () -> new CliEnvelopeJsonModels.RejectedEnvelope(null, "code", "message", null, null));
   }
 
   @Test

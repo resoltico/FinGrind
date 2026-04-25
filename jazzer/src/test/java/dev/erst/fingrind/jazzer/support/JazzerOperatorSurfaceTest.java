@@ -15,12 +15,15 @@ class JazzerOperatorSurfaceTest {
 
   @Test
   void documentedWrapperSurface_existsAndIsExecutable() {
-    assertTrue(Files.isDirectory(BIN_DIRECTORY), "Missing Jazzer wrapper directory: " + BIN_DIRECTORY);
+    assertTrue(
+        Files.isDirectory(BIN_DIRECTORY), "Missing Jazzer wrapper directory: " + BIN_DIRECTORY);
 
     Set<String> expectedScripts = new LinkedHashSet<>();
     expectedScripts.add("common.sh");
     expectedScripts.add("regression");
     expectedScripts.add("fuzz-all");
+    expectedScripts.add("replay");
+    expectedScripts.add("list-findings");
     expectedScripts.add("clean-local-findings");
     expectedScripts.add("clean-local-corpus");
     for (JazzerRunTarget target : JazzerRunTarget.values()) {
@@ -32,7 +35,8 @@ class JazzerOperatorSurfaceTest {
     for (String scriptName : expectedScripts) {
       Path scriptPath = BIN_DIRECTORY.resolve(scriptName);
       assertTrue(Files.isRegularFile(scriptPath), "Missing Jazzer wrapper script: " + scriptPath);
-      assertTrue(Files.isExecutable(scriptPath), "Jazzer wrapper must be executable: " + scriptPath);
+      assertTrue(
+          Files.isExecutable(scriptPath), "Jazzer wrapper must be executable: " + scriptPath);
     }
   }
 }

@@ -10,29 +10,18 @@ public final class JazzerReplayRunner {
   /** Returns the stable replay expectation captured from one replay outcome. */
   public static ReplayExpectation expectationFor(ReplayOutcome outcome) {
     Objects.requireNonNull(outcome, "outcome must not be null");
-    return new ReplayExpectation(outcomeKind(outcome), outcome.details());
+    return new ReplayExpectation(outcome.kind(), outcome.message(), outcome.details());
   }
 
   /** Replays one raw input against the selected harness and returns a structured outcome. */
   public static ReplayOutcome replay(JazzerHarness harness, byte[] input) {
     Objects.requireNonNull(harness, "harness must not be null");
     Objects.requireNonNull(input, "input must not be null");
-    return switch (harness.key()) {
-      case "cli-request" -> JazzerRequestReplay.replayCliRequest(input);
-      case "ledger-plan-request" -> JazzerRequestReplay.replayLedgerPlanRequest(input);
-      case "posting-workflow" -> JazzerPostingWorkflowReplay.replay(input);
-      case "sqlite-book-roundtrip" -> JazzerSqliteBookRoundTripReplay.replay(input);
-      default -> throw new IllegalArgumentException("Unknown Jazzer harness: " + harness.key());
-    };
-  }
-
-  /** Returns the stable external outcome kind used in committed seed metadata. */
-  public static String outcomeKind(ReplayOutcome outcome) {
-    Objects.requireNonNull(outcome, "outcome must not be null");
-    return switch (outcome) {
-      case ReplayOutcome.Success _ -> "SUCCESS";
-      case ReplayOutcome.ExpectedInvalid _ -> "EXPECTED_INVALID";
-      case ReplayOutcome.UnexpectedFailure _ -> "UNEXPECTED_FAILURE";
+    return switch (harness.kind()) {
+      case CLI_REQUEST -> JazzerRequestReplay.replayCliRequest(input);
+      case LEDGER_PLAN_REQUEST -> JazzerRequestReplay.replayLedgerPlanRequest(input);
+      case POSTING_WORKFLOW -> JazzerPostingWorkflowReplay.replay(input);
+      case SQLITE_BOOK_ROUND_TRIP -> JazzerSqliteBookRoundTripReplay.replay(input);
     };
   }
 }

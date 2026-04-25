@@ -16,7 +16,7 @@ final class MachineContractRequestInputDescriptors {
         ProtocolOptions.bookPassphraseOptions(),
         ProtocolOptions.REQUEST_FILE,
         ProtocolOptions.OUTPUT,
-        OutputMode.wireValues(),
+        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
         List.of(
             "commands that advertise outputModes accept --output with one of those public values",
             "supported report commands also accept --pdf-out <path> and write one PDF artifact on successful execution without changing the command's selected stdout output mode",

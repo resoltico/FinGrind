@@ -6,7 +6,8 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 public record EnvironmentDescriptor(
     EnvironmentDistributionDescriptor distribution,
     EnvironmentStorageDescriptor storage,
-    EnvironmentSqliteDescriptor sqlite) {
+    EnvironmentSqliteDescriptor sqlite)
+    implements ContractDiscoveryDescriptor {
   /** Validates one runtime environment descriptor payload. */
   public EnvironmentDescriptor {
     distribution = ContractDescriptorValidation.requireValue(distribution, "distribution");

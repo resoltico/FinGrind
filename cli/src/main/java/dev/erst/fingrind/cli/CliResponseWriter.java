@@ -19,6 +19,7 @@ import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.VersionDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -191,7 +192,7 @@ final class CliResponseWriter {
     outputChannel.writeJson(value);
   }
 
-  static String planRejectionStatus(LedgerPlanStatus status) {
+  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
     return CliQueryResponseWriter.planRejectionStatus(status);
   }
 }

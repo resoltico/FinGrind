@@ -88,6 +88,31 @@ function ProjectVersion {
     return $versionLine.Split('=', 2)[1].Trim()
 }
 
+function Read-ContractValues {
+    $reader = Join-Path $script:RepoRoot "scripts/read-contract-values.py"
+    if (-not (Test-Path -LiteralPath $reader -PathType Leaf)) {
+        Fail "missing contract-values reader at $reader"
+    }
+    $json = & python3 $reader
+    if ($LASTEXITCODE -ne 0) {
+        Fail "contract-values reader failed"
+    }
+    return $json | ConvertFrom-Json
+}
+
+function Test-SameSequence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]] $Reference,
+        [Parameter(Mandatory = $true)]
+        [object[]] $Actual
+    )
+
+    return @(
+        Compare-Object -ReferenceObject $Reference -DifferenceObject $Actual
+    ).Count -eq 0
+}
+
 function Write-Utf8NoBomFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -141,7 +166,10 @@ function Invoke-BundleCommand {
 }
 
 $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
-$expectedArchiveName = "fingrind-$(ProjectVersion)-windows-x86_64.zip"
+$script:ContractValues = Read-ContractValues
+$hostBundleTarget = $script:ContractValues.bundleLayout.hostBundleTarget
+$expectedArchiveName =
+    "fingrind-$(ProjectVersion)-$($hostBundleTarget.classifier).$($hostBundleTarget.archiveFormat)"
 $cliBuildDir =
     if ([string]::IsNullOrWhiteSpace($env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT)) {
         Join-Path $script:RepoRoot "cli/build"
@@ -191,10 +219,10 @@ try {
     }
 
     $bundleRoot = $extractedRoots[0].FullName
-    $script:BundleLauncher = Join-Path $bundleRoot "bin/fingrind.ps1"
+    $script:BundleLauncher = Join-Path $bundleRoot $hostBundleTarget.launcherPath
     $runtimeJava = Join-Path $bundleRoot "runtime/bin/java.exe"
     $applicationJar = Join-Path $bundleRoot "lib/app/fingrind.jar"
-    $nativeLibrary = Join-Path $bundleRoot "lib/native/sqlite3.dll"
+    $nativeLibrary = Join-Path $bundleRoot "lib/native/$($hostBundleTarget.sqliteLibraryFileName)"
 
     foreach ($path in @(
         $script:BundleLauncher,
@@ -224,23 +252,69 @@ try {
     }
 
     $bundleManifest = Get-Content -LiteralPath (Join-Path $bundleRoot "bundle-manifest.json") -Raw | ConvertFrom-Json
-    if ($bundleManifest.runtimeDistribution -ne "self-contained-bundle") {
+    if ($bundleManifest.runtimeDistribution -ne $script:ContractValues.runtimeSurface.bundleRuntimeDistribution) {
         Fail "bundle manifest did not report the self-contained runtime distribution"
     }
-    if ($bundleManifest.archiveFormat -ne "zip") {
-        Fail "bundle manifest did not report zip as the Windows archive format"
+    if ($bundleManifest.archiveFormat -ne $hostBundleTarget.archiveFormat) {
+        Fail "bundle manifest did not report the platform-native archive format"
     }
-    if ($bundleManifest.bundleTarget.classifier -ne "windows-x86_64") {
+    if ($bundleManifest.bundleTarget.classifier -ne $hostBundleTarget.classifier) {
         Fail "bundle manifest did not report the current host classifier"
     }
-    if ($bundleManifest.launcher -ne "bin/fingrind.ps1") {
-        Fail "bundle manifest did not report the Windows launcher path"
+    if ($bundleManifest.launcher -ne $hostBundleTarget.launcherPath) {
+        Fail "bundle manifest did not report the canonical launcher path"
     }
-    if ($bundleManifest.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
+            -Actual @($bundleManifest.supportedPublicCliBundleTargets))) {
         Fail "bundle manifest did not report the supported public bundle targets"
     }
-    if (@($bundleManifest.unsupportedPublicCliOperatingSystems).Count -ne 0) {
-        Fail "bundle manifest still reported unsupported public operating systems"
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
+            -Actual @($bundleManifest.unsupportedPublicCliBundleTargets))) {
+        Fail "bundle manifest still reported unsupported public bundle targets"
+    }
+    if ($bundleManifest.publicCliDistribution -ne $script:ContractValues.runtimeSurface.publicCliDistribution) {
+        Fail "bundle manifest did not report the public bundle distribution contract"
+    }
+    if ($bundleManifest.managedSqlite.storageDriver -ne $script:ContractValues.runtimeSurface.storageDriver) {
+        Fail "bundle manifest did not report the canonical storage driver"
+    }
+    if ($bundleManifest.managedSqlite.storageEngine -ne $script:ContractValues.runtimeSurface.storageEngine) {
+        Fail "bundle manifest did not report the canonical storage engine"
+    }
+    if ($bundleManifest.managedSqlite.bookProtectionMode -ne $script:ContractValues.runtimeSurface.bookProtectionMode) {
+        Fail "bundle manifest did not report the canonical book protection mode"
+    }
+    if ($bundleManifest.managedSqlite.defaultBookCipher -ne $script:ContractValues.runtimeSurface.defaultBookCipher) {
+        Fail "bundle manifest did not report the canonical default book cipher"
+    }
+    if ($bundleManifest.managedSqlite.libraryMode -ne $script:ContractValues.runtimeSurface.sqliteLibraryMode) {
+        Fail "bundle manifest did not report the canonical SQLite library mode"
+    }
+    if (
+        $bundleManifest.managedSqlite.requiredMinimumSqliteVersion -ne
+        $script:ContractValues.managedSqlite.requiredMinimumSqliteVersion
+    ) {
+        Fail "bundle manifest did not report the canonical minimum SQLite version"
+    }
+    if (
+        $bundleManifest.managedSqlite.requiredSqlite3mcVersion -ne
+        $script:ContractValues.managedSqlite.requiredSqlite3mcVersion
+    ) {
+        Fail "bundle manifest did not report the canonical SQLite3 Multiple Ciphers version"
+    }
+    if ($bundleManifest.bootstrap.recommendedFirstCommand[-1] -ne $script:ContractValues.operationIds.help) {
+        Fail "bundle manifest did not publish the canonical bootstrap help command"
+    }
+    if ($bundleManifest.bootstrap.machineReadableContractCommand[-1] -ne $script:ContractValues.operationIds.capabilities) {
+        Fail "bundle manifest did not publish the canonical machine-readable contract command"
+    }
+    if ($bundleManifest.bootstrap.requestTemplateCommand[-1] -ne $script:ContractValues.operationIds.printRequestTemplate) {
+        Fail "bundle manifest did not publish the canonical request-template bootstrap command"
+    }
+    if ($bundleManifest.bootstrap.planTemplateCommand[-1] -ne $script:ContractValues.operationIds.printPlanTemplate) {
+        Fail "bundle manifest did not publish the canonical plan-template bootstrap command"
     }
 
     Require-Java26 $runtimeJava
@@ -376,34 +450,38 @@ try {
     $distribution = $environment.distribution
     $storage = $environment.storage
     $sqlite = $environment.sqlite
-    if ($distribution.runtimeDistribution -ne "self-contained-bundle") {
+    if ($distribution.runtimeDistribution -ne $script:ContractValues.runtimeSurface.bundleRuntimeDistribution) {
         Fail "capabilities output did not report the self-contained runtime distribution"
     }
-    if ($distribution.publicCliDistribution -ne "self-contained-bundle") {
+    if ($distribution.publicCliDistribution -ne $script:ContractValues.runtimeSurface.publicCliDistribution) {
         Fail "capabilities output did not report the public bundle distribution contract"
     }
-    if ($distribution.supportedPublicCliBundleTargets -notcontains "windows-x86_64") {
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
+            -Actual @($distribution.supportedPublicCliBundleTargets))) {
         Fail "capabilities output did not report the supported public bundle targets"
     }
-    if (@($distribution.unsupportedPublicCliOperatingSystems).Count -ne 0) {
-        Fail "capabilities output still reported unsupported public operating systems"
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
+            -Actual @($distribution.unsupportedPublicCliBundleTargets))) {
+        Fail "capabilities output still reported unsupported public bundle targets"
     }
-    if ($sqlite.libraryMode -ne "managed-only") {
+    if ($sqlite.libraryMode -ne $script:ContractValues.runtimeSurface.sqliteLibraryMode) {
         Fail "capabilities output did not report the managed-only SQLite runtime mode"
     }
-    if ($storage.storageDriver -ne "sqlite-ffm-sqlite3mc") {
+    if ($storage.storageDriver -ne $script:ContractValues.runtimeSurface.storageDriver) {
         Fail "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"
     }
-    if ($storage.bookProtectionMode -ne "required") {
+    if ($storage.bookProtectionMode -ne $script:ContractValues.runtimeSurface.bookProtectionMode) {
         Fail "capabilities output did not report required book protection"
     }
-    if ($storage.defaultBookCipher -ne "chacha20") {
+    if ($storage.defaultBookCipher -ne $script:ContractValues.runtimeSurface.defaultBookCipher) {
         Fail "capabilities output did not report the default chacha20 cipher"
     }
-    if ($sqlite.requiredMinimumSqliteVersion -ne "3.53.0") {
+    if ($sqlite.requiredMinimumSqliteVersion -ne $script:ContractValues.managedSqlite.requiredMinimumSqliteVersion) {
         Fail "capabilities output did not report the required SQLite 3.53.0 minimum"
     }
-    if ($sqlite.requiredSqlite3mcVersion -ne "2.3.3") {
+    if ($sqlite.requiredSqlite3mcVersion -ne $script:ContractValues.managedSqlite.requiredSqlite3mcVersion) {
         Fail "capabilities output did not report the required SQLite3 Multiple Ciphers 2.3.3 version"
     }
     if ($sqlite.runtimeStatus -ne "ready") {

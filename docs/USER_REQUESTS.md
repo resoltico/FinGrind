@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -188,6 +188,8 @@ rendered:
 
 - `requestShapes.postEntry.topLevelFields`, `lineFields`, `provenanceFields`, and `reversalFields`
   are arrays of `{ "name", "presence", "description" }`
+- `presence` is a live enum-backed machine value and is currently one of `required`,
+  `conditional`, `optional`, or `forbidden`
 - `requestShapes.schemaDialect` is the JSON Schema dialect URI used by the embedded executable
   schemas
 - `requestShapes.postEntry.schema`, `declareAccount.schema`, and `ledgerPlan.schema` are

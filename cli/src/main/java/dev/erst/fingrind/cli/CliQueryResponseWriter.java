@@ -12,7 +12,8 @@ import dev.erst.fingrind.contract.PeriodSummaryResult;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -184,19 +185,19 @@ final class CliQueryResponseWriter {
         switch (result) {
           case LedgerPlanResult.Succeeded succeeded ->
               new CliEnvelopeJsonModels.SuccessEnvelope(
-                  ProtocolStatuses.PLAN_COMMITTED,
+                  ProtocolSuccessStatus.PLAN_COMMITTED,
                   CliResponsePayloadMapper.ledgerPlanPayload(succeeded));
           case LedgerPlanResult.Rejected rejected ->
               CliResponsePayloadMapper.rejectedPlanEnvelope(
-                  rejected, ProtocolStatuses.PLAN_REJECTED);
+                  rejected, ProtocolRejectionStatus.PLAN_REJECTED);
           case LedgerPlanResult.AssertionFailed assertionFailed ->
               CliResponsePayloadMapper.rejectedPlanEnvelope(
-                  assertionFailed, ProtocolStatuses.PLAN_ASSERTION_FAILED);
+                  assertionFailed, ProtocolRejectionStatus.PLAN_ASSERTION_FAILED);
         };
     outputChannel.writeEnvelope(envelope);
   }
 
-  static String planRejectionStatus(LedgerPlanStatus status) {
+  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
     return CliResponsePayloadMapper.planRejectionStatus(status);
   }
 }

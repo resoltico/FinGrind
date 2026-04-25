@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -58,6 +58,8 @@ For active fuzzing, use only:
 - `jazzer/bin/fuzz-posting-workflow`
 - `jazzer/bin/fuzz-sqlite-book-roundtrip`
 - `jazzer/bin/fuzz-all`
+- `jazzer/bin/replay`
+- `jazzer/bin/list-findings`
 
 Do not run active fuzzing through raw `./gradlew -p jazzer fuzz...` task invocations. Those tasks
 exist as build internals under the wrapper scripts, but they are not the supported fuzz operator
@@ -73,6 +75,11 @@ that raw Gradle does not communicate clearly enough on its own:
 - active runs write per-target `latest.log` plus timestamped history logs
 - wrapper-owned interrupt handling tears down the launched Gradle client tree
 - wrapper-owned duration watchdogs enforce the requested max duration plus a fixed grace window
+- the all-target wrapper now keeps pure timeout exits moving, but stops immediately after an
+  actionable harness failure and prints replay-classified findings before control returns to the
+  shell
+- replay-backed operator commands classify raw libFuzzer artifacts before humans or agents treat
+  them as bugs
 - active fuzzing preloads a tiny project-owned premain agent so Java 26 does not depend on late
   self-attach behavior
 - wrapper scripts must remain compatible with stock macOS `/bin/bash` 3.2 under `set -u`, even
@@ -110,6 +117,8 @@ jazzer/bin/fuzz-ledger-plan-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-all -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/replay cli-request jazzer/.local/runs/cli-request/crash-<sha1> --console=plain
+jazzer/bin/list-findings cli-request --console=plain
 jazzer/bin/clean-local-findings
 jazzer/bin/clean-local-corpus
 ```
@@ -137,12 +146,20 @@ The nested Jazzer build also includes normal JUnit deterministic tests that cove
 - shared topology ordering and task-resolution contract
 - committed-seed metadata completeness and path hygiene
 
+The nested Jazzer build now also applies the shared `dev.erst.fingrind.java-conventions` plugin, so
+Spotless, Error Prone, NullAway, PMD, JaCoCo, and the shared source/Jackson policy tasks gate the
+replay engine, CLI tooling, wrapper-facing support code, and deterministic tests the same way they
+already gate production modules.
+The fuzz source set uses a dedicated PMD ruleset on top of that shared stack so single-method
+`@FuzzTest` harnesses are linted as fuzz executables rather than misclassified as empty JUnit
+test suites.
+
 ## Committed Seed Inventory
 
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `ledger-plan-request` | `6` | valid plan execution, structured list-query journal facts, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
+| `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `5` | explicit lifecycle setup plus success, invalid actor, exponent rejection, invalid missing reversal reason, missing reversal target |
 | `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, Unicode round-trip, exponent rejection, invalid type, invalid missing reversal reason, missing reversal target |
 
@@ -153,7 +170,10 @@ It makes the currently expected replay result explicit and reviewable:
 - successful parses are treated as contract
 - expected invalid requests are treated as stable contract, not as noise
 - deterministic rejections are replayed as success-path contract outcomes
-- local fuzz findings stay disposable and must be cleaned before final verification
+- raw local `crash-*` / `timeout-*` / `oom-*` / `leak-*` / `slow-unit-*` files stay disposable
+  until `jazzer/bin/replay` or `jazzer/bin/list-findings` classifies them
+- only replayed `unexpected-failure` findings should be treated as bugs
+- replay-clean and expected-invalid raw artifacts should be cleaned before final verification
 
 ## Current Gaps
 

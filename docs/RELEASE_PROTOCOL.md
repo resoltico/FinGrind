@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -100,10 +100,11 @@ gh pr list --state open \
   --json number,title,url,headRefName,mergeStateStatus,isDraft,author,statusCheckRollup
 ```
 
-If any open PR is authored by `dependabot[bot]`, decide up front whether it changes release
-machinery or release-critical dependencies. If it does, land or reject it before cutting the
-release branch. If it does not, carry that decision forward and complete Step 10 before ending
-the release session.
+If any open PR is authored by Dependabot, decide up front whether it changes release machinery or
+release-critical dependencies. GitHub currently reports these PRs through `gh pr list` with
+`author.login` set to `app/dependabot`; older surfaces may still render `dependabot[bot]`. If the
+PR is release-critical, land or reject it before cutting the release branch. If it is not, carry
+that decision forward and complete Step 10 before ending the release session.
 
 If you merge or close one release-critical PR, re-enumerate the remaining open PRs before acting
 on the next one. A changed `main` branch can invalidate sibling merge state or required-check
@@ -138,7 +139,7 @@ rejected and wastes time. Always commit on a release branch.
 git checkout -b release/X.Y.Z
 ./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD
 ./check.sh
-git add <every modified file that belongs in the release — never .codex/>
+git add <every modified file that belongs in the release>
 git status --short
 git diff --cached --name-status
 git diff --cached --stat
@@ -154,6 +155,9 @@ Treat staging as a handoff checkpoint, not a formality. Before committing:
   edit step; do not hand-edit scattered version-bearing files when the scripted sweep can do it
 - after the version sweep, `gradle.properties` `version=` equals the target release version
   exactly (for example `X.Y.Z`)
+- repo-owned agent metadata such as `AGENTS.md` and `.codex/**` stays versioned in Git when it
+  belongs to the release, but it remains `export-ignore`d from GitHub source archives and is not
+  part of the public bundle or container asset set
 - all `docs/*.md` frontmatter `version:` fields equal the target release version
 - all touched `docs/*.md` frontmatter `updated:` fields equal the release date used in the
   scripted sweep
@@ -366,6 +370,18 @@ Do not infer release publication from workflow success alone. Verify the release
 
 ```bash
 gh release view vX.Y.Z --json tagName,isDraft,isPrerelease,publishedAt,url,assets
+./scripts/verify-github-release.sh \
+  vX.Y.Z \
+  fingrind-X.Y.Z-macos-aarch64.tar.gz \
+  fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256 \
+  fingrind-X.Y.Z-macos-x86_64.tar.gz \
+  fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256 \
+  fingrind-X.Y.Z-linux-x86_64.tar.gz \
+  fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256 \
+  fingrind-X.Y.Z-linux-aarch64.tar.gz \
+  fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256 \
+  fingrind-X.Y.Z-windows-x86_64.zip \
+  fingrind-X.Y.Z-windows-x86_64.zip.sha256
 ```
 
 Requirements:
@@ -384,13 +400,19 @@ Requirements:
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
   - `fingrind-X.Y.Z-windows-x86_64.zip`
   - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
+- Targets disclosed through
+  `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` such as the current
+  `windows-aarch64` entry must not appear as release assets unless the public-distribution
+  contract changes first.
+- The generated GitHub source archives do not include repo-owned agent metadata such as
+  `AGENTS.md` or `.codex/**`.
 
 If these conditions are satisfied, the GitHub Release handoff is complete even if an additional
 duplicate release workflow run failed after the release was already created.
 
 The release workflow is expected to perform this same verification internally after publication.
-The operator-side `gh release view` check remains mandatory because workflow success is still not
-the authoritative state.
+The operator-side `gh release view` plus `./scripts/verify-github-release.sh` checks remain
+mandatory because workflow success is still not the authoritative state.
 
 The container workflow is also expected to wait for this complete GitHub release asset set before
 it publishes the public image. If container publication succeeds while the release asset set is
@@ -456,9 +478,10 @@ gh pr list --state open \
   --json number,title,url,headRefName,mergeStateStatus,isDraft,author,statusCheckRollup
 ```
 
-Treat any PR whose `author.login` is `dependabot[bot]` as in scope for this step, even if it was
-already reviewed during Step 1. Step 1 creates the release-time decision; Step 10 closes the loop
-before the release session is allowed to end.
+Treat any PR whose `author.login` identifies Dependabot as in scope for this step, even if it was
+already reviewed during Step 1. Today that means `app/dependabot`; older GitHub surfaces may show
+`dependabot[bot]`. Step 1 creates the release-time decision; Step 10 closes the loop before the
+release session is allowed to end.
 
 For each open Dependabot PR, inspect the exact payload and its current gate status:
 

@@ -1,0 +1,14 @@
+{
+  "directJavaRuntimeDistribution": "direct-java-invocation",
+  "sourceCheckoutRuntimeDistribution": "source-checkout-gradle",
+  "containerRuntimeDistribution": "container-image",
+  "bundleRuntimeDistribution": "self-contained-bundle",
+  "publicCliDistribution": "self-contained-bundle",
+  "storageDriver": "sqlite-ffm-sqlite3mc",
+  "storageEngine": "sqlite",
+  "bookProtectionMode": "required",
+  "defaultBookCipher": "chacha20",
+  "sqliteLibraryMode": "managed-only",
+  "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
+  "sqliteBundleHomeSystemProperty": "fingrind.bundle.home"
+}

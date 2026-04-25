@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
+import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import java.util.List;
 
 /** Builds rejection and error response descriptors for the machine contract. */
@@ -12,7 +12,7 @@ final class MachineContractResponseDescriptors {
     return new ContractResponse.ResponseModelDescriptor(
         ProtocolCatalog.successStatuses(),
         ProtocolCatalog.rejectionStatuses(),
-        ProtocolStatuses.ERROR,
+        ProtocolFailureStatus.ERROR,
         rejectionDescriptors(),
         ContractErrors.descriptors(),
         List.of(

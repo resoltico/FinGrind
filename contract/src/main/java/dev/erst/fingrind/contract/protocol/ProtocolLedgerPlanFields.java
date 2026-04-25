@@ -86,13 +86,14 @@ public final class ProtocolLedgerPlanFields {
   /** Ledger-plan query field names. */
   public static final class Query {
     /** Account code filter or target. */
-    public static final String ACCOUNT_CODE = "accountCode";
+    public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
 
     /** Inclusive effective-date lower bound. */
-    public static final String EFFECTIVE_DATE_FROM = "effectiveDateFrom";
+    public static final String EFFECTIVE_DATE_FROM =
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM;
 
     /** Inclusive effective-date upper bound. */
-    public static final String EFFECTIVE_DATE_TO = "effectiveDateTo";
+    public static final String EFFECTIVE_DATE_TO = ProtocolSharedRequestFields.EFFECTIVE_DATE_TO;
 
     /** Page-size field. */
     public static final String LIMIT = "limit";
@@ -109,19 +110,20 @@ public final class ProtocolLedgerPlanFields {
     public static final String KIND = "kind";
 
     /** Account code target. */
-    public static final String ACCOUNT_CODE = "accountCode";
+    public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
 
     /** Posting identifier target. */
     public static final String POSTING_ID = "postingId";
 
     /** Inclusive effective-date lower bound. */
-    public static final String EFFECTIVE_DATE_FROM = "effectiveDateFrom";
+    public static final String EFFECTIVE_DATE_FROM =
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM;
 
     /** Inclusive effective-date upper bound. */
-    public static final String EFFECTIVE_DATE_TO = "effectiveDateTo";
+    public static final String EFFECTIVE_DATE_TO = ProtocolSharedRequestFields.EFFECTIVE_DATE_TO;
 
     /** Currency bucket identifier. */
-    public static final String CURRENCY_CODE = "currencyCode";
+    public static final String CURRENCY_CODE = ProtocolSharedRequestFields.CURRENCY_CODE;
 
     /** Expected net amount. */
     public static final String NET_AMOUNT = "netAmount";

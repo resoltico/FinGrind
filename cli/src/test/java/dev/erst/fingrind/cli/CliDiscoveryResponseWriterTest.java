@@ -159,9 +159,9 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             environmentDescriptor(
-                "self-contained-bundle",
+                FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
-                "loaded",
+                "ready",
                 "3.53.0",
                 "2.3.3",
                 null));
@@ -194,7 +194,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             environmentDescriptor(
-                "container-image",
+                FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                 "unavailable",
                 null,
@@ -209,19 +209,25 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(payload.has("preflight"));
     assertTrue(payload.has("currencyModel"));
     assertEquals("advisory", payload.path("preflight").path("semantics").asString());
-    assertEquals("required", environment.path("storage").path("bookProtectionMode").asString());
     assertEquals(
-        "container-image", environment.path("distribution").path("runtimeDistribution").asString());
+        ProtocolCatalog.bookProtectionMode().wireValue(),
+        environment.path("storage").path("bookProtectionMode").asString());
     assertEquals(
-        "self-contained-bundle",
+        FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
+        environment.path("distribution").path("runtimeDistribution").asString());
+    assertEquals(
+        ProtocolCatalog.publicCliDistribution().wireValue(),
         environment.path("distribution").path("publicCliDistribution").asString());
     assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.supportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
         readTextArray(environment.path("distribution").path("supportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        readTextArray(
-            environment.path("distribution").path("unsupportedPublicCliOperatingSystems")));
+        ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
+        readTextArray(environment.path("distribution").path("unsupportedPublicCliBundleTargets")));
     assertFalse(environment.path("sqlite").has("loadedSqliteVersion"));
     assertFalse(environment.path("sqlite").has("loadedSqlite3mcVersion"));
   }
@@ -235,9 +241,9 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "0.9.0",
                 "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
             environmentDescriptor(
-                "self-contained-bundle",
+                FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
-                "loaded",
+                "ready",
                 "3.53.0",
                 "2.3.3",
                 null),

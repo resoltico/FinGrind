@@ -18,7 +18,8 @@ public record CapabilitiesDescriptor(
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
     EnvironmentDescriptor environment,
-    String timestamp) {
+    String timestamp)
+    implements ContractDiscoveryDescriptor {
   /** Validates one capabilities descriptor payload. */
   public CapabilitiesDescriptor {
     application = ContractDescriptorValidation.requireText(application, "application");

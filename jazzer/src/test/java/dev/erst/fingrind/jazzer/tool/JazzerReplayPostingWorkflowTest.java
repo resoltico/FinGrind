@@ -19,22 +19,21 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            "PARSED",
-            "2026-04-07",
-            "idem-1",
-            2,
-            false,
-            "REJECTED_BOOK_NOT_INITIALIZED",
-            "REJECTED_BOOK_NOT_INITIALIZED",
-            "REJECTED_UNKNOWN_ACCOUNT",
-            "REJECTED_UNKNOWN_ACCOUNT",
-            "REJECTED_INACTIVE_ACCOUNT",
-            "REJECTED_INACTIVE_ACCOUNT",
-            "PREFLIGHT_ACCEPTED",
-            "COMMITTED",
-            "REJECTED_DUPLICATE_IDEMPOTENCY_KEY",
-            true,
-            "NONE"),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
+            new PostingWorkflowLifecycleDetails(
+                new PostingGateDetails(
+                    PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
+                    PostingLifecycleStatus.BOOK_NOT_INITIALIZED),
+                new PostingGateDetails(
+                    PostingLifecycleStatus.UNKNOWN_ACCOUNT, PostingLifecycleStatus.UNKNOWN_ACCOUNT),
+                new PostingGateDetails(
+                    PostingLifecycleStatus.INACTIVE_ACCOUNT,
+                    PostingLifecycleStatus.INACTIVE_ACCOUNT)),
+            new PostingWorkflowOutcomeDetails(
+                PostingLifecycleStatus.PREFLIGHT_ACCEPTED,
+                PostingLifecycleStatus.COMMITTED,
+                PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
+                true)),
         success.details());
   }
 
@@ -48,22 +47,21 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            "PARSED",
-            "2026-04-08",
-            "idem-5",
-            2,
-            true,
-            "REJECTED_BOOK_NOT_INITIALIZED",
-            "REJECTED_BOOK_NOT_INITIALIZED",
-            "REJECTED_UNKNOWN_ACCOUNT",
-            "REJECTED_UNKNOWN_ACCOUNT",
-            "REJECTED_INACTIVE_ACCOUNT",
-            "REJECTED_INACTIVE_ACCOUNT",
-            "REJECTED_REVERSAL_TARGET_NOT_FOUND",
-            "REJECTED_REVERSAL_TARGET_NOT_FOUND",
-            "NOT_RUN",
-            false,
-            "NONE"),
+            new ParsedPostingCommandDetails("2026-04-08", "idem-5", 2, true),
+            new PostingWorkflowLifecycleDetails(
+                new PostingGateDetails(
+                    PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
+                    PostingLifecycleStatus.BOOK_NOT_INITIALIZED),
+                new PostingGateDetails(
+                    PostingLifecycleStatus.UNKNOWN_ACCOUNT, PostingLifecycleStatus.UNKNOWN_ACCOUNT),
+                new PostingGateDetails(
+                    PostingLifecycleStatus.INACTIVE_ACCOUNT,
+                    PostingLifecycleStatus.INACTIVE_ACCOUNT)),
+            new PostingWorkflowOutcomeDetails(
+                PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
+                PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
+                PostingLifecycleStatus.NOT_RUN,
+                false)),
         success.details());
   }
 
@@ -76,25 +74,8 @@ class JazzerReplayPostingWorkflowTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new PostingWorkflowReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            false,
-            "Missing required field: reason"),
-        invalid.details());
+    assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
+    assertEquals("Missing required field: reason", invalid.message());
   }
 
   @Test
@@ -106,25 +87,8 @@ class JazzerReplayPostingWorkflowTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new PostingWorkflowReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            false,
-            "Actor id must not be blank."),
-        invalid.details());
+    assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
+    assertEquals("Actor id must not be blank.", invalid.message());
   }
 
   @Test
@@ -136,24 +100,9 @@ class JazzerReplayPostingWorkflowTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
     assertEquals(
-        new PostingWorkflowReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            "NOT_RUN",
-            false,
-            "Money amount must be a plain decimal string without exponent notation."),
-        invalid.details());
+        "Money amount must be a plain decimal string without exponent notation.",
+        invalid.message());
   }
 }

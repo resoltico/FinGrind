@@ -4,6 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import org.junit.jupiter.api.Test;
@@ -20,8 +21,12 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new LedgerPlanReplayDetails(
-            "PARSED", "plan-1", 5, "open-book", "assert", 1, true, "SUCCEEDED", 5, 0, 0, "NONE"),
+            new LedgerPlanShapeDetails(
+                "plan-1", 5, LedgerStepKind.OPEN_BOOK, LedgerStepKind.ASSERT, 1, true),
+            new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 5, 0, 0)),
         success.details());
+    assertEquals(ReplayOutcomeKind.SUCCESS, success.kind());
+    assertEquals(ReplayOutcome.SUCCESS_MESSAGE, success.message());
   }
 
   @Test
@@ -34,18 +39,26 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new LedgerPlanReplayDetails(
-            "PARSED",
-            "plan-query-1",
-            6,
-            "open-book",
-            "list-postings",
-            0,
-            true,
-            "SUCCEEDED",
-            6,
-            2,
-            2,
-            "NONE"),
+            new LedgerPlanShapeDetails(
+                "plan-query-1", 6, LedgerStepKind.OPEN_BOOK, LedgerStepKind.LIST_POSTINGS, 0, true),
+            new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 6, 2, 2)),
+        success.details());
+  }
+
+  @Test
+  void replay_returnsSuccessForRejectedMissingBookListQueryPlanShape() {
+    ReplayOutcome outcome =
+        JazzerReplayRunner.replay(
+            JazzerHarness.ledgerPlanRequest(),
+            JazzerReplayLedgerPlanFixtures.rejectedMissingBookListPostingsLedgerPlan()
+                .getBytes(UTF_8));
+
+    ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
+    assertEquals(
+        new LedgerPlanReplayDetails(
+            new LedgerPlanShapeDetails(
+                "play-1", 1, LedgerStepKind.LIST_POSTINGS, LedgerStepKind.LIST_POSTINGS, 0, false),
+            new LedgerPlanExecutionDetails(LedgerPlanStatus.REJECTED, 1, 1, 0)),
         success.details());
   }
 
@@ -58,21 +71,8 @@ class JazzerReplayLedgerPlanTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
-    assertEquals(
-        new LedgerPlanReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            0,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            0,
-            0,
-            0,
-            "Unexpected field: executionPolicy"),
-        invalid.details());
+    assertEquals(new UnparsedLedgerPlanReplayDetails(), invalid.details());
+    assertEquals("Unexpected field: executionPolicy", invalid.message());
   }
 
   @Test
@@ -84,22 +84,11 @@ class JazzerReplayLedgerPlanTest {
 
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
+    assertEquals(new UnparsedLedgerPlanReplayDetails(), invalid.details());
     assertEquals(
-        new LedgerPlanReplayDetails(
-            "INVALID_REQUEST",
-            "NOT_PARSED",
-            0,
-            "NOT_PARSED",
-            "NOT_PARSED",
-            0,
-            false,
-            "NOT_PARSED",
-            0,
-            0,
-            0,
-            "Unsupported value for kind: post_entry. Accepted values: "
-                + String.join(", ", LedgerStepKind.wireValues())
-                + "."),
-        invalid.details());
+        "Unsupported value for kind: post_entry. Accepted values: "
+            + String.join(", ", LedgerStepKind.wireValues())
+            + ".",
+        invalid.message());
   }
 }

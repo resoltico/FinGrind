@@ -1,18 +1,11 @@
 {
-  "targetKey" : "cli-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_forbidden_source_channel.json",
-  "expectation" : {
-    "outcomeKind" : "EXPECTED_INVALID",
-    "details" : {
-      "type" : "CLI_REQUEST",
-      "requestStatus" : "INVALID_REQUEST",
-      "effectiveDate" : "NOT_PARSED",
-      "idempotencyKey" : "NOT_PARSED",
-      "lineCount" : 0,
-      "reversalPresent" : false,
-      "actorType" : "NOT_PARSED",
-      "sourceChannel" : "NOT_PARSED",
-      "failureMessage" : "Field is no longer accepted: sourceChannel"
+  "targetKey": "cli-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_forbidden_source_channel.json",
+  "expectation": {
+    "outcomeKind": "expected-invalid",
+    "message": "Field is no longer accepted: sourceChannel",
+    "details": {
+      "type": "CLI_REQUEST_UNPARSED"
     }
   }
 }

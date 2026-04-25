@@ -5,12 +5,18 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Describes one individual Jazzer harness that FinGrind exposes for local fuzzing. */
-public record JazzerHarness(String key, String displayName, String className, String methodName) {
+public record JazzerHarness(
+    JazzerHarnessKind kind, String displayName, String className, String methodName) {
   public JazzerHarness {
-    key = requireNonBlank(key, "key");
+    Objects.requireNonNull(kind, "kind must not be null");
     displayName = requireNonBlank(displayName, "displayName");
     className = requireNonBlank(className, "className");
     methodName = requireNonBlank(methodName, "methodName");
+  }
+
+  /** Returns the stable external key for this harness. */
+  public String key() {
+    return kind.key();
   }
 
   /** Returns the resource directory where committed regression inputs for this harness live. */
@@ -22,7 +28,7 @@ public record JazzerHarness(String key, String displayName, String className, St
   /** Returns the directory where committed regression metadata entries for this harness live. */
   public Path regressionMetadataDirectory(Path projectDirectory) {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
-    return regressionMetadataRoot(projectDirectory).resolve(key);
+    return regressionMetadataRoot(projectDirectory).resolve(key());
   }
 
   /** Returns the classpath resource suffix used by Jazzer regression-input discovery. */
@@ -48,30 +54,37 @@ public record JazzerHarness(String key, String displayName, String className, St
     return harness;
   }
 
+  /** Resolves a harness from its closed harness vocabulary. */
+  public static JazzerHarness fromKind(JazzerHarnessKind kind) {
+    Objects.requireNonNull(kind, "kind must not be null");
+    return fromKey(kind.key());
+  }
+
   /** Returns the project-relative root directory that owns all committed regression metadata. */
   public static Path regressionMetadataRoot(Path projectDirectory) {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
-    return projectDirectory.resolve("src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata");
+    return projectDirectory.resolve(
+        "src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata");
   }
 
   /** Returns the canonical CLI request harness. */
   public static JazzerHarness cliRequest() {
-    return fromKey("cli-request");
+    return fromKind(JazzerHarnessKind.CLI_REQUEST);
   }
 
   /** Returns the canonical ledger-plan request harness. */
   public static JazzerHarness ledgerPlanRequest() {
-    return fromKey("ledger-plan-request");
+    return fromKind(JazzerHarnessKind.LEDGER_PLAN_REQUEST);
   }
 
   /** Returns the canonical posting workflow harness. */
   public static JazzerHarness postingWorkflow() {
-    return fromKey("posting-workflow");
+    return fromKind(JazzerHarnessKind.POSTING_WORKFLOW);
   }
 
   /** Returns the canonical SQLite book round-trip harness. */
   public static JazzerHarness sqliteBookRoundTrip() {
-    return fromKey("sqlite-book-roundtrip");
+    return fromKind(JazzerHarnessKind.SQLITE_BOOK_ROUND_TRIP);
   }
 
   private static String requireNonBlank(String value, String fieldName) {

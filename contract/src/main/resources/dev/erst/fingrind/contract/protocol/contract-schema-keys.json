@@ -1,0 +1,39 @@
+{
+  "runtimeSurface": {
+    "directJavaRuntimeDistribution": "directJavaRuntimeDistribution",
+    "sourceCheckoutRuntimeDistribution": "sourceCheckoutRuntimeDistribution",
+    "containerRuntimeDistribution": "containerRuntimeDistribution",
+    "bundleRuntimeDistribution": "bundleRuntimeDistribution",
+    "publicCliDistribution": "publicCliDistribution",
+    "storageDriver": "storageDriver",
+    "storageEngine": "storageEngine",
+    "bookProtectionMode": "bookProtectionMode",
+    "defaultBookCipher": "defaultBookCipher",
+    "sqliteLibraryMode": "sqliteLibraryMode",
+    "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
+    "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
+  },
+  "publicDistribution": {
+    "supportedPublicCliBundleTargets": "supportedPublicCliBundleTargets",
+    "unsupportedPublicCliBundleTargets": "unsupportedPublicCliBundleTargets"
+  },
+  "managedSqlite": {
+    "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
+    "requiredSqlite3mcVersion": "requiredSqlite3mcVersion"
+  },
+  "bundleLayout": {
+    "bundleTargets": "bundleTargets",
+    "operatingSystemId": "operatingSystemId",
+    "architectureId": "architectureId",
+    "archiveFormat": "archiveFormat",
+    "launcherPath": "launcherPath",
+    "launcherCommand": "launcherCommand",
+    "sqliteLibraryFileName": "sqliteLibraryFileName"
+  },
+  "operationIdContract": {
+    "help": "HELP",
+    "capabilities": "CAPABILITIES",
+    "printRequestTemplate": "PRINT_REQUEST_TEMPLATE",
+    "printPlanTemplate": "PRINT_PLAN_TEMPLATE"
+  }
+}

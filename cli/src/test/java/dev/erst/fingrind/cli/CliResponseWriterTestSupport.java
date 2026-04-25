@@ -19,6 +19,8 @@ import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -39,6 +41,7 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -120,21 +123,25 @@ class CliResponseWriterTestSupport {
       String diagnostics) {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
-            runtimeDistribution,
-            "self-contained-bundle",
+            RuntimeDistribution.fromWireValue(runtimeDistribution),
+            ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentStorageDescriptor(
+            ProtocolCatalog.storageDriver(),
+            ProtocolCatalog.storageEngine(),
+            ProtocolCatalog.bookProtectionMode(),
+            ProtocolCatalog.defaultBookCipher()),
         new EnvironmentSqliteDescriptor(
-            "managed-only",
-            "FINGRIND_SQLITE_LIBRARY",
-            "fingrind.bundle.home",
-            List.of("THREADSAFE=1"),
+            ProtocolCatalog.sqliteLibraryMode(),
+            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+            SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
             compileOptionsVerification,
-            "3.53.0",
-            "2.3.3",
-            state,
+            SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
+            SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
+            SqliteRuntimeStatus.fromWireValue(state),
             loadedSqliteVersion,
             loadedSqlite3mcVersion,
             diagnostics));

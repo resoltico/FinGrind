@@ -4,4 +4,5 @@ module dev.erst.fingrind.contract {
 
   requires transitive dev.erst.fingrind.core;
   requires static org.jspecify;
+  requires tools.jackson.databind;
 }

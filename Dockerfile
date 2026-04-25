@@ -58,5 +58,8 @@ ENV FINGRIND_SQLITE_LIBRARY=/opt/fingrind/lib/libsqlite3.so.0
 COPY --from=builder /opt/fingrind/runtime /opt/fingrind/runtime
 COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/libsqlite3.so.0
 COPY --from=builder /build/fingrind.jar /opt/fingrind/app/fingrind.jar
+COPY cli/build/docker/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh
 
-ENTRYPOINT ["/opt/fingrind/runtime/bin/java", "--enable-native-access=ALL-UNNAMED", "-Dfingrind.runtime.distribution=container-image", "-jar", "/opt/fingrind/app/fingrind.jar"]
+RUN chmod +x /opt/fingrind/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/opt/fingrind/bin/docker-entrypoint.sh"]

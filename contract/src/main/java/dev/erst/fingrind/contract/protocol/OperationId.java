@@ -1,7 +1,10 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.WireValue;
+import java.util.List;
+
 /** Canonical FinGrind operation identifiers exposed on the public machine contract. */
-public enum OperationId {
+public enum OperationId implements WireValue {
   /** Prints command usage, examples, and workflow guidance. */
   HELP,
   /** Prints application identity and version information. */
@@ -46,5 +49,26 @@ public enum OperationId {
   /** Returns the stable CLI and wire identifier for this operation. */
   public String wireName() {
     return OperationIdContract.current().wireName(name());
+  }
+
+  /** Returns the stable public wire value for this operation. */
+  @Override
+  public String wireValue() {
+    return wireName();
+  }
+
+  /** Returns every stable public operation identifier in declaration order. */
+  public static List<String> wireValues() {
+    return WireValue.wireValues(OperationId.class);
+  }
+
+  /** Parses one stable public operation identifier. */
+  public static OperationId fromWireValue(String wireValue) {
+    return WireValue.fromWireValue(OperationId.class, wireValue, "Unsupported operation id");
+  }
+
+  @Override
+  public String toString() {
+    return wireValue();
   }
 }

@@ -6,7 +6,7 @@ import java.util.Objects;
 /** Output-contract facts for one canonical public protocol operation. */
 public record ProtocolOperationOutputs(
     ExecutionMode executionMode,
-    List<String> outputModes,
+    List<OutputMode> outputModes,
     List<ProtocolArtifactOutput> artifactOutputs) {
   /** Validates one operation-output descriptor. */
   public ProtocolOperationOutputs {

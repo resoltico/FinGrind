@@ -1,0 +1,10 @@
+{
+  "supportedPublicCliBundleTargets": [
+    "macos-aarch64",
+    "macos-x86_64",
+    "linux-x86_64",
+    "linux-aarch64",
+    "windows-x86_64"
+  ],
+  "unsupportedPublicCliBundleTargets": ["windows-aarch64"]
+}

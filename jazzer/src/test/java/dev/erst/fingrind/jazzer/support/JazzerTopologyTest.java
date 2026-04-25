@@ -2,6 +2,7 @@ package dev.erst.fingrind.jazzer.support;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
@@ -13,52 +14,54 @@ class JazzerTopologyTest {
   @Test
   void harnessValues_followCommittedTopologyOrder() {
     assertArrayEquals(
-	        new JazzerHarness[] {
-	          JazzerHarness.cliRequest(),
-	          JazzerHarness.ledgerPlanRequest(),
-	          JazzerHarness.postingWorkflow(),
-	          JazzerHarness.sqliteBookRoundTrip()
-	        },
+        new JazzerHarness[] {
+          JazzerHarness.cliRequest(),
+          JazzerHarness.ledgerPlanRequest(),
+          JazzerHarness.postingWorkflow(),
+          JazzerHarness.sqliteBookRoundTrip()
+        },
         JazzerHarness.values());
   }
 
   @Test
   void runTargets_followCommittedTopologyOrder() {
     assertArrayEquals(
-	        new JazzerRunTarget[] {
-	          JazzerRunTarget.regression(),
-	          JazzerRunTarget.cliRequest(),
-	          JazzerRunTarget.ledgerPlanRequest(),
-	          JazzerRunTarget.postingWorkflow(),
-	          JazzerRunTarget.sqliteBookRoundTrip()
-	        },
+        new JazzerRunTarget[] {
+          JazzerRunTarget.regression(),
+          JazzerRunTarget.cliRequest(),
+          JazzerRunTarget.ledgerPlanRequest(),
+          JazzerRunTarget.postingWorkflow(),
+          JazzerRunTarget.sqliteBookRoundTrip()
+        },
         JazzerRunTarget.values());
   }
 
   @Test
   void harnessMetadata_matchesCommittedPaths() {
-	    assertEquals(
-	        "dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand",
-	        JazzerHarness.cliRequest().inputResourceDirectory());
-	    assertEquals(
-	        "dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan",
-	        JazzerHarness.ledgerPlanRequest().inputResourceDirectory());
-	    assertEquals(
-	        "dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook",
-	        JazzerHarness.sqliteBookRoundTrip().inputResourceDirectory());
+    assertEquals(
+        "dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand",
+        JazzerHarness.cliRequest().inputResourceDirectory());
+    assertEquals(
+        "dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan",
+        JazzerHarness.ledgerPlanRequest().inputResourceDirectory());
+    assertEquals(
+        "dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook",
+        JazzerHarness.sqliteBookRoundTrip().inputResourceDirectory());
   }
 
   @Test
   void runTargets_resolveStableTaskNamesAndHarnessAssignments() {
-    assertEquals(JazzerRunTarget.postingWorkflow(), JazzerRunTarget.fromTaskName("fuzzPostingWorkflow"));
+    assertEquals(
+        JazzerRunTarget.postingWorkflow(), JazzerRunTarget.fromTaskName("fuzzPostingWorkflow"));
     assertEquals(
         List.of(
-	            JazzerHarness.cliRequest(),
-	            JazzerHarness.ledgerPlanRequest(),
-	            JazzerHarness.postingWorkflow(),
-	            JazzerHarness.sqliteBookRoundTrip()),
-	        JazzerRunTarget.regression().harnesses());
+            JazzerHarness.cliRequest(),
+            JazzerHarness.ledgerPlanRequest(),
+            JazzerHarness.postingWorkflow(),
+            JazzerHarness.sqliteBookRoundTrip()),
+        JazzerRunTarget.regression().harnesses());
     assertEquals(JazzerHarness.cliRequest(), JazzerRunTarget.cliRequest().replayHarness());
+    assertEquals(JazzerHarnessKind.CLI_REQUEST, JazzerHarness.cliRequest().kind());
   }
 
   @Test
@@ -73,6 +76,7 @@ class JazzerTopologyTest {
     List<JazzerRunTarget> activeTargets =
         Arrays.stream(JazzerRunTarget.values()).filter(JazzerRunTarget::activeFuzzing).toList();
 
+    assertFalse(activeTargets.isEmpty());
     activeTargets.forEach(
         target -> {
           assertEquals(1, target.harnesses().size());

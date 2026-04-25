@@ -5,10 +5,11 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 1
 fi
 
-readonly FG_JAZZER_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly FG_JAZZER_DIR="$(cd "${FG_JAZZER_BIN_DIR}/.." && pwd)"
-readonly FG_REPO_ROOT="$(cd "${FG_JAZZER_DIR}/.." && pwd)"
-readonly FG_GRADLEW="${FG_REPO_ROOT}/gradlew"
+readonly FG_JAZZER_BIN_DIR="${FG_JAZZER_BIN_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+readonly FG_JAZZER_DIR="${FG_JAZZER_DIR:-$(cd "${FG_JAZZER_BIN_DIR}/.." && pwd)}"
+readonly FG_REPO_ROOT="${FG_REPO_ROOT:-$(cd "${FG_JAZZER_DIR}/.." && pwd)}"
+readonly FG_GRADLEW="${FG_GRADLEW:-${FG_REPO_ROOT}/gradlew}"
+readonly FG_JAZZER_TOPOLOGY_PATH="${FG_JAZZER_TOPOLOGY_PATH:-${FG_JAZZER_DIR}/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json}"
 readonly FG_LOCK_PARENT_DIR="${FG_JAZZER_DIR}/.local"
 readonly FG_LOCK_DIR="${FG_LOCK_PARENT_DIR}/run-lock"
 readonly FG_LOCK_OWNER_PID_FILE="${FG_LOCK_DIR}/owner.pid"
@@ -31,6 +32,35 @@ fg_initialize_wrapper() {
     trap 'fg_on_signal 143' TERM
 }
 
+fg_active_target_keys() {
+    [[ -f "${FG_JAZZER_TOPOLOGY_PATH}" ]] || {
+        printf '%s\n' "Missing Jazzer topology file: ${FG_JAZZER_TOPOLOGY_PATH}" >&2
+        exit 1
+    }
+    command -v python3 >/dev/null 2>&1 || {
+        printf '%s\n' "python3 is required to read ${FG_JAZZER_TOPOLOGY_PATH}" >&2
+        exit 1
+    }
+    python3 - "${FG_JAZZER_TOPOLOGY_PATH}" <<'PY'
+import json
+import pathlib
+import sys
+
+topology_path = pathlib.Path(sys.argv[1])
+document = json.loads(topology_path.read_text(encoding="utf-8"))
+for run_target in document["runTargets"]:
+    if run_target.get("activeFuzzing"):
+        print(run_target["key"])
+PY
+}
+
+fg_active_wrapper_scripts() {
+    local target_key
+    while IFS= read -r target_key; do
+        printf 'fuzz-%s\n' "${target_key}"
+    done < <(fg_active_target_keys)
+}
+
 fg_on_exit() {
     fg_stop_watchdog
     fg_terminate_active_process
@@ -50,7 +80,7 @@ fg_run_passive_command() {
     local task_name=$1
     shift
     fg_acquire_lock
-    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" "${task_name}" "$@"
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache "${task_name}" "$@"
 }
 
 fg_run_active_command() {
@@ -59,14 +89,6 @@ fg_run_active_command() {
     shift 2
     fg_acquire_lock
     fg_run_active_command_unlocked "${target_key}" "${task_name}" "$@"
-}
-
-fg_run_all_active_commands() {
-    fg_acquire_lock
-    fg_run_active_command_unlocked "cli-request" "fuzzCliRequest" "$@"
-    fg_run_active_command_unlocked "ledger-plan-request" "fuzzLedgerPlanRequest" "$@"
-    fg_run_active_command_unlocked "posting-workflow" "fuzzPostingWorkflow" "$@"
-    fg_run_active_command_unlocked "sqlite-book-roundtrip" "fuzzSqliteBookRoundTrip" "$@"
 }
 
 fg_run_active_command_unlocked() {
@@ -284,6 +306,19 @@ fg_parse_duration_seconds() {
             ;;
     esac
     printf '%s\n' "$((number * multiplier))"
+}
+
+fg_resolve_existing_path() {
+    local path=$1
+    local directory_name
+    local file_name
+
+    directory_name="$(dirname "${path}")"
+    file_name="$(basename "${path}")"
+    (
+        cd "${directory_name}" &&
+        printf '%s/%s\n' "$(pwd -P)" "${file_name}"
+    )
 }
 
 fg_create_history_directory() {

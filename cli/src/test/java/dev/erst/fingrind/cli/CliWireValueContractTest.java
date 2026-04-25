@@ -13,6 +13,12 @@ import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
+import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
+import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
@@ -63,6 +69,12 @@ class CliWireValueContractTest {
         LedgerAssertionKind.values(),
         LedgerStepKind.values(),
         OutputMode.values(),
+        ProtocolSuccessStatus.values(),
+        ProtocolRejectionStatus.values(),
+        ProtocolFailureStatus.values(),
+        PublicCliBundleTarget.values(),
+        PlanTransactionMode.values(),
+        PlanFailurePolicy.values(),
         SqliteRuntime.Status.values());
   }
 }

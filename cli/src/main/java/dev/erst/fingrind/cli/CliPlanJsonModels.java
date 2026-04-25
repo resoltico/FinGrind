@@ -1,20 +1,24 @@
 package dev.erst.fingrind.cli;
 
 import static dev.erst.fingrind.cli.CliJsonModelValidation.copyList;
-import static dev.erst.fingrind.cli.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requireValue;
 
+import dev.erst.fingrind.contract.LedgerPlanStatus;
+import dev.erst.fingrind.contract.LedgerStepStatus;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Ledger-plan JSON records emitted by the CLI transport layer. */
 interface CliPlanJsonModels {
 
-  record LedgerPlanPayload(String planId, String status, LedgerExecutionJournalPayload journal) {
+  record LedgerPlanPayload(
+      String planId, LedgerPlanStatus status, LedgerExecutionJournalPayload journal) {
     public LedgerPlanPayload {
       planId = requireText(planId, "planId");
-      status = requireText(status, "status");
+      status = requireValue(status, "status");
       journal = requireValue(journal, "journal");
     }
   }
@@ -33,18 +37,17 @@ interface CliPlanJsonModels {
 
   record LedgerJournalEntryPayload(
       String stepId,
-      String kind,
-      @Nullable String detailKind,
-      String status,
+      LedgerStepKind kind,
+      @Nullable LedgerAssertionKind detailKind,
+      LedgerStepStatus status,
       String startedAt,
       String finishedAt,
       List<LedgerFactPayload> facts,
       @Nullable LedgerStepFailurePayload failure) {
     public LedgerJournalEntryPayload {
       stepId = requireText(stepId, "stepId");
-      kind = requireText(kind, "kind");
-      detailKind = requireOptionalText(detailKind, "detailKind");
-      status = requireText(status, "status");
+      kind = requireValue(kind, "kind");
+      status = requireValue(status, "status");
       startedAt = requireText(startedAt, "startedAt");
       finishedAt = requireText(finishedAt, "finishedAt");
       facts = copyList(facts);

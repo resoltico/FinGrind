@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -90,16 +90,19 @@ public enum OutputMode implements WireValue
 - Purpose: keep output-mode parsing and rendering enum-owned instead of switch-local
 - Surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and branch-owning `run(...)`
 
-## `ProtocolStatuses`
+## `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, And `ProtocolFailureStatus`
 
-`ProtocolStatuses` is the canonical owner of public envelope status tokens.
+These enums are the canonical owners of public envelope status tokens.
 
 ```java
-public final class ProtocolStatuses
+public enum ProtocolSuccessStatus implements WireValue
+public enum ProtocolRejectionStatus implements WireValue
+public enum ProtocolFailureStatus implements WireValue
 ```
 
-- Purpose: distinguish generic success, posting commit, plan commit, plan rejection, plan
-  assertion failure, business rejection, and runtime failure without magic strings
+- Purpose: distinguish success, deterministic rejection, and runtime failure statuses with
+  compile-time subset boundaries instead of one open string bucket
+- Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
 
 ## `ProtocolLimits`
 
@@ -141,13 +144,105 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 
 ```java
 public record PublicDistributionContract(
-    List<String> supportedPublicCliBundleTargets,
-    List<String> unsupportedPublicCliOperatingSystems)
+    List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
+    List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets)
 ```
 
 - Purpose: keep release-target metadata in one typed owner shared by capabilities, docs, and build
   verification
-- Validation: rejects blanks and duplicates
+- Validation: rejects unknown targets, duplicates, and overlap between the supported and
+  unsupported lists
+- Resource authority: loaded from the protocol-owned JSON contract resource instead of ad hoc
+  build or shell literals
+
+## `PublicCliBundleTarget`
+
+`PublicCliBundleTarget` is the canonical host-classifier vocabulary for public CLI bundles.
+
+```java
+public enum PublicCliBundleTarget implements WireValue
+```
+
+- Purpose: keep bundle-target publication tied to one typed classifier vocabulary instead of open
+  strings that can drift away from the real release matrix
+
+## `ManagedSqliteContract`
+
+`ManagedSqliteContract` is the protocol-owned managed native-library version pin shared across
+runtime, bundle, and operator surfaces.
+
+```java
+record ManagedSqliteContract(String requiredMinimumSqliteVersion, String requiredSqlite3mcVersion)
+```
+
+- Purpose: keep the required SQLite and SQLite3 Multiple Ciphers versions in one canonical
+  contract owner instead of copying version literals through build scripts, bundle docs, and shell
+  verification
+
+## `BundleLayoutContract`
+
+`BundleLayoutContract` is the protocol-owned per-target bundle layout registry.
+
+```java
+record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTargets)
+```
+
+- Purpose: keep archive format, launcher path, launcher command, and native library filename tied
+  to one typed target owner shared by build logic, bundle metadata, and operator verification
+- Validation: requires one layout entry for every `PublicCliBundleTarget`
+
+## `BundleLayoutContract.BundleTarget`
+
+`BundleLayoutContract.BundleTarget` is one canonical bundle layout descriptor.
+
+```java
+record BundleTarget(
+    String operatingSystemId,
+    String architectureId,
+    String archiveFormat,
+    String launcherPath,
+    String launcherCommand,
+    String sqliteLibraryFileName)
+```
+
+- Purpose: expose the per-target self-contained archive facts that the bundle manifest and
+  acceptance scripts must report without reauthoring platform switch statements
+
+## `PlanTransactionMode`, And `PlanFailurePolicy`
+
+These enums are the canonical ledger-plan execution semantics.
+
+```java
+public enum PlanTransactionMode implements WireValue
+public enum PlanFailurePolicy implements WireValue
+```
+
+- Purpose: keep the plan execution contract typed through the public discovery/model surface
+
+## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, And `SqliteRuntimeStatus`
+
+These enums are the public runtime-surface vocabularies shared by discovery payloads, CLI
+rendering, shell verifiers, and build/distribution checks.
+
+```java
+public enum RuntimeDistribution implements WireValue
+public enum PublicCliDistribution implements WireValue
+public enum StorageDriver implements WireValue
+public enum StorageEngine implements WireValue
+public enum BookProtectionMode implements WireValue
+public enum BookCipher implements WireValue
+public enum SqliteLibraryMode implements WireValue
+public enum SqliteRuntimeStatus implements WireValue
+```
+
+- Purpose: keep runtime distribution, public bundle identity, storage backend, protected-book
+  defaults, managed SQLite loading mode, and runtime readiness in enum-owned wire vocabularies
+- Validation surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and typed discovery
+  records such as `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`, and
+  `EnvironmentSqliteDescriptor`
+- Operational reach: build logic, bundle metadata/launchers, Docker staging, and shell verifiers
+  consume the same protocol-owned runtime-surface contract instead of carrying private copies of
+  those wire values
 
 ## `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts`
 
@@ -168,9 +263,22 @@ public record PlanExecutionFacts(...)
   `BookMigrationFact`, and `BookCurrencyScopeFact` are the semantic text wrappers carried by
   `BookModelFacts`
 
+## `ProtocolSharedRequestFields`
+
+`ProtocolSharedRequestFields` owns the cross-request field names reused by declare-account,
+posting journal lines, and ledger-plan query/assertion payloads.
+
+```java
+public final class ProtocolSharedRequestFields
+```
+
+- Purpose: give shared request vocabulary one canonical owner before surface-specific field classes
+  project it into their local JSON scopes
+
 ## `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
 
-These protocol-owned constant classes keep public JSON field names canonical.
+These protocol-owned constant classes keep public JSON field names canonical for their
+surface-specific JSON scopes.
 
 ```java
 public final class ProtocolDeclareAccountFields
@@ -213,31 +321,48 @@ public final class ContractTemplates
 ```
 
 - `ContractDiscovery`: discovery-descriptor registry used for coverage and contract audits
+- `ContractDiscoveryDescriptor` is the sealed public owner that makes discovery-descriptor
+  registration exhaustive instead of list-maintained
 - `ApplicationIdentity`, `HelpDescriptor`, `CapabilitiesDescriptor`,
   `StorageSurfaceDescriptor`, `CommandCatalogDescriptor`, `VersionDescriptor`,
   `ArtifactOutputDescriptor`, `CommandDescriptor`, `ExitCodeDescriptor`,
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
+- `CommandCatalogDescriptor` and `CommandDescriptor` keep command grouping, command identity,
+  execution mode, and output modes typed through `OperationId`, `ExecutionMode`, and `OutputMode`
+  instead of flattening those closed vocabularies into strings
 - `ContractRequestShapes`: request-input plumbing plus posting, account-declaration, and ledger-plan
   request-shape descriptors
+- `ContractRequestShapes.RequestShapeDescriptorType` is the sealed nested owner that keeps the
+  published request-shape inventory exhaustive
 - `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,
   `.PostEntryRequestShapeDescriptor`, `.DeclareAccountRequestShapeDescriptor`,
   `.LedgerPlanRequestShapeDescriptor`, `.RequestFieldDescriptor`, and
   `.EnumVocabularyDescriptor` are the nested typed request-shape descriptors
+- `RequestFieldPresence` is the stable request-field presence vocabulary shared by request-shape
+  descriptors and executable schema authorship, with `required`, `conditional`, `optional`, and
+  `forbidden` wire values
 - `ContractResponse`: response-model, rejection, audit, preflight, currency, and plan-execution
   descriptors
+- `ContractResponse.ResponseDescriptorType` is the sealed nested owner for the published response
+  descriptor inventory
 - `ContractResponse.BookModelDescriptor`, `.FieldDescriptor`, `.ErrorDescriptor`,
   `.ResponseModelDescriptor`, `.PlanExecutionDescriptor`, `.RejectionDescriptor`,
   `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
   `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, and
   `.CurrencyDescriptor` are the nested typed response descriptors
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
+- `ContractTemplates.TemplateDescriptorType` is the sealed nested owner for the published
+  template-descriptor inventory
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
   `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
   `.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
-  `.DeclareAccountTemplateDescriptor`, and `.LedgerAssertionTemplateDescriptor` are the nested
-  typed template descriptors
+  `.LedgerPlanQueryTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`, and
+  `.LedgerAssertionTemplateDescriptor` are the nested typed template descriptors
+- Template descriptors keep actor type, entry side, normal balance, step kind, assertion kind,
+  and balance side typed at the public boundary, and they reject structurally impossible ledger
+  plan step or assertion combinations before any renderer publishes them
 
 ## `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException`
 

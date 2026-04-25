@@ -1,34 +1,44 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import java.util.Objects;
+
 /** Stable replay details for committed SQLite round-trip seeds. */
 public record SqliteBookRoundTripReplayDetails(
-    String requestStatus,
-    String effectiveDate,
-    String idempotencyKey,
-    int lineCount,
-    boolean reversalPresent,
-    String uninitializedCommitStatus,
-    String undeclaredCommitStatus,
-    String inactiveCommitStatus,
-    String finalCommitStatus,
-    String reloadStatus,
-    String duplicateStatus,
-    boolean storedFactPresent,
-    String failureMessage)
+    ParsedPostingCommandDetails request,
+    SqliteBookRoundTripLifecycleDetails lifecycle,
+    SqliteBookRoundTripOutcomeDetails outcome)
     implements ReplayDetails {
   public SqliteBookRoundTripReplayDetails {
-    requestStatus = ReplayModelValidation.requireText(requestStatus, "requestStatus");
-    effectiveDate = ReplayModelValidation.requireText(effectiveDate, "effectiveDate");
-    idempotencyKey = ReplayModelValidation.requireText(idempotencyKey, "idempotencyKey");
-    uninitializedCommitStatus =
-        ReplayModelValidation.requireText(uninitializedCommitStatus, "uninitializedCommitStatus");
-    undeclaredCommitStatus =
-        ReplayModelValidation.requireText(undeclaredCommitStatus, "undeclaredCommitStatus");
-    inactiveCommitStatus =
-        ReplayModelValidation.requireText(inactiveCommitStatus, "inactiveCommitStatus");
-    finalCommitStatus = ReplayModelValidation.requireText(finalCommitStatus, "finalCommitStatus");
-    reloadStatus = ReplayModelValidation.requireText(reloadStatus, "reloadStatus");
-    duplicateStatus = ReplayModelValidation.requireText(duplicateStatus, "duplicateStatus");
-    failureMessage = ReplayModelValidation.requireText(failureMessage, "failureMessage");
+    Objects.requireNonNull(request, "request must not be null");
+    Objects.requireNonNull(lifecycle, "lifecycle must not be null");
+    Objects.requireNonNull(outcome, "outcome must not be null");
+  }
+}
+
+/** Replay details for SQLite round-trip inputs that never produced a parsed posting command. */
+record UnparsedSqliteBookRoundTripReplayDetails() implements ReplayDetails {}
+
+/** Lifecycle checkpoints recorded before the final SQLite round-trip outcome. */
+record SqliteBookRoundTripLifecycleDetails(
+    PostingLifecycleStatus uninitializedCommitStatus,
+    PostingLifecycleStatus undeclaredCommitStatus,
+    PostingLifecycleStatus inactiveCommitStatus) {
+  SqliteBookRoundTripLifecycleDetails {
+    Objects.requireNonNull(uninitializedCommitStatus, "uninitializedCommitStatus must not be null");
+    Objects.requireNonNull(undeclaredCommitStatus, "undeclaredCommitStatus must not be null");
+    Objects.requireNonNull(inactiveCommitStatus, "inactiveCommitStatus must not be null");
+  }
+}
+
+/** Final parsed SQLite round-trip outcome after lifecycle setup completes. */
+record SqliteBookRoundTripOutcomeDetails(
+    PostingLifecycleStatus finalCommitStatus,
+    PostingLifecycleStatus reloadStatus,
+    PostingLifecycleStatus duplicateStatus,
+    boolean storedFactPresent) {
+  SqliteBookRoundTripOutcomeDetails {
+    Objects.requireNonNull(finalCommitStatus, "finalCommitStatus must not be null");
+    Objects.requireNonNull(reloadStatus, "reloadStatus must not be null");
+    Objects.requireNonNull(duplicateStatus, "duplicateStatus must not be null");
   }
 }

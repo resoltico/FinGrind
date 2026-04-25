@@ -4,26 +4,29 @@ import static dev.erst.fingrind.cli.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.CliJsonModelValidation.requireValue;
 
+import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import org.jspecify.annotations.Nullable;
 
 /** Envelope-level JSON records emitted by the CLI transport layer. */
 interface CliEnvelopeJsonModels {
 
-  record SuccessEnvelope(String status, Object payload) {
+  record SuccessEnvelope(ProtocolSuccessStatus status, Object payload) {
     public SuccessEnvelope {
-      status = requireText(status, "status");
+      status = requireValue(status, "status");
       payload = requireValue(payload, "payload");
     }
   }
 
   record FailureEnvelope(
-      String status,
+      ProtocolFailureStatus status,
       String code,
       String message,
       @Nullable String hint,
       @Nullable String argument) {
     public FailureEnvelope {
-      status = requireText(status, "status");
+      status = requireValue(status, "status");
       code = requireText(code, "code");
       message = requireText(message, "message");
       hint = requireOptionalText(hint, "hint");
@@ -31,22 +34,23 @@ interface CliEnvelopeJsonModels {
     }
   }
 
-  record PreflightAcceptedEnvelope(String status, String idempotencyKey, String effectiveDate) {
+  record PreflightAcceptedEnvelope(
+      ProtocolSuccessStatus status, String idempotencyKey, String effectiveDate) {
     public PreflightAcceptedEnvelope {
-      status = requireText(status, "status");
+      status = requireValue(status, "status");
       idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
     }
   }
 
   record CommittedEnvelope(
-      String status,
+      ProtocolSuccessStatus status,
       String postingId,
       String idempotencyKey,
       String effectiveDate,
       String recordedAt) {
     public CommittedEnvelope {
-      status = requireText(status, "status");
+      status = requireValue(status, "status");
       postingId = requireText(postingId, "postingId");
       idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
@@ -55,13 +59,13 @@ interface CliEnvelopeJsonModels {
   }
 
   record RejectedEnvelope(
-      String status,
+      ProtocolRejectionStatus status,
       String code,
       String message,
       @Nullable String idempotencyKey,
       @Nullable Object details) {
     public RejectedEnvelope {
-      status = requireText(status, "status");
+      status = requireValue(status, "status");
       code = requireText(code, "code");
       message = requireText(message, "message");
       idempotencyKey = requireOptionalText(idempotencyKey, "idempotencyKey");

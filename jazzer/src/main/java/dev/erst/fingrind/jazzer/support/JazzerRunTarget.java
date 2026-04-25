@@ -62,7 +62,8 @@ public record JazzerRunTarget(
   /** Resolves a run target from its Gradle task name. */
   public static JazzerRunTarget fromTaskName(String taskName) {
     Objects.requireNonNull(taskName, "taskName must not be null");
-    Map<String, JazzerRunTarget> runTargetsByTaskName = JazzerTopology.registry().runTargetsByTaskName();
+    Map<String, JazzerRunTarget> runTargetsByTaskName =
+        JazzerTopology.registry().runTargetsByTaskName();
     JazzerRunTarget runTarget = runTargetsByTaskName.get(taskName);
     if (runTarget == null) {
       throw new IllegalArgumentException("Unknown Jazzer task: " + taskName);

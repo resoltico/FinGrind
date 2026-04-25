@@ -29,17 +29,17 @@ class JazzerReplayScratchDirectoryTest {
 
   @Test
   void resolve_rejectsAbsolutePaths_and_close_toleratesMissingTree() throws IOException {
-    JazzerReplayScratchDirectory scratchDirectory =
-        JazzerReplayScratchDirectory.create("fingrind-jazzer-test-");
-    Path rootDirectory = scratchDirectory.rootDirectory();
-    Path absolutePath = rootDirectory.toAbsolutePath();
+    Path rootDirectory;
+    try (JazzerReplayScratchDirectory scratchDirectory =
+        JazzerReplayScratchDirectory.create("fingrind-jazzer-test-")) {
+      rootDirectory = scratchDirectory.rootDirectory();
+      Path absolutePath = rootDirectory.toAbsolutePath();
 
-    assertThrows(IllegalArgumentException.class, () -> scratchDirectory.resolve(absolutePath));
+      assertThrows(IllegalArgumentException.class, () -> scratchDirectory.resolve(absolutePath));
 
-    Files.delete(rootDirectory);
-    scratchDirectory.close();
-    scratchDirectory.close();
-
+      Files.delete(rootDirectory);
+      scratchDirectory.close();
+    }
     assertFalse(Files.exists(rootDirectory));
   }
 }

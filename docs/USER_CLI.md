@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: USER_CLI
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -96,6 +96,9 @@ The current public target set is:
 - `linux-aarch64`
 - `windows-x86_64`
 
+The protocol contract also declares `windows-aarch64` explicitly as an unsupported public bundle
+target so machine clients can distinguish "known but not currently shipped" from "unknown target."
+
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
 Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
@@ -108,21 +111,24 @@ Each extracted archive also contains:
   bootstrap commands that point back to `help`, `capabilities`, and the request/plan template
   operations
 
+Those bundle metadata surfaces disclose the same canonical target matrix and managed-SQLite
+version pins that the source checkout, release automation, and shell acceptance verifiers use.
+
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.25.0-macos-aarch64.tar.gz
-./fingrind-0.25.0-macos-aarch64/bin/fingrind help
-./fingrind-0.25.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.26.0-macos-aarch64.tar.gz
+./fingrind-0.26.0-macos-aarch64/bin/fingrind help
+./fingrind-0.26.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.25.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.26.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.26.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.26.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -230,7 +236,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   process is running from a self-contained bundle, container image, source-checkout Gradle launch,
   or direct `java -jar` invocation.
 - `capabilities.environment.distribution.supportedPublicCliBundleTargets` and
-  `capabilities.environment.distribution.unsupportedPublicCliOperatingSystems` expose the public
+  `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` expose the public
   distribution matrix directly to automation.
 - `capabilities.requestShapes.schemaDialect` declares the JSON Schema dialect, and
   `capabilities.requestShapes.*.schema` publishes executable request schemas alongside the field
@@ -268,7 +274,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.distribution.sourceCheckoutJava`,
   `environment.distribution.runtimeDistribution`,
   `environment.distribution.supportedPublicCliBundleTargets`,
-  `environment.distribution.unsupportedPublicCliOperatingSystems`,
+  `environment.distribution.unsupportedPublicCliBundleTargets`,
   `environment.sqlite.libraryEnvironmentVariable`,
   `environment.sqlite.bundleHomeSystemProperty`,
   `environment.sqlite.requiredMinimumSqliteVersion`,

@@ -40,7 +40,6 @@ tmp/
 
 # OS and local scratch files
 .claude/
-.codex/
 .gemini/
 .DS_Store
 *.swp
@@ -49,3 +48,8 @@ tmp/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Repo-owned agent metadata stays versioned in Git.
+!/AGENTS.md
+!/.codex/
+!/.codex/**

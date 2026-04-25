@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
@@ -12,10 +13,14 @@ import java.util.Objects;
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
   static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
-  static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION = "direct-java-invocation";
-  static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION = "source-checkout-gradle";
-  static final String CONTAINER_RUNTIME_DISTRIBUTION = "container-image";
-  static final String BUNDLE_RUNTIME_DISTRIBUTION = "self-contained-bundle";
+  static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION =
+      ProtocolCatalog.directJavaRuntimeDistribution().wireValue();
+  static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION =
+      ProtocolCatalog.sourceCheckoutRuntimeDistribution().wireValue();
+  static final String CONTAINER_RUNTIME_DISTRIBUTION =
+      ProtocolCatalog.containerRuntimeDistribution().wireValue();
+  static final String BUNDLE_RUNTIME_DISTRIBUTION =
+      ProtocolCatalog.bundleRuntimeDistribution().wireValue();
 
   private final CliRequestReader requestReader;
   private final CliResponseWriter responseWriter;

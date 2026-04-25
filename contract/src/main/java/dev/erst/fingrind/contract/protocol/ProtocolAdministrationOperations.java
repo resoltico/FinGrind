@@ -15,7 +15,7 @@ final class ProtocolAdministrationOperations {
             List.of(),
             List.of(ProtocolOptions.BOOK_KEY_FILE + " <path>"),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
                 "fingrind %s %s ./secrets/acme.book-key"
@@ -31,7 +31,7 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax()),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Initialize a new book file with the canonical schema.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
@@ -60,7 +60,7 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.replacementPassphraseSourceSyntax()),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Rotate the passphrase that protects one existing book.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
@@ -79,7 +79,7 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->"),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Declare or reactivate one account in the selected book.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-cash.json"

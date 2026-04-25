@@ -3,7 +3,10 @@ package dev.erst.fingrind.contract;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
@@ -35,7 +38,9 @@ class MachineContractTest {
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());
     assertEquals("--output", capabilities.requestInput().queryOutputOption());
-    assertEquals(List.of("json", "human", "csv"), capabilities.requestInput().queryOutputModes());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
+        capabilities.requestInput().queryOutputModes());
     assertTrue(
         capabilities
             .requestInput()
@@ -60,6 +65,12 @@ class MachineContractTest {
     assertEquals(
         "array",
         nestedSchemaProperty(capabilities.requestShapes().ledgerPlan().schema(), "steps", "type"));
+    assertEquals(
+        RequestFieldPresence.CONDITIONAL,
+        fieldPresence(capabilities.requestShapes().ledgerPlan().stepFields(), "posting"));
+    assertEquals(
+        RequestFieldPresence.CONDITIONAL,
+        fieldPresence(capabilities.requestShapes().ledgerPlan().queryFields(), "accountCode"));
 
     List<String> rejectionCodes =
         capabilities.responseModel().rejections().stream()
@@ -114,16 +125,18 @@ class MachineContractTest {
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
     assertEquals(20, help.commands().size());
-    assertEquals("generate-book-key-file", help.commands().get(5).name());
-    assertEquals("open-book", help.commands().get(6).name());
-    assertEquals("rekey-book", help.commands().get(7).name());
-    assertEquals("inspect-book", help.commands().get(9).name());
-    assertEquals("account-balance", help.commands().get(13).name());
-    assertEquals("trial-balance", help.commands().get(14).name());
-    assertEquals("account-ledger", help.commands().get(15).name());
-    assertEquals("period-summary", help.commands().get(16).name());
+    assertEquals(OperationId.GENERATE_BOOK_KEY_FILE, help.commands().get(5).name());
+    assertEquals(OperationId.OPEN_BOOK, help.commands().get(6).name());
+    assertEquals(OperationId.REKEY_BOOK, help.commands().get(7).name());
+    assertEquals(OperationId.INSPECT_BOOK, help.commands().get(9).name());
+    assertEquals(OperationId.ACCOUNT_BALANCE, help.commands().get(13).name());
+    assertEquals(OperationId.TRIAL_BALANCE, help.commands().get(14).name());
+    assertEquals(OperationId.ACCOUNT_LEDGER, help.commands().get(15).name());
+    assertEquals(OperationId.PERIOD_SUMMARY, help.commands().get(16).name());
     assertTrue(help.commands().get(7).options().get(2).contains("--new-book-passphrase-prompt"));
-    assertEquals(List.of("json", "human", "csv"), help.commands().get(14).outputModes());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
+        help.commands().get(14).outputModes());
     assertEquals("pdf", help.commands().get(14).artifactOutputs().getFirst().format());
     assertEquals("--pdf-out <path>", help.commands().get(14).artifactOutputs().getFirst().option());
     assertEquals(5, help.exitCodes().size());
@@ -142,11 +155,11 @@ class MachineContractTest {
         environment.distribution().supportedPublicCliBundleTargets(),
         ProtocolCatalog.supportedPublicCliBundleTargets());
     assertEquals(
-        environment.distribution().unsupportedPublicCliOperatingSystems(),
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+        environment.distribution().unsupportedPublicCliBundleTargets(),
+        ProtocolCatalog.unsupportedPublicCliBundleTargets());
     assertEquals("2026-04-13", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
-    assertEquals("HUMAN", template.provenance().actorType());
+    assertEquals(ActorType.HUMAN, template.provenance().actorType());
     assertEquals("posting-1", reversalTemplate.priorPostingId());
   }
 
@@ -170,24 +183,37 @@ class MachineContractTest {
     return Objects.requireNonNull(propertySchema.get(nestedField));
   }
 
+  private static RequestFieldPresence fieldPresence(
+      List<ContractRequestShapes.RequestFieldDescriptor> fields, String fieldName) {
+    return fields.stream()
+        .filter(field -> field.name().equals(fieldName))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing field: " + fieldName))
+        .presence();
+  }
+
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
-            "self-contained-bundle",
-            "self-contained-bundle",
+            ProtocolCatalog.bundleRuntimeDistribution(),
+            ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentStorageDescriptor(
+            ProtocolCatalog.storageDriver(),
+            ProtocolCatalog.storageEngine(),
+            ProtocolCatalog.bookProtectionMode(),
+            ProtocolCatalog.defaultBookCipher()),
         new EnvironmentSqliteDescriptor(
-            "managed-only",
-            "FINGRIND_SQLITE_LIBRARY",
-            "fingrind.bundle.home",
+            ProtocolCatalog.sqliteLibraryMode(),
+            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
             SqliteCompileOptionsVerificationStatus.VERIFIED,
             "3.53.0",
             "2.3.3",
-            "ready",
+            SqliteRuntimeStatus.READY,
             "3.53.0",
             "2.3.3",
             null));

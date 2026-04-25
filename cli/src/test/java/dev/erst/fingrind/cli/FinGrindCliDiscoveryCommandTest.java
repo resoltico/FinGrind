@@ -14,8 +14,10 @@ import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.RequestFieldPresence;
 import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -104,7 +106,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("name")
             .asString());
     assertEquals(
-        "required",
+        RequestFieldPresence.REQUIRED.wireValue(),
         payload
             .path("requestShapes")
             .path("postEntry")
@@ -125,44 +127,61 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("steps")
             .path("type")
             .asText());
+    assertEquals(
+        "conditional",
+        descriptorField(
+                payload.path("requestShapes").path("ledgerPlan").path("stepFields"), "posting")
+            .path("presence")
+            .asText());
+    assertEquals(
+        "conditional",
+        descriptorField(
+                payload.path("requestShapes").path("ledgerPlan").path("queryFields"), "accountCode")
+            .path("presence")
+            .asText());
     assertTrue(payload.path("responseModel").path("rejections").isArray());
     assertFalse(payload.path("responseModel").has("rejectionCodes"));
     assertEquals(
-        "sqlite-ffm-sqlite3mc",
+        ProtocolCatalog.storageDriver().wireValue(),
         payload.path("environment").path("storage").path("storageDriver").asString());
     assertEquals(
-        "required",
+        ProtocolCatalog.bookProtectionMode().wireValue(),
         payload.path("environment").path("storage").path("bookProtectionMode").asString());
     assertEquals(
-        "chacha20",
+        ProtocolCatalog.defaultBookCipher().wireValue(),
         payload.path("environment").path("storage").path("defaultBookCipher").asString());
     assertEquals(
-        "managed-only", payload.path("environment").path("sqlite").path("libraryMode").asString());
+        ProtocolCatalog.sqliteLibraryMode().wireValue(),
+        payload.path("environment").path("sqlite").path("libraryMode").asString());
     assertEquals(
-        "self-contained-bundle",
+        ProtocolCatalog.publicCliDistribution().wireValue(),
         payload.path("environment").path("distribution").path("publicCliDistribution").asString());
     assertEquals(
         FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
         payload.path("environment").path("distribution").path("runtimeDistribution").asString());
     assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.supportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
         readTextArray(
             payload
                 .path("environment")
                 .path("distribution")
                 .path("supportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+        ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
         readTextArray(
             payload
                 .path("environment")
                 .path("distribution")
-                .path("unsupportedPublicCliOperatingSystems")));
+                .path("unsupportedPublicCliBundleTargets")));
     assertEquals(
-        "FINGRIND_SQLITE_LIBRARY",
+        ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
         payload.path("environment").path("sqlite").path("libraryEnvironmentVariable").asString());
     assertEquals(
-        "fingrind.bundle.home",
+        ProtocolCatalog.sqliteBundleHomeSystemProperty(),
         payload.path("environment").path("sqlite").path("bundleHomeSystemProperty").asString());
     assertEquals(
         "[\"THREADSAFE=1\",\"OMIT_LOAD_EXTENSION\",\"TEMP_STORE=3\",\"SECURE_DELETE\"]",
@@ -171,10 +190,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         "verified",
         payload.path("environment").path("sqlite").path("compileOptionsVerification").asString());
     assertEquals(
-        "2.3.3",
+        SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
         payload.path("environment").path("sqlite").path("requiredSqlite3mcVersion").asString());
     assertEquals(
-        "2.3.3",
+        SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
         payload.path("environment").path("sqlite").path("loadedSqlite3mcVersion").asString());
     assertEquals(
         "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
@@ -241,9 +260,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     EnvironmentDescriptor environmentDescriptor =
         FinGrindCli.environmentDescriptor(
             new SqliteRuntime.Probe(
-                "managed-only",
-                "3.53.0",
-                "2.3.3",
+                ProtocolCatalog.sqliteLibraryMode().wireValue(),
+                SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
+                SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
                 SqliteRuntime.Status.UNAVAILABLE,
                 null,
                 null,
@@ -251,35 +270,46 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
 
     assertEquals(
-        "source-checkout-gradle", environmentDescriptor.distribution().runtimeDistribution());
-    assertEquals("sqlite-ffm-sqlite3mc", environmentDescriptor.storage().storageDriver());
-    assertEquals("sqlite", environmentDescriptor.storage().storageEngine());
-    assertEquals("required", environmentDescriptor.storage().bookProtectionMode());
-    assertEquals("chacha20", environmentDescriptor.storage().defaultBookCipher());
-    assertEquals("managed-only", environmentDescriptor.sqlite().libraryMode());
+        ProtocolCatalog.sourceCheckoutRuntimeDistribution(),
+        environmentDescriptor.distribution().runtimeDistribution());
+    assertEquals(ProtocolCatalog.storageDriver(), environmentDescriptor.storage().storageDriver());
+    assertEquals(ProtocolCatalog.storageEngine(), environmentDescriptor.storage().storageEngine());
     assertEquals(
-        "self-contained-bundle", environmentDescriptor.distribution().publicCliDistribution());
+        ProtocolCatalog.bookProtectionMode(), environmentDescriptor.storage().bookProtectionMode());
+    assertEquals(
+        ProtocolCatalog.defaultBookCipher(), environmentDescriptor.storage().defaultBookCipher());
+    assertEquals(ProtocolCatalog.sqliteLibraryMode(), environmentDescriptor.sqlite().libraryMode());
+    assertEquals(
+        ProtocolCatalog.publicCliDistribution(),
+        environmentDescriptor.distribution().publicCliDistribution());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets(),
         environmentDescriptor.distribution().supportedPublicCliBundleTargets());
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        environmentDescriptor.distribution().unsupportedPublicCliOperatingSystems());
+        ProtocolCatalog.unsupportedPublicCliBundleTargets(),
+        environmentDescriptor.distribution().unsupportedPublicCliBundleTargets());
     assertEquals(
         ProtocolCatalog.sourceCheckoutJava(),
         environmentDescriptor.distribution().sourceCheckoutJava());
     assertEquals(
-        "FINGRIND_SQLITE_LIBRARY", environmentDescriptor.sqlite().libraryEnvironmentVariable());
-    assertEquals("fingrind.bundle.home", environmentDescriptor.sqlite().bundleHomeSystemProperty());
+        ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+        environmentDescriptor.sqlite().libraryEnvironmentVariable());
+    assertEquals(
+        ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+        environmentDescriptor.sqlite().bundleHomeSystemProperty());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         environmentDescriptor.sqlite().requiredCompileOptions());
     assertEquals(
         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
         environmentDescriptor.sqlite().compileOptionsVerification());
-    assertEquals("3.53.0", environmentDescriptor.sqlite().requiredMinimumSqliteVersion());
-    assertEquals("2.3.3", environmentDescriptor.sqlite().requiredSqlite3mcVersion());
-    assertEquals("unavailable", environmentDescriptor.sqlite().runtimeStatus());
+    assertEquals(
+        SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
+        environmentDescriptor.sqlite().requiredMinimumSqliteVersion());
+    assertEquals(
+        SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
+        environmentDescriptor.sqlite().requiredSqlite3mcVersion());
+    assertEquals(SqliteRuntimeStatus.UNAVAILABLE, environmentDescriptor.sqlite().runtimeStatus());
     assertEquals("managed sqlite unavailable", environmentDescriptor.sqlite().runtimeIssue());
     assertNull(environmentDescriptor.sqlite().loadedSqliteVersion());
     assertNull(environmentDescriptor.sqlite().loadedSqlite3mcVersion());
@@ -364,6 +394,15 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(json.contains("\"assert-account-balance\""));
     assertTrue(json.contains("\"assertion\""));
     assertFalse(json.contains("\"accountBalanceAssertion\""));
+  }
+
+  private static JsonNode descriptorField(JsonNode fields, String fieldName) {
+    for (JsonNode field : fields) {
+      if (fieldName.equals(field.path("name").asText())) {
+        return field;
+      }
+    }
+    throw new AssertionError("Missing descriptor field: " + fieldName);
   }
 
   @Test

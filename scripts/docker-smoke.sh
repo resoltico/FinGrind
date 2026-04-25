@@ -50,6 +50,7 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly gradlew="${repo_root}/gradlew"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
 readonly image_tag="fingrind-docker-acceptance:$$"
 readonly smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-acceptance.XXXXXX")"
 readonly docker_run_user="$(id -u):$(id -g)"
@@ -61,10 +62,12 @@ case "$(uname -s)" in
 esac
 
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
+[[ -f "${contract_values_reader}" ]] || die "missing contract-values reader at ${contract_values_reader}"
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
 readonly repo_cli_build_dir="${repo_root}/cli/build"
+readonly contract_values_json="$(python3 "${contract_values_reader}")"
 
 resolve_docker_buildx_plugin() {
     local docker_binary=''
@@ -150,12 +153,15 @@ printf 'Docker acceptance: refreshing internal container build inputs\n'
     "missing internal application JAR at ${cli_build_dir}/libs/fingrind.jar after :cli:shadowJar"
 [[ -f "${cli_build_dir}/docker/runtime-modules.txt" ]] || die \
     "missing Docker runtime module list at ${cli_build_dir}/docker/runtime-modules.txt after :cli:shadowJar"
+[[ -f "${cli_build_dir}/docker/docker-entrypoint.sh" ]] || die \
+    "missing Docker entrypoint script at ${cli_build_dir}/docker/docker-entrypoint.sh after :cli:shadowJar"
 
 if [[ "${cli_build_dir}" != "${repo_cli_build_dir}" ]]; then
     printf 'Docker acceptance: staging relocated Docker build inputs into repository context\n'
     mkdir -p "${repo_cli_build_dir}/libs" "${repo_cli_build_dir}/docker"
     cp -f "${cli_build_dir}/libs/fingrind.jar" "${repo_cli_build_dir}/libs/fingrind.jar"
     cp -f "${cli_build_dir}/docker/runtime-modules.txt" "${repo_cli_build_dir}/docker/runtime-modules.txt"
+    cp -f "${cli_build_dir}/docker/docker-entrypoint.sh" "${repo_cli_build_dir}/docker/docker-entrypoint.sh"
 fi
 
 docker_endpoint="${DOCKER_HOST:-}"
@@ -314,10 +320,14 @@ capabilities_output="$(docker_with_repo_config run --rm \
     -v "${smoke_root}:/workdir" \
     "${image_tag}" \
     capabilities --output json | tr -d '\r')"
-printf '%s\n' "${capabilities_output}" | python3 -c '
+printf '%s\n' "${capabilities_output}" | FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 -c '
 import json
+import os
 import sys
 
+contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
+runtime_surface = contract["runtimeSurface"]
+public_distribution = contract["publicDistribution"]
 payload = json.load(sys.stdin)["payload"]
 environment = payload["environment"]
 distribution = environment["distribution"]
@@ -328,14 +338,14 @@ query_output_modes = payload["requestInput"]["queryOutputModes"]
 error_codes = [descriptor["code"] for descriptor in payload["responseModel"]["errorDescriptors"]]
 
 checks = [
-    (distribution["runtimeDistribution"] == "container-image", "capabilities output did not report the container runtime distribution"),
-    (distribution["publicCliDistribution"] == "self-contained-bundle", "capabilities output did not report the public bundle distribution contract"),
-    ("windows-x86_64" in distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
-    (distribution["unsupportedPublicCliOperatingSystems"] == [], "capabilities output did not report the current unsupported public operating systems"),
-    (sqlite["libraryMode"] == "managed-only", "capabilities output did not report the managed-only SQLite runtime mode"),
-    (storage["storageDriver"] == "sqlite-ffm-sqlite3mc", "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
-    (storage["bookProtectionMode"] == "required", "capabilities output did not report required book protection"),
-    (storage["defaultBookCipher"] == "chacha20", "capabilities output did not report the default chacha20 cipher"),
+    (distribution["runtimeDistribution"] == runtime_surface["containerRuntimeDistribution"], "capabilities output did not report the container runtime distribution"),
+    (distribution["publicCliDistribution"] == runtime_surface["publicCliDistribution"], "capabilities output did not report the public bundle distribution contract"),
+    (distribution["supportedPublicCliBundleTargets"] == public_distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
+    (distribution["unsupportedPublicCliBundleTargets"] == public_distribution["unsupportedPublicCliBundleTargets"], "capabilities output did not report the current unsupported public bundle targets"),
+    (sqlite["libraryMode"] == runtime_surface["sqliteLibraryMode"], "capabilities output did not report the managed-only SQLite runtime mode"),
+    (storage["storageDriver"] == runtime_surface["storageDriver"], "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
+    (storage["bookProtectionMode"] == runtime_surface["bookProtectionMode"], "capabilities output did not report required book protection"),
+    (storage["defaultBookCipher"] == runtime_surface["defaultBookCipher"], "capabilities output did not report the default chacha20 cipher"),
     ("trial-balance" in query_commands, "capabilities output did not report the trial-balance query command"),
     ("account-ledger" in query_commands, "capabilities output did not report the account-ledger query command"),
     ("period-summary" in query_commands, "capabilities output did not report the period-summary query command"),

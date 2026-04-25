@@ -13,7 +13,11 @@ import dev.erst.fingrind.contract.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.MachineContract;
 import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.protocol.ExecutionMode;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -26,7 +30,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.25.0",
+                "0.26.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -40,10 +44,10 @@ class CliDiscoveryOutputRendererTest {
                     "single-currency-entry"),
                 List.of(
                     new CommandDescriptor(
-                        "help",
+                        OperationId.HELP,
                         List.of(),
                         List.of(),
-                        "single-shot",
+                        ExecutionMode.JSON_ENVELOPE,
                         List.of(),
                         List.of(),
                         "Show help")),
@@ -82,34 +86,38 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.25.0"));
+    assertTrue(rendered.contains("0.26.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.25.0",
+        "0.26.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 
   private static EnvironmentDescriptor environment() {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
-            "self-contained-bundle",
-            "self-contained-bundle",
-            List.of("macos-aarch64", "windows-x86_64"),
+            ProtocolCatalog.bundleRuntimeDistribution(),
+            ProtocolCatalog.publicCliDistribution(),
+            List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_X86_64),
             List.of(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentStorageDescriptor(
+            ProtocolCatalog.storageDriver(),
+            ProtocolCatalog.storageEngine(),
+            ProtocolCatalog.bookProtectionMode(),
+            ProtocolCatalog.defaultBookCipher()),
         new EnvironmentSqliteDescriptor(
-            "managed-only",
-            "FINGRIND_SQLITE_LIBRARY",
-            "fingrind.bundle.home",
+            ProtocolCatalog.sqliteLibraryMode(),
+            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             List.of("THREADSAFE=1"),
             SqliteCompileOptionsVerificationStatus.VERIFIED,
             "3.53.0",
             "2.3.3",
-            "loaded",
+            SqliteRuntimeStatus.READY,
             "3.53.0",
             "2.3.3",
             null));

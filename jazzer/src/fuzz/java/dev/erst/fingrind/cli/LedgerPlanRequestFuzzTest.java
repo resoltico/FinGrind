@@ -22,9 +22,11 @@ public class LedgerPlanRequestFuzzTest {
       if (plan.steps().isEmpty()) {
         throw new IllegalStateException("Parsed ledger plan retained no steps.");
       }
-      long openBookSteps = plan.steps().stream().filter(LedgerStep.OpenBook.class::isInstance).count();
+      long openBookSteps =
+          plan.steps().stream().filter(LedgerStep.OpenBook.class::isInstance).count();
       if (openBookSteps > 0 && !plan.beginsWithOpenBook()) {
-        throw new IllegalStateException("Parsed ledger plan accepted open-book after the first step.");
+        throw new IllegalStateException(
+            "Parsed ledger plan accepted open-book after the first step.");
       }
       for (LedgerStep step : plan.steps()) {
         String stepKind = step.kind().wireValue();
@@ -32,7 +34,8 @@ public class LedgerPlanRequestFuzzTest {
           throw new IllegalStateException("Parsed ledger plan retained a blank step kind.");
         }
         if (OperationId.EXECUTE_PLAN.wireName().equals(stepKind)) {
-          throw new IllegalStateException("Plan journal step kind must not collapse to execute-plan.");
+          throw new IllegalStateException(
+              "Plan journal step kind must not collapse to execute-plan.");
         }
       }
       LedgerPlanFuzzAssertions.executeAndAssert(plan, input);

@@ -89,8 +89,14 @@ public final class ProtocolOptions {
   }
 
   /** Returns the rendered optional output-mode syntax for the supplied modes. */
-  public static String optionalOutputSyntax(List<String> outputModes) {
-    return "[" + OUTPUT + " <" + String.join("|", outputModes) + ">]";
+  public static String optionalOutputSyntax(List<OutputMode> outputModes) {
+    return "["
+        + OUTPUT
+        + " <"
+        + outputModes.stream()
+            .map(OutputMode::wireValue)
+            .collect(java.util.stream.Collectors.joining("|"))
+        + ">]";
   }
 
   /** Returns the rendered optional PDF-export syntax for supported report commands. */

@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what is still not covered by the jazzer suite"]
@@ -17,7 +17,7 @@ route:
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, duplicate-key rejection, unexpected-field rejection, and legacy-field hard breaks | `10` |
-| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` plus in-memory `LedgerPlanService.execute(...)` | ledger-plan parsing, canonical step-kind preservation, successful in-memory execution, structured list-query journal facts, removal of the inert execution-policy block, open-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `6` |
+| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` plus in-memory `LedgerPlanService.execute(...)` | ledger-plan parsing, canonical step-kind preservation, successful in-memory execution, structured list-query journal facts, rejected missing-book list-query plans without fake page facts, removal of the inert execution-policy block, open-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `7` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
 | `sqlite-book-roundtrip` | `SqliteBookSession` via `SqliteBookSessions` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 
@@ -30,7 +30,7 @@ Surface:
 
 What it asserts:
 - fresh valid requests parse successfully
-- malformed JSON is normalized into `invalid-request`
+- malformed JSON is normalized into the `expected-invalid` replay outcome with an unparsed detail payload
 - invalid domain shapes fail deterministically
 - duplicate JSON object keys are rejected deterministically
 - unexpected object fields are rejected deterministically
@@ -51,6 +51,7 @@ What it asserts:
 - `open-book` is accepted only as the first step when present
 - assertion steps keep their own canonical kind instead of collapsing to `execute-plan`
 - successful `list-accounts` and `list-postings` steps keep page metadata plus structured row groups
+- rejected `list-accounts` and `list-postings` steps do not pretend to carry success-only page facts
 - the removed `executionPolicy` block is rejected deterministically
 - oversize ledger plans are rejected at the 100-step protocol limit
 - unknown `kind` typos are reported as unsupported step kinds without requiring an `assertion` object first
@@ -66,8 +67,8 @@ Surface:
 What it asserts:
 - fresh valid requests preflight successfully
 - fresh unopened books reject with `posting-book-not-initialized`
-- opened books with undeclared accounts reject under `account-state-violations`
-- declared accounts that are later deactivated reject under `account-state-violations`
+- opened books with undeclared accounts replay as `unknown-account`
+- declared accounts that are later deactivated replay as `inactive-account`
 - a first commit persists one `PostingFact`
 - a duplicate commit returns `duplicate-idempotency-key`
 - missing reversal reason is rejected at request parsing, and missing reversal target rejects deterministically on both preflight and commit
@@ -85,8 +86,8 @@ Surface:
 
 What it asserts:
 - unopened books reject with `posting-book-not-initialized`
-- opened books with undeclared accounts reject under `account-state-violations`
-- deactivated accounts reject under `account-state-violations`
+- opened books with undeclared accounts replay as `unknown-account`
+- deactivated accounts replay as `inactive-account`
 - one valid request commits durably into one selected initialized book file
 - the durable book file is opened through SQLite3 Multiple Ciphers rather than plain SQLite
 - reloading by idempotency returns the same fact shape
@@ -113,6 +114,7 @@ What it asserts:
 | `cli-request` | `invalid_unbalanced.json` | unbalanced journal entry |
 | `ledger-plan-request` | `basic_valid.json` | valid plan with operation, posting, and assertion steps |
 | `ledger-plan-request` | `query_valid.json` | valid plan with successful structured list-query journal facts |
+| `ledger-plan-request` | `rejected_missing_book_list_postings.json` | parsed plan rejects as missing-book query workflow without synthetic page facts |
 | `ledger-plan-request` | `invalid_execution_policy.json` | removed execution-policy block rejection |
 | `ledger-plan-request` | `invalid_open_book_not_first.json` | open-book ordering rejection |
 | `ledger-plan-request` | `invalid_too_many_steps.json` | 100-step protocol limit rejection |

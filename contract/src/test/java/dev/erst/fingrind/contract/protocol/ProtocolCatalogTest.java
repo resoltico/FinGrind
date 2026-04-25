@@ -153,18 +153,27 @@ class ProtocolCatalogTest {
     OperationIdContract contract =
         OperationIdContract.loadFromResource(
             new ByteArrayInputStream(
-                "HELP=help\nVERSION=version\n".getBytes(StandardCharsets.UTF_8)),
+                """
+                {"HELP":"help","VERSION":"version"}
+                """
+                    .getBytes(StandardCharsets.UTF_8)),
             "memory");
-    OperationIdContract blankContract =
-        OperationIdContract.loadFromResource(
-            new ByteArrayInputStream("HELP=\n".getBytes(StandardCharsets.UTF_8)), "blank");
 
     assertEquals("help", contract.wireName("HELP"));
     assertThrows(IllegalStateException.class, () -> contract.wireName("UNKNOWN"));
-    assertThrows(IllegalStateException.class, () -> blankContract.wireName("HELP"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            OperationIdContract.loadFromResource(
+                new ByteArrayInputStream(
+                    """
+                    {"HELP":"   "}
+                    """
+                        .getBytes(StandardCharsets.UTF_8)),
+                "blank"));
     assertThrows(
         IllegalStateException.class,
-        () -> OperationIdContract.loadFromResource(null, "missing.properties"));
+        () -> OperationIdContract.loadFromResource(null, "missing.json"));
     assertThrows(
         UncheckedIOException.class,
         () ->
@@ -180,7 +189,7 @@ class ProtocolCatalogTest {
                     throw new IOException("boom");
                   }
                 },
-                "broken.properties"));
+                "broken.json"));
   }
 
   private static ProtocolOperation operation(OperationId id, List<String> aliases) {
@@ -190,7 +199,7 @@ class ProtocolCatalogTest {
         new ProtocolCommandSignature(
             id.wireName(), aliases, List.of(), "fingrind " + id.wireName()),
         new ProtocolOperationOutputs(
-            ExecutionMode.JSON_ENVELOPE, List.of(OutputMode.JSON.wireValue()), List.of()),
+            ExecutionMode.JSON_ENVELOPE, List.of(OutputMode.JSON), List.of()),
         new ProtocolOperationDocumentation("summary", List.of()));
   }
 
@@ -203,7 +212,8 @@ class ProtocolCatalogTest {
     assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
     assertEquals(
         "[--output <json|human|csv>]",
-        ProtocolOptions.optionalOutputSyntax(List.of("json", "human", "csv")));
+        ProtocolOptions.optionalOutputSyntax(
+            List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV)));
     assertEquals("[--pdf-out <path>]", ProtocolOptions.optionalPdfOutSyntax());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
@@ -214,7 +224,8 @@ class ProtocolCatalogTest {
     assertTrue(listAccounts.options().contains("[--limit <1-200>]"));
     assertTrue(listAccounts.usage().contains("[--book-key-file <path> | --book-passphrase-stdin"));
     assertTrue(listAccounts.examples().getFirst().contains("--limit 50"));
-    assertEquals(List.of("json", "human", "csv"), trialBalance.outputModes());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV), trialBalance.outputModes());
     assertTrue(trialBalance.options().contains("[--output <json|human|csv>]"));
     assertTrue(trialBalance.options().contains("[--pdf-out <path>]"));
     assertEquals(1, trialBalance.artifactOutputs().size());
@@ -224,26 +235,48 @@ class ProtocolCatalogTest {
 
   @Test
   void globalFacts_publishTheCurrentBookModelAndRuntimeContract() {
-    assertEquals(List.of("sqlite"), ProtocolCatalog.storageEngines());
+    assertEquals(List.of(StorageEngine.SQLITE), ProtocolCatalog.storageEngines());
+    assertEquals(
+        RuntimeDistribution.DIRECT_JAVA_INVOCATION,
+        ProtocolCatalog.directJavaRuntimeDistribution());
+    assertEquals(
+        RuntimeDistribution.SOURCE_CHECKOUT_GRADLE,
+        ProtocolCatalog.sourceCheckoutRuntimeDistribution());
+    assertEquals(
+        RuntimeDistribution.CONTAINER_IMAGE, ProtocolCatalog.containerRuntimeDistribution());
+    assertEquals(
+        RuntimeDistribution.SELF_CONTAINED_BUNDLE, ProtocolCatalog.bundleRuntimeDistribution());
+    assertEquals(
+        PublicCliDistribution.SELF_CONTAINED_BUNDLE, ProtocolCatalog.publicCliDistribution());
+    assertEquals(StorageDriver.SQLITE_FFM_SQLITE3MC, ProtocolCatalog.storageDriver());
+    assertEquals(StorageEngine.SQLITE, ProtocolCatalog.storageEngine());
+    assertEquals(BookProtectionMode.REQUIRED, ProtocolCatalog.bookProtectionMode());
+    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.defaultBookCipher());
+    assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
+    assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());
+    assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
+    assertEquals("3.53.0", ProtocolCatalog.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", ProtocolCatalog.requiredSqlite3mcVersion());
     assertEquals(
         List.of(
-            ProtocolStatuses.OK,
-            ProtocolStatuses.PREFLIGHT_ACCEPTED,
-            ProtocolStatuses.COMMITTED,
-            ProtocolStatuses.PLAN_COMMITTED),
+            ProtocolSuccessStatus.OK,
+            ProtocolSuccessStatus.PREFLIGHT_ACCEPTED,
+            ProtocolSuccessStatus.COMMITTED,
+            ProtocolSuccessStatus.PLAN_COMMITTED),
         ProtocolCatalog.successStatuses());
     assertEquals(
         List.of(
-            ProtocolStatuses.REJECTED,
-            ProtocolStatuses.PLAN_REJECTED,
-            ProtocolStatuses.PLAN_ASSERTION_FAILED),
+            ProtocolRejectionStatus.REJECTED,
+            ProtocolRejectionStatus.PLAN_REJECTED,
+            ProtocolRejectionStatus.PLAN_ASSERTION_FAILED),
         ProtocolCatalog.rejectionStatuses());
     assertEquals("single-currency-per-entry", ProtocolCatalog.bookModel().currencyScope());
     assertEquals("not-supported", ProtocolCatalog.currency().multiCurrencyStatus());
     assertEquals("advisory", ProtocolCatalog.preflight().semantics());
     assertFalse(ProtocolCatalog.preflight().commitGuarantee());
-    assertEquals("atomic", ProtocolCatalog.planExecution().transactionMode());
-    assertEquals("halt-on-first-failure", ProtocolCatalog.planExecution().failurePolicy());
+    assertEquals(PlanTransactionMode.ATOMIC, ProtocolCatalog.planExecution().transactionMode());
+    assertEquals(
+        PlanFailurePolicy.HALT_ON_FIRST_FAILURE, ProtocolCatalog.planExecution().failurePolicy());
     assertTrue(ProtocolCatalog.planExecution().journal().contains("per-step journal"));
     assertTrue(
         ProtocolCatalog.planExecution().hardLimitations().stream()
@@ -255,15 +288,24 @@ class ProtocolCatalogTest {
         PublicDistributionContracts.current().supportedPublicCliBundleTargets(),
         ProtocolCatalog.supportedPublicCliBundleTargets());
     assertEquals(
-        PublicDistributionContracts.current().unsupportedPublicCliOperatingSystems(),
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+        PublicDistributionContracts.current().unsupportedPublicCliBundleTargets(),
+        ProtocolCatalog.unsupportedPublicCliBundleTargets());
+    assertEquals(
+        BundleLayoutContracts.current().bundleTargets().keySet(),
+        java.util.stream.Stream.concat(
+                ProtocolCatalog.supportedPublicCliBundleTargets().stream(),
+                ProtocolCatalog.unsupportedPublicCliBundleTargets().stream())
+            .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
   }
 
   @Test
   void planExecutionFactsAndPlanFieldConstantsValidateTheirShape() {
     PlanExecutionFacts facts =
         new PlanExecutionFacts(
-            "atomic", "halt-on-first-failure", "complete journal", List.of("limit"));
+            PlanTransactionMode.ATOMIC,
+            PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
+            "complete journal",
+            List.of("limit"));
 
     assertEquals(List.of("limit"), facts.hardLimitations());
     assertEquals(List.of("planId", "steps"), ProtocolLedgerPlanFields.planFields());
@@ -317,16 +359,53 @@ class ProtocolCatalogTest {
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
         ProtocolPostEntryFields.provenanceFields());
     assertEquals(List.of("priorPostingId", "reason"), ProtocolPostEntryFields.reversalFields());
+    assertEquals("accountCode", ProtocolSharedRequestFields.ACCOUNT_CODE);
+    assertEquals("currencyCode", ProtocolSharedRequestFields.CURRENCY_CODE);
+    assertEquals("effectiveDateFrom", ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM);
+    assertEquals("effectiveDateTo", ProtocolSharedRequestFields.EFFECTIVE_DATE_TO);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolDeclareAccountFields.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.CURRENCY_CODE,
+        ProtocolPostEntryFields.JournalLine.CURRENCY_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM,
+        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_TO,
+        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM,
+        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_TO,
+        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO);
+    assertEquals(
+        ProtocolSharedRequestFields.CURRENCY_CODE,
+        ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE);
 
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new PlanExecutionFacts(" ", "halt-on-first-failure", "journal", List.of()));
+        NullPointerException.class,
+        () ->
+            new PlanExecutionFacts(
+                null, PlanFailurePolicy.HALT_ON_FIRST_FAILURE, "journal", List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new PlanExecutionFacts(PlanTransactionMode.ATOMIC, null, "journal", List.of()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new PlanExecutionFacts("atomic", " ", "journal", List.of()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new PlanExecutionFacts("atomic", "halt-on-first-failure", " ", List.of()));
+        () ->
+            new PlanExecutionFacts(
+                PlanTransactionMode.ATOMIC,
+                PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
+                " ",
+                List.of()));
   }
 
   @Test
@@ -335,19 +414,29 @@ class ProtocolCatalogTest {
         PublicDistributionContracts.loadFromResource(
             new ByteArrayInputStream(
                 """
-                supportedPublicCliBundleTargets=macos-aarch64, linux-x86_64
-                unsupportedPublicCliOperatingSystems=windows-arm64
+                {
+                  "supportedPublicCliBundleTargets": [
+                    "macos-aarch64",
+                    "linux-x86_64"
+                  ],
+                  "unsupportedPublicCliBundleTargets": [
+                    "windows-aarch64"
+                  ]
+                }
                 """
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
             "test-resource");
 
     assertEquals(
-        List.of("macos-aarch64", "linux-x86_64"), loaded.supportedPublicCliBundleTargets());
-    assertEquals(List.of("windows-arm64"), loaded.unsupportedPublicCliOperatingSystems());
+        List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.LINUX_X86_64),
+        loaded.supportedPublicCliBundleTargets());
+    assertEquals(
+        List.of(PublicCliBundleTarget.WINDOWS_AARCH64), loaded.unsupportedPublicCliBundleTargets());
     assertEquals(
         List.of(),
         PublicDistributionContracts.loadFromResource(
-                new ByteArrayInputStream(new byte[0]), "blank-resource")
+                new ByteArrayInputStream("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "blank-resource")
             .supportedPublicCliBundleTargets());
     assertThrows(
         IllegalStateException.class,
@@ -355,15 +444,33 @@ class ProtocolCatalogTest {
     assertThrows(
         UncheckedIOException.class,
         () -> PublicDistributionContracts.loadFromResource(failingInputStream(), "bad-resource"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PublicDistributionContracts.loadFromResource(
+                new ByteArrayInputStream(
+                    """
+                    {"supportedPublicCliBundleTargets":[1]}
+                    """
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "invalid-resource"));
     assertEquals(
         List.of(),
-        new PublicDistributionContract(null, List.of()).supportedPublicCliBundleTargets());
+        PublicDistributionContract.fromWireValues(null, List.of())
+            .supportedPublicCliBundleTargets());
     assertThrows(
         IllegalArgumentException.class,
-        () -> new PublicDistributionContract(List.of("macos-aarch64", " "), List.of()));
+        () -> PublicDistributionContract.fromWireValues(List.of("macos-aarch64", " "), List.of()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new PublicDistributionContract(List.of("linux-x86_64", "linux-x86_64"), List.of()));
+        () ->
+            PublicDistributionContract.fromWireValues(
+                List.of("linux-x86_64", "linux-x86_64"), List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PublicDistributionContract.fromWireValues(
+                List.of("linux-x86_64"), List.of("linux-x86_64", "windows-aarch64")));
   }
 
   private static InputStream failingInputStream() {

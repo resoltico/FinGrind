@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -143,6 +143,10 @@ The consumer scripts are intentionally thin now:
 `jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can resolve the live
 local product modules without publishing snapshots. This keeps Jazzer iteration fast and ensures
 fuzzing runs against the exact working tree under review.
+
+The nested Jazzer build now also applies the same `dev.erst.fingrind.java-conventions` plugin that
+the main Java modules use, so its own replay engine, CLI utilities, and tests no longer bypass
+Spotless, Error Prone, NullAway, PMD, JaCoCo, or the shared source/Jackson policy tasks.
 
 ### One dependency authority
 

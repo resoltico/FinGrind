@@ -16,10 +16,9 @@ final class ProtocolQueryOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.optionalOutputSyntax(
-                    List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Inspect one selected book for lifecycle state, format version, and compatibility.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
@@ -37,9 +36,10 @@ final class ProtocolQueryOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.optionalLimitSyntax(),
                 ProtocolOptions.optionalCursorSyntax(),
-                ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
+                ProtocolOptions.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
             ExecutionMode.JSON_ENVELOPE,
-            OutputMode.wireValues(),
+            List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
             "List one stable page of declared accounts in the selected book using keyset pagination.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
@@ -58,10 +58,9 @@ final class ProtocolQueryOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.POSTING_ID + " <posting-id>",
-                ProtocolOptions.optionalOutputSyntax(
-                    List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()))),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Return one committed posting by durable posting identifier.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 018f0e6d-7f7e-7b04-b93f-bc0b69f19d5b"
@@ -83,9 +82,10 @@ final class ProtocolQueryOperations {
                 "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
                 ProtocolOptions.optionalLimitSyntax(),
                 ProtocolOptions.optionalCursorSyntax(),
-                ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
+                ProtocolOptions.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
             ExecutionMode.JSON_ENVELOPE,
-            OutputMode.wireValues(),
+            List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
             "List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 25"
@@ -108,9 +108,10 @@ final class ProtocolQueryOperations {
                     "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
                     "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
                     ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
+                    ProtocolOptions.optionalOutputSyntax(
+                        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
                 ExecutionMode.JSON_ENVELOPE,
-                OutputMode.wireValues(),
+                List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute grouped per-currency balances for one declared account.",
                 List.of(
@@ -132,9 +133,10 @@ final class ProtocolQueryOperations {
                     ProtocolOptions.currentPassphraseSourceSyntax(),
                     "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
                     ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
+                    ProtocolOptions.optionalOutputSyntax(
+                        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
                 ExecutionMode.JSON_ENVELOPE,
-                OutputMode.wireValues(),
+                List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute one book-wide trial balance as of the selected effective date or the current durable posting horizon when no date filter is supplied.",
                 List.of(
@@ -159,9 +161,10 @@ final class ProtocolQueryOperations {
                     "[" + ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
                     "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
                     ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
+                    ProtocolOptions.optionalOutputSyntax(
+                        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
                 ExecutionMode.JSON_ENVELOPE,
-                OutputMode.wireValues(),
+                List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.",
                 List.of(
@@ -187,9 +190,10 @@ final class ProtocolQueryOperations {
                     ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
                     ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
                     ProtocolOptions.optionalPdfOutSyntax(),
-                    ProtocolOptions.optionalOutputSyntax(OutputMode.wireValues())),
+                    ProtocolOptions.optionalOutputSyntax(
+                        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV))),
                 ExecutionMode.JSON_ENVELOPE,
-                OutputMode.wireValues(),
+                List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute one bounded office-work period summary with posting totals, currency totals, and per-account activity.",
                 List.of(
