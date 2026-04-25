@@ -100,6 +100,19 @@ function Read-ContractValues {
     return $json | ConvertFrom-Json
 }
 
+function Test-SameSequence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]] $Reference,
+        [Parameter(Mandatory = $true)]
+        [object[]] $Actual
+    )
+
+    return @(
+        Compare-Object -ReferenceObject $Reference -DifferenceObject $Actual
+    ).Count -eq 0
+}
+
 function Write-Utf8NoBomFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -251,16 +264,14 @@ try {
     if ($bundleManifest.launcher -ne $hostBundleTarget.launcherPath) {
         Fail "bundle manifest did not report the canonical launcher path"
     }
-    if (
-        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
-            -DifferenceObject @($bundleManifest.supportedPublicCliBundleTargets)).Count -ne 0
-    ) {
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
+            -Actual @($bundleManifest.supportedPublicCliBundleTargets))) {
         Fail "bundle manifest did not report the supported public bundle targets"
     }
-    if (
-        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
-            -DifferenceObject @($bundleManifest.unsupportedPublicCliBundleTargets)).Count -ne 0
-    ) {
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
+            -Actual @($bundleManifest.unsupportedPublicCliBundleTargets))) {
         Fail "bundle manifest still reported unsupported public bundle targets"
     }
     if ($bundleManifest.publicCliDistribution -ne $script:ContractValues.runtimeSurface.publicCliDistribution) {
@@ -445,16 +456,14 @@ try {
     if ($distribution.publicCliDistribution -ne $script:ContractValues.runtimeSurface.publicCliDistribution) {
         Fail "capabilities output did not report the public bundle distribution contract"
     }
-    if (
-        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
-            -DifferenceObject @($distribution.supportedPublicCliBundleTargets)).Count -ne 0
-    ) {
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
+            -Actual @($distribution.supportedPublicCliBundleTargets))) {
         Fail "capabilities output did not report the supported public bundle targets"
     }
-    if (
-        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
-            -DifferenceObject @($distribution.unsupportedPublicCliBundleTargets)).Count -ne 0
-    ) {
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
+            -Actual @($distribution.unsupportedPublicCliBundleTargets))) {
         Fail "capabilities output still reported unsupported public bundle targets"
     }
     if ($sqlite.libraryMode -ne $script:ContractValues.runtimeSurface.sqliteLibraryMode) {

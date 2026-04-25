@@ -59,6 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the Windows bundle smoke verifier so PowerShell list comparisons no longer crash on
+  singleton-or-empty `Compare-Object` results, and added a Stage 5 PowerShell regression so that
+  cross-platform shell checks catch the seam before Windows CI becomes the first detector again.
 - Fixed the generated Docker entrypoint to use the POSIX shell provided by the Alpine runtime
   image instead of a Bash shebang the image does not ship, so container acceptance now exercises
   the real published entrypoint surface instead of failing before Java starts.

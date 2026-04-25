@@ -159,7 +159,7 @@ print_usage() {
         '  2. jazzer check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
-        '  5. bash -n check.sh scripts/*.sh jazzer/bin/* && scripts/test-prepare-release-version.sh && scripts/test-read-contract-values.sh && scripts/test-release-protocol-pr-diff-fallback.sh && scripts/test-verify-public-container-surface.sh && scripts/test-gradlew-bat-wrapper.sh && scripts/test-gradle-wrapper-support.sh && scripts/test-check-process-support.sh && scripts/test-jazzer-fuzz-all-wrapper.sh && scripts/test-verify-github-release.sh && scripts/test-verify-release-primary-checkout.sh && scripts/test-verify-managed-sqlite-runtime.sh && scripts/verify-managed-sqlite-runtime.sh' \
+        '  5. bash -n check.sh scripts/*.sh jazzer/bin/* && scripts/test-prepare-release-version.sh && scripts/test-read-contract-values.sh && scripts/test-bundle-smoke-powershell.sh && scripts/test-release-protocol-pr-diff-fallback.sh && scripts/test-verify-public-container-surface.sh && scripts/test-gradlew-bat-wrapper.sh && scripts/test-gradle-wrapper-support.sh && scripts/test-check-process-support.sh && scripts/test-jazzer-fuzz-all-wrapper.sh && scripts/test-verify-github-release.sh && scripts/test-verify-release-primary-checkout.sh && scripts/test-verify-managed-sqlite-runtime.sh && scripts/verify-managed-sqlite-runtime.sh' \
         '  6. scripts/docker-smoke.sh (Docker acceptance workflow)' \
         '' \
         'Supported options:' \
@@ -761,6 +761,7 @@ run_shell_stage 'shell-syntax' 'Stage 5/6: checking release-surface shell script
         bash -n "$@"
         bash "'"${repo_root}"'/scripts/test-prepare-release-version.sh"
         bash "'"${repo_root}"'/scripts/test-read-contract-values.sh"
+        bash "'"${repo_root}"'/scripts/test-bundle-smoke-powershell.sh"
         bash "'"${repo_root}"'/scripts/test-release-protocol-pr-diff-fallback.sh"
         bash "'"${repo_root}"'/scripts/test-verify-public-container-surface.sh"
         bash "'"${repo_root}"'/scripts/test-gradlew-bat-wrapper.sh"
