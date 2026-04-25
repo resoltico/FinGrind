@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: CONTRACT_PROTOCOL
 updated: "2026-04-25"
 route:

@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-04-25
+
 ### Changed
 
 - Refreshed the build-quality toolchain to PMD 7.24.0 so root and nested Jazzer Java verification
@@ -968,7 +970,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.26.0
 [0.25.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.25.0
 [0.24.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.24.0
 [0.23.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.23.0

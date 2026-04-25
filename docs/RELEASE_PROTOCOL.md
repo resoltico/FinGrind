@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-04-25"
 route:
@@ -100,10 +100,11 @@ gh pr list --state open \
   --json number,title,url,headRefName,mergeStateStatus,isDraft,author,statusCheckRollup
 ```
 
-If any open PR is authored by `dependabot[bot]`, decide up front whether it changes release
-machinery or release-critical dependencies. If it does, land or reject it before cutting the
-release branch. If it does not, carry that decision forward and complete Step 10 before ending
-the release session.
+If any open PR is authored by Dependabot, decide up front whether it changes release machinery or
+release-critical dependencies. GitHub currently reports these PRs through `gh pr list` with
+`author.login` set to `app/dependabot`; older surfaces may still render `dependabot[bot]`. If the
+PR is release-critical, land or reject it before cutting the release branch. If it is not, carry
+that decision forward and complete Step 10 before ending the release session.
 
 If you merge or close one release-critical PR, re-enumerate the remaining open PRs before acting
 on the next one. A changed `main` branch can invalidate sibling merge state or required-check
@@ -477,9 +478,10 @@ gh pr list --state open \
   --json number,title,url,headRefName,mergeStateStatus,isDraft,author,statusCheckRollup
 ```
 
-Treat any PR whose `author.login` is `dependabot[bot]` as in scope for this step, even if it was
-already reviewed during Step 1. Step 1 creates the release-time decision; Step 10 closes the loop
-before the release session is allowed to end.
+Treat any PR whose `author.login` identifies Dependabot as in scope for this step, even if it was
+already reviewed during Step 1. Today that means `app/dependabot`; older GitHub surfaces may show
+`dependabot[bot]`. Step 1 creates the release-time decision; Step 10 closes the loop before the
+release session is allowed to end.
 
 For each open Dependabot PR, inspect the exact payload and its current gate status:
 

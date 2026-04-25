@@ -1,6 +1,6 @@
 ---
 afad: "3.5"
-version: "0.25.0"
+version: "0.26.0"
 domain: USER_CLI
 updated: "2026-04-25"
 route:
@@ -117,18 +117,18 @@ version pins that the source checkout, release automation, and shell acceptance 
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.25.0-macos-aarch64.tar.gz
-./fingrind-0.25.0-macos-aarch64/bin/fingrind help
-./fingrind-0.25.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.26.0-macos-aarch64.tar.gz
+./fingrind-0.26.0-macos-aarch64/bin/fingrind help
+./fingrind-0.26.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.25.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.25.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.26.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.26.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.26.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
