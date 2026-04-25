@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.25.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -138,7 +138,7 @@ rejected and wastes time. Always commit on a release branch.
 git checkout -b release/X.Y.Z
 ./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD
 ./check.sh
-git add <every modified file that belongs in the release — never .codex/>
+git add <every modified file that belongs in the release>
 git status --short
 git diff --cached --name-status
 git diff --cached --stat
@@ -154,6 +154,9 @@ Treat staging as a handoff checkpoint, not a formality. Before committing:
   edit step; do not hand-edit scattered version-bearing files when the scripted sweep can do it
 - after the version sweep, `gradle.properties` `version=` equals the target release version
   exactly (for example `X.Y.Z`)
+- repo-owned agent metadata such as `AGENTS.md` and `.codex/**` stays versioned in Git when it
+  belongs to the release, but it remains `export-ignore`d from GitHub source archives and is not
+  part of the public bundle or container asset set
 - all `docs/*.md` frontmatter `version:` fields equal the target release version
 - all touched `docs/*.md` frontmatter `updated:` fields equal the release date used in the
   scripted sweep
@@ -366,6 +369,18 @@ Do not infer release publication from workflow success alone. Verify the release
 
 ```bash
 gh release view vX.Y.Z --json tagName,isDraft,isPrerelease,publishedAt,url,assets
+./scripts/verify-github-release.sh \
+  vX.Y.Z \
+  fingrind-X.Y.Z-macos-aarch64.tar.gz \
+  fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256 \
+  fingrind-X.Y.Z-macos-x86_64.tar.gz \
+  fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256 \
+  fingrind-X.Y.Z-linux-x86_64.tar.gz \
+  fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256 \
+  fingrind-X.Y.Z-linux-aarch64.tar.gz \
+  fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256 \
+  fingrind-X.Y.Z-windows-x86_64.zip \
+  fingrind-X.Y.Z-windows-x86_64.zip.sha256
 ```
 
 Requirements:
@@ -384,13 +399,15 @@ Requirements:
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
   - `fingrind-X.Y.Z-windows-x86_64.zip`
   - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
+- The generated GitHub source archives do not include repo-owned agent metadata such as
+  `AGENTS.md` or `.codex/**`.
 
 If these conditions are satisfied, the GitHub Release handoff is complete even if an additional
 duplicate release workflow run failed after the release was already created.
 
 The release workflow is expected to perform this same verification internally after publication.
-The operator-side `gh release view` check remains mandatory because workflow success is still not
-the authoritative state.
+The operator-side `gh release view` plus `./scripts/verify-github-release.sh` checks remain
+mandatory because workflow success is still not the authoritative state.
 
 The container workflow is also expected to wait for this complete GitHub release asset set before
 it publishes the public image. If container publication succeeds while the release asset set is

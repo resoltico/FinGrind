@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.25.0"
 domain: DEVELOPER
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -92,6 +92,15 @@ pagination limits, hard book-model facts, preflight facts, currency facts, and p
 kinds. Executor code assembles and executes typed workflows from that registry, and CLI code
 renders or routes those DTOs without reauthoring operation names.
 
+Repo-owned JSON contract snapshots back that typed public surface:
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json`
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.json`
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json`
+- `contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json`
+
+Build logic, runtime loaders, shell verifiers, and distribution assembly must consume those shared
+JSON contract resources instead of carrying private parsers or duplicated literals.
+
 The AI-agent-first workflow is now first-class:
 - `print-plan-template` emits the accepted `execute-plan` request shape
 - `execute-plan` runs ordered steps atomically against one book session
@@ -130,7 +139,7 @@ FinGrind's current public model is:
 | Jackson Databind | 3.1.2 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
-| PMD | 7.23.0 |
+| PMD | 7.24.0 |
 
 ## Java 26 Feature Policy
 
@@ -187,7 +196,14 @@ jazzer/bin/fuzz-ledger-plan-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-all -PjazzerMaxDuration=30s --console=plain
+jazzer/bin/replay cli-request jazzer/.local/runs/cli-request/crash-<sha1> --console=plain
+jazzer/bin/list-findings cli-request --console=plain
 ```
+
+`jazzer/bin/fuzz-all` now continues past pure timebox expirations but stops on the first
+actionable harness failure and prints replay-classified findings for that target before returning.
+`./gradlew -p jazzer check` now also applies the same Spotless, Error Prone, NullAway, PMD,
+JaCoCo, and policy-task gate stack that the production Java modules use.
 
 Local CLI usage from source:
 

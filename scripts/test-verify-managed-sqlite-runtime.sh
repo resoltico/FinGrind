@@ -23,42 +23,60 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-managed-sqlite-runtime.py"
+readonly contract_values_reader="${script_dir}/read-contract-values.py"
 
 [[ -f "${verifier}" ]] || die "missing managed SQLite runtime verifier"
+[[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
 
-cat <<'JSON' | python3 "${verifier}" >/dev/null
-{
-  "payload": {
-    "environment": {
-      "sqlite": {
-        "libraryMode": "managed-only",
-        "requiredMinimumSqliteVersion": "3.53.0",
-        "runtimeStatus": "ready",
-        "loadedSqliteVersion": "3.53.0",
-        "loadedSqlite3mcVersion": "2.3.3"
-      }
+readonly contract_values_json="$(python3 "${contract_values_reader}")"
+
+FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 - <<'PY' | python3 "${verifier}" >/dev/null
+import json
+import os
+
+contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
+runtime_surface = contract["runtimeSurface"]
+managed_sqlite = contract["managedSqlite"]
+document = {
+    "payload": {
+        "environment": {
+            "sqlite": {
+                "libraryMode": runtime_surface["sqliteLibraryMode"],
+                "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "runtimeStatus": "ready",
+                "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+            }
+        }
     }
-  }
 }
-JSON
+print(json.dumps(document))
+PY
 
 set +e
 failure_output="$(
-    cat <<'JSON' | python3 "${verifier}" 2>&1
-{
-  "payload": {
-    "environment": {
-      "sqlite": {
-        "libraryMode": "managed-only",
-        "requiredMinimumSqliteVersion": "3.53.0",
-        "runtimeStatus": "missing",
-        "loadedSqliteVersion": "3.53.0",
-        "loadedSqlite3mcVersion": "2.3.3"
-      }
+    FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 - <<'PY' | python3 "${verifier}" 2>&1
+import json
+import os
+
+contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
+runtime_surface = contract["runtimeSurface"]
+managed_sqlite = contract["managedSqlite"]
+document = {
+    "payload": {
+        "environment": {
+            "sqlite": {
+                "libraryMode": runtime_surface["sqliteLibraryMode"],
+                "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "runtimeStatus": "missing",
+                "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+            }
+        }
     }
-  }
 }
-JSON
+print(json.dumps(document))
+PY
 )"
 failure_exit=$?
 set -e

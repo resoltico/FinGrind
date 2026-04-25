@@ -1,18 +1,19 @@
 {
-  "targetKey" : "cli-request",
-  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/reversal_valid.json",
-  "expectation" : {
-    "outcomeKind" : "SUCCESS",
-    "details" : {
-      "type" : "CLI_REQUEST",
-      "requestStatus" : "PARSED",
-      "effectiveDate" : "2026-04-08",
-      "idempotencyKey" : "idem-2",
-      "lineCount" : 2,
-      "reversalPresent" : true,
-      "actorType" : "SYSTEM",
-      "sourceChannel" : "CLI",
-      "failureMessage" : "NONE"
+  "targetKey": "cli-request",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/reversal_valid.json",
+  "expectation": {
+    "outcomeKind": "success",
+    "message": "Replay completed without surfacing a bug.",
+    "details": {
+      "type": "CLI_REQUEST",
+      "request": {
+        "effectiveDate": "2026-04-08",
+        "idempotencyKey": "idem-2",
+        "lineCount": 2,
+        "reversalPresent": true
+      },
+      "actorType": "SYSTEM",
+      "sourceChannel": "CLI"
     }
   }
 }

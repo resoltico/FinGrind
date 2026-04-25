@@ -171,6 +171,12 @@ The raw JAR route remains useful for:
 `./gradlew :cli:shadowJar` also stages the canonical runtime-module list that the Docker build
 reuses under `cli/build/docker/runtime-modules.txt`, so the public bundle and container image
 consume the same trimmed Java runtime closure instead of deriving competing module sets.
+The same build path now also resolves runtime-distribution, public-distribution, storage, and
+managed-SQLite facts from the protocol-owned contract resources through
+`DistributionContractReader`, while the shell verifiers read that same contract through
+`scripts/read-contract-values.py`. Bundle metadata, launchers, Docker staging, and operator
+verification therefore all consume one canonical runtime-surface owner instead of parallel copied
+literal values.
 
 It is not the public release artifact.
 

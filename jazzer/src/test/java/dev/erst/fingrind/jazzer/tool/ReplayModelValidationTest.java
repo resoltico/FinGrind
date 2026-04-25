@@ -3,52 +3,45 @@ package dev.erst.fingrind.jazzer.tool;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.LedgerPlanStatus;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.SourceChannel;
 import org.junit.jupiter.api.Test;
 
 /** Pins constructor invariants for Jazzer replay model records. */
 class ReplayModelValidationTest {
   @Test
   void replayDetails_trimTextAndRejectBlankValues() {
+    ParsedPostingCommandDetails request =
+        new ParsedPostingCommandDetails(" 2026-04-07 ", " idem-1 ", 2, false);
     CliRequestReplayDetails details =
-        new CliRequestReplayDetails(
-            " PARSED ",
-            " 2026-04-07 ",
-            " idem-1 ",
-            2,
-            false,
-            " AGENT ",
-            " CLI ",
-            " NONE ");
+        new CliRequestReplayDetails(request, ActorType.AGENT, SourceChannel.CLI);
+    ReplayExpectation expectation =
+        new ReplayExpectation(ReplayOutcomeKind.SUCCESS, " ok ", details);
 
-    assertEquals("PARSED", details.requestStatus());
-    assertEquals("2026-04-07", details.effectiveDate());
-    assertEquals("idem-1", details.idempotencyKey());
-    assertEquals("AGENT", details.actorType());
-    assertEquals("CLI", details.sourceChannel());
-    assertEquals("NONE", details.failureMessage());
+    assertEquals("2026-04-07", details.request().effectiveDate());
+    assertEquals("idem-1", details.request().idempotencyKey());
+    assertEquals(ActorType.AGENT, details.actorType());
+    assertEquals(SourceChannel.CLI, details.sourceChannel());
+    assertEquals("ok", expectation.message());
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new LedgerPlanReplayDetails(
-                "PARSED",
-                "plan-1",
-                1,
-                "open-book",
-                "inspect-book",
-                0,
-                true,
-                "SUCCEEDED",
-                1,
-                0,
-                0,
-                " "));
+            new LedgerPlanShapeDetails(
+                " plan-1 ", 1, LedgerStepKind.OPEN_BOOK, LedgerStepKind.INSPECT_BOOK, -1, true));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 1, 0, 1));
   }
 
   @Test
   void replayOutcomeAndHarnessDescriptor_rejectBlankFields() {
     CliRequestReplayDetails details =
         new CliRequestReplayDetails(
-            "PARSED", "2026-04-07", "idem-1", 2, false, "AGENT", "CLI", "NONE");
+            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
+            ActorType.AGENT,
+            SourceChannel.CLI);
 
     ReplayOutcome.Success success = new ReplayOutcome.Success(" cli-request ", details);
 

@@ -188,6 +188,8 @@ rendered:
 
 - `requestShapes.postEntry.topLevelFields`, `lineFields`, `provenanceFields`, and `reversalFields`
   are arrays of `{ "name", "presence", "description" }`
+- `presence` is a live enum-backed machine value and is currently one of `required`,
+  `conditional`, `optional`, or `forbidden`
 - `requestShapes.schemaDialect` is the JSON Schema dialect URI used by the embedded executable
   schemas
 - `requestShapes.postEntry.schema`, `declareAccount.schema`, and `ledgerPlan.schema` are

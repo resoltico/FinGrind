@@ -4,6 +4,8 @@ import java.util.List;
 
 /** Shared immutable facts published through the public protocol catalog. */
 final class ProtocolCatalogFacts {
+  private static final RuntimeSurfaceContract RUNTIME_SURFACE_CONTRACT =
+      RuntimeSurfaceContracts.current();
   private static final BookModelFacts BOOK_MODEL =
       new BookModelFacts(
           "one SQLite file equals one book",
@@ -45,7 +47,8 @@ final class ProtocolCatalogFacts {
                   + " steps, which bounds the emitted execution journal",
               "a rejected or assertion-failed step rolls back the entire plan transaction",
               "preflight steps are validation-only steps and do not commit postings"));
-  private static final List<String> STORAGE_ENGINES = List.of("sqlite");
+  private static final List<StorageEngine> STORAGE_ENGINES =
+      List.of(RUNTIME_SURFACE_CONTRACT.storageEngine());
   private static final List<String> SUCCESS_STATUSES =
       List.of(
           ProtocolStatuses.OK,
@@ -80,7 +83,7 @@ final class ProtocolCatalogFacts {
     return PLAN_EXECUTION;
   }
 
-  static List<String> storageEngines() {
+  static List<StorageEngine> storageEngines() {
     return STORAGE_ENGINES;
   }
 
@@ -94,6 +97,10 @@ final class ProtocolCatalogFacts {
 
   static RuntimeEnvironmentContract runtimeEnvironmentContract() {
     return RUNTIME_ENVIRONMENT_CONTRACT;
+  }
+
+  static RuntimeSurfaceContract runtimeSurfaceContract() {
+    return RUNTIME_SURFACE_CONTRACT;
   }
 
   static PublicDistributionContract publicDistributionContract() {

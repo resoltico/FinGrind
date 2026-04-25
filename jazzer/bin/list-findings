@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+target_key=""
+if [[ $# -gt 0 && "${1}" != "--json" && "${1}" != -* ]]; then
+    target_key=$1
+    shift
+fi
+
+json_output=false
+if [[ $# -gt 0 && "${1}" == "--json" ]]; then
+    json_output=true
+    shift
+fi
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+fg_initialize_wrapper "$0"
+gradle_args=()
+if [[ -n "${target_key}" ]]; then
+    gradle_args+=("-PjazzerTarget=${target_key}")
+fi
+if [[ "${json_output}" == "true" ]]; then
+    gradle_args+=("-PjazzerJsonOutput=true")
+fi
+fg_run_passive_command "jazzerListFindings" "${gradle_args[@]}" "$@"

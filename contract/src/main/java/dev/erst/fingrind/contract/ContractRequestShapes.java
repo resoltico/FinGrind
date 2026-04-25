@@ -1,6 +1,9 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.List;
 import java.util.Map;
 
@@ -10,15 +13,18 @@ public final class ContractRequestShapes {
 
   /** Returns the descriptor record types owned by this namespace. */
   public static List<Class<?>> descriptorTypes() {
-    return List.of(
-        RequestInputDescriptor.class,
-        RequestShapesDescriptor.class,
-        PostEntryRequestShapeDescriptor.class,
-        DeclareAccountRequestShapeDescriptor.class,
-        LedgerPlanRequestShapeDescriptor.class,
-        RequestFieldDescriptor.class,
-        EnumVocabularyDescriptor.class);
+    return DescriptorNamespaceSupport.descriptorTypes(RequestShapeDescriptorType.class);
   }
+
+  /** Sealed inventory root for the request-shape descriptor namespace. */
+  public sealed interface RequestShapeDescriptorType
+      permits RequestInputDescriptor,
+          RequestShapesDescriptor,
+          PostEntryRequestShapeDescriptor,
+          DeclareAccountRequestShapeDescriptor,
+          LedgerPlanRequestShapeDescriptor,
+          RequestFieldDescriptor,
+          EnumVocabularyDescriptor {}
 
   /** Descriptor for request-file and book-file input plumbing. */
   public record RequestInputDescriptor(
@@ -26,12 +32,13 @@ public final class ContractRequestShapes {
       List<String> bookPassphraseOptions,
       String requestFileOption,
       String queryOutputOption,
-      List<String> queryOutputModes,
+      List<OutputMode> queryOutputModes,
       List<String> queryOutputSemantics,
       String stdinToken,
       String bookFileSemantics,
       List<String> bookPassphraseSemantics,
-      List<String> requestDocumentSemantics) {
+      List<String> requestDocumentSemantics)
+      implements RequestShapeDescriptorType {
     /** Validates one request-input descriptor payload. */
     public RequestInputDescriptor {
       bookFileOption = ContractDescriptorValidation.requireText(bookFileOption, "bookFileOption");
@@ -61,7 +68,8 @@ public final class ContractRequestShapes {
       String schemaDialect,
       PostEntryRequestShapeDescriptor postEntry,
       DeclareAccountRequestShapeDescriptor declareAccount,
-      LedgerPlanRequestShapeDescriptor ledgerPlan) {
+      LedgerPlanRequestShapeDescriptor ledgerPlan)
+      implements RequestShapeDescriptorType {
     /** Validates one grouped request-shape descriptor payload. */
     public RequestShapesDescriptor {
       schemaDialect = ContractDescriptorValidation.requireText(schemaDialect, "schemaDialect");
@@ -78,7 +86,8 @@ public final class ContractRequestShapes {
       List<RequestFieldDescriptor> provenanceFields,
       List<RequestFieldDescriptor> reversalFields,
       List<EnumVocabularyDescriptor> enumVocabularies,
-      Map<String, Object> schema) {
+      Map<String, Object> schema)
+      implements RequestShapeDescriptorType {
     /** Validates one post-entry request-shape descriptor payload. */
     public PostEntryRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
@@ -96,7 +105,8 @@ public final class ContractRequestShapes {
   public record DeclareAccountRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
       List<EnumVocabularyDescriptor> enumVocabularies,
-      Map<String, Object> schema) {
+      Map<String, Object> schema)
+      implements RequestShapeDescriptorType {
     /** Validates one declare-account request-shape descriptor payload. */
     public DeclareAccountRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
@@ -112,13 +122,14 @@ public final class ContractRequestShapes {
       List<RequestFieldDescriptor> stepFields,
       List<RequestFieldDescriptor> queryFields,
       List<RequestFieldDescriptor> assertionFields,
-      List<String> administrationStepKinds,
-      List<String> queryStepKinds,
-      List<String> writeStepKinds,
-      String assertStepKind,
-      List<String> assertionKinds,
+      List<LedgerStepKind> administrationStepKinds,
+      List<LedgerStepKind> queryStepKinds,
+      List<LedgerStepKind> writeStepKinds,
+      LedgerStepKind assertStepKind,
+      List<LedgerAssertionKind> assertionKinds,
       ContractResponse.PlanExecutionDescriptor execution,
-      Map<String, Object> schema) {
+      Map<String, Object> schema)
+      implements RequestShapeDescriptorType {
     /** Validates one ledger-plan request-shape descriptor payload. */
     public LedgerPlanRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
@@ -129,7 +140,7 @@ public final class ContractRequestShapes {
           ContractDescriptorValidation.copyList(administrationStepKinds, "administrationStepKinds");
       queryStepKinds = ContractDescriptorValidation.copyList(queryStepKinds, "queryStepKinds");
       writeStepKinds = ContractDescriptorValidation.copyList(writeStepKinds, "writeStepKinds");
-      assertStepKind = ContractDescriptorValidation.requireText(assertStepKind, "assertStepKind");
+      assertStepKind = ContractDescriptorValidation.requireValue(assertStepKind, "assertStepKind");
       assertionKinds = ContractDescriptorValidation.copyList(assertionKinds, "assertionKinds");
       execution = ContractDescriptorValidation.requireValue(execution, "execution");
       schema = ContractDescriptorValidation.copyMap(schema, "schema");
@@ -137,17 +148,20 @@ public final class ContractRequestShapes {
   }
 
   /** One request field with live presence and description metadata. */
-  public record RequestFieldDescriptor(String name, String presence, String description) {
+  public record RequestFieldDescriptor(
+      String name, RequestFieldPresence presence, String description)
+      implements RequestShapeDescriptorType {
     /** Validates one request-field descriptor payload. */
     public RequestFieldDescriptor {
       name = ContractDescriptorValidation.requireText(name, "name");
-      presence = ContractDescriptorValidation.requireText(presence, "presence");
+      presence = ContractDescriptorValidation.requireValue(presence, "presence");
       description = ContractDescriptorValidation.requireText(description, "description");
     }
   }
 
   /** One live enum vocabulary descriptor. */
-  public record EnumVocabularyDescriptor(String name, List<String> values) {
+  public record EnumVocabularyDescriptor(String name, List<String> values)
+      implements RequestShapeDescriptorType {
     /** Validates one enum-vocabulary descriptor payload. */
     public EnumVocabularyDescriptor {
       name = ContractDescriptorValidation.requireText(name, "name");

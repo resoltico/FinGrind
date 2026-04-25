@@ -1,10 +1,12 @@
 package dev.erst.fingrind.buildlogic
 
+import java.io.Serializable
 import java.util.Properties
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.bundling.Jar
@@ -16,11 +18,14 @@ import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
+import org.gradle.process.CommandLineArgumentProvider
+import org.gradle.api.provider.Provider
 
 class FinGrindJazzerConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
             pluginManager.apply("java")
+            pluginManager.apply("dev.erst.fingrind.java-conventions")
 
             description = "Local-only Jazzer fuzzing layer for FinGrind"
 
@@ -36,8 +41,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             val fingrindJavaVersion = buildMetadata.javaVersion
             val jazzerMaxDuration = providers.gradleProperty("jazzerMaxDuration").orNull
             val jazzerMaxExecutions = providers.gradleProperty("jazzerMaxExecutions").orNull
-            val sourcePolicyTask = registerJavaSourcePolicyTask()
-            val jacksonDependencyPolicyTask = registerJacksonDependencyPolicyTask()
+            registerJavaSourcePolicyTask()
+            registerJacksonDependencyPolicyTask()
             val repoRootDirectory = layout.projectDirectory.dir("..")
             val sharedGradleProperties =
                 Properties().apply {
@@ -129,6 +134,11 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 add(fuzzSourceSet.runtimeOnlyConfigurationName, libs.library("jazzer"))
             }
 
+            tasks.withType<Pmd>().matching { it.name == "pmdFuzz" }.configureEach {
+                ruleSetFiles = files(rootProject.file("gradle/pmd/fuzz-ruleset.xml"))
+                ruleSets = emptyList()
+            }
+
             fun JavaExec.configureHarnessRuntime() {
                 classpath = fuzzSourceSet.runtimeClasspath
                 mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerHarnessRunner")
@@ -150,6 +160,18 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 outputs.upToDateWhen { false }
                 workingDir = layout.projectDirectory.asFile
                 enableNativeAccess()
+            }
+
+            fun registerToolTask(
+                name: String,
+                descriptionText: String,
+                argumentsProvider: Provider<List<String>>,
+            ) = tasks.register<JavaExec>(name) {
+                description = descriptionText
+                group = "verification"
+                configureMainSourceSet()
+                mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerCli")
+                argumentProviders.add(ProviderBackedArguments(argumentsProvider))
             }
 
             fun registerFuzzTask(
@@ -194,6 +216,50 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                     dependsOn(regressionTasks)
                 }
 
+            val jazzerTargetProperty = providers.gradleProperty("jazzerTarget")
+            val jazzerInputProperty = providers.gradleProperty("jazzerInput")
+            val jazzerJsonOutputProperty = providers.gradleProperty("jazzerJsonOutput")
+
+            registerToolTask(
+                "jazzerReplay",
+                "Replays one local input against a single Jazzer harness.",
+                providers.provider {
+                    buildList {
+                        add("replay")
+                        add("--target")
+                        add(
+                            jazzerTargetProperty.orNull
+                                ?: throw IllegalArgumentException("Missing Gradle property: jazzerTarget"),
+                        )
+                        add("--input")
+                        add(
+                            jazzerInputProperty.orNull
+                                ?: throw IllegalArgumentException("Missing Gradle property: jazzerInput"),
+                        )
+                        if (jazzerJsonOutputProperty.orNull == "true") {
+                            add("--json")
+                        }
+                    }
+                },
+            )
+
+            registerToolTask(
+                "jazzerListFindings",
+                "Lists replay-classified local finding artifacts for one or all active Jazzer harnesses.",
+                providers.provider {
+                    buildList {
+                        add("list-findings")
+                        jazzerTargetProperty.orNull?.let {
+                            add("--target")
+                            add(it)
+                        }
+                        if (jazzerJsonOutputProperty.orNull == "true") {
+                            add("--json")
+                        }
+                    }
+                },
+            )
+
             tasks.named<Test>("test") {
                 val deterministicTestClassCount =
                     fileTree("src/test/java") {
@@ -211,8 +277,6 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
             tasks.named("check") {
                 dependsOn(jazzerRegression)
-                dependsOn(sourcePolicyTask)
-                dependsOn(jacksonDependencyPolicyTask)
             }
 
             tasks.register("fuzzAllLocal") {
@@ -254,3 +318,9 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 }
 
 private const val JAZZER_PREMAIN_CLASS = "dev.erst.fingrind.jazzer.tool.JazzerPremainAgent"
+
+private class ProviderBackedArguments(
+    private val argumentsProvider: Provider<List<String>>,
+) : CommandLineArgumentProvider, Serializable {
+    override fun asArguments(): Iterable<String> = argumentsProvider.get()
+}

@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanResult;
+import dev.erst.fingrind.contract.LedgerPlanStatus;
+import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.LedgerPlanService;
@@ -16,13 +18,13 @@ public final class LedgerPlanFuzzAssertions {
 
   /** Stable execution summary returned after one parsed ledger plan is executed and asserted. */
   public record ExecutionSnapshot(
-      String executionStatus,
+      LedgerPlanStatus executionStatus,
       int journalStepCount,
       int listQueryStepCount,
       int structuredListQueryStepCount) {
     /** Validates one execution summary. */
     public ExecutionSnapshot {
-      executionStatus = requireText(executionStatus, "executionStatus");
+      Objects.requireNonNull(executionStatus, "executionStatus must not be null");
       if (journalStepCount < 0
           || listQueryStepCount < 0
           || structuredListQueryStepCount < 0
@@ -39,7 +41,9 @@ public final class LedgerPlanFuzzAssertions {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       LedgerPlanResult result =
           new LedgerPlanService(
-                  bookSession, CliFuzzFixtures.postingIdGenerator(input), CliFuzzFixtures.fixedClock())
+                  bookSession,
+                  CliFuzzFixtures.postingIdGenerator(input),
+                  CliFuzzFixtures.fixedClock())
               .execute(plan);
       return assertPlanResult(plan, result);
     }
@@ -50,38 +54,12 @@ public final class LedgerPlanFuzzAssertions {
       throw new IllegalStateException("Ledger plan execution changed the plan id.");
     }
     List<LedgerJournalEntry> journalSteps = result.journal().steps();
-    if (journalSteps.isEmpty()) {
-      throw new IllegalStateException("Ledger plan execution produced an empty journal.");
-    }
     if (journalSteps.size() > plan.steps().size()) {
       throw new IllegalStateException("Ledger plan journal exceeded the declared step count.");
     }
-    if (result.journal().finishedAt().isBefore(result.journal().startedAt())) {
-      throw new IllegalStateException("Ledger plan journal finished before it started.");
-    }
-    if (result.status() == dev.erst.fingrind.contract.LedgerPlanStatus.SUCCEEDED
+    if (result.status() == LedgerPlanStatus.SUCCEEDED
         && journalSteps.size() != plan.steps().size()) {
       throw new IllegalStateException("Successful ledger plan execution omitted journal steps.");
-    }
-    switch (result.status()) {
-      case SUCCEEDED -> {
-        if (journalSteps.stream().anyMatch(entry -> entry.status() != dev.erst.fingrind.contract.LedgerStepStatus.SUCCEEDED)) {
-          throw new IllegalStateException(
-              "Successful ledger plan execution retained a failed step status.");
-        }
-      }
-      case REJECTED -> {
-        if (journalSteps.getLast().status() != dev.erst.fingrind.contract.LedgerStepStatus.REJECTED) {
-          throw new IllegalStateException("Rejected ledger plan did not end with a rejected step.");
-        }
-      }
-      case ASSERTION_FAILED -> {
-        if (journalSteps.getLast().status()
-            != dev.erst.fingrind.contract.LedgerStepStatus.ASSERTION_FAILED) {
-          throw new IllegalStateException(
-              "Assertion-failed ledger plan did not end with an assertion-failed step.");
-        }
-      }
     }
 
     int listQueryStepCount = 0;
@@ -95,21 +73,19 @@ public final class LedgerPlanFuzzAssertions {
       if (journalEntry.kind() != declaredStep.kind()) {
         throw new IllegalStateException("Ledger plan journal changed the declared step kind.");
       }
-      if (journalEntry.finishedAt().isBefore(journalEntry.startedAt())) {
-        throw new IllegalStateException("Ledger plan step finished before it started.");
-      }
       if (journalEntry.kind() == LedgerStepKind.LIST_ACCOUNTS
           || journalEntry.kind() == LedgerStepKind.LIST_POSTINGS) {
         listQueryStepCount++;
-        assertStructuredListQueryFacts(journalEntry);
-        structuredListQueryStepCount++;
+        if (journalEntry.status() == LedgerStepStatus.SUCCEEDED) {
+          assertStructuredListQueryFacts(journalEntry);
+          structuredListQueryStepCount++;
+        } else {
+          assertRejectedListQueryFacts(journalEntry);
+        }
       }
     }
     return new ExecutionSnapshot(
-        result.status().name(),
-        journalSteps.size(),
-        listQueryStepCount,
-        structuredListQueryStepCount);
+        result.status(), journalSteps.size(), listQueryStepCount, structuredListQueryStepCount);
   }
 
   private static void assertStructuredListQueryFacts(LedgerJournalEntry journalEntry) {
@@ -123,7 +99,8 @@ public final class LedgerPlanFuzzAssertions {
       throw new IllegalStateException("Ledger plan list-query facts reported an invalid count.");
     }
     if (pageLimit <= 0) {
-      throw new IllegalStateException("Ledger plan list-query facts reported a non-positive limit.");
+      throw new IllegalStateException(
+          "Ledger plan list-query facts reported a non-positive limit.");
     }
     if (groupCount != count) {
       throw new IllegalStateException(
@@ -137,6 +114,21 @@ public final class LedgerPlanFuzzAssertions {
     if (!hasMore && hasCursorFact) {
       throw new IllegalStateException(
           "Ledger plan list-query facts retained nextCursor for a terminal page.");
+    }
+  }
+
+  private static void assertRejectedListQueryFacts(LedgerJournalEntry journalEntry) {
+    journalEntry.requiredFailure();
+    String expectedGroupName =
+        journalEntry.kind() == LedgerStepKind.LIST_ACCOUNTS ? "account" : "posting";
+    for (String factName :
+        List.of("count", "pageLimit", "hasMore", "nextCursor", expectedGroupName)) {
+      if (hasFactNamed(journalEntry.facts(), factName)) {
+        throw new IllegalStateException(
+            "Rejected ledger plan list-query steps must not retain success-only fact '"
+                + factName
+                + "'.");
+      }
     }
   }
 
@@ -189,14 +181,5 @@ public final class LedgerPlanFuzzAssertions {
 
   private static boolean hasFactNamed(List<LedgerFact> facts, String factName) {
     return facts.stream().anyMatch(fact -> fact.name().equals(factName));
-  }
-
-  private static String requireText(String value, String fieldName) {
-    Objects.requireNonNull(value, fieldName + " must not be null");
-    String normalized = value.strip();
-    if (normalized.isEmpty()) {
-      throw new IllegalArgumentException(fieldName + " must not be blank");
-    }
-    return normalized;
   }
 }

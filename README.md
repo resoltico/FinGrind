@@ -28,7 +28,8 @@ It is a good fit if you want:
 - predictable rejection of bad input,
 - reporting you can read yourself or hand to automation,
 - one machine-readable contract surface, via `capabilities` and the template commands, for the
-  same request and plan rules humans use.
+  same request and plan rules humans use, including typed field descriptors and executable JSON
+  Schema for posting and ledger-plan payloads.
 
 ## What Changes
 
@@ -50,6 +51,10 @@ of spread across notes, spreadsheets, and half-finished checks.
 - Books stay protected at rest, and wrong-key failures come back as clear FinGrind errors rather
   than raw storage noise.
 - Public downloads are ready to run on macOS, Linux, and Windows.
+- The self-contained bundle and the public container disclose the same runtime contract instead of
+  drifting onto separate packaging stories.
+- The machine-readable discovery and template surfaces come from the same canonical contract facts
+  the CLI, bundle, Docker image, and shell verifiers use.
 - The reporting surface already covers the questions most people ask first: account balance, trial
   balance, account ledger, and period summary.
 - The model stays intentionally strict: one book per business, one currency per entry, positive line
@@ -64,6 +69,7 @@ If this sounds like the right shape of bookkeeping, start with:
 - [the quick start](./docs/USER_QUICK_START.md)
 - [example flows and outputs](./docs/USER_EXAMPLES.md)
 - [the full user docs](./docs/README.md)
+- [developer and verification guides](./docs/DEVELOPER.md)
 - [the latest download](https://github.com/resoltico/FinGrind/releases/latest)
 
 ## Questions

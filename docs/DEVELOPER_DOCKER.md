@@ -47,6 +47,9 @@ The container image itself also stays on the same managed-runtime policy as the 
   canonical Docker build-context files back under `cli/build/` before `docker buildx` runs, so
   Docker and bundle publication cannot drift onto competing private-runtime closures or stale
   in-checkout leftovers
+- it generates the Docker entrypoint and verifies the image's runtime-surface disclosure from the
+  same protocol-owned contract resources that drive bundle metadata, so the container does not
+  carry a parallel handwritten runtime-distribution or storage contract
 - it sets `fingrind.runtime.distribution=container-image` so `capabilities` discloses the active
   distribution surface explicitly
 

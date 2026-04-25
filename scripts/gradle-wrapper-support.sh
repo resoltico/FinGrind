@@ -124,6 +124,10 @@ fg_gradle_project_build_root() {
 
 fg_gradle_filesystem_type() {
     fg_gradle_repo_root=${1:-}
+    if [ -n "${FINGRIND_GRADLE_FILESYSTEM_TYPE:-}" ]; then
+        printf '%s\n' "${FINGRIND_GRADLE_FILESYSTEM_TYPE}"
+        return
+    fi
     fg_gradle_mount_point=$(df "${fg_gradle_repo_root}" 2>/dev/null | awk 'END { print $NF }')
     if [ -n "${fg_gradle_mount_point}" ]; then
         fg_gradle_mount_type=$(

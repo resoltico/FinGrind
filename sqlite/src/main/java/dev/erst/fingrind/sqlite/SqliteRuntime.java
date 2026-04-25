@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;
@@ -9,13 +10,16 @@ import org.jspecify.annotations.Nullable;
 
 /** Public runtime metadata for the packaged SQLite adapter. */
 public final class SqliteRuntime {
-  public static final String STORAGE_DRIVER = "sqlite-ffm-sqlite3mc";
-  public static final String STORAGE_ENGINE = "sqlite";
-  public static final String BOOK_PROTECTION_MODE = "required";
-  public static final String DEFAULT_BOOK_CIPHER = "chacha20";
-  public static final String LIBRARY_ENVIRONMENT_VARIABLE = "FINGRIND_SQLITE_LIBRARY";
-  public static final String BUNDLE_HOME_SYSTEM_PROPERTY = "fingrind.bundle.home";
-  public static final String LIBRARY_MODE = "managed-only";
+  public static final String STORAGE_DRIVER = ProtocolCatalog.storageDriver().wireValue();
+  public static final String STORAGE_ENGINE = ProtocolCatalog.storageEngine().wireValue();
+  public static final String BOOK_PROTECTION_MODE =
+      ProtocolCatalog.bookProtectionMode().wireValue();
+  public static final String DEFAULT_BOOK_CIPHER = ProtocolCatalog.defaultBookCipher().wireValue();
+  public static final String LIBRARY_ENVIRONMENT_VARIABLE =
+      ProtocolCatalog.sqliteLibraryEnvironmentVariable();
+  public static final String BUNDLE_HOME_SYSTEM_PROPERTY =
+      ProtocolCatalog.sqliteBundleHomeSystemProperty();
+  public static final String LIBRARY_MODE = ProtocolCatalog.sqliteLibraryMode().wireValue();
   public static final String REQUIRED_MINIMUM_SQLITE_VERSION = "3.53.0";
   public static final String REQUIRED_SQLITE3MC_VERSION = "2.3.3";
   public static final List<String> REQUIRED_SQLITE_COMPILE_OPTIONS =

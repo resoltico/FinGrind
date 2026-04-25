@@ -130,6 +130,7 @@ run_bundle_command() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
 bundle_archive_path="${1:-}"
 is_darwin=false
 case "$(uname -s)" in
@@ -137,9 +138,11 @@ case "$(uname -s)" in
 esac
 
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
+[[ -f "${contract_values_reader}" ]] || die "missing contract-values reader at ${contract_values_reader}"
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
+readonly contract_values_json="$(python3 "${contract_values_reader}")"
 
 if [[ -z "${bundle_archive_path}" ]]; then
     readonly expected_bundle_archive_name="fingrind-$(project_version)-$(host_bundle_classifier).tar.gz"
@@ -212,22 +215,6 @@ require_match "${bundle_readme}" 'bundle-manifest\.json' \
 
 bundle_manifest="$(tr -d '\r' < "${bundle_root}/bundle-manifest.json")"
 bundle_manifest_compact="$(printf '%s' "${bundle_manifest}" | tr -d '[:space:]')"
-require_match "${bundle_manifest_compact}" '"runtimeDistribution":"self-contained-bundle"' \
-    "bundle manifest did not report the self-contained runtime distribution"
-require_match "${bundle_manifest_compact}" "\"classifier\":\"$(host_bundle_classifier)\"" \
-    "bundle manifest did not report the current host classifier"
-require_match "${bundle_manifest_compact}" '"supportedPublicCliBundleTargets":\[[^]]*"windows-x86_64"' \
-    "bundle manifest did not report the supported public bundle targets"
-require_match "${bundle_manifest_compact}" '"unsupportedPublicCliOperatingSystems":\[\]' \
-    "bundle manifest did not report the current unsupported public operating systems"
-require_match "${bundle_manifest_compact}" '"recommendedFirstCommand":\[[^]]*"help"' \
-    "bundle manifest did not publish the canonical bootstrap help command"
-require_match "${bundle_manifest_compact}" '"machineReadableContractCommand":\[[^]]*"capabilities"' \
-    "bundle manifest did not publish the canonical machine-readable contract command"
-require_match "${bundle_manifest_compact}" '"requestTemplateCommand":\[[^]]*"print-request-template"' \
-    "bundle manifest did not publish the canonical request-template bootstrap command"
-require_match "${bundle_manifest_compact}" '"planTemplateCommand":\[[^]]*"print-plan-template"' \
-    "bundle manifest did not publish the canonical plan-template bootstrap command"
 require_no_match "${bundle_manifest_compact}" '"discoveryCommands":' \
     "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
 require_no_match "${bundle_manifest_compact}" '"administrationCommands":' \
@@ -236,6 +223,90 @@ require_no_match "${bundle_manifest_compact}" '"queryCommands":' \
     "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
 require_no_match "${bundle_manifest_compact}" '"writeCommands":' \
     "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
+FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 - <<'PY' \
+    "${bundle_root}/bundle-manifest.json" \
+    "$(host_bundle_classifier)"
+import json
+import os
+import sys
+
+manifest_path = sys.argv[1]
+host_classifier = sys.argv[2]
+manifest = json.load(open(manifest_path, encoding="utf-8"))
+contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
+runtime_surface = contract["runtimeSurface"]
+public_distribution = contract["publicDistribution"]
+operation_ids = contract["operationIds"]
+
+checks = [
+    (
+        manifest["runtimeDistribution"] == runtime_surface["bundleRuntimeDistribution"],
+        "bundle manifest did not report the self-contained runtime distribution",
+    ),
+    (
+        manifest["publicCliDistribution"] == runtime_surface["publicCliDistribution"],
+        "bundle manifest did not report the public bundle distribution contract",
+    ),
+    (
+        manifest["managedSqlite"]["storageDriver"] == runtime_surface["storageDriver"],
+        "bundle manifest did not report the canonical storage driver",
+    ),
+    (
+        manifest["managedSqlite"]["storageEngine"] == runtime_surface["storageEngine"],
+        "bundle manifest did not report the canonical storage engine",
+    ),
+    (
+        manifest["managedSqlite"]["bookProtectionMode"] == runtime_surface["bookProtectionMode"],
+        "bundle manifest did not report the canonical book protection mode",
+    ),
+    (
+        manifest["managedSqlite"]["defaultBookCipher"] == runtime_surface["defaultBookCipher"],
+        "bundle manifest did not report the canonical default book cipher",
+    ),
+    (
+        manifest["managedSqlite"]["libraryMode"] == runtime_surface["sqliteLibraryMode"],
+        "bundle manifest did not report the canonical SQLite library mode",
+    ),
+    (
+        manifest["bundleTarget"]["classifier"] == host_classifier,
+        "bundle manifest did not report the current host classifier",
+    ),
+    (
+        manifest["supportedPublicCliBundleTargets"]
+        == public_distribution["supportedPublicCliBundleTargets"],
+        "bundle manifest did not report the supported public bundle targets",
+    ),
+    (
+        manifest["unsupportedPublicCliOperatingSystems"]
+        == public_distribution["unsupportedPublicCliOperatingSystems"],
+        "bundle manifest did not report the current unsupported public operating systems",
+    ),
+    (
+        manifest["bootstrap"]["recommendedFirstCommand"][-1] == operation_ids["help"],
+        "bundle manifest did not publish the canonical bootstrap help command",
+    ),
+    (
+        manifest["bootstrap"]["machineReadableContractCommand"][-1]
+        == operation_ids["capabilities"],
+        "bundle manifest did not publish the canonical machine-readable contract command",
+    ),
+    (
+        manifest["bootstrap"]["requestTemplateCommand"][-1]
+        == operation_ids["printRequestTemplate"],
+        "bundle manifest did not publish the canonical request-template bootstrap command",
+    ),
+    (
+        manifest["bootstrap"]["planTemplateCommand"][-1]
+        == operation_ids["printPlanTemplate"],
+        "bundle manifest did not publish the canonical plan-template bootstrap command",
+    ),
+]
+
+for passed, message in checks:
+    if not passed:
+        print(message, file=sys.stderr)
+        raise SystemExit(1)
+PY
 
 require_java_26 "${bundle_root}/runtime/bin/java"
 runtime_modules_output="$("${bundle_root}/runtime/bin/java" --list-modules | tr -d '\r')"
@@ -361,10 +432,15 @@ require_match "${version_output}" "\"version\"[[:space:]]*:[[:space:]]*\"$(proje
 
 printf 'Bundle acceptance: verifying self-contained runtime contract\n'
 capabilities_output="$(run_bundle_command capabilities --output json | tr -d '\r')"
-printf '%s\n' "${capabilities_output}" | python3 -c '
+printf '%s\n' "${capabilities_output}" | FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 -c '
 import json
+import os
 import sys
 
+contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
+runtime_surface = contract["runtimeSurface"]
+public_distribution = contract["publicDistribution"]
+managed_sqlite = contract["managedSqlite"]
 payload = json.load(sys.stdin)["payload"]
 environment = payload["environment"]
 distribution = environment["distribution"]
@@ -375,18 +451,18 @@ query_output_modes = payload["requestInput"]["queryOutputModes"]
 error_codes = [descriptor["code"] for descriptor in payload["responseModel"]["errorDescriptors"]]
 
 checks = [
-    (distribution["runtimeDistribution"] == "self-contained-bundle", "capabilities output did not report the self-contained bundle runtime"),
-    (distribution["publicCliDistribution"] == "self-contained-bundle", "capabilities output did not report the self-contained bundle distribution"),
-    ("windows-x86_64" in distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
-    (distribution["unsupportedPublicCliOperatingSystems"] == [], "capabilities output did not report the current unsupported public operating systems"),
-    (storage["storageDriver"] == "sqlite-ffm-sqlite3mc", "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
-    (storage["bookProtectionMode"] == "required", "capabilities output did not report required book protection"),
-    (storage["defaultBookCipher"] == "chacha20", "capabilities output did not report the default chacha20 cipher"),
-    (sqlite["libraryMode"] == "managed-only", "capabilities output did not report the managed-only SQLite runtime mode"),
-    (sqlite["bundleHomeSystemProperty"] == "fingrind.bundle.home", "capabilities output did not report the bundle-home system property"),
+    (distribution["runtimeDistribution"] == runtime_surface["bundleRuntimeDistribution"], "capabilities output did not report the self-contained bundle runtime"),
+    (distribution["publicCliDistribution"] == runtime_surface["publicCliDistribution"], "capabilities output did not report the self-contained bundle distribution"),
+    (distribution["supportedPublicCliBundleTargets"] == public_distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
+    (distribution["unsupportedPublicCliOperatingSystems"] == public_distribution["unsupportedPublicCliOperatingSystems"], "capabilities output did not report the current unsupported public operating systems"),
+    (storage["storageDriver"] == runtime_surface["storageDriver"], "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
+    (storage["bookProtectionMode"] == runtime_surface["bookProtectionMode"], "capabilities output did not report required book protection"),
+    (storage["defaultBookCipher"] == runtime_surface["defaultBookCipher"], "capabilities output did not report the default chacha20 cipher"),
+    (sqlite["libraryMode"] == runtime_surface["sqliteLibraryMode"], "capabilities output did not report the managed-only SQLite runtime mode"),
+    (sqlite["bundleHomeSystemProperty"] == runtime_surface["sqliteBundleHomeSystemProperty"], "capabilities output did not report the bundle-home system property"),
     (sqlite["runtimeStatus"] == "ready", "capabilities output did not report a ready SQLite runtime"),
-    (sqlite["loadedSqliteVersion"] == "3.53.0", "capabilities output did not report SQLite 3.53.0"),
-    (sqlite["loadedSqlite3mcVersion"] == "2.3.3", "capabilities output did not report SQLite3 Multiple Ciphers 2.3.3"),
+    (sqlite["loadedSqliteVersion"] == managed_sqlite["requiredMinimumSqliteVersion"], "capabilities output did not report the canonical SQLite version"),
+    (sqlite["loadedSqlite3mcVersion"] == managed_sqlite["requiredSqlite3mcVersion"], "capabilities output did not report the canonical SQLite3 Multiple Ciphers version"),
     ("trial-balance" in query_commands, "capabilities output did not report the trial-balance query command"),
     ("account-ledger" in query_commands, "capabilities output did not report the account-ledger query command"),
     ("period-summary" in query_commands, "capabilities output did not report the period-summary query command"),

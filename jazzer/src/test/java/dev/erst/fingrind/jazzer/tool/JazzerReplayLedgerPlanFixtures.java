@@ -178,4 +178,18 @@ final class JazzerReplayLedgerPlanFixtures {
         }
         """;
   }
+
+  static String rejectedMissingBookListPostingsLedgerPlan() {
+    return """
+        {
+          "planId": "play-1",
+          "steps": [
+            {
+              "stepId": "open",
+              "kind": "list-postings"
+            }
+          ]
+        }
+        """;
+  }
 }

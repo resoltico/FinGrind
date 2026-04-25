@@ -36,7 +36,7 @@ final class ProtocolWriteOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->"),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Validate one posting request without committing it.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
@@ -55,7 +55,7 @@ final class ProtocolWriteOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->"),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Commit one posting request into the selected SQLite book.",
             List.of(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"

@@ -2,33 +2,93 @@ package dev.erst.fingrind.buildlogic
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Properties
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.json.JsonMapper
 
 object DistributionContractReader {
+    private val objectMapper = JsonMapper.builder().build()
     private const val PUBLIC_DISTRIBUTION_CONTRACT_PATH =
-        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.properties"
+        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.json"
     private const val OPERATION_ID_CONTRACT_PATH =
-        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.properties"
+        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json"
+    private const val RUNTIME_SURFACE_CONTRACT_PATH =
+        "contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json"
     private const val SUPPORTED_BUNDLE_TARGETS_KEY = "supportedPublicCliBundleTargets"
     private const val UNSUPPORTED_OPERATING_SYSTEMS_KEY = "unsupportedPublicCliOperatingSystems"
+    private const val SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION_KEY = "sourceCheckoutRuntimeDistribution"
+    private const val CONTAINER_RUNTIME_DISTRIBUTION_KEY = "containerRuntimeDistribution"
+    private const val BUNDLE_RUNTIME_DISTRIBUTION_KEY = "bundleRuntimeDistribution"
+    private const val PUBLIC_CLI_DISTRIBUTION_KEY = "publicCliDistribution"
+    private const val STORAGE_DRIVER_KEY = "storageDriver"
+    private const val STORAGE_ENGINE_KEY = "storageEngine"
+    private const val BOOK_PROTECTION_MODE_KEY = "bookProtectionMode"
+    private const val DEFAULT_BOOK_CIPHER_KEY = "defaultBookCipher"
+    private const val SQLITE_LIBRARY_MODE_KEY = "sqliteLibraryMode"
+    private const val SQLITE_BUNDLE_HOME_SYSTEM_PROPERTY_KEY = "sqliteBundleHomeSystemProperty"
 
     fun publicCliBundleTargets(projectRootDirectory: Path): List<String> =
-        loadPublicDistributionContract(projectRootDirectory).supportedPublicCliBundleTargets
+        listProperty(projectRootDirectory, PUBLIC_DISTRIBUTION_CONTRACT_PATH, SUPPORTED_BUNDLE_TARGETS_KEY)
 
     fun unsupportedPublicCliOperatingSystems(projectRootDirectory: Path): List<String> =
-        loadPublicDistributionContract(projectRootDirectory).unsupportedOperatingSystems
+        listProperty(projectRootDirectory, PUBLIC_DISTRIBUTION_CONTRACT_PATH, UNSUPPORTED_OPERATING_SYSTEMS_KEY)
+
+    fun sourceCheckoutRuntimeDistribution(projectRootDirectory: Path): String =
+        requiredProperty(
+            projectRootDirectory,
+            RUNTIME_SURFACE_CONTRACT_PATH,
+            SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION_KEY,
+        )
+
+    fun containerRuntimeDistribution(projectRootDirectory: Path): String =
+        requiredProperty(
+            projectRootDirectory,
+            RUNTIME_SURFACE_CONTRACT_PATH,
+            CONTAINER_RUNTIME_DISTRIBUTION_KEY,
+        )
+
+    fun bundleRuntimeDistribution(projectRootDirectory: Path): String =
+        requiredProperty(
+            projectRootDirectory,
+            RUNTIME_SURFACE_CONTRACT_PATH,
+            BUNDLE_RUNTIME_DISTRIBUTION_KEY,
+        )
+
+    fun publicCliDistribution(projectRootDirectory: Path): String =
+        requiredProperty(projectRootDirectory, RUNTIME_SURFACE_CONTRACT_PATH, PUBLIC_CLI_DISTRIBUTION_KEY)
+
+    fun storageDriver(projectRootDirectory: Path): String =
+        requiredProperty(projectRootDirectory, RUNTIME_SURFACE_CONTRACT_PATH, STORAGE_DRIVER_KEY)
+
+    fun storageEngine(projectRootDirectory: Path): String =
+        requiredProperty(projectRootDirectory, RUNTIME_SURFACE_CONTRACT_PATH, STORAGE_ENGINE_KEY)
+
+    fun bookProtectionMode(projectRootDirectory: Path): String =
+        requiredProperty(projectRootDirectory, RUNTIME_SURFACE_CONTRACT_PATH, BOOK_PROTECTION_MODE_KEY)
+
+    fun defaultBookCipher(projectRootDirectory: Path): String =
+        requiredProperty(projectRootDirectory, RUNTIME_SURFACE_CONTRACT_PATH, DEFAULT_BOOK_CIPHER_KEY)
+
+    fun sqliteLibraryMode(projectRootDirectory: Path): String =
+        requiredProperty(projectRootDirectory, RUNTIME_SURFACE_CONTRACT_PATH, SQLITE_LIBRARY_MODE_KEY)
+
+    fun sqliteBundleHomeSystemProperty(projectRootDirectory: Path): String =
+        requiredProperty(
+            projectRootDirectory,
+            RUNTIME_SURFACE_CONTRACT_PATH,
+            SQLITE_BUNDLE_HOME_SYSTEM_PROPERTY_KEY,
+        )
 
     fun helpOperationName(projectRootDirectory: Path): String =
-        loadOperationContract(projectRootDirectory).wireName("HELP")
+        requiredProperty(projectRootDirectory, OPERATION_ID_CONTRACT_PATH, "HELP")
 
     fun capabilitiesOperationName(projectRootDirectory: Path): String =
-        loadOperationContract(projectRootDirectory).wireName("CAPABILITIES")
+        requiredProperty(projectRootDirectory, OPERATION_ID_CONTRACT_PATH, "CAPABILITIES")
 
     fun requestTemplateOperationName(projectRootDirectory: Path): String =
-        loadOperationContract(projectRootDirectory).wireName("PRINT_REQUEST_TEMPLATE")
+        requiredProperty(projectRootDirectory, OPERATION_ID_CONTRACT_PATH, "PRINT_REQUEST_TEMPLATE")
 
     fun planTemplateOperationName(projectRootDirectory: Path): String =
-        loadOperationContract(projectRootDirectory).wireName("PRINT_PLAN_TEMPLATE")
+        requiredProperty(projectRootDirectory, OPERATION_ID_CONTRACT_PATH, "PRINT_PLAN_TEMPLATE")
 
     fun operatingSystemId(osName: String = System.getProperty("os.name", "")): String {
         val operatingSystem = osName.lowercase()
@@ -113,47 +173,54 @@ object DistributionContractReader {
             values.joinToString(separator = System.lineSeparator()) { value -> "- `$value`" }
         }
 
-    private fun loadPublicDistributionContract(projectRootDirectory: Path): PublicDistributionContract {
-        val properties = Properties()
-        Files.newInputStream(projectRootDirectory.resolve(PUBLIC_DISTRIBUTION_CONTRACT_PATH)).use { stream ->
-            properties.load(stream)
+    private fun loadJson(projectRootDirectory: Path, relativePath: String): JsonNode {
+        Files.newInputStream(projectRootDirectory.resolve(relativePath)).use { stream ->
+            val document = objectMapper.readTree(stream)
+            if (document == null || !document.isObject) {
+                throw IllegalStateException("Contract resource $relativePath must contain one top-level JSON object.")
+            }
+            return document
         }
-        return PublicDistributionContract(
-            supportedPublicCliBundleTargets =
-                parseList(properties.getProperty(SUPPORTED_BUNDLE_TARGETS_KEY)),
-            unsupportedOperatingSystems =
-                parseList(properties.getProperty(UNSUPPORTED_OPERATING_SYSTEMS_KEY)),
-        )
     }
 
-    private fun loadOperationContract(projectRootDirectory: Path): OperationIdContract {
-        val properties = Properties()
-        Files.newInputStream(projectRootDirectory.resolve(OPERATION_ID_CONTRACT_PATH)).use { stream ->
-            properties.load(stream)
+    private fun requiredProperty(
+        projectRootDirectory: Path,
+        relativePath: String,
+        key: String,
+    ): String {
+        val valueNode = loadJson(projectRootDirectory, relativePath).path(key)
+        if (!valueNode.isTextual) {
+            throw IllegalStateException("Missing required contract property $key in $relativePath.")
         }
-        return OperationIdContract(properties)
+        val value = valueNode.textValue()?.trim().orEmpty()
+        if (value.isEmpty()) {
+            throw IllegalStateException("Missing required contract property $key in $relativePath.")
+        }
+        return value
     }
 
-    private fun parseList(rawValue: String?): List<String> =
-        rawValue
-            ?.split(',')
-            ?.map(String::trim)
-            ?.filter(String::isNotEmpty)
-            ?.distinct()
-            ?: emptyList()
-}
-
-private data class PublicDistributionContract(
-    val supportedPublicCliBundleTargets: List<String>,
-    val unsupportedOperatingSystems: List<String>,
-)
-
-private data class OperationIdContract(
-    private val wireNames: Properties,
-) {
-    fun wireName(operationConstantName: String): String =
-        wireNames.getProperty(operationConstantName)
-            ?: throw IllegalArgumentException(
-                "Unknown protocol operation constant $operationConstantName in $wireNames.",
-            )
+    private fun listProperty(
+        projectRootDirectory: Path,
+        relativePath: String,
+        key: String,
+    ): List<String> {
+        val valuesNode = loadJson(projectRootDirectory, relativePath).path(key)
+        if (valuesNode.isMissingNode || valuesNode.isNull) {
+            return emptyList()
+        }
+        if (!valuesNode.isArray) {
+            throw IllegalStateException("Expected JSON array contract property $key in $relativePath.")
+        }
+        val values = linkedSetOf<String>()
+        valuesNode.forEach { node ->
+            if (!node.isTextual) {
+                throw IllegalStateException("Expected JSON string elements in contract property $key in $relativePath.")
+            }
+            val value = node.textValue()?.trim().orEmpty()
+            if (value.isNotEmpty()) {
+                values += value
+            }
+        }
+        return values.toList()
+    }
 }

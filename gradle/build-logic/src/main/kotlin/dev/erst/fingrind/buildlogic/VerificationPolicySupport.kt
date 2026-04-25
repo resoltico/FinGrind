@@ -14,6 +14,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.named
 
 private val wildcardImportPattern = Regex("""^import\s+(static\s+)?[\w.]+\.\*;$""")
 private val catchThrowablePattern = Regex("""\bcatch\s*\(\s*Throwable(?:\s+\w+)?\s*\)""")
@@ -23,42 +24,50 @@ private const val JACKSON_DATABIND_MODULE = "jackson-databind"
 private const val LEGACY_JACKSON_GROUP = "com.fasterxml.jackson.core"
 
 internal fun Project.registerJavaSourcePolicyTask() =
-    tasks.register<VerifyJavaSourcePoliciesTask>("verifyJavaSourcePolicies") {
-        group = "verification"
-        description = "Fails the build when Java source files use forbidden wildcard imports."
-        projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
-        sourceFiles.from(
-            fileTree(projectDir) {
-                include("src/*/java/**/*.java")
-                exclude("**/build/**", "**/.gradle/**")
-            },
-        )
+    if ("verifyJavaSourcePolicies" in tasks.names) {
+        tasks.named<VerifyJavaSourcePoliciesTask>("verifyJavaSourcePolicies")
+    } else {
+        tasks.register<VerifyJavaSourcePoliciesTask>("verifyJavaSourcePolicies") {
+            group = "verification"
+            description = "Fails the build when Java source files use forbidden wildcard imports."
+            projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
+            sourceFiles.from(
+                fileTree(projectDir) {
+                    include("src/*/java/**/*.java")
+                    exclude("**/build/**", "**/.gradle/**")
+                },
+            )
+        }
     }
 
 internal fun Project.registerJacksonDependencyPolicyTask() =
-    tasks.register<VerifyJacksonDependencyPolicyTask>("verifyJacksonDependencyPolicy") {
-        group = "verification"
-        description =
-            "Fails the build when projects declare direct Jackson dependencies outside the approved databind entrypoint or require the legacy Jackson annotation module."
-        projectPathValue.set(path)
-        projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
-        directDependencies.set(
-            configurations
-                .sortedBy { it.name }
-                .flatMap { configuration ->
-                    configuration.dependencies
-                        .withType(ExternalModuleDependency::class.java)
-                        .sortedWith(compareBy({ it.group }, { it.name }))
-                        .map { dependency ->
-                            "${configuration.name}|${dependency.group.orEmpty()}|${dependency.name}"
-                        }
-                },
-        )
-        policyFiles.from(
-            layout.projectDirectory.file("src/main/java/module-info.java"),
-            rootProject.file("gradle/libs.versions.toml"),
-            layout.projectDirectory.file("../gradle/libs.versions.toml"),
-        )
+    if ("verifyJacksonDependencyPolicy" in tasks.names) {
+        tasks.named<VerifyJacksonDependencyPolicyTask>("verifyJacksonDependencyPolicy")
+    } else {
+        tasks.register<VerifyJacksonDependencyPolicyTask>("verifyJacksonDependencyPolicy") {
+            group = "verification"
+            description =
+                "Fails the build when projects declare direct Jackson dependencies outside the approved databind entrypoint or require the legacy Jackson annotation module."
+            projectPathValue.set(path)
+            projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
+            directDependencies.set(
+                configurations
+                    .sortedBy { it.name }
+                    .flatMap { configuration ->
+                        configuration.dependencies
+                            .withType(ExternalModuleDependency::class.java)
+                            .sortedWith(compareBy({ it.group }, { it.name }))
+                            .map { dependency ->
+                                "${configuration.name}|${dependency.group.orEmpty()}|${dependency.name}"
+                            }
+                    },
+            )
+            policyFiles.from(
+                layout.projectDirectory.file("src/main/java/module-info.java"),
+                rootProject.file("gradle/libs.versions.toml"),
+                layout.projectDirectory.file("../gradle/libs.versions.toml"),
+            )
+        }
     }
 
 abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {

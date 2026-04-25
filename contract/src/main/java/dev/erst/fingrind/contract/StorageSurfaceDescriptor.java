@@ -1,10 +1,12 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.StorageEngine;
 import java.util.List;
 
 /** Descriptor for the storage surface published by the CLI capabilities contract. */
-public record StorageSurfaceDescriptor(List<String> engines, String bookBoundary) {
+public record StorageSurfaceDescriptor(List<StorageEngine> engines, String bookBoundary)
+    implements ContractDiscoveryDescriptor {
   /** Validates one storage-surface descriptor payload. */
   public StorageSurfaceDescriptor {
     engines = ContractDescriptorValidation.copyList(engines, "engines");

@@ -15,21 +15,39 @@ final class MachineContractDeclareAccountSchemas {
         "Canonical "
             + MachineContractSchemaSupport.operation(OperationId.DECLARE_ACCOUNT)
             + " request JSON document.",
-        MachineContractSchemaSupport.orderedMap(
-            ProtocolDeclareAccountFields.ACCOUNT_CODE,
-            MachineContractSchemaSupport.nonBlankStringSchema("Book-local account code."),
-            ProtocolDeclareAccountFields.ACCOUNT_NAME,
-            MachineContractSchemaSupport.nonBlankStringSchema("Non-blank display name."),
-            ProtocolDeclareAccountFields.NORMAL_BALANCE,
-            MachineContractSchemaSupport.enumStringSchema(
-                "Normal-balance side that increases this account.", NormalBalance.wireValues())),
-        List.of(
-            ProtocolDeclareAccountFields.ACCOUNT_CODE,
-            ProtocolDeclareAccountFields.ACCOUNT_NAME,
-            ProtocolDeclareAccountFields.NORMAL_BALANCE));
+        topLevelFields());
   }
 
   static Map<String, Object> declareAccountSchemaWithoutDialect() {
     return MachineContractSchemaSupport.stripDialect(declareAccountSchema());
+  }
+
+  static ContractRequestShapes.DeclareAccountRequestShapeDescriptor descriptor() {
+    return new ContractRequestShapes.DeclareAccountRequestShapeDescriptor(
+        MachineContractSchemaSupport.requestFieldDescriptors(topLevelFields()),
+        List.of(
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "normalBalance", NormalBalance.wireValues())),
+        declareAccountSchema());
+  }
+
+  private static List<MachineContractFieldSpec> topLevelFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolDeclareAccountFields.ACCOUNT_CODE,
+            "Book-local account code used by journal lines.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Book-local account code used by journal lines.")),
+        MachineContractFieldSpec.required(
+            ProtocolDeclareAccountFields.ACCOUNT_NAME,
+            "Non-blank display name for the declared account.",
+            MachineContractSchemaSupport.nonBlankStringSchema(
+                "Non-blank display name for the declared account.")),
+        MachineContractFieldSpec.required(
+            ProtocolDeclareAccountFields.NORMAL_BALANCE,
+            "Side of the journal equation that increases the account.",
+            MachineContractSchemaSupport.enumStringSchema(
+                "Side of the journal equation that increases the account.",
+                NormalBalance.wireValues())));
   }
 }

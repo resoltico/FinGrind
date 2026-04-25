@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
@@ -42,6 +42,16 @@ final class MachineContractSchemaSupport {
         required,
         "properties",
         properties);
+  }
+
+  static Map<String, Object> rootObjectSchema(
+      String description, List<MachineContractFieldSpec> fields) {
+    return rootObjectSchema(description, properties(fields), requiredFieldNames(fields));
+  }
+
+  static Map<String, Object> objectSchema(
+      String description, List<MachineContractFieldSpec> fields) {
+    return objectSchema(description, properties(fields), requiredFieldNames(fields));
   }
 
   static Map<String, Object> arraySchema(
@@ -108,24 +118,62 @@ final class MachineContractSchemaSupport {
   }
 
   static Map<String, Object> orderedMap(Object... keyValues) {
+    if (keyValues.length % 2 != 0) {
+      throw new IllegalArgumentException(
+          "orderedMap requires an even number of key/value arguments.");
+    }
     return orderedMapFromEntries(
         IntStream.range(0, keyValues.length / 2)
-            .mapToObj(index -> Map.entry((String) keyValues[index * 2], keyValues[index * 2 + 1]))
+            .mapToObj(
+                index -> {
+                  Object key = keyValues[index * 2];
+                  if (!(key instanceof String stringKey)) {
+                    throw new IllegalArgumentException(
+                        "orderedMap keys must be non-null Strings at argument index "
+                            + (index * 2)
+                            + ".");
+                  }
+                  return Map.entry(stringKey, keyValues[index * 2 + 1]);
+                })
             .toList());
   }
 
   static Map<String, Object> orderedMapFromEntries(List<Map.Entry<String, Object>> entries) {
-    return Collections.unmodifiableMap(
-        entries.stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey,
-                    Map.Entry::getValue,
-                    (left, right) -> right,
-                    LinkedHashMap::new)));
+    var ordered = new LinkedHashMap<String, Object>();
+    for (Map.Entry<String, Object> entry : entries) {
+      String key = entry.getKey();
+      if (ordered.containsKey(key)) {
+        throw new IllegalArgumentException("Duplicate schema key: " + key);
+      }
+      ordered.put(key, entry.getValue());
+    }
+    return Collections.unmodifiableMap(ordered);
   }
 
   static String operation(OperationId operationId) {
     return ProtocolCatalog.operationName(operationId);
+  }
+
+  static List<ContractRequestShapes.RequestFieldDescriptor> requestFieldDescriptors(
+      List<MachineContractFieldSpec> fields) {
+    return fields.stream().map(MachineContractFieldSpec::descriptor).toList();
+  }
+
+  private static Map<String, Object> properties(List<MachineContractFieldSpec> fields) {
+    return orderedMapFromEntries(
+        fields.stream()
+            .filter(MachineContractFieldSpec::acceptsInput)
+            .map(
+                field ->
+                    Map.entry(
+                        field.name(), (Object) Objects.requireNonNull(field.acceptedSchema())))
+            .toList());
+  }
+
+  private static List<String> requiredFieldNames(List<MachineContractFieldSpec> fields) {
+    return fields.stream()
+        .filter(MachineContractFieldSpec::requiredInSchema)
+        .map(MachineContractFieldSpec::name)
+        .toList();
   }
 }

@@ -3,7 +3,7 @@ package dev.erst.fingrind.contract;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 
 /** Descriptor for one process exit code. */
-public record ExitCodeDescriptor(int code, String meaning) {
+public record ExitCodeDescriptor(int code, String meaning) implements ContractDiscoveryDescriptor {
   /** Validates one exit-code descriptor payload. */
   public ExitCodeDescriptor {
     if (code < 0) {

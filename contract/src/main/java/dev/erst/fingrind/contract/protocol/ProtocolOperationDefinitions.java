@@ -24,7 +24,7 @@ final class ProtocolOperationDefinitions {
             aliases,
             options,
             executionMode,
-            List.of(OutputMode.JSON.wireValue()),
+            List.of(OutputMode.JSON),
             List.of(),
             analysisSummary,
             examples));
@@ -37,7 +37,7 @@ final class ProtocolOperationDefinitions {
       List<String> aliases,
       List<String> options,
       ExecutionMode executionMode,
-      List<String> outputModes,
+      List<OutputMode> outputModes,
       String analysisSummary,
       List<String> examples) {
     return operation(
@@ -88,7 +88,7 @@ final class ProtocolOperationDefinitions {
       List<String> aliases,
       List<String> options,
       ExecutionMode executionMode,
-      List<String> outputModes,
+      List<OutputMode> outputModes,
       List<ProtocolArtifactOutput> artifactOutputs,
       String analysisSummary,
       List<String> examples) {

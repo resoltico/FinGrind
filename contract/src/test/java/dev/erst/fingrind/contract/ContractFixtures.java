@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -50,21 +51,25 @@ final class ContractFixtures {
   static EnvironmentDescriptor environmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
-            "source-checkout",
-            "self-contained-bundle",
+            ProtocolCatalog.sourceCheckoutRuntimeDistribution(),
+            ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
             ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
             ProtocolCatalog.sourceCheckoutJava()),
-        new EnvironmentStorageDescriptor("sqlite-ffm-sqlite3mc", "sqlite", "required", "chacha20"),
+        new EnvironmentStorageDescriptor(
+            ProtocolCatalog.storageDriver(),
+            ProtocolCatalog.storageEngine(),
+            ProtocolCatalog.bookProtectionMode(),
+            ProtocolCatalog.defaultBookCipher()),
         new EnvironmentSqliteDescriptor(
-            "managed-only",
-            "FINGRIND_SQLITE_LIBRARY",
-            "fingrind.bundle.home",
+            ProtocolCatalog.sqliteLibraryMode(),
+            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
             SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
             "3.53.0",
             "2.3.3",
-            "unavailable",
+            SqliteRuntimeStatus.UNAVAILABLE,
             null,
             null,
             "test fixture"));

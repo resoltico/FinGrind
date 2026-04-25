@@ -18,8 +18,8 @@ if (-not (Test-Path -LiteralPath $applicationJar -PathType Leaf)) {
 
 $javaArguments = @(
     "--enable-native-access=ALL-UNNAMED",
-    "-Dfingrind.bundle.home=$appHome",
-    "-Dfingrind.runtime.distribution=self-contained-bundle",
+    "-D{{bundleHomeSystemProperty}}=$appHome",
+    "-Dfingrind.runtime.distribution={{bundleRuntimeDistribution}}",
     "-jar",
     $applicationJar
 ) + $args

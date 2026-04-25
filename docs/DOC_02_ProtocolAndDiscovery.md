@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.25.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -148,6 +148,33 @@ public record PublicDistributionContract(
 - Purpose: keep release-target metadata in one typed owner shared by capabilities, docs, and build
   verification
 - Validation: rejects blanks and duplicates
+- Resource authority: loaded from the protocol-owned JSON contract resource instead of ad hoc
+  build or shell literals
+
+## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, And `SqliteRuntimeStatus`
+
+These enums are the public runtime-surface vocabularies shared by discovery payloads, CLI
+rendering, shell verifiers, and build/distribution checks.
+
+```java
+public enum RuntimeDistribution implements WireValue
+public enum PublicCliDistribution implements WireValue
+public enum StorageDriver implements WireValue
+public enum StorageEngine implements WireValue
+public enum BookProtectionMode implements WireValue
+public enum BookCipher implements WireValue
+public enum SqliteLibraryMode implements WireValue
+public enum SqliteRuntimeStatus implements WireValue
+```
+
+- Purpose: keep runtime distribution, public bundle identity, storage backend, protected-book
+  defaults, managed SQLite loading mode, and runtime readiness in enum-owned wire vocabularies
+- Validation surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and typed discovery
+  records such as `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`, and
+  `EnvironmentSqliteDescriptor`
+- Operational reach: build logic, bundle metadata/launchers, Docker staging, and shell verifiers
+  consume the same protocol-owned runtime-surface contract instead of carrying private copies of
+  those wire values
 
 ## `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts`
 
@@ -168,9 +195,22 @@ public record PlanExecutionFacts(...)
   `BookMigrationFact`, and `BookCurrencyScopeFact` are the semantic text wrappers carried by
   `BookModelFacts`
 
+## `ProtocolSharedRequestFields`
+
+`ProtocolSharedRequestFields` owns the cross-request field names reused by declare-account,
+posting journal lines, and ledger-plan query/assertion payloads.
+
+```java
+public final class ProtocolSharedRequestFields
+```
+
+- Purpose: give shared request vocabulary one canonical owner before surface-specific field classes
+  project it into their local JSON scopes
+
 ## `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
 
-These protocol-owned constant classes keep public JSON field names canonical.
+These protocol-owned constant classes keep public JSON field names canonical for their
+surface-specific JSON scopes.
 
 ```java
 public final class ProtocolDeclareAccountFields
@@ -213,31 +253,48 @@ public final class ContractTemplates
 ```
 
 - `ContractDiscovery`: discovery-descriptor registry used for coverage and contract audits
+- `ContractDiscoveryDescriptor` is the sealed public owner that makes discovery-descriptor
+  registration exhaustive instead of list-maintained
 - `ApplicationIdentity`, `HelpDescriptor`, `CapabilitiesDescriptor`,
   `StorageSurfaceDescriptor`, `CommandCatalogDescriptor`, `VersionDescriptor`,
   `ArtifactOutputDescriptor`, `CommandDescriptor`, `ExitCodeDescriptor`,
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
+- `CommandCatalogDescriptor` and `CommandDescriptor` keep command grouping, command identity,
+  execution mode, and output modes typed through `OperationId`, `ExecutionMode`, and `OutputMode`
+  instead of flattening those closed vocabularies into strings
 - `ContractRequestShapes`: request-input plumbing plus posting, account-declaration, and ledger-plan
   request-shape descriptors
+- `ContractRequestShapes.RequestShapeDescriptorType` is the sealed nested owner that keeps the
+  published request-shape inventory exhaustive
 - `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,
   `.PostEntryRequestShapeDescriptor`, `.DeclareAccountRequestShapeDescriptor`,
   `.LedgerPlanRequestShapeDescriptor`, `.RequestFieldDescriptor`, and
   `.EnumVocabularyDescriptor` are the nested typed request-shape descriptors
+- `RequestFieldPresence` is the stable request-field presence vocabulary shared by request-shape
+  descriptors and executable schema authorship, with `required`, `conditional`, `optional`, and
+  `forbidden` wire values
 - `ContractResponse`: response-model, rejection, audit, preflight, currency, and plan-execution
   descriptors
+- `ContractResponse.ResponseDescriptorType` is the sealed nested owner for the published response
+  descriptor inventory
 - `ContractResponse.BookModelDescriptor`, `.FieldDescriptor`, `.ErrorDescriptor`,
   `.ResponseModelDescriptor`, `.PlanExecutionDescriptor`, `.RejectionDescriptor`,
   `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
   `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, and
   `.CurrencyDescriptor` are the nested typed response descriptors
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
+- `ContractTemplates.TemplateDescriptorType` is the sealed nested owner for the published
+  template-descriptor inventory
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
   `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
   `.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
-  `.DeclareAccountTemplateDescriptor`, and `.LedgerAssertionTemplateDescriptor` are the nested
-  typed template descriptors
+  `.LedgerPlanQueryTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`, and
+  `.LedgerAssertionTemplateDescriptor` are the nested typed template descriptors
+- Template descriptors keep actor type, entry side, normal balance, step kind, assertion kind,
+  and balance side typed at the public boundary, and they reject structurally impossible ledger
+  plan step or assertion combinations before any renderer publishes them
 
 ## `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException`
 

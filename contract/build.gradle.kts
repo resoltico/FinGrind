@@ -1,5 +1,11 @@
-import org.gradle.api.tasks.WriteProperties
+import dev.erst.fingrind.buildlogic.DistributionContractReader
 import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.TaskAction
 
 plugins {
     `java-library`
@@ -9,18 +15,44 @@ plugins {
 description = "Canonical FinGrind public contract model and protocol metadata"
 val fingrindJavaVersion = FinGrindBuildMetadata.load(project).javaVersion
 
-dependencies { api(project(":core")) }
+abstract class WriteRuntimeEnvironmentContractTask : DefaultTask() {
+    @get:Input
+    abstract val sourceCheckoutJava: Property<String>
+
+    @get:OutputFile
+    abstract val outputFile: RegularFileProperty
+
+    @TaskAction
+    fun writeContract() {
+        val destination = outputFile.get().asFile
+        destination.parentFile.mkdirs()
+        destination.writeText(
+            """
+            {
+              "sourceCheckoutJava": ${DistributionContractReader.jsonString(sourceCheckoutJava.get())}
+            }
+            """
+                .trimIndent()
+                + System.lineSeparator(),
+        )
+    }
+}
+
+dependencies {
+    api(project(":core"))
+    implementation(libs.jackson.databind)
+}
 
 val generatedProtocolResourcesDirectory =
     layout.buildDirectory.dir("generated-resources/protocol")
 val writeRuntimeEnvironmentContract =
-    tasks.register<WriteProperties>("writeRuntimeEnvironmentContract") {
-        destinationFile.set(
+    tasks.register<WriteRuntimeEnvironmentContractTask>("writeRuntimeEnvironmentContract") {
+        sourceCheckoutJava.set("${fingrindJavaVersion}+")
+        outputFile.set(
             generatedProtocolResourcesDirectory.map { directory ->
-                directory.file("dev/erst/fingrind/contract/protocol/runtime-environment-contract.properties")
+                directory.file("dev/erst/fingrind/contract/protocol/runtime-environment-contract.json")
             },
         )
-        property("sourceCheckoutJava", "$fingrindJavaVersion+")
     }
 
 sourceSets {

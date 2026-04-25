@@ -1,6 +1,7 @@
 import java.util.Properties
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.plugin.use.PluginDependency
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -29,9 +30,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}")
-    implementation("net.ltgt.gradle:gradle-errorprone-plugin:${libs.versions.errorprone.plugin.get()}")
-
+    implementation(gradlePluginCoordinate(libs.plugins.spotless.get()))
+    implementation(gradlePluginCoordinate(libs.plugins.errorprone.get()))
+    implementation(libs.jackson.databind)
     testImplementation(kotlin("test-junit5"))
 }
 
@@ -70,3 +71,6 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
+
+fun gradlePluginCoordinate(plugin: PluginDependency): String =
+    "${plugin.pluginId}:${plugin.pluginId}.gradle.plugin:${plugin.version}"

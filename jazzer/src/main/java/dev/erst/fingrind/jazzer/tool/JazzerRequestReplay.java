@@ -11,49 +11,76 @@ final class JazzerRequestReplay {
   private JazzerRequestReplay() {}
 
   static ReplayOutcome replayCliRequest(byte[] input) {
+    return replayCliRequest(input, CliFuzzFixtures::readPostEntryCommand);
+  }
+
+  static ReplayOutcome replayCliRequest(byte[] input, PostEntryCommandParser parser) {
     try {
-      PostEntryCommand command = CliFuzzFixtures.readPostEntryCommand(input);
+      PostEntryCommand command = parser.parse(input);
       return new ReplayOutcome.Success(
-          JazzerHarness.cliRequest().key(),
-          JazzerReplayDetailsMapper.cliRequestDetails(
-              command, "PARSED", JazzerReplayDetailsMapper.normalizedMessage(null)));
+          JazzerHarness.cliRequest().key(), JazzerReplayDetailsMapper.cliRequestDetails(command));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.cliRequest().key(),
           expected.getClass().getSimpleName(),
           JazzerReplayDetailsMapper.normalizedMessage(expected),
-          JazzerReplayDetailsMapper.cliRequestFailureDetails("INVALID_REQUEST", expected));
+          JazzerReplayDetailsMapper.unparsedCliRequestDetails());
     } catch (RuntimeException unexpected) {
       return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.cliRequest(),
           unexpected,
-          JazzerReplayDetailsMapper.cliRequestFailureDetails("UNEXPECTED_FAILURE", unexpected));
+          JazzerReplayDetailsMapper.unparsedCliRequestDetails());
     }
   }
 
   static ReplayOutcome replayLedgerPlanRequest(byte[] input) {
+    return replayLedgerPlanRequest(
+        input, CliFuzzFixtures::readLedgerPlan, LedgerPlanFuzzAssertions::executeAndAssert);
+  }
+
+  static ReplayOutcome replayLedgerPlanRequest(
+      byte[] input, LedgerPlanParser parser, LedgerPlanExecutor executor) {
+    LedgerPlan plan = null;
     try {
-      LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(input);
-      LedgerPlanFuzzAssertions.ExecutionSnapshot executionSnapshot =
-          LedgerPlanFuzzAssertions.executeAndAssert(plan, input);
+      plan = parser.parse(input);
+      LedgerPlanFuzzAssertions.ExecutionSnapshot executionSnapshot = executor.execute(plan, input);
       return new ReplayOutcome.Success(
           JazzerHarness.ledgerPlanRequest().key(),
-          JazzerReplayDetailsMapper.ledgerPlanDetails(
-              plan,
-              executionSnapshot,
-              "PARSED",
-              JazzerReplayDetailsMapper.normalizedMessage(null)));
+          JazzerReplayDetailsMapper.ledgerPlanDetails(plan, executionSnapshot));
     } catch (IllegalArgumentException expected) {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.ledgerPlanRequest().key(),
           expected.getClass().getSimpleName(),
           JazzerReplayDetailsMapper.normalizedMessage(expected),
-          JazzerReplayDetailsMapper.ledgerPlanFailureDetails("INVALID_REQUEST", expected));
+          JazzerReplayDetailsMapper.unparsedLedgerPlanDetails());
     } catch (RuntimeException unexpected) {
       return JazzerReplayDetailsMapper.unexpectedFailure(
           JazzerHarness.ledgerPlanRequest(),
           unexpected,
-          JazzerReplayDetailsMapper.ledgerPlanFailureDetails("UNEXPECTED_FAILURE", unexpected));
+          plan == null
+              ? JazzerReplayDetailsMapper.unparsedLedgerPlanDetails()
+              : JazzerReplayDetailsMapper.parsedLedgerPlanShapeDetails(plan));
     }
+  }
+
+  /** Parses one raw CLI-request replay input into the production posting command model. */
+  @FunctionalInterface
+  interface PostEntryCommandParser {
+    /** Parses one raw replay payload into a posting command. */
+    PostEntryCommand parse(byte[] input);
+  }
+
+  /** Parses one raw ledger-plan replay input into the production ledger-plan model. */
+  @FunctionalInterface
+  interface LedgerPlanParser {
+    /** Parses one raw replay payload into a ledger plan. */
+    LedgerPlan parse(byte[] input);
+  }
+
+  /** Executes one parsed ledger plan and returns the deterministic replay snapshot. */
+  @FunctionalInterface
+  interface LedgerPlanExecutor {
+    /** Executes one parsed plan and returns the deterministic replay snapshot. */
+    LedgerPlanFuzzAssertions.ExecutionSnapshot execute(LedgerPlan plan, byte[] input);
   }
 }

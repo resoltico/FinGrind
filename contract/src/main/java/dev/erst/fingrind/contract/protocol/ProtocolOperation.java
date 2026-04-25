@@ -45,7 +45,7 @@ public record ProtocolOperation(
   }
 
   /** Returns the supported output modes for this operation. */
-  public List<String> outputModes() {
+  public List<OutputMode> outputModes() {
     return outputs.outputModes();
   }
 

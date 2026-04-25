@@ -13,9 +13,10 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Help",
             List.of("--help", "-h"),
-            List.of(ProtocolOptions.optionalOutputSyntax(List.of("json", "human"))),
+            List.of(
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print command usage, examples, and workflow guidance.",
             List.of()),
         ProtocolOperationDefinitions.operation(
@@ -23,9 +24,10 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Version",
             List.of("--version"),
-            List.of(ProtocolOptions.optionalOutputSyntax(List.of("json", "human"))),
+            List.of(
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print application identity, version, and description.",
             List.of()),
         ProtocolOperationDefinitions.operation(
@@ -33,9 +35,10 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Capabilities",
             List.of(),
-            List.of(ProtocolOptions.optionalOutputSyntax(List.of("json", "human"))),
+            List.of(
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON.wireValue(), OutputMode.HUMAN.wireValue()),
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
             List.of()),
         ProtocolOperationDefinitions.operation(

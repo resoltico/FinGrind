@@ -1,32 +1,32 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.executor.BookAdministrationService;
-import dev.erst.fingrind.executor.BookAdministrationSession;
-import dev.erst.fingrind.executor.BookReadService;
-import dev.erst.fingrind.executor.BookReadSession;
+import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.LedgerPlan;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.executor.PostingIdGenerator;
+import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.BookAdministrationSession;
+import dev.erst.fingrind.executor.BookReadService;
+import dev.erst.fingrind.executor.BookReadSession;
+import dev.erst.fingrind.executor.PostingIdGenerator;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Shared helpers for FinGrind Jazzer harnesses that start from CLI request JSON. */
@@ -82,20 +82,17 @@ public final class CliFuzzFixtures {
     }
   }
 
-  /** Declares every distinct posting account so the final write path can exercise business rules. */
+  /**
+   * Declares every distinct posting account so the final write path can exercise business rules.
+   */
   public static List<DeclaredAccount> declarePostingAccounts(
       BookAdministrationService administrationService, PostEntryCommand command) {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
     Objects.requireNonNull(command, "command must not be null");
-    LinkedHashMap<AccountCode, DeclareAccountCommand> commandsByAccount = new LinkedHashMap<>();
-    for (var line : command.journalEntry().lines()) {
-      commandsByAccount.computeIfAbsent(
-          line.accountCode(),
-          accountCode ->
-              new DeclareAccountCommand(
-                  accountCode, syntheticAccountName(accountCode), syntheticNormalBalance(accountCode)));
-    }
-    return commandsByAccount.values().stream()
+    return command.journalEntry().lines().stream()
+        .map(line -> line.accountCode())
+        .distinct()
+        .map(CliFuzzFixtures::syntheticDeclareAccountCommand)
         .map(administrationService::declareAccount)
         .map(CliFuzzFixtures::requireDeclaredAccount)
         .toList();
@@ -133,11 +130,10 @@ public final class CliFuzzFixtures {
   public static List<DeclaredAccount> listAccounts(BookReadSession bookSession) {
     Objects.requireNonNull(bookSession, "bookSession must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
-    java.util.Optional<AccountPageCursor> cursor = java.util.Optional.empty();
+    BookReadService readService = new BookReadService(bookSession);
+    Optional<AccountPageCursor> cursor = Optional.empty();
     while (true) {
-      ListAccountsResult result =
-          new BookReadService(bookSession)
-              .listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, cursor));
+      ListAccountsResult result = listAccountsPage(readService, cursor);
       ListAccountsResult.Listed listed =
           switch (result) {
             case ListAccountsResult.Listed accepted -> accepted;
@@ -153,6 +149,11 @@ public final class CliFuzzFixtures {
     }
   }
 
+  private static ListAccountsResult listAccountsPage(
+      BookReadService readService, Optional<AccountPageCursor> cursor) {
+    return readService.listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, cursor));
+  }
+
   private static DeclaredAccount requireDeclaredAccount(DeclareAccountResult result) {
     return switch (result) {
       case DeclareAccountResult.Declared declared -> declared.account();
@@ -163,6 +164,11 @@ public final class CliFuzzFixtures {
 
   private static AccountName syntheticAccountName(AccountCode accountCode) {
     return new AccountName("Synthetic " + accountCode.value());
+  }
+
+  private static DeclareAccountCommand syntheticDeclareAccountCommand(AccountCode accountCode) {
+    return new DeclareAccountCommand(
+        accountCode, syntheticAccountName(accountCode), syntheticNormalBalance(accountCode));
   }
 
   private static NormalBalance syntheticNormalBalance(AccountCode accountCode) {

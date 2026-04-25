@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.25.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-04-23"
+updated: "2026-04-24"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, run-lock]
   questions: ["how do I run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do I clean local jazzer state in fingrind"]
@@ -27,7 +27,9 @@ route:
 | `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
 | `jazzer/bin/fuzz-sqlite-book-roundtrip` | fuzz durable SQLite single-book round-trips |
 | `jazzer/bin/fuzz-all` | run all active fuzz tasks sequentially |
-| `jazzer/bin/clean-local-findings` | delete crash files and non-corpus run state |
+| `jazzer/bin/replay` | replay one raw local input against one harness |
+| `jazzer/bin/list-findings` | classify raw local finding artifacts through deterministic replay |
+| `jazzer/bin/clean-local-findings` | delete raw finding artifacts and non-corpus run state |
 | `jazzer/bin/clean-local-corpus` | delete generated local corpora |
 
 Use the Gradle entries above only for deterministic nested-build verification.
@@ -74,6 +76,45 @@ The wrapper adds the operator safety contract:
 jazzer/bin/fuzz-all -PjazzerMaxDuration=10s --console=plain
 ```
 
+`-PjazzerMaxDuration` still applies per harness, not across the whole campaign.
+The all-target wrapper now derives its harness list from the `activeFuzzing` targets in
+`jazzer-topology.json`, calls those per-harness wrapper scripts in topology order, prints
+start/finish markers for each one, keeps going after plain timeout exits, but stops immediately
+after an actionable harness failure. Before it returns non-zero, it also runs
+`jazzer/bin/list-findings` for the failed target so the replay-classified finding summary is not
+buried beneath later harness logs.
+
+### Replay one raw local input
+
+```bash
+jazzer/bin/replay cli-request \
+  jazzer/.local/runs/cli-request/crash-<sha1> \
+  --console=plain
+```
+
+Add `--json` before any forwarded Gradle arguments when machine-readable output is more useful.
+
+### Classify the current raw finding artifacts
+
+```bash
+jazzer/bin/list-findings --console=plain
+jazzer/bin/list-findings cli-request --console=plain
+```
+
+This command replays each raw local finding artifact and reports whether it currently reproduces as:
+- `unexpected-failure`
+- `expected-invalid`
+- `replay-clean`
+
+`jazzer/bin/replay --json` emits one stable machine payload with:
+- `harnessKey`
+- `outcomeKind`
+- `message`
+- `details`
+
+`details.type` distinguishes fully parsed inputs from unparsed request shapes such as
+`CLI_REQUEST_UNPARSED` and `LEDGER_PLAN_REQUEST_UNPARSED`.
+
 ### Replay the committed regression floor
 
 ```bash
@@ -116,11 +157,9 @@ What these artifacts mean:
 - `latest.log`: log of the most recent run for that harness
 - `history/<timestamp>/run.log`: immutable log for one completed or interrupted run
 - `history/<timestamp>/timed-out`: wrapper-written marker when the requested duration plus grace was exceeded
-- `crash-*`: replayable failing input captured by libFuzzer
-- `timeout-*`: timeout-class finding captured by libFuzzer
-- `oom-*`: out-of-memory finding captured by libFuzzer
-- `leak-*`: leak-class finding captured by libFuzzer
-- `slow-unit-*`: unusually slow input worth manual inspection even when the run succeeds
+- `crash-*`, `timeout-*`, `oom-*`, `leak-*`, `slow-unit-*`: raw libFuzzer artifact files
+  written under libFuzzer's own naming scheme. These prefixes are not final product bug
+  classifications on their own.
 
 The shared wrapper lock lives at `jazzer/.local/run-lock/`.
 
@@ -129,6 +168,7 @@ There is still no promotion or corpus-summary CLI. Today the primary operator su
 - committed regression metadata in source control
 - the supported commands above
 - direct inspection of `.local/runs/`
+- replay-backed classification through `jazzer/bin/replay` and `jazzer/bin/list-findings`
 
 ## Progress Pulses
 
@@ -154,7 +194,9 @@ Interpretation:
 - GitHub Actions must never run `jazzer/bin/*`; active harness execution hard-fails when `GITHUB_ACTIONS=true`.
 - Treat raw `./gradlew -p jazzer fuzz...` task names as implementation details under the wrapper scripts.
 - Keep local corpora uncommitted.
-- Treat any new `crash-*` file as a bug until replay or root-cause analysis proves otherwise.
+- Treat raw libFuzzer artifact filenames as unclassified until `jazzer/bin/replay` or
+  `jazzer/bin/list-findings` has replayed them.
+- Treat replayed `unexpected-failure` findings as bugs.
 - Clean findings after intentional fixes so the local run directory reflects the current state.
 - If wrapper shell logic or topology changes, rerun at least one live `jazzer/bin/fuzz-*` command
   and the zero-argument cleanup scripts on the real macOS operator surface before calling the

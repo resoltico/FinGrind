@@ -23,3 +23,9 @@
 *.zip        binary
 *.gz         binary
 *.tar        binary
+
+# Repo-owned agent metadata stays tracked in Git, but release source archives should not
+# redistribute it alongside the public bundle and container surfaces.
+/AGENTS.md export-ignore
+/.codex export-ignore
+/.codex/** export-ignore

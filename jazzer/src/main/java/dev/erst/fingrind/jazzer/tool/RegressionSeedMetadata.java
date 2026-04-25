@@ -4,11 +4,12 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /** Describes the deterministic replay contract for one committed FinGrind Jazzer seed. */
-public record RegressionSeedMetadata(String targetKey, String inputPath, ReplayExpectation expectation) {
+public record RegressionSeedMetadata(
+    String targetKey, String inputPath, ReplayExpectation expectation) {
   public RegressionSeedMetadata {
     targetKey = requireNonBlank(targetKey, "targetKey");
     inputPath = normalizeStoredPath(inputPath, "inputPath");
-    expectation = Objects.requireNonNull(expectation, "expectation must not be null");
+    Objects.requireNonNull(expectation, "expectation must not be null");
   }
 
   /** Resolves the committed input path against the supplied project directory. */

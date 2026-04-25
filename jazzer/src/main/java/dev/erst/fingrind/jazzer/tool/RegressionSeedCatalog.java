@@ -22,18 +22,23 @@ public final class RegressionSeedCatalog {
   }
 
   /** Returns the committed metadata paths for one harness. */
-  public static List<Path> metadataPaths(Path projectDirectory, JazzerHarness harness) throws IOException {
+  public static List<Path> metadataPaths(Path projectDirectory, JazzerHarness harness)
+      throws IOException {
     Path metadataDirectory = metadataDirectory(projectDirectory, harness);
     if (!Files.isDirectory(metadataDirectory)) {
       return List.of();
     }
     try (Stream<Path> stream = Files.walk(metadataDirectory)) {
-      return stream.filter(path -> path.getFileName().toString().endsWith(".json")).sorted().toList();
+      return stream
+          .filter(path -> path.getFileName().toString().endsWith(".json"))
+          .sorted()
+          .toList();
     }
   }
 
   /** Returns the committed input files for one harness. */
-  public static List<Path> inputPaths(Path projectDirectory, JazzerHarness harness) throws IOException {
+  public static List<Path> inputPaths(Path projectDirectory, JazzerHarness harness)
+      throws IOException {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     Objects.requireNonNull(harness, "harness must not be null");
     Path inputDirectory = harness.inputDirectory(projectDirectory.toAbsolutePath().normalize());
@@ -46,7 +51,8 @@ public final class RegressionSeedCatalog {
   }
 
   /** Returns committed inputs with no corresponding regression metadata entry. */
-  public static List<Path> orphanedInputs(Path projectDirectory, JazzerHarness harness) throws IOException {
+  public static List<Path> orphanedInputs(Path projectDirectory, JazzerHarness harness)
+      throws IOException {
     List<Path> inputs = inputPaths(projectDirectory, harness);
     if (inputs.isEmpty()) {
       return List.of();

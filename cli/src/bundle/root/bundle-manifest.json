@@ -3,8 +3,8 @@
   "version": "${version}",
   "artifactType": "self-contained-cli-bundle",
   "archiveFormat": "${bundleArchiveFormat}",
-  "runtimeDistribution": "self-contained-bundle",
-  "publicCliDistribution": "self-contained-bundle",
+  "runtimeDistribution": "${bundleRuntimeDistribution}",
+  "publicCliDistribution": "${publicCliDistribution}",
   "bundleTarget": {
     "classifier": "${bundleClassifier}",
     "operatingSystem": "${bundleOperatingSystem}",
@@ -16,11 +16,11 @@
   "noExternalJavaRequired": true,
   "requiresFingrindSqliteLibraryEnvironmentVariable": false,
   "managedSqlite": {
-    "storageDriver": "sqlite-ffm-sqlite3mc",
-    "storageEngine": "sqlite",
-    "bookProtectionMode": "required",
-    "defaultBookCipher": "chacha20",
-    "libraryMode": "managed-only"
+    "storageDriver": "${storageDriver}",
+    "storageEngine": "${storageEngine}",
+    "bookProtectionMode": "${bookProtectionMode}",
+    "defaultBookCipher": "${defaultBookCipher}",
+    "libraryMode": "${sqliteLibraryMode}"
   },
   "bootstrap": {
     "recommendedFirstCommand": [

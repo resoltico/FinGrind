@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+    printf '%s\n' "Usage: jazzer/bin/replay <target-key> <input-path> [--json] [gradle-args...]" >&2
+    exit 1
+fi
+
+target_key=$1
+input_path=$2
+shift 2
+
+json_output=false
+if [[ $# -gt 0 && "${1}" == "--json" ]]; then
+    json_output=true
+    shift
+fi
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+fg_initialize_wrapper "$0"
+input_path="$(fg_resolve_existing_path "${input_path}")"
+if [[ "${json_output}" == "true" ]]; then
+    fg_run_passive_command "jazzerReplay" \
+        "-PjazzerTarget=${target_key}" \
+        "-PjazzerInput=${input_path}" \
+        "-PjazzerJsonOutput=true" \
+        "$@"
+else
+    fg_run_passive_command "jazzerReplay" \
+        "-PjazzerTarget=${target_key}" \
+        "-PjazzerInput=${input_path}" \
+        "$@"
+fi

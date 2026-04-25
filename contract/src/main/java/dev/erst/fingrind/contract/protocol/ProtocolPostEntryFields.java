@@ -46,9 +46,9 @@ public final class ProtocolPostEntryFields {
 
   /** Journal-line request fields. */
   public static final class JournalLine {
-    public static final String ACCOUNT_CODE = "accountCode";
+    public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
     public static final String SIDE = "side";
-    public static final String CURRENCY_CODE = "currencyCode";
+    public static final String CURRENCY_CODE = ProtocolSharedRequestFields.CURRENCY_CODE;
     public static final String AMOUNT = "amount";
 
     private JournalLine() {}

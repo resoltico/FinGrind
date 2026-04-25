@@ -18,11 +18,10 @@ class RuntimeEnvironmentContractTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> RuntimeEnvironmentContract.loadFromResource(null, "/missing.properties"));
+            () -> RuntimeEnvironmentContract.loadFromResource(null, "/missing.json"));
 
     assertEquals(
-        "Missing runtime-environment contract resource: /missing.properties",
-        exception.getMessage());
+        "Missing runtime-environment contract resource: /missing.json", exception.getMessage());
   }
 
   @Test
@@ -43,10 +42,10 @@ class RuntimeEnvironmentContractTest {
                         throw new IOException("boom");
                       }
                     },
-                    "/broken.properties"));
+                    "/broken.json"));
 
     assertEquals(
-        "Failed to load runtime-environment contract resource: /broken.properties",
+        "Failed to load runtime-environment contract resource: /broken.json",
         exception.getMessage());
     assertEquals("boom", Objects.requireNonNull(exception.getCause()).getMessage());
   }
@@ -60,11 +59,32 @@ class RuntimeEnvironmentContractTest {
   }
 
   @Test
+  void loadFromResource_rejectsNonTextualSourceCheckoutJava() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                RuntimeEnvironmentContract.loadFromResource(
+                    new ByteArrayInputStream(
+                        """
+                        {"sourceCheckoutJava":26}
+                        """
+                            .getBytes(StandardCharsets.UTF_8)),
+                    "/runtime-environment-contract.json"));
+
+    assertEquals("sourceCheckoutJava must be a non-blank JSON string.", exception.getMessage());
+  }
+
+  @Test
   void loadFromResource_returnsLoadedContract() {
     RuntimeEnvironmentContract contract =
         RuntimeEnvironmentContract.loadFromResource(
-            new ByteArrayInputStream("sourceCheckoutJava=26+\n".getBytes(StandardCharsets.UTF_8)),
-            "/runtime-environment-contract.properties");
+            new ByteArrayInputStream(
+                """
+                {"sourceCheckoutJava":"26+"}
+                """
+                    .getBytes(StandardCharsets.UTF_8)),
+            "/runtime-environment-contract.json");
 
     assertEquals("26+", contract.sourceCheckoutJava());
   }

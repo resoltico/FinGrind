@@ -55,7 +55,6 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                             exclude(
                                 "**/build/**",
                                 "**/.claude/**",
-                                "**/.codex/**",
                                 "**/.gradle/**",
                                 "**/.local/**",
                                 "tmp/**",

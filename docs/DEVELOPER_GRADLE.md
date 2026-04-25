@@ -144,6 +144,10 @@ The consumer scripts are intentionally thin now:
 local product modules without publishing snapshots. This keeps Jazzer iteration fast and ensures
 fuzzing runs against the exact working tree under review.
 
+The nested Jazzer build now also applies the same `dev.erst.fingrind.java-conventions` plugin that
+the main Java modules use, so its own replay engine, CLI utilities, and tests no longer bypass
+Spotless, Error Prone, NullAway, PMD, JaCoCo, or the shared source/Jackson policy tasks.
+
 ### One dependency authority
 
 The root version catalog in `gradle/libs.versions.toml` is the shared dependency authority. The

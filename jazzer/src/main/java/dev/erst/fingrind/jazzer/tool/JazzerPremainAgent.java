@@ -5,8 +5,8 @@ import java.lang.instrument.Instrumentation;
 import java.util.Objects;
 
 /**
- * Preloads Byte Buddy instrumentation for active Jazzer runs so Java 26 never has to rely on a
- * late external attach before fuzzing begins.
+ * Preloads Byte Buddy instrumentation for active Jazzer runs so Java 26 never has to rely on a late
+ * external attach before fuzzing begins.
  */
 public final class JazzerPremainAgent {
   private JazzerPremainAgent() {}

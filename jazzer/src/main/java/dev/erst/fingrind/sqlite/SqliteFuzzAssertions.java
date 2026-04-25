@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.PostingFact;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -91,7 +89,8 @@ public final class SqliteFuzzAssertions {
   /** Asserts that one open store connection keeps FinGrind's connection-hardening pragmas. */
   public static void assertStoreConnectionHardening(SqliteBookSession postingFactStore) {
     try {
-      SqliteNativeDatabase database = requireStoreImplementation(postingFactStore).activeNativeDatabase();
+      SqliteNativeDatabase database =
+          requireStoreImplementation(postingFactStore).activeNativeDatabase();
       assertQueryInt(database, "pragma foreign_keys", 1);
       assertQueryText(database, "pragma journal_mode", "delete");
       assertQueryInt(database, "pragma synchronous", 3);
@@ -102,8 +101,7 @@ public final class SqliteFuzzAssertions {
     }
   }
 
-  private static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue)
-      {
+  private static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
       if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
@@ -143,11 +141,10 @@ public final class SqliteFuzzAssertions {
   }
 
   private static SqlitePostingFactStore requireStoreImplementation(SqliteBookSession session) {
-    return switch (session) {
-      case SqlitePostingFactStore store -> store;
-      default ->
-          throw new IllegalArgumentException(
-              "Unsupported SQLite book session implementation: " + session.getClass().getName());
-    };
+    if (session instanceof SqlitePostingFactStore store) {
+      return store;
+    }
+    throw new IllegalArgumentException(
+        "Unsupported SQLite book session implementation: " + session.getClass().getName());
   }
 }

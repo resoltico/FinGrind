@@ -10,19 +10,22 @@ public final class ContractResponse {
 
   /** Returns the descriptor record types owned by this namespace. */
   public static List<Class<?>> descriptorTypes() {
-    return List.of(
-        BookModelDescriptor.class,
-        FieldDescriptor.class,
-        ErrorDescriptor.class,
-        ResponseModelDescriptor.class,
-        PlanExecutionDescriptor.class,
-        RejectionDescriptor.class,
-        AuditDescriptor.class,
-        AccountRegistryDescriptor.class,
-        ReversalDescriptor.class,
-        PreflightDescriptor.class,
-        CurrencyDescriptor.class);
+    return DescriptorNamespaceSupport.descriptorTypes(ResponseDescriptorType.class);
   }
+
+  /** Sealed inventory root for the response descriptor namespace. */
+  public sealed interface ResponseDescriptorType
+      permits BookModelDescriptor,
+          FieldDescriptor,
+          ErrorDescriptor,
+          ResponseModelDescriptor,
+          PlanExecutionDescriptor,
+          RejectionDescriptor,
+          AuditDescriptor,
+          AccountRegistryDescriptor,
+          ReversalDescriptor,
+          PreflightDescriptor,
+          CurrencyDescriptor {}
 
   /** Stable initialization requirements for account-registry operations. */
   public enum InitializationRequirement implements WireValue {
@@ -83,7 +86,8 @@ public final class ContractResponse {
       String initialization,
       String accountRegistry,
       String migration,
-      String currencyScope) {
+      String currencyScope)
+      implements ResponseDescriptorType {
     /** Validates one book-model descriptor payload. */
     public BookModelDescriptor {
       boundary = ContractDescriptorValidation.requireText(boundary, "boundary");
@@ -99,7 +103,7 @@ public final class ContractResponse {
   }
 
   /** One general field descriptor for envelopes or emitted payloads. */
-  public record FieldDescriptor(String name, String description) {
+  public record FieldDescriptor(String name, String description) implements ResponseDescriptorType {
     /** Validates one field descriptor payload. */
     public FieldDescriptor {
       name = ContractDescriptorValidation.requireText(name, "name");
@@ -108,7 +112,7 @@ public final class ContractResponse {
   }
 
   /** One stable machine error descriptor. */
-  public record ErrorDescriptor(String code, String description) {
+  public record ErrorDescriptor(String code, String description) implements ResponseDescriptorType {
     /** Validates the structured error descriptor payload. */
     public ErrorDescriptor {
       code = ContractDescriptorValidation.requireText(code, "code");
@@ -125,7 +129,8 @@ public final class ContractResponse {
       List<ErrorDescriptor> errorDescriptors,
       List<FieldDescriptor> rejectionFields,
       List<FieldDescriptor> postEntryRejectionFields,
-      List<FieldDescriptor> errorFields) {
+      List<FieldDescriptor> errorFields)
+      implements ResponseDescriptorType {
     /** Validates one response-model descriptor payload. */
     public ResponseModelDescriptor {
       successStatuses = ContractDescriptorValidation.copyList(successStatuses, "successStatuses");
@@ -145,7 +150,8 @@ public final class ContractResponse {
 
   /** Descriptor for ledger-plan execution semantics. */
   public record PlanExecutionDescriptor(
-      String transactionMode, String failurePolicy, String journal, List<String> hardLimitations) {
+      String transactionMode, String failurePolicy, String journal, List<String> hardLimitations)
+      implements ResponseDescriptorType {
     /** Validates one plan-execution descriptor payload. */
     public PlanExecutionDescriptor {
       transactionMode =
@@ -161,7 +167,8 @@ public final class ContractResponse {
       String code,
       String description,
       List<FieldDescriptor> detailFields,
-      List<RejectionDescriptor> detailRejections) {
+      List<RejectionDescriptor> detailRejections)
+      implements ResponseDescriptorType {
     /** Creates one rejection descriptor with no structured detail payload. */
     public RejectionDescriptor(String code, String description) {
       this(code, description, List.of(), List.of());
@@ -179,7 +186,8 @@ public final class ContractResponse {
 
   /** Descriptor for caller-supplied versus committed audit fields. */
   public record AuditDescriptor(
-      List<FieldDescriptor> requestProvenanceFields, List<FieldDescriptor> committedFields) {
+      List<FieldDescriptor> requestProvenanceFields, List<FieldDescriptor> committedFields)
+      implements ResponseDescriptorType {
     /** Validates one audit descriptor payload. */
     public AuditDescriptor {
       requestProvenanceFields =
@@ -194,7 +202,8 @@ public final class ContractResponse {
       String redeclarationBehavior,
       List<FieldDescriptor> declareAccountFields,
       List<FieldDescriptor> listFields,
-      List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies) {
+      List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies)
+      implements ResponseDescriptorType {
     /** Validates one account-registry descriptor payload. */
     public AccountRegistryDescriptor {
       initializationRequirement =
@@ -211,7 +220,8 @@ public final class ContractResponse {
   }
 
   /** Descriptor for the reversal model. */
-  public record ReversalDescriptor(String model, List<String> requirements) {
+  public record ReversalDescriptor(String model, List<String> requirements)
+      implements ResponseDescriptorType {
     /** Validates one reversal descriptor payload. */
     public ReversalDescriptor {
       model = ContractDescriptorValidation.requireText(model, "model");
@@ -221,7 +231,8 @@ public final class ContractResponse {
 
   /** Descriptor for preflight semantics. */
   public record PreflightDescriptor(
-      String semantics, CommitGuarantee commitGuarantee, String description) {
+      String semantics, CommitGuarantee commitGuarantee, String description)
+      implements ResponseDescriptorType {
     /** Validates one preflight descriptor payload. */
     public PreflightDescriptor {
       semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
@@ -232,7 +243,8 @@ public final class ContractResponse {
   }
 
   /** Descriptor for currency support. */
-  public record CurrencyDescriptor(String scope, String multiCurrencyStatus, String description) {
+  public record CurrencyDescriptor(String scope, String multiCurrencyStatus, String description)
+      implements ResponseDescriptorType {
     /** Validates one currency descriptor payload. */
     public CurrencyDescriptor {
       scope = ContractDescriptorValidation.requireText(scope, "scope");

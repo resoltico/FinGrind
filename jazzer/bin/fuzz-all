@@ -1,9 +1,67 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+readonly script_dir
 # shellcheck source=./common.sh
 . "${script_dir}/common.sh"
 
 fg_initialize_wrapper "$0"
-fg_run_all_active_commands "$@"
+
+declare -a harness_scripts=()
+while IFS= read -r harness_script; do
+    harness_scripts+=("${harness_script}")
+done < <(fg_active_wrapper_scripts)
+readonly harness_scripts
+
+overall_status=0
+
+target_key_for_script() {
+    local script_name
+    script_name="$(basename "$1")"
+    if [[ "${script_name}" != fuzz-* ]]; then
+        printf '%s' ''
+        return 0
+    fi
+    printf '%s' "${script_name#fuzz-}"
+}
+
+print_classified_findings() {
+    local harness_script=$1
+    local target_key
+
+    target_key="$(target_key_for_script "${harness_script}")"
+    if [[ -z "${target_key}" || ! -x "${script_dir}/list-findings" ]]; then
+        return 0
+    fi
+    printf '%s\n' "[JAZZER-WRAPPER] Classified findings for ${target_key}:"
+    "${script_dir}/list-findings" "${target_key}" --console=plain || true
+}
+
+for harness_script in "${harness_scripts[@]}"; do
+    printf '%s\n' "[JAZZER-WRAPPER] Starting ${harness_script}"
+    "${script_dir}/${harness_script}" "$@"
+    status=$?
+    printf '%s\n' "[JAZZER-WRAPPER] Finished ${harness_script} with exit code ${status}"
+
+    case "${status}" in
+        0)
+            ;;
+        130|143)
+            exit "${status}"
+            ;;
+        124)
+            if [[ ${overall_status} -eq 0 ]]; then
+                overall_status=124
+            fi
+            ;;
+        *)
+            overall_status=1
+            print_classified_findings "${harness_script}"
+            printf '%s\n' "[JAZZER-WRAPPER] Stopping after actionable failure in ${harness_script}."
+            exit "${overall_status}"
+            ;;
+    esac
+done
+
+exit "${overall_status}"

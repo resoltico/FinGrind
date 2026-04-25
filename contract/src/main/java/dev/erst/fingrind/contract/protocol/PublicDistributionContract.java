@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.protocol;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -22,17 +21,6 @@ public record PublicDistributionContract(
         normalize(supportedPublicCliBundleTargets, SUPPORTED_BUNDLE_TARGETS_KEY);
     this.unsupportedPublicCliOperatingSystems =
         normalize(unsupportedPublicCliOperatingSystems, UNSUPPORTED_OPERATING_SYSTEMS_KEY);
-  }
-
-  static List<String> parseList(@Nullable String rawValue) {
-    if (rawValue == null || rawValue.isBlank()) {
-      return List.of();
-    }
-    List<String> values = new ArrayList<>();
-    for (String value : rawValue.split(",", -1)) {
-      values.add(value.trim());
-    }
-    return values;
   }
 
   private static List<String> normalize(@Nullable List<String> values, String fieldName) {

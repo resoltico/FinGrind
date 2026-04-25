@@ -139,10 +139,10 @@ final class MachineContractDomainDescriptors {
 
   private static CommandDescriptor commandDescriptor(ProtocolOperation operation) {
     return new CommandDescriptor(
-        operation.id().wireName(),
+        operation.id(),
         operation.aliases(),
         operation.options(),
-        operation.executionMode().wireValue(),
+        operation.executionMode(),
         operation.outputModes(),
         operation.artifactOutputs().stream()
             .map(

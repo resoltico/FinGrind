@@ -9,77 +9,92 @@ import dev.erst.fingrind.contract.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
 import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.util.List;
-import java.util.Optional;
 
 /** Replays posting-command workflows against the in-memory bookkeeping harness. */
 final class JazzerPostingWorkflowReplay {
   private JazzerPostingWorkflowReplay() {}
 
   static ReplayOutcome replay(byte[] input) {
+    return replay(
+        input,
+        CliFuzzFixtures::readPostEntryCommand,
+        JazzerPostingWorkflowReplay::exerciseWorkflow);
+  }
+
+  static ReplayOutcome replay(
+      byte[] input, PostEntryCommandParser parser, PostingWorkflowExercise workflowExercise) {
     PostEntryCommand command = null;
-    String uninitializedPreflightStatus = "NOT_RUN";
-    String uninitializedCommitStatus = "NOT_RUN";
-    String undeclaredPreflightStatus = "NOT_RUN";
-    String undeclaredCommitStatus = "NOT_RUN";
-    String inactivePreflightStatus = "NOT_RUN";
-    String inactiveCommitStatus = "NOT_RUN";
-    String finalPreflightStatus = "NOT_RUN";
-    String finalCommitStatus = "NOT_RUN";
-    String duplicateStatus = "NOT_RUN";
-    boolean storedFactPresent = false;
+    PostingWorkflowReplayState state = new PostingWorkflowReplayState();
     try {
-      command = CliFuzzFixtures.readPostEntryCommand(input);
-      InMemoryBookSession bookSession = new InMemoryBookSession();
+      command = parser.parse(input);
+      workflowExercise.exercise(command, input, state);
+      return new ReplayOutcome.Success(
+          JazzerHarness.postingWorkflow().key(), state.details(command));
+    } catch (IllegalArgumentException expected) {
+      return new ReplayOutcome.ExpectedInvalid(
+          JazzerHarness.postingWorkflow().key(),
+          expected.getClass().getSimpleName(),
+          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayDetailsMapper.unparsedPostingWorkflowDetails());
+    } catch (RuntimeException unexpected) {
+      return JazzerReplayDetailsMapper.unexpectedFailure(
+          JazzerHarness.postingWorkflow(),
+          unexpected,
+          command == null
+              ? JazzerReplayDetailsMapper.unparsedPostingWorkflowDetails()
+              : state.details(command));
+    }
+  }
+
+  private static void exerciseWorkflow(
+      PostEntryCommand command, byte[] input, PostingWorkflowReplayState state) {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService administrationService =
           CliFuzzFixtures.administrationService(bookSession);
       PostingApplicationService applicationService =
           new PostingApplicationService(
-              bookSession,
-              CliFuzzFixtures.postingIdGenerator(input),
-              CliFuzzFixtures.fixedClock());
+              bookSession, CliFuzzFixtures.postingIdGenerator(input), CliFuzzFixtures.fixedClock());
 
-      uninitializedPreflightStatus =
+      state.uninitializedPreflightStatus =
           JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper
-                  .requiredPreflightRejected(applicationService.preflight(command))
+              JazzerReplayDetailsMapper.requiredPreflightRejected(
+                      applicationService.preflight(command))
                   .rejection());
-      uninitializedCommitStatus =
+      state.uninitializedCommitStatus =
           JazzerReplayDetailsMapper.rejectionStatus(
               JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
                   .rejection());
 
       CliFuzzFixtures.openBook(administrationService);
 
-      undeclaredPreflightStatus =
+      state.undeclaredPreflightStatus =
           JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper
-                  .requiredPreflightRejected(applicationService.preflight(command))
+              JazzerReplayDetailsMapper.requiredPreflightRejected(
+                      applicationService.preflight(command))
                   .rejection());
-      undeclaredCommitStatus =
+      state.undeclaredCommitStatus =
           JazzerReplayDetailsMapper.rejectionStatus(
               JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
                   .rejection());
 
       List<DeclaredAccount> declaredAccounts =
           CliFuzzFixtures.declarePostingAccounts(administrationService, command);
-      if (CliFuzzFixtures.listAccounts(bookSession).size() != declaredAccounts.size()) {
-        throw new IllegalStateException("Declared-account listing drifted from setup declarations.");
-      }
+      PostingWorkflowReplayVerifier.verifyDeclaredAccountListing(
+          CliFuzzFixtures.listAccounts(bookSession).size(), declaredAccounts.size());
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       bookSession.deactivateAccount(primaryAccount.accountCode());
-      inactivePreflightStatus =
+      state.inactivePreflightStatus =
           JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper
-                  .requiredPreflightRejected(applicationService.preflight(command))
+              JazzerReplayDetailsMapper.requiredPreflightRejected(
+                      applicationService.preflight(command))
                   .rejection());
-      inactiveCommitStatus =
+      state.inactiveCommitStatus =
           JazzerReplayDetailsMapper.rejectionStatus(
               JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
                   .rejection());
@@ -88,122 +103,84 @@ final class JazzerPostingWorkflowReplay {
 
       PreflightEntryResult preflight = applicationService.preflight(command);
       CommitEntryResult committedResult = applicationService.commit(command);
-      if (preflight instanceof PreflightAccepted accepted) {
-        if (!accepted.idempotencyKey().equals(command.requestProvenance().idempotencyKey())) {
-          throw new IllegalStateException("Preflight changed the idempotency key.");
-        }
-        if (!accepted.effectiveDate().equals(command.journalEntry().effectiveDate())) {
-          throw new IllegalStateException("Preflight changed the effective date.");
-        }
-        finalPreflightStatus = "PREFLIGHT_ACCEPTED";
-        if (!(committedResult instanceof Committed committed)) {
-          throw new IllegalStateException("Accepted preflight should commit on a fresh valid book.");
-        }
-        finalCommitStatus = "COMMITTED";
+      switch (preflight) {
+        case PreflightAccepted accepted -> {
+          PostingWorkflowReplayVerifier.verifyAcceptedPreflight(accepted, command);
+          state.finalPreflightStatus = PostingLifecycleStatus.PREFLIGHT_ACCEPTED;
+          Committed committed = requireCommittedAfterAcceptedPreflight(committedResult);
+          state.finalCommitStatus = PostingLifecycleStatus.COMMITTED;
 
-        Optional<PostingFact> storedPosting =
-            bookSession.findExistingPosting(command.requestProvenance().idempotencyKey());
-        if (storedPosting.isEmpty()) {
-          throw new IllegalStateException("Committed posting fact was not persisted.");
+          PostingFact postingFact =
+              PostingWorkflowReplayVerifier.requireStoredPosting(
+                  bookSession.findExistingPosting(command.requestProvenance().idempotencyKey()));
+          PostingWorkflowReplayVerifier.verifyStoredPosting(postingFact, committed, command);
+          state.storedFactPresent = true;
+          state.duplicateStatus =
+              PostingWorkflowReplayVerifier.requireDuplicateRejection(
+                  applicationService.commit(command));
         }
-        PostingFact postingFact = storedPosting.orElseThrow();
-        if (!postingFact.postingId().equals(committed.postingId())) {
-          throw new IllegalStateException("Stored posting id differs from the commit result.");
+        case PreflightRejected preflightRejected -> {
+          state.finalPreflightStatus =
+              JazzerReplayDetailsMapper.rejectionStatus(preflightRejected.rejection());
+          state.finalCommitStatus =
+              PostingWorkflowReplayVerifier.verifyRejectedPreflightAndCommit(
+                  preflightRejected, committedResult);
         }
-        if (!postingFact.journalEntry().equals(command.journalEntry())) {
-          throw new IllegalStateException("Stored journal entry differs from the parsed command.");
-        }
-        if (!postingFact.reversalReference().equals(command.reversalReference())) {
-          throw new IllegalStateException("Stored reversal differs from the parsed command.");
-        }
-        if (!postingFact.provenance().requestProvenance().equals(command.requestProvenance())) {
-          throw new IllegalStateException(
-              "Stored request provenance differs from the parsed command.");
-        }
-        if (!postingFact.provenance().recordedAt().equals(CliFuzzFixtures.fixedClock().instant())) {
-          throw new IllegalStateException(
-              "Stored recorded-at differs from the deterministic clock.");
-        }
-        if (postingFact.provenance().sourceChannel() != command.sourceChannel()) {
-          throw new IllegalStateException("Stored source channel differs from the parsed command.");
-        }
-        storedFactPresent = true;
-
-        CommitEntryResult duplicateResult = applicationService.commit(command);
-        if (!(duplicateResult instanceof CommitRejected rejected)) {
-          throw new IllegalStateException("Duplicate commit should be rejected.");
-        }
-        if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
-          throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
-        }
-        duplicateStatus = JazzerReplayDetailsMapper.rejectionStatus(rejected.rejection());
-      } else if (preflight instanceof PreflightRejected preflightRejected) {
-        finalPreflightStatus =
-            JazzerReplayDetailsMapper.rejectionStatus(preflightRejected.rejection());
-        if (!(committedResult instanceof CommitRejected commitRejected)) {
-          throw new IllegalStateException("Rejected preflight should remain rejected on commit.");
-        }
-        if (!commitRejected.rejection().equals(preflightRejected.rejection())) {
-          throw new IllegalStateException("Commit changed the deterministic rejection.");
-        }
-        finalCommitStatus = JazzerReplayDetailsMapper.rejectionStatus(commitRejected.rejection());
-      } else {
-        throw new IllegalStateException("Unexpected preflight result type.");
       }
+    }
+  }
 
-      return new ReplayOutcome.Success(
-          JazzerHarness.postingWorkflow().key(),
-          JazzerReplayDetailsMapper.postingWorkflowDetails(
-              command,
-              "PARSED",
-              uninitializedPreflightStatus,
-              uninitializedCommitStatus,
-              undeclaredPreflightStatus,
-              undeclaredCommitStatus,
-              inactivePreflightStatus,
-              inactiveCommitStatus,
-              finalPreflightStatus,
-              finalCommitStatus,
-              duplicateStatus,
-              storedFactPresent,
-              JazzerReplayDetailsMapper.NONE));
-    } catch (IllegalArgumentException expected) {
-      return new ReplayOutcome.ExpectedInvalid(
-          JazzerHarness.postingWorkflow().key(),
-          expected.getClass().getSimpleName(),
-          JazzerReplayDetailsMapper.normalizedMessage(expected),
-          JazzerReplayDetailsMapper.postingWorkflowDetails(
-              command,
-              "INVALID_REQUEST",
-              uninitializedPreflightStatus,
-              uninitializedCommitStatus,
-              undeclaredPreflightStatus,
-              undeclaredCommitStatus,
-              inactivePreflightStatus,
-              inactiveCommitStatus,
-              finalPreflightStatus,
-              finalCommitStatus,
-              duplicateStatus,
-              storedFactPresent,
-              JazzerReplayDetailsMapper.normalizedMessage(expected)));
-    } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsMapper.unexpectedFailure(
-          JazzerHarness.postingWorkflow(),
-          unexpected,
-          JazzerReplayDetailsMapper.postingWorkflowDetails(
-              command,
-              command == null ? "UNEXPECTED_FAILURE" : "PARSED",
-              uninitializedPreflightStatus,
-              uninitializedCommitStatus,
-              undeclaredPreflightStatus,
-              undeclaredCommitStatus,
-              inactivePreflightStatus,
-              inactiveCommitStatus,
-              finalPreflightStatus,
-              finalCommitStatus,
-              duplicateStatus,
-              storedFactPresent,
-              JazzerReplayDetailsMapper.normalizedMessage(unexpected)));
+  static Committed requireCommittedAfterAcceptedPreflight(CommitEntryResult committedResult) {
+    return switch (committedResult) {
+      case Committed committed -> committed;
+      case CommitRejected _ ->
+          throw new IllegalStateException(
+              "Accepted preflight should commit on a fresh valid book.");
+    };
+  }
+
+  /** Parses one posting-workflow replay input into the production posting command model. */
+  @FunctionalInterface
+  interface PostEntryCommandParser {
+    /** Parses one raw replay payload into a posting command. */
+    PostEntryCommand parse(byte[] input);
+  }
+
+  /** Exercises one parsed posting command against the in-memory replay workflow. */
+  @FunctionalInterface
+  interface PostingWorkflowExercise {
+    /** Applies one parsed command to the replay workflow and records the resulting state. */
+    void exercise(PostEntryCommand command, byte[] input, PostingWorkflowReplayState state);
+  }
+
+  /** Collects lifecycle checkpoints and the final outcome for one replayed posting workflow. */
+  static final class PostingWorkflowReplayState {
+    private PostingLifecycleStatus uninitializedPreflightStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus uninitializedCommitStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus undeclaredPreflightStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus undeclaredCommitStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus inactivePreflightStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus inactiveCommitStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus finalPreflightStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus finalCommitStatus = PostingLifecycleStatus.NOT_RUN;
+    private PostingLifecycleStatus duplicateStatus = PostingLifecycleStatus.NOT_RUN;
+    private boolean storedFactPresent;
+
+    private PostingWorkflowReplayDetails details(PostEntryCommand command) {
+      return JazzerReplayDetailsMapper.postingWorkflowDetails(
+          command, lifecycleDetails(), outcomeDetails());
+    }
+
+    private PostingWorkflowLifecycleDetails lifecycleDetails() {
+      return new PostingWorkflowLifecycleDetails(
+          new PostingGateDetails(uninitializedPreflightStatus, uninitializedCommitStatus),
+          new PostingGateDetails(undeclaredPreflightStatus, undeclaredCommitStatus),
+          new PostingGateDetails(inactivePreflightStatus, inactiveCommitStatus));
+    }
+
+    private PostingWorkflowOutcomeDetails outcomeDetails() {
+      return new PostingWorkflowOutcomeDetails(
+          finalPreflightStatus, finalCommitStatus, duplicateStatus, storedFactPresent);
     }
   }
 }

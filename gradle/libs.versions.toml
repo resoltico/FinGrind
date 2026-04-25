@@ -9,7 +9,7 @@ jspecify = "1.0.0"
 nullaway = "0.13.4"
 google-java-format = "1.35.0"
 jacoco = "0.8.14"
-pmd = "7.23.0"
+pmd = "7.24.0"
 shadow = "9.4.1"
 spotless = "8.4.0"
 foojay-resolver-convention = "1.0.0"
@@ -23,8 +23,8 @@ jazzer-junit = { module = "com.code-intelligence:jazzer-junit", version.ref = "j
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-bom" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-bom" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-bom" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 
 [plugins]

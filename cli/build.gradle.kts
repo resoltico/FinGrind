@@ -1,12 +1,14 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
-import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
 import dev.erst.fingrind.buildlogic.DistributionContractReader
+import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
+import org.apache.tools.ant.filters.ReplaceTokens
 import org.gradle.api.GradleException
 import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.attributes.Usage
+import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.application.CreateStartScripts
@@ -42,6 +44,21 @@ val repositoryRootDirectory = rootProject.projectDir.toPath()
 val publicCliBundleTargets = DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
 val unsupportedPublicCliOperatingSystems =
     DistributionContractReader.unsupportedPublicCliOperatingSystems(repositoryRootDirectory)
+val sourceCheckoutRuntimeDistribution =
+    DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRootDirectory)
+val containerRuntimeDistribution =
+    DistributionContractReader.containerRuntimeDistribution(repositoryRootDirectory)
+val bundleRuntimeDistribution =
+    DistributionContractReader.bundleRuntimeDistribution(repositoryRootDirectory)
+val publicCliDistribution =
+    DistributionContractReader.publicCliDistribution(repositoryRootDirectory)
+val storageDriver = DistributionContractReader.storageDriver(repositoryRootDirectory)
+val storageEngine = DistributionContractReader.storageEngine(repositoryRootDirectory)
+val bookProtectionMode = DistributionContractReader.bookProtectionMode(repositoryRootDirectory)
+val defaultBookCipher = DistributionContractReader.defaultBookCipher(repositoryRootDirectory)
+val sqliteLibraryMode = DistributionContractReader.sqliteLibraryMode(repositoryRootDirectory)
+val sqliteBundleHomeSystemProperty =
+    DistributionContractReader.sqliteBundleHomeSystemProperty(repositoryRootDirectory)
 val bundleClassifier =
     providers.gradleProperty("fingrindBundleClassifier").orElse(
         providers.provider { DistributionContractReader.hostClassifier() },
@@ -68,6 +85,7 @@ val managedSqliteLibraryPath =
         },
     )
 val dockerRuntimeModuleListOutputFile = layout.buildDirectory.file("docker/runtime-modules.txt")
+val dockerEntryPointOutputFile = layout.buildDirectory.file("docker/docker-entrypoint.sh")
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
@@ -94,6 +112,14 @@ val bundleTemplateProperties =
         "bundleArchitecture" to bundleArchitectureId,
         "bundleLauncherPath" to bundleLauncherPath.get(),
         "bundleLauncherCommand" to bundleLauncherCommand.get(),
+        "bundleRuntimeDistribution" to bundleRuntimeDistribution,
+        "publicCliDistribution" to publicCliDistribution,
+        "storageDriver" to storageDriver,
+        "storageEngine" to storageEngine,
+        "bookProtectionMode" to bookProtectionMode,
+        "defaultBookCipher" to defaultBookCipher,
+        "sqliteLibraryMode" to sqliteLibraryMode,
+        "sqliteBundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
         "helpOperation" to DistributionContractReader.helpOperationName(repositoryRootDirectory),
         "capabilitiesOperation" to
             DistributionContractReader.capabilitiesOperationName(repositoryRootDirectory),
@@ -121,7 +147,7 @@ if (bundleClassifierValue != hostBundleClassifier) {
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
-    jvmArgs("-Dfingrind.runtime.distribution=source-checkout-gradle")
+    jvmArgs("-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}")
 }
 
 tasks.named<ShadowJar>("shadowJar") {
@@ -212,7 +238,7 @@ val writeRuntimeModuleList =
     }
 
 val stageDockerRuntimeModuleList =
-    tasks.register<Sync>("stageDockerRuntimeModuleList") {
+    tasks.register<Copy>("stageDockerRuntimeModuleList") {
         group = "distribution"
         description =
             "Stages the precomputed runtime module list used by the Docker image build."
@@ -222,12 +248,30 @@ val stageDockerRuntimeModuleList =
         rename { "runtime-modules.txt" }
     }
 
+val stageDockerEntryPoint =
+    tasks.register<Copy>("stageDockerEntryPoint") {
+        group = "distribution"
+        description = "Stages the canonical Docker entrypoint script for the container image build."
+        from(layout.projectDirectory.dir("src/docker")) {
+            filter<ReplaceTokens>(
+                "tokens" to
+                    mapOf(
+                        "containerRuntimeDistribution" to containerRuntimeDistribution,
+                    ),
+                "beginToken" to "{{",
+                "endToken" to "}}",
+            )
+        }
+        into(dockerEntryPointOutputFile.map { it.asFile.parentFile })
+    }
+
 val stageDockerRuntimeInputs =
     tasks.register("stageDockerRuntimeInputs") {
         group = "distribution"
         description =
             "Stages the shared Docker runtime inputs required by the container image build."
         dependsOn(stageDockerRuntimeModuleList)
+        dependsOn(stageDockerEntryPoint)
     }
 
 tasks.named<ShadowJar>("shadowJar") {
@@ -264,6 +308,15 @@ val stageCliBundle =
 
         from(layout.projectDirectory.dir("src/bundle/bin")) {
             into("bin")
+            filter<ReplaceTokens>(
+                "tokens" to
+                    mapOf(
+                        "bundleRuntimeDistribution" to bundleRuntimeDistribution,
+                        "bundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
+                    ),
+                "beginToken" to "{{",
+                "endToken" to "}}",
+            )
         }
         from(layout.projectDirectory.dir("src/bundle/root")) {
             expand(bundleTemplateProperties)

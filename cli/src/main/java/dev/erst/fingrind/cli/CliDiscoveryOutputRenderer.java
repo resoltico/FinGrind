@@ -5,6 +5,8 @@ import dev.erst.fingrind.contract.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.VersionDescriptor;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.List;
 import java.util.Objects;
 
@@ -27,10 +29,14 @@ final class CliDiscoveryOutputRenderer {
                 .map(
                     command ->
                         List.of(
-                            command.name(),
+                            command.name().wireName(),
                             command.outputModes().isEmpty()
                                 ? "(json)"
-                                : String.join(", ", command.outputModes()),
+                                : String.join(
+                                    ", ",
+                                    command.outputModes().stream()
+                                        .map(OutputMode::wireValue)
+                                        .toList()),
                             command.summary()))
                 .toList());
     String quickStart =
@@ -63,21 +69,28 @@ final class CliDiscoveryOutputRenderer {
                 List.of("Application", capabilitiesDescriptor.application()),
                 List.of("Version", capabilitiesDescriptor.version()),
                 List.of("Book boundary", storageDescriptor.bookBoundary()),
-                List.of("Storage", String.join(", ", storageDescriptor.engines())),
+                List.of(
+                    "Storage",
+                    String.join(
+                        ", ", storageDescriptor.engines().stream().map(Object::toString).toList())),
                 List.of("Timestamp", capabilitiesDescriptor.timestamp())));
     String commands =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Discovery", String.join(", ", commandCatalog.discovery())),
-                List.of("Administration", String.join(", ", commandCatalog.administration())),
-                List.of("Query", String.join(", ", commandCatalog.query())),
-                List.of("Write", String.join(", ", commandCatalog.write()))));
+                List.of("Discovery", joinOperationIds(commandCatalog.discovery())),
+                List.of("Administration", joinOperationIds(commandCatalog.administration())),
+                List.of("Query", joinOperationIds(commandCatalog.query())),
+                List.of("Write", joinOperationIds(commandCatalog.write()))));
     String outputModes =
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
                     "Query/report stdout",
-                    String.join(", ", capabilitiesDescriptor.requestInput().queryOutputModes())),
+                    String.join(
+                        ", ",
+                        capabilitiesDescriptor.requestInput().queryOutputModes().stream()
+                            .map(OutputMode::wireValue)
+                            .toList())),
                 List.of("Preflight semantics", capabilitiesDescriptor.preflight().semantics())));
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
@@ -105,5 +118,9 @@ final class CliDiscoveryOutputRenderer {
         + "-".repeat(title.length())
         + System.lineSeparator()
         + body;
+  }
+
+  private static String joinOperationIds(List<OperationId> operationIds) {
+    return String.join(", ", operationIds.stream().map(OperationId::wireName).toList());
   }
 }

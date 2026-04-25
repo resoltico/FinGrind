@@ -1,22 +1,19 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.SourceChannel;
+import java.util.Objects;
+
 /** Stable replay details for committed CLI-request seeds. */
 public record CliRequestReplayDetails(
-    String requestStatus,
-    String effectiveDate,
-    String idempotencyKey,
-    int lineCount,
-    boolean reversalPresent,
-    String actorType,
-    String sourceChannel,
-    String failureMessage)
+    ParsedPostingCommandDetails request, ActorType actorType, SourceChannel sourceChannel)
     implements ReplayDetails {
   public CliRequestReplayDetails {
-    requestStatus = ReplayModelValidation.requireText(requestStatus, "requestStatus");
-    effectiveDate = ReplayModelValidation.requireText(effectiveDate, "effectiveDate");
-    idempotencyKey = ReplayModelValidation.requireText(idempotencyKey, "idempotencyKey");
-    actorType = ReplayModelValidation.requireText(actorType, "actorType");
-    sourceChannel = ReplayModelValidation.requireText(sourceChannel, "sourceChannel");
-    failureMessage = ReplayModelValidation.requireText(failureMessage, "failureMessage");
+    Objects.requireNonNull(request, "request must not be null");
+    Objects.requireNonNull(actorType, "actorType must not be null");
+    Objects.requireNonNull(sourceChannel, "sourceChannel must not be null");
   }
 }
+
+/** Replay details for CLI-request inputs that never produced a parsed posting command. */
+record UnparsedCliRequestReplayDetails() implements ReplayDetails {}

@@ -153,18 +153,27 @@ class ProtocolCatalogTest {
     OperationIdContract contract =
         OperationIdContract.loadFromResource(
             new ByteArrayInputStream(
-                "HELP=help\nVERSION=version\n".getBytes(StandardCharsets.UTF_8)),
+                """
+                {"HELP":"help","VERSION":"version"}
+                """
+                    .getBytes(StandardCharsets.UTF_8)),
             "memory");
-    OperationIdContract blankContract =
-        OperationIdContract.loadFromResource(
-            new ByteArrayInputStream("HELP=\n".getBytes(StandardCharsets.UTF_8)), "blank");
 
     assertEquals("help", contract.wireName("HELP"));
     assertThrows(IllegalStateException.class, () -> contract.wireName("UNKNOWN"));
-    assertThrows(IllegalStateException.class, () -> blankContract.wireName("HELP"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            OperationIdContract.loadFromResource(
+                new ByteArrayInputStream(
+                    """
+                    {"HELP":"   "}
+                    """
+                        .getBytes(StandardCharsets.UTF_8)),
+                "blank"));
     assertThrows(
         IllegalStateException.class,
-        () -> OperationIdContract.loadFromResource(null, "missing.properties"));
+        () -> OperationIdContract.loadFromResource(null, "missing.json"));
     assertThrows(
         UncheckedIOException.class,
         () ->
@@ -180,7 +189,7 @@ class ProtocolCatalogTest {
                     throw new IOException("boom");
                   }
                 },
-                "broken.properties"));
+                "broken.json"));
   }
 
   private static ProtocolOperation operation(OperationId id, List<String> aliases) {
@@ -190,7 +199,7 @@ class ProtocolCatalogTest {
         new ProtocolCommandSignature(
             id.wireName(), aliases, List.of(), "fingrind " + id.wireName()),
         new ProtocolOperationOutputs(
-            ExecutionMode.JSON_ENVELOPE, List.of(OutputMode.JSON.wireValue()), List.of()),
+            ExecutionMode.JSON_ENVELOPE, List.of(OutputMode.JSON), List.of()),
         new ProtocolOperationDocumentation("summary", List.of()));
   }
 
@@ -203,7 +212,8 @@ class ProtocolCatalogTest {
     assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
     assertEquals(
         "[--output <json|human|csv>]",
-        ProtocolOptions.optionalOutputSyntax(List.of("json", "human", "csv")));
+        ProtocolOptions.optionalOutputSyntax(
+            List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV)));
     assertEquals("[--pdf-out <path>]", ProtocolOptions.optionalPdfOutSyntax());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
@@ -214,7 +224,8 @@ class ProtocolCatalogTest {
     assertTrue(listAccounts.options().contains("[--limit <1-200>]"));
     assertTrue(listAccounts.usage().contains("[--book-key-file <path> | --book-passphrase-stdin"));
     assertTrue(listAccounts.examples().getFirst().contains("--limit 50"));
-    assertEquals(List.of("json", "human", "csv"), trialBalance.outputModes());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV), trialBalance.outputModes());
     assertTrue(trialBalance.options().contains("[--output <json|human|csv>]"));
     assertTrue(trialBalance.options().contains("[--pdf-out <path>]"));
     assertEquals(1, trialBalance.artifactOutputs().size());
@@ -224,7 +235,26 @@ class ProtocolCatalogTest {
 
   @Test
   void globalFacts_publishTheCurrentBookModelAndRuntimeContract() {
-    assertEquals(List.of("sqlite"), ProtocolCatalog.storageEngines());
+    assertEquals(List.of(StorageEngine.SQLITE), ProtocolCatalog.storageEngines());
+    assertEquals(
+        RuntimeDistribution.DIRECT_JAVA_INVOCATION,
+        ProtocolCatalog.directJavaRuntimeDistribution());
+    assertEquals(
+        RuntimeDistribution.SOURCE_CHECKOUT_GRADLE,
+        ProtocolCatalog.sourceCheckoutRuntimeDistribution());
+    assertEquals(
+        RuntimeDistribution.CONTAINER_IMAGE, ProtocolCatalog.containerRuntimeDistribution());
+    assertEquals(
+        RuntimeDistribution.SELF_CONTAINED_BUNDLE, ProtocolCatalog.bundleRuntimeDistribution());
+    assertEquals(
+        PublicCliDistribution.SELF_CONTAINED_BUNDLE, ProtocolCatalog.publicCliDistribution());
+    assertEquals(StorageDriver.SQLITE_FFM_SQLITE3MC, ProtocolCatalog.storageDriver());
+    assertEquals(StorageEngine.SQLITE, ProtocolCatalog.storageEngine());
+    assertEquals(BookProtectionMode.REQUIRED, ProtocolCatalog.bookProtectionMode());
+    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.defaultBookCipher());
+    assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
+    assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());
+    assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
     assertEquals(
         List.of(
             ProtocolStatuses.OK,
@@ -317,6 +347,36 @@ class ProtocolCatalogTest {
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
         ProtocolPostEntryFields.provenanceFields());
     assertEquals(List.of("priorPostingId", "reason"), ProtocolPostEntryFields.reversalFields());
+    assertEquals("accountCode", ProtocolSharedRequestFields.ACCOUNT_CODE);
+    assertEquals("currencyCode", ProtocolSharedRequestFields.CURRENCY_CODE);
+    assertEquals("effectiveDateFrom", ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM);
+    assertEquals("effectiveDateTo", ProtocolSharedRequestFields.EFFECTIVE_DATE_TO);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolDeclareAccountFields.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.CURRENCY_CODE,
+        ProtocolPostEntryFields.JournalLine.CURRENCY_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM,
+        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_TO,
+        ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_TO);
+    assertEquals(
+        ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolLedgerPlanFields.Assertion.ACCOUNT_CODE);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM,
+        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM);
+    assertEquals(
+        ProtocolSharedRequestFields.EFFECTIVE_DATE_TO,
+        ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO);
+    assertEquals(
+        ProtocolSharedRequestFields.CURRENCY_CODE,
+        ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE);
 
     assertThrows(
         IllegalArgumentException.class,
@@ -335,8 +395,15 @@ class ProtocolCatalogTest {
         PublicDistributionContracts.loadFromResource(
             new ByteArrayInputStream(
                 """
-                supportedPublicCliBundleTargets=macos-aarch64, linux-x86_64
-                unsupportedPublicCliOperatingSystems=windows-arm64
+                {
+                  "supportedPublicCliBundleTargets": [
+                    "macos-aarch64",
+                    "linux-x86_64"
+                  ],
+                  "unsupportedPublicCliOperatingSystems": [
+                    "windows-arm64"
+                  ]
+                }
                 """
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
             "test-resource");
@@ -347,7 +414,8 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of(),
         PublicDistributionContracts.loadFromResource(
-                new ByteArrayInputStream(new byte[0]), "blank-resource")
+                new ByteArrayInputStream("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "blank-resource")
             .supportedPublicCliBundleTargets());
     assertThrows(
         IllegalStateException.class,
@@ -355,6 +423,16 @@ class ProtocolCatalogTest {
     assertThrows(
         UncheckedIOException.class,
         () -> PublicDistributionContracts.loadFromResource(failingInputStream(), "bad-resource"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PublicDistributionContracts.loadFromResource(
+                new ByteArrayInputStream(
+                    """
+                    {"supportedPublicCliBundleTargets":[1]}
+                    """
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "invalid-resource"));
     assertEquals(
         List.of(),
         new PublicDistributionContract(null, List.of()).supportedPublicCliBundleTargets());
