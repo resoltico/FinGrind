@@ -154,7 +154,9 @@ function Invoke-BundleCommand {
 
 $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
 $script:ContractValues = Read-ContractValues
-$expectedArchiveName = "fingrind-$(ProjectVersion)-windows-x86_64.zip"
+$hostBundleTarget = $script:ContractValues.bundleLayout.hostBundleTarget
+$expectedArchiveName =
+    "fingrind-$(ProjectVersion)-$($hostBundleTarget.classifier).$($hostBundleTarget.archiveFormat)"
 $cliBuildDir =
     if ([string]::IsNullOrWhiteSpace($env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT)) {
         Join-Path $script:RepoRoot "cli/build"
@@ -204,10 +206,10 @@ try {
     }
 
     $bundleRoot = $extractedRoots[0].FullName
-    $script:BundleLauncher = Join-Path $bundleRoot "bin/fingrind.ps1"
+    $script:BundleLauncher = Join-Path $bundleRoot $hostBundleTarget.launcherPath
     $runtimeJava = Join-Path $bundleRoot "runtime/bin/java.exe"
     $applicationJar = Join-Path $bundleRoot "lib/app/fingrind.jar"
-    $nativeLibrary = Join-Path $bundleRoot "lib/native/sqlite3.dll"
+    $nativeLibrary = Join-Path $bundleRoot "lib/native/$($hostBundleTarget.sqliteLibraryFileName)"
 
     foreach ($path in @(
         $script:BundleLauncher,
@@ -240,14 +242,14 @@ try {
     if ($bundleManifest.runtimeDistribution -ne $script:ContractValues.runtimeSurface.bundleRuntimeDistribution) {
         Fail "bundle manifest did not report the self-contained runtime distribution"
     }
-    if ($bundleManifest.archiveFormat -ne "zip") {
-        Fail "bundle manifest did not report zip as the Windows archive format"
+    if ($bundleManifest.archiveFormat -ne $hostBundleTarget.archiveFormat) {
+        Fail "bundle manifest did not report the platform-native archive format"
     }
-    if ($bundleManifest.bundleTarget.classifier -ne "windows-x86_64") {
+    if ($bundleManifest.bundleTarget.classifier -ne $hostBundleTarget.classifier) {
         Fail "bundle manifest did not report the current host classifier"
     }
-    if ($bundleManifest.launcher -ne "bin/fingrind.ps1") {
-        Fail "bundle manifest did not report the Windows launcher path"
+    if ($bundleManifest.launcher -ne $hostBundleTarget.launcherPath) {
+        Fail "bundle manifest did not report the canonical launcher path"
     }
     if (
         (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.supportedPublicCliBundleTargets) `
@@ -256,10 +258,10 @@ try {
         Fail "bundle manifest did not report the supported public bundle targets"
     }
     if (
-        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.unsupportedPublicCliOperatingSystems) `
-            -DifferenceObject @($bundleManifest.unsupportedPublicCliOperatingSystems)).Count -ne 0
+        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
+            -DifferenceObject @($bundleManifest.unsupportedPublicCliBundleTargets)).Count -ne 0
     ) {
-        Fail "bundle manifest still reported unsupported public operating systems"
+        Fail "bundle manifest still reported unsupported public bundle targets"
     }
     if ($bundleManifest.publicCliDistribution -ne $script:ContractValues.runtimeSurface.publicCliDistribution) {
         Fail "bundle manifest did not report the public bundle distribution contract"
@@ -278,6 +280,18 @@ try {
     }
     if ($bundleManifest.managedSqlite.libraryMode -ne $script:ContractValues.runtimeSurface.sqliteLibraryMode) {
         Fail "bundle manifest did not report the canonical SQLite library mode"
+    }
+    if (
+        $bundleManifest.managedSqlite.requiredMinimumSqliteVersion -ne
+        $script:ContractValues.managedSqlite.requiredMinimumSqliteVersion
+    ) {
+        Fail "bundle manifest did not report the canonical minimum SQLite version"
+    }
+    if (
+        $bundleManifest.managedSqlite.requiredSqlite3mcVersion -ne
+        $script:ContractValues.managedSqlite.requiredSqlite3mcVersion
+    ) {
+        Fail "bundle manifest did not report the canonical SQLite3 Multiple Ciphers version"
     }
     if ($bundleManifest.bootstrap.recommendedFirstCommand[-1] -ne $script:ContractValues.operationIds.help) {
         Fail "bundle manifest did not publish the canonical bootstrap help command"
@@ -438,10 +452,10 @@ try {
         Fail "capabilities output did not report the supported public bundle targets"
     }
     if (
-        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.unsupportedPublicCliOperatingSystems) `
-            -DifferenceObject @($distribution.unsupportedPublicCliOperatingSystems)).Count -ne 0
+        (Compare-Object -ReferenceObject @($script:ContractValues.publicDistribution.unsupportedPublicCliBundleTargets) `
+            -DifferenceObject @($distribution.unsupportedPublicCliBundleTargets)).Count -ne 0
     ) {
-        Fail "capabilities output still reported unsupported public operating systems"
+        Fail "capabilities output still reported unsupported public bundle targets"
     }
     if ($sqlite.libraryMode -ne $script:ContractValues.runtimeSurface.sqliteLibraryMode) {
         Fail "capabilities output did not report the managed-only SQLite runtime mode"

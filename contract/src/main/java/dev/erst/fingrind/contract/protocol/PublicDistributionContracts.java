@@ -23,11 +23,11 @@ final class PublicDistributionContracts {
     JsonNode document =
         JsonContractResourceSupport.loadObject(
             resourceStream, resourcePath, "public distribution contract");
-    return new PublicDistributionContract(
+    return PublicDistributionContract.fromWireValues(
         JsonContractResourceSupport.optionalStringArray(
             document, PublicDistributionContract.SUPPORTED_BUNDLE_TARGETS_KEY),
         JsonContractResourceSupport.optionalStringArray(
-            document, PublicDistributionContract.UNSUPPORTED_OPERATING_SYSTEMS_KEY));
+            document, PublicDistributionContract.UNSUPPORTED_BUNDLE_TARGETS_KEY));
   }
 
   private static PublicDistributionContract loadCurrent() {

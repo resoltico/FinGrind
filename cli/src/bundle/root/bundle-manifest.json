@@ -11,7 +11,7 @@
     "architecture": "${bundleArchitecture}"
   },
   "supportedPublicCliBundleTargets": ${publicBundleTargetsJson},
-  "unsupportedPublicCliOperatingSystems": ${unsupportedPublicOperatingSystemsJson},
+  "unsupportedPublicCliBundleTargets": ${unsupportedPublicBundleTargetsJson},
   "launcher": "${bundleLauncherPath}",
   "noExternalJavaRequired": true,
   "requiresFingrindSqliteLibraryEnvironmentVariable": false,
@@ -20,7 +20,9 @@
     "storageEngine": "${storageEngine}",
     "bookProtectionMode": "${bookProtectionMode}",
     "defaultBookCipher": "${defaultBookCipher}",
-    "libraryMode": "${sqliteLibraryMode}"
+    "libraryMode": "${sqliteLibraryMode}",
+    "requiredMinimumSqliteVersion": "${requiredMinimumSqliteVersion}",
+    "requiredSqlite3mcVersion": "${requiredSqlite3mcVersion}"
   },
   "bootstrap": {
     "recommendedFirstCommand": [

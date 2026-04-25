@@ -415,10 +415,12 @@ class ProtocolContractLintSupport {
     ids.addAll(BookCipher.wireValues());
     ids.addAll(SqliteLibraryMode.wireValues());
     ids.addAll(SqliteRuntimeStatus.wireValues());
-    ids.addAll(ProtocolCatalog.successStatuses());
-    ids.addAll(ProtocolCatalog.rejectionStatuses());
-    ids.addAll(ProtocolCatalog.supportedPublicCliBundleTargets());
-    ids.addAll(ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+    ids.addAll(ProtocolSuccessStatus.wireValues());
+    ids.addAll(ProtocolRejectionStatus.wireValues());
+    ids.addAll(ProtocolFailureStatus.wireValues());
+    ids.addAll(PublicCliBundleTarget.wireValues());
+    ids.addAll(PlanTransactionMode.wireValues());
+    ids.addAll(PlanFailurePolicy.wireValues());
     return Set.copyOf(ids);
   }
 }

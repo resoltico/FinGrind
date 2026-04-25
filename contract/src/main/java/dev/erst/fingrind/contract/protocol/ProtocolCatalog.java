@@ -65,12 +65,12 @@ public final class ProtocolCatalog {
   }
 
   /** Returns the canonical success-status identifiers. */
-  public static List<String> successStatuses() {
+  public static List<ProtocolSuccessStatus> successStatuses() {
     return ProtocolCatalogFacts.successStatuses();
   }
 
   /** Returns the canonical deterministic rejection-status identifiers. */
-  public static List<String> rejectionStatuses() {
+  public static List<ProtocolRejectionStatus> rejectionStatuses() {
     return ProtocolCatalogFacts.rejectionStatuses();
   }
 
@@ -120,13 +120,13 @@ public final class ProtocolCatalog {
   }
 
   /** Returns supported self-contained public CLI bundle targets. */
-  public static List<String> supportedPublicCliBundleTargets() {
+  public static List<PublicCliBundleTarget> supportedPublicCliBundleTargets() {
     return ProtocolCatalogFacts.publicDistributionContract().supportedPublicCliBundleTargets();
   }
 
-  /** Returns operating systems outside the current self-contained public CLI contract. */
-  public static List<String> unsupportedPublicCliOperatingSystems() {
-    return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliOperatingSystems();
+  /** Returns bundle targets outside the current self-contained public CLI contract. */
+  public static List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets() {
+    return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliBundleTargets();
   }
 
   /** Returns the canonical minimum Java line for source-checkout execution. */
@@ -167,6 +167,16 @@ public final class ProtocolCatalog {
   /** Returns the canonical bundle-home system property name. */
   public static String sqliteBundleHomeSystemProperty() {
     return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteBundleHomeSystemProperty();
+  }
+
+  /** Returns the canonical minimum SQLite version for the managed runtime surface. */
+  public static String requiredMinimumSqliteVersion() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiredMinimumSqliteVersion();
+  }
+
+  /** Returns the canonical SQLite3 Multiple Ciphers version for the managed runtime surface. */
+  public static String requiredSqlite3mcVersion() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiredSqlite3mcVersion();
   }
 
   private static Stream<Map.Entry<String, ProtocolOperation>> tokensFor(

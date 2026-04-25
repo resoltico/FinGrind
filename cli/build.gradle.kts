@@ -42,8 +42,9 @@ val buildMetadata = FinGrindBuildMetadata.load(project)
 val fingrindJavaVersion = buildMetadata.javaVersion
 val repositoryRootDirectory = rootProject.projectDir.toPath()
 val publicCliBundleTargets = DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
-val unsupportedPublicCliOperatingSystems =
-    DistributionContractReader.unsupportedPublicCliOperatingSystems(repositoryRootDirectory)
+val unsupportedPublicCliBundleTargets =
+    DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
+val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
 val sourceCheckoutRuntimeDistribution =
     DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRootDirectory)
 val containerRuntimeDistribution =
@@ -61,7 +62,7 @@ val sqliteBundleHomeSystemProperty =
     DistributionContractReader.sqliteBundleHomeSystemProperty(repositoryRootDirectory)
 val bundleClassifier =
     providers.gradleProperty("fingrindBundleClassifier").orElse(
-        providers.provider { DistributionContractReader.hostClassifier() },
+        providers.provider { hostBundleTarget.classifier },
     )
 val bundleName = bundleClassifier.map { classifier -> "fingrind-${project.version}-$classifier" }
 val currentJavaHomeDirectory = layout.dir(providers.provider { file(System.getProperty("java.home")) })
@@ -91,18 +92,16 @@ val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
 val distributionDirectory = layout.buildDirectory.dir("distributions")
 val bundleClassifierValue = bundleClassifier.get()
-val bundleOperatingSystemId = bundleClassifierValue.substringBefore('-')
-val bundleArchitectureId = bundleClassifierValue.substringAfter('-')
-val bundleArchiveExtension =
-    providers.provider { DistributionContractReader.archiveExtensionForOperatingSystemId(bundleOperatingSystemId) }
+val bundleTarget = DistributionContractReader.bundleTarget(repositoryRootDirectory, bundleClassifierValue)
+val bundleOperatingSystemId = bundleTarget.operatingSystemId
+val bundleArchitectureId = bundleTarget.architectureId
+val bundleArchiveExtension = providers.provider { bundleTarget.archiveFormat }
 val bundleArchiveFileName = bundleName.zip(bundleArchiveExtension) { name, extension -> "$name.$extension" }
 val bundleSha256File =
     bundleArchiveFileName.flatMap { fileName -> layout.buildDirectory.file("distributions/$fileName.sha256") }
-val hostBundleClassifier = DistributionContractReader.hostClassifier()
-val bundleLauncherPath =
-    providers.provider { DistributionContractReader.launcherPathForOperatingSystemId(bundleOperatingSystemId) }
-val bundleLauncherCommand =
-    providers.provider { DistributionContractReader.launcherCommandForOperatingSystemId(bundleOperatingSystemId) }
+val hostBundleClassifier = hostBundleTarget.classifier
+val bundleLauncherPath = providers.provider { bundleTarget.launcherPath }
+val bundleLauncherCommand = providers.provider { bundleTarget.launcherCommand }
 val bundleTemplateProperties =
     mapOf(
         "version" to project.version.toString(),
@@ -120,6 +119,10 @@ val bundleTemplateProperties =
         "defaultBookCipher" to defaultBookCipher,
         "sqliteLibraryMode" to sqliteLibraryMode,
         "sqliteBundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
+        "requiredMinimumSqliteVersion" to
+            DistributionContractReader.requiredMinimumSqliteVersion(repositoryRootDirectory),
+        "requiredSqlite3mcVersion" to
+            DistributionContractReader.requiredSqlite3mcVersion(repositoryRootDirectory),
         "helpOperation" to DistributionContractReader.helpOperationName(repositoryRootDirectory),
         "capabilitiesOperation" to
             DistributionContractReader.capabilitiesOperationName(repositoryRootDirectory),
@@ -129,12 +132,12 @@ val bundleTemplateProperties =
             DistributionContractReader.planTemplateOperationName(repositoryRootDirectory),
         "publicBundleTargetsJson" to
             DistributionContractReader.jsonStringArray(publicCliBundleTargets),
-        "unsupportedPublicOperatingSystemsJson" to
-            DistributionContractReader.jsonStringArray(unsupportedPublicCliOperatingSystems),
+        "unsupportedPublicBundleTargetsJson" to
+            DistributionContractReader.jsonStringArray(unsupportedPublicCliBundleTargets),
         "publicBundleTargetsMarkdown" to
             DistributionContractReader.markdownBulletList(publicCliBundleTargets),
-        "unsupportedPublicOperatingSystemsMarkdown" to
-            DistributionContractReader.markdownBulletList(unsupportedPublicCliOperatingSystems),
+        "unsupportedPublicBundleTargetsMarkdown" to
+            DistributionContractReader.markdownBulletList(unsupportedPublicCliBundleTargets),
     )
 
 if (bundleClassifierValue != hostBundleClassifier) {
@@ -413,15 +416,15 @@ tasks.register("bundleCliArchive") {
 }
 
 fun hostBundleClassifier(): String {
-    return DistributionContractReader.hostClassifier()
+    return DistributionContractReader.hostBundleTarget(repositoryRootDirectory).classifier
 }
 
 fun managedSqliteHostClassifier(): String =
-    DistributionContractReader.hostClassifier()
+    DistributionContractReader.hostBundleTarget(repositoryRootDirectory).classifier
 
 fun managedSqliteLibraryFileNameForHost(): String =
-    DistributionContractReader.libraryFileNameForOperatingSystemId(operatingSystemId())
+    DistributionContractReader.hostBundleTarget(repositoryRootDirectory).sqliteLibraryFileName
 
 fun operatingSystemId(): String {
-    return DistributionContractReader.operatingSystemId()
+    return DistributionContractReader.hostBundleTarget(repositoryRootDirectory).operatingSystemId
 }

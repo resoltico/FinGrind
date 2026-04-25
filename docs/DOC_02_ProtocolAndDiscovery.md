@@ -90,16 +90,19 @@ public enum OutputMode implements WireValue
 - Purpose: keep output-mode parsing and rendering enum-owned instead of switch-local
 - Surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and branch-owning `run(...)`
 
-## `ProtocolStatuses`
+## `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, And `ProtocolFailureStatus`
 
-`ProtocolStatuses` is the canonical owner of public envelope status tokens.
+These enums are the canonical owners of public envelope status tokens.
 
 ```java
-public final class ProtocolStatuses
+public enum ProtocolSuccessStatus implements WireValue
+public enum ProtocolRejectionStatus implements WireValue
+public enum ProtocolFailureStatus implements WireValue
 ```
 
-- Purpose: distinguish generic success, posting commit, plan commit, plan rejection, plan
-  assertion failure, business rejection, and runtime failure without magic strings
+- Purpose: distinguish success, deterministic rejection, and runtime failure statuses with
+  compile-time subset boundaries instead of one open string bucket
+- Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
 
 ## `ProtocolLimits`
 
@@ -141,15 +144,80 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 
 ```java
 public record PublicDistributionContract(
-    List<String> supportedPublicCliBundleTargets,
-    List<String> unsupportedPublicCliOperatingSystems)
+    List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
+    List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets)
 ```
 
 - Purpose: keep release-target metadata in one typed owner shared by capabilities, docs, and build
   verification
-- Validation: rejects blanks and duplicates
+- Validation: rejects unknown targets, duplicates, and overlap between the supported and
+  unsupported lists
 - Resource authority: loaded from the protocol-owned JSON contract resource instead of ad hoc
   build or shell literals
+
+## `PublicCliBundleTarget`
+
+`PublicCliBundleTarget` is the canonical host-classifier vocabulary for public CLI bundles.
+
+```java
+public enum PublicCliBundleTarget implements WireValue
+```
+
+- Purpose: keep bundle-target publication tied to one typed classifier vocabulary instead of open
+  strings that can drift away from the real release matrix
+
+## `ManagedSqliteContract`
+
+`ManagedSqliteContract` is the protocol-owned managed native-library version pin shared across
+runtime, bundle, and operator surfaces.
+
+```java
+record ManagedSqliteContract(String requiredMinimumSqliteVersion, String requiredSqlite3mcVersion)
+```
+
+- Purpose: keep the required SQLite and SQLite3 Multiple Ciphers versions in one canonical
+  contract owner instead of copying version literals through build scripts, bundle docs, and shell
+  verification
+
+## `BundleLayoutContract`
+
+`BundleLayoutContract` is the protocol-owned per-target bundle layout registry.
+
+```java
+record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTargets)
+```
+
+- Purpose: keep archive format, launcher path, launcher command, and native library filename tied
+  to one typed target owner shared by build logic, bundle metadata, and operator verification
+- Validation: requires one layout entry for every `PublicCliBundleTarget`
+
+## `BundleLayoutContract.BundleTarget`
+
+`BundleLayoutContract.BundleTarget` is one canonical bundle layout descriptor.
+
+```java
+record BundleTarget(
+    String operatingSystemId,
+    String architectureId,
+    String archiveFormat,
+    String launcherPath,
+    String launcherCommand,
+    String sqliteLibraryFileName)
+```
+
+- Purpose: expose the per-target self-contained archive facts that the bundle manifest and
+  acceptance scripts must report without reauthoring platform switch statements
+
+## `PlanTransactionMode`, And `PlanFailurePolicy`
+
+These enums are the canonical ledger-plan execution semantics.
+
+```java
+public enum PlanTransactionMode implements WireValue
+public enum PlanFailurePolicy implements WireValue
+```
+
+- Purpose: keep the plan execution contract typed through the public discovery/model surface
 
 ## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, And `SqliteRuntimeStatus`
 

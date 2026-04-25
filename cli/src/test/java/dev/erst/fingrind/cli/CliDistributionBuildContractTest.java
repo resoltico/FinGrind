@@ -39,7 +39,13 @@ class CliDistributionBuildContractTest {
     assertTrue(buildScript.contains("docker/runtime-modules.txt"));
     assertTrue(buildScript.contains("docker/docker-entrypoint.sh"));
     assertTrue(buildScript.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
+    assertTrue(
+        buildScript.contains(
+            "DistributionContractReader.hostBundleTarget(repositoryRootDirectory)"));
     assertFalse(buildScript.contains("docker/jdeps"));
+    assertFalse(buildScript.contains("archiveExtensionForOperatingSystemId"));
+    assertFalse(buildScript.contains("launcherPathForOperatingSystemId"));
+    assertFalse(buildScript.contains("launcherCommandForOperatingSystemId"));
   }
 
   @Test
@@ -53,6 +59,8 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleManifest.contains("${capabilitiesOperation}"));
     assertTrue(bundleManifest.contains("${requestTemplateOperation}"));
     assertTrue(bundleManifest.contains("${planTemplateOperation}"));
+    assertTrue(bundleManifest.contains("${requiredMinimumSqliteVersion}"));
+    assertTrue(bundleManifest.contains("${requiredSqlite3mcVersion}"));
     assertFalse(bundleManifest.contains("\"discoveryCommands\""));
     assertFalse(bundleManifest.contains("\"administrationCommands\""));
     assertFalse(bundleManifest.contains("\"queryCommands\""));
@@ -80,13 +88,9 @@ class CliDistributionBuildContractTest {
             "check-ignore",
             "-q",
             ".codex/UNIVERSAL_ENGINEERING_CONTRACT.md"));
-    runCommand(repositoryRoot, "git", "ls-files", "--error-unmatch", "AGENTS.md");
+    runCommand(repositoryRoot, "git", "cat-file", "-e", "HEAD:AGENTS.md");
     runCommand(
-        repositoryRoot,
-        "git",
-        "ls-files",
-        "--error-unmatch",
-        ".codex/UNIVERSAL_ENGINEERING_CONTRACT.md");
+        repositoryRoot, "git", "cat-file", "-e", "HEAD:.codex/UNIVERSAL_ENGINEERING_CONTRACT.md");
   }
 
   @Test
@@ -149,6 +153,23 @@ class CliDistributionBuildContractTest {
 
     assertTrue(buildLogic.contains("\"**/*.md\""));
     assertFalse(buildLogic.contains("\"**/.codex/**\""));
+  }
+
+  @Test
+  void bundleAcceptanceScripts_deriveHostFactsFromCanonicalContractReader() throws IOException {
+    Path repositoryRoot = repositoryRoot();
+    String bashScript = Files.readString(repositoryRoot.resolve("scripts/bundle-smoke.sh"));
+    String powerShellScript = Files.readString(repositoryRoot.resolve("scripts/bundle-smoke.ps1"));
+
+    assertTrue(bashScript.contains("bundleLayout"));
+    assertFalse(bashScript.contains("expected_native_library_name()"));
+    assertFalse(bashScript.contains("host_bundle_classifier()"));
+
+    assertTrue(powerShellScript.contains("bundleLayout.hostBundleTarget"));
+    assertFalse(powerShellScript.contains("windows-x86_64.zip"));
+    assertFalse(powerShellScript.contains("sqlite3.dll"));
+    assertTrue(bashScript.contains("requiredMinimumSqliteVersion"));
+    assertTrue(powerShellScript.contains("requiredSqlite3mcVersion"));
   }
 
   private static Path repositoryRoot() {

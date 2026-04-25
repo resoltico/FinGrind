@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import java.time.Instant;
 import java.util.List;
@@ -100,7 +101,7 @@ class CliDiscoveryOutputRendererTest {
         new EnvironmentDistributionDescriptor(
             ProtocolCatalog.bundleRuntimeDistribution(),
             ProtocolCatalog.publicCliDistribution(),
-            List.of("macos-aarch64", "windows-x86_64"),
+            List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_X86_64),
             List.of(),
             ProtocolCatalog.sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(

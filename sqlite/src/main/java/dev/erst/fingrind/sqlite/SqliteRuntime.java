@@ -20,8 +20,10 @@ public final class SqliteRuntime {
   public static final String BUNDLE_HOME_SYSTEM_PROPERTY =
       ProtocolCatalog.sqliteBundleHomeSystemProperty();
   public static final String LIBRARY_MODE = ProtocolCatalog.sqliteLibraryMode().wireValue();
-  public static final String REQUIRED_MINIMUM_SQLITE_VERSION = "3.53.0";
-  public static final String REQUIRED_SQLITE3MC_VERSION = "2.3.3";
+  public static final String REQUIRED_MINIMUM_SQLITE_VERSION =
+      ProtocolCatalog.requiredMinimumSqliteVersion();
+  public static final String REQUIRED_SQLITE3MC_VERSION =
+      ProtocolCatalog.requiredSqlite3mcVersion();
   public static final List<String> REQUIRED_SQLITE_COMPILE_OPTIONS =
       List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE");
 

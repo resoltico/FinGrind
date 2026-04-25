@@ -160,19 +160,23 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
         payload.path("environment").path("distribution").path("runtimeDistribution").asString());
     assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.supportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
         readTextArray(
             payload
                 .path("environment")
                 .path("distribution")
                 .path("supportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+        ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
         readTextArray(
             payload
                 .path("environment")
                 .path("distribution")
-                .path("unsupportedPublicCliOperatingSystems")));
+                .path("unsupportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
         payload.path("environment").path("sqlite").path("libraryEnvironmentVariable").asString());
@@ -282,8 +286,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         ProtocolCatalog.supportedPublicCliBundleTargets(),
         environmentDescriptor.distribution().supportedPublicCliBundleTargets());
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        environmentDescriptor.distribution().unsupportedPublicCliOperatingSystems());
+        ProtocolCatalog.unsupportedPublicCliBundleTargets(),
+        environmentDescriptor.distribution().unsupportedPublicCliBundleTargets());
     assertEquals(
         ProtocolCatalog.sourceCheckoutJava(),
         environmentDescriptor.distribution().sourceCheckoutJava());

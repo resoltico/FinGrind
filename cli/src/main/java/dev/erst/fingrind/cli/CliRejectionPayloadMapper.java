@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RejectionNarrative;
-import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import org.jspecify.annotations.Nullable;
 
 /** Maps deterministic rejection families into the CLI JSON envelope model. */
@@ -14,7 +14,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope postingRejectedEnvelope(
       String requestIdempotencyKey, PostingRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolStatuses.REJECTED,
+        ProtocolRejectionStatus.REJECTED,
         PostingRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         requestIdempotencyKey,
@@ -24,7 +24,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope administrationRejectedEnvelope(
       BookAdministrationRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolStatuses.REJECTED,
+        ProtocolRejectionStatus.REJECTED,
         BookAdministrationRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         null,
@@ -34,7 +34,7 @@ final class CliRejectionPayloadMapper {
   static CliEnvelopeJsonModels.RejectedEnvelope queryRejectedEnvelope(
       BookQueryRejection rejection) {
     return new CliEnvelopeJsonModels.RejectedEnvelope(
-        ProtocolStatuses.REJECTED,
+        ProtocolRejectionStatus.REJECTED,
         BookQueryRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         null,

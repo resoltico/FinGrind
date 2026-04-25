@@ -2,7 +2,7 @@
 afad: "3.5"
 version: "0.25.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-23"
+updated: "2026-04-25"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -23,7 +23,7 @@ Each published archive contains:
 - launcher scripts under `bin/`: `fingrind`, `fingrind.ps1`, and `fingrind.cmd`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
-- the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 native library for that target
+- the managed SQLite native library pinned by the canonical managed-SQLite contract for that target
 - a top-level `README.md` for local human bootstrap
 - a top-level generated `bundle-manifest.json` for machine bootstrap and target discovery
 - top-level legal files: `LICENSE`, `LICENSE-APACHE-2.0`, `LICENSE-SIL-OFL-1.1`,
@@ -69,6 +69,9 @@ Current public bundle targets:
 - `linux-x86_64`
 - `linux-aarch64`
 - `windows-x86_64`
+
+Declared but intentionally unsupported public bundle targets:
+- `windows-aarch64`
 
 Linux bundle policy:
 - public Linux bundles are built on Ubuntu GitHub-hosted runners
@@ -177,6 +180,10 @@ managed-SQLite facts from the protocol-owned contract resources through
 `scripts/read-contract-values.py`. Bundle metadata, launchers, Docker staging, and operator
 verification therefore all consume one canonical runtime-surface owner instead of parallel copied
 literal values.
+The target archive format, launcher path, and native library filename now come from the shared
+`bundle-layout-contract.json` resource, and the managed SQLite version pins come from
+`managed-sqlite-contract.json`, so build logic, bundle metadata, and shell acceptance do not
+maintain separate per-platform lookup tables.
 
 It is not the public release artifact.
 

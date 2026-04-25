@@ -26,6 +26,7 @@ import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
@@ -81,7 +82,11 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
     CliEnvelopeJsonModels.RejectedEnvelope envelope =
         new CliEnvelopeJsonModels.RejectedEnvelope(
-            "rejected", "query-book-not-initialized", "The book is not initialized.", null, null);
+            ProtocolRejectionStatus.REJECTED,
+            "query-book-not-initialized",
+            "The book is not initialized.",
+            null,
+            null);
 
     outputChannel.writeQueryRejection(OutputMode.HUMAN, envelope);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));

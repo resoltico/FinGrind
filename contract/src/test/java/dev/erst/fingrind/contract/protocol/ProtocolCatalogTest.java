@@ -255,25 +255,28 @@ class ProtocolCatalogTest {
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
     assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());
     assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
+    assertEquals("3.53.0", ProtocolCatalog.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", ProtocolCatalog.requiredSqlite3mcVersion());
     assertEquals(
         List.of(
-            ProtocolStatuses.OK,
-            ProtocolStatuses.PREFLIGHT_ACCEPTED,
-            ProtocolStatuses.COMMITTED,
-            ProtocolStatuses.PLAN_COMMITTED),
+            ProtocolSuccessStatus.OK,
+            ProtocolSuccessStatus.PREFLIGHT_ACCEPTED,
+            ProtocolSuccessStatus.COMMITTED,
+            ProtocolSuccessStatus.PLAN_COMMITTED),
         ProtocolCatalog.successStatuses());
     assertEquals(
         List.of(
-            ProtocolStatuses.REJECTED,
-            ProtocolStatuses.PLAN_REJECTED,
-            ProtocolStatuses.PLAN_ASSERTION_FAILED),
+            ProtocolRejectionStatus.REJECTED,
+            ProtocolRejectionStatus.PLAN_REJECTED,
+            ProtocolRejectionStatus.PLAN_ASSERTION_FAILED),
         ProtocolCatalog.rejectionStatuses());
     assertEquals("single-currency-per-entry", ProtocolCatalog.bookModel().currencyScope());
     assertEquals("not-supported", ProtocolCatalog.currency().multiCurrencyStatus());
     assertEquals("advisory", ProtocolCatalog.preflight().semantics());
     assertFalse(ProtocolCatalog.preflight().commitGuarantee());
-    assertEquals("atomic", ProtocolCatalog.planExecution().transactionMode());
-    assertEquals("halt-on-first-failure", ProtocolCatalog.planExecution().failurePolicy());
+    assertEquals(PlanTransactionMode.ATOMIC, ProtocolCatalog.planExecution().transactionMode());
+    assertEquals(
+        PlanFailurePolicy.HALT_ON_FIRST_FAILURE, ProtocolCatalog.planExecution().failurePolicy());
     assertTrue(ProtocolCatalog.planExecution().journal().contains("per-step journal"));
     assertTrue(
         ProtocolCatalog.planExecution().hardLimitations().stream()
@@ -285,15 +288,24 @@ class ProtocolCatalogTest {
         PublicDistributionContracts.current().supportedPublicCliBundleTargets(),
         ProtocolCatalog.supportedPublicCliBundleTargets());
     assertEquals(
-        PublicDistributionContracts.current().unsupportedPublicCliOperatingSystems(),
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+        PublicDistributionContracts.current().unsupportedPublicCliBundleTargets(),
+        ProtocolCatalog.unsupportedPublicCliBundleTargets());
+    assertEquals(
+        BundleLayoutContracts.current().bundleTargets().keySet(),
+        java.util.stream.Stream.concat(
+                ProtocolCatalog.supportedPublicCliBundleTargets().stream(),
+                ProtocolCatalog.unsupportedPublicCliBundleTargets().stream())
+            .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
   }
 
   @Test
   void planExecutionFactsAndPlanFieldConstantsValidateTheirShape() {
     PlanExecutionFacts facts =
         new PlanExecutionFacts(
-            "atomic", "halt-on-first-failure", "complete journal", List.of("limit"));
+            PlanTransactionMode.ATOMIC,
+            PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
+            "complete journal",
+            List.of("limit"));
 
     assertEquals(List.of("limit"), facts.hardLimitations());
     assertEquals(List.of("planId", "steps"), ProtocolLedgerPlanFields.planFields());
@@ -379,14 +391,21 @@ class ProtocolCatalogTest {
         ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE);
 
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new PlanExecutionFacts(" ", "halt-on-first-failure", "journal", List.of()));
+        NullPointerException.class,
+        () ->
+            new PlanExecutionFacts(
+                null, PlanFailurePolicy.HALT_ON_FIRST_FAILURE, "journal", List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new PlanExecutionFacts(PlanTransactionMode.ATOMIC, null, "journal", List.of()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new PlanExecutionFacts("atomic", " ", "journal", List.of()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new PlanExecutionFacts("atomic", "halt-on-first-failure", " ", List.of()));
+        () ->
+            new PlanExecutionFacts(
+                PlanTransactionMode.ATOMIC,
+                PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
+                " ",
+                List.of()));
   }
 
   @Test
@@ -400,8 +419,8 @@ class ProtocolCatalogTest {
                     "macos-aarch64",
                     "linux-x86_64"
                   ],
-                  "unsupportedPublicCliOperatingSystems": [
-                    "windows-arm64"
+                  "unsupportedPublicCliBundleTargets": [
+                    "windows-aarch64"
                   ]
                 }
                 """
@@ -409,8 +428,10 @@ class ProtocolCatalogTest {
             "test-resource");
 
     assertEquals(
-        List.of("macos-aarch64", "linux-x86_64"), loaded.supportedPublicCliBundleTargets());
-    assertEquals(List.of("windows-arm64"), loaded.unsupportedPublicCliOperatingSystems());
+        List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.LINUX_X86_64),
+        loaded.supportedPublicCliBundleTargets());
+    assertEquals(
+        List.of(PublicCliBundleTarget.WINDOWS_AARCH64), loaded.unsupportedPublicCliBundleTargets());
     assertEquals(
         List.of(),
         PublicDistributionContracts.loadFromResource(
@@ -435,13 +456,21 @@ class ProtocolCatalogTest {
                 "invalid-resource"));
     assertEquals(
         List.of(),
-        new PublicDistributionContract(null, List.of()).supportedPublicCliBundleTargets());
+        PublicDistributionContract.fromWireValues(null, List.of())
+            .supportedPublicCliBundleTargets());
     assertThrows(
         IllegalArgumentException.class,
-        () -> new PublicDistributionContract(List.of("macos-aarch64", " "), List.of()));
+        () -> PublicDistributionContract.fromWireValues(List.of("macos-aarch64", " "), List.of()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new PublicDistributionContract(List.of("linux-x86_64", "linux-x86_64"), List.of()));
+        () ->
+            PublicDistributionContract.fromWireValues(
+                List.of("linux-x86_64", "linux-x86_64"), List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PublicDistributionContract.fromWireValues(
+                List.of("linux-x86_64"), List.of("linux-x86_64", "windows-aarch64")));
   }
 
   private static InputStream failingInputStream() {

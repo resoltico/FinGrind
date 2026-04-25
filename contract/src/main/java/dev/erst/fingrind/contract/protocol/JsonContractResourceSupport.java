@@ -52,10 +52,8 @@ final class JsonContractResourceSupport {
     Objects.requireNonNull(document, "document");
     Objects.requireNonNull(key, "key");
     JsonNode value = document.get(key);
-    if (value == null || value.isNull() || !value.isTextual()) {
-      throw new IllegalArgumentException(key + " must be a non-blank JSON string.");
-    }
-    String normalized = Objects.requireNonNull(value.textValue(), key).trim();
+    String normalized =
+        value == null || value.isNull() || !value.isString() ? "" : value.stringValue().trim();
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException(key + " must be a non-blank JSON string.");
     }
@@ -74,12 +72,9 @@ final class JsonContractResourceSupport {
     }
     List<String> values = new ArrayList<>();
     for (JsonNode element : value) {
-      if (!element.isTextual()) {
-        throw new IllegalArgumentException(key + " must be a JSON array of strings.");
-      }
-      String normalized = Objects.requireNonNull(element.textValue(), key).trim();
+      String normalized = element.isString() ? element.stringValue().trim() : "";
       if (normalized.isEmpty()) {
-        throw new IllegalArgumentException(key + " must not contain blank values.");
+        throw new IllegalArgumentException(key + " must be a JSON array of strings.");
       }
       values.add(normalized);
     }

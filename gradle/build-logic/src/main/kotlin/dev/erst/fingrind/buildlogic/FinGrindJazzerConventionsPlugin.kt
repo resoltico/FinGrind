@@ -56,13 +56,19 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             val managedSqlite =
                 ManagedSqliteProvisioningLogic.register(
                     project = this,
+                    repositoryRootDirectory = repoRootDirectory.asFile.toPath(),
                     sourceDirectory =
                         repoRootDirectory.dir(
                             "third_party/sqlite/${sharedFingrindProperty("fingrindManagedSqlitePackageId")}",
                         ),
-                    sqliteVersionValue = sharedFingrindProperty("fingrindManagedSqliteVersion"),
+                    sqliteVersionValue =
+                        DistributionContractReader.requiredMinimumSqliteVersion(
+                            repoRootDirectory.asFile.toPath(),
+                        ),
                     sqlite3mcVersionValue =
-                        sharedFingrindProperty("fingrindManagedSqlite3mcVersion"),
+                        DistributionContractReader.requiredSqlite3mcVersion(
+                            repoRootDirectory.asFile.toPath(),
+                        ),
                     sourceSha3 = sharedFingrindProperty("fingrindManagedSqliteSourceSha3"),
                 )
             ManagedSqliteProvisioningLogic.configureConsumers(this, managedSqlite)

@@ -79,37 +79,6 @@ posix_mode() {
     stat -c '%a' "${file_path}"
 }
 
-expected_native_library_name() {
-    local uname_s
-    uname_s="$(uname -s)"
-    case "${uname_s}" in
-        Darwin) printf '%s\n' 'libsqlite3.dylib' ;;
-        Linux) printf '%s\n' 'libsqlite3.so.0' ;;
-        *) die "unsupported bundle acceptance operating system: ${uname_s}" ;;
-    esac
-}
-
-host_bundle_classifier() {
-    local operating_system architecture
-    operating_system="$(uname -s)"
-    case "${operating_system}" in
-        Darwin) operating_system='macos' ;;
-        Linux) operating_system='linux' ;;
-        *) die "unsupported bundle acceptance operating system: ${operating_system}" ;;
-    esac
-
-    architecture="$(uname -m)"
-    case "${architecture}" in
-        arm64|aarch64) architecture='aarch64' ;;
-        amd64|x86_64|x64) architecture='x86_64' ;;
-        *)
-            architecture="$(printf '%s' "${architecture}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g')"
-            ;;
-    esac
-
-    printf '%s-%s\n' "${operating_system}" "${architecture}"
-}
-
 project_version() {
     local version
     version="$(awk -F= '/^version=/{print $2; exit}' "${repo_root}/gradle.properties")"
@@ -144,8 +113,27 @@ source "${gradle_wrapper_support}"
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
 readonly contract_values_json="$(python3 "${contract_values_reader}")"
 
+contract_host_bundle_value() {
+    local key=$1
+    FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 - <<'PY' "${key}"
+import json
+import os
+import sys
+
+host_bundle_target = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])["bundleLayout"][
+    "hostBundleTarget"
+]
+print(host_bundle_target[sys.argv[1]])
+PY
+}
+
+readonly host_bundle_classifier="$(contract_host_bundle_value classifier)"
+readonly host_bundle_archive_format="$(contract_host_bundle_value archiveFormat)"
+readonly host_bundle_launcher_path="$(contract_host_bundle_value launcherPath)"
+readonly host_bundle_native_library_name="$(contract_host_bundle_value sqliteLibraryFileName)"
+
 if [[ -z "${bundle_archive_path}" ]]; then
-    readonly expected_bundle_archive_name="fingrind-$(project_version)-$(host_bundle_classifier).tar.gz"
+    readonly expected_bundle_archive_name="fingrind-$(project_version)-${host_bundle_classifier}.${host_bundle_archive_format}"
     bundle_archive_path="${cli_build_dir}/distributions/${expected_bundle_archive_name}"
 fi
 
@@ -188,14 +176,14 @@ done < <(find "${extract_root}" -mindepth 1 -maxdepth 1 -type d | sort)
 [[ "${#extracted_roots[@]}" -eq 1 ]] || die \
     "expected exactly one extracted bundle root under ${extract_root}"
 bundle_root="${extracted_roots[0]}"
-bundle_launcher="${bundle_root}/bin/fingrind"
+bundle_launcher="${bundle_root}/${host_bundle_launcher_path}"
 
 [[ -x "${bundle_launcher}" ]] || die "missing executable bundle launcher at ${bundle_launcher}"
 [[ -x "${bundle_root}/runtime/bin/java" ]] || die \
     "missing bundled Java runtime at ${bundle_root}/runtime/bin/java"
 [[ -f "${bundle_root}/lib/app/fingrind.jar" ]] || die \
     "missing bundled FinGrind application JAR at ${bundle_root}/lib/app/fingrind.jar"
-[[ -f "${bundle_root}/lib/native/$(expected_native_library_name)" ]] || die \
+[[ -f "${bundle_root}/lib/native/${host_bundle_native_library_name}" ]] || die \
     "missing bundled native SQLite library under ${bundle_root}/lib/native"
 [[ -f "${bundle_root}/LICENSE" ]] || die "missing LICENSE in bundle root"
 [[ -f "${bundle_root}/LICENSE-APACHE-2.0" ]] || die "missing LICENSE-APACHE-2.0 in bundle root"
@@ -225,7 +213,7 @@ require_no_match "${bundle_manifest_compact}" '"writeCommands":' \
     "bundle manifest still reauthored static command-group arrays instead of pointing to the canonical contract"
 FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 - <<'PY' \
     "${bundle_root}/bundle-manifest.json" \
-    "$(host_bundle_classifier)"
+    "${host_bundle_classifier}"
 import json
 import os
 import sys
@@ -237,6 +225,7 @@ contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
 runtime_surface = contract["runtimeSurface"]
 public_distribution = contract["publicDistribution"]
 operation_ids = contract["operationIds"]
+host_bundle_target = contract["bundleLayout"]["hostBundleTarget"]
 
 checks = [
     (
@@ -268,8 +257,26 @@ checks = [
         "bundle manifest did not report the canonical SQLite library mode",
     ),
     (
-        manifest["bundleTarget"]["classifier"] == host_classifier,
+        manifest["managedSqlite"]["requiredMinimumSqliteVersion"]
+        == contract["managedSqlite"]["requiredMinimumSqliteVersion"],
+        "bundle manifest did not report the canonical minimum SQLite version",
+    ),
+    (
+        manifest["managedSqlite"]["requiredSqlite3mcVersion"]
+        == contract["managedSqlite"]["requiredSqlite3mcVersion"],
+        "bundle manifest did not report the canonical SQLite3 Multiple Ciphers version",
+    ),
+    (
+        manifest["bundleTarget"]["classifier"] == host_bundle_target["classifier"] == host_classifier,
         "bundle manifest did not report the current host classifier",
+    ),
+    (
+        manifest["archiveFormat"] == host_bundle_target["archiveFormat"],
+        "bundle manifest did not report the platform-native archive format",
+    ),
+    (
+        manifest["launcher"] == host_bundle_target["launcherPath"],
+        "bundle manifest did not report the canonical launcher path",
     ),
     (
         manifest["supportedPublicCliBundleTargets"]
@@ -277,9 +284,9 @@ checks = [
         "bundle manifest did not report the supported public bundle targets",
     ),
     (
-        manifest["unsupportedPublicCliOperatingSystems"]
-        == public_distribution["unsupportedPublicCliOperatingSystems"],
-        "bundle manifest did not report the current unsupported public operating systems",
+        manifest["unsupportedPublicCliBundleTargets"]
+        == public_distribution["unsupportedPublicCliBundleTargets"],
+        "bundle manifest did not report the current unsupported public bundle targets",
     ),
     (
         manifest["bootstrap"]["recommendedFirstCommand"][-1] == operation_ids["help"],
@@ -454,7 +461,7 @@ checks = [
     (distribution["runtimeDistribution"] == runtime_surface["bundleRuntimeDistribution"], "capabilities output did not report the self-contained bundle runtime"),
     (distribution["publicCliDistribution"] == runtime_surface["publicCliDistribution"], "capabilities output did not report the self-contained bundle distribution"),
     (distribution["supportedPublicCliBundleTargets"] == public_distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
-    (distribution["unsupportedPublicCliOperatingSystems"] == public_distribution["unsupportedPublicCliOperatingSystems"], "capabilities output did not report the current unsupported public operating systems"),
+    (distribution["unsupportedPublicCliBundleTargets"] == public_distribution["unsupportedPublicCliBundleTargets"], "capabilities output did not report the current unsupported public bundle targets"),
     (storage["storageDriver"] == runtime_surface["storageDriver"], "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
     (storage["bookProtectionMode"] == runtime_surface["bookProtectionMode"], "capabilities output did not report required book protection"),
     (storage["defaultBookCipher"] == runtime_surface["defaultBookCipher"], "capabilities output did not report the default chacha20 cipher"),

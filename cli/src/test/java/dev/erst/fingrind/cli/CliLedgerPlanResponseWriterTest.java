@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Instant;
@@ -26,9 +27,11 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
 
   @Test
   void planRejectionStatus_rejectsSucceededPlansAndMapsFailures() {
-    assertEquals("plan-rejected", CliResponseWriter.planRejectionStatus(LedgerPlanStatus.REJECTED));
     assertEquals(
-        "plan-assertion-failed",
+        ProtocolRejectionStatus.PLAN_REJECTED,
+        CliResponseWriter.planRejectionStatus(LedgerPlanStatus.REJECTED));
+    assertEquals(
+        ProtocolRejectionStatus.PLAN_ASSERTION_FAILED,
         CliResponseWriter.planRejectionStatus(LedgerPlanStatus.ASSERTION_FAILED));
     assertThrows(
         IllegalArgumentException.class,

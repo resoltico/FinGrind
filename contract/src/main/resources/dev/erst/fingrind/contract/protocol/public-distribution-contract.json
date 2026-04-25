@@ -6,5 +6,5 @@
     "linux-aarch64",
     "windows-x86_64"
   ],
-  "unsupportedPublicCliOperatingSystems": []
+  "unsupportedPublicCliBundleTargets": ["windows-aarch64"]
 }

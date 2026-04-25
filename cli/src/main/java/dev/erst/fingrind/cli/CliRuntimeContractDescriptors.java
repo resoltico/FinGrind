@@ -28,7 +28,7 @@ final class CliRuntimeContractDescriptors {
             RuntimeDistribution.fromWireValue(runtimeDistribution),
             ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
             ProtocolCatalog.sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.storageDriver(),

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.buildlogic
 
 import java.io.File
+import java.nio.file.Path
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.file.Directory
@@ -24,14 +25,23 @@ internal object ManagedSqliteProvisioningLogic {
 
     fun register(
         project: Project,
+        repositoryRootDirectory: Path,
         sourceDirectory: Directory,
         sqliteVersionValue: String,
         sqlite3mcVersionValue: String,
         sourceSha3: String,
     ): ManagedSqliteProvisioning {
-        val managedSqliteOperatingSystemId = operatingSystemId()
-        val classifier = "$managedSqliteOperatingSystemId-${architectureId()}"
-        val libraryFileName = libraryFileName(managedSqliteOperatingSystemId)
+        val hostBundleTarget =
+            try {
+                DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
+            } catch (_: IllegalStateException) {
+                throw GradleException(
+                    "FinGrind's managed SQLite build currently supports only declared bundle-layout targets. Detected host: ${System.getProperty("os.name")} / ${System.getProperty("os.arch")}",
+                )
+            }
+        val managedSqliteOperatingSystemId = hostBundleTarget.operatingSystemId
+        val classifier = hostBundleTarget.classifier
+        val libraryFileName = hostBundleTarget.sqliteLibraryFileName
         val sqliteSourceFile = sourceDirectory.file("sqlite3mc_amalgamation.c")
         val headerFile = sourceDirectory.file("sqlite3mc_amalgamation.h")
         val sqliteHeaderFile = sourceDirectory.file("sqlite3.h")
@@ -94,22 +104,4 @@ internal object ManagedSqliteProvisioningLogic {
         }
     }
 
-    private fun operatingSystemId(): String {
-        return try {
-            DistributionContractReader.operatingSystemId()
-        } catch (_: IllegalStateException) {
-            throw GradleException(
-                "FinGrind's managed SQLite build currently supports macOS, Linux, and Windows only. Detected: ${System.getProperty("os.name")}",
-            )
-        }
-    }
-
-    private fun architectureId(): String = DistributionContractReader.architectureId()
-
-    private fun libraryFileName(operatingSystemId: String): String =
-        try {
-            DistributionContractReader.libraryFileNameForOperatingSystemId(operatingSystemId)
-        } catch (_: IllegalStateException) {
-            throw GradleException("Unsupported managed SQLite operating system id: $operatingSystemId")
-        }
 }

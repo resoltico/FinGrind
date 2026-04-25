@@ -7,7 +7,8 @@ import dev.erst.fingrind.contract.LedgerJournalStep;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
-import dev.erst.fingrind.contract.protocol.ProtocolStatuses;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -17,13 +18,11 @@ final class CliPlanPayloadMapper {
 
   static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(LedgerPlanResult result) {
     return new CliPlanJsonModels.LedgerPlanPayload(
-        result.planId().value(),
-        result.status().wireValue(),
-        ledgerExecutionJournalPayload(result.journal()));
+        result.planId().value(), result.status(), ledgerExecutionJournalPayload(result.journal()));
   }
 
   static CliEnvelopeJsonModels.RejectedEnvelope rejectedPlanEnvelope(
-      LedgerPlanResult result, String status) {
+      LedgerPlanResult result, ProtocolRejectionStatus status) {
     CliPlanJsonModels.LedgerPlanPayload payload = ledgerPlanPayload(result);
     LedgerStepFailure failure = result.journal().requiredFailedStep().requiredFailure();
     return new CliEnvelopeJsonModels.RejectedEnvelope(
@@ -34,12 +33,12 @@ final class CliPlanPayloadMapper {
         new CliRejectionJsonModels.PlanRejectionDetails(payload));
   }
 
-  static String planRejectionStatus(LedgerPlanStatus status) {
+  static ProtocolRejectionStatus planRejectionStatus(LedgerPlanStatus status) {
     return switch (status) {
       case SUCCEEDED ->
           throw new IllegalArgumentException("Succeeded plans do not have a rejection status.");
-      case REJECTED -> ProtocolStatuses.PLAN_REJECTED;
-      case ASSERTION_FAILED -> ProtocolStatuses.PLAN_ASSERTION_FAILED;
+      case REJECTED -> ProtocolRejectionStatus.PLAN_REJECTED;
+      case ASSERTION_FAILED -> ProtocolRejectionStatus.PLAN_ASSERTION_FAILED;
     };
   }
 
@@ -61,19 +60,19 @@ final class CliPlanPayloadMapper {
         };
     return new CliPlanJsonModels.LedgerJournalEntryPayload(
         entry.stepId().value(),
-        entry.kind().wireValue(),
+        entry.kind(),
         detailKind(entry.journalStep()),
-        entry.status().wireValue(),
+        entry.status(),
         entry.startedAt().toString(),
         entry.finishedAt().toString(),
         factPayloads(entry.facts()),
         failurePayload);
   }
 
-  private static @Nullable String detailKind(LedgerJournalStep journalStep) {
+  private static @Nullable LedgerAssertionKind detailKind(LedgerJournalStep journalStep) {
     return switch (journalStep) {
       case LedgerJournalStep.Standard _ -> null;
-      case LedgerJournalStep.Assertion assertion -> assertion.detailKind().wireValue();
+      case LedgerJournalStep.Assertion assertion -> assertion.detailKind();
     };
   }
 

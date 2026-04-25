@@ -70,18 +70,19 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 dependsOn("spotlessCheck")
             }
 
-            val managedSqliteVersion = requiredGradleProperty("fingrindManagedSqliteVersion")
             val managedSqlitePackageId = requiredGradleProperty("fingrindManagedSqlitePackageId")
-            val managedSqlite3mcVersion =
-                requiredGradleProperty("fingrindManagedSqlite3mcVersion")
             val managedSqliteSourceSha3 = requiredGradleProperty("fingrindManagedSqliteSourceSha3")
+            val repositoryRootDirectory = layout.projectDirectory.asFile.toPath()
 
             val managedSqlite =
                 ManagedSqliteProvisioningLogic.register(
                     project = this,
+                    repositoryRootDirectory = repositoryRootDirectory,
                     sourceDirectory = layout.projectDirectory.dir("third_party/sqlite/$managedSqlitePackageId"),
-                    sqliteVersionValue = managedSqliteVersion,
-                    sqlite3mcVersionValue = managedSqlite3mcVersion,
+                    sqliteVersionValue =
+                        DistributionContractReader.requiredMinimumSqliteVersion(repositoryRootDirectory),
+                    sqlite3mcVersionValue =
+                        DistributionContractReader.requiredSqlite3mcVersion(repositoryRootDirectory),
                     sourceSha3 = managedSqliteSourceSha3,
                 )
 

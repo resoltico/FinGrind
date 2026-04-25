@@ -341,7 +341,7 @@ checks = [
     (distribution["runtimeDistribution"] == runtime_surface["containerRuntimeDistribution"], "capabilities output did not report the container runtime distribution"),
     (distribution["publicCliDistribution"] == runtime_surface["publicCliDistribution"], "capabilities output did not report the public bundle distribution contract"),
     (distribution["supportedPublicCliBundleTargets"] == public_distribution["supportedPublicCliBundleTargets"], "capabilities output did not report the supported public bundle targets"),
-    (distribution["unsupportedPublicCliOperatingSystems"] == public_distribution["unsupportedPublicCliOperatingSystems"], "capabilities output did not report the current unsupported public operating systems"),
+    (distribution["unsupportedPublicCliBundleTargets"] == public_distribution["unsupportedPublicCliBundleTargets"], "capabilities output did not report the current unsupported public bundle targets"),
     (sqlite["libraryMode"] == runtime_surface["sqliteLibraryMode"], "capabilities output did not report the managed-only SQLite runtime mode"),
     (storage["storageDriver"] == runtime_surface["storageDriver"], "capabilities output did not report the SQLite3 Multiple Ciphers storage driver"),
     (storage["bookProtectionMode"] == runtime_surface["bookProtectionMode"], "capabilities output did not report required book protection"),

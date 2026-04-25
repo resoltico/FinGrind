@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
+import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Clock;
@@ -54,8 +56,9 @@ class MachineContractPlanTemplateTest {
             new ApplicationIdentity("FinGrind", "0.25.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
-    assertEquals("atomic", capabilities.planExecution().transactionMode());
-    assertEquals("halt-on-first-failure", capabilities.planExecution().failurePolicy());
+    assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
+    assertEquals(
+        PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());
     assertTrue(
         capabilities
             .requestShapes()

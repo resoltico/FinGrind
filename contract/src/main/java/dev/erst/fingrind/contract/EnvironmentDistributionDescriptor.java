@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.PublicCliDistribution;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import java.util.List;
@@ -9,8 +10,8 @@ import java.util.List;
 public record EnvironmentDistributionDescriptor(
     RuntimeDistribution runtimeDistribution,
     PublicCliDistribution publicCliDistribution,
-    List<String> supportedPublicCliBundleTargets,
-    List<String> unsupportedPublicCliOperatingSystems,
+    List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
+    List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets,
     String sourceCheckoutJava)
     implements ContractDiscoveryDescriptor {
   /** Validates one distribution descriptor payload. */
@@ -22,9 +23,9 @@ public record EnvironmentDistributionDescriptor(
     supportedPublicCliBundleTargets =
         ContractDescriptorValidation.copyList(
             supportedPublicCliBundleTargets, "supportedPublicCliBundleTargets");
-    unsupportedPublicCliOperatingSystems =
+    unsupportedPublicCliBundleTargets =
         ContractDescriptorValidation.copyList(
-            unsupportedPublicCliOperatingSystems, "unsupportedPublicCliOperatingSystems");
+            unsupportedPublicCliBundleTargets, "unsupportedPublicCliBundleTargets");
     sourceCheckoutJava =
         ContractDescriptorValidation.requireText(sourceCheckoutJava, "sourceCheckoutJava");
   }

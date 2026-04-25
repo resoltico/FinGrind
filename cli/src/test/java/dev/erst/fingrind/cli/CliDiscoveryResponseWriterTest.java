@@ -219,12 +219,15 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         ProtocolCatalog.publicCliDistribution().wireValue(),
         environment.path("distribution").path("publicCliDistribution").asString());
     assertEquals(
-        ProtocolCatalog.supportedPublicCliBundleTargets(),
+        ProtocolCatalog.supportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
         readTextArray(environment.path("distribution").path("supportedPublicCliBundleTargets")));
     assertEquals(
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
-        readTextArray(
-            environment.path("distribution").path("unsupportedPublicCliOperatingSystems")));
+        ProtocolCatalog.unsupportedPublicCliBundleTargets().stream()
+            .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
+            .toList(),
+        readTextArray(environment.path("distribution").path("unsupportedPublicCliBundleTargets")));
     assertFalse(environment.path("sqlite").has("loadedSqliteVersion"));
     assertFalse(environment.path("sqlite").has("loadedSqlite3mcVersion"));
   }

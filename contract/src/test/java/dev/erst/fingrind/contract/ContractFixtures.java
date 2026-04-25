@@ -54,7 +54,7 @@ final class ContractFixtures {
             ProtocolCatalog.sourceCheckoutRuntimeDistribution(),
             ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
             ProtocolCatalog.sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.storageDriver(),

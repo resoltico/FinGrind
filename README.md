@@ -50,7 +50,8 @@ of spread across notes, spreadsheets, and half-finished checks.
 
 - Books stay protected at rest, and wrong-key failures come back as clear FinGrind errors rather
   than raw storage noise.
-- Public downloads are ready to run on macOS, Linux, and Windows.
+- Public downloads are ready to run on the current macOS, Linux, and Windows bundle targets, and
+  the live bundle matrix is disclosed consistently through `capabilities` and `bundle-manifest.json`.
 - The self-contained bundle and the public container disclose the same runtime contract instead of
   drifting onto separate packaging stories.
 - The machine-readable discovery and template surfaces come from the same canonical contract facts

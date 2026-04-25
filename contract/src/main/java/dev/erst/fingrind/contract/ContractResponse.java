@@ -1,6 +1,11 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
+import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
+import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 
@@ -122,9 +127,9 @@ public final class ContractResponse {
 
   /** Descriptor for the stable response contract. */
   public record ResponseModelDescriptor(
-      List<String> successStatuses,
-      List<String> rejectionStatuses,
-      String errorStatus,
+      List<ProtocolSuccessStatus> successStatuses,
+      List<ProtocolRejectionStatus> rejectionStatuses,
+      ProtocolFailureStatus errorStatus,
       List<RejectionDescriptor> rejections,
       List<ErrorDescriptor> errorDescriptors,
       List<FieldDescriptor> rejectionFields,
@@ -136,7 +141,7 @@ public final class ContractResponse {
       successStatuses = ContractDescriptorValidation.copyList(successStatuses, "successStatuses");
       rejectionStatuses =
           ContractDescriptorValidation.copyList(rejectionStatuses, "rejectionStatuses");
-      errorStatus = ContractDescriptorValidation.requireText(errorStatus, "errorStatus");
+      errorStatus = ContractDescriptorValidation.requireValue(errorStatus, "errorStatus");
       rejections = ContractDescriptorValidation.copyList(rejections, "rejections");
       errorDescriptors =
           ContractDescriptorValidation.copyList(errorDescriptors, "errorDescriptors");
@@ -150,13 +155,16 @@ public final class ContractResponse {
 
   /** Descriptor for ledger-plan execution semantics. */
   public record PlanExecutionDescriptor(
-      String transactionMode, String failurePolicy, String journal, List<String> hardLimitations)
+      PlanTransactionMode transactionMode,
+      PlanFailurePolicy failurePolicy,
+      String journal,
+      List<String> hardLimitations)
       implements ResponseDescriptorType {
     /** Validates one plan-execution descriptor payload. */
     public PlanExecutionDescriptor {
       transactionMode =
-          ContractDescriptorValidation.requireText(transactionMode, "transactionMode");
-      failurePolicy = ContractDescriptorValidation.requireText(failurePolicy, "failurePolicy");
+          ContractDescriptorValidation.requireValue(transactionMode, "transactionMode");
+      failurePolicy = ContractDescriptorValidation.requireValue(failurePolicy, "failurePolicy");
       journal = ContractDescriptorValidation.requireText(journal, "journal");
       hardLimitations = ContractDescriptorValidation.copyList(hardLimitations, "hardLimitations");
     }

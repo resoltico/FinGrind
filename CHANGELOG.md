@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundle manifests, bundle launchers, Docker entrypoints, shell smoke verifiers, and build logic
   now derive runtime-distribution, storage, and public-distribution facts from the canonical
   protocol contract resources instead of maintaining parallel literal registries.
+- Bundle layout and managed-SQLite version pins now live in dedicated protocol-owned JSON contract
+  resources, so Gradle build logic, bundle metadata, SQLite runtime checks, and shell verifiers all
+  consume the same per-target launcher/archive/native-library facts and pinned native-version
+  contract instead of separate platform lookup tables or Gradle properties.
 - Protocol operation-id, public-distribution, runtime-surface, and generated runtime-environment
   facts now live in shared JSON contract resources, so runtime loaders, build logic, and shell
   verifiers consume the same canonical contract format instead of carrying parallel `.properties`
@@ -26,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Machine-readable discovery payloads now keep command ids, execution modes, and output modes
   typed through the canonical protocol enums, and request/plan templates keep actor, side, step,
   assertion, and balance vocabularies typed instead of flattening them to raw strings.
+- Public response envelopes, response-model descriptors, ledger-plan execution semantics, and the
+  bundle-target discovery matrix now publish typed status, failure-policy, transaction-mode, and
+  bundle-target vocabularies instead of open strings, and the environment contract now names
+  `unsupportedPublicCliBundleTargets` accurately as host classifiers instead of implying raw OS
+  ids.
+- Build logic now reads protocol contract schema keys from the shared JSON schema-key resource, so
+  runtime loaders and Gradle distribution assembly no longer maintain parallel owners for external
+  contract field/property names.
 - Root Spotless project-file coverage now includes tracked `.codex/**` Markdown, so repo-owned
   agent/system-theory files are back under the default repository hygiene gate.
 - `jazzer/bin/fuzz-all` now keeps pure per-harness timeout exits moving, but stops on the first
@@ -48,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the generated Docker entrypoint to use the POSIX shell provided by the Alpine runtime
   image instead of a Bash shebang the image does not ship, so container acceptance now exercises
   the real published entrypoint surface instead of failing before Java starts.
+- Fixed the bundle README and machine-readable bundle manifest so they now publish the canonical
+  managed SQLite and SQLite3 Multiple Ciphers version pins from the shared protocol contract
+  instead of hardcoding version text or omitting those bundle bootstrap facts entirely.
 - Added first-class `jazzer/bin/replay` and `jazzer/bin/list-findings` operator commands backed by
   FinGrind's deterministic replay seam, and corrected the Jazzer docs so raw libFuzzer artifact
   prefixes are no longer described as authoritative bug classifications before replay proves that
@@ -71,8 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/verify-github-release.sh` now verifies GitHub-generated zipball and tarball source
   archives in addition to release metadata and named assets, and the repo keeps a dedicated shell
   regression plus archive-level contract tests for the `export-ignore` boundary.
+- The repo-owned metadata tracking gate now proves `AGENTS.md` and `.codex/**` are present in
+  `HEAD`, not merely staged in the index, so preservation failures cannot slip past `./check.sh`.
 - Fixed the build-logic plugin classpath wiring to use typed version-catalog plugin accessors while
   still compiling the shared Spotless and Error Prone convention code.
+- Fixed the Bash and PowerShell bundle smoke gates so they derive host archive, launcher, native
+  library, and manifest version expectations from the shared contract reader instead of hardcoded
+  Windows/x86_64 assumptions or a bespoke `.properties` parser.
 
 ## [0.25.0] - 2026-04-23
 
@@ -622,7 +642,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded the public self-contained CLI bundle matrix to include `macos-x86_64`, added
   top-level archive bootstrap files (`README.md` and `bundle-manifest.json`), and extended the
   machine-facing environment contract with `runtimeDistribution`,
-  `supportedPublicCliBundleTargets`, and `unsupportedPublicCliOperatingSystems`.
+  `supportedPublicCliBundleTargets`, and `unsupportedPublicCliBundleTargets`.
 - Tightened the private runtime-image policy for both bundles and containers so public
   distributions now use `jlink --compress=zip-6`, fail loud on unresolved module analysis, and
   avoid dragging tool modules into the shipped runtime image.

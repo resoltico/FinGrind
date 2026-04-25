@@ -155,8 +155,8 @@ class MachineContractTest {
         environment.distribution().supportedPublicCliBundleTargets(),
         ProtocolCatalog.supportedPublicCliBundleTargets());
     assertEquals(
-        environment.distribution().unsupportedPublicCliOperatingSystems(),
-        ProtocolCatalog.unsupportedPublicCliOperatingSystems());
+        environment.distribution().unsupportedPublicCliBundleTargets(),
+        ProtocolCatalog.unsupportedPublicCliBundleTargets());
     assertEquals("2026-04-13", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals(ActorType.HUMAN, template.provenance().actorType());
@@ -198,7 +198,7 @@ class MachineContractTest {
             ProtocolCatalog.bundleRuntimeDistribution(),
             ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
-            ProtocolCatalog.unsupportedPublicCliOperatingSystems(),
+            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
             ProtocolCatalog.sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.storageDriver(),

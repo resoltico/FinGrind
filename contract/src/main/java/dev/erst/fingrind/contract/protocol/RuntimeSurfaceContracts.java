@@ -8,24 +8,28 @@ import tools.jackson.databind.JsonNode;
 
 /** Loads and publishes the current runtime-surface contract snapshot. */
 final class RuntimeSurfaceContracts {
+  private static final ProtocolContractSchemaKeys.RuntimeSurface SCHEMA_KEYS =
+      ProtocolContractSchemaKeys.current().runtimeSurface();
   private static final String RESOURCE_PATH =
       "/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json";
   private static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION_KEY =
-      "directJavaRuntimeDistribution";
+      SCHEMA_KEYS.directJavaRuntimeDistribution();
   private static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION_KEY =
-      "sourceCheckoutRuntimeDistribution";
-  private static final String CONTAINER_RUNTIME_DISTRIBUTION_KEY = "containerRuntimeDistribution";
-  private static final String BUNDLE_RUNTIME_DISTRIBUTION_KEY = "bundleRuntimeDistribution";
-  private static final String PUBLIC_CLI_DISTRIBUTION_KEY = "publicCliDistribution";
-  private static final String STORAGE_DRIVER_KEY = "storageDriver";
-  private static final String STORAGE_ENGINE_KEY = "storageEngine";
-  private static final String BOOK_PROTECTION_MODE_KEY = "bookProtectionMode";
-  private static final String DEFAULT_BOOK_CIPHER_KEY = "defaultBookCipher";
-  private static final String SQLITE_LIBRARY_MODE_KEY = "sqliteLibraryMode";
+      SCHEMA_KEYS.sourceCheckoutRuntimeDistribution();
+  private static final String CONTAINER_RUNTIME_DISTRIBUTION_KEY =
+      SCHEMA_KEYS.containerRuntimeDistribution();
+  private static final String BUNDLE_RUNTIME_DISTRIBUTION_KEY =
+      SCHEMA_KEYS.bundleRuntimeDistribution();
+  private static final String PUBLIC_CLI_DISTRIBUTION_KEY = SCHEMA_KEYS.publicCliDistribution();
+  private static final String STORAGE_DRIVER_KEY = SCHEMA_KEYS.storageDriver();
+  private static final String STORAGE_ENGINE_KEY = SCHEMA_KEYS.storageEngine();
+  private static final String BOOK_PROTECTION_MODE_KEY = SCHEMA_KEYS.bookProtectionMode();
+  private static final String DEFAULT_BOOK_CIPHER_KEY = SCHEMA_KEYS.defaultBookCipher();
+  private static final String SQLITE_LIBRARY_MODE_KEY = SCHEMA_KEYS.sqliteLibraryMode();
   private static final String SQLITE_LIBRARY_ENVIRONMENT_VARIABLE_KEY =
-      "sqliteLibraryEnvironmentVariable";
+      SCHEMA_KEYS.sqliteLibraryEnvironmentVariable();
   private static final String SQLITE_BUNDLE_HOME_SYSTEM_PROPERTY_KEY =
-      "sqliteBundleHomeSystemProperty";
+      SCHEMA_KEYS.sqliteBundleHomeSystemProperty();
   private static final RuntimeSurfaceContract CURRENT = loadCurrent();
 
   private RuntimeSurfaceContracts() {}

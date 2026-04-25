@@ -35,8 +35,8 @@ final class ProtocolCatalogFacts {
           "Preflight validates the current request against the current book state, but it is not a commit guarantee because durable commit-time checks still run inside the write transaction.");
   private static final PlanExecutionFacts PLAN_EXECUTION =
       new PlanExecutionFacts(
-          "atomic",
-          "halt-on-first-failure",
+          PlanTransactionMode.ATOMIC,
+          PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
           "complete per-step journal with canonical step kind, status, timing, typed facts, grouped observations, and structured failure",
           List.of(
               "executionPolicy is not accepted; the protocol has exactly one execution mode",
@@ -49,21 +49,18 @@ final class ProtocolCatalogFacts {
               "preflight steps are validation-only steps and do not commit postings"));
   private static final List<StorageEngine> STORAGE_ENGINES =
       List.of(RUNTIME_SURFACE_CONTRACT.storageEngine());
-  private static final List<String> SUCCESS_STATUSES =
-      List.of(
-          ProtocolStatuses.OK,
-          ProtocolStatuses.PREFLIGHT_ACCEPTED,
-          ProtocolStatuses.COMMITTED,
-          ProtocolStatuses.PLAN_COMMITTED);
-  private static final List<String> REJECTION_STATUSES =
-      List.of(
-          ProtocolStatuses.REJECTED,
-          ProtocolStatuses.PLAN_REJECTED,
-          ProtocolStatuses.PLAN_ASSERTION_FAILED);
+  private static final List<ProtocolSuccessStatus> SUCCESS_STATUSES =
+      List.of(ProtocolSuccessStatus.values());
+  private static final List<ProtocolRejectionStatus> REJECTION_STATUSES =
+      List.of(ProtocolRejectionStatus.values());
   private static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
       RuntimeEnvironmentContract.current();
   private static final PublicDistributionContract PUBLIC_DISTRIBUTION_CONTRACT =
       PublicDistributionContracts.current();
+  private static final ManagedSqliteContract MANAGED_SQLITE_CONTRACT =
+      ManagedSqliteContracts.current();
+  private static final BundleLayoutContract BUNDLE_LAYOUT_CONTRACT =
+      BundleLayoutContracts.current();
 
   private ProtocolCatalogFacts() {}
 
@@ -87,11 +84,11 @@ final class ProtocolCatalogFacts {
     return STORAGE_ENGINES;
   }
 
-  static List<String> successStatuses() {
+  static List<ProtocolSuccessStatus> successStatuses() {
     return SUCCESS_STATUSES;
   }
 
-  static List<String> rejectionStatuses() {
+  static List<ProtocolRejectionStatus> rejectionStatuses() {
     return REJECTION_STATUSES;
   }
 
@@ -105,5 +102,13 @@ final class ProtocolCatalogFacts {
 
   static PublicDistributionContract publicDistributionContract() {
     return PUBLIC_DISTRIBUTION_CONTRACT;
+  }
+
+  static ManagedSqliteContract managedSqliteContract() {
+    return MANAGED_SQLITE_CONTRACT;
+  }
+
+  static BundleLayoutContract bundleLayoutContract() {
+    return BUNDLE_LAYOUT_CONTRACT;
   }
 }

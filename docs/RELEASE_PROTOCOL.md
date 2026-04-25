@@ -399,6 +399,10 @@ Requirements:
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
   - `fingrind-X.Y.Z-windows-x86_64.zip`
   - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
+- Targets disclosed through
+  `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` such as the current
+  `windows-aarch64` entry must not appear as release assets unless the public-distribution
+  contract changes first.
 - The generated GitHub source archives do not include repo-owned agent metadata such as
   `AGENTS.md` or `.codex/**`.
 
