@@ -148,7 +148,6 @@ EOF
 chmod +x "${fixture_root}/bin/gh"
 
 PATH="${fixture_root}/bin:${PATH}" \
-    GH_TOKEN='token' \
     FAKE_GH_TAG='v9.9.9' \
     FAKE_GH_REPOSITORY='resoltico/fingrind' \
     FAKE_GH_RELEASE_URL='https://example.invalid/releases/v9.9.9' \
@@ -160,7 +159,6 @@ PATH="${fixture_root}/bin:${PATH}" \
 set +e
 failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
-        GH_TOKEN='token' \
         FAKE_GH_MODE='bad-archive' \
         FAKE_GH_TAG='v9.9.9' \
         FAKE_GH_REPOSITORY='resoltico/fingrind' \
