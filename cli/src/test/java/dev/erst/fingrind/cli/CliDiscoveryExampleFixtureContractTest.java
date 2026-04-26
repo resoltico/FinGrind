@@ -17,20 +17,20 @@ import org.junit.jupiter.api.Test;
 class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
   @Test
   void printRequestTemplate_matchesCheckedInFixture() throws IOException {
-    assertEquals(
-        Files.readString(
-            repositoryRoot().resolve("docs/examples/request-template.json"),
-            StandardCharsets.UTF_8),
-        runDiscoveryCommand("print-request-template"));
+    assertFixtureMatchesCommand("docs/examples/request-template.json", "print-request-template");
   }
 
   @Test
   void printPlanTemplate_matchesCheckedInFixture() throws IOException {
+    assertFixtureMatchesCommand("docs/examples/ledger-plan-template.json", "print-plan-template");
+  }
+
+  private static void assertFixtureMatchesCommand(String fixturePath, String command)
+      throws IOException {
     assertEquals(
-        Files.readString(
-            repositoryRoot().resolve("docs/examples/ledger-plan-template.json"),
-            StandardCharsets.UTF_8),
-        runDiscoveryCommand("print-plan-template"));
+        normalizeLineEndings(
+            Files.readString(repositoryRoot().resolve(fixturePath), StandardCharsets.UTF_8)),
+        normalizeLineEndings(runDiscoveryCommand(command)));
   }
 
   private static String runDiscoveryCommand(String command) {
@@ -43,6 +43,10 @@ class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
 
     assertEquals(0, exitCode);
     return outputStream.toString(StandardCharsets.UTF_8);
+  }
+
+  private static String normalizeLineEndings(String text) {
+    return text.replace("\r\n", "\n").replace('\r', '\n');
   }
 
   private static Path repositoryRoot() {
