@@ -1,11 +1,12 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+$scriptDirectory = $PSScriptRoot
+$appHome = [System.IO.Path]::GetFullPath((Join-Path $scriptDirectory ".."))
+$runtimeJava = Join-Path $appHome "runtime/bin/java.exe"
+$applicationJar = Join-Path $appHome "lib/app/fingrind.jar"
+
 function Invoke-FinGrindBundleLauncher {
-    $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $appHome = [System.IO.Path]::GetFullPath((Join-Path $scriptDirectory ".."))
-    $runtimeJava = Join-Path $appHome "runtime/bin/java.exe"
-    $applicationJar = Join-Path $appHome "lib/app/fingrind.jar"
     $stdinFile = $env:FINGRIND_BUNDLE_STDIN_FILE
 
     if (-not (Test-Path -LiteralPath $runtimeJava -PathType Leaf)) {

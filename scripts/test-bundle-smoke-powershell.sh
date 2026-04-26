@@ -103,6 +103,11 @@ grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer supports the in-process bridge return-code contract"
 grep -Fq 'FINGRIND_BUNDLE_STDIN_FILE' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer supports the in-process bridge stdin-file contract"
+grep -Fq '$PSScriptRoot' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer anchors bundle paths to the script root outside helper-function invocation scope"
+if grep -Fq '$MyInvocation.MyCommand.Path' "${bundle_launcher_ps1}"; then
+    die "fingrind.ps1 still derives bundle paths from function-scoped MyInvocation metadata"
+fi
 if grep -Fq '& $runtimeJava @javaArguments' "${bundle_launcher_ps1}"; then
     die "fingrind.ps1 regressed to direct native invocation that can corrupt Unicode arguments"
 fi
