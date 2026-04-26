@@ -5,6 +5,7 @@ $scriptDirectory = $PSScriptRoot
 $appHome = [System.IO.Path]::GetFullPath((Join-Path $scriptDirectory ".."))
 $runtimeJava = Join-Path $appHome "runtime/bin/java.exe"
 $applicationJar = Join-Path $appHome "lib/app/fingrind.jar"
+$launcherArguments = @($args)
 
 function Invoke-FinGrindBundleLauncher {
     $stdinFile = $env:FINGRIND_BUNDLE_STDIN_FILE
@@ -30,7 +31,7 @@ function Invoke-FinGrindBundleLauncher {
         "-Dfingrind.runtime.distribution={{bundleRuntimeDistribution}}",
         "-jar",
         $applicationJar
-    ) + $args
+    ) + $launcherArguments
 
     $javaStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $javaStartInfo.FileName = $runtimeJava

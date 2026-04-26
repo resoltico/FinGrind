@@ -105,6 +105,8 @@ grep -Fq 'FINGRIND_BUNDLE_STDIN_FILE' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer supports the in-process bridge stdin-file contract"
 grep -Fq '$PSScriptRoot' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer anchors bundle paths to the script root outside helper-function invocation scope"
+grep -Fq '$launcherArguments = @($args)' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer preserves the script-level CLI argument vector before entering helper-function scope"
 if grep -Fq '$MyInvocation.MyCommand.Path' "${bundle_launcher_ps1}"; then
     die "fingrind.ps1 still derives bundle paths from function-scoped MyInvocation metadata"
 fi

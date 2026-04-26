@@ -237,6 +237,7 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_STDIN_FILE"));
     assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
+    assertTrue(powerShellLauncher.contains("$launcherArguments = @($args)"));
     assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
     assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
   }
