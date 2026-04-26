@@ -219,7 +219,9 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleOfficeWorker.contains("bundle-smoke-command-bridge.ps1"));
     assertTrue(
         bundleCommandBridge.contains("Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8"));
-    assertTrue(bundleCommandBridge.contains("& $LauncherPath @arguments"));
+    assertTrue(bundleCommandBridge.contains("ProcessStartInfo"));
+    assertTrue(bundleCommandBridge.contains("RedirectStandardInput"));
+    assertTrue(bundleCommandBridge.contains("ArgumentList.Add"));
     assertTrue(bundleAcceptance.contains("Rīga büro"));
   }
 

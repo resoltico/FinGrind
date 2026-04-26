@@ -76,8 +76,23 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON' "${bundle_smoke_off
     "bundle-smoke-office-worker.ps1 no longer publishes the PowerShell bridge command contract"
 grep -Fq 'Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer reads bridge requests as UTF-8 JSON"
-grep -Fq '& $LauncherPath @arguments' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer replays decoded arguments through PowerShell"
+grep -Fq 'ProcessStartInfo' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer launches the bundle script through ProcessStartInfo"
+grep -Fq 'RedirectStandardInput' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer preserves stdin through the bridged launch path"
+grep -Fq 'ArgumentList.Add' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer forwards bridged arguments through ArgumentList"
+python3 - <<'PY' "${bundle_smoke_command_bridge_ps1}"
+import pathlib
+import sys
+
+lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
+meaningful = [line.strip() for line in lines if line.strip() and not line.lstrip().startswith("#")]
+if not meaningful or meaningful[0] != "param(":
+    raise SystemExit("bundle-smoke-command-bridge.ps1 must begin with a script-level param block")
+if "Set-StrictMode -Version Latest" not in meaningful[1:]:
+    raise SystemExit("bundle-smoke-command-bridge.ps1 lost its strict-mode guard after the param block")
+PY
 grep -Fq 'ProcessStartInfo' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer uses a ProcessStartInfo-based native launch path"
 grep -Fq 'ArgumentList.Add' "${bundle_launcher_ps1}" || die \
@@ -95,7 +110,9 @@ if ! command -v pwsh >/dev/null 2>&1; then
 fi
 
 pwsh_script="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-smoke-powershell.XXXXXX.ps1")"
-trap 'rm -f "${pwsh_script}"' EXIT
+bridge_request_json="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-smoke-bridge.XXXXXX.json")"
+bridge_launcher_ps1="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-smoke-launcher.XXXXXX.ps1")"
+trap 'rm -f "${pwsh_script}" "${bridge_request_json}" "${bridge_launcher_ps1}"' EXIT
 cat >"${pwsh_script}" <<'PWSH'
 function Test-SameSequence {
     param(
@@ -123,5 +140,34 @@ if ($unicodePath -notmatch 'Rīga büro') {
 PWSH
 
 pwsh -NoLogo -NoProfile -File "${pwsh_script}"
+
+cat >"${bridge_launcher_ps1}" <<'PWSH'
+$payload = [ordered]@{
+    arguments = @($args)
+    stdinText = [Console]::In.ReadToEnd()
+}
+$payload | ConvertTo-Json -Compress
+PWSH
+
+cat >"${bridge_request_json}" <<'JSON'
+{"arguments":["generate-book-key-file","--book-key-file","/tmp/workspace odd/Rīga büro/bridge key.key"],"stdinText":"stdin through bridge\n"}
+JSON
+
+bridge_output="$(
+    pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
+        "${bundle_smoke_command_bridge_ps1}" \
+        "${bridge_launcher_ps1}" \
+        "${bridge_request_json}"
+)"
+python3 - <<'PY' "${bridge_output}"
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+if payload["arguments"][2] != "/tmp/workspace odd/Rīga büro/bridge key.key":
+    raise SystemExit("bundle-smoke-command-bridge.ps1 corrupted the Unicode CLI argument")
+if payload["stdinText"] != "stdin through bridge\n":
+    raise SystemExit("bundle-smoke-command-bridge.ps1 failed to replay stdin text")
+PY
 
 printf 'bundle smoke PowerShell regression: success\n'
