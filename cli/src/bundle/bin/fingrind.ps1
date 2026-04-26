@@ -24,5 +24,22 @@ $javaArguments = @(
     $applicationJar
 ) + $args
 
-& $runtimeJava @javaArguments
-exit $LASTEXITCODE
+$javaStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
+$javaStartInfo.FileName = $runtimeJava
+$javaStartInfo.WorkingDirectory = [System.IO.Directory]::GetCurrentDirectory()
+$javaStartInfo.UseShellExecute = $false
+
+foreach ($javaArgument in $javaArguments) {
+    [void] $javaStartInfo.ArgumentList.Add($javaArgument)
+}
+
+$javaProcess = [System.Diagnostics.Process]::new()
+$javaProcess.StartInfo = $javaStartInfo
+
+if (-not $javaProcess.Start()) {
+    [Console]::Error.WriteLine("error: failed to start bundled Java runtime at $runtimeJava")
+    exit 1
+}
+
+$javaProcess.WaitForExit()
+exit $javaProcess.ExitCode

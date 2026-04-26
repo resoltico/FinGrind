@@ -30,6 +30,7 @@ readonly bundle_smoke_common_ps1="${repo_root}/scripts/bundle-smoke-common.ps1"
 readonly bundle_smoke_contract_ps1="${repo_root}/scripts/bundle-smoke-contract.ps1"
 readonly bundle_smoke_acceptance_ps1="${repo_root}/scripts/bundle-smoke-acceptance.ps1"
 readonly bundle_smoke_office_worker_ps1="${repo_root}/scripts/bundle-smoke-office-worker.ps1"
+readonly bundle_launcher_ps1="${repo_root}/cli/src/bundle/bin/fingrind.ps1"
 
 [[ -f "${bundle_smoke_ps1}" ]] || die "missing PowerShell bundle smoke script at ${bundle_smoke_ps1}"
 [[ -f "${bundle_smoke_support_ps1}" ]] || die \
@@ -42,6 +43,8 @@ readonly bundle_smoke_office_worker_ps1="${repo_root}/scripts/bundle-smoke-offic
     "missing PowerShell bundle smoke acceptance script at ${bundle_smoke_acceptance_ps1}"
 [[ -f "${bundle_smoke_office_worker_ps1}" ]] || die \
     "missing PowerShell bundle smoke office-worker script at ${bundle_smoke_office_worker_ps1}"
+[[ -f "${bundle_launcher_ps1}" ]] || die \
+    "missing PowerShell bundle launcher template at ${bundle_launcher_ps1}"
 grep -Fq 'bundle-smoke-support.ps1' "${bundle_smoke_ps1}" || die \
     "bundle-smoke.ps1 no longer delegates to the PowerShell support script"
 grep -Fq 'bundle-smoke-common.ps1' "${bundle_smoke_support_ps1}" || die \
@@ -66,6 +69,13 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${bundle_smoke_office_work
     "bundle-smoke-office-worker.ps1 no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the shared scenario-id contract"
+grep -Fq 'ProcessStartInfo' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer uses a ProcessStartInfo-based native launch path"
+grep -Fq 'ArgumentList.Add' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer forwards Java arguments through ProcessStartInfo.ArgumentList"
+if grep -Fq '& $runtimeJava @javaArguments' "${bundle_launcher_ps1}"; then
+    die "fingrind.ps1 regressed to direct native invocation that can corrupt Unicode arguments"
+fi
 if grep -Fq 'FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG' "${bundle_smoke_office_worker_ps1}"; then
     die "bundle-smoke-office-worker.ps1 still exports legacy per-path release-smoke arguments"
 fi

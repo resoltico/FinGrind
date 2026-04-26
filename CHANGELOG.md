@@ -65,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the Windows bundle acceptance seam so the PowerShell entrypoint once again keeps Unicode
   workspace-path coverage alive through `workspace odd/Rīga büro/...`, and pinned that surface
   with cross-shell regression checks.
+- Fixed the published Windows PowerShell bundle launcher so Unicode-only path characters such as
+  `ī` now reach the bundled Java runtime through a `ProcessStartInfo.ArgumentList` launch path
+  instead of degrading into invalid `?` path characters during release-smoke execution.
 - Fixed bundle and Docker smoke verification so pagination cursors are read from JSON structurally
   instead of with regex text scraping, which keeps release acceptance aligned with the actual JSON
   contract.

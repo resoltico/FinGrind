@@ -216,6 +216,17 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleAcceptance.contains("Rīga büro"));
   }
 
+  @Test
+  void windowsBundleLauncher_usesUnicodeSafeNativeArgumentForwarding() throws IOException {
+    String powerShellLauncher =
+        Files.readString(repositoryRoot().resolve("cli/src/bundle/bin/fingrind.ps1"));
+
+    assertTrue(powerShellLauncher.contains("ProcessStartInfo"));
+    assertTrue(powerShellLauncher.contains("ArgumentList.Add"));
+    assertTrue(powerShellLauncher.contains("WorkingDirectory"));
+    assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
+  }
+
   private static Path repositoryRoot() {
     Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
     while (!Files.exists(
