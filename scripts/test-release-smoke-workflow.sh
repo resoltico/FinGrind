@@ -85,7 +85,10 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(pathlib.Path(sys.argv[1]) / "scripts"))
-from release_smoke_workflow.cli import run_cli_allow_failure  # noqa: E402
+from release_smoke_workflow.cli import (  # noqa: E402
+    run_cli_allow_failure,
+    run_cli_with_split_streams,
+)
 from release_smoke_workflow.models import ReleaseSmokeConfig, SmokePath  # noqa: E402
 from release_smoke_workflow.scenario import (  # noqa: E402
     ARGUMENT_PATH_MODE_ABSOLUTE,
@@ -168,6 +171,16 @@ with tempfile.TemporaryDirectory() as temp_dir:
     assert exit_code == 0
     payload = json.loads(output)
     assert payload["arguments"][2] == unicode_argument
+
+    stdout, stderr = run_cli_with_split_streams(
+        config,
+        "trial-balance",
+        "--book-file",
+        unicode_argument,
+    )
+    payload = json.loads(stdout)
+    assert payload["arguments"][2] == unicode_argument
+    assert stderr == ""
 PY
 
 set +e
