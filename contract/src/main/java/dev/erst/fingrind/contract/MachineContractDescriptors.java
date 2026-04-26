@@ -14,6 +14,10 @@ final class MachineContractDescriptors {
     return MachineContractDomainDescriptors.commandDescriptors();
   }
 
+  static CommandCatalogDescriptor commandCatalog() {
+    return MachineContractDomainDescriptors.commandCatalog();
+  }
+
   static List<ExitCodeDescriptor> exitCodes() {
     return MachineContractDomainDescriptors.exitCodes();
   }

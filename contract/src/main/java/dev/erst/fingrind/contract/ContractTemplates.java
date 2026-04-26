@@ -9,17 +9,10 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Request and ledger-plan template descriptor namespace for discovery commands. */
 public final class ContractTemplates {
-  private static final Map<LedgerStepKind, StepShapeRequirements> STEP_SHAPE_REQUIREMENTS =
-      stepShapeRequirements();
-  private static final Map<LedgerAssertionKind, AssertionShapeRequirements>
-      ASSERTION_SHAPE_REQUIREMENTS = assertionShapeRequirements();
-
   private ContractTemplates() {}
 
   /** Returns the descriptor record types owned by this namespace. */
@@ -130,7 +123,8 @@ public final class ContractTemplates {
       stepId = ContractDescriptorValidation.requireText(stepId, "stepId");
       kind = ContractDescriptorValidation.requireValue(kind, "kind");
       postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
-      validateStepShape(kind, posting, declareAccount, query, assertion, postingId);
+      ContractTemplateShapeValidator.validateStepShape(
+          kind, posting, declareAccount, query, assertion, postingId);
     }
   }
 
@@ -196,7 +190,7 @@ public final class ContractTemplates {
       currencyCode = ContractDescriptorValidation.requireOptionalText(currencyCode, "currencyCode");
       netAmount = ContractDescriptorValidation.requireOptionalText(netAmount, "netAmount");
       postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
-      validateAssertionShape(
+      ContractTemplateShapeValidator.validateAssertionShape(
           kind,
           accountCode,
           effectiveDateFrom,
@@ -206,236 +200,5 @@ public final class ContractTemplates {
           balanceSide,
           postingId);
     }
-  }
-
-  private static void validateStepShape(
-      LedgerStepKind kind,
-      @Nullable PostingRequestTemplateDescriptor posting,
-      @Nullable DeclareAccountTemplateDescriptor declareAccount,
-      @Nullable LedgerPlanQueryTemplateDescriptor query,
-      @Nullable LedgerAssertionTemplateDescriptor assertion,
-      @Nullable String postingId) {
-    StepShapeRequirements requirements =
-        Objects.requireNonNull(STEP_SHAPE_REQUIREMENTS.get(kind), kind.toString());
-    requireStepShape(kind, posting, declareAccount, query, assertion, postingId, requirements);
-    if (requirements.queryAccountCodeRequired()) {
-      LedgerPlanQueryTemplateDescriptor accountBalanceQuery =
-          Objects.requireNonNull(query, "query");
-      if (accountBalanceQuery.accountCode() == null) {
-        throw new IllegalArgumentException(
-            "query.accountCode is required for account balance template steps.");
-      }
-    }
-  }
-
-  private static void requireStepShape(
-      LedgerStepKind kind,
-      @Nullable PostingRequestTemplateDescriptor posting,
-      @Nullable DeclareAccountTemplateDescriptor declareAccount,
-      @Nullable LedgerPlanQueryTemplateDescriptor query,
-      @Nullable LedgerAssertionTemplateDescriptor assertion,
-      @Nullable String postingId,
-      StepShapeRequirements requirements) {
-    requirePresence(kind, "posting", posting, requirements.posting());
-    requirePresence(kind, "declareAccount", declareAccount, requirements.declareAccount());
-    requirePresence(kind, "query", query, requirements.query());
-    requirePresence(kind, "assertion", assertion, requirements.assertion());
-    requirePresence(kind, "postingId", postingId, requirements.postingId());
-  }
-
-  private static void validateAssertionShape(
-      LedgerAssertionKind kind,
-      @Nullable String accountCode,
-      @Nullable String effectiveDateFrom,
-      @Nullable String effectiveDateTo,
-      @Nullable String currencyCode,
-      @Nullable String netAmount,
-      @Nullable BalanceSide balanceSide,
-      @Nullable String postingId) {
-    AssertionShapeRequirements requirements =
-        Objects.requireNonNull(ASSERTION_SHAPE_REQUIREMENTS.get(kind), kind.toString());
-    requirePresence(kind, "accountCode", accountCode, requirements.accountCode());
-    requirePresence(kind, "effectiveDateFrom", effectiveDateFrom, requirements.effectiveDateFrom());
-    requirePresence(kind, "effectiveDateTo", effectiveDateTo, requirements.effectiveDateTo());
-    requirePresence(kind, "currencyCode", currencyCode, requirements.currencyCode());
-    requirePresence(kind, "netAmount", netAmount, requirements.netAmount());
-    requirePresence(kind, "balanceSide", balanceSide, requirements.balanceSide());
-    requirePresence(kind, "postingId", postingId, requirements.postingId());
-  }
-
-  private static Map<LedgerStepKind, StepShapeRequirements> stepShapeRequirements() {
-    return Map.ofEntries(
-        Map.entry(
-            LedgerStepKind.OPEN_BOOK,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.INSPECT_BOOK,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.DECLARE_ACCOUNT,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.PREFLIGHT_ENTRY,
-            new StepShapeRequirements(
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.POST_ENTRY,
-            new StepShapeRequirements(
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.LIST_ACCOUNTS,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.OPTIONAL,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.LIST_POSTINGS,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.OPTIONAL,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.ACCOUNT_BALANCE,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                true)),
-        Map.entry(
-            LedgerStepKind.GET_POSTING,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.REQUIRED,
-                false)),
-        Map.entry(
-            LedgerStepKind.ASSERT,
-            new StepShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                false)));
-  }
-
-  private static Map<LedgerAssertionKind, AssertionShapeRequirements> assertionShapeRequirements() {
-    return Map.ofEntries(
-        Map.entry(
-            LedgerAssertionKind.ACCOUNT_DECLARED,
-            new AssertionShapeRequirements(
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN)),
-        Map.entry(
-            LedgerAssertionKind.ACCOUNT_ACTIVE,
-            new AssertionShapeRequirements(
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN)),
-        Map.entry(
-            LedgerAssertionKind.POSTING_EXISTS,
-            new AssertionShapeRequirements(
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.REQUIRED)),
-        Map.entry(
-            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
-            new AssertionShapeRequirements(
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.FORBIDDEN,
-                FieldPresence.REQUIRED,
-                FieldPresence.REQUIRED,
-                FieldPresence.REQUIRED,
-                FieldPresence.FORBIDDEN)));
-  }
-
-  private static void requirePresence(
-      Enum<?> owner, String fieldName, @Nullable Object value, FieldPresence presence) {
-    if (presence == FieldPresence.REQUIRED && value == null) {
-      throw new IllegalArgumentException(
-          fieldName + " is required for " + owner + " template shapes.");
-    }
-    if (presence == FieldPresence.FORBIDDEN && value != null) {
-      throw new IllegalArgumentException(
-          fieldName + " must be absent for " + owner + " template shapes.");
-    }
-  }
-
-  /** Presence policy for one ledger-plan step template shape. */
-  private record StepShapeRequirements(
-      FieldPresence posting,
-      FieldPresence declareAccount,
-      FieldPresence query,
-      FieldPresence assertion,
-      FieldPresence postingId,
-      boolean queryAccountCodeRequired) {}
-
-  /** Presence policy for one ledger-assertion template shape. */
-  private record AssertionShapeRequirements(
-      FieldPresence accountCode,
-      FieldPresence effectiveDateFrom,
-      FieldPresence effectiveDateTo,
-      FieldPresence currencyCode,
-      FieldPresence netAmount,
-      FieldPresence balanceSide,
-      FieldPresence postingId) {}
-
-  /** Presence classification for one template field inside a shape policy. */
-  private enum FieldPresence {
-    REQUIRED,
-    OPTIONAL,
-    FORBIDDEN
   }
 }

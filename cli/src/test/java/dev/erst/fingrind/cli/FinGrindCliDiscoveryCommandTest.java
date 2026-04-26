@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
@@ -78,12 +79,57 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(json.contains("\"posting-book-not-initialized\""));
     assertTrue(json.contains("\"account-normal-balance-conflict\""));
     assertTrue(json.contains("\"posting-not-found\""));
+    assertCapabilitiesCommandCatalog(payload);
+    assertCapabilitiesRequestShapes(payload);
+    assertCapabilitiesRuntimeContract(payload);
+    assertCapabilitiesRequestInput(payload);
+    assertCapabilitiesResponseModel(payload);
+  }
+
+  private static List<String> commandNames(JsonNode commands) {
+    List<String> names = new ArrayList<>();
+    commands.forEach(command -> names.add(command.path("name").asText()));
+    return List.copyOf(names);
+  }
+
+  private static JsonNode commandDescriptor(JsonNode commands, String operationId) {
+    for (JsonNode command : commands) {
+      if (operationId.equals(command.path("name").asText())) {
+        return command;
+      }
+    }
+    throw new AssertionError("Missing command descriptor: " + operationId);
+  }
+
+  private static void assertCapabilitiesCommandCatalog(JsonNode payload) {
     assertEquals(
-        "[\"generate-book-key-file\",\"open-book\",\"rekey-book\",\"declare-account\"]",
-        payload.path("commands").path("administration").toString());
+        List.of("generate-book-key-file", "open-book", "rekey-book", "declare-account"),
+        commandNames(payload.path("commands").path("administration")));
     assertEquals(
-        "[\"inspect-book\",\"list-accounts\",\"get-posting\",\"list-postings\",\"account-balance\",\"trial-balance\",\"account-ledger\",\"period-summary\"]",
-        payload.path("commands").path("query").toString());
+        List.of(
+            "inspect-book",
+            "list-accounts",
+            "get-posting",
+            "list-postings",
+            "account-balance",
+            "trial-balance",
+            "account-ledger",
+            "period-summary"),
+        commandNames(payload.path("commands").path("query")));
+    assertEquals(
+        "[\"json\",\"human\"]",
+        commandDescriptor(payload.path("commands").path("discovery"), "version")
+            .path("outputModes")
+            .toString());
+    JsonNode trialBalance =
+        commandDescriptor(payload.path("commands").path("query"), "trial-balance");
+    assertEquals("[\"json\",\"human\",\"csv\"]", trialBalance.path("outputModes").toString());
+    assertEquals("pdf", trialBalance.path("artifactOutputs").get(0).path("format").asText());
+    assertEquals(
+        "--pdf-out <path>", trialBalance.path("artifactOutputs").get(0).path("option").asText());
+  }
+
+  private static void assertCapabilitiesRequestShapes(JsonNode payload) {
     assertTrue(payload.path("requestShapes").has("postEntry"));
     assertTrue(payload.path("requestShapes").has("declareAccount"));
     assertEquals(
@@ -139,8 +185,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
                 payload.path("requestShapes").path("ledgerPlan").path("queryFields"), "accountCode")
             .path("presence")
             .asText());
-    assertTrue(payload.path("responseModel").path("rejections").isArray());
-    assertFalse(payload.path("responseModel").has("rejectionCodes"));
+  }
+
+  private static void assertCapabilitiesRuntimeContract(JsonNode payload) {
     assertEquals(
         ProtocolCatalog.storageDriver().wireValue(),
         payload.path("environment").path("storage").path("storageDriver").asString());
@@ -195,13 +242,25 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
         payload.path("environment").path("sqlite").path("loadedSqlite3mcVersion").asString());
+  }
+
+  private static void assertCapabilitiesRequestInput(JsonNode payload) {
     assertEquals(
         "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
         payload.path("requestInput").path("bookPassphraseOptions").toString());
-    assertEquals("--output", payload.path("requestInput").path("queryOutputOption").asString());
-    assertEquals(
-        "[\"json\",\"human\",\"csv\"]",
-        payload.path("requestInput").path("queryOutputModes").toString());
+    assertEquals("--output", payload.path("requestInput").path("outputOption").asString());
+    assertFalse(payload.path("requestInput").has("queryOutputModes"));
+    assertTrue(
+        payload
+            .path("requestInput")
+            .path("requestDocumentSemantics")
+            .toString()
+            .contains("duplicate JSON object keys are rejected"));
+  }
+
+  private static void assertCapabilitiesResponseModel(JsonNode payload) {
+    assertTrue(payload.path("responseModel").path("rejections").isArray());
+    assertFalse(payload.path("responseModel").has("rejectionCodes"));
     assertTrue(payload.path("responseModel").path("errorDescriptors").isArray());
     assertTrue(
         payload
@@ -233,12 +292,6 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("errorDescriptors")
             .toString()
             .contains("pdf-export-failure"));
-    assertTrue(
-        payload
-            .path("requestInput")
-            .path("requestDocumentSemantics")
-            .toString()
-            .contains("duplicate JSON object keys are rejected"));
   }
 
   @Test

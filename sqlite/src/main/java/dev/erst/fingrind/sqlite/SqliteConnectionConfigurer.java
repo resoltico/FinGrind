@@ -39,7 +39,8 @@ final class SqliteConnectionConfigurer {
     try {
       openedDatabase.close();
     } catch (SqliteNativeException exception) {
-      SqliteBestEffort.ignore(exception);
+      SqliteBestEffort.reportCleanupFailure(
+          "closing one SQLite database after configuration failure", exception);
     }
   }
 

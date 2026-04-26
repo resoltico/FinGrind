@@ -41,12 +41,12 @@ final class CliDiscoveryCommandExecutor {
   }
 
   int writeRequestTemplate() {
-    responseWriter.writeRequestTemplate(MachineContract.requestTemplate(clock));
+    responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
     return 0;
   }
 
   int writePlanTemplate() {
-    responseWriter.writePlanTemplate(MachineContract.planTemplate(clock));
+    responseWriter.writePlanTemplate(MachineContract.planTemplate());
     return 0;
   }
 

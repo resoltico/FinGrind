@@ -154,7 +154,8 @@ public final class SqliteBookKeyFileGenerator {
     try {
       Files.deleteIfExists(normalizedPath);
     } catch (IOException exception) {
-      SqliteBestEffort.ignore(exception);
+      SqliteBestEffort.reportCleanupFailure(
+          "deleting one partially created book-key path", exception);
     }
   }
 

@@ -10,6 +10,8 @@ public final class App {
   private final CliFactory cliFactory;
   private final ExitHandler exitHandler;
   private final ClockFactory clockFactory;
+  private final PrintStream errorStream;
+  private final LaunchArgumentsResolver launchArgumentsResolver;
 
   /** Creates the production App wired to the default CLI factory and {@code System::exit}. */
   public App() {
@@ -17,13 +19,23 @@ public final class App {
         (inputStream, outputStream, clock) ->
             new FinGrindCli(inputStream, outputStream, clock)::run,
         System::exit,
-        Clock::systemUTC);
+        Clock::systemUTC,
+        System.err,
+        LauncherInvocationArguments::resolveForCurrentProcess);
   }
 
-  App(CliFactory cliFactory, ExitHandler exitHandler, ClockFactory clockFactory) {
+  App(
+      CliFactory cliFactory,
+      ExitHandler exitHandler,
+      ClockFactory clockFactory,
+      PrintStream errorStream,
+      LaunchArgumentsResolver launchArgumentsResolver) {
     this.cliFactory = Objects.requireNonNull(cliFactory, "cliFactory must not be null");
     this.exitHandler = Objects.requireNonNull(exitHandler, "exitHandler must not be null");
     this.clockFactory = Objects.requireNonNull(clockFactory, "clockFactory must not be null");
+    this.errorStream = Objects.requireNonNull(errorStream, "errorStream must not be null");
+    this.launchArgumentsResolver =
+        Objects.requireNonNull(launchArgumentsResolver, "launchArgumentsResolver must not be null");
   }
 
   /** Runs the FinGrind CLI and exits with its process status code. */
@@ -32,7 +44,16 @@ public final class App {
   }
 
   void run(String[] args) {
-    int exitCode = cliFactory.create(System.in, System.out, clockFactory.create()).run(args);
+    String[] resolvedArguments;
+    try {
+      resolvedArguments = launchArgumentsResolver.resolve(args);
+    } catch (LauncherInvocationArgumentsException exception) {
+      errorStream.println("error: " + exception.getMessage());
+      exitHandler.exit(1);
+      return;
+    }
+    int exitCode =
+        cliFactory.create(System.in, System.out, clockFactory.create()).run(resolvedArguments);
     if (exitCode != 0) {
       exitHandler.exit(exitCode);
     }
@@ -64,5 +85,12 @@ public final class App {
   interface ClockFactory {
     /** Creates the clock that should back this process invocation. */
     Clock create();
+  }
+
+  /** Functional interface for resolving the process argument vector before CLI parsing. */
+  @FunctionalInterface
+  interface LaunchArgumentsResolver {
+    /** Resolves the CLI arguments that should be presented to the FinGrind parser. */
+    String[] resolve(String[] processArguments);
   }
 }

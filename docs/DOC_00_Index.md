@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.26.0"
+version: "0.27.0"
 domain: INDEX
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers BookReadSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -65,6 +65,7 @@ route:
 | `ProtocolFailureStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, And `ProtocolFailureStatus` |
 | `ProtocolLimits` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolLimits` |
 | `ProtocolOptions` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
+| `ProtocolUserCliDocumentSyncMain` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolUserCliDocumentSyncMain` |
 | `ProtocolArtifactOutput` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolArtifactOutput` |
 | `PublicDistributionContract` | `DOC_02_ProtocolAndDiscovery.md` | `PublicDistributionContract` |
 | `PublicCliBundleTarget` | `DOC_02_ProtocolAndDiscovery.md` | `PublicCliBundleTarget` |

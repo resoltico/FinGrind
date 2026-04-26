@@ -26,4 +26,16 @@ public record CommandDescriptor(
     artifactOutputs = ContractDescriptorValidation.copyList(artifactOutputs, "artifactOutputs");
     summary = ContractDescriptorValidation.requireText(summary, "summary");
   }
+
+  /** Returns the human-facing stdout contract summary used by CLI help text. */
+  public String stdoutContractSummary() {
+    if (!outputModes.isEmpty()) {
+      return String.join(", ", outputModes.stream().map(OutputMode::wireValue).toList())
+          + " (via --output)";
+    }
+    return switch (executionMode) {
+      case JSON_ENVELOPE -> "json envelope (fixed)";
+      case RAW_JSON -> "raw json (fixed)";
+    };
+  }
 }

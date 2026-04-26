@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.26.0"
+afad: "4.0"
+version: "0.27.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -30,6 +30,9 @@ Each published archive contains:
   `LICENSE-SQLITE3MULTIPLECIPHERS`, `NOTICE`, and `PATENTS.md`
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
+On Windows, the PowerShell launcher also hands staged bridge arguments to the JVM through the
+dedicated `FINGRIND_LAUNCHER_ARGUMENTS_FILE` environment contract so Unicode-only acceptance paths
+do not have to survive a second native argv rehydration seam inside PowerShell.
 That keeps public execution independent from:
 - a separately installed Java runtime
 - a preconfigured `FINGRIND_SQLITE_LIBRARY`
@@ -176,10 +179,31 @@ reuses under `cli/build/docker/runtime-modules.txt`, so the public bundle and co
 consume the same trimmed Java runtime closure instead of deriving competing module sets.
 The same build path now also resolves runtime-distribution, public-distribution, storage, and
 managed-SQLite facts from the protocol-owned contract resources through
-`DistributionContractReader`, while the shell verifiers read that same contract through
+`DistributionContractReader`, which now stays a small facade over dedicated path, JSON, schema,
+bundle-layout, host-platform, and text-rendering collaborators, while the shell verifiers read
+that same contract through
 `scripts/read-contract-values.py`. Bundle metadata, launchers, Docker staging, and operator
 verification therefore all consume one canonical runtime-surface owner instead of parallel copied
 literal values.
+The Unix bundle and Docker acceptance entrypoints now also delegate their shared office-worker
+workflow through `scripts/release-smoke-support.sh`, whose Bash wrapper now delegates the shared
+command/fixture/assertion lifecycle into the single Python owner
+`scripts/release-smoke-workflow.py`, while the Windows PowerShell entrypoint stays thin through
+`scripts/bundle-smoke-support.ps1` plus a matching office-worker wrapper that delegates to that
+same Python owner. Release-surface assertions therefore keep one executable workflow owner instead
+of diverging across multiple near-copied entry scripts or collapsing back into a new god-file. The
+shared workflow now derives its full fixture layout from the compact environment tuple
+`FINGRIND_RELEASE_SMOKE_WORK_ROOT`,
+`FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE`, and
+`FINGRIND_RELEASE_SMOKE_SCENARIO_ID`, so the Bash bundle verifier, Docker verifier, and Windows
+PowerShell verifier no longer re-author dozens of per-path environment variables at the wrapper
+seam. The Windows entrypoint also keeps its Unicode workspace-path coverage alive through
+`workspace odd/Rīga büro/...`, while the shared Python scenario builder preserves the matching
+Unicode nested book/key paths across bundle and container acceptance.
+`cli/build.gradle.kts` also renders `bundle-manifest.json` through `BundleManifestRenderer` into
+`build/generated/bundle/root/` during staging instead of checking a pseudo-JSON source template
+into `cli/src/bundle/root/`, so the shipped manifest stays valid JSON derived from the same
+canonical contract facts.
 The target archive format, launcher path, and native library filename now come from the shared
 `bundle-layout-contract.json` resource, and the managed SQLite version pins come from
 `managed-sqlite-contract.json`, so build logic, bundle metadata, and shell acceptance do not

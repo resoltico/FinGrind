@@ -51,20 +51,17 @@ class CliDistributionBuildContractTest {
   @Test
   void cliBuild_generatesBundleManifestFromCanonicalContractMetadata() throws IOException {
     Path repositoryRoot = repositoryRoot();
-    String bundleManifest =
-        Files.readString(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json"));
+    String buildScript = Files.readString(repositoryRoot.resolve("cli/build.gradle.kts"));
 
-    assertTrue(Files.exists(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json")));
-    assertTrue(bundleManifest.contains("${helpOperation}"));
-    assertTrue(bundleManifest.contains("${capabilitiesOperation}"));
-    assertTrue(bundleManifest.contains("${requestTemplateOperation}"));
-    assertTrue(bundleManifest.contains("${planTemplateOperation}"));
-    assertTrue(bundleManifest.contains("${requiredMinimumSqliteVersion}"));
-    assertTrue(bundleManifest.contains("${requiredSqlite3mcVersion}"));
-    assertFalse(bundleManifest.contains("\"discoveryCommands\""));
-    assertFalse(bundleManifest.contains("\"administrationCommands\""));
-    assertFalse(bundleManifest.contains("\"queryCommands\""));
-    assertFalse(bundleManifest.contains("\"writeCommands\""));
+    assertFalse(Files.exists(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json")));
+    assertTrue(
+        buildScript.contains("tasks.register<WriteBundleManifestTask>(\"writeBundleManifest\")"));
+    assertTrue(
+        buildScript.contains(
+            "contractFiles.from(DistributionContractReader.requiredContractFiles(repositoryRootDirectory))"));
+    assertTrue(buildScript.contains("generated/bundle/root/bundle-manifest.json"));
+    assertTrue(buildScript.contains("writeBundleManifest"));
+    assertFalse(buildScript.contains("src/bundle/root/bundle-manifest.json"));
   }
 
   @Test
@@ -160,16 +157,93 @@ class CliDistributionBuildContractTest {
     Path repositoryRoot = repositoryRoot();
     String bashScript = Files.readString(repositoryRoot.resolve("scripts/bundle-smoke.sh"));
     String powerShellScript = Files.readString(repositoryRoot.resolve("scripts/bundle-smoke.ps1"));
+    String powerShellSupport =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-support.ps1"));
+    String powerShellAcceptance =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-acceptance.ps1"));
+    String powerShellContract =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-contract.ps1"));
 
     assertTrue(bashScript.contains("bundleLayout"));
     assertFalse(bashScript.contains("expected_native_library_name()"));
     assertFalse(bashScript.contains("host_bundle_classifier()"));
 
-    assertTrue(powerShellScript.contains("bundleLayout.hostBundleTarget"));
-    assertFalse(powerShellScript.contains("windows-x86_64.zip"));
-    assertFalse(powerShellScript.contains("sqlite3.dll"));
+    assertTrue(powerShellScript.contains("bundle-smoke-support.ps1"));
+    assertTrue(powerShellSupport.contains("bundle-smoke-contract.ps1"));
+    assertTrue(powerShellAcceptance.contains("bundleLayout.hostBundleTarget"));
+    assertFalse(powerShellContract.contains("windows-x86_64.zip"));
+    assertFalse(powerShellContract.contains("sqlite3.dll"));
     assertTrue(bashScript.contains("requiredMinimumSqliteVersion"));
-    assertTrue(powerShellScript.contains("requiredSqlite3mcVersion"));
+    assertTrue(powerShellContract.contains("requiredSqlite3mcVersion"));
+  }
+
+  @Test
+  void smokeScripts_delegateSharedOfficeWorkerWorkflowThroughPythonOwner() throws IOException {
+    Path repositoryRoot = repositoryRoot();
+    String bundleSmokeScript = Files.readString(repositoryRoot.resolve("scripts/bundle-smoke.sh"));
+    String dockerSmokeScript = Files.readString(repositoryRoot.resolve("scripts/docker-smoke.sh"));
+    String bundleOfficeWorker =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-office-worker.ps1"));
+    String bundleAcceptance =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-acceptance.ps1"));
+    String bundleCommandBridge =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-command-bridge.ps1"));
+    String releaseSmokeSupport =
+        Files.readString(repositoryRoot.resolve("scripts/release-smoke-support.sh"));
+    String releaseSmokeWorkflow =
+        Files.readString(repositoryRoot.resolve("scripts/release-smoke-workflow.sh"));
+    String releaseSmokeWorkflowPython =
+        Files.readString(repositoryRoot.resolve("scripts/release-smoke-workflow.py"));
+
+    assertTrue(bundleSmokeScript.contains("release-smoke-support.sh"));
+    assertTrue(dockerSmokeScript.contains("release-smoke-support.sh"));
+    assertTrue(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
+    assertTrue(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));
+    assertTrue(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_SCENARIO_ID"));
+    assertTrue(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
+    assertTrue(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));
+    assertTrue(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_SCENARIO_ID"));
+    assertFalse(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
+    assertFalse(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
+    assertTrue(releaseSmokeSupport.contains("release-smoke-common.sh"));
+    assertTrue(releaseSmokeSupport.contains("release-smoke-workflow.sh"));
+    assertFalse(releaseSmokeSupport.contains("release-smoke-fixtures.sh"));
+    assertFalse(releaseSmokeSupport.contains("release-smoke-assertions.sh"));
+    assertTrue(releaseSmokeWorkflow.contains("release-smoke-workflow.py"));
+    assertTrue(releaseSmokeWorkflowPython.contains("release_smoke_workflow.runner import main"));
+    assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
+    assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));
+    assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_SCENARIO_ID"));
+    assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON"));
+    assertFalse(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
+    assertTrue(bundleOfficeWorker.contains("bundle-smoke-command-bridge.ps1"));
+    assertTrue(
+        bundleCommandBridge.contains("Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8"));
+    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
+    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
+    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_STDIN_FILE"));
+    assertTrue(bundleCommandBridge.contains("& $LauncherPath"));
+    assertTrue(bundleAcceptance.contains("Rīga büro"));
+  }
+
+  @Test
+  void windowsBundleLauncher_usesUnicodeSafeNativeArgumentForwarding() throws IOException {
+    String powerShellLauncher =
+        Files.readString(repositoryRoot().resolve("cli/src/bundle/bin/fingrind.ps1"));
+
+    assertTrue(powerShellLauncher.contains("ProcessStartInfo"));
+    assertTrue(powerShellLauncher.contains("ArgumentList.Add"));
+    assertTrue(powerShellLauncher.contains("WorkingDirectory"));
+    assertTrue(powerShellLauncher.contains("RedirectStandardInput"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_LAUNCHER_ARGUMENTS_FILE"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_STDIN_FILE"));
+    assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
+    assertTrue(powerShellLauncher.contains("$scriptInvocationArguments = @($args)"));
+    assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
+    assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
+    assertFalse(powerShellLauncher.contains("ConvertFrom-Json"));
   }
 
   private static Path repositoryRoot() {

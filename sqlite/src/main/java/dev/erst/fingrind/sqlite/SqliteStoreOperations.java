@@ -18,7 +18,7 @@ final class SqliteStoreOperations {
     try {
       activeDatabase.executeStatement("rollback");
     } catch (SqliteNativeException | IllegalStateException exception) {
-      SqliteBestEffort.ignore(exception);
+      SqliteBestEffort.reportCleanupFailure("rolling back one SQLite transaction", exception);
     }
   }
 
@@ -29,7 +29,7 @@ final class SqliteStoreOperations {
     try {
       reopenedDatabase.close();
     } catch (SqliteNativeException | IllegalStateException exception) {
-      SqliteBestEffort.ignore(exception);
+      SqliteBestEffort.reportCleanupFailure("closing one reopened SQLite database", exception);
     }
   }
 

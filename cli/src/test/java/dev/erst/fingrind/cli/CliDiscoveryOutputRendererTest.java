@@ -25,12 +25,12 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for {@link CliDiscoveryOutputRenderer}. */
 class CliDiscoveryOutputRendererTest {
   @Test
-  void renderHelpHuman_rendersImplicitJsonOutputsAndEmptyQuickStart() {
+  void renderHelpHuman_rendersFixedAndSelectableStdoutContractsAndEmptyQuickStart() {
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.26.0",
+                "0.27.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -48,9 +48,27 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show help"),
+                    new CommandDescriptor(
+                        OperationId.EXECUTE_PLAN,
                         List.of(),
                         List.of(),
-                        "Show help")),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(),
+                        List.of(),
+                        "Execute one plan"),
+                    new CommandDescriptor(
+                        OperationId.PRINT_PLAN_TEMPLATE,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.RAW_JSON,
+                        List.of(),
+                        List.of(),
+                        "Print one plan template")),
                 List.of(),
                 List.of(new ExitCodeDescriptor(0, "ok")),
                 new ContractResponse.PreflightDescriptor(
@@ -60,13 +78,15 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("help"));
-    assertTrue(rendered.contains("(json)"));
+    assertTrue(rendered.contains("json, human (via --output)"));
+    assertTrue(rendered.contains("json envelope (fixed)"));
+    assertTrue(rendered.contains("raw json (fixed)"));
     assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("(none)"));
   }
 
   @Test
-  void renderCapabilitiesHuman_rendersCommandGroupsAndReadSurface() {
+  void renderCapabilitiesHuman_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
         CliDiscoveryOutputRenderer.renderCapabilitiesHuman(
             MachineContract.capabilities(
@@ -74,9 +94,12 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Command Groups"));
-    assertTrue(rendered.contains("Read Surface"));
+    assertTrue(rendered.contains("Command Contracts"));
+    assertTrue(rendered.contains("Request Input"));
     assertTrue(rendered.contains("Discovery"));
-    assertTrue(rendered.contains("Query/report stdout"));
+    assertTrue(rendered.contains("trial-balance"));
+    assertTrue(rendered.contains("json, human, csv (via --output)"));
+    assertTrue(rendered.contains("Selectable stdout flag"));
   }
 
   @Test
@@ -86,13 +109,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.26.0"));
+    assertTrue(rendered.contains("0.27.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.26.0",
+        "0.27.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 

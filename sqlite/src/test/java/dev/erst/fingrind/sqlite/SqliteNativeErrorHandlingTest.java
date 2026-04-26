@@ -15,6 +15,8 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -283,11 +285,34 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void shutdownQuietly_ignoresThrowablesFromNativeShutdown() {
-    assertDoesNotThrow(
-        () ->
-            SqliteNativeBootstrap.shutdownQuietly(
-                throwingMethodHandle(new IllegalStateException("boom"), int.class)));
+  void shutdownQuietly_reportsRuntimeFailuresFromNativeShutdown() {
+    List<String> cleanupReports = new ArrayList<>();
+
+    try (SqliteBestEffort.ReporterOverride ignored =
+        SqliteBestEffort.replaceReporterForTesting(
+            (action, exception) ->
+                cleanupReports.add(action + "|" + exception.getClass().getSimpleName()))) {
+      assertDoesNotThrow(
+          () ->
+              SqliteNativeBootstrap.shutdownQuietly(
+                  throwingMethodHandle(new IllegalStateException("boom"), int.class)));
+    }
+
+    assertEquals(
+        List.of("shutting down the process-scoped SQLite runtime|IllegalStateException"),
+        cleanupReports);
+  }
+
+  @Test
+  void shutdownQuietly_rethrowsErrorsFromNativeShutdown() {
+    AssertionError error =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                SqliteNativeBootstrap.shutdownQuietly(
+                    throwingMethodHandle(new AssertionError("boom"), int.class)));
+
+    assertEquals("boom", error.getMessage());
   }
 
   @Test

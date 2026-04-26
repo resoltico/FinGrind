@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -37,10 +36,16 @@ class MachineContractTest {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());
-    assertEquals("--output", capabilities.requestInput().queryOutputOption());
+    assertEquals("--output", capabilities.requestInput().outputOption());
+    assertEquals(
+        List.of(OutputMode.JSON, OutputMode.HUMAN),
+        command(capabilities.commands().discovery(), OperationId.VERSION).outputModes());
     assertEquals(
         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
-        capabilities.requestInput().queryOutputModes());
+        command(capabilities.commands().query(), OperationId.TRIAL_BALANCE).outputModes());
+    assertEquals(
+        List.of(),
+        command(capabilities.commands().write(), OperationId.EXECUTE_PLAN).outputModes());
     assertTrue(
         capabilities
             .requestInput()
@@ -116,9 +121,7 @@ class MachineContractTest {
 
     HelpDescriptor help = MachineContract.help(identity, environment);
     VersionDescriptor version = MachineContract.version(identity);
-    ContractTemplates.PostingRequestTemplateDescriptor template =
-        MachineContract.requestTemplate(
-            Clock.fixed(Instant.parse("2026-04-13T12:00:00Z"), java.time.ZoneOffset.UTC));
+    ContractTemplates.PostingRequestTemplateDescriptor template = MachineContract.requestTemplate();
     ContractTemplates.ReversalTemplateDescriptor reversalTemplate =
         new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal");
 
@@ -157,7 +160,7 @@ class MachineContractTest {
     assertEquals(
         environment.distribution().unsupportedPublicCliBundleTargets(),
         ProtocolCatalog.unsupportedPublicCliBundleTargets());
-    assertEquals("2026-04-13", template.effectiveDate());
+    assertEquals("2026-04-17", template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
     assertEquals(ActorType.HUMAN, template.provenance().actorType());
     assertEquals("posting-1", reversalTemplate.priorPostingId());
@@ -190,6 +193,14 @@ class MachineContractTest {
         .findFirst()
         .orElseThrow(() -> new AssertionError("Missing field: " + fieldName))
         .presence();
+  }
+
+  private static CommandDescriptor command(
+      List<CommandDescriptor> commands, OperationId operationId) {
+    return commands.stream()
+        .filter(command -> command.name() == operationId)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing command: " + operationId.wireName()));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {

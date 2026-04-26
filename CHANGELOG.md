@@ -5,6 +5,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-04-26
+
+### Changed
+
+- Public request/plan template fixtures are now deterministic canonical scaffold captures with the
+  fixed example `effectiveDate` value `2026-04-17`, and the user/reference docs now describe them
+  as exact `print-request-template` / `print-plan-template` outputs instead of current-date shape
+  examples.
+- CLI bundle assembly now renders `bundle-manifest.json` as valid generated JSON from the canonical
+  distribution contract during staging, and the developer distribution docs now record that
+  generation path explicitly.
+- `DistributionContractReader` and the ledger-plan machine-contract schema builder now delegate to
+  smaller role-owned collaborators for contract paths, JSON loading, schema loading, host-platform
+  normalization, field-set assembly, and variant-schema synthesis instead of keeping those seams in
+  two mixed-responsibility god-files.
+- `docs/USER_CLI.md` now keeps its command table in a generated contract-owned block rendered from
+  the canonical protocol catalog instead of hand-maintaining public command rows separately.
+- The root `check.sh`, Unix release-smoke entrypoints, and Windows bundle-smoke entrypoint now
+  delegate monitoring and release-surface workflow logic through dedicated support modules and a
+  shared Python office-worker workflow package with focused config, CLI, fixture, assertion, and
+  phase owners instead of carrying the full implementation inline in multiple public wrappers or
+  replacement god-files.
+- The shared release-smoke workflow now derives bundle/container fixture paths from the compact
+  canonical environment tuple `FINGRIND_RELEASE_SMOKE_WORK_ROOT`,
+  `FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE`, and `FINGRIND_RELEASE_SMOKE_SCENARIO_ID`, so the
+  Bash bundle verifier, Docker verifier, and Windows PowerShell verifier no longer re-author large
+  parallel per-path environment maps at the wrapper seam.
+
+### Fixed
+
+- Fixed the canonical protocol catalog so fixed-stdout commands such as `print-request-template`,
+  `print-plan-template`, and `execute-plan` no longer advertise selectable JSON output modes they
+  do not support; CLI help and docs now distinguish fixed raw JSON from fixed JSON envelopes.
+- Fixed the `capabilities` machine contract so grouped `commands` entries now publish the
+  authoritative per-command `executionMode`, `outputModes`, and `artifactOutputs`, and
+  `requestInput` now publishes only the canonical `outputOption` selector instead of a false global
+  `queryOutputModes` contract.
+- Fixed the canonical protocol catalog so every command that advertises selectable output modes now
+  also includes the matching `--output` syntax in its canonical option list, and pinned that seam
+  with contract tests.
+- Fixed the generated `docs/USER_CLI.md` command table so it preserves the exact canonical option
+  spellings from the protocol catalog, including raw `|`-delimited variants inside generated HTML
+  code cells, and added the `:contract:syncUserCliDocs` sync task so the generated block is
+  materially refreshed from the canonical owner instead of only test-compared.
+- Fixed the root `check.sh` stage contract so the fixed stage inventory, Stage 5 shell-regression
+  list, and help text now derive from one shared owner instead of being re-authored separately in
+  comments, usage output, and execution flow.
+- Fixed the root `check.sh` stage contract so the stage-to-command execution wiring now also
+  delegates through the canonical stage owner instead of keeping a second fixed-stage case map in
+  the root script.
+- Fixed the shared release-surface office-worker acceptance seam so the Bash bundle verifier, Bash
+  Docker verifier, and Windows PowerShell bundle verifier now delegate their common command,
+  fixture, and assertion workflow through one Python owner instead of maintaining parallel
+  near-copied implementations.
+- Fixed the shared operation-id contract so shell-side consumers now read the full explicit
+  semantic-key registry from the protocol schema resource instead of inferring most semantic keys
+  by camel-casing enum names.
+- Fixed the Windows bundle acceptance seam so the PowerShell entrypoint once again keeps Unicode
+  workspace-path coverage alive through `workspace odd/Rīga büro/...`, and pinned that surface
+  with cross-shell regression checks.
+- Fixed the published Windows PowerShell bundle launcher so Unicode-only path characters such as
+  `ī` now reach the bundled Java runtime through a `ProcessStartInfo.ArgumentList` launch path
+  instead of degrading into invalid `?` path characters during release-smoke execution.
+- Fixed the remaining Windows bundle launcher Unicode seam so staged bridge arguments now stay in
+  a UTF-8 JSON file until the JVM resolves them through `FINGRIND_LAUNCHER_ARGUMENTS_FILE`,
+  instead of being rehydrated in PowerShell and pushed back across a second native argv boundary.
+- Fixed bundle and Docker smoke verification so pagination cursors are read from JSON structurally
+  instead of with regex text scraping, which keeps release acceptance aligned with the actual JSON
+  contract.
+- Fixed bundle, Docker, and Windows bundle smoke verification so the release-surface checks now
+  validate the report stdout/PDF contract from structured per-command descriptors instead of a
+  duplicated global `queryOutputModes` assumption.
+- Fixed the Gradle test feedback loop so repo-owned script and documentation contract tests now
+  declare those repo files as task inputs, preventing `:cli:test` and `:contract:test` from going
+  `UP-TO-DATE` after shell/doc drift that the assertions are supposed to catch.
+- Fixed SQLite best-effort cleanup so rollback, close, delete, and runtime shutdown failures now
+  emit observable warnings and test hooks instead of disappearing silently.
+
 ## [0.26.0] - 2026-04-25
 
 ### Changed
@@ -973,7 +1051,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.27.0
 [0.26.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.26.0
 [0.25.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.25.0
 [0.24.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.24.0

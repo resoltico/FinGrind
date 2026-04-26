@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.core.IdempotencyKey;
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
@@ -86,11 +88,22 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void closeAfterConfigurationFailure_ignoresNativeCloseFailure() throws Exception {
-    assertDoesNotThrow(
-        () ->
-            SqliteConnectionConfigurer.closeAfterConfigurationFailure(
-                staleDatabaseHandle(tempDirectory.resolve("stale-close.sqlite"))));
+  void closeAfterConfigurationFailure_reportsNativeCloseFailureWithoutThrowing() throws Exception {
+    List<String> cleanupReports = new ArrayList<>();
+
+    try (SqliteBestEffort.ReporterOverride ignored =
+        SqliteBestEffort.replaceReporterForTesting(
+            (action, exception) ->
+                cleanupReports.add(action + "|" + exception.getClass().getSimpleName()))) {
+      assertDoesNotThrow(
+          () ->
+              SqliteConnectionConfigurer.closeAfterConfigurationFailure(
+                  staleDatabaseHandle(tempDirectory.resolve("stale-close.sqlite"))));
+    }
+
+    assertEquals(
+        List.of("closing one SQLite database after configuration failure|SqliteNativeException"),
+        cleanupReports);
   }
 
   @Test

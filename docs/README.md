@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.26.0"
+afad: "4.0"
+version: "0.27.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -29,6 +29,7 @@ Then choose one of the user, developer, or reference tracks below.
 The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
 Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
+- [examples/request-template.json](./examples/request-template.json): exact `print-request-template` scaffold capture
 - [examples/declare-account-cash.json](./examples/declare-account-cash.json): minimal account-declaration request for a debit-balance cash account
 - [examples/declare-account-revenue.json](./examples/declare-account-revenue.json): minimal account-declaration request for a credit-balance revenue account
 - [examples/unknown-account-request.json](./examples/unknown-account-request.json): posting request that deterministically rejects for an undeclared account
@@ -51,7 +52,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json): deterministic wrong-passphrase error example
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): example `print-plan-template` scaffold shape
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): exact `print-plan-template` scaffold capture
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): runnable `execute-plan` request that pages accounts and postings inside the plan journal
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with a per-step journal

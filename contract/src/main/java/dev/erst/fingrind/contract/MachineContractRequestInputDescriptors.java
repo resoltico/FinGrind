@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.util.List;
@@ -16,9 +15,9 @@ final class MachineContractRequestInputDescriptors {
         ProtocolOptions.bookPassphraseOptions(),
         ProtocolOptions.REQUEST_FILE,
         ProtocolOptions.OUTPUT,
-        List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
         List.of(
-            "commands that advertise outputModes accept --output with one of those public values",
+            "commands in capabilities.commands that advertise non-empty outputModes accept --output with one of those public values",
+            "commands in capabilities.commands with empty outputModes still publish one fixed stdout contract through executionMode, so agents can distinguish fixed raw JSON from fixed JSON envelopes",
             "supported report commands also accept --pdf-out <path> and write one PDF artifact on successful execution without changing the command's selected stdout output mode",
             "successful discovery, administration, write, query, and report commands honor the selected output mode when they advertise one, while deterministic failures remain canonical JSON error envelopes so repair logic stays machine-readable"),
         ProtocolOptions.STDIN_TOKEN,

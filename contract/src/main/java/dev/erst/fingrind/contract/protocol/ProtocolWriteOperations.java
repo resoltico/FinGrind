@@ -34,7 +34,8 @@ final class ProtocolWriteOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.REQUEST_FILE + " <path|->"),
+                ProtocolOptions.REQUEST_FILE + " <path|->",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Validate one posting request without committing it.",
@@ -53,7 +54,8 @@ final class ProtocolWriteOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.REQUEST_FILE + " <path|->"),
+                ProtocolOptions.REQUEST_FILE + " <path|->",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Commit one posting request into the selected SQLite book.",

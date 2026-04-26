@@ -95,9 +95,25 @@ final class ProtocolContractSchemaKeys {
             requireText(bundleLayoutNode, "sqliteLibraryFileName")),
         new OperationIds(
             requireText(operationIdsNode, "help"),
+            requireText(operationIdsNode, "version"),
             requireText(operationIdsNode, "capabilities"),
             requireText(operationIdsNode, "printRequestTemplate"),
-            requireText(operationIdsNode, "printPlanTemplate")));
+            requireText(operationIdsNode, "printPlanTemplate"),
+            requireText(operationIdsNode, "generateBookKeyFile"),
+            requireText(operationIdsNode, "openBook"),
+            requireText(operationIdsNode, "rekeyBook"),
+            requireText(operationIdsNode, "declareAccount"),
+            requireText(operationIdsNode, "inspectBook"),
+            requireText(operationIdsNode, "listAccounts"),
+            requireText(operationIdsNode, "getPosting"),
+            requireText(operationIdsNode, "listPostings"),
+            requireText(operationIdsNode, "accountBalance"),
+            requireText(operationIdsNode, "trialBalance"),
+            requireText(operationIdsNode, "accountLedger"),
+            requireText(operationIdsNode, "periodSummary"),
+            requireText(operationIdsNode, "executePlan"),
+            requireText(operationIdsNode, "preflightEntry"),
+            requireText(operationIdsNode, "postEntry")));
   }
 
   private static ProtocolContractSchemaKeys loadCurrent() {
@@ -151,5 +167,24 @@ final class ProtocolContractSchemaKeys {
 
   /** Canonical external property names for the operation-id contract resource. */
   record OperationIds(
-      String help, String capabilities, String printRequestTemplate, String printPlanTemplate) {}
+      String help,
+      String version,
+      String capabilities,
+      String printRequestTemplate,
+      String printPlanTemplate,
+      String generateBookKeyFile,
+      String openBook,
+      String rekeyBook,
+      String declareAccount,
+      String inspectBook,
+      String listAccounts,
+      String getPosting,
+      String listPostings,
+      String accountBalance,
+      String trialBalance,
+      String accountLedger,
+      String periodSummary,
+      String executePlan,
+      String preflightEntry,
+      String postEntry) {}
 }

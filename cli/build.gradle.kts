@@ -2,6 +2,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
 import dev.erst.fingrind.buildlogic.DistributionContractReader
 import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
+import dev.erst.fingrind.buildlogic.WriteBundleManifestTask
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
 import org.apache.tools.ant.filters.ReplaceTokens
@@ -10,12 +11,14 @@ import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.attributes.Usage
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Delete
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.application.CreateStartScripts
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     application
@@ -90,6 +93,8 @@ val dockerEntryPointOutputFile = layout.buildDirectory.file("docker/docker-entry
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
+val bundleManifestOutputFile =
+    layout.buildDirectory.file("generated/bundle/root/bundle-manifest.json")
 val distributionDirectory = layout.buildDirectory.dir("distributions")
 val bundleClassifierValue = bundleClassifier.get()
 val bundleTarget = DistributionContractReader.bundleTarget(repositoryRootDirectory, bundleClassifierValue)
@@ -130,10 +135,6 @@ val bundleTemplateProperties =
             DistributionContractReader.requestTemplateOperationName(repositoryRootDirectory),
         "planTemplateOperation" to
             DistributionContractReader.planTemplateOperationName(repositoryRootDirectory),
-        "publicBundleTargetsJson" to
-            DistributionContractReader.jsonStringArray(publicCliBundleTargets),
-        "unsupportedPublicBundleTargetsJson" to
-            DistributionContractReader.jsonStringArray(unsupportedPublicCliBundleTargets),
         "publicBundleTargetsMarkdown" to
             DistributionContractReader.markdownBulletList(publicCliBundleTargets),
         "unsupportedPublicBundleTargetsMarkdown" to
@@ -291,6 +292,18 @@ val createRuntimeImage =
         outputDirectory.set(runtimeImageDirectory)
     }
 
+val writeBundleManifest =
+    tasks.register<WriteBundleManifestTask>("writeBundleManifest") {
+        group = "distribution"
+        description = "Writes the generated bundle manifest for the self-contained CLI archive."
+        contractFiles.from(DistributionContractReader.requiredContractFiles(repositoryRootDirectory))
+        projectRootDirectoryPath.set(repositoryRootDirectory.toString())
+        applicationName.set(rootProject.name)
+        versionText.set(project.version.toString())
+        bundleClassifier.set(bundleClassifierValue)
+        outputFile.set(bundleManifestOutputFile)
+    }
+
 val cleanBundleRoot =
     tasks.register<Delete>("cleanBundleRoot") {
         group = "distribution"
@@ -306,6 +319,7 @@ val stageCliBundle =
         dependsOn(shadowJarTask)
         dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
         dependsOn(createRuntimeImage)
+        dependsOn(writeBundleManifest)
         into(bundleRootDirectory)
         inputs.properties(bundleTemplateProperties)
 
@@ -324,6 +338,7 @@ val stageCliBundle =
         from(layout.projectDirectory.dir("src/bundle/root")) {
             expand(bundleTemplateProperties)
         }
+        from(bundleManifestOutputFile)
         from(shadowJarArchiveFile) {
             into("lib/app")
             rename { "fingrind.jar" }
@@ -413,6 +428,27 @@ tasks.register("bundleCliArchive") {
         "Builds the self-contained FinGrind CLI bundle archive together with its SHA-256 checksum."
     dependsOn(bundleArchiveTask)
     dependsOn(bundleCliSha256)
+}
+
+tasks.named<Test>("test") {
+    inputs.file(rootProject.layout.projectDirectory.file("Dockerfile"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.layout.projectDirectory.file(".gitignore"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.layout.projectDirectory.file(".gitattributes"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.layout.projectDirectory.file("AGENTS.md"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.layout.projectDirectory.file(".codex/UNIVERSAL_ENGINEERING_CONTRACT.md"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(layout.projectDirectory.file("build.gradle.kts"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("docs/examples"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("scripts"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("gradle/build-logic"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 fun hostBundleClassifier(): String {
