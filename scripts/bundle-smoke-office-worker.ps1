@@ -8,8 +8,12 @@ function Invoke-SharedBundleOfficeWorkerWorkflow {
     )
 
     $workflowScript = Join-Path $script:RepoRoot "scripts/release-smoke-workflow.py"
+    $bridgeScript = Join-Path $script:RepoRoot "scripts/bundle-smoke-command-bridge.ps1"
     if (-not (Test-Path -LiteralPath $workflowScript -PathType Leaf)) {
         Fail "missing shared release smoke workflow runner at $workflowScript"
+    }
+    if (-not (Test-Path -LiteralPath $bridgeScript -PathType Leaf)) {
+        Fail "missing bundle smoke command bridge at $bridgeScript"
     }
 
     $commandPrefixJson = ConvertTo-Json -Compress @(
@@ -19,10 +23,19 @@ function Invoke-SharedBundleOfficeWorkerWorkflow {
         "-ExecutionPolicy", "Bypass",
         "-File", $script:BundleLauncher
     )
+    $commandBridgePrefixJson = ConvertTo-Json -Compress @(
+        "pwsh",
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $bridgeScript,
+        $script:BundleLauncher
+    )
     $releaseSmokeEnv = [ordered]@{
         FINGRIND_RELEASE_SMOKE_LABEL                        = "Bundle acceptance"
         FINGRIND_RELEASE_SMOKE_REPO_ROOT                    = $script:RepoRoot
         FINGRIND_RELEASE_SMOKE_COMMAND_PREFIX_JSON          = $commandPrefixJson
+        FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON   = $commandBridgePrefixJson
         FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON        = (ConvertTo-Json -Compress @("FINGRIND_SQLITE_LIBRARY", "JAVA_HOME"))
         FINGRIND_RELEASE_SMOKE_RUNTIME_DISTRIBUTION_KEY     = "bundleRuntimeDistribution"
         FINGRIND_RELEASE_SMOKE_EXPECT_LOADED_SQLITE_DETAILS = "true"

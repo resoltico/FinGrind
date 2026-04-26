@@ -15,6 +15,7 @@ class ReleaseSmokeConfig:
     label: str
     repo_root: Path
     command_prefix: list[str]
+    command_bridge_prefix: list[str]
     command_cwd: Path | None
     command_env_drop: list[str]
     command_env_set: dict[str, str]

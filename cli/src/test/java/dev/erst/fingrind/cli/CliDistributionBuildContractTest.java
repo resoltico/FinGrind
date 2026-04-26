@@ -186,6 +186,8 @@ class CliDistributionBuildContractTest {
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-office-worker.ps1"));
     String bundleAcceptance =
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-acceptance.ps1"));
+    String bundleCommandBridge =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-command-bridge.ps1"));
     String releaseSmokeSupport =
         Files.readString(repositoryRoot.resolve("scripts/release-smoke-support.sh"));
     String releaseSmokeWorkflow =
@@ -212,7 +214,12 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
     assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));
     assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_SCENARIO_ID"));
+    assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON"));
     assertFalse(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
+    assertTrue(bundleOfficeWorker.contains("bundle-smoke-command-bridge.ps1"));
+    assertTrue(
+        bundleCommandBridge.contains("Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8"));
+    assertTrue(bundleCommandBridge.contains("& $LauncherPath @arguments"));
     assertTrue(bundleAcceptance.contains("Rīga büro"));
   }
 

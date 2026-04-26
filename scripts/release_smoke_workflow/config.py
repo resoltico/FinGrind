@@ -23,6 +23,9 @@ def load_config() -> ReleaseSmokeConfig:
         label=require_env("FINGRIND_RELEASE_SMOKE_LABEL"),
         repo_root=Path(require_env("FINGRIND_RELEASE_SMOKE_REPO_ROOT")),
         command_prefix=command_prefix,
+        command_bridge_prefix=require_json_array(
+            "FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON", default=[]
+        ),
         command_cwd=optional_path("FINGRIND_RELEASE_SMOKE_COMMAND_CWD"),
         command_env_drop=require_json_array(
             "FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON", default=[]

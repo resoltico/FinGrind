@@ -30,6 +30,7 @@ readonly bundle_smoke_common_ps1="${repo_root}/scripts/bundle-smoke-common.ps1"
 readonly bundle_smoke_contract_ps1="${repo_root}/scripts/bundle-smoke-contract.ps1"
 readonly bundle_smoke_acceptance_ps1="${repo_root}/scripts/bundle-smoke-acceptance.ps1"
 readonly bundle_smoke_office_worker_ps1="${repo_root}/scripts/bundle-smoke-office-worker.ps1"
+readonly bundle_smoke_command_bridge_ps1="${repo_root}/scripts/bundle-smoke-command-bridge.ps1"
 readonly bundle_launcher_ps1="${repo_root}/cli/src/bundle/bin/fingrind.ps1"
 
 [[ -f "${bundle_smoke_ps1}" ]] || die "missing PowerShell bundle smoke script at ${bundle_smoke_ps1}"
@@ -43,6 +44,8 @@ readonly bundle_launcher_ps1="${repo_root}/cli/src/bundle/bin/fingrind.ps1"
     "missing PowerShell bundle smoke acceptance script at ${bundle_smoke_acceptance_ps1}"
 [[ -f "${bundle_smoke_office_worker_ps1}" ]] || die \
     "missing PowerShell bundle smoke office-worker script at ${bundle_smoke_office_worker_ps1}"
+[[ -f "${bundle_smoke_command_bridge_ps1}" ]] || die \
+    "missing PowerShell bundle smoke command bridge at ${bundle_smoke_command_bridge_ps1}"
 [[ -f "${bundle_launcher_ps1}" ]] || die \
     "missing PowerShell bundle launcher template at ${bundle_launcher_ps1}"
 grep -Fq 'bundle-smoke-support.ps1' "${bundle_smoke_ps1}" || die \
@@ -69,6 +72,12 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${bundle_smoke_office_work
     "bundle-smoke-office-worker.ps1 no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the shared scenario-id contract"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer publishes the PowerShell bridge command contract"
+grep -Fq 'Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer reads bridge requests as UTF-8 JSON"
+grep -Fq '& $LauncherPath @arguments' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer replays decoded arguments through PowerShell"
 grep -Fq 'ProcessStartInfo' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer uses a ProcessStartInfo-based native launch path"
 grep -Fq 'ArgumentList.Add' "${bundle_launcher_ps1}" || die \
