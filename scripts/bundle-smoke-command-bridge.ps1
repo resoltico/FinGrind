@@ -20,55 +20,39 @@ $arguments = @()
 foreach ($argument in @($request.arguments)) {
     $arguments += [string] $argument
 }
-$stdinText = $null
-if ($null -ne $request.stdinText) {
-    $stdinText = [string] $request.stdinText
-}
-
-$launcherStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
-$launcherStartInfo.UseShellExecute = $false
-$launcherStartInfo.WorkingDirectory = (Get-Location).Path
-$launcherStartInfo.RedirectStandardInput = $null -ne $stdinText
-
-if ([string]::Equals(
-        [System.IO.Path]::GetExtension($LauncherPath),
-        ".ps1",
-        [System.StringComparison]::OrdinalIgnoreCase)) {
-    $launcherHost =
-        Join-Path $PSHOME $(if ($IsWindows) { "pwsh.exe" } else { "pwsh" })
-    $launcherStartInfo.FileName = $launcherHost
-    foreach ($prefixArgument in @(
-            "-NoLogo",
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-File", $LauncherPath
-        )) {
-        [void] $launcherStartInfo.ArgumentList.Add([string] $prefixArgument)
-    }
-} else {
-    $launcherStartInfo.FileName = $LauncherPath
-}
-
-foreach ($argument in $arguments) {
-    [void] $launcherStartInfo.ArgumentList.Add([string] $argument)
-}
-
-$launcherProcess = [System.Diagnostics.Process]::new()
-$launcherProcess.StartInfo = $launcherStartInfo
+$stdinFile = $null
+$priorReturnMode = $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE
+$priorStdinFile = $env:FINGRIND_BUNDLE_STDIN_FILE
 
 try {
-    if (-not $launcherProcess.Start()) {
-        throw "failed to start bridged launcher at $LauncherPath"
+    if ($null -ne $request.stdinText) {
+        $stdinFile = Join-Path ([System.IO.Path]::GetTempPath()) (
+            "fingrind-bundle-stdin-" + [System.Guid]::NewGuid().ToString("N") + ".txt"
+        )
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        [System.IO.File]::WriteAllText($stdinFile, [string] $request.stdinText, $utf8NoBom)
+        $env:FINGRIND_BUNDLE_STDIN_FILE = $stdinFile
     }
+    $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE = "true"
 
-    if ($launcherStartInfo.RedirectStandardInput) {
-        $launcherProcess.StandardInput.Write($stdinText)
-        $launcherProcess.StandardInput.Close()
+    $launcherResult = & $LauncherPath @arguments
+    if (-not $?) {
+        exit 1
     }
-
-    $launcherProcess.WaitForExit()
-    exit $launcherProcess.ExitCode
+    exit ([int] $launcherResult)
 }
 finally {
-    $launcherProcess.Dispose()
+    if ($null -ne $stdinFile -and (Test-Path -LiteralPath $stdinFile -PathType Leaf)) {
+        Remove-Item -LiteralPath $stdinFile -Force -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $priorStdinFile) {
+        $env:FINGRIND_BUNDLE_STDIN_FILE = $priorStdinFile
+    } else {
+        Remove-Item Env:FINGRIND_BUNDLE_STDIN_FILE -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $priorReturnMode) {
+        $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE = $priorReturnMode
+    } else {
+        Remove-Item Env:FINGRIND_BUNDLE_RETURN_EXIT_CODE -ErrorAction SilentlyContinue
+    }
 }

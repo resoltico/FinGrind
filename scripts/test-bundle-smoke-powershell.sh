@@ -76,12 +76,12 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON' "${bundle_smoke_off
     "bundle-smoke-office-worker.ps1 no longer publishes the PowerShell bridge command contract"
 grep -Fq 'Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer reads bridge requests as UTF-8 JSON"
-grep -Fq 'ProcessStartInfo' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer launches the bundle script through ProcessStartInfo"
-grep -Fq 'RedirectStandardInput' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer preserves stdin through the bridged launch path"
-grep -Fq 'ArgumentList.Add' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer forwards bridged arguments through ArgumentList"
+grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer requests in-process launcher exit-code returns"
+grep -Fq 'FINGRIND_BUNDLE_STDIN_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer stages bridged stdin through a UTF-8 temp file"
+grep -Fq '& $LauncherPath @arguments' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer invokes the launcher in-process to preserve Unicode arguments"
 python3 - <<'PY' "${bundle_smoke_command_bridge_ps1}"
 import pathlib
 import sys
@@ -97,6 +97,12 @@ grep -Fq 'ProcessStartInfo' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer uses a ProcessStartInfo-based native launch path"
 grep -Fq 'ArgumentList.Add' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer forwards Java arguments through ProcessStartInfo.ArgumentList"
+grep -Fq 'RedirectStandardInput' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer stages bridged stdin into the bundled Java process"
+grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer supports the in-process bridge return-code contract"
+grep -Fq 'FINGRIND_BUNDLE_STDIN_FILE' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer supports the in-process bridge stdin-file contract"
 if grep -Fq '& $runtimeJava @javaArguments' "${bundle_launcher_ps1}"; then
     die "fingrind.ps1 regressed to direct native invocation that can corrupt Unicode arguments"
 fi
@@ -144,9 +150,11 @@ pwsh -NoLogo -NoProfile -File "${pwsh_script}"
 cat >"${bridge_launcher_ps1}" <<'PWSH'
 $payload = [ordered]@{
     arguments = @($args)
-    stdinText = [Console]::In.ReadToEnd()
+    stdinText = Get-Content -LiteralPath $env:FINGRIND_BUNDLE_STDIN_FILE -Raw -Encoding UTF8
+    returnMode = $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE
 }
-$payload | ConvertTo-Json -Compress
+[Console]::Out.WriteLine(($payload | ConvertTo-Json -Compress))
+return 0
 PWSH
 
 cat >"${bridge_request_json}" <<'JSON'
@@ -168,6 +176,8 @@ if payload["arguments"][2] != "/tmp/workspace odd/Rīga büro/bridge key.key":
     raise SystemExit("bundle-smoke-command-bridge.ps1 corrupted the Unicode CLI argument")
 if payload["stdinText"] != "stdin through bridge\n":
     raise SystemExit("bundle-smoke-command-bridge.ps1 failed to replay stdin text")
+if payload["returnMode"] != "true":
+    raise SystemExit("bundle-smoke-command-bridge.ps1 failed to enable in-process launcher return mode")
 PY
 
 printf 'bundle smoke PowerShell regression: success\n'
