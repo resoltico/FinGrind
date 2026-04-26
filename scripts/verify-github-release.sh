@@ -21,7 +21,6 @@ readonly retry_delay_seconds="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-0}
 readonly script_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly archive_verifier="${script_dir}/verify-source-archive.py"
 
-[[ -n "${GH_TOKEN:-}" ]] || die "GH_TOKEN is required"
 [[ -n "${tag_name}" ]] || die "tag name is required"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier at ${archive_verifier}"
 
