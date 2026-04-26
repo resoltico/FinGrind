@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
+afad: "4.0"
 version: "0.26.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -126,6 +126,49 @@ public final class ProtocolOptions
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
   posting lookup, and date filters
+
+## `ProtocolUserCliDocumentSyncMain`
+
+`ProtocolUserCliDocumentSyncMain` is the contract-owned launcher that rewrites the generated
+command-table block inside `docs/USER_CLI.md` from the canonical protocol catalog.
+
+```java
+public final class ProtocolUserCliDocumentSyncMain
+```
+
+- Purpose: keep the public USER_CLI command table materially synchronized from the protocol owner
+  instead of relying on hand edits or a test-only comparison loop
+- Operational path: invoked through `./gradlew :contract:syncUserCliDocs`
+- Scope: replaces only the marked generated block and preserves exact canonical option spellings,
+  including raw `|`-delimited variants inside generated HTML code cells
+
+## `ProtocolContractSchemaKeys`
+
+`ProtocolContractSchemaKeys` is the typed owner for the external field names used by the
+protocol-owned JSON contract resources.
+
+```java
+final class ProtocolContractSchemaKeys
+```
+
+- Purpose: keep runtime loaders and build/distribution tooling aligned on one schema-key registry
+  instead of duplicating field-name literals or partial maps
+- Current scope: runtime-surface, public-distribution, managed-SQLite, bundle-layout, and the
+  full lower-camel semantic map for the operation-id contract
+
+## `OperationIdContract`
+
+`OperationIdContract` is the JSON-backed wire-name registry for public FinGrind operations.
+
+```java
+final class OperationIdContract
+```
+
+- Purpose: keep operation wire ids in one resource-backed owner shared by typed catalog code,
+  shell-side contract readers, and distribution verification
+- Related contract: the semantic-key-to-enum-name mapping is explicitly owned by
+  `contract-schema-keys.json`, so shell consumers do not infer semantic keys by transforming enum
+  names
 
 ## `ProtocolArtifactOutput`
 
@@ -305,9 +348,10 @@ public final class MachineContract
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
 - Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
   `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
-- Template behavior: `requestTemplate(clock)` and `planTemplate(clock)` stamp their example
-  `effectiveDate` fields from `LocalDate.now(clock)`, so checked-in template fixtures mirror the
-  live request shape without promising byte-identical current-date output forever
+- Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic scaffold
+  documents with the canonical example `effectiveDate` value `2026-04-17`, so checked-in template
+  fixtures can remain byte-identical to live command output until the contract intentionally
+  changes
 
 ## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
 
@@ -329,8 +373,12 @@ public final class ContractTemplates
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
-- `CommandCatalogDescriptor` and `CommandDescriptor` keep command grouping, command identity,
-  execution mode, and output modes typed through `OperationId`, `ExecutionMode`, and `OutputMode`
+- `CommandCatalogDescriptor` groups full `CommandDescriptor` records by operation category, so the
+  machine-readable `capabilities` payload publishes per-command identity, aliases, options,
+  execution mode, output modes, artifact outputs, and summaries without falling back to one lossy
+  global stdout-mode list
+- `CommandDescriptor` keeps command identity, execution mode, output modes, and artifact outputs
+  typed through `OperationId`, `ExecutionMode`, `OutputMode`, and `ArtifactOutputDescriptor`
   instead of flattening those closed vocabularies into strings
 - `ContractRequestShapes`: request-input plumbing plus posting, account-declaration, and ledger-plan
   request-shape descriptors

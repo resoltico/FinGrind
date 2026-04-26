@@ -81,10 +81,12 @@ run_verify_expect_failure() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly verify_script="${repo_root}/scripts/verify-release-primary-checkout.sh"
+readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 
 [[ -x "${verify_script}" ]] || die "missing executable verifier script at ${verify_script}"
-grep -Fq 'scripts/test-verify-release-primary-checkout.sh' "${repo_root}/check.sh" || die \
-    "root check no longer exercises the release primary-checkout regression"
+[[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
+grep -Fq 'scripts/test-verify-release-primary-checkout.sh' "${stage_contract_script}" || die \
+    "check stage contract no longer exercises the release primary-checkout regression"
 grep -Fq './scripts/verify-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "X.Y.Z"' \
     "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the primary-checkout closeout verifier"

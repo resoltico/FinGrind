@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
+afad: "4.0"
 version: "0.26.0"
 domain: USER_EXAMPLES
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -164,9 +164,9 @@ fingrind \
   print-request-template > ./request.json
 ```
 
-That generated scaffold stamps its sample `effectiveDate` from the current clock date, so the
-checked-in fixture below matches the accepted shape but not necessarily the exact bytes from
-today's run.
+That generated scaffold is byte-identical to the checked-in
+[examples/request-template.json](./examples/request-template.json) fixture. Both intentionally use
+the canonical scaffold `effectiveDate` value `2026-04-17`.
 
 For the concrete walkthrough below, reuse the checked-in example request:
 
@@ -217,9 +217,9 @@ fingrind \
   print-plan-template > ./plan.json
 ```
 
-Like `print-request-template`, this scaffold uses the current clock date for its nested example
-posting `effectiveDate`, so the checked-in fixture is a shape-stable example rather than a
-forever byte-identical capture.
+Like `print-request-template`, this scaffold is byte-identical to the checked-in
+[examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture and uses the
+canonical scaffold `effectiveDate` value `2026-04-17`.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 

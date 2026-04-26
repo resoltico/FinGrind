@@ -24,7 +24,7 @@ final class ProtocolOperationDefinitions {
             aliases,
             options,
             executionMode,
-            List.of(OutputMode.JSON),
+            List.of(),
             List.of(),
             analysisSummary,
             examples));

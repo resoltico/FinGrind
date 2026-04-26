@@ -207,6 +207,9 @@ class ProtocolCatalogTest {
   void operationDescriptors_renderLimitsOptionsUsageAndExamplesFromProtocolFacts() {
     ProtocolOperation listAccounts = ProtocolCatalog.operation(OperationId.LIST_ACCOUNTS);
     ProtocolOperation trialBalance = ProtocolCatalog.operation(OperationId.TRIAL_BALANCE);
+    ProtocolOperation printRequestTemplate =
+        ProtocolCatalog.operation(OperationId.PRINT_REQUEST_TEMPLATE);
+    ProtocolOperation executePlan = ProtocolCatalog.operation(OperationId.EXECUTE_PLAN);
 
     assertEquals("[--limit <1-200>]", ProtocolOptions.optionalLimitSyntax());
     assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
@@ -231,6 +234,36 @@ class ProtocolCatalogTest {
     assertEquals(1, trialBalance.artifactOutputs().size());
     assertEquals("pdf", trialBalance.artifactOutputs().getFirst().format());
     assertEquals("--pdf-out <path>", trialBalance.artifactOutputs().getFirst().option());
+    assertEquals(List.of(), printRequestTemplate.outputModes());
+    assertEquals(List.of(), executePlan.outputModes());
+    assertFalse(printRequestTemplate.options().contains("[--output <json>]"));
+    assertFalse(executePlan.options().contains("[--output <json>]"));
+  }
+
+  @Test
+  void operations_keepSelectableOutputAndArtifactOptionsInCanonicalOptionLists() {
+    for (ProtocolOperation operation : ProtocolCatalog.operations()) {
+      if (!operation.outputModes().isEmpty()) {
+        assertTrue(
+            operation
+                .options()
+                .contains(ProtocolOptions.optionalOutputSyntax(operation.outputModes())),
+            () ->
+                "Missing canonical --output syntax for "
+                    + operation.id().wireName()
+                    + ": "
+                    + operation.options());
+      }
+      if (!operation.artifactOutputs().isEmpty()) {
+        assertTrue(
+            operation.options().contains(ProtocolOptions.optionalPdfOutSyntax()),
+            () ->
+                "Missing canonical --pdf-out syntax for "
+                    + operation.id().wireName()
+                    + ": "
+                    + operation.options());
+      }
+    }
   }
 
   @Test

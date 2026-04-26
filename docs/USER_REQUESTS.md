@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
+afad: "4.0"
 version: "0.26.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -35,10 +35,10 @@ Inspect the minimal valid posting request:
 fingrind print-request-template
 ```
 
-Or, in a source checkout, inspect the checked-in example payload:
+Or, in a source checkout, inspect the checked-in exact scaffold:
 
 ```bash
-cat docs/examples/basic-posting-request.json
+cat docs/examples/request-template.json
 ```
 
 Current posting-request rules:
@@ -152,10 +152,9 @@ Current ledger-plan rules:
 
 Dynamic fields:
 - `capabilities.payload.timestamp` varies per invocation
-- `print-request-template.effectiveDate` and the nested `posting.effectiveDate` emitted by
-  `print-plan-template` are scaffold values rendered from the current clock date, so checked-in
-  template fixtures mirror the accepted shape but are not guaranteed to be byte-identical command
-  output forever
+- `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are exact
+  captures of `print-request-template` and `print-plan-template`; both intentionally use the
+  canonical scaffold `effectiveDate` value `2026-04-17` until the template contract changes
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
@@ -303,7 +302,8 @@ Checked-in examples for the read/report surface:
 FinGrind does not check PDF binaries into `docs/examples`; PDF export is verified through CLI,
 bundle, and Docker smoke flows instead.
 
-Checked-in examples for the ledger-plan surface:
+Checked-in template and ledger-plan examples:
+- [examples/request-template.json](./examples/request-template.json)
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)

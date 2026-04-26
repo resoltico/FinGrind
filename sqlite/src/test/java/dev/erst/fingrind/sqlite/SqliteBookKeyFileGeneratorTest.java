@@ -15,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.NullUnmarked;
@@ -161,8 +163,17 @@ class SqliteBookKeyFileGeneratorTest {
     Path nonEmptyDirectory =
         Files.createDirectory(tempDirectory.resolve("non-empty-delete-target"));
     Files.writeString(nonEmptyDirectory.resolve("child.txt"), "keep", StandardCharsets.UTF_8);
-    assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.deleteQuietly(nonEmptyDirectory));
+    List<String> cleanupReports = new ArrayList<>();
+    try (SqliteBestEffort.ReporterOverride ignored =
+        SqliteBestEffort.replaceReporterForTesting(
+            (action, exception) ->
+                cleanupReports.add(action + "|" + exception.getClass().getSimpleName()))) {
+      assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.deleteQuietly(nonEmptyDirectory));
+    }
     assertTrue(Files.exists(nonEmptyDirectory));
+    assertEquals(
+        List.of("deleting one partially created book-key path|DirectoryNotEmptyException"),
+        cleanupReports);
 
     if (supportsPosix(tempDirectory)) {
       Path lockedDirectory = tempDirectory.resolve("locked");

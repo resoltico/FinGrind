@@ -9,9 +9,7 @@ import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.NormalBalance;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
@@ -20,9 +18,7 @@ import org.junit.jupiter.api.Test;
 class MachineContractPlanTemplateTest {
   @Test
   void planTemplatePublishesCanonicalAgentWorkflowMetadata() {
-    ContractTemplates.LedgerPlanTemplateDescriptor template =
-        MachineContract.planTemplate(
-            Clock.fixed(Instant.parse("2026-04-17T09:10:11Z"), ZoneOffset.UTC));
+    ContractTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
 
     assertEquals("plan-1", template.planId());
     assertEquals(5, template.steps().size());

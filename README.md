@@ -56,6 +56,11 @@ of spread across notes, spreadsheets, and half-finished checks.
   drifting onto separate packaging stories.
 - The machine-readable discovery and template surfaces come from the same canonical contract facts
   the CLI, bundle, Docker image, and shell verifiers use.
+- `capabilities` now publishes grouped per-command stdout and artifact contracts directly, so
+  automation does not have to guess which commands negotiate `--output` and which stay fixed.
+- The checked-in request and plan scaffold fixtures stay byte-identical to the live template
+  commands until the contract itself changes, so examples do not silently drift away from the real
+  machine bootstrap surface.
 - The reporting surface already covers the questions most people ask first: account balance, trial
   balance, account ledger, and period summary.
 - The model stays intentionally strict: one book per business, one currency per entry, positive line

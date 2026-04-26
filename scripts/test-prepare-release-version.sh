@@ -33,10 +33,12 @@ require_file_contains() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly prepare_script="${repo_root}/scripts/prepare-release-version.sh"
+readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 
 [[ -x "${prepare_script}" ]] || die "missing executable helper script at ${prepare_script}"
-grep -Fq 'scripts/test-prepare-release-version.sh' "${repo_root}/check.sh" || die \
-    "root check no longer exercises the release version-prep regression"
+[[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
+grep -Fq 'scripts/test-prepare-release-version.sh' "${stage_contract_script}" || die \
+    "check stage contract no longer exercises the release version-prep regression"
 grep -Fq './scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD' \
     "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the version-prep helper"

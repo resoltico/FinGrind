@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.BookModelFacts;
 import dev.erst.fingrind.contract.protocol.CurrencyFacts;
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.PlanExecutionFacts;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -32,6 +33,14 @@ final class MachineContractDomainDescriptors {
     return ProtocolCatalog.operations().stream()
         .map(MachineContractDomainDescriptors::commandDescriptor)
         .toList();
+  }
+
+  static CommandCatalogDescriptor commandCatalog() {
+    return new CommandCatalogDescriptor(
+        commandDescriptors(OperationCategory.DISCOVERY),
+        commandDescriptors(OperationCategory.ADMINISTRATION),
+        commandDescriptors(OperationCategory.QUERY),
+        commandDescriptors(OperationCategory.WRITE));
   }
 
   static List<ExitCodeDescriptor> exitCodes() {
@@ -151,5 +160,12 @@ final class MachineContractDomainDescriptors {
                         artifact.format(), artifact.option(), artifact.description()))
             .toList(),
         operation.analysisSummary());
+  }
+
+  private static List<CommandDescriptor> commandDescriptors(OperationCategory category) {
+    return ProtocolCatalog.operations().stream()
+        .filter(operation -> operation.category() == category)
+        .map(MachineContractDomainDescriptors::commandDescriptor)
+        .toList();
   }
 }

@@ -38,6 +38,10 @@ def write_json(path: pathlib.Path, payload: object) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def read_json(path: pathlib.Path) -> object:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_root_raw:
     fixture_root = pathlib.Path(fixture_root_raw)
     protocol_root = fixture_root / "contract/src/main/resources/dev/erst/fingrind/contract/protocol"
@@ -78,9 +82,25 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             },
             "operationIdContract": {
                 "help": "HELP",
+                "version": "VERSION",
                 "capabilities": "CAPABILITIES",
                 "printRequestTemplate": "PRINT_REQUEST_TEMPLATE",
                 "printPlanTemplate": "PRINT_PLAN_TEMPLATE",
+                "generateBookKeyFile": "GENERATE_BOOK_KEY_FILE",
+                "openBook": "OPEN_BOOK",
+                "rekeyBook": "REKEY_BOOK",
+                "declareAccount": "DECLARE_ACCOUNT",
+                "inspectBook": "INSPECT_BOOK",
+                "listAccounts": "LIST_ACCOUNTS",
+                "getPosting": "GET_POSTING",
+                "listPostings": "LIST_POSTINGS",
+                "accountBalance": "ACCOUNT_BALANCE",
+                "trialBalance": "TRIAL_BALANCE",
+                "accountLedger": "ACCOUNT_LEDGER",
+                "periodSummary": "PERIOD_SUMMARY",
+                "executePlan": "EXECUTE_PLAN",
+                "preflightEntry": "PREFLIGHT_ENTRY",
+                "postEntry": "POST_ENTRY",
             },
         },
     )
@@ -142,9 +162,25 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         protocol_root / "operation-id-contract.json",
         {
             "HELP": "help",
+            "VERSION": "version",
             "CAPABILITIES": "capabilities",
             "PRINT_REQUEST_TEMPLATE": "print-request-template",
             "PRINT_PLAN_TEMPLATE": "print-plan-template",
+            "GENERATE_BOOK_KEY_FILE": "generate-book-key-file",
+            "OPEN_BOOK": "open-book",
+            "REKEY_BOOK": "rekey-book",
+            "DECLARE_ACCOUNT": "declare-account",
+            "INSPECT_BOOK": "inspect-book",
+            "LIST_ACCOUNTS": "list-accounts",
+            "GET_POSTING": "get-posting",
+            "LIST_POSTINGS": "list-postings",
+            "ACCOUNT_BALANCE": "account-balance",
+            "TRIAL_BALANCE": "trial-balance",
+            "ACCOUNT_LEDGER": "account-ledger",
+            "PERIOD_SUMMARY": "period-summary",
+            "EXECUTE_PLAN": "execute-plan",
+            "PREFLIGHT_ENTRY": "preflight-entry",
+            "POST_ENTRY": "post-entry",
         },
     )
 
@@ -159,6 +195,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["publicDistribution"]["unsupportedPublicCliBundleTargets"] == [
         "windows-aarch64"
     ]
+    assert loaded["operationIds"]["version"] == "version"
+    assert loaded["operationIds"]["generateBookKeyFile"] == "generate-book-key-file"
 
     write_json(
         protocol_root / "public-distribution-contract.json",
@@ -175,6 +213,29 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         assert "undeclared bundle target" in str(exc)
     else:
         raise AssertionError("expected undeclared bundle target validation failure")
+
+    write_json(
+        protocol_root / "public-distribution-contract.json",
+        {
+            "supportedPublicCliBundleTargets": ["linux-x86_64"],
+            "unsupportedPublicCliBundleTargets": ["windows-aarch64"],
+        },
+    )
+    write_json(
+        protocol_root / "operation-id-contract.json",
+        {
+            **read_json(protocol_root / "operation-id-contract.json"),
+            "SURPRISE_OPERATION": "surprise-operation",
+        },
+    )
+    try:
+        contract_values.load_contract_values(
+            fixture_root, os_name="Linux", architecture="x86_64"
+        )
+    except ValueError as exc:
+        assert "declared an enum without one canonical semantic key" in str(exc)
+    else:
+        raise AssertionError("expected undeclared operation-id semantic-key validation failure")
 PY
 
 printf 'contract values reader regression: success\n'

@@ -111,8 +111,9 @@ final class SqliteNativeBootstrap {
     Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
     try {
       SqliteNativeCalls.noArgInt(sqlite3Shutdown).invoke();
-    } catch (Exception exception) {
-      SqliteBestEffort.ignore(exception);
+    } catch (RuntimeException exception) {
+      SqliteBestEffort.reportCleanupFailure(
+          "shutting down the process-scoped SQLite runtime", exception);
     }
   }
 

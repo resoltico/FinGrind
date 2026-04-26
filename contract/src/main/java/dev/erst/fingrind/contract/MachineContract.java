@@ -2,21 +2,20 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
+  private static final String TEMPLATE_EFFECTIVE_DATE = "2026-04-17";
+
   private MachineContract() {}
 
   /** Builds the canonical help descriptor. */
@@ -50,11 +49,7 @@ public final class MachineContract {
         identity.application(),
         identity.version(),
         new StorageSurfaceDescriptor(ProtocolCatalog.storageEngines(), "single-sqlite-file"),
-        new CommandCatalogDescriptor(
-            ProtocolCatalog.operationIds(OperationCategory.DISCOVERY),
-            ProtocolCatalog.operationIds(OperationCategory.ADMINISTRATION),
-            ProtocolCatalog.operationIds(OperationCategory.QUERY),
-            ProtocolCatalog.operationIds(OperationCategory.WRITE)),
+        MachineContractDescriptors.commandCatalog(),
         MachineContractDescriptors.requestInput(),
         MachineContractDescriptors.requestShapes(),
         MachineContractDescriptors.responseModel(),
@@ -76,10 +71,9 @@ public final class MachineContract {
   }
 
   /** Builds the canonical minimal posting-request template descriptor. */
-  public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate(Clock clock) {
-    Objects.requireNonNull(clock, "clock");
+  public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        LocalDate.now(clock).toString(),
+        TEMPLATE_EFFECTIVE_DATE,
         List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(
                 "1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -91,8 +85,7 @@ public final class MachineContract {
   }
 
   /** Builds the canonical minimal AI-agent ledger-plan template descriptor. */
-  public static ContractTemplates.LedgerPlanTemplateDescriptor planTemplate(Clock clock) {
-    Objects.requireNonNull(clock, "clock");
+  public static ContractTemplates.LedgerPlanTemplateDescriptor planTemplate() {
     return new ContractTemplates.LedgerPlanTemplateDescriptor(
         "plan-1",
         List.of(
@@ -119,7 +112,7 @@ public final class MachineContract {
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "post-journal",
                 LedgerStepKind.POST_ENTRY,
-                requestTemplate(clock),
+                requestTemplate(),
                 null,
                 null,
                 null,

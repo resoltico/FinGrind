@@ -65,6 +65,7 @@ route:
 | `ProtocolFailureStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, And `ProtocolFailureStatus` |
 | `ProtocolLimits` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolLimits` |
 | `ProtocolOptions` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
+| `ProtocolUserCliDocumentSyncMain` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolUserCliDocumentSyncMain` |
 | `ProtocolArtifactOutput` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolArtifactOutput` |
 | `PublicDistributionContract` | `DOC_02_ProtocolAndDiscovery.md` | `PublicDistributionContract` |
 | `PublicCliBundleTarget` | `DOC_02_ProtocolAndDiscovery.md` | `PublicCliBundleTarget` |

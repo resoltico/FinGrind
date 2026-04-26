@@ -5,45 +5,8 @@
 # human-facing project gate entrypoint. The scripts/ directory is reserved for subordinate helper
 # scripts that workflows and this root gate invoke.
 #
-# Stage 1 runs all root-project quality gates and generates coverage reports for local inspection:
-#   check    -> Spotless (format), Error Prone (compile-time checks), PMD (static analysis),
-#               JaCoCo coverage thresholds, and all unit tests
-#   coverage -> per-module and aggregated JaCoCo HTML/XML reports
-#
-# Stage 2 runs the nested Jazzer verification build:
-#   jazzer check -> deterministic Jazzer tests plus committed-seed regression replay
-#
-# CI runs only the root check task (verification without report generation).
-#
-# Stage 3 mirrors the GitHub release packaging workflow:
-#   :cli:bundleCliArchive -> build the self-contained CLI archive plus SHA-256 checksum
-#
-# Stage 4 exercises the public release bundle from a clean extracted archive:
-#   scripts/bundle-smoke.sh -> verify discovery, explicit book lifecycle, reporting, stdout
-#                              output-mode selection, PDF artifact export, and deterministic-failure
-#                              behavior without ambient Java or a preconfigured SQLite library path
-#
-# Stage 5 syntax-checks the release-surface shell scripts, runs targeted shell regressions, and
-# verifies the source-checkout managed SQLite runtime contract through the same helper scripts used
-# by the GitHub workflows:
-#   bash -n check.sh scripts/*.sh jazzer/bin/*
-#   scripts/test-prepare-release-version.sh
-#   scripts/test-read-contract-values.sh
-#   scripts/test-release-protocol-pr-diff-fallback.sh
-#   scripts/test-verify-public-container-surface.sh
-#   scripts/test-gradlew-bat-wrapper.sh
-#   scripts/test-gradle-wrapper-support.sh
-#   scripts/test-check-process-support.sh
-#   scripts/test-jazzer-fuzz-all-wrapper.sh
-#   scripts/test-verify-github-release.sh
-#   scripts/test-verify-release-primary-checkout.sh
-#   scripts/test-verify-managed-sqlite-runtime.sh
-#   scripts/verify-managed-sqlite-runtime.sh
-#
-# Stage 6 exercises the Docker release surface from a non-default working directory:
-#   scripts/docker-smoke.sh -> build the image and verify discovery, explicit book lifecycle,
-#                              reporting, stdout output-mode selection, PDF artifact export,
-#                              and deterministic-failure behavior
+# The fixed six-stage contract is canonically owned by scripts/check-stage-contract.sh so usage
+# text, stage selection, and Stage 5 script coverage cannot drift independently.
 #
 # The script is location-independent: it always targets the repository that contains this file,
 # even when invoked from another working directory or through a symlink.
@@ -116,6 +79,8 @@ resolve_script_dir() {
 readonly repo_root="$(resolve_script_dir)"
 readonly gradlew="${repo_root}/gradlew"
 readonly process_support_script="${repo_root}/scripts/check-process-support.sh"
+readonly monitor_support_script="${repo_root}/scripts/check-monitor-support.sh"
+readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 current_stage_id='startup'
 current_stage_label='starting'
 current_stage_log_path=''
@@ -130,37 +95,22 @@ readonly diagnostics_process_capture_limit=6
 readonly stall_exit_code=124
 
 [[ -f "${process_support_script}" ]] || die "missing process support helper at ${process_support_script}"
+[[ -f "${monitor_support_script}" ]] || die "missing check monitor helper at ${monitor_support_script}"
+[[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 # shellcheck source=/dev/null
 source "${process_support_script}"
-
-format_duration() {
-    local total_seconds=$1
-    local hours=$((total_seconds / 3600))
-    local minutes=$(((total_seconds % 3600) / 60))
-    local seconds=$((total_seconds % 60))
-
-    if (( hours > 0 )); then
-        printf '%dh%02dm%02ds' "${hours}" "${minutes}" "${seconds}"
-        return
-    fi
-    if (( minutes > 0 )); then
-        printf '%dm%02ds' "${minutes}" "${seconds}"
-        return
-    fi
-    printf '%ss' "${seconds}"
-}
+# shellcheck source=/dev/null
+source "${monitor_support_script}"
+# shellcheck source=/dev/null
+source "${stage_contract_script}"
 
 print_usage() {
     printf '%s\n' \
         'Usage: ./check.sh [supported gradle options]' \
         '' \
-        'Runs six fixed stages against the repository that contains this script:' \
-        '  1. check coverage' \
-        '  2. jazzer check' \
-        '  3. :cli:bundleCliArchive' \
-        '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
-        '  5. bash -n check.sh scripts/*.sh jazzer/bin/* && scripts/test-prepare-release-version.sh && scripts/test-read-contract-values.sh && scripts/test-bundle-smoke-powershell.sh && scripts/test-release-protocol-pr-diff-fallback.sh && scripts/test-verify-public-container-surface.sh && scripts/test-gradlew-bat-wrapper.sh && scripts/test-gradle-wrapper-support.sh && scripts/test-check-process-support.sh && scripts/test-jazzer-fuzz-all-wrapper.sh && scripts/test-verify-github-release.sh && scripts/test-verify-release-primary-checkout.sh && scripts/test-verify-managed-sqlite-runtime.sh && scripts/verify-managed-sqlite-runtime.sh' \
-        '  6. scripts/docker-smoke.sh (Docker acceptance workflow)' \
+        'Runs six fixed stages against the repository that contains this script:'
+    check_stage_usage_lines
+    printf '%s\n' \
         '' \
         'Supported options:' \
         '  -h, --help' \
@@ -215,416 +165,7 @@ print_failure_guidance() {
     esac
 }
 
-epoch_seconds() {
-    date +%s
-}
-
 readonly check_started_at="$(epoch_seconds)"
-
-file_size_bytes() {
-    local file_path=$1
-    if [[ ! -f "${file_path}" ]]; then
-        printf '0'
-        return
-    fi
-    stat -f '%z' "${file_path}"
-}
-
-latest_nonempty_line() {
-    local log_path=$1
-    if [[ ! -s "${log_path}" ]]; then
-        return 0
-    fi
-    awk 'NF { line = $0 } END { if (line != "") print line }' "${log_path}"
-}
-
-latest_nonempty_line_marker() {
-    local log_path=$1
-    if [[ ! -s "${log_path}" ]]; then
-        return 0
-    fi
-    awk 'NF { line = $0; line_number = NR } END { if (line != "") printf "%s:%s", line_number, line }' "${log_path}"
-}
-
-compact_text() {
-    printf '%s' "$1" \
-        | tr '\n' ' ' \
-        | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//' \
-        | cut -c1-220
-}
-
-latest_task_line() {
-    local log_path=$1
-    local task_line=''
-    task_line="$(grep '^> Task ' "${log_path}" | tail -1 2>/dev/null || true)"
-    if [[ -n "${task_line}" ]]; then
-        printf '%s' "${task_line}"
-        return
-    fi
-    latest_nonempty_line "${log_path}"
-}
-
-latest_jazzer_pulse_line() {
-    local log_path=$1
-    grep '^\[JAZZER-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true
-}
-
-latest_jazzer_pulse_marker() {
-    local log_path=$1
-    grep -n '^\[JAZZER-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true
-}
-
-latest_gradle_test_pulse_line() {
-    local log_path=$1
-    grep '^\[GRADLE-TEST-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true
-}
-
-latest_gradle_test_pulse_marker() {
-    local log_path=$1
-    grep -n '^\[GRADLE-TEST-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true
-}
-
-stage_progress_summary_quality_gates() {
-    local log_path=$1
-    local completed_test_classes
-    local latest_pulse
-
-    completed_test_classes="$(
-        grep -c '^\[GRADLE-TEST-PULSE\].* phase=class-complete ' "${log_path}" 2>/dev/null || true
-    )"
-    latest_pulse="$(latest_gradle_test_pulse_line "${log_path}")"
-    if [[ -z "${latest_pulse}" ]]; then
-        latest_pulse="$(latest_task_line "${log_path}")"
-    fi
-
-    printf 'test-classes=%s latest=%s' \
-        "${completed_test_classes}" \
-        "$(compact_text "${latest_pulse}")"
-}
-
-stage_progress_summary_jazzer() {
-    local project_dir=$1
-    local log_path=$2
-    local deterministic_total_classes
-    local completed_deterministic_classes
-    local finished_regression_targets
-    local latest_pulse
-
-    deterministic_total_classes="$(
-        find "${project_dir}/src/test/java" -type f -name '*Test.java' | wc -l | tr -d '[:space:]'
-    )"
-    completed_deterministic_classes="$(
-        grep -c '^\[JAZZER-PULSE\] deterministic-tests phase=class-complete ' "${log_path}" 2>/dev/null || true
-    )"
-    finished_regression_targets="$(
-        grep -c '^\[JAZZER-PULSE\] harness-class=.* phase=finish ' "${log_path}" 2>/dev/null || true
-    )"
-    latest_pulse="$(grep '^\[JAZZER-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true)"
-    if [[ -z "${latest_pulse}" ]]; then
-        latest_pulse="$(latest_task_line "${log_path}")"
-    fi
-
-    printf 'deterministic-classes=%s/%s regression-targets=%s/%s latest=%s' \
-        "${completed_deterministic_classes}" \
-        "${deterministic_total_classes}" \
-        "${finished_regression_targets}" \
-        "${jazzer_regression_target_count}" \
-        "$(compact_text "${latest_pulse}")"
-}
-
-stage_progress_summary() {
-    local stage_id=$1
-    local project_dir=$2
-    local log_path=$3
-    case "${stage_id}" in
-        quality-gates)
-            stage_progress_summary_quality_gates "${log_path}"
-            ;;
-        jazzer-check)
-            stage_progress_summary_jazzer "${project_dir}" "${log_path}"
-            ;;
-        *)
-            latest_task_line "${log_path}"
-            ;;
-    esac
-}
-
-stage_progress_marker_jazzer() {
-    local log_path=$1
-    local latest_pulse
-    latest_pulse="$(latest_jazzer_pulse_marker "${log_path}")"
-    if [[ -n "${latest_pulse}" ]]; then
-        printf '%s' "${latest_pulse}"
-        return
-    fi
-    latest_nonempty_line_marker "${log_path}"
-}
-
-stage_progress_marker_quality_gates() {
-    local log_path=$1
-    local latest_pulse
-    latest_pulse="$(latest_gradle_test_pulse_marker "${log_path}")"
-    if [[ -n "${latest_pulse}" ]]; then
-        printf '%s' "${latest_pulse}"
-        return
-    fi
-    latest_nonempty_line_marker "${log_path}"
-}
-
-stage_progress_marker() {
-    local stage_id=$1
-    local project_dir=$2
-    local log_path=$3
-    case "${stage_id}" in
-        quality-gates)
-            stage_progress_marker_quality_gates "${log_path}"
-            ;;
-        jazzer-check)
-            stage_progress_marker_jazzer "${log_path}"
-            ;;
-        *)
-            latest_nonempty_line_marker "${log_path}"
-            ;;
-    esac
-}
-
-capture_stage_diagnostics() {
-    local stage_id=$1
-    local child_pid=$2
-    local log_path=$3
-    local diagnostics_root=$4
-    local quiet_seconds=$5
-    local snapshot_dir="${diagnostics_root}/$(date -u +%Y%m%dT%H%M%SZ)"
-    mkdir -p "${snapshot_dir}"
-
-    {
-        printf 'stage=%s\n' "${stage_id}"
-        printf 'captured_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        printf 'quiet_seconds=%s\n' "${quiet_seconds}"
-        printf 'log_path=%s\n' "${log_path}"
-    } >"${snapshot_dir}/metadata.txt"
-
-    local process_ids=()
-    local process_id=''
-    while IFS= read -r process_id; do
-        [[ -n "${process_id}" ]] || continue
-        process_ids+=("${process_id}")
-    done < <(collect_process_tree_pids "${child_pid}")
-
-    {
-        printf 'process_count=%s\n' "${#process_ids[@]}"
-        printf 'diagnostics_process_capture_limit=%s\n' "${diagnostics_process_capture_limit}"
-    } >>"${snapshot_dir}/metadata.txt"
-
-    if ((${#process_ids[@]} > 0)); then
-        ps -o pid=,ppid=,etime=,%cpu=,%mem=,command= -p "${process_ids[@]}" \
-            >"${snapshot_dir}/process-tree.txt" 2>&1 || true
-        local captured_process_ids=("${process_ids[@]}")
-        if ((${#captured_process_ids[@]} > diagnostics_process_capture_limit)); then
-            captured_process_ids=("${captured_process_ids[@]:0:${diagnostics_process_capture_limit}}")
-            printf 'process_capture_truncated=true\n' >>"${snapshot_dir}/metadata.txt"
-        fi
-        if command -v lsof >/dev/null 2>&1; then
-            for process_id in "${captured_process_ids[@]}"; do
-                capture_with_timeout \
-                    "${snapshot_dir}/lsof-${process_id}.txt" \
-                    "${diagnostics_command_timeout_seconds}" \
-                    lsof -p "${process_id}"
-            done
-        fi
-        if command -v jcmd >/dev/null 2>&1; then
-            for process_id in "${captured_process_ids[@]}"; do
-                if ps -o command= -p "${process_id}" 2>/dev/null | grep -q '[j]ava'; then
-                    capture_with_timeout \
-                        "${snapshot_dir}/jcmd-${process_id}-thread-print.txt" \
-                        "${diagnostics_command_timeout_seconds}" \
-                        jcmd "${process_id}" Thread.print
-                fi
-            done
-        fi
-    fi
-
-    tail -n 200 "${log_path}" >"${snapshot_dir}/log-tail.txt" 2>&1 || true
-    printf '[CHECK-DIAG] stage=%s quiet=%ss diagnostics=%s\n' \
-        "${stage_id}" \
-        "${quiet_seconds}" \
-        "${snapshot_dir}"
-}
-
-terminate_stage_process() {
-    local child_pid=$1
-    terminate_process_tree "${child_pid}" 5
-}
-
-monitor_stage_process() {
-    local stage_id=$1
-    local project_dir=$2
-    local log_path=$3
-    local diagnostics_root=$4
-    local child_pid=$5
-    local started_at
-    local last_output_at
-    local last_progress_at
-    local last_seen_size=0
-    local last_progress_marker=''
-
-    started_at="$(epoch_seconds)"
-    last_output_at="${started_at}"
-    last_progress_at="${started_at}"
-
-    while kill -0 "${child_pid}" 2>/dev/null; do
-        sleep "${pulse_interval_seconds}"
-        if ! kill -0 "${child_pid}" 2>/dev/null; then
-            break
-        fi
-
-        local now
-        local current_size
-        now="$(epoch_seconds)"
-        current_size="$(file_size_bytes "${log_path}")"
-        if (( current_size > last_seen_size )); then
-            last_output_at="${now}"
-            last_seen_size="${current_size}"
-        fi
-
-        local elapsed_seconds
-        local quiet_seconds
-        local stalled_seconds
-        local progress_summary
-        local progress_marker
-        progress_marker="$(stage_progress_marker "${stage_id}" "${project_dir}" "${log_path}")"
-        if [[ -n "${progress_marker}" && "${progress_marker}" != "${last_progress_marker}" ]]; then
-            last_progress_at="${now}"
-            last_progress_marker="${progress_marker}"
-        fi
-        elapsed_seconds=$((now - started_at))
-        quiet_seconds=$((now - last_output_at))
-        stalled_seconds=$((now - last_progress_at))
-        progress_summary="$(stage_progress_summary "${stage_id}" "${project_dir}" "${log_path}")"
-        if [[ -z "${progress_summary}" ]]; then
-            progress_summary='(no progress reported yet)'
-        fi
-        printf '[CHECK-PULSE] stage=%s elapsed=%ss quiet=%ss stalled=%ss progress=%s\n' \
-            "${stage_id}" \
-            "${elapsed_seconds}" \
-            "${quiet_seconds}" \
-            "${stalled_seconds}" \
-            "$(compact_text "${progress_summary}")"
-
-        if (( stalled_seconds >= stall_threshold_seconds )); then
-            capture_stage_diagnostics \
-                "${stage_id}" \
-                "${child_pid}" \
-                "${log_path}" \
-                "${diagnostics_root}" \
-                "${stalled_seconds}"
-            printf '[CHECK-STALL] stage=%s stalled=%ss action=terminate\n' \
-                "${stage_id}" \
-                "${stalled_seconds}"
-            terminate_stage_process "${child_pid}"
-            return "${stall_exit_code}"
-        fi
-    done
-}
-
-run_monitored_command() {
-    local stage_id=$1
-    local stage_label=$2
-    local project_dir=$3
-    shift 3
-
-    current_stage_id="${stage_id}"
-    current_stage_label="${stage_label}"
-    printf '%s\n' "${stage_label}"
-    local stage_started_at
-    stage_started_at="$(epoch_seconds)"
-
-    local stage_temp_dir
-    stage_temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-check-${stage_id}.XXXXXX")"
-    local log_path="${stage_temp_dir}/${stage_id}.log"
-    local diagnostics_root="${stage_temp_dir}/diagnostics"
-    mkdir -p "${diagnostics_root}"
-    : >"${log_path}"
-    current_stage_log_path="${log_path}"
-    current_stage_diagnostics_directory="${diagnostics_root}"
-
-    printf '[CHECK-PULSE] stage=%s phase=start log=%s diagnostics=%s\n' \
-        "${stage_id}" \
-        "${log_path}" \
-        "${diagnostics_root}"
-
-    (
-        cd "${project_dir}"
-        "$@" > >(tee -a "${log_path}") 2>&1
-    ) &
-    local child_pid=$!
-
-    local monitor_exit_code=0
-    if monitor_stage_process "${stage_id}" "${project_dir}" "${log_path}" "${diagnostics_root}" "${child_pid}"; then
-        monitor_exit_code=0
-    else
-        monitor_exit_code=$?
-    fi
-
-    local child_exit_code=0
-    if wait "${child_pid}"; then
-        child_exit_code=0
-    else
-        child_exit_code=$?
-    fi
-
-    if (( monitor_exit_code != 0 )); then
-        child_exit_code="${monitor_exit_code}"
-    fi
-
-    printf '[CHECK-PULSE] stage=%s phase=finish exit=%d log=%s\n' \
-        "${stage_id}" \
-        "${child_exit_code}" \
-        "${log_path}"
-    local stage_finished_at
-    local stage_elapsed_seconds
-    stage_finished_at="$(epoch_seconds)"
-    stage_elapsed_seconds=$((stage_finished_at - stage_started_at))
-    printf '[CHECK-TIMING] stage=%s exit=%d elapsed_seconds=%d elapsed=%s log=%s\n' \
-        "${stage_id}" \
-        "${child_exit_code}" \
-        "${stage_elapsed_seconds}" \
-        "$(format_duration "${stage_elapsed_seconds}")" \
-        "${log_path}"
-
-    return "${child_exit_code}"
-}
-
-emit_final_status() {
-    local exit_code=$?
-    local total_elapsed_seconds
-    total_elapsed_seconds=$(($(epoch_seconds) - check_started_at))
-    [[ "${emit_final_status_enabled}" == true ]] || return 0
-    if [[ "${exit_code}" -eq 0 ]]; then
-        printf 'Result: success in %s\n' "$(format_duration "${total_elapsed_seconds}")"
-        printf '[CHECK-SUMMARY] status=success stage=%s exit_code=%d total_elapsed_seconds=%d total_elapsed=%s\n' \
-            "${current_stage_id}" \
-            "${exit_code}" \
-            "${total_elapsed_seconds}" \
-            "$(format_duration "${total_elapsed_seconds}")"
-    else
-        printf 'Result: failure during %s after %s\n' \
-            "${current_stage_label}" \
-            "$(format_duration "${total_elapsed_seconds}")"
-        print_failure_guidance
-        if [[ -n "${current_stage_log_path}" ]]; then
-            printf 'Stage log: %s\n' "${current_stage_log_path}"
-        fi
-        if [[ -n "${current_stage_diagnostics_directory}" ]]; then
-            printf 'Diagnostics directory: %s\n' "${current_stage_diagnostics_directory}"
-        fi
-        printf '[CHECK-SUMMARY] status=failure stage=%s exit_code=%d total_elapsed_seconds=%d total_elapsed=%s\n' \
-            "${current_stage_id}" \
-            "${exit_code}" \
-            "${total_elapsed_seconds}" \
-            "$(format_duration "${total_elapsed_seconds}")"
-    fi
-}
 
 trap emit_final_status EXIT
 
@@ -733,44 +274,8 @@ run_shell_stage() {
     run_monitored_command "${stage_id}" "${stage_label}" "${repo_root}" "$@"
 }
 
-run_stage 'quality-gates' 'Stage 1/6: running quality gates' "${repo_root}" check coverage
-run_stage \
-    'jazzer-check' \
-    'Stage 2/6: running Jazzer deterministic tests and regression replay' \
-    "${repo_root}/jazzer" \
-    check
-run_stage 'cli-bundle' 'Stage 3/6: building self-contained CLI bundle archive' "${repo_root}" :cli:bundleCliArchive
-run_shell_stage 'bundle-smoke' 'Stage 4/6: running self-contained bundle acceptance test' \
-    "${repo_root}/scripts/bundle-smoke.sh"
-
-shell_syntax_targets=("${repo_root}/check.sh")
-if [[ -d "${repo_root}/scripts" ]]; then
-    while IFS= read -r shell_script_path; do
-        shell_syntax_targets+=("${shell_script_path}")
-    done < <(find "${repo_root}/scripts" -maxdepth 1 -type f -name '*.sh' | sort)
-fi
-if [[ -d "${repo_root}/jazzer/bin" ]]; then
-    while IFS= read -r shell_script_path; do
-        shell_syntax_targets+=("${shell_script_path}")
-    done < <(find "${repo_root}/jazzer/bin" -maxdepth 1 -type f | sort)
-fi
-
-run_shell_stage 'shell-syntax' 'Stage 5/6: checking release-surface shell scripts' \
-    bash -c '
-        set -euo pipefail
-        bash -n "$@"
-        bash "'"${repo_root}"'/scripts/test-prepare-release-version.sh"
-        bash "'"${repo_root}"'/scripts/test-read-contract-values.sh"
-        bash "'"${repo_root}"'/scripts/test-bundle-smoke-powershell.sh"
-        bash "'"${repo_root}"'/scripts/test-release-protocol-pr-diff-fallback.sh"
-        bash "'"${repo_root}"'/scripts/test-verify-public-container-surface.sh"
-        bash "'"${repo_root}"'/scripts/test-gradlew-bat-wrapper.sh"
-        bash "'"${repo_root}"'/scripts/test-gradle-wrapper-support.sh"
-        bash "'"${repo_root}"'/scripts/test-check-process-support.sh"
-        bash "'"${repo_root}"'/scripts/test-jazzer-fuzz-all-wrapper.sh"
-        bash "'"${repo_root}"'/scripts/test-verify-github-release.sh"
-        bash "'"${repo_root}"'/scripts/test-verify-release-primary-checkout.sh"
-        bash "'"${repo_root}"'/scripts/test-verify-managed-sqlite-runtime.sh"
-        bash "'"${repo_root}"'/scripts/verify-managed-sqlite-runtime.sh"
-    ' bash "${shell_syntax_targets[@]}"
-run_shell_stage 'docker-smoke' 'Stage 6/6: running Docker acceptance test' "${repo_root}/scripts/docker-smoke.sh"
+for stage_index in "${!check_stage_ids[@]}"; do
+    stage_id="${check_stage_ids[stage_index]}"
+    stage_label="${check_stage_labels[stage_index]}"
+    check_stage_execute "${stage_id}" "${stage_label}" "${repo_root}"
+done

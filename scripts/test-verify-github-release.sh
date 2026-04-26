@@ -25,11 +25,13 @@ readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-github-release.sh"
 readonly archive_verifier="${script_dir}/verify-source-archive.py"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 
 [[ -x "${verifier}" ]] || die "missing executable release verifier"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier helper"
-grep -Fq 'scripts/test-verify-github-release.sh' "${repo_root}/check.sh" || die \
-    "root check no longer exercises the GitHub release verifier regression"
+[[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
+grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
+    "check stage contract no longer exercises the GitHub release verifier regression"
 grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the GitHub release verifier"
 

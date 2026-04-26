@@ -32,8 +32,24 @@
   },
   "operationIdContract": {
     "help": "HELP",
+    "version": "VERSION",
     "capabilities": "CAPABILITIES",
     "printRequestTemplate": "PRINT_REQUEST_TEMPLATE",
-    "printPlanTemplate": "PRINT_PLAN_TEMPLATE"
+    "printPlanTemplate": "PRINT_PLAN_TEMPLATE",
+    "generateBookKeyFile": "GENERATE_BOOK_KEY_FILE",
+    "openBook": "OPEN_BOOK",
+    "rekeyBook": "REKEY_BOOK",
+    "declareAccount": "DECLARE_ACCOUNT",
+    "inspectBook": "INSPECT_BOOK",
+    "listAccounts": "LIST_ACCOUNTS",
+    "getPosting": "GET_POSTING",
+    "listPostings": "LIST_POSTINGS",
+    "accountBalance": "ACCOUNT_BALANCE",
+    "trialBalance": "TRIAL_BALANCE",
+    "accountLedger": "ACCOUNT_LEDGER",
+    "periodSummary": "PERIOD_SUMMARY",
+    "executePlan": "EXECUTE_PLAN",
+    "preflightEntry": "PREFLIGHT_ENTRY",
+    "postEntry": "POST_ENTRY"
   }
 }

@@ -93,13 +93,17 @@ kinds. Executor code assembles and executes typed workflows from that registry, 
 renders or routes those DTOs without reauthoring operation names.
 
 Repo-owned JSON contract snapshots back that typed public surface:
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/contract-schema-keys.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json`
 - `contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json`
 
 Build logic, runtime loaders, shell verifiers, and distribution assembly must consume those shared
-JSON contract resources instead of carrying private parsers or duplicated literals.
+JSON contract resources instead of carrying private parsers or duplicated literals. In particular,
+the shell-side operation-id map must come from the explicit semantic-key registry in
+`contract-schema-keys.json` plus `operation-id-contract.json`, not from enum-name-to-camel-case
+guesswork.
 
 The AI-agent-first workflow is now first-class:
 - `print-plan-template` emits the accepted `execute-plan` request shape

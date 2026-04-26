@@ -21,7 +21,12 @@ class ProtocolContractSchemaKeysTest {
     assertEquals(
         "requiredMinimumSqliteVersion", current.managedSqlite().requiredMinimumSqliteVersion());
     assertEquals("bundleTargets", current.bundleLayout().bundleTargets());
+    assertEquals("VERSION", current.operationIds().version());
     assertEquals("PRINT_PLAN_TEMPLATE", current.operationIds().printPlanTemplate());
+    assertEquals("GENERATE_BOOK_KEY_FILE", current.operationIds().generateBookKeyFile());
+    assertEquals("LIST_POSTINGS", current.operationIds().listPostings());
+    assertEquals("EXECUTE_PLAN", current.operationIds().executePlan());
+    assertEquals("POST_ENTRY", current.operationIds().postEntry());
   }
 
   @Test

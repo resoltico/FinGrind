@@ -6,6 +6,9 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     `java-library`
@@ -63,4 +66,25 @@ sourceSets {
 
 tasks.named<ProcessResources>("processResources") {
     dependsOn(writeRuntimeEnvironmentContract)
+}
+
+tasks.register<JavaExec>("syncUserCliDocs") {
+    group = "documentation"
+    description =
+        "Synchronizes docs/USER_CLI.md generated command-table blocks from the canonical protocol catalog."
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.erst.fingrind.contract.protocol.ProtocolUserCliDocumentSyncMain")
+    args(rootProject.layout.projectDirectory.file("docs/USER_CLI.md").asFile.absolutePath)
+}
+
+tasks.named<Test>("test") {
+    inputs.file(rootProject.layout.projectDirectory.file("README.md"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("docs"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(rootProject.layout.projectDirectory.dir("cli/src/bundle/root"))
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }

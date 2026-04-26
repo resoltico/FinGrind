@@ -3,7 +3,6 @@ package dev.erst.fingrind.contract;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.List;
 import java.util.Map;
 
@@ -31,9 +30,8 @@ public final class ContractRequestShapes {
       String bookFileOption,
       List<String> bookPassphraseOptions,
       String requestFileOption,
-      String queryOutputOption,
-      List<OutputMode> queryOutputModes,
-      List<String> queryOutputSemantics,
+      String outputOption,
+      List<String> outputSemantics,
       String stdinToken,
       String bookFileSemantics,
       List<String> bookPassphraseSemantics,
@@ -46,12 +44,8 @@ public final class ContractRequestShapes {
           ContractDescriptorValidation.copyList(bookPassphraseOptions, "bookPassphraseOptions");
       requestFileOption =
           ContractDescriptorValidation.requireText(requestFileOption, "requestFileOption");
-      queryOutputOption =
-          ContractDescriptorValidation.requireText(queryOutputOption, "queryOutputOption");
-      queryOutputModes =
-          ContractDescriptorValidation.copyList(queryOutputModes, "queryOutputModes");
-      queryOutputSemantics =
-          ContractDescriptorValidation.copyList(queryOutputSemantics, "queryOutputSemantics");
+      outputOption = ContractDescriptorValidation.requireText(outputOption, "outputOption");
+      outputSemantics = ContractDescriptorValidation.copyList(outputSemantics, "outputSemantics");
       stdinToken = ContractDescriptorValidation.requireText(stdinToken, "stdinToken");
       bookFileSemantics =
           ContractDescriptorValidation.requireText(bookFileSemantics, "bookFileSemantics");

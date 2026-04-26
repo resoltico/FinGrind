@@ -13,7 +13,9 @@ final class ProtocolAdministrationOperations {
             OperationCategory.ADMINISTRATION,
             "Generate Book Key File",
             List.of(),
-            List.of(ProtocolOptions.BOOK_KEY_FILE + " <path>"),
+            List.of(
+                ProtocolOptions.BOOK_KEY_FILE + " <path>",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
@@ -29,7 +31,8 @@ final class ProtocolAdministrationOperations {
             List.of(),
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax()),
+                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Initialize a new book file with the canonical schema.",
@@ -58,7 +61,8 @@ final class ProtocolAdministrationOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.replacementPassphraseSourceSyntax()),
+                ProtocolOptions.replacementPassphraseSourceSyntax(),
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Rotate the passphrase that protects one existing book.",
@@ -77,7 +81,8 @@ final class ProtocolAdministrationOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.REQUEST_FILE + " <path|->"),
+                ProtocolOptions.REQUEST_FILE + " <path|->",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Declare or reactivate one account in the selected book.",
