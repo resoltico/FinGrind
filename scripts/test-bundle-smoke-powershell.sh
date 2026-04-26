@@ -78,10 +78,12 @@ grep -Fq 'Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8' "${bundle_s
     "bundle-smoke-command-bridge.ps1 no longer reads bridge requests as UTF-8 JSON"
 grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer requests in-process launcher exit-code returns"
+grep -Fq 'FINGRIND_BUNDLE_ARGUMENTS_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer stages bridged arguments through a UTF-8 temp file"
 grep -Fq 'FINGRIND_BUNDLE_STDIN_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer stages bridged stdin through a UTF-8 temp file"
-grep -Fq '& $LauncherPath @arguments' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer invokes the launcher in-process to preserve Unicode arguments"
+grep -Fq '& $LauncherPath' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer invokes the launcher in-process"
 python3 - <<'PY' "${bundle_smoke_command_bridge_ps1}"
 import pathlib
 import sys
@@ -105,8 +107,10 @@ grep -Fq 'FINGRIND_BUNDLE_STDIN_FILE' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer supports the in-process bridge stdin-file contract"
 grep -Fq '$PSScriptRoot' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer anchors bundle paths to the script root outside helper-function invocation scope"
-grep -Fq '$launcherArguments = @($args)' "${bundle_launcher_ps1}" || die \
-    "fingrind.ps1 no longer preserves the script-level CLI argument vector before entering helper-function scope"
+grep -Fq 'FINGRIND_BUNDLE_ARGUMENTS_FILE' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer supports the in-process bridge arguments-file contract"
+grep -Fq '$scriptInvocationArguments = @($args)' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer preserves the public script-level CLI argument vector"
 if grep -Fq '$MyInvocation.MyCommand.Path' "${bundle_launcher_ps1}"; then
     die "fingrind.ps1 still derives bundle paths from function-scoped MyInvocation metadata"
 fi
@@ -156,7 +160,8 @@ pwsh -NoLogo -NoProfile -File "${pwsh_script}"
 
 cat >"${bridge_launcher_ps1}" <<'PWSH'
 $payload = [ordered]@{
-    arguments = @($args)
+    arguments = Get-Content -LiteralPath $env:FINGRIND_BUNDLE_ARGUMENTS_FILE -Raw -Encoding UTF8 | ConvertFrom-Json
+    invocationArguments = @($args)
     stdinText = Get-Content -LiteralPath $env:FINGRIND_BUNDLE_STDIN_FILE -Raw -Encoding UTF8
     returnMode = $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE
 }
@@ -181,6 +186,8 @@ import sys
 payload = json.loads(sys.argv[1])
 if payload["arguments"][2] != "/tmp/workspace odd/Rīga büro/bridge key.key":
     raise SystemExit("bundle-smoke-command-bridge.ps1 corrupted the Unicode CLI argument")
+if payload["invocationArguments"] != []:
+    raise SystemExit("bundle-smoke-command-bridge.ps1 leaked bridged CLI arguments through PowerShell script argument binding")
 if payload["stdinText"] != "stdin through bridge\n":
     raise SystemExit("bundle-smoke-command-bridge.ps1 failed to replay stdin text")
 if payload["returnMode"] != "true":

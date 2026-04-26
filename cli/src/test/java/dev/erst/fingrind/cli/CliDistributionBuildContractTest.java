@@ -220,8 +220,9 @@ class CliDistributionBuildContractTest {
     assertTrue(
         bundleCommandBridge.contains("Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8"));
     assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
+    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
     assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_STDIN_FILE"));
-    assertTrue(bundleCommandBridge.contains("& $LauncherPath @arguments"));
+    assertTrue(bundleCommandBridge.contains("& $LauncherPath"));
     assertTrue(bundleAcceptance.contains("Rīga büro"));
   }
 
@@ -235,9 +236,10 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellLauncher.contains("WorkingDirectory"));
     assertTrue(powerShellLauncher.contains("RedirectStandardInput"));
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_STDIN_FILE"));
     assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
-    assertTrue(powerShellLauncher.contains("$launcherArguments = @($args)"));
+    assertTrue(powerShellLauncher.contains("$scriptInvocationArguments = @($args)"));
     assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
     assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
   }
