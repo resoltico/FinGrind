@@ -237,11 +237,13 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellLauncher.contains("RedirectStandardInput"));
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_LAUNCHER_ARGUMENTS_FILE"));
     assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_STDIN_FILE"));
     assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
     assertTrue(powerShellLauncher.contains("$scriptInvocationArguments = @($args)"));
     assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
     assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
+    assertFalse(powerShellLauncher.contains("ConvertFrom-Json"));
   }
 
   private static Path repositoryRoot() {

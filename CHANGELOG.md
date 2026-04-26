@@ -68,6 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the published Windows PowerShell bundle launcher so Unicode-only path characters such as
   `ī` now reach the bundled Java runtime through a `ProcessStartInfo.ArgumentList` launch path
   instead of degrading into invalid `?` path characters during release-smoke execution.
+- Fixed the remaining Windows bundle launcher Unicode seam so staged bridge arguments now stay in
+  a UTF-8 JSON file until the JVM resolves them through `FINGRIND_LAUNCHER_ARGUMENTS_FILE`,
+  instead of being rehydrated in PowerShell and pushed back across a second native argv boundary.
 - Fixed bundle and Docker smoke verification so pagination cursors are read from JSON structurally
   instead of with regex text scraping, which keeps release acceptance aligned with the actual JSON
   contract.

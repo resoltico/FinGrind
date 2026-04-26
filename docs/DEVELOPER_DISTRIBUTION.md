@@ -30,6 +30,9 @@ Each published archive contains:
   `LICENSE-SQLITE3MULTIPLECIPHERS`, `NOTICE`, and `PATENTS.md`
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
+On Windows, the PowerShell launcher also hands staged bridge arguments to the JVM through the
+dedicated `FINGRIND_LAUNCHER_ARGUMENTS_FILE` environment contract so Unicode-only acceptance paths
+do not have to survive a second native argv rehydration seam inside PowerShell.
 That keeps public execution independent from:
 - a separately installed Java runtime
 - a preconfigured `FINGRIND_SQLITE_LIBRARY`
