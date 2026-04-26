@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.26.0"
+version: "0.27.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-04-25"
+updated: "2026-04-26"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented"]

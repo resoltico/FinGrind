@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.26.0"
+version: "0.27.0"
 domain: USER_EXAMPLES
 updated: "2026-04-26"
 route:
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.26.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.26.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.27.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.27.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
