@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -38,12 +39,11 @@ class LauncherInvocationArgumentsTest {
   @Test
   void resolveReadsUtf8JsonLauncherArgumentsFromEnvironmentConfiguredFile() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
-    Files.writeString(
+    Path expectedPath =
+        tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key");
+    writeJson(
         argumentsFile,
-        "[\"generate-book-key-file\",\"--book-key-file\",\""
-            + tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key")
-            + "\"]\n",
-        StandardCharsets.UTF_8);
+        List.of("generate-book-key-file", "--book-key-file", expectedPath.toString()));
 
     String[] resolved =
         new LauncherInvocationArguments(
@@ -52,9 +52,7 @@ class LauncherInvocationArgumentsTest {
 
     assertEquals("generate-book-key-file", resolved[0]);
     assertEquals("--book-key-file", resolved[1]);
-    assertEquals(
-        tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key").toString(),
-        resolved[2]);
+    assertEquals(expectedPath.toString(), resolved[2]);
   }
 
   @Test
@@ -101,7 +99,7 @@ class LauncherInvocationArgumentsTest {
   @Test
   void resolveRejectsNonArrayLauncherArgumentPayloads() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
-    Files.writeString(argumentsFile, "{\"arguments\":[\"help\"]}\n", StandardCharsets.UTF_8);
+    writeJson(argumentsFile, Map.of("arguments", List.of("help")));
 
     LauncherInvocationArgumentsException exception =
         assertThrows(
@@ -145,7 +143,7 @@ class LauncherInvocationArgumentsTest {
   @Test
   void resolveRejectsNonStringLauncherArgumentElements() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
-    Files.writeString(argumentsFile, "[\"help\", 42]\n", StandardCharsets.UTF_8);
+    writeJson(argumentsFile, List.of("help", 42));
 
     LauncherInvocationArgumentsException exception =
         assertThrows(
@@ -162,5 +160,12 @@ class LauncherInvocationArgumentsTest {
             + argumentsFile
             + " must contain one JSON array of strings.",
         exception.getMessage());
+  }
+
+  private static void writeJson(Path file, Object payload) throws IOException {
+    Files.writeString(
+        file,
+        CliJsonRequestCodec.configuredObjectMapper().writeValueAsString(payload) + "\n",
+        StandardCharsets.UTF_8);
   }
 }
