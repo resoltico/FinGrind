@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -40,7 +42,8 @@ class LauncherInvocationArgumentsTest {
         argumentsFile,
         "[\"generate-book-key-file\",\"--book-key-file\",\""
             + tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key")
-            + "\"]\n");
+            + "\"]\n",
+        StandardCharsets.UTF_8);
 
     String[] resolved =
         new LauncherInvocationArguments(
@@ -56,13 +59,16 @@ class LauncherInvocationArgumentsTest {
 
   @Test
   void resolveRejectsInvalidArgumentsFilePathValuesBeforeAnyFileRead() {
-    String malformedPath = "\uD800broken-launcher-arguments.json";
+    String malformedPath = "broken-launcher-arguments.json";
     LauncherInvocationArgumentsException exception =
         assertThrows(
             LauncherInvocationArgumentsException.class,
             () ->
                 new LauncherInvocationArguments(
-                        Map.of(LauncherInvocationArguments.ARGUMENTS_FILE_ENV, malformedPath))
+                        Map.of(LauncherInvocationArguments.ARGUMENTS_FILE_ENV, malformedPath),
+                        rawPath -> {
+                          throw new InvalidPathException(rawPath, "synthetic invalid path");
+                        })
                     .resolve(new String[] {"help"}));
 
     String message = exception.getMessage();
@@ -95,7 +101,7 @@ class LauncherInvocationArgumentsTest {
   @Test
   void resolveRejectsNonArrayLauncherArgumentPayloads() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
-    Files.writeString(argumentsFile, "{\"arguments\":[\"help\"]}\n");
+    Files.writeString(argumentsFile, "{\"arguments\":[\"help\"]}\n", StandardCharsets.UTF_8);
 
     LauncherInvocationArgumentsException exception =
         assertThrows(
@@ -117,7 +123,7 @@ class LauncherInvocationArgumentsTest {
   @Test
   void resolveRejectsMalformedJsonLauncherArgumentPayloads() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
-    Files.writeString(argumentsFile, "[\"help\"\n");
+    Files.writeString(argumentsFile, "[\"help\"\n", StandardCharsets.UTF_8);
 
     LauncherInvocationArgumentsException exception =
         assertThrows(
@@ -139,7 +145,7 @@ class LauncherInvocationArgumentsTest {
   @Test
   void resolveRejectsNonStringLauncherArgumentElements() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
-    Files.writeString(argumentsFile, "[\"help\", 42]\n");
+    Files.writeString(argumentsFile, "[\"help\", 42]\n", StandardCharsets.UTF_8);
 
     LauncherInvocationArgumentsException exception =
         assertThrows(

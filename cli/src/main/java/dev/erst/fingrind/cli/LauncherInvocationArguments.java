@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 
@@ -16,9 +17,16 @@ final class LauncherInvocationArguments {
   static final String ARGUMENTS_FILE_ENV = "FINGRIND_LAUNCHER_ARGUMENTS_FILE";
 
   private final Map<String, String> environment;
+  private final Function<String, Path> pathResolver;
 
   LauncherInvocationArguments(Map<String, String> environment) {
+    this(environment, Path::of);
+  }
+
+  LauncherInvocationArguments(
+      Map<String, String> environment, Function<String, Path> pathResolver) {
     this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
+    this.pathResolver = Objects.requireNonNull(pathResolver, "pathResolver");
   }
 
   static String[] resolveForCurrentProcess(String[] processArguments) {
@@ -34,9 +42,9 @@ final class LauncherInvocationArguments {
     return readStagedArguments(pathFrom(argumentsFile));
   }
 
-  private static Path pathFrom(String rawPath) {
+  private Path pathFrom(String rawPath) {
     try {
-      return Path.of(rawPath);
+      return pathResolver.apply(rawPath);
     } catch (InvalidPathException exception) {
       throw new LauncherInvocationArgumentsException(
           "Invalid staged launcher arguments file path in " + ARGUMENTS_FILE_ENV + ": " + rawPath,
