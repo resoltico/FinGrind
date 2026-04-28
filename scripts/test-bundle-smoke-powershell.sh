@@ -9,6 +9,18 @@ die() {
     exit 1
 }
 
+create_temp_file() {
+    local prefix="$1"
+    local suffix="$2"
+    local temp_path
+    temp_path="$(mktemp "${TMPDIR:-/tmp}/${prefix}.XXXXXX")"
+    if [[ -n "${suffix}" ]]; then
+        mv "${temp_path}" "${temp_path}${suffix}"
+        temp_path="${temp_path}${suffix}"
+    fi
+    printf '%s\n' "${temp_path}"
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -60,7 +72,7 @@ grep -Fq 'bundle-smoke-office-worker.ps1' "${bundle_smoke_support_ps1}" || die \
     "bundle-smoke-support.ps1 no longer delegates to the office-worker helper owner"
 grep -Fq 'function Test-SameSequence' "${bundle_smoke_common_ps1}" || die \
     "bundle-smoke-common.ps1 no longer defines the sequence-comparison helper"
-[[ "$(rg -c 'Compare-Object' "${bundle_smoke_common_ps1}")" == "1" ]] || die \
+[[ "$(grep -Fo 'Compare-Object' "${bundle_smoke_common_ps1}" | wc -l | tr -d '[:space:]')" == "1" ]] || die \
     "bundle-smoke-common.ps1 should keep Compare-Object usage isolated to the helper"
 grep -Fq 'release-smoke-workflow.py' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer delegates to the shared release smoke workflow owner"
@@ -131,11 +143,11 @@ if ! command -v pwsh >/dev/null 2>&1; then
     exit 0
 fi
 
-pwsh_script="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-smoke-powershell.XXXXXX.ps1")"
-bridge_request_json="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-smoke-bridge.XXXXXX.json")"
-bridge_launcher_ps1="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-smoke-launcher.XXXXXX.ps1")"
+pwsh_script="$(create_temp_file 'fingrind-bundle-smoke-powershell' '.ps1')"
+bridge_request_json="$(create_temp_file 'fingrind-bundle-smoke-bridge' '.json')"
+bridge_launcher_ps1="$(create_temp_file 'fingrind-bundle-smoke-launcher' '.ps1')"
 launcher_bundle_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-bundle-launcher.XXXXXX")"
-launcher_bridge_request_json="$(mktemp "${TMPDIR:-/tmp}/fingrind-bundle-launcher-bridge.XXXXXX.json")"
+launcher_bridge_request_json="$(create_temp_file 'fingrind-bundle-launcher-bridge' '.json')"
 trap 'rm -f "${pwsh_script}" "${bridge_request_json}" "${bridge_launcher_ps1}" "${launcher_bridge_request_json}"; rm -rf "${launcher_bundle_root}"' EXIT
 cat >"${pwsh_script}" <<'PWSH'
 function Test-SameSequence {
