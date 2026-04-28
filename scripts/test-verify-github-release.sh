@@ -151,8 +151,9 @@ chmod +x "${fixture_root}/bin/gh"
 
 PATH="${fixture_root}/bin:${PATH}" \
     GITHUB_REF_NAME='44/merge' \
+    GITHUB_REPOSITORY='resoltico/FinGrind' \
     FAKE_GH_TAG='v9.9.9' \
-    FAKE_GH_REPOSITORY='resoltico/fingrind' \
+    FAKE_GH_REPOSITORY='resoltico/FinGrind' \
     FAKE_GH_RELEASE_URL='https://example.invalid/releases/v9.9.9' \
     FAKE_GH_GOOD_ZIP="${fixture_root}/good.zip" \
     FAKE_GH_GOOD_TAR="${fixture_root}/good.tar.gz" \
@@ -163,9 +164,10 @@ set +e
 failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
         GITHUB_REF_NAME='44/merge' \
+        GITHUB_REPOSITORY='resoltico/FinGrind' \
         FAKE_GH_MODE='bad-archive' \
         FAKE_GH_TAG='v9.9.9' \
-        FAKE_GH_REPOSITORY='resoltico/fingrind' \
+        FAKE_GH_REPOSITORY='resoltico/FinGrind' \
         FAKE_GH_RELEASE_URL='https://example.invalid/releases/v9.9.9' \
         FAKE_GH_GOOD_ZIP="${fixture_root}/good.zip" \
         FAKE_GH_GOOD_TAR="${fixture_root}/good.tar.gz" \
