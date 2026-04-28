@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 /** Unit tests for {@link FinGrindCli}. */
 @NullUnmarked
@@ -128,13 +129,17 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(1, exitCode);
+    JsonNode failureEnvelope =
+        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").asText());
+    assertEquals("invalid-request", failureEnvelope.path("code").asText());
+    assertEquals(
+        "Request file does not exist: " + requestFile.toAbsolutePath().normalize() + ".",
+        failureEnvelope.path("message").asText());
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("Request file does not exist: " + requestFile.toAbsolutePath().normalize()));
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
+        failureEnvelope
+            .path("hint")
+            .asText()
             .contains("Verify that the selected --request-file exists and is readable"));
     assertFalse(workflow.workflowInvoked());
   }
