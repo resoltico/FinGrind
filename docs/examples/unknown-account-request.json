@@ -15,8 +15,8 @@
     }
   ],
   "provenance": {
-    "actorId": "operator-4",
-    "actorType": "HUMAN",
+    "actorId": "agent-unknown-1",
+    "actorType": "AGENT",
     "commandId": "command-unknown-1",
     "idempotencyKey": "idem-unknown-1",
     "causationId": "cause-unknown-1"

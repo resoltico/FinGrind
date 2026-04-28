@@ -9,6 +9,7 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
 
   private final String loadedSqliteVersion;
   private final String loadedSqlite3mcVersion;
+  private final String loadedSourceId;
   private final String libraryMode;
   private final List<String> missingCompileOptions;
 
@@ -17,9 +18,30 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
       String loadedSqlite3mcVersion,
       String libraryMode,
       List<String> missingCompileOptions) {
-    super(message(loadedSqliteVersion, loadedSqlite3mcVersion, libraryMode, missingCompileOptions));
+    this(
+        loadedSqliteVersion,
+        loadedSqlite3mcVersion,
+        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+        libraryMode,
+        missingCompileOptions);
+  }
+
+  UnsupportedSqliteCompileOptionsException(
+      String loadedSqliteVersion,
+      String loadedSqlite3mcVersion,
+      String loadedSourceId,
+      String libraryMode,
+      List<String> missingCompileOptions) {
+    super(
+        message(
+            loadedSqliteVersion,
+            loadedSqlite3mcVersion,
+            loadedSourceId,
+            libraryMode,
+            missingCompileOptions));
     this.loadedSqliteVersion = requireText(loadedSqliteVersion, "loadedSqliteVersion");
     this.loadedSqlite3mcVersion = requireText(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
+    this.loadedSourceId = requireText(loadedSourceId, "loadedSourceId");
     this.libraryMode = requireText(libraryMode, "libraryMode");
     this.missingCompileOptions =
         missingCompileOptions == null ? List.of() : List.copyOf(missingCompileOptions);
@@ -36,6 +58,10 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
     return loadedSqlite3mcVersion;
   }
 
+  public String loadedSourceId() {
+    return loadedSourceId;
+  }
+
   public String libraryMode() {
     return libraryMode;
   }
@@ -47,6 +73,7 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
   private static String message(
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
+      String loadedSourceId,
       String libraryMode,
       List<String> missingCompileOptions) {
     List<String> compileOptions =
@@ -55,6 +82,8 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
         + loadedSqliteVersion
         + " / SQLite3 Multiple Ciphers "
         + loadedSqlite3mcVersion
+        + " / source id "
+        + loadedSourceId
         + " in "
         + libraryMode
         + " is missing required compile options: "

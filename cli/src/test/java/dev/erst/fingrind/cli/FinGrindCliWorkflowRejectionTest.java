@@ -83,7 +83,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
     int exitCode =
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(outputStream),
                 fixedClock(),
@@ -128,7 +128,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
 
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -143,7 +143,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -160,7 +160,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -177,7 +177,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -192,7 +192,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -209,7 +209,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -328,7 +328,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(getPostingOutput),
                 fixedClock(),
@@ -351,7 +351,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(listPostingsOutput),
                 fixedClock(),
@@ -372,7 +372,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(balanceOutput),
                 fixedClock(),

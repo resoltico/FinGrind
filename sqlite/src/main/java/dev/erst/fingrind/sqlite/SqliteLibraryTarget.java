@@ -1,11 +1,17 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.util.Objects;
 
 /** Canonical SQLite runtime lookup target chosen from bundle or environment configuration. */
-record SqliteLibraryTarget(String mode, String lookupTarget) {
+record SqliteLibraryTarget(String mode, SqliteRuntimeProvenance provenance, String lookupTarget) {
+  SqliteLibraryTarget(String mode, String lookupTarget) {
+    this(mode, SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, lookupTarget);
+  }
+
   SqliteLibraryTarget {
     mode = requireText(mode, "mode");
+    Objects.requireNonNull(provenance, "provenance");
     lookupTarget = requireText(lookupTarget, "lookupTarget");
   }
 

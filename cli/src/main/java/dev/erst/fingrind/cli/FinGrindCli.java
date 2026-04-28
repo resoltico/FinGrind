@@ -34,16 +34,12 @@ final class FinGrindCli {
   private final CliReportCommandExecutor reportCommandExecutor;
   private final CliExecutionContext executionContext;
 
-  FinGrindCli(InputStream inputStream, PrintStream outputStream, Clock clock) {
-    this(inputStream, outputStream, System.err, clock);
-  }
-
-  FinGrindCli(
+  static FinGrindCli standard(
       InputStream inputStream,
       PrintStream outputStream,
       PrintStream diagnosticsStream,
       Clock clock) {
-    this(
+    return new FinGrindCli(
         inputStream,
         outputStream,
         diagnosticsStream,
@@ -54,12 +50,21 @@ final class FinGrindCli {
                 inputStream, CliBookPassphraseResolver.systemTerminal())));
   }
 
-  FinGrindCli(
+  static FinGrindCli withTerminal(
       InputStream inputStream,
       PrintStream outputStream,
+      PrintStream diagnosticsStream,
       Clock clock,
-      CliBookWorkflow bookWorkflow) {
-    this(inputStream, outputStream, System.err, clock, bookWorkflow);
+      CliBookPassphraseResolver.Terminal terminal) {
+    return new FinGrindCli(
+        inputStream,
+        outputStream,
+        diagnosticsStream,
+        clock,
+        new SqliteCliBookWorkflow(
+            clock,
+            new CliBookPassphraseResolver(
+                inputStream, Objects.requireNonNull(terminal, "terminal"))));
   }
 
   FinGrindCli(
@@ -94,31 +99,6 @@ final class FinGrindCli {
             mutationCommandExecutor,
             queryCommandExecutor,
             reportCommandExecutor);
-  }
-
-  FinGrindCli(
-      InputStream inputStream,
-      PrintStream outputStream,
-      Clock clock,
-      CliBookPassphraseResolver.Terminal terminal) {
-    this(inputStream, outputStream, System.err, clock, terminal);
-  }
-
-  FinGrindCli(
-      InputStream inputStream,
-      PrintStream outputStream,
-      PrintStream diagnosticsStream,
-      Clock clock,
-      CliBookPassphraseResolver.Terminal terminal) {
-    this(
-        inputStream,
-        outputStream,
-        diagnosticsStream,
-        clock,
-        new SqliteCliBookWorkflow(
-            clock,
-            new CliBookPassphraseResolver(
-                inputStream, Objects.requireNonNull(terminal, "terminal"))));
   }
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */

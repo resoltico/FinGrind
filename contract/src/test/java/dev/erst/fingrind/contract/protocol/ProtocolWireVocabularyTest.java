@@ -25,6 +25,11 @@ class ProtocolWireVocabularyTest {
     assertEquals(List.of("halt-on-first-failure"), PlanFailurePolicy.wireValues());
     assertEquals("halt-on-first-failure", PlanFailurePolicy.HALT_ON_FIRST_FAILURE.toString());
     assertEquals(
+        List.of("bundle-managed", "environment-configured"), SqliteRuntimeProvenance.wireValues());
+    assertEquals("bundle-managed", SqliteRuntimeProvenance.BUNDLE_MANAGED.wireValue());
+    assertEquals(
+        "environment-configured", SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED.toString());
+    assertEquals(
         List.of(
             "macos-aarch64",
             "macos-x86_64",
@@ -47,6 +52,9 @@ class ProtocolWireVocabularyTest {
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
         PlanFailurePolicy.fromWireValue("halt-on-first-failure"));
     assertEquals(
+        SqliteRuntimeProvenance.BUNDLE_MANAGED,
+        SqliteRuntimeProvenance.fromWireValue("bundle-managed"));
+    assertEquals(
         PublicCliBundleTarget.WINDOWS_AARCH64,
         PublicCliBundleTarget.fromWireValue("windows-aarch64"));
 
@@ -60,6 +68,9 @@ class ProtocolWireVocabularyTest {
         IllegalArgumentException.class, () -> PlanTransactionMode.fromWireValue("best-effort"));
     assertThrows(
         IllegalArgumentException.class, () -> PlanFailurePolicy.fromWireValue("collect-all"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SqliteRuntimeProvenance.fromWireValue("maybe-managed"));
     assertThrows(
         IllegalArgumentException.class, () -> PublicCliBundleTarget.fromWireValue("plan9-x86"));
   }

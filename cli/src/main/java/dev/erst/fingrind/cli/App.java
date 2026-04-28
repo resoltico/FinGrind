@@ -17,7 +17,7 @@ public final class App {
   public App() {
     this(
         (inputStream, outputStream, clock) ->
-            new FinGrindCli(inputStream, outputStream, clock)::run,
+            FinGrindCli.standard(inputStream, outputStream, System.err, clock)::run,
         System::exit,
         Clock::systemUTC,
         System.err,

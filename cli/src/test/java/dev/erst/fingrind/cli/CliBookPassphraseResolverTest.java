@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,6 +21,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -107,6 +110,30 @@ class CliBookPassphraseResolverTest {
                   .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
               StandardCharsets.UTF_8));
     }
+  }
+
+  @Test
+  void resolve_rejectsMalformedUtf16PromptPassphrase() {
+    char[] enteredPassword = new char[] {'A', '\uD800', 'B'};
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            prompt -> ContractDecision.accepted(enteredPassword));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                    .requireAccepted());
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage()).contains("must contain a UTF-8 passphrase"));
+    assertArrayEquals(new char[enteredPassword.length], enteredPassword);
   }
 
   @Test
@@ -242,6 +269,9 @@ class CliBookPassphraseResolverTest {
     assertEquals(
         "FinGrind did not receive matching book passphrases from the interactive console.",
         exception.getMessage());
+    String message = Objects.requireNonNull(exception.getMessage());
+    assertFalse(message.contains("first"));
+    assertFalse(message.contains("second"));
   }
 
   @Test
@@ -274,6 +304,7 @@ class CliBookPassphraseResolverTest {
 
     assertEquals(
         "Failed to read the FinGrind book passphrase from standard input.", exception.getMessage());
+    assertFalse(Objects.requireNonNull(exception.getMessage()).contains("boom"));
   }
 
   @Test
@@ -298,11 +329,35 @@ class CliBookPassphraseResolverTest {
         Objects.requireNonNull(exception.getMessage())
             .contains(
                 "must contain a single-line UTF-8 text passphrase without control characters"));
+    assertFalse(exception.getMessage().contains("line-1"));
+    assertFalse(exception.getMessage().contains("line-2"));
   }
 
   @Test
   void systemConsoleReader_reportsNoInteractiveConsoleInTheGradleTestEnvironment() {
     assertTrue(CliBookPassphraseResolver.systemConsoleReader().isEmpty());
+  }
+
+  @Test
+  void systemConsoleReader_wrapsPromptingConsoleWhenAvailable() {
+    Optional<CliBookPassphraseResolver.Terminal> terminal =
+        CliBookPassphraseResolver.systemConsoleReader(
+            (format, arguments) -> {
+              assertEquals("%s", format);
+              assertEquals(1, arguments.length);
+              assertEquals("book.sqlite", arguments[0]);
+              return "console-secret".toCharArray();
+            });
+
+    assertTrue(terminal.isPresent());
+    assertEquals(
+        "console-secret",
+        new String(terminal.orElseThrow().readPassword("book.sqlite").requireAccepted()));
+  }
+
+  @Test
+  void systemConsoleReader_reportsMissingPromptingConsoleWhenUnavailable() {
+    assertTrue(CliBookPassphraseResolver.systemConsoleReader(missingPromptingConsole()).isEmpty());
   }
 
   @Test
@@ -438,5 +493,9 @@ class CliBookPassphraseResolverTest {
               assertEquals("book.sqlite", prompt);
               return ContractDecision.accepted(password.toCharArray());
             });
+  }
+
+  private static CliBookPassphraseResolver.@Nullable PromptingConsole missingPromptingConsole() {
+    return null;
   }
 }

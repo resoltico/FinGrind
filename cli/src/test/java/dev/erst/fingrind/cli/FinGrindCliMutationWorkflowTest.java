@@ -28,8 +28,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
     assertEquals(
         0,
         openCli.run(
@@ -43,8 +42,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
     FinGrindCli rekeyCli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
     assertEquals(
         0,
         rekeyCli.run(
@@ -61,8 +59,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream oldKeyOutput = new ByteArrayOutputStream();
     FinGrindCli oldKeyCli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(oldKeyOutput), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(oldKeyOutput), fixedClock());
     assertEquals(
         2,
         oldKeyCli.run(
@@ -81,8 +78,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream newKeyOutput = new ByteArrayOutputStream();
     FinGrindCli newKeyCli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(newKeyOutput), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(newKeyOutput), fixedClock());
     assertEquals(
         0,
         newKeyCli.run(
@@ -109,9 +105,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     FinGrindCli cli;
 
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
-    cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
     assertEquals(
         0,
         cli.run(
@@ -126,7 +120,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream declareCashOutput = new ByteArrayOutputStream();
     cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(declareCashOutput),
             fixedClock());
@@ -147,7 +141,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream declareRevenueOutput = new ByteArrayOutputStream();
     cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(declareRevenueOutput),
             fixedClock());
@@ -165,9 +159,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             }));
 
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
-    cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(listOutput), fixedClock());
+    cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(listOutput), fixedClock());
     assertEquals(
         0,
         cli.run(
@@ -183,8 +175,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream preflightOutput = new ByteArrayOutputStream();
     cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(preflightOutput), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(preflightOutput), fixedClock());
     assertEquals(
         0,
         cli.run(
@@ -203,9 +194,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             .contains("\"status\":\"preflight-accepted\""));
 
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
-    cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
+    cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
     assertEquals(
         0,
         cli.run(
@@ -225,5 +214,53 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(7, postingId.version());
     assertEquals(2, postingId.variant());
     assertTrue(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_rekeyBookWithWrongCurrentKey_doesNotEchoCurrentOrReplacementSecret() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("wrong-rekey-books").resolve("entity.sqlite");
+    Path currentBookKeyFilePath = writeBookKey(bookFilePath, TEST_BOOK_KEY);
+    Path wrongCurrentBookKeyFilePath =
+        writeNamedBookKey("wrong-current-book.key", "wrong-current-secret");
+    Path replacementBookKeyFilePath =
+        writeNamedBookKey("replacement-secret-book.key", "replacement-secret");
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              currentBookKeyFilePath.toString()
+            }));
+
+    ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
+    FinGrindCli rekeyCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
+    assertEquals(
+        2,
+        rekeyCli.run(
+            new String[] {
+              "rekey-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              wrongCurrentBookKeyFilePath.toString(),
+              "--new-book-key-file",
+              replacementBookKeyFilePath.toString()
+            }));
+
+    String outputText = rekeyOutput.toString(StandardCharsets.UTF_8);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
+    assertEquals(
+        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
+        failureEnvelope.path("code").asText());
+    assertFalse(outputText.contains("wrong-current-secret"));
+    assertFalse(outputText.contains("replacement-secret"));
   }
 }

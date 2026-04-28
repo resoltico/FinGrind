@@ -43,23 +43,40 @@ final class SqliteNativeApiLoader {
         downcall(lookup, "sqlite3_libversion", FunctionDescriptor.of(ValueLayout.ADDRESS));
     MethodHandle sqlite3mcVersion =
         downcall(lookup, "sqlite3mc_version", FunctionDescriptor.of(ValueLayout.ADDRESS));
+    MethodHandle sqlite3SourceId =
+        downcall(lookup, "sqlite3_sourceid", FunctionDescriptor.of(ValueLayout.ADDRESS));
     MethodHandle sqlite3CompileoptionUsed =
         downcall(
             lookup,
             "sqlite3_compileoption_used",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+    String loadedSqlite3mcVersion =
+        SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
+            sqlite3mcVersion, SqliteNativeBootstrap.strlen());
+    String loadedSourceId =
+        SqliteNativeBootstrap.sqliteSourceId(sqlite3SourceId, SqliteNativeBootstrap.strlen());
     String loadedVersion =
         SqliteNativeRuntimePolicy.requireSupportedVersion(
             SqliteNativeBootstrap.sqliteVersion(sqlite3Libversion, SqliteNativeBootstrap.strlen()),
-            libraryTarget.mode());
-    String loadedSqlite3mcVersion =
-        SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(
-            SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
-                sqlite3mcVersion, SqliteNativeBootstrap.strlen()),
-            libraryTarget.mode());
+            libraryTarget.mode(),
+            loadedSqlite3mcVersion,
+            loadedSourceId);
+    SqliteNativeRuntimePolicy.requireSupportedSqlite3mcVersion(
+        loadedSqlite3mcVersion, libraryTarget.mode(), loadedVersion, loadedSourceId);
+    SqliteNativeRuntimePolicy.requireSupportedSourceId(
+        loadedSourceId, libraryTarget.mode(), loadedVersion, loadedSqlite3mcVersion);
     SqliteNativeRuntimePolicy.requireSupportedCompileOptions(
-        sqlite3CompileoptionUsed, loadedVersion, loadedSqlite3mcVersion, libraryTarget.mode());
-    return new LoadedRuntime(loadedVersion, loadedSqlite3mcVersion);
+        sqlite3CompileoptionUsed,
+        loadedVersion,
+        loadedSqlite3mcVersion,
+        loadedSourceId,
+        libraryTarget.mode());
+    return new LoadedRuntime(
+        loadedVersion,
+        loadedSqlite3mcVersion,
+        loadedSourceId,
+        libraryTarget.provenance(),
+        libraryTarget.lookupTarget());
   }
 
   static MethodHandle downcall(
@@ -71,7 +88,12 @@ final class SqliteNativeApiLoader {
     return LINKER.downcallHandle(symbol, functionDescriptor);
   }
 
-  private record LoadedRuntime(String loadedVersion, String loadedSqlite3mcVersion) {}
+  private record LoadedRuntime(
+      String loadedVersion,
+      String loadedSqlite3mcVersion,
+      String loadedSourceId,
+      dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance runtimeProvenance,
+      String loadedLibraryPath) {}
 
   private record SqliteNativeApiBindings(
       SqliteConnectionCalls connections,
@@ -111,7 +133,10 @@ final class SqliteNativeApiLoader {
           errors.sqlite3Errstr(),
           errors.sqlite3ExtendedErrcode(),
           runtime.loadedVersion(),
-          runtime.loadedSqlite3mcVersion());
+          runtime.loadedSqlite3mcVersion(),
+          runtime.loadedSourceId(),
+          runtime.runtimeProvenance(),
+          runtime.loadedLibraryPath());
     }
   }
 

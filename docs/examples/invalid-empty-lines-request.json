@@ -2,8 +2,8 @@
   "effectiveDate": "2026-04-08",
   "lines": [],
   "provenance": {
-    "actorId": "operator-3",
-    "actorType": "HUMAN",
+    "actorId": "agent-invalid-1",
+    "actorType": "AGENT",
     "commandId": "command-invalid-1",
     "idempotencyKey": "idem-invalid-1",
     "causationId": "cause-invalid-1"

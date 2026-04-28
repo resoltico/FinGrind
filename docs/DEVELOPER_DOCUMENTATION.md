@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.27.0"
+version: "0.28.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]

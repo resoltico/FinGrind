@@ -2,6 +2,7 @@ import java.util.Properties
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.plugin.use.PluginDependency
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -14,7 +15,10 @@ val fingrindJavaVersion =
         ?: error("Missing fingrindJavaVersion in ../fingrind-build.properties.")
 
 plugins {
-    `kotlin-dsl`
+    // This pin stays prerelease only until the matching stable Kotlin 2.4.x line is available
+    // and verified against FinGrind's included-build/plugin surface.
+    kotlin("jvm") version "2.4.0-Beta2"
+    kotlin("plugin.sam.with.receiver") version "2.4.0-Beta2"
     `java-gradle-plugin`
 }
 
@@ -30,6 +34,9 @@ repositories {
 }
 
 dependencies {
+    compileOnly(gradleKotlinDsl())
+    testImplementation(gradleKotlinDsl())
+    testImplementation(kotlin("reflect"))
     implementation(gradlePluginCoordinate(libs.plugins.spotless.get()))
     implementation(gradlePluginCoordinate(libs.plugins.errorprone.get()))
     implementation(libs.jackson.databind)
@@ -53,19 +60,32 @@ gradlePlugin {
     }
 }
 
-// FinGrind's runtime and product-module baseline is Java 26. Kotlin 2.3.0 does not yet emit
-// JVM 26 bytecode directly, so shared build logic compiles with the Java 26 toolchain while
-// still targeting JVM 25 bytecode.
+// FinGrind's runtime and build baseline is Java 26, so the shared build logic now compiles and
+// emits JVM 26 bytecode as well.
 kotlin {
     jvmToolchain(fingrindJavaVersion)
 }
 
+samWithReceiver {
+    annotation("org.gradle.api.HasImplicitReceiver")
+    annotation("org.gradle.kotlin.dsl.support.ImplicitReceiver")
+}
+
 tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.JVM_25)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.fromTarget(fingrindJavaVersion.toString()))
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+        freeCompilerArgs.addAll(
+            "-java-parameters",
+            "-Xsam-conversions=class",
+            "-Xjsr305=strict",
+            "-Xjspecify-annotations=strict",
+        )
+    }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release = 25
+    options.release.set(fingrindJavaVersion)
 }
 
 tasks.withType<Test>().configureEach {

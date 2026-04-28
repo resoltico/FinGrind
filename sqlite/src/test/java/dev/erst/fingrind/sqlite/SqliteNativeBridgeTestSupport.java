@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -96,7 +97,10 @@ class SqliteNativeBridgeTestSupport {
       constantMethodHandle(MemorySegment.NULL, int.class),
       constantMethodHandle(0, MemorySegment.class),
       "3.53.0",
-      "2.3.3"
+      "2.3.3",
+      SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+      SqliteRuntimeProvenance.BUNDLE_MANAGED,
+      "/tmp/libsqlite3.dylib"
     };
   }
 
@@ -125,7 +129,10 @@ class SqliteNativeBridgeTestSupport {
         (MethodHandle) sqliteApiArguments[20],
         (MethodHandle) sqliteApiArguments[21],
         (String) sqliteApiArguments[22],
-        (String) sqliteApiArguments[23]);
+        (String) sqliteApiArguments[23],
+        (String) sqliteApiArguments[24],
+        (SqliteRuntimeProvenance) sqliteApiArguments[25],
+        (String) sqliteApiArguments[26]);
   }
 
   BookAccess bookAccess(Path bookPath) {

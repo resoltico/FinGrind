@@ -17,6 +17,7 @@ import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import java.time.Instant;
 import java.util.List;
@@ -30,7 +31,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.27.0",
+                "0.28.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -109,13 +110,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.27.0"));
+    assertTrue(rendered.contains("0.28.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.27.0",
+        "0.28.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 
@@ -136,13 +137,17 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
-            List.of("THREADSAFE=1"),
+            ProtocolCatalog.requiredSqliteCompileOptions(),
             SqliteCompileOptionsVerificationStatus.VERIFIED,
-            "3.53.0",
-            "2.3.3",
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
             SqliteRuntimeStatus.READY,
-            "3.53.0",
-            "2.3.3",
+            SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            "/tmp/libsqlite3.dylib",
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
             null));
   }
 }

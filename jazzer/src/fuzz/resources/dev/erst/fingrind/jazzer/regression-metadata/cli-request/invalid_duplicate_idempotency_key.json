@@ -3,7 +3,7 @@
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_duplicate_idempotency_key.json",
   "expectation": {
     "outcomeKind": "expected-invalid",
-    "message": "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey",
+    "message": "Request JSON must not contain duplicate object keys.",
     "details": {
       "type": "CLI_REQUEST_UNPARSED"
     }

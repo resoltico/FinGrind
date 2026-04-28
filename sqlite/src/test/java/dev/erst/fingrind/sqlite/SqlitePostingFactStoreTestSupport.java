@@ -37,6 +37,10 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
   }
 
   BookAccess bookAccess(Path bookPath) {
+    return bookAccess(bookPath, TEST_BOOK_KEY);
+  }
+
+  BookAccess bookAccess(Path bookPath, String keyText) {
     try {
       Path keyDirectory = tempDirectory.resolve("book-keys");
       Files.createDirectories(keyDirectory);
@@ -44,7 +48,7 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
       if (keyPath.getParent() != null) {
         Files.createDirectories(keyPath.getParent());
       }
-      writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
+      writeSecureKeyFile(keyPath, keyText);
       return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);

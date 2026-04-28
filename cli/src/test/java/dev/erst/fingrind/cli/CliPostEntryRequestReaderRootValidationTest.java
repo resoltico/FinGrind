@@ -111,9 +111,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals(
-        "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey",
-        exception.getMessage());
+    assertEquals("Request JSON must not contain duplicate object keys.", exception.getMessage());
   }
 
   @Test

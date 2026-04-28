@@ -5,17 +5,20 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import java.math.BigDecimal;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -24,8 +27,6 @@ import tools.jackson.databind.node.ObjectNode;
 
 /** Shared JSON request-reading helpers for the CLI transport. */
 final class CliJsonRequestCodec {
-  static final Pattern DUPLICATE_FIELD_PATTERN =
-      Pattern.compile("(?i)Duplicate[^'\"]*['\"]([^'\"]+)['\"]");
   static final String ROOT_DOCUMENT_MUST_BE_OBJECT = "Request JSON document must be an object.";
   static final Set<String> DECLARE_ACCOUNT_FIELDS =
       Set.of(
@@ -44,6 +45,9 @@ final class CliJsonRequestCodec {
   static final Set<String> LEDGER_QUERY_FIELDS = Set.copyOf(ProtocolLedgerPlanFields.queryFields());
   static final Set<String> LEDGER_ASSERTION_FIELDS =
       Set.copyOf(ProtocolLedgerPlanFields.assertionFields());
+  private static final ObjectMapper LENIENT_OBJECT_MAPPER = JsonMapper.builder().build();
+  private static final ObjectMapper STRICT_DUPLICATE_OBJECT_MAPPER =
+      JsonMapper.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
 
   private CliJsonRequestCodec() {}
 
@@ -55,39 +59,97 @@ final class CliJsonRequestCodec {
     return Objects.requireNonNullElse(exception.getMessage(), "Request is invalid.");
   }
 
-  static String invalidRequestHint() {
+  static String postEntryRequestHint() {
     return "Run 'fingrind "
         + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
-        + "' for a minimal valid request document, or 'fingrind "
+        + "' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run 'fingrind "
         + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
         + "' for accepted enums and fields.";
   }
 
-  static CliRequestException requestReadFailure(Exception exception) {
+  static String declareAccountRequestHint() {
+    return "Run 'fingrind "
+        + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
+        + "' for the accepted account-declaration request fields and enums.";
+  }
+
+  static String ledgerPlanRequestHint() {
+    return "Run 'fingrind "
+        + ProtocolCatalog.operationName(OperationId.PRINT_PLAN_TEMPLATE)
+        + "' for the canonical ledger plan scaffold, then replace its scaffold placeholders before submission, or run 'fingrind "
+        + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
+        + "' for accepted enums and fields.";
+  }
+
+  static CliRequestException requestReadFailure(Exception exception, String hint) {
     return new CliRequestException(
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         readFailureMessage(exception),
-        "Run 'fingrind "
-            + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
-            + "' for a minimal valid request document.",
+        hint,
         exception);
+  }
+
+  static CliRequestException requestReadFailure(
+      Path requestFile, Exception exception, String invalidJsonHint) {
+    Objects.requireNonNull(requestFile, "requestFile");
+    Objects.requireNonNull(exception, "exception");
+    if (exception instanceof JacksonException) {
+      return requestReadFailure(exception, invalidJsonHint);
+    }
+    return new CliRequestException(
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
+        requestTransportFailureMessage(requestFile, exception),
+        requestTransportFailureHint(requestFile),
+        exception);
+  }
+
+  static CliRequestException duplicateObjectKeyFailure(String hint) {
+    return new CliRequestException(
+        ContractErrors.Descriptor.INVALID_REQUEST.code(),
+        "Request JSON must not contain duplicate object keys.",
+        hint,
+        null);
   }
 
   static String readFailureMessage(Exception exception) {
     Objects.requireNonNull(exception, "exception");
-    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-      String duplicateField = duplicateFieldName(cause.getMessage());
-      if (duplicateField != null) {
-        return "Request JSON must not contain duplicate object keys. Duplicate key: "
-            + duplicateField;
-      }
-    }
     return "Failed to read request JSON.";
   }
 
-  static @Nullable String duplicateFieldName(@Nullable String message) {
-    Matcher matcher = DUPLICATE_FIELD_PATTERN.matcher(Objects.toString(message, ""));
-    return matcher.find() ? matcher.group(1) : null;
+  private static String requestTransportFailureMessage(Path requestFile, Exception exception) {
+    if (ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())) {
+      return "Failed to read request JSON from standard input.";
+    }
+    String normalizedPath = requestFile.toAbsolutePath().normalize().toString();
+    if (exception instanceof NoSuchFileException) {
+      return "Request file does not exist: " + normalizedPath + ".";
+    }
+    if (exception instanceof AccessDeniedException) {
+      return "Request file is not readable: " + normalizedPath + ".";
+    }
+    return "Failed to read request file: " + normalizedPath + ".";
+  }
+
+  private static String requestTransportFailureHint(Path requestFile) {
+    if (ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())) {
+      return "Provide one readable JSON document on standard input, or pass --request-file <path> to read it from a file.";
+    }
+    return "Verify that the selected --request-file exists and is readable, or pass --request-file - to read one JSON document from standard input.";
+  }
+
+  static boolean hasDuplicateObjectKeys(byte[] requestBytes) throws java.io.IOException {
+    Objects.requireNonNull(requestBytes, "requestBytes");
+    try {
+      STRICT_DUPLICATE_OBJECT_MAPPER.readTree(requestBytes);
+      return false;
+    } catch (JacksonException strictFailure) {
+      try {
+        LENIENT_OBJECT_MAPPER.readTree(requestBytes);
+        return true;
+      } catch (JacksonException syntaxFailure) {
+        return false;
+      }
+    }
   }
 
   static ObjectNode requireRootObject(JsonNode rootNode) {
@@ -97,11 +159,11 @@ final class CliJsonRequestCodec {
     return (ObjectNode) rootNode;
   }
 
-  static ObjectNode requireObjectNode(JsonNode rootNode, String fieldName) {
-    if (!rootNode.isObject()) {
+  static ObjectNode requireObjectNode(JsonNode valueNode, String fieldName) {
+    if (!valueNode.isObject()) {
       throw new IllegalArgumentException("Field must be an object: " + fieldName);
     }
-    return (ObjectNode) rootNode;
+    return (ObjectNode) valueNode;
   }
 
   static void rejectUnexpectedFields(

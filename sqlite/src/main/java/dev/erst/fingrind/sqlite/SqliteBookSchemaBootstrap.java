@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,9 +18,13 @@ final class SqliteBookSchemaBootstrap {
 
   /** Ensures the book parent directory exists before a writable connection is opened. */
   static void ensureParentDirectory(Path bookPath) {
-    Path parent = Objects.requireNonNull(bookPath.getParent(), "Book path parent is missing.");
+    Path parent = bookPath.toAbsolutePath().normalize().getParent();
+    if (parent == null) {
+      throw new IllegalArgumentException(
+          "Book path must resolve against a writable parent directory.");
+    }
     try {
-      Files.createDirectories(parent);
+      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath.toAbsolutePath().normalize());
     } catch (IOException exception) {
       throw new IllegalStateException("Failed to create SQLite book directory.", exception);
     }

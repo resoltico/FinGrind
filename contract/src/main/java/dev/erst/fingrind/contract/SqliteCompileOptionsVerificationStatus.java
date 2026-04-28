@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.WireValue;
 /** Stable verification states for the required SQLite compile-option contract. */
 public enum SqliteCompileOptionsVerificationStatus implements WireValue {
   VERIFIED("verified"),
+  FAILED("failed"),
   NOT_VERIFIED("not-verified");
 
   private final String wireValue;

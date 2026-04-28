@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -21,16 +22,16 @@ final class SqliteNativeConnections {
     Objects.requireNonNull(bookAccess, "bookAccess");
     ContractDecision<SqliteBookPassphrase> passphraseDecision =
         SqliteBookKeyFile.loadDecision(SqliteBookAccessRules.requireKeyFile(bookAccess));
-    return switch (passphraseDecision) {
-      case ContractDecision.Accepted<SqliteBookPassphrase>(SqliteBookPassphrase bookPassphrase) -> {
-        try (bookPassphrase) {
-          yield open(
-              bookAccess.bookFilePath(), bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
-        }
-      }
-      case ContractDecision.Rejected<SqliteBookPassphrase>(var failure) ->
+    return passphraseDecision.fold(
+        bookPassphrase -> {
+          try (bookPassphrase) {
+            return open(
+                bookAccess.bookFilePath(), bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
+          }
+        },
+        failure -> {
           throw new ContractFailureException(failure);
-    };
+        });
   }
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase) {
@@ -62,7 +63,10 @@ final class SqliteNativeConnections {
         suppressCloseFailure(databaseHandle, sqliteApi, failure);
         throw failure;
       }
-      return configureOpenedDatabase(databaseHandle, bookPassphrase, sqliteApi, arena);
+      SqliteNativeDatabase openedDatabase =
+          configureOpenedDatabase(databaseHandle, bookPassphrase, sqliteApi, arena);
+      enforceBookFilePermissions(normalizedBookPath, SqliteBookFileSecurity::hardenBookArtifacts);
+      return openedDatabase;
     }
   }
 
@@ -101,6 +105,23 @@ final class SqliteNativeConnections {
       }
       validateConfiguredKey(database.handle(), sqliteApi);
     }
+  }
+
+  static void enforceBookFilePermissions(
+      Path normalizedBookPath, SqliteBookArtifactHardener artifactHardener) {
+    try {
+      artifactHardener.harden(normalizedBookPath);
+    } catch (IOException exception) {
+      throw new SqliteStorageFailureException(
+          "Failed to enforce the FinGrind SQLite book file permissions.", exception);
+    }
+  }
+
+  /** Applies the repository's book-artifact permission policy to a normalized SQLite path. */
+  @FunctionalInterface
+  interface SqliteBookArtifactHardener {
+    /** Hardens the SQLite book file and sidecar artifacts rooted at the given normalized path. */
+    void harden(Path normalizedBookPath) throws IOException;
   }
 
   private static int openNativeDatabase(

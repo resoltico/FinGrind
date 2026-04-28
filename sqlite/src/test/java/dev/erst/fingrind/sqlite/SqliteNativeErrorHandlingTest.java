@@ -83,6 +83,12 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                         "2.3.3",
                         SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
                             sqlite3mcVersionHandle));
+                    assertEquals(
+                        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                        SqliteNativeBootstrap.sqliteSourceId(
+                            MethodHandles.constant(
+                                MemorySegment.class,
+                                arena.allocateFrom(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID))));
                     assertDoesNotThrow(
                         () ->
                             SqliteNativeErrors.freeSqliteBuffer(
@@ -135,6 +141,12 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
           "2.3.3",
           SqliteNativeBootstrap.sqlite3MultipleCiphersVersion(
               sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
+      assertEquals(
+          SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+          SqliteNativeBootstrap.sqliteSourceId(
+              constantMethodHandle(arena.allocateFrom(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID)),
+              constantMethodHandle(
+                  (long) SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID.length(), MemorySegment.class)));
       assertEquals(
           "3.53.0", SqliteNativeRuntimePolicy.requireSupportedVersion("3.53.0", "managed-only"));
       assertEquals(

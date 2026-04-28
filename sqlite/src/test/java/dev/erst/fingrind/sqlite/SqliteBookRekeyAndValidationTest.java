@@ -258,9 +258,40 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                 IllegalStateException.class,
                 () -> postingFactStore.rekeyBook(replacementPassphrase));
 
-        assertTrue(exception.getMessage().contains("Failed to rekey SQLite book."));
+        assertTrue(exception.getMessage().contains("FinGrind restored the pre-rekey book on disk"));
         assertNull(storeDatabase(postingFactStore));
       }
+    }
+
+    try (SqlitePostingFactStore restoredStore = new SqlitePostingFactStore(bookAccess(bookPath))) {
+      assertEquals(
+          List.of(
+              new DeclaredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  NormalBalance.DEBIT,
+                  true,
+                  Instant.parse("2026-04-07T10:15:30Z")),
+              new DeclaredAccount(
+                  new AccountCode("2000"),
+                  new AccountName("Revenue"),
+                  NormalBalance.CREDIT,
+                  true,
+                  Instant.parse("2026-04-07T10:15:30Z"))),
+          listAccounts(restoredStore));
+    }
+
+    try (SqliteBookPassphrase replacementPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "replacement store passphrase", "rotated-store-key".toCharArray());
+        SqlitePostingFactStore replacementKeyStore =
+            new SqlitePostingFactStore(
+                bookPath, replacementPassphrase, SqliteStoreAccessMode.READ_ONLY)) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> replacementKeyStore.listAccounts(firstAccountPage()));
+      assertInvalidPlaintextBookFailure(exception);
     }
   }
 

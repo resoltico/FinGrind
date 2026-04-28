@@ -25,8 +25,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         cli.run(
@@ -53,7 +52,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("plans").resolve("existing-book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     FinGrindCli openCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(new ByteArrayOutputStream()),
             fixedClock());
@@ -71,8 +70,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         executeCli.run(
@@ -99,8 +97,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         cli.run(
@@ -130,8 +127,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         cli.run(
@@ -164,7 +160,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     Path planFile = writeNamedRequest("list-accounts-plan.json", listAccountsPlanJson(1));
 
     FinGrindCli openCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(new ByteArrayOutputStream()),
             fixedClock());
@@ -180,7 +176,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             }));
 
     FinGrindCli declareCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(new ByteArrayOutputStream()),
             fixedClock());
@@ -211,8 +207,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         executeCli.run(

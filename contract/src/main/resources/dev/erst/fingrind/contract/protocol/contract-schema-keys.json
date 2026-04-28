@@ -19,7 +19,12 @@
   },
   "managedSqlite": {
     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
-    "requiredSqlite3mcVersion": "requiredSqlite3mcVersion"
+    "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
+    "requiredSqliteSourceId": "requiredSqliteSourceId",
+    "requiredCompileOptions": "requiredCompileOptions"
+  },
+  "runtimeEnvironment": {
+    "sourceCheckoutJava": "sourceCheckoutJava"
   },
   "bundleLayout": {
     "bundleTargets": "bundleTargets",

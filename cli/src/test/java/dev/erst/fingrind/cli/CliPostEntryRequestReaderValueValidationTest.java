@@ -421,6 +421,6 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("Failed to read request JSON.", exception.getMessage());
+    assertEquals("Failed to read request JSON from standard input.", exception.getMessage());
   }
 }

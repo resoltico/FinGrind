@@ -93,6 +93,17 @@ function Assert-BundleArchiveContract {
     ) {
         Fail "bundle manifest did not report the canonical SQLite3 Multiple Ciphers version"
     }
+    if (
+        $bundleManifest.managedSqlite.requiredSqliteSourceId -ne
+        $script:ContractValues.managedSqlite.requiredSqliteSourceId
+    ) {
+        Fail "bundle manifest did not report the canonical SQLite source id"
+    }
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.managedSqlite.requiredCompileOptions) `
+            -Actual @($bundleManifest.managedSqlite.requiredCompileOptions))) {
+        Fail "bundle manifest did not report the canonical SQLite compile options"
+    }
     if ($bundleManifest.bootstrap.recommendedFirstCommand[-1] -ne $script:ContractValues.operationIds.help) {
         Fail "bundle manifest did not publish the canonical bootstrap help command"
     }
@@ -106,7 +117,7 @@ function Assert-BundleArchiveContract {
         Fail "bundle manifest did not publish the canonical plan-template bootstrap command"
     }
 
-    Require-Java26 $runtimeJava
+    Require-JavaRuntimeVersion $runtimeJava $script:ContractValues.runtimeEnvironment.sourceCheckoutJava
     $runtimeModulesOutput = (& $runtimeJava --list-modules | Out-String) -replace "`r", ""
     foreach ($forbiddenModule in @('jdk.jlink@', 'jdk.jpackage@', 'jdk.jdeps@')) {
         if ($runtimeModulesOutput -match ('^' + [regex]::Escape($forbiddenModule))) {
@@ -151,16 +162,36 @@ function Assert-BundleCapabilitiesContract {
         Fail "capabilities output did not report required book protection"
     }
     if ($storage.defaultBookCipher -ne $script:ContractValues.runtimeSurface.defaultBookCipher) {
-        Fail "capabilities output did not report the default chacha20 cipher"
+        Fail "capabilities output did not report the canonical default book cipher"
     }
     if ($sqlite.requiredMinimumSqliteVersion -ne $script:ContractValues.managedSqlite.requiredMinimumSqliteVersion) {
-        Fail "capabilities output did not report the required SQLite 3.53.0 minimum"
+        Fail "capabilities output did not report the canonical minimum SQLite version"
     }
     if ($sqlite.requiredSqlite3mcVersion -ne $script:ContractValues.managedSqlite.requiredSqlite3mcVersion) {
-        Fail "capabilities output did not report the required SQLite3 Multiple Ciphers 2.3.3 version"
+        Fail "capabilities output did not report the canonical SQLite3 Multiple Ciphers version"
+    }
+    if ($sqlite.requiredSqliteSourceId -ne $script:ContractValues.managedSqlite.requiredSqliteSourceId) {
+        Fail "capabilities output did not report the canonical SQLite source id requirement"
     }
     if ($sqlite.runtimeStatus -ne "ready") {
         Fail "capabilities output did not report a ready SQLite runtime"
+    }
+    if ($sqlite.runtimeProvenance -ne "bundle-managed") {
+        Fail "capabilities output did not report bundle-managed SQLite provenance"
+    }
+    if ([string]::IsNullOrWhiteSpace($sqlite.loadedLibraryPath)) {
+        Fail "capabilities output did not report the loaded SQLite library path"
+    }
+    if ($sqlite.loadedSqliteSourceId -ne $script:ContractValues.managedSqlite.requiredSqliteSourceId) {
+        Fail "capabilities output did not report the canonical loaded SQLite source id"
+    }
+    if (-not (Test-SameSequence `
+            -Reference @($script:ContractValues.managedSqlite.requiredCompileOptions) `
+            -Actual @($sqlite.requiredCompileOptions))) {
+        Fail "capabilities output did not report the canonical SQLite compile options"
+    }
+    if ($sqlite.compileOptionsVerification -ne "verified") {
+        Fail "capabilities output did not report verified SQLite compile-option enforcement"
     }
     $queryCommands = @($CapabilitiesPayload.payload.commands.query)
     $queryCommandsByName = @{}

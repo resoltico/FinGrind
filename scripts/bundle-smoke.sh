@@ -38,10 +38,25 @@ print(host_bundle_target[sys.argv[1]])
 PY
 }
 
+contract_runtime_environment_value() {
+    local key=$1
+    FINGRIND_CONTRACT_VALUES_JSON="${contract_values_json}" python3 - <<'PY' "${key}"
+import json
+import os
+import sys
+
+runtime_environment = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])[
+    "runtimeEnvironment"
+]
+print(runtime_environment[sys.argv[1]])
+PY
+}
+
 readonly host_bundle_classifier="$(contract_host_bundle_value classifier)"
 readonly host_bundle_archive_format="$(contract_host_bundle_value archiveFormat)"
 readonly host_bundle_launcher_path="$(contract_host_bundle_value launcherPath)"
 readonly host_bundle_native_library_name="$(contract_host_bundle_value sqliteLibraryFileName)"
+readonly source_checkout_java="$(contract_runtime_environment_value sourceCheckoutJava)"
 
 if [[ -z "${bundle_archive_path}" ]]; then
     readonly expected_bundle_archive_name="fingrind-$(project_version "${repo_root}")-${host_bundle_classifier}.${host_bundle_archive_format}"
@@ -182,6 +197,16 @@ checks = [
         "bundle manifest did not report the canonical SQLite3 Multiple Ciphers version",
     ),
     (
+        manifest["managedSqlite"]["requiredSqliteSourceId"]
+        == contract["managedSqlite"]["requiredSqliteSourceId"],
+        "bundle manifest did not report the canonical SQLite source id",
+    ),
+    (
+        manifest["managedSqlite"]["requiredCompileOptions"]
+        == contract["managedSqlite"]["requiredCompileOptions"],
+        "bundle manifest did not report the canonical SQLite compile options",
+    ),
+    (
         manifest["bundleTarget"]["classifier"] == host_bundle_target["classifier"] == host_classifier,
         "bundle manifest did not report the current host classifier",
     ),
@@ -230,7 +255,7 @@ for passed, message in checks:
         raise SystemExit(1)
 PY
 
-require_java_26 "${bundle_root}/runtime/bin/java"
+require_java_runtime_version "${bundle_root}/runtime/bin/java" "${source_checkout_java}"
 runtime_modules_output="$("${bundle_root}/runtime/bin/java" --list-modules | tr -d '\r')"
 require_no_match "${runtime_modules_output}" '^jdk\.jlink@' \
     "bundled Java runtime still contains jdk.jlink"

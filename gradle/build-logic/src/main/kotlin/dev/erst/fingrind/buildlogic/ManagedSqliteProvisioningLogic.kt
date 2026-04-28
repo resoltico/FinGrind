@@ -81,6 +81,9 @@ internal object ManagedSqliteProvisioningLogic {
                 compiler.set(sqliteCompiler)
                 operatingSystemId.set(managedSqliteOperatingSystemId)
                 sqliteVersion.set(sqliteVersionValue)
+                requiredCompileOptions.set(
+                    DistributionContractReader.requiredSqliteCompileOptions(repositoryRootDirectory),
+                )
                 outputFile.set(libraryPath)
             }
 

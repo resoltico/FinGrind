@@ -128,12 +128,16 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   static Optional<Terminal> systemConsoleReader() {
-    return systemConsoleReader(System.console());
+    return Optional.ofNullable(System.console())
+        .filter(Console::isTerminal)
+        .flatMap(consoleHandle -> systemConsoleReader(consoleHandle::readPassword));
   }
 
-  static Optional<Terminal> systemConsoleReader(@Nullable Console consoleHandle) {
-    return Optional.ofNullable(consoleHandle)
-        .map(console -> new PromptingConsoleTerminal(console::readPassword));
+  static Optional<Terminal> systemConsoleReader(@Nullable PromptingConsole promptingConsole) {
+    if (promptingConsole == null) {
+      return Optional.empty();
+    }
+    return Optional.of(new PromptingConsoleTerminal(promptingConsole));
   }
 
   /** Terminal adapter that obtains the controlling prompt bridge lazily for each read. */

@@ -20,6 +20,7 @@ public final class SqliteFailureClassifier {
       if (cause instanceof ManagedSqliteRuntimeUnavailableException
           || cause instanceof UnsupportedSqliteVersionException
           || cause instanceof UnsupportedSqliteMultipleCiphersVersionException
+          || cause instanceof UnsupportedSqliteSourceIdException
           || cause instanceof UnsupportedSqliteCompileOptionsException) {
         return Category.MANAGED_RUNTIME;
       }

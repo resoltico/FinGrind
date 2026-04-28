@@ -384,6 +384,7 @@ class ProtocolContractLintSupport {
                 "posting-book-not-initialized",
                 "query-book-not-initialized",
                 "posting-workflow",
+                "replace-before-commit-effective-date",
                 "regression-input",
                 "raw-json",
                 "replay-clean",

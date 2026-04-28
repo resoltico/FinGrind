@@ -179,6 +179,16 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.managedSqliteContract().requiredSqlite3mcVersion();
   }
 
+  /** Returns the canonical SQLite source identifier for the managed runtime surface. */
+  public static String requiredSqliteSourceId() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiredSqliteSourceId();
+  }
+
+  /** Returns the canonical required compile options for the managed runtime surface. */
+  public static List<String> requiredSqliteCompileOptions() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiredCompileOptions();
+  }
+
   private static Stream<Map.Entry<String, ProtocolOperation>> tokensFor(
       ProtocolOperation operation) {
     return Stream.concat(

@@ -55,7 +55,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
 
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
@@ -69,7 +69,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
@@ -85,7 +85,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
@@ -103,8 +103,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
                 new String[] {
                   "post-entry",
@@ -229,7 +228,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
 
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -240,7 +239,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -257,7 +256,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         2,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock(),
@@ -279,8 +278,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
   private void assertCommandOutputContains(String[] args, String expectedFragment) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     int exitCode =
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(args);
     assertEquals(0, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains(expectedFragment));

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.27.0"
+version: "0.28.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -29,7 +29,7 @@ passphrase source: `--new-book-key-file`, `--new-book-passphrase-stdin`, or
 
 ## Posting Request Shape
 
-Inspect the minimal valid posting request:
+Inspect the canonical posting-request scaffold:
 
 ```bash
 fingrind print-request-template
@@ -40,6 +40,11 @@ Or, in a source checkout, inspect the checked-in exact scaffold:
 ```bash
 cat docs/examples/request-template.json
 ```
+
+The scaffold is intentionally agent-first: `provenance.actorType` is `AGENT`, and
+`effectiveDate`, `actorId`, `commandId`, `idempotencyKey`, and `causationId` are emitted as
+replace-before-submit placeholders. Replace every placeholder before committing. On one book, an
+`idempotencyKey` becomes single-use per book after the first committed posting.
 
 Current posting-request rules:
 - all scalar fields are JSON strings, including dates, enums, and `amount`
@@ -118,7 +123,8 @@ Current ledger-plan rules:
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, `currencyCode`, `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
-- `print-plan-template` emits the accepted `execute-plan` request shape directly
+- `print-plan-template` emits the canonical `execute-plan` scaffold shape, but the emitted
+  placeholder values must be replaced before the request is accepted
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, and
   return a complete per-step journal with canonical `kind` plus optional `detailKind`
 - plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
@@ -141,7 +147,7 @@ Current ledger-plan rules:
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
 | success envelope | `help`, `version`, `capabilities`, `generate-book-key-file`, `open-book`, `rekey-book`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary` | `status`, `payload` |
-| raw request document | `print-request-template`, `print-plan-template` | minimal valid posting request JSON or runnable ledger-plan JSON |
+| raw request document | `print-request-template`, `print-plan-template` | canonical posting-request or AI-agent ledger-plan scaffold JSON |
 | `preflight-accepted` | successful `preflight-entry` | `status`, `idempotencyKey`, `effectiveDate` |
 | `committed` | successful `post-entry` | `status`, `postingId`, `idempotencyKey`, `effectiveDate`, `recordedAt` |
 | `plan-committed` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, and `payload.journal` |
@@ -153,8 +159,10 @@ Current ledger-plan rules:
 Dynamic fields:
 - `capabilities.payload.timestamp` varies per invocation
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are exact
-  captures of `print-request-template` and `print-plan-template`; both intentionally use the
-  canonical scaffold `effectiveDate` value `2026-04-17` until the template contract changes
+  captures of `print-request-template` and `print-plan-template`; both intentionally keep the
+  scaffold placeholders `replace-before-commit-effective-date` and
+  `replace-before-commit-*` provenance values so callers must supply a real posting date plus
+  real actor, command, idempotency, and causation values before commit
 - `generate-book-key-file.payload.bookKeyFile` is the normalized absolute path of the created key file
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
@@ -209,7 +217,9 @@ rendered:
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
 - `environment` reports runtime distribution, protected-book requirements, and managed SQLite
-  metadata
+  metadata, including `requiredCompileOptions`, `requiredSqliteSourceId`,
+  `compileOptionsVerification`, `runtimeProvenance`, `loadedLibraryPath`, and
+  `loadedSqliteSourceId`
 - `commands` also lists `print-plan-template` and `execute-plan`, both rendered from the contract
   protocol catalog
 

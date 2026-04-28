@@ -291,6 +291,12 @@ class ProtocolCatalogTest {
     assertEquals("3.53.0", ProtocolCatalog.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", ProtocolCatalog.requiredSqlite3mcVersion());
     assertEquals(
+        "2026-04-09 11:41:38 4525003a53a7fc63ca75c59b22c79608659ca12f0131f52c18637f829977f20b",
+        ProtocolCatalog.requiredSqliteSourceId());
+    assertEquals(
+        List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+        ProtocolCatalog.requiredSqliteCompileOptions());
+    assertEquals(
         List.of(
             ProtocolSuccessStatus.OK,
             ProtocolSuccessStatus.PREFLIGHT_ACCEPTED,

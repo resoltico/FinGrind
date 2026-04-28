@@ -45,7 +45,7 @@ record Capabilities(OutputMode outputMode) implements CliCommand.OutputModeComma
   }
 }
 
-/** Requests a minimal valid posting request JSON document. */
+/** Requests the canonical posting-request scaffold JSON document. */
 record PrintRequestTemplate() implements CliCommand.JsonFailureCommand {
   @Override
   public int execute(CliExecutionContext executionContext) {
@@ -55,7 +55,7 @@ record PrintRequestTemplate() implements CliCommand.JsonFailureCommand {
   }
 }
 
-/** Requests a minimal valid AI-agent ledger-plan JSON document. */
+/** Requests the canonical AI-agent ledger-plan scaffold JSON document. */
 record PrintPlanTemplate() implements CliCommand.JsonFailureCommand {
   @Override
   public int execute(CliExecutionContext executionContext) {

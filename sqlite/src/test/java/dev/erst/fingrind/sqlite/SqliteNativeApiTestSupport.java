@@ -50,6 +50,9 @@ final class SqliteNativeApiTestSupport {
         base.sqlite3Errstr(),
         base.sqlite3ExtendedErrcode(),
         base.loadedVersion(),
-        base.loadedSqlite3mcVersion());
+        base.loadedSqlite3mcVersion(),
+        base.loadedSourceId(),
+        base.runtimeProvenance(),
+        base.loadedLibraryPath());
   }
 }

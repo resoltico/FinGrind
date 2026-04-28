@@ -43,17 +43,22 @@ resolve_script_dir() {
     cd -P -- "$(dirname -- "${source_path}")" && pwd
 }
 
-require_java_26() {
+require_java_runtime_version() {
     local java_command=$1
+    local expected_source_checkout_java=$2
     local version_output version_token
+    local expected_feature_version="${expected_source_checkout_java%+}"
+
+    [[ -n "${expected_feature_version}" ]] || die \
+        "source-checkout Java contract must not be blank when verifying the bundled runtime"
 
     version_output="$("${java_command}" --version 2>&1 | tr -d '\r')"
     version_token="$(printf '%s\n' "${version_output}" | awk 'NR == 1 { print $2 }')"
     case "${version_token}" in
-        26|26.*) ;;
+        "${expected_feature_version}"|"${expected_feature_version}".*) ;;
         *)
             printf '%s\n' "${version_output}" >&2
-            die "bundled Java runtime did not report Java 26"
+            die "bundled Java runtime did not report Java ${expected_feature_version}"
             ;;
     esac
 }

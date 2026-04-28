@@ -15,8 +15,8 @@
     }
   ],
   "provenance": {
-    "actorId": "operator-2",
-    "actorType": "HUMAN",
+    "actorId": "agent-reversal-1",
+    "actorType": "AGENT",
     "commandId": "command-reversal-1",
     "idempotencyKey": "idem-reversal-1",
     "causationId": "cause-reversal-1",

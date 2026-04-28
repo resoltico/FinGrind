@@ -20,6 +20,7 @@ readonly check_stage_labels=(
 )
 
 readonly check_stage5_script_paths=(
+    scripts/test-ci-shell-syntax-workflow.sh
     scripts/test-prepare-release-version.sh
     scripts/test-read-contract-values.sh
     scripts/test-bundle-smoke-powershell.sh
@@ -48,12 +49,7 @@ check_stage_usage_lines() {
 }
 
 check_stage5_usage_command() {
-    local command='bash -n check.sh scripts/*.sh jazzer/bin/*'
-    local script_path=''
-    for script_path in "${check_stage5_script_paths[@]}"; do
-        command="${command} && ${script_path}"
-    done
-    printf '%s\n' "${command}"
+    printf '%s\n' './scripts/check-shell-syntax.sh'
 }
 
 check_stage_execute() {
@@ -75,33 +71,8 @@ check_stage_execute() {
             run_shell_stage "${stage_id}" "${stage_label}" "${check_repo_root}/scripts/bundle-smoke.sh"
             ;;
         shell-syntax)
-            local shell_syntax_targets=("${check_repo_root}/check.sh")
-            local shell_script_path=''
-            if [[ -d "${check_repo_root}/scripts" ]]; then
-                while IFS= read -r shell_script_path; do
-                    shell_syntax_targets+=("${shell_script_path}")
-                done < <(find "${check_repo_root}/scripts" -maxdepth 1 -type f -name '*.sh' | sort)
-            fi
-            if [[ -d "${check_repo_root}/jazzer/bin" ]]; then
-                while IFS= read -r shell_script_path; do
-                    shell_syntax_targets+=("${shell_script_path}")
-                done < <(find "${check_repo_root}/jazzer/bin" -maxdepth 1 -type f | sort)
-            fi
             run_shell_stage "${stage_id}" "${stage_label}" \
-                bash -c '
-                    set -euo pipefail
-                    shell_syntax_targets=()
-                    while [[ "$1" != "--" ]]; do
-                        shell_syntax_targets+=("$1")
-                        shift
-                    done
-                    shift
-                    bash -n "${shell_syntax_targets[@]}"
-                    local_script_path=""
-                    for local_script_path in "$@"; do
-                        bash "'"${check_repo_root}"'/${local_script_path}"
-                    done
-                ' bash "${shell_syntax_targets[@]}" -- "${check_stage5_script_paths[@]}"
+                "${check_repo_root}/scripts/check-shell-syntax.sh"
             ;;
         docker-smoke)
             run_shell_stage "${stage_id}" "${stage_label}" "${check_repo_root}/scripts/docker-smoke.sh"

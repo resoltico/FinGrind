@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Mutation operations over one SQLite-backed book session. */
 final class SqliteStoreMutationOperations {
@@ -159,25 +160,89 @@ final class SqliteStoreMutationOperations {
       if (!store.isInitializedBook(activeDatabase.nativeDatabase())) {
         return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
       }
+      SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(store.bookPath());
       SqliteNativeConnections.rekey(
           activeDatabase.nativeDatabase(), activeReplacementPassphrase.nativePassphrase());
-      SqliteStoreContext.closeOwnedDatabase(activeDatabase.nativeDatabase());
-      store.clearDatabaseState();
       SqliteSessionDatabase reopenedDatabase = null;
       try {
         reopenedDatabase =
             store.openConfiguredDatabase(activeReplacementPassphrase.nativePassphrase());
         store.requireInitializedBook(reopenedDatabase.nativeDatabase());
+        SqliteStoreContext.closeOwnedDatabase(activeDatabase.nativeDatabase());
+        store.clearDatabaseState();
         store.publishDatabase(reopenedDatabase.nativeDatabase());
+        rollbackFile.deleteQuietly();
         return new RekeyBookResult.Rekeyed(store.bookPath());
       } catch (RuntimeException exception) {
         SqliteStoreOperations.closeReopenedDatabaseQuietly(reopenedDatabase);
-        throw exception;
+        RuntimeException closeFailure =
+            captureBestEffortRuntimeFailure(
+                () -> SqliteStoreContext.closeOwnedDatabase(activeDatabase.nativeDatabase()));
+        store.clearDatabaseState();
+        RuntimeException restoreFailure =
+            captureBestEffortRuntimeFailure(() -> rollbackFile.restore(store.bookPath()));
+        throw finalizeFailedRekey(
+            exception, restoreFailure, closeFailure, rollbackFile::deleteQuietly);
       }
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to rekey SQLite book.", exception);
     } finally {
       activeReplacementPassphrase.close();
     }
+  }
+
+  static @Nullable RuntimeException captureBestEffortRuntimeFailure(
+      BestEffortRuntimeAction action) {
+    try {
+      action.run();
+      return null;
+    } catch (RuntimeException failure) {
+      return failure;
+    }
+  }
+
+  static IllegalStateException catastrophicRekeyRestoreFailure(
+      RuntimeException verificationFailure,
+      RuntimeException restoreFailure,
+      @Nullable RuntimeException closeFailure) {
+    IllegalStateException catastrophicFailure =
+        new IllegalStateException(
+            "Failed to verify the rekeyed SQLite book, and FinGrind could not restore the pre-rekey book automatically. Use the preserved rollback copy in the reported storage failure to recover manually.",
+            verificationFailure);
+    catastrophicFailure.addSuppressed(restoreFailure);
+    if (closeFailure != null) {
+      catastrophicFailure.addSuppressed(closeFailure);
+    }
+    return catastrophicFailure;
+  }
+
+  static IllegalStateException finalizeFailedRekey(
+      RuntimeException verificationFailure,
+      @Nullable RuntimeException restoreFailure,
+      @Nullable RuntimeException closeFailure,
+      BestEffortRuntimeAction rollbackDeleteAction) {
+    Objects.requireNonNull(rollbackDeleteAction, "rollbackDeleteAction");
+    if (restoreFailure != null) {
+      return catastrophicRekeyRestoreFailure(verificationFailure, restoreFailure, closeFailure);
+    }
+    rollbackDeleteAction.run();
+    return restoredOriginalBookFailure(verificationFailure, closeFailure);
+  }
+
+  static IllegalStateException restoredOriginalBookFailure(
+      RuntimeException verificationFailure, @Nullable RuntimeException closeFailure) {
+    if (closeFailure != null) {
+      verificationFailure.addSuppressed(closeFailure);
+    }
+    return new IllegalStateException(
+        "Failed to verify the rekeyed SQLite book. FinGrind restored the pre-rekey book on disk; reopen the session with the original passphrase and retry.",
+        verificationFailure);
+  }
+
+  /** Runs a best-effort cleanup action that must never replace the primary failure. */
+  @FunctionalInterface
+  interface BestEffortRuntimeAction {
+    /** Executes the cleanup action, reporting but not throwing best-effort runtime failures. */
+    void run();
   }
 }

@@ -34,6 +34,8 @@ grep -Fq 'check_stage_execute()' "${stage_contract_script}" || die \
     "check stage contract no longer owns the stage execution mapping"
 grep -Fq 'check_stage_execute "${stage_id}" "${stage_label}" "${repo_root}"' "${root_check_script}" || die \
     "check.sh no longer delegates fixed-stage execution through the canonical stage-contract owner"
+grep -Fq './scripts/check-shell-syntax.sh' "${stage_contract_script}" || die \
+    "check stage contract no longer advertises the canonical shell-syntax gate script"
 if grep -Fq 'case "${stage_id}" in' "${root_check_script}"; then
     die "check.sh still carries its own fixed-stage execution case mapping"
 fi

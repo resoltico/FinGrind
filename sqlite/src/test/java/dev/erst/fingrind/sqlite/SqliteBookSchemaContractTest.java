@@ -8,19 +8,43 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.DeclareAccountResult;
+import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.executor.PostingCommitResult;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 @NullUnmarked
 class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
+  @Test
+  void ensureParentDirectory_acceptsBareBookFileNames() {
+    assertDoesNotThrow(
+        () -> SqliteBookSchemaBootstrap.ensureParentDirectory(Path.of("book.sqlite")));
+  }
+
+  @Test
+  void ensureParentDirectory_rejectsPathsWithoutWritableParentDirectory() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteBookSchemaBootstrap.ensureParentDirectory(Path.of("/")));
+    assertEquals(
+        "Book path must resolve against a writable parent directory.", exception.getMessage());
+  }
 
   @Test
   void openBook_setsFinGrindIdentityAndHardeningPragmas() throws Exception {
@@ -47,6 +71,80 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               SqliteBookContract.FORMAT_VERSION, queryInt(database, "pragma user_version"));
         });
+  }
+
+  @Test
+  void openBook_hardensBookDirectoryAndFilePermissionsOnSupportedHost() throws Exception {
+    Path databasePath = tempDirectory.resolve("secure-book.sqlite");
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+    }
+
+    if (!databasePath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+      return;
+    }
+
+    assertEquals(
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE),
+        Files.getPosixFilePermissions(databasePath.getParent()));
+    assertEquals(
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+        Files.getPosixFilePermissions(databasePath));
+  }
+
+  @Test
+  void encryptedBookFile_doesNotExposeObviousSentinelPlaintext() throws Exception {
+    Path databasePath = tempDirectory.resolve("encrypted-sentinel.sqlite");
+    String sentinelAccountName = "SENTINEL_ACCOUNT_NAME_X9Q2";
+    String sentinelIdempotencyKey = "SENTINEL_IDEMPOTENCY_X9Q2";
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      initializeBookWithDefaultAccounts(postingFactStore);
+      assertEquals(
+          new DeclareAccountResult.Declared(
+              new DeclaredAccount(
+                  new AccountCode("9000"),
+                  new AccountName(sentinelAccountName),
+                  NormalBalance.DEBIT,
+                  true,
+                  Instant.parse("2026-04-08T12:00:00Z"))),
+          postingFactStore.declareAccount(
+              new AccountCode("9000"),
+              new AccountName(sentinelAccountName),
+              NormalBalance.DEBIT,
+              Instant.parse("2026-04-08T12:00:00Z")));
+      assertEquals(
+          new PostingCommitResult.Committed(
+              postingFact(
+                  "posting-sentinel-1",
+                  sentinelIdempotencyKey,
+                  java.time.LocalDate.parse("2026-04-08"),
+                  Instant.parse("2026-04-08T12:00:01Z"),
+                  List.of(
+                      line("9000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "1.00"),
+                      line("2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "1.00")))),
+          postingFactStore.commit(
+              postingFact(
+                  "posting-sentinel-1",
+                  sentinelIdempotencyKey,
+                  java.time.LocalDate.parse("2026-04-08"),
+                  Instant.parse("2026-04-08T12:00:01Z"),
+                  List.of(
+                      line("9000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "1.00"),
+                      line("2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "1.00")))));
+    }
+
+    String rawDatabaseBytes =
+        new String(Files.readAllBytes(databasePath), StandardCharsets.ISO_8859_1);
+    assertFalse(rawDatabaseBytes.contains(sentinelAccountName));
+    assertFalse(rawDatabaseBytes.contains(sentinelIdempotencyKey));
+    assertFalse(rawDatabaseBytes.contains("posting-sentinel-1"));
   }
 
   @Test

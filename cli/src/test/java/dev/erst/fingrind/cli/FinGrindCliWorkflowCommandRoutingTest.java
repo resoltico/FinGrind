@@ -74,7 +74,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -194,7 +194,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),

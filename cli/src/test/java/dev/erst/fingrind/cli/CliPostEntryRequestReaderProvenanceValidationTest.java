@@ -72,4 +72,60 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
 
     assertEquals("Missing required field: provenance", exception.getMessage());
   }
+
+  @Test
+  void readPostEntryCommand_rejectsUnreplacedActorIdScaffoldPlaceholder() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validRequestJson(false)
+                    .replace("\"actor-1\"", "\"replace-before-commit-actor-id\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: provenance.actorId",
+        exception.getMessage());
+    assertEquals(CliJsonRequestCodec.postEntryRequestHint(), exception.failure().hint());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsUnreplacedEffectiveDateScaffoldPlaceholder() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validRequestJson(false)
+                    .replace("\"2026-04-07\"", "\"replace-before-commit-effective-date\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: effectiveDate",
+        exception.getMessage());
+    assertEquals(CliJsonRequestCodec.postEntryRequestHint(), exception.failure().hint());
+  }
+
+  @Test
+  void readPostEntryCommand_rejectsUnreplacedIdempotencyKeyScaffoldPlaceholder() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                validRequestJson(false)
+                    .replace("\"idem-1\"", "\"replace-before-commit-idempotency-key\"")
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
+
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: provenance.idempotencyKey",
+        exception.getMessage());
+  }
 }

@@ -60,6 +60,10 @@ object BundleManifestRenderer {
                             DistributionContractReader.requiredMinimumSqliteVersion(projectRootDirectory),
                         requiredSqlite3mcVersion =
                             DistributionContractReader.requiredSqlite3mcVersion(projectRootDirectory),
+                        requiredSqliteSourceId =
+                            DistributionContractReader.requiredSqliteSourceId(projectRootDirectory),
+                        requiredCompileOptions =
+                            DistributionContractReader.requiredSqliteCompileOptions(projectRootDirectory),
                     ),
                 bootstrap =
                     BootstrapDocument(
@@ -132,6 +136,8 @@ object BundleManifestRenderer {
         val libraryMode: String,
         val requiredMinimumSqliteVersion: String,
         val requiredSqlite3mcVersion: String,
+        val requiredSqliteSourceId: String,
+        val requiredCompileOptions: List<String>,
     )
 
     private data class BootstrapDocument(

@@ -36,8 +36,7 @@ class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
   private static String runDiscoveryCommand(String command) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode = cli.run(new String[] {command});
 

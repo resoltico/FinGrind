@@ -43,9 +43,15 @@ document = {
             "sqlite": {
                 "libraryMode": runtime_surface["sqliteLibraryMode"],
                 "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+                "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
+                "compileOptionsVerification": "verified",
                 "runtimeStatus": "ready",
+                "runtimeProvenance": "environment-configured",
+                "loadedLibraryPath": "/tmp/libsqlite3.so.0",
                 "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
                 "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+                "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
             }
         }
     }
@@ -68,9 +74,15 @@ document = {
             "sqlite": {
                 "libraryMode": runtime_surface["sqliteLibraryMode"],
                 "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+                "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
+                "compileOptionsVerification": "not-verified",
                 "runtimeStatus": "missing",
+                "runtimeProvenance": "environment-configured",
+                "loadedLibraryPath": "/tmp/libsqlite3.so.0",
                 "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
                 "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+                "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
             }
         }
     }
