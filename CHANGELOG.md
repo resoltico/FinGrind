@@ -5,6 +5,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-04-28
+
+### Changed
+
+- Upgraded the Gradle wrapper to `9.5.0-rc-4`, moved the shared `gradle/build-logic` surface onto
+  Kotlin `2.4.0-Beta2`, and aligned the included build with the Java 26 baseline so it now emits
+  JVM 26 bytecode instead of carrying a separate JVM 25 exception.
+- Updated the user and developer guides so the canonical request/plan scaffold semantics, current
+  Gradle/Kotlin baseline, and Java 26 build-logic contract stay aligned with the live CLI and
+  build surfaces.
+
+### Fixed
+
+- Fixed interactive prompt passphrase handling so malformed UTF-16 input is rejected instead of
+  being silently replacement-encoded into a different protected-book secret, and added regression
+  coverage for both the SQLite passphrase adapter and the CLI prompt resolver.
+- Fixed the request and ledger-plan scaffold boundary so canonical `replace-before-commit-*`
+  provenance sentinels are now rejected before any posting or plan can reach durable state, and
+  added direct parser plus live workflow regression coverage for the raw template path.
+- Fixed the canonical request and plan scaffolds so they now publish agent-owned provenance
+  placeholders instead of hardcoded human/operator metadata, and documented the single-use
+  `idempotencyKey` contract around those templates.
+- Fixed the canonical request and plan scaffolds so `effectiveDate` is now an explicit
+  replace-before-submit placeholder instead of a stale concrete date, and aligned the
+  protocol/docs guidance with that scaffold contract.
+- Fixed request-validation recovery hints so `execute-plan` now points callers at
+  `print-plan-template`, account-declaration failures no longer point at the posting scaffold, and
+  the canonical help workflow now includes the required template-edit step instead of implying raw
+  scaffolds are directly runnable.
+- Fixed request-file transport failures so missing or unreadable `--request-file` payloads now
+  surface path-aware diagnostics instead of being mislabeled as generic JSON parse failures, and
+  fixed the canonical `help`/docs quick-start workflow so the required account-declaration JSON
+  files are created explicitly rather than assumed to exist.
+- Fixed the shell-side contract reader and bundle/release smoke verifiers so they derive the
+  source-checkout Java baseline, default cipher, and managed-SQLite version contract from the
+  canonical protocol resources instead of carrying duplicate verifier-owned literals.
+- Fixed GitHub Actions so the canonical Stage 5 release-surface shell-script gate now runs in CI
+  instead of relying only on local `./check.sh` executions.
+- Added live CLI contract tests for the published quick-start and example workflows so the public
+  guides now fail fast when their commands, fixtures, or scaffold guidance drift away from the
+  executable surface.
+- Fixed the managed SQLite contract so source id and required compile options now have one
+  canonical owner, runtime discovery reports provenance plus loaded-library/source-id details, and
+  bundle/source-checkout smoke verifiers assert those same facts instead of checking only version
+  strings.
+- Fixed SQLite protected-book handling so book files and present sidecars are hardened to
+  owner-only permissions on supported filesystems, `rekey-book` preserves and restores a rollback
+  copy when replacement-secret verification fails, and encrypted-book tests now prove obvious
+  sentinel plaintext does not leak to the raw database bytes.
+- Fixed public secret-handling examples so stdin passphrase workflows no longer embed passphrase
+  literals directly on the shell command line; the docs and canonical protocol examples now use
+  file-fed or prompt-based routes instead.
+- Fixed SQLite runtime discovery so `capabilities` now distinguishes managed-library compile-option
+  failure from plain "not-verified", and the bundle/source-checkout smoke verifiers enforce that
+  explicit runtime verdict.
+- Added committed encrypted protected-book fixtures plus closed-book backup/restore regression
+  coverage, and documented the supported operator backup contract as one protected `.sqlite` file
+  copy plus later file replacement while the book is closed.
+- Added failure-path regressions proving CLI and SQLite error surfaces do not echo prompt, stdin,
+  key-file, or replacement-secret contents when protected-book authentication fails.
+
 ## [0.27.0] - 2026-04-26
 
 ### Changed
@@ -1051,7 +1112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.28.0
 [0.27.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.27.0
 [0.26.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.26.0
 [0.25.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.25.0

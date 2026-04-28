@@ -443,7 +443,7 @@ tasks.named<Test>("test") {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(layout.projectDirectory.file("build.gradle.kts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.dir(rootProject.layout.projectDirectory.dir("docs/examples"))
+    inputs.dir(rootProject.layout.projectDirectory.dir("docs"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(rootProject.layout.projectDirectory.dir("scripts"))
         .withPathSensitivity(PathSensitivity.RELATIVE)

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 /** Unit tests for {@link FinGrindCli}. */
 @NullUnmarked
@@ -57,7 +58,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -80,6 +81,66 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("Failed to read request JSON."));
+    assertFalse(workflow.workflowInvoked());
+  }
+
+  @Test
+  void run_reportsMissingRequestFileAsARequestTransportFailure() throws IOException {
+    Path requestFile = tempDirectory.resolve("missing-declare-account.json");
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new DeclareAccountResult.Declared(
+                new DeclaredAccount(
+                    new AccountCode("1000"),
+                    new AccountName("Cash"),
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "declare-account",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              requestFile.toString()
+            });
+
+    assertEquals(1, exitCode);
+    JsonNode failureEnvelope =
+        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").asText());
+    assertEquals("invalid-request", failureEnvelope.path("code").asText());
+    assertEquals(
+        "Request file does not exist: " + requestFile.toAbsolutePath().normalize() + ".",
+        failureEnvelope.path("message").asText());
+    assertTrue(
+        failureEnvelope
+            .path("hint")
+            .asText()
+            .contains("Verify that the selected --request-file exists and is readable"));
     assertFalse(workflow.workflowInvoked());
   }
 
@@ -109,7 +170,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -161,7 +222,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -218,7 +279,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),

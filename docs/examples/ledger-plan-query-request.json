@@ -27,7 +27,7 @@
       "stepId": "post-journal",
       "kind": "post-entry",
       "posting": {
-        "effectiveDate": "2026-04-17",
+        "effectiveDate": "2026-04-07",
         "lines": [
           {
             "accountCode": "1000",
@@ -43,8 +43,8 @@
           }
         ],
         "provenance": {
-          "actorId": "operator-1",
-          "actorType": "HUMAN",
+          "actorId": "agent-query-1",
+          "actorType": "AGENT",
           "commandId": "command-query-1",
           "idempotencyKey": "idem-query-demo-1",
           "causationId": "cause-query-1"

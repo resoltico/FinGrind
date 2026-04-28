@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.27.0"
+version: "0.28.0"
 domain: USER_CLI
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -29,13 +29,21 @@ Every book-bound command also requires exactly one passphrase source:
 `help` is returned when no command is supplied.
 `help`, `version`, and `capabilities` default to human-readable discovery output and also accept
 `--output json` for machine parsing.
-`print-request-template` returns one raw JSON document so it can be redirected into a file or piped
-into another process.
+`print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
+or piped into another process.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
 account declarations, one posting step, and one balance assertion.
+Both scaffold commands emit `actorType: "AGENT"` plus
+`replace-before-commit-effective-date` and `replace-before-commit-*` provenance placeholders that
+must be replaced before submission. Idempotency keys are single-use per book once one posting
+commits successfully.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 `open-book` explicitly initializes one new protected book.
-`rekey-book` rotates the passphrase that protects one existing initialized book.
+`rekey-book` rotates the passphrase that protects one existing initialized book and restores the
+pre-rekey file automatically if replacement-passphrase verification fails.
+The supported backup path today is one closed-book encrypted file copy: stop using the book,
+copy the `.sqlite` file to protected storage, keep the key file protected separately, and restore
+by replacing the closed `.sqlite` file from that copy before reopening it.
 `declare-account` inserts or reactivates one account in the selected book.
 `inspect-book` reports lifecycle state, format metadata, and compatibility for one selected book.
 `list-accounts` returns one stable page of the current account registry.
@@ -80,8 +88,8 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
-    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td>none</td><td>Print a minimal valid posting request JSON document.</td></tr>
-    <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print a minimal valid AI-agent ledger plan JSON document.</td></tr>
+    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td>none</td><td>Print the canonical minimal posting request scaffold JSON document.</td></tr>
+    <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;path&gt; | --new-book-passphrase-stdin | --new-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
@@ -132,20 +140,28 @@ version pins that the source checkout, release automation, and shell acceptance 
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.27.0-macos-aarch64.tar.gz
-./fingrind-0.27.0-macos-aarch64/bin/fingrind help
-./fingrind-0.27.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.28.0-macos-aarch64.tar.gz
+./fingrind-0.28.0-macos-aarch64/bin/fingrind help
+./fingrind-0.28.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
+
+Edit `./request.json` and replace `replace-before-commit-effective-date` plus every
+`replace-before-commit-*` provenance placeholder before using it with `preflight-entry` or
+`post-entry`.
 
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.27.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.27.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.27.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.28.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.28.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.28.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
+
+Edit `.\request.json` and replace `replace-before-commit-effective-date` plus every
+`replace-before-commit-*` provenance placeholder before using it with `preflight-entry` or
+`post-entry`.
 
 In the examples below, `fingrind` means the extracted bundle launcher.
 
@@ -205,7 +221,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | multiple replacement passphrase sources on `rekey-book` | `1` | `invalid-request` | `Exactly one replacement book passphrase source is permitted per command.` |
 | same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `1` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
-| malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON.` or domain-validation text |
+| unreadable or missing `--request-file` payload | `1` | `invalid-request` | `Request file does not exist: ...`, `Request file is not readable: ...`, or `Failed to read request file: ...` |
+| malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON.`, `Failed to read request JSON from standard input.`, or domain-validation text |
 | malformed `list-accounts --cursor` or `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported account page cursor: ...` or `Unsupported posting page cursor: ...` |
 | book is missing or never opened | `2` | `administration-book-not-initialized`, `query-book-not-initialized`, or `posting-book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
@@ -234,7 +251,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
   Windows owner-only ACL on Windows, or the runtime rejects them.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
-  cannot be paired with `--request-file -`.
+  cannot be paired with `--request-file -`. Feed that stdin route from a file or secret-fetching
+  process rather than embedding the passphrase literal in shell history.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
 - `rekey-book` requires one current passphrase source plus one replacement passphrase source.
   The replacement options are `--new-book-key-file`, `--new-book-passphrase-stdin`, and
@@ -243,6 +261,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   entries.
 - `rekey-book` rejects using the same key-file path for both current and replacement secrets, and
   standard input cannot supply both current and replacement secrets in the same invocation.
+- The supported backup/restore workflow is one encrypted closed-book copy plus later file
+  replacement. Do not copy a book while FinGrind is actively mutating it, and keep the copied
+  `.sqlite` file under the same protected filesystem stance as the live book.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /
@@ -292,13 +313,23 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.distribution.unsupportedPublicCliBundleTargets`,
   `environment.sqlite.libraryEnvironmentVariable`,
   `environment.sqlite.bundleHomeSystemProperty`,
+  `environment.sqlite.requiredCompileOptions`,
   `environment.sqlite.requiredMinimumSqliteVersion`,
   `environment.sqlite.requiredSqlite3mcVersion`,
+  `environment.sqlite.requiredSqliteSourceId`,
+  `environment.sqlite.compileOptionsVerification`,
   `environment.sqlite.runtimeStatus`,
+  `environment.sqlite.runtimeProvenance`,
+  `environment.sqlite.loadedLibraryPath`,
   `environment.sqlite.loadedSqliteVersion`,
   `environment.sqlite.loadedSqlite3mcVersion`,
+  `environment.sqlite.loadedSqliteSourceId`,
   `environment.storage.bookProtectionMode`, and
   `environment.storage.defaultBookCipher`.
+- `environment.sqlite.compileOptionsVerification` is `verified` only when the managed runtime is
+  ready, `failed` when the loaded library is present but missing one or more required compile
+  options, and "not-verified" when the runtime is unavailable or an earlier compatibility gate
+  prevents a compile-option verdict.
 - `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and
   `currencyModel` so agents can discover the advisory preflight contract and single-currency
   scope without reading source code.
@@ -316,8 +347,13 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   renderer.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send
   `provenance.recordedAt` or `provenance.sourceChannel`.
+- `print-request-template` and `print-plan-template` intentionally emit
+  `replace-before-commit-effective-date` plus `replace-before-commit-*` provenance placeholders so
+  callers must provide a real posting date plus real actor, command, idempotency, and causation
+  identifiers before submission.
 - `print-plan-template` is the fastest machine bootstrap for a new book because it already includes
-  `open-book` and a matching assertion step.
+  `open-book` and a matching assertion step, but it remains a scaffold until those placeholders
+  are replaced.
 - `--book-passphrase-prompt` either reads from a supported controlling terminal or fails
   deterministically with `interactive-prompt-unavailable` and a repair hint that points to
   `--book-key-file` or `--book-passphrase-stdin`.

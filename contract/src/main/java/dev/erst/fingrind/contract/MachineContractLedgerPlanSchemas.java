@@ -16,7 +16,7 @@ final class MachineContractLedgerPlanSchemas {
   }
 
   static ContractRequestShapes.LedgerPlanRequestShapeDescriptor descriptor() {
-    PlanExecutionDescriptor execution = MachineContractDescriptors.planExecution();
+    PlanExecutionDescriptor execution = MachineContractDomainDescriptors.planExecution();
     return new ContractRequestShapes.LedgerPlanRequestShapeDescriptor(
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractLedgerPlanFieldSets.topLevelFields()),

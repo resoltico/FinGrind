@@ -3,9 +3,11 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link SqliteBookPassphrase}. */
@@ -36,6 +38,25 @@ class SqliteBookPassphraseTest {
             () -> SqliteBookPassphrase.normalizeSourceDescription("   "));
 
     assertEquals("sourceDescription must not be blank.", exception.getMessage());
+  }
+
+  @Test
+  void fromCharactersDecision_rejectsMalformedUtf16InputAndZeroizesSourceCharacters() {
+    char[] sourceCharacters = new char[] {'A', '\uD800', 'B'};
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookPassphrase.fromCharactersDecision(
+                        " interactive prompt ", sourceCharacters)
+                    .requireAccepted());
+    String message = Objects.requireNonNull(exception.getMessage());
+
+    assertTrue(
+        message.contains(
+            "The FinGrind book passphrase source must contain a UTF-8 passphrase: interactive prompt"));
+    assertArrayEquals(new char[sourceCharacters.length], sourceCharacters);
   }
 
   @Test

@@ -32,6 +32,15 @@ class SqliteFailureClassifierTest {
         SqliteFailureClassifier.classify(
             new UnsupportedSqliteCompileOptionsException(
                 "3.46.0", "2.2.0", "bundle", List.of("SQLITE_SECURE_DELETE"))));
+    assertEquals(
+        SqliteFailureClassifier.Category.MANAGED_RUNTIME,
+        SqliteFailureClassifier.classify(
+            new UnsupportedSqliteSourceIdException(
+                "unexpected-source-id",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "bundle",
+                "3.53.0",
+                "2.3.3")));
 
     assertEquals(
         SqliteFailureClassifier.Category.STORAGE,

@@ -1,0 +1,27 @@
+{
+  "fixtureName": "current-default-protected-book.sqlite",
+  "purpose": "Current default protected-book compatibility fixture for reopen, wrong-key, and backup-restore tests.",
+  "testOnlyPassphraseUtf8": "posting-fact-store-test-book-key",
+  "initializedAt": "2026-04-07T10:15:30Z",
+  "accounts": [
+    {
+      "accountCode": "1000",
+      "accountName": "Cash",
+      "normalBalance": "DEBIT"
+    },
+    {
+      "accountCode": "2000",
+      "accountName": "Revenue",
+      "normalBalance": "CREDIT"
+    }
+  ],
+  "postings": [
+    {
+      "postingId": "fixture-posting-1",
+      "idempotencyKey": "fixture-idem-1",
+      "effectiveDate": "2026-04-07",
+      "currencyCode": "EUR",
+      "amount": "10.00"
+    }
+  ]
+}

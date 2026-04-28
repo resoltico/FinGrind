@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.27.0"
+version: "0.28.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -215,14 +215,16 @@ commit the wrapper. After the wrapper exists, return immediately to the wrapper-
 FinGrind itself already has wrapper files committed, so that bootstrap exception does not apply to
 normal repo work here.
 
-## Build Logic Caveat
+## Build Logic Baseline
 
-FinGrind's product modules and runtime baseline are Java 26.
+FinGrind's product modules, runtime baseline, and shared included build logic all target Java 26.
 
-There is one deliberate toolchain exception: the shared included build logic under
-`gradle/build-logic` still emits JVM 25 bytecode because Kotlin `2.3.0` does not yet target JVM 26
-directly. That build still compiles with the Java 26 toolchain, so a separate Java 25 install is
-not part of the supported setup.
+`gradle/build-logic` now compiles with Kotlin `2.4.0-Beta2` and emits JVM 26 bytecode directly.
+`./gradlew --version` still reports the Kotlin version embedded in the Gradle distribution itself;
+that discovery output is not the authoritative owner of the build-logic Kotlin plugin pin.
+Both the wrapper and this Kotlin build-logic pin are intentionally temporary prerelease choices;
+move them to the matching stable `9.5.x` and `2.4.x` lines as soon as those releases are
+available and the included-build surface still verifies cleanly here.
 
 ## Java 26 Feature Adoption
 
@@ -279,7 +281,7 @@ Expected outcomes:
 - `JAVA_HOME` resolves inside `jdk-26.jdk`
 - both zsh modes resolve `java` and `javac`
 - `java --version` and `javac --version` report version 26
-- `./gradlew --version` reports Gradle `9.4.1`
+- `./gradlew --version` reports Gradle `9.5.0-rc-4`
 
 ## Full Toolchain Verification
 

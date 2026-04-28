@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.27.0"
+version: "0.28.0"
 domain: DEVELOPER
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -117,6 +117,8 @@ FinGrind's current public model is:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
 - book files are protected at rest with SQLite3 Multiple Ciphers 2.3.3 using the upstream default
   `chacha20` cipher
+- protected book files and same-directory SQLite sidecars are hardened to owner-only filesystem
+  permissions when the host platform exposes a supported security model
 - one canonical current schema defines new books
 - books are initialized explicitly before any posting
 - preflight is advisory and not a durable commit guarantee
@@ -137,13 +139,23 @@ FinGrind's current public model is:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
-| Gradle Wrapper | 9.4.1 |
+| Gradle Wrapper | 9.5.0-rc-4 |
+| Kotlin build logic | 2.4.0-Beta2 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build plus `--enable-native-access=ALL-UNNAMED` on the Java command line |
 | Jackson Databind | 3.1.2 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
 | PMD | 7.24.0 |
+
+The current wrapper and build-logic Kotlin pins are intentionally prerelease:
+- Gradle wrapper: `9.5.0-rc-4`
+- Kotlin build logic: `2.4.0-Beta2`
+
+Treat those as temporary compatibility-sensitive choices rather than a steady-state baseline.
+Removal trigger: move to the matching stable `9.5.x` and stable `2.4.x` lines as soon as those
+releases are available and verified against this repository's wrapper, included-build, and plugin
+surface.
 
 ## Java 26 Feature Policy
 
@@ -340,6 +352,9 @@ FinGrind deliberately keeps several boundaries sharp:
 - One SQLite file is one book for one entity.
 - Every book is protected at rest through SQLite3 Multiple Ciphers and exactly one explicit
   passphrase source.
+- Rekeying preserves one rollback copy until the replacement secret is verified, so verification
+  failures restore the pre-rekey file automatically instead of leaving an unverified rotation on
+  disk.
 - FinGrind supports key files, stdin, and interactive terminal prompts; it intentionally rejects
   plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
   `key=` / `hexkey=` secret transport.

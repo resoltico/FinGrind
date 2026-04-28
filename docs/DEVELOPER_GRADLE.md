@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.27.0"
+version: "0.28.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -25,8 +25,10 @@ FinGrind's machine-level setup rule is simple:
 - prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
   cache relocation
 
-The wrapper version is currently `9.4.1`, as declared in
+The wrapper version is currently `9.5.0-rc-4`, as declared in
 [gradle/wrapper/gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties).
+That pin is intentionally temporary and prerelease-sensitive: move to the matching stable `9.5.x`
+line as soon as it exists and the wrapper/custom-launcher surface verifies cleanly.
 
 This file therefore documents build architecture and ownership boundaries, not how to install a
 global Gradle command on a machine.
@@ -131,6 +133,12 @@ one place to fix infrastructure concerns such as test pulses or managed-SQLite p
 The included build now relies on Gradle's normal up-to-date and incremental compilation behavior.
 It no longer force-disables Kotlin incremental compilation or wipes compile output directories
 before every build.
+Its own Kotlin compiler is now pinned explicitly in
+`gradle/build-logic/build.gradle.kts` at `2.4.0-Beta2` so the shared build logic can compile
+against Gradle's Kotlin DSL APIs while still emitting JVM 26 bytecode.
+That Kotlin pin is also intentionally temporary and prerelease-sensitive: move to the matching
+stable `2.4.x` line as soon as it is available and the included build still verifies cleanly on
+the live plugin/classpath surface.
 
 The consumer scripts are intentionally thin now:
 - root `build.gradle.kts` is a single root-conventions plugin application
@@ -352,7 +360,9 @@ the changelog instead of letting the system drift silently.
 
 Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazzer upgrades:
 
-- Can the shared build logic move from JVM 25 bytecode output to JVM 26 output yet?
+- Does `gradle/build-logic` still compile and emit JVM 26 bytecode after the current Kotlin plugin pin?
+- Is the Gradle wrapper still `9.5.0-rc-4`, and can it move to the matching stable 9.5.x line yet?
+- Is the build-logic Kotlin pin still `2.4.0-Beta2`, and can it move to the matching stable 2.4.x line yet?
 - Has anyone reintroduced manual output wiping or disabled incremental compilation in
   `gradle/build-logic`?
 - Is any dependency version duplicated outside `gradle/libs.versions.toml`?

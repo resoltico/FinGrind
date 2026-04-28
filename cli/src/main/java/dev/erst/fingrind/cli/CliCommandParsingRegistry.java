@@ -39,8 +39,10 @@ final class CliCommandParsingRegistry {
   static CliCommand parse(OperationId operationId, List<String> arguments) {
     Objects.requireNonNull(operationId, "operationId");
     Objects.requireNonNull(arguments, "arguments");
-    return Objects.requireNonNull(
-            PARSERS.get(operationId), () -> "Unsupported operation parser: " + operationId)
-        .apply(arguments);
+    return requiredParser(operationId).apply(arguments);
+  }
+
+  private static Function<List<String>, CliCommand> requiredParser(OperationId operationId) {
+    return Objects.requireNonNull(PARSERS.get(operationId));
   }
 }

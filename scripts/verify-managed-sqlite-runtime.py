@@ -53,6 +53,34 @@ def main() -> None:
             == managed_sqlite.get("requiredSqlite3mcVersion"),
             "missing loaded SQLite3 Multiple Ciphers version",
         ),
+        (
+            sqlite.get("requiredSqliteSourceId")
+            == managed_sqlite.get("requiredSqliteSourceId"),
+            "missing required SQLite source id",
+        ),
+        (
+            sqlite.get("loadedSqliteSourceId")
+            == managed_sqlite.get("requiredSqliteSourceId"),
+            "missing loaded SQLite source id",
+        ),
+        (
+            sqlite.get("requiredCompileOptions")
+            == managed_sqlite.get("requiredCompileOptions"),
+            "missing canonical SQLite compile options",
+        ),
+        (
+            sqlite.get("compileOptionsVerification") == "verified",
+            "missing verified SQLite compile-options status",
+        ),
+        (
+            sqlite.get("runtimeProvenance") == "environment-configured",
+            "missing source-checkout SQLite runtime provenance",
+        ),
+        (
+            isinstance(sqlite.get("loadedLibraryPath"), str)
+            and bool(sqlite.get("loadedLibraryPath").strip()),
+            "missing loaded SQLite library path",
+        ),
     ]
 
     failures = [message for passed, message in checks if not passed]

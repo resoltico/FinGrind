@@ -17,6 +17,16 @@ object DistributionContractReader {
     fun requiredSqlite3mcVersion(projectRootDirectory: Path): String =
         managedSqliteProperty(projectRootDirectory) { it.requiredSqlite3mcVersion }
 
+    fun requiredSqliteSourceId(projectRootDirectory: Path): String =
+        managedSqliteProperty(projectRootDirectory) { it.requiredSqliteSourceId }
+
+    fun requiredSqliteCompileOptions(projectRootDirectory: Path): List<String> =
+        DistributionContractJson.listProperty(
+            projectRootDirectory,
+            DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
+            loadContractSchema(projectRootDirectory).managedSqlite.requiredCompileOptions,
+        )
+
     fun sourceCheckoutRuntimeDistribution(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sourceCheckoutRuntimeDistribution }
 
@@ -165,6 +175,8 @@ object DistributionContractReader {
     internal data class ManagedSqliteSchema(
         val requiredMinimumSqliteVersion: String,
         val requiredSqlite3mcVersion: String,
+        val requiredSqliteSourceId: String,
+        val requiredCompileOptions: String,
     )
 
     internal data class BundleLayoutSchema(

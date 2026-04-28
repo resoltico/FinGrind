@@ -70,6 +70,11 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "managedSqlite": {
                 "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
                 "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
+                "requiredSqliteSourceId": "requiredSqliteSourceId",
+                "requiredCompileOptions": "requiredCompileOptions",
+            },
+            "runtimeEnvironment": {
+                "sourceCheckoutJava": "sourceCheckoutJava",
             },
             "bundleLayout": {
                 "bundleTargets": "bundleTargets",
@@ -126,8 +131,25 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         {
             "requiredMinimumSqliteVersion": "3.53.0",
             "requiredSqlite3mcVersion": "2.3.3",
+            "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
+            "requiredCompileOptions": [
+                "THREADSAFE=1",
+                "OMIT_LOAD_EXTENSION",
+                "TEMP_STORE=3",
+                "SECURE_DELETE",
+            ],
         },
     )
+    write_json(
+        fixture_root
+        / "contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json",
+        {
+            "sourceCheckoutJava": "26+",
+        },
+    )
+    build_properties_path = fixture_root / "gradle/fingrind-build.properties"
+    build_properties_path.parent.mkdir(parents=True, exist_ok=True)
+    build_properties_path.write_text("fingrindJavaVersion=26\n", encoding="utf-8")
     write_json(
         protocol_root / "bundle-layout-contract.json",
         {
@@ -189,6 +211,17 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     )
     assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.0"
     assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.3"
+    assert (
+        loaded["managedSqlite"]["requiredSqliteSourceId"]
+        == "2026-04-09 sqlite-source-id"
+    )
+    assert loaded["managedSqlite"]["requiredCompileOptions"] == [
+        "THREADSAFE=1",
+        "OMIT_LOAD_EXTENSION",
+        "TEMP_STORE=3",
+        "SECURE_DELETE",
+    ]
+    assert loaded["runtimeEnvironment"]["sourceCheckoutJava"] == "26+"
     assert loaded["bundleLayout"]["hostBundleTarget"]["classifier"] == "windows-aarch64"
     assert loaded["bundleLayout"]["hostBundleTarget"]["archiveFormat"] == "zip"
     assert loaded["bundleLayout"]["hostBundleTarget"]["launcherPath"] == "bin/fingrind.ps1"
@@ -236,6 +269,40 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         assert "declared an enum without one canonical semantic key" in str(exc)
     else:
         raise AssertionError("expected undeclared operation-id semantic-key validation failure")
+
+    write_json(
+        protocol_root / "operation-id-contract.json",
+        {
+            "HELP": "help",
+            "VERSION": "version",
+            "CAPABILITIES": "capabilities",
+            "PRINT_REQUEST_TEMPLATE": "print-request-template",
+            "PRINT_PLAN_TEMPLATE": "print-plan-template",
+            "GENERATE_BOOK_KEY_FILE": "generate-book-key-file",
+            "OPEN_BOOK": "open-book",
+            "REKEY_BOOK": "rekey-book",
+            "DECLARE_ACCOUNT": "declare-account",
+            "INSPECT_BOOK": "inspect-book",
+            "LIST_ACCOUNTS": "list-accounts",
+            "GET_POSTING": "get-posting",
+            "LIST_POSTINGS": "list-postings",
+            "ACCOUNT_BALANCE": "account-balance",
+            "TRIAL_BALANCE": "trial-balance",
+            "ACCOUNT_LEDGER": "account-ledger",
+            "PERIOD_SUMMARY": "period-summary",
+            "EXECUTE_PLAN": "execute-plan",
+            "PREFLIGHT_ENTRY": "preflight-entry",
+            "POST_ENTRY": "post-entry",
+        },
+    )
+    (
+        fixture_root
+        / "contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json"
+    ).unlink()
+    loaded_from_build_metadata = contract_values.load_contract_values(
+        fixture_root, os_name="Linux", architecture="x86_64"
+    )
+    assert loaded_from_build_metadata["runtimeEnvironment"]["sourceCheckoutJava"] == "26+"
 PY
 
 printf 'contract values reader regression: success\n'

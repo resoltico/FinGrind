@@ -23,8 +23,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   void run_rejectsMissingBookFile() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode = cli.run(new String[] {"open-book"});
 
@@ -39,8 +38,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         cli.run(
@@ -72,7 +70,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -105,7 +103,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -142,7 +140,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -178,7 +176,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -214,7 +212,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -250,7 +248,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -285,7 +283,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),

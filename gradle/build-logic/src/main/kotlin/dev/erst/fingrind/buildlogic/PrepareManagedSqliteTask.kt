@@ -4,6 +4,7 @@ import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
@@ -38,6 +39,9 @@ abstract class PrepareManagedSqliteTask
         @get:Input
         abstract val sqliteVersion: Property<String>
 
+        @get:Input
+        abstract val requiredCompileOptions: ListProperty<String>
+
         @get:OutputFile
         abstract val outputFile: RegularFileProperty
 
@@ -61,6 +65,7 @@ abstract class PrepareManagedSqliteTask
                         compiler = compiler.get(),
                         operatingSystemId = activeOperatingSystemId,
                         sqliteVersion = sqliteVersion.get(),
+                        requiredCompileOptions = requiredCompileOptions.get(),
                         sourceFilePath = sourceFile.get().asFile.absolutePath,
                         outputFilePath = outputLibraryFile.absolutePath,
                     ),
@@ -84,6 +89,7 @@ abstract class PrepareManagedSqliteTask
                     buildWindowsCommandLine(
                         compiler = compiler,
                         sourceFilePath = sourceFilePath,
+                        requiredCompileOptions = requiredCompileOptions.get(),
                         outputFilePath = compiledLibraryFile.absolutePath,
                         importLibraryFilePath = importLibraryFile.absolutePath,
                         objectFilePath = objectFile.absolutePath,
@@ -97,6 +103,7 @@ abstract class PrepareManagedSqliteTask
             compiler: String,
             operatingSystemId: String,
             sqliteVersion: String,
+            requiredCompileOptions: List<String>,
             sourceFilePath: String,
             outputFilePath: String,
         ): List<String> =
@@ -104,10 +111,7 @@ abstract class PrepareManagedSqliteTask
                 add(compiler)
                 add("-O2")
                 add("-fPIC")
-                add("-DSQLITE_THREADSAFE=1")
-                add("-DSQLITE_OMIT_LOAD_EXTENSION=1")
-                add("-DSQLITE_TEMP_STORE=3")
-                add("-DSQLITE_SECURE_DELETE=1")
+                addAll(unixCompilerDefines(requiredCompileOptions))
                 if (operatingSystemId == "macos") {
                     add("-dynamiclib")
                     add("-current_version")
@@ -130,6 +134,7 @@ abstract class PrepareManagedSqliteTask
         private fun buildWindowsCommandLine(
             compiler: String,
             sourceFilePath: String,
+            requiredCompileOptions: List<String>,
             outputFilePath: String,
             importLibraryFilePath: String,
             objectFilePath: String,
@@ -139,10 +144,7 @@ abstract class PrepareManagedSqliteTask
                 "/nologo",
                 "/O2",
                 "/LD",
-                "/DSQLITE_THREADSAFE=1",
-                "/DSQLITE_OMIT_LOAD_EXTENSION=1",
-                "/DSQLITE_TEMP_STORE=3",
-                "/DSQLITE_SECURE_DELETE=1",
+                *windowsCompilerDefines(requiredCompileOptions).toTypedArray(),
                 "/DSQLITE_API=__declspec(dllexport)",
                 "/Fo\"$objectFilePath\"",
                 sourceFilePath,
@@ -152,4 +154,28 @@ abstract class PrepareManagedSqliteTask
                 "/OUT:\"$outputFilePath\"",
                 "/IMPLIB:\"$importLibraryFilePath\"",
             )
+
+        private fun unixCompilerDefines(requiredCompileOptions: List<String>): List<String> =
+            compilerDefines(requiredCompileOptions) { option -> "-D$option" }
+
+        private fun windowsCompilerDefines(requiredCompileOptions: List<String>): List<String> =
+            compilerDefines(requiredCompileOptions) { option -> "/D$option" }
+
+        private fun compilerDefines(
+            requiredCompileOptions: List<String>,
+            flagBuilder: (String) -> String,
+        ): List<String> =
+            requiredCompileOptions.map { option ->
+                val normalized = option.trim()
+                require(normalized.isNotEmpty()) {
+                    "Managed SQLite compile options must not be blank."
+                }
+                val sqliteOption =
+                    if (normalized.contains("=")) {
+                        normalized
+                    } else {
+                        "$normalized=1"
+                    }
+                flagBuilder("SQLITE_$sqliteOption")
+            }
     }

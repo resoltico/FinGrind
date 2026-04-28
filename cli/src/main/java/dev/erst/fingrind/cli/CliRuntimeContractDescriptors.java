@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
 import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
-import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
@@ -40,15 +39,17 @@ final class CliRuntimeContractDescriptors {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
-            runtimeProbe.status() == SqliteRuntime.Status.READY
-                ? SqliteCompileOptionsVerificationStatus.VERIFIED
-                : SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+            runtimeProbe.compileOptionsVerification(),
             runtimeProbe.requiredMinimumSqliteVersion(),
             runtimeProbe.requiredSqlite3mcVersion(),
+            runtimeProbe.requiredSqliteSourceId(),
             dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus.fromWireValue(
                 runtimeProbe.status().wireValue()),
+            runtimeProbe.runtimeProvenance(),
+            runtimeProbe.loadedLibraryPath(),
             runtimeProbe.loadedSqliteVersion(),
             runtimeProbe.loadedSqlite3mcVersion(),
+            runtimeProbe.loadedSqliteSourceId(),
             runtimeProbe.issue()));
   }
 }

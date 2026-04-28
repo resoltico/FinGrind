@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
@@ -29,7 +30,10 @@ record SqliteNativeApi(
     MethodHandle sqlite3Errstr,
     MethodHandle sqlite3ExtendedErrcode,
     String loadedVersion,
-    String loadedSqlite3mcVersion) {
+    String loadedSqlite3mcVersion,
+    String loadedSourceId,
+    SqliteRuntimeProvenance runtimeProvenance,
+    String loadedLibraryPath) {
   SqliteNativeApi {
     Objects.requireNonNull(libraryArena, "libraryArena");
     Objects.requireNonNull(sqlite3OpenV2, "sqlite3OpenV2");
@@ -55,13 +59,24 @@ record SqliteNativeApi(
     Objects.requireNonNull(sqlite3ExtendedErrcode, "sqlite3ExtendedErrcode");
     Objects.requireNonNull(loadedVersion, "loadedVersion");
     Objects.requireNonNull(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
+    Objects.requireNonNull(loadedSourceId, "loadedSourceId");
+    Objects.requireNonNull(runtimeProvenance, "runtimeProvenance");
+    Objects.requireNonNull(loadedLibraryPath, "loadedLibraryPath");
     loadedVersion = loadedVersion.strip();
     loadedSqlite3mcVersion = loadedSqlite3mcVersion.strip();
+    loadedSourceId = loadedSourceId.strip();
+    loadedLibraryPath = loadedLibraryPath.strip();
     if (loadedVersion.isEmpty()) {
       throw new IllegalArgumentException("loadedVersion must not be blank.");
     }
     if (loadedSqlite3mcVersion.isEmpty()) {
       throw new IllegalArgumentException("loadedSqlite3mcVersion must not be blank.");
+    }
+    if (loadedSourceId.isEmpty()) {
+      throw new IllegalArgumentException("loadedSourceId must not be blank.");
+    }
+    if (loadedLibraryPath.isEmpty()) {
+      throw new IllegalArgumentException("loadedLibraryPath must not be blank.");
     }
   }
 }

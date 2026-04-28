@@ -38,7 +38,9 @@ class DistributionContractReaderTest {
                   },
                   "managedSqlite": {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
-                    "requiredSqlite3mcVersion": "sqlite3mcVersion"
+                    "requiredSqlite3mcVersion": "sqlite3mcVersion",
+                    "requiredSqliteSourceId": "sqliteSourceId",
+                    "requiredCompileOptions": "compileOptions"
                   },
                   "bundleLayout": {
                     "bundleTargets": "bundleTargets",
@@ -94,7 +96,9 @@ class DistributionContractReaderTest {
                 """
                 {
                   "minimumSqliteVersion": "3.53.0",
-                  "sqlite3mcVersion": "2.3.3"
+                  "sqlite3mcVersion": "2.3.3",
+                  "sqliteSourceId": "2026-04-09 sqlite-source-id",
+                  "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"]
                 }
                 """.trimIndent(),
             )
@@ -189,6 +193,14 @@ class DistributionContractReaderTest {
                 DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot),
             )
             assertEquals(
+                "2026-04-09 sqlite-source-id",
+                DistributionContractReader.requiredSqliteSourceId(repositoryRoot),
+            )
+            assertEquals(
+                listOf("THREADSAFE=1", "SECURE_DELETE"),
+                DistributionContractReader.requiredSqliteCompileOptions(repositoryRoot),
+            )
+            assertEquals(
                 DistributionContractReader.BundleTargetContract(
                     classifier = "windows-aarch64",
                     operatingSystemId = "windows",
@@ -265,7 +277,9 @@ class DistributionContractReaderTest {
                   },
                   "managedSqlite": {
                     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
-                    "requiredSqlite3mcVersion": "requiredSqlite3mcVersion"
+                    "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
+                    "requiredSqliteSourceId": "requiredSqliteSourceId",
+                    "requiredCompileOptions": "requiredCompileOptions"
                   },
                   "bundleLayout": {
                     "bundleTargets": "bundleTargets",

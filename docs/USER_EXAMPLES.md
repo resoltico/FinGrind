@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.27.0"
+version: "0.28.0"
 domain: USER_EXAMPLES
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.27.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.27.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.28.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.28.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -50,10 +50,12 @@ Embedded control characters are rejected.
 The key file must be protected with POSIX owner-only permissions (`0400` or `0600`) on
 macOS/Linux, or a Windows owner-only ACL on Windows.
 
-For pipeline automation without a persistent file:
+For pipeline automation when a passphrase must flow over stdin, feed it from an existing
+protected file or another non-history-bearing secret source instead of embedding the passphrase
+literal on the shell command line:
 
 ```bash
-printf '%s\n' 'acme-demo-passphrase' | \
+cat ./acme.book-key | \
   fingrind \
     open-book \
     --book-file ./acme.sqlite \
@@ -63,7 +65,7 @@ printf '%s\n' 'acme-demo-passphrase' | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-"acme-demo-passphrase" | fingrind open-book --book-file .\acme.sqlite --book-passphrase-stdin
+Get-Content -Raw .\acme.book-key | fingrind open-book --book-file .\acme.sqlite --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -107,12 +109,42 @@ fingrind \
 
 `rekey-book` also accepts `--new-book-key-file` and `--new-book-passphrase-stdin` for the
 replacement secret. The interactive replacement prompt asks for the new passphrase twice and
-rejects mismatched entries.
+rejects mismatched entries. FinGrind creates one same-directory rollback copy before rotating the
+book and restores the pre-rekey file automatically if replacement-passphrase verification fails.
 
 One successful response:
 
 ```json
 {"status":"ok","payload":{"bookFile":"/tmp/fingrind/books/acme/acme.sqlite"}}
+```
+
+## Back Up And Restore One Closed Protected Book
+
+The supported backup path is a closed-book encrypted file copy. Stop using the book first, then
+copy the `.sqlite` file to protected storage and keep the key file protected separately.
+
+```bash
+cp ./acme.sqlite ./backup/acme.sqlite
+cp ./acme.book-key ./backup/acme.book-key
+```
+
+To restore, replace the closed live book with the encrypted copy before reopening it:
+
+```bash
+cp ./backup/acme.sqlite ./acme.sqlite
+fingrind \
+  inspect-book \
+  --book-file ./acme.sqlite \
+  --book-key-file ./backup/acme.book-key
+```
+
+On Windows PowerShell, the same closed-book copy/restore flow is:
+
+```powershell
+Copy-Item .\acme.sqlite .\backup\acme.sqlite
+Copy-Item .\acme.book-key .\backup\acme.book-key
+Copy-Item .\backup\acme.sqlite .\acme.sqlite -Force
+fingrind inspect-book --book-file .\acme.sqlite --book-key-file .\backup\acme.book-key
 ```
 
 ## Declare Accounts And Page The Registry
@@ -166,7 +198,10 @@ fingrind \
 
 That generated scaffold is byte-identical to the checked-in
 [examples/request-template.json](./examples/request-template.json) fixture. Both intentionally use
-the canonical scaffold `effectiveDate` value `2026-04-17`.
+the scaffold placeholder `replace-before-commit-effective-date`.
+The scaffold is agent-first: `actorType` is `AGENT`, and `effectiveDate`, `actorId`,
+`commandId`, `idempotencyKey`, and `causationId` must all be replaced before submission.
+A committed `idempotencyKey` is single-use per book.
 
 For the concrete walkthrough below, reuse the checked-in example request:
 
@@ -219,7 +254,9 @@ fingrind \
 
 Like `print-request-template`, this scaffold is byte-identical to the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture and uses the
-canonical scaffold `effectiveDate` value `2026-04-17`.
+same `replace-before-commit-effective-date` placeholder inside its nested posting scaffold.
+Its nested posting provenance uses the same `replace-before-commit-*` placeholders, which must be
+replaced before the plan is submitted.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -464,7 +501,7 @@ fingrind \
 One invalid-request response:
 
 ```json
-{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for a minimal valid request document, or 'fingrind capabilities' for accepted enums and fields."}
+{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run 'fingrind capabilities' for accepted enums and fields."}
 ```
 
 ## Invalid Cursor Is Rejected Deterministically

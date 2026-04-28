@@ -5,11 +5,27 @@ final class UnsupportedSqliteVersionException extends IllegalStateException {
   private static final long serialVersionUID = 1L;
 
   private final String loadedVersion;
+  private final String loadedSqlite3mcVersion;
+  private final String loadedSourceId;
   private final String requiredMinimumVersion;
   private final String libraryMode;
 
   UnsupportedSqliteVersionException(
       String loadedVersion, String requiredMinimumVersion, String libraryMode) {
+    this(
+        loadedVersion,
+        requiredMinimumVersion,
+        libraryMode,
+        SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
+        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
+  }
+
+  UnsupportedSqliteVersionException(
+      String loadedVersion,
+      String requiredMinimumVersion,
+      String libraryMode,
+      String loadedSqlite3mcVersion,
+      String loadedSourceId) {
     super(
         "FinGrind requires SQLite "
             + requiredMinimumVersion
@@ -19,6 +35,8 @@ final class UnsupportedSqliteVersionException extends IllegalStateException {
             + libraryMode
             + " mode.");
     this.loadedVersion = loadedVersion;
+    this.loadedSqlite3mcVersion = loadedSqlite3mcVersion;
+    this.loadedSourceId = loadedSourceId;
     this.requiredMinimumVersion = requiredMinimumVersion;
     this.libraryMode = libraryMode;
   }
@@ -29,6 +47,14 @@ final class UnsupportedSqliteVersionException extends IllegalStateException {
 
   String requiredMinimumVersion() {
     return requiredMinimumVersion;
+  }
+
+  String loadedSqlite3mcVersion() {
+    return loadedSqlite3mcVersion;
+  }
+
+  String loadedSourceId() {
+    return loadedSourceId;
   }
 
   String libraryMode() {

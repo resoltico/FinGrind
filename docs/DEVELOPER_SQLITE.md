@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.27.0"
+version: "0.28.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -31,6 +31,9 @@ That means:
   non-file routes
 - key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
   Windows owner-only ACL on Windows
+- protected book files and same-directory SQLite sidecars (`-journal`, `-wal`, and `-shm`) are
+  hardened to owner-only permissions when the host filesystem exposes POSIX permissions or
+  Windows ACL views
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
 - newly opened books are protected through SQLite3 Multiple Ciphers 2.3.3 using the upstream
@@ -108,9 +111,13 @@ License and attribution stance:
 - [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned
   LF-normalized `sqlite3mc_amalgamation.c` SHA3-256 before the managed native library is used, so
   Git checkout line-ending policy cannot create false integrity failures across machines or CI
+- [`managed-sqlite-contract.json`](../contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json)
+  is the canonical owner for the managed SQLite version, source-id, and required compile-option
+  contract; build logic, runtime discovery, bundle metadata, and shell verification derive from
+  that resource instead of keeping private literals
 - [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native shared library from that
-  source with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`, `SQLITE_TEMP_STORE=3`, and
-  `SQLITE_SECURE_DELETE=1`, then injects it through `FINGRIND_SQLITE_LIBRARY`
+  source with the canonical `requiredCompileOptions`, then injects it through
+  `FINGRIND_SQLITE_LIBRARY`
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not drift away from the managed runtime contract
 - the Docker image compiles the same vendored SQLite3MC source during image build
@@ -196,7 +203,9 @@ The SQLite adapter is split into focused collaborators:
 - `inspect-book` exposes missing, blank, initialized, foreign, unsupported-version, and incomplete
   states before mutating commands proceed
 - `open-book` creates parent directories if needed, applies the canonical schema, inserts the
-  authoritative `book_meta.initialized_at` marker, and initializes a protected SQLite3MC book file
+  authoritative `book_meta.initialized_at` marker, initializes a protected SQLite3MC book file,
+  and hardens the book path plus present sidecar files to owner-only permissions when the host
+  filesystem supports that security model
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
   `BookNotInitialized`
 - read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
@@ -208,8 +217,9 @@ The SQLite adapter is split into focused collaborators:
 - initialized FinGrind books are stamped with a fixed `pragma application_id` and
   `pragma user_version`, and foreign or unsupported SQLite files are rejected before ordinary book
   reads proceed
-- `rekey-book` rotates the passphrase through the native SQLite rekey path, reopens the book, and
-  revalidates the replacement passphrase before the command reports success
+- `rekey-book` creates one same-directory rollback copy, rotates the passphrase through the native
+  SQLite rekey path, reopens the book, revalidates the replacement passphrase before the command
+  reports success, and restores the pre-rekey file automatically if that verification fails
 - posting validation is shared between application preflight and transactional SQLite commit, so
   book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
   between the two paths
@@ -222,14 +232,24 @@ The SQLite adapter is split into focused collaborators:
   `journal_line.account_code -> account.account_code` foreign key
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
-- runtime probes distinguish `managed` versus `system` library source and report
+- runtime probes distinguish bundle-managed versus environment-configured library provenance and
+  report `environment.sqlite.requiredCompileOptions`,
   `environment.sqlite.requiredMinimumSqliteVersion`,
   `environment.sqlite.requiredSqlite3mcVersion`,
+  `environment.sqlite.requiredSqliteSourceId`,
+  `environment.sqlite.compileOptionsVerification`,
   `environment.sqlite.runtimeStatus`,
+  `environment.sqlite.runtimeProvenance`,
+  `environment.sqlite.loadedLibraryPath`,
   `environment.sqlite.loadedSqliteVersion`,
   `environment.sqlite.loadedSqlite3mcVersion`,
+  `environment.sqlite.loadedSqliteSourceId`,
   `environment.storage.bookProtectionMode`, and
   `environment.storage.defaultBookCipher` through `capabilities`
+- `environment.sqlite.compileOptionsVerification` is `verified` only when the runtime reaches the
+  ready state, `failed` when the loaded library is present but misses one or more required compile
+  options, and "not-verified" when the runtime is unavailable or an earlier version/source-id gate
+  prevents a compile-option verdict
 
 The posting seam distinguishes ordinary domain outcomes from true runtime failures:
 - accepted commits return `PostingCommitResult.Committed`
@@ -252,6 +272,12 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
 - FinGrind calls `sqlite3_rekey()` for `rekey-book` instead of routing replacement secrets through
   SQL text
+- `rekey-book` preserves one same-directory rollback copy until replacement-passphrase validation
+  succeeds, so verification failures restore the pre-rekey file instead of leaving an unverified
+  rotated book behind
+- the supported operator backup path is a closed-book encrypted file copy: stop using the selected
+  book, copy the `.sqlite` file to protected storage, preserve the key file separately, and
+  restore by replacing the closed `.sqlite` file from that encrypted copy before reopening it
 - FinGrind validates the configured key by executing `SELECT count(*) FROM sqlite_master;` before
   any schema or business operation can proceed
 - FinGrind intentionally relies on the upstream default `sqleet` / `chacha20` cipher and does not
@@ -263,6 +289,14 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - FinGrind also intentionally avoids plaintext CLI passphrase arguments and environment-variable
   passphrase transport because those routes expose secrets too broadly in shells, process tables,
   logs, and child-process environments
+- encrypted-book regression tests now write recognizable sentinel values and assert those strings
+  do not appear in the raw database bytes, so wrong-key coverage is paired with an obvious
+  plaintext-leak check
+- committed compatibility fixtures under
+  [`sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/`](../sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/)
+  prove that the current default protected-book format reopens across test runs, rejects the wrong
+  key deterministically, and remains restorable from one closed-book encrypted copy without
+  exposing plaintext
 
 ## Transaction Model
 

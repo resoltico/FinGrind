@@ -64,6 +64,27 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
+  void requireSupportedSourceId_rejectsUnexpectedRuntimeAndAcceptsCanonicalPin() {
+    assertEquals(
+        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+        SqliteNativeRuntimePolicy.requireSupportedSourceId(
+            SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, "managed-only"));
+
+    UnsupportedSqliteSourceIdException exception =
+        assertThrows(
+            UnsupportedSqliteSourceIdException.class,
+            () ->
+                SqliteNativeRuntimePolicy.requireSupportedSourceId(
+                    "2026-04-09 unexpected-source-id", "managed-only", "3.53.0", "2.3.3"));
+
+    assertEquals("2026-04-09 unexpected-source-id", exception.loadedSourceId());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, exception.requiredSourceId());
+    assertEquals("managed-only", exception.libraryMode());
+    assertEquals("3.53.0", exception.loadedSqliteVersion());
+    assertEquals("2.3.3", exception.loadedSqlite3mcVersion());
+  }
+
+  @Test
   void sqliteNativeApi_rejectsBlankLoadedVersions() {
     Object[] blankLoadedVersionArguments = defaultSqliteApiArguments();
     blankLoadedVersionArguments[22] = " ";
@@ -74,5 +95,15 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
     blankSqlite3mcArguments[23] = " ";
 
     assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankSqlite3mcArguments));
+
+    Object[] blankSourceIdArguments = defaultSqliteApiArguments();
+    blankSourceIdArguments[24] = " ";
+
+    assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankSourceIdArguments));
+
+    Object[] blankLibraryPathArguments = defaultSqliteApiArguments();
+    blankLibraryPathArguments[26] = " ";
+
+    assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankLibraryPathArguments));
   }
 }

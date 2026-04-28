@@ -36,6 +36,10 @@ internal object DistributionContractSchemas {
                     schemaKey(document, "managedSqlite", "requiredMinimumSqliteVersion"),
                 requiredSqlite3mcVersion =
                     schemaKey(document, "managedSqlite", "requiredSqlite3mcVersion"),
+                requiredSqliteSourceId =
+                    schemaKey(document, "managedSqlite", "requiredSqliteSourceId"),
+                requiredCompileOptions =
+                    schemaKey(document, "managedSqlite", "requiredCompileOptions"),
             ),
             bundleLayout = DistributionContractReader.BundleLayoutSchema(
                 bundleTargets = schemaKey(document, "bundleLayout", "bundleTargets"),

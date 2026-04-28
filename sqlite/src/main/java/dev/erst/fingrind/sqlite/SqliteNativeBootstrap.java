@@ -73,6 +73,10 @@ final class SqliteNativeBootstrap {
     return api().loadedSqlite3mcVersion();
   }
 
+  static String sqliteSourceId() {
+    return api().loadedSourceId();
+  }
+
   static String sqlite3MultipleCiphersVersion(MethodHandle versionHandle) {
     return sqlite3MultipleCiphersVersion(versionHandle, STRLEN);
   }
@@ -85,6 +89,19 @@ final class SqliteNativeBootstrap {
           MemorySegment versionPointer = SqliteNativeCalls.noArgAddress(versionHandle).invoke();
           String loadedVersion = SqliteNativeErrors.cString(versionPointer, strlenHandle);
           return loadedVersion.replace("SQLite3 Multiple Ciphers ", "").trim();
+        });
+  }
+
+  static String sqliteSourceId(MethodHandle sourceIdHandle) {
+    return sqliteSourceId(sourceIdHandle, STRLEN);
+  }
+
+  static String sqliteSourceId(MethodHandle sourceIdHandle, MethodHandle strlenHandle) {
+    return SqliteNativeInvocation.invoke(
+        "Failed to read the SQLite source id.",
+        () -> {
+          MemorySegment sourceIdPointer = SqliteNativeCalls.noArgAddress(sourceIdHandle).invoke();
+          return SqliteNativeErrors.cString(sourceIdPointer, strlenHandle);
         });
   }
 

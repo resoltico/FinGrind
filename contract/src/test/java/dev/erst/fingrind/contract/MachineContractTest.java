@@ -1,11 +1,13 @@
 package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
@@ -128,30 +130,74 @@ class MachineContractTest {
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
     assertEquals(20, help.commands().size());
-    assertEquals(OperationId.GENERATE_BOOK_KEY_FILE, help.commands().get(5).name());
-    assertEquals(OperationId.OPEN_BOOK, help.commands().get(6).name());
-    assertEquals(OperationId.REKEY_BOOK, help.commands().get(7).name());
-    assertEquals(OperationId.INSPECT_BOOK, help.commands().get(9).name());
-    assertEquals(OperationId.ACCOUNT_BALANCE, help.commands().get(13).name());
-    assertEquals(OperationId.TRIAL_BALANCE, help.commands().get(14).name());
-    assertEquals(OperationId.ACCOUNT_LEDGER, help.commands().get(15).name());
-    assertEquals(OperationId.PERIOD_SUMMARY, help.commands().get(16).name());
-    assertTrue(help.commands().get(7).options().get(2).contains("--new-book-passphrase-prompt"));
+    assertEquals(
+        OperationId.GENERATE_BOOK_KEY_FILE,
+        command(help.commands(), OperationId.GENERATE_BOOK_KEY_FILE).name());
+    assertEquals(OperationId.OPEN_BOOK, command(help.commands(), OperationId.OPEN_BOOK).name());
+    assertEquals(OperationId.REKEY_BOOK, command(help.commands(), OperationId.REKEY_BOOK).name());
+    assertEquals(
+        OperationId.INSPECT_BOOK, command(help.commands(), OperationId.INSPECT_BOOK).name());
+    assertEquals(
+        OperationId.ACCOUNT_BALANCE, command(help.commands(), OperationId.ACCOUNT_BALANCE).name());
+    assertEquals(
+        OperationId.TRIAL_BALANCE, command(help.commands(), OperationId.TRIAL_BALANCE).name());
+    assertEquals(
+        OperationId.ACCOUNT_LEDGER, command(help.commands(), OperationId.ACCOUNT_LEDGER).name());
+    assertEquals(
+        OperationId.PERIOD_SUMMARY, command(help.commands(), OperationId.PERIOD_SUMMARY).name());
+    assertTrue(
+        command(help.commands(), OperationId.REKEY_BOOK)
+            .options()
+            .get(2)
+            .contains("--new-book-passphrase-prompt"));
     assertEquals(
         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
-        help.commands().get(14).outputModes());
-    assertEquals("pdf", help.commands().get(14).artifactOutputs().getFirst().format());
-    assertEquals("--pdf-out <path>", help.commands().get(14).artifactOutputs().getFirst().option());
+        command(help.commands(), OperationId.TRIAL_BALANCE).outputModes());
+    assertEquals(
+        "pdf",
+        command(help.commands(), OperationId.TRIAL_BALANCE).artifactOutputs().getFirst().format());
+    assertEquals(
+        "--pdf-out <path>",
+        command(help.commands(), OperationId.TRIAL_BALANCE).artifactOutputs().getFirst().option());
     assertEquals(5, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());
-    assertTrue(help.quickStart().stream().noneMatch(example -> example.contains("docs/examples/")));
+    assertTrue(
+        help.quickStart().stream().noneMatch(step -> step.text().contains("docs/examples/")));
     assertTrue(
         help.quickStart().stream()
-            .anyMatch(example -> example.contains("./declare-account-cash.json")));
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.EDIT
+                        && step.text().contains("./declare-account-cash.json")));
     assertTrue(
         help.quickStart().stream()
-            .anyMatch(example -> example.contains("./declare-account-revenue.json")));
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.COMMAND
+                        && step.text().contains("./declare-account-cash.json")));
+    assertTrue(
+        help.quickStart().stream()
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.EDIT
+                        && step.text().contains("./declare-account-revenue.json")));
+    assertTrue(
+        help.quickStart().stream()
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.COMMAND
+                        && step.text().contains("./declare-account-revenue.json")));
+    assertTrue(
+        help.quickStart().stream()
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.EDIT && step.text().contains("effectiveDate")));
+    assertFalse(
+        help.quickStart().stream()
+            .anyMatch(
+                step ->
+                    step.text().contains("./cash.json") || step.text().contains("./revenue.json")));
 
     assertEquals("0.9.0", version.version());
     assertEquals(
@@ -160,9 +206,11 @@ class MachineContractTest {
     assertEquals(
         environment.distribution().unsupportedPublicCliBundleTargets(),
         ProtocolCatalog.unsupportedPublicCliBundleTargets());
-    assertEquals("2026-04-17", template.effectiveDate());
+    assertEquals(ScaffoldPlaceholders.EFFECTIVE_DATE, template.effectiveDate());
     assertEquals("1000", template.lines().get(0).accountCode());
-    assertEquals(ActorType.HUMAN, template.provenance().actorType());
+    assertEquals(ScaffoldPlaceholders.ACTOR_ID, template.provenance().actorId());
+    assertEquals(ActorType.AGENT, template.provenance().actorType());
+    assertEquals(ScaffoldPlaceholders.IDEMPOTENCY_KEY, template.provenance().idempotencyKey());
     assertEquals("posting-1", reversalTemplate.priorPostingId());
   }
 
@@ -220,13 +268,17 @@ class MachineContractTest {
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
-            List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+            ProtocolCatalog.requiredSqliteCompileOptions(),
             SqliteCompileOptionsVerificationStatus.VERIFIED,
-            "3.53.0",
-            "2.3.3",
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
             SqliteRuntimeStatus.READY,
-            "3.53.0",
-            "2.3.3",
+            SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            "/tmp/libsqlite3.dylib",
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
             null));
   }
 }

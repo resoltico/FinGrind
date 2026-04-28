@@ -94,9 +94,7 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
-    assertEquals(
-        "Request JSON must not contain duplicate object keys. Duplicate key: idempotencyKey",
-        invalid.message());
+    assertEquals("Request JSON must not contain duplicate object keys.", invalid.message());
   }
 
   @Test

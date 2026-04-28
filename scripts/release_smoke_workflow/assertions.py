@@ -74,7 +74,7 @@ def assert_capabilities_payload(
     require(
         require_string(storage, "defaultBookCipher")
         == require_string(runtime_surface, "defaultBookCipher"),
-        f"{config.label} capabilities output did not report the default chacha20 cipher",
+        f"{config.label} capabilities output did not report the canonical default book cipher",
     )
     require(
         require_string(sqlite, "libraryMode")
@@ -123,9 +123,25 @@ def assert_capabilities_payload(
         )
 
     if config.expect_loaded_sqlite_details:
+        expected_runtime_provenance = (
+            "bundle-managed" if config.expect_bundle_home_property else "environment-configured"
+        )
         require(
             require_string(sqlite, "runtimeStatus") == "ready",
             f"{config.label} capabilities output did not report a ready SQLite runtime",
+        )
+        require(
+            require_string(sqlite, "runtimeProvenance") == expected_runtime_provenance,
+            f"{config.label} capabilities output did not report the expected SQLite runtime provenance",
+        )
+        require(
+            bool(require_string(sqlite, "loadedLibraryPath").strip()),
+            f"{config.label} capabilities output did not report the loaded SQLite library path",
+        )
+        require(
+            require_string(sqlite, "requiredSqliteSourceId")
+            == require_string(managed_sqlite, "requiredSqliteSourceId"),
+            f"{config.label} capabilities output did not report the canonical SQLite source id requirement",
         )
         require(
             require_string(sqlite, "loadedSqliteVersion")
@@ -136,6 +152,20 @@ def assert_capabilities_payload(
             require_string(sqlite, "loadedSqlite3mcVersion")
             == require_string(managed_sqlite, "requiredSqlite3mcVersion"),
             f"{config.label} capabilities output did not report the canonical SQLite3 Multiple Ciphers version",
+        )
+        require(
+            require_string(sqlite, "loadedSqliteSourceId")
+            == require_string(managed_sqlite, "requiredSqliteSourceId"),
+            f"{config.label} capabilities output did not report the canonical SQLite source id",
+        )
+        require(
+            required_list(sqlite, "requiredCompileOptions")
+            == required_list(managed_sqlite, "requiredCompileOptions"),
+            f"{config.label} capabilities output did not report the canonical SQLite compile options",
+        )
+        require(
+            require_string(sqlite, "compileOptionsVerification") == "verified",
+            f"{config.label} capabilities output did not report verified SQLite compile-option enforcement",
         )
 
     if config.expect_bundle_home_property:
@@ -249,4 +279,3 @@ def assert_operator_queries_and_reports(
         r"2",
         f"{config.label} period-summary output did not render the expected posting count",
     )
-

@@ -116,9 +116,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Request JSON must not contain duplicate object keys. Duplicate key: planId",
-        exception.getMessage());
+    assertEquals("Request JSON must not contain duplicate object keys.", exception.getMessage());
+    assertEquals(CliJsonRequestCodec.ledgerPlanRequestHint(), exception.failure().hint());
   }
 
   @Test
@@ -153,6 +152,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
             .startsWith("Unsupported value for kind: unsupported-step."));
+    assertEquals(CliJsonRequestCodec.ledgerPlanRequestHint(), exception.failure().hint());
   }
 
   @Test

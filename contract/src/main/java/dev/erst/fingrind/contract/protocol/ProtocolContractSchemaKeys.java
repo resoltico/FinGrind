@@ -84,7 +84,9 @@ final class ProtocolContractSchemaKeys {
             requireText(publicDistributionNode, "unsupportedPublicCliBundleTargets")),
         new ManagedSqlite(
             requireText(managedSqliteNode, "requiredMinimumSqliteVersion"),
-            requireText(managedSqliteNode, "requiredSqlite3mcVersion")),
+            requireText(managedSqliteNode, "requiredSqlite3mcVersion"),
+            requireText(managedSqliteNode, "requiredSqliteSourceId"),
+            requireText(managedSqliteNode, "requiredCompileOptions")),
         new BundleLayout(
             requireText(bundleLayoutNode, "bundleTargets"),
             requireText(bundleLayoutNode, "operatingSystemId"),
@@ -153,7 +155,11 @@ final class ProtocolContractSchemaKeys {
       String supportedPublicCliBundleTargets, String unsupportedPublicCliBundleTargets) {}
 
   /** Canonical external field names for the managed-SQLite contract resource. */
-  record ManagedSqlite(String requiredMinimumSqliteVersion, String requiredSqlite3mcVersion) {}
+  record ManagedSqlite(
+      String requiredMinimumSqliteVersion,
+      String requiredSqlite3mcVersion,
+      String requiredSqliteSourceId,
+      String requiredCompileOptions) {}
 
   /** Canonical external field names for the per-target bundle-layout contract resource. */
   record BundleLayout(

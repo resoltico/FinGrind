@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.CommandDescriptor;
 import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.VersionDescriptor;
+import dev.erst.fingrind.contract.WorkflowStepDescriptor;
 import java.util.List;
 import java.util.Objects;
 
@@ -35,7 +36,9 @@ final class CliDiscoveryOutputRenderer {
     String quickStart =
         helpDescriptor.quickStart().isEmpty()
             ? "(none)"
-            : String.join(System.lineSeparator(), helpDescriptor.quickStart());
+            : helpDescriptor.quickStart().stream()
+                .map(CliDiscoveryOutputRenderer::renderQuickStartStep)
+                .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
     String exitCodes =
         CliTextFormat.renderTable(
             List.of("Code", "Meaning"),
@@ -127,6 +130,14 @@ final class CliDiscoveryOutputRenderer {
 
   private static String joinCommandNames(List<CommandDescriptor> commands) {
     return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
+  }
+
+  private static String renderQuickStartStep(WorkflowStepDescriptor step) {
+    return switch (step.kind()) {
+      case COMMAND -> step.text();
+      case EDIT -> "Edit: " + step.text();
+      case NOTE -> "Note: " + step.text();
+    };
   }
 
   private static String artifactSummary(CommandDescriptor command) {

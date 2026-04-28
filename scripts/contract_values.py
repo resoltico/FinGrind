@@ -25,6 +25,7 @@ def load_contract_values(
     runtime_surface_schema = required_object(schema_keys, "runtimeSurface")
     public_distribution_schema = required_object(schema_keys, "publicDistribution")
     managed_sqlite_schema = required_object(schema_keys, "managedSqlite")
+    runtime_environment_schema = required_object(schema_keys, "runtimeEnvironment")
     bundle_layout_schema = required_object(schema_keys, "bundleLayout")
     operation_id_schema = required_object(schema_keys, "operationIdContract")
 
@@ -40,6 +41,7 @@ def load_contract_values(
         repo_root
         / "contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json"
     )
+    runtime_environment_document = load_runtime_environment_document(repo_root)
     bundle_layout_document = read_json(
         repo_root
         / "contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-layout-contract.json"
@@ -121,6 +123,20 @@ def load_contract_values(
                 managed_sqlite_document,
                 required_string(managed_sqlite_schema, "requiredSqlite3mcVersion"),
             ),
+            "requiredSqliteSourceId": required_value(
+                managed_sqlite_document,
+                required_string(managed_sqlite_schema, "requiredSqliteSourceId"),
+            ),
+            "requiredCompileOptions": string_array(
+                managed_sqlite_document,
+                required_string(managed_sqlite_schema, "requiredCompileOptions"),
+            ),
+        },
+        "runtimeEnvironment": {
+            "sourceCheckoutJava": required_value(
+                runtime_environment_document,
+                required_string(runtime_environment_schema, "sourceCheckoutJava"),
+            ),
         },
         "bundleLayout": {
             "targets": bundle_layout_targets,
@@ -135,6 +151,41 @@ def read_json(path: Path) -> dict[str, object]:
     if not isinstance(data, dict):
         raise ValueError(f"expected top-level JSON object in {path}")
     return data
+
+
+def load_runtime_environment_document(repo_root: Path) -> dict[str, object]:
+    generated_contract = (
+        repo_root
+        / "contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json"
+    )
+    if generated_contract.is_file():
+        return read_json(generated_contract)
+
+    java_version = load_required_build_property(
+        repo_root / "gradle/fingrind-build.properties", "fingrindJavaVersion"
+    )
+    if not re.fullmatch(r"[1-9][0-9]*", java_version):
+        raise ValueError(
+            "gradle/fingrind-build.properties must declare fingrindJavaVersion as one positive integer"
+        )
+    return {"sourceCheckoutJava": java_version + "+"}
+
+
+def load_required_build_property(path: Path, key: str) -> str:
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        candidate_key, candidate_value = line.split("=", 1)
+        if candidate_key.strip() != key:
+            continue
+        normalized_value = candidate_value.strip()
+        if normalized_value:
+            return normalized_value
+        break
+    raise ValueError(f"missing required build property {key} in {path}")
 
 
 def required_value(document: dict[str, object], key: str) -> str:

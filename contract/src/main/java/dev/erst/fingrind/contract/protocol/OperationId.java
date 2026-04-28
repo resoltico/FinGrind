@@ -11,9 +11,9 @@ public enum OperationId implements WireValue {
   VERSION,
   /** Prints the machine-readable contract catalog. */
   CAPABILITIES,
-  /** Prints a minimal posting-request JSON document. */
+  /** Prints the canonical minimal posting-request scaffold JSON document. */
   PRINT_REQUEST_TEMPLATE,
-  /** Prints a minimal AI-agent ledger-plan JSON document. */
+  /** Prints the canonical minimal AI-agent ledger-plan scaffold JSON document. */
   PRINT_PLAN_TEMPLATE,
   /** Creates a generated owner-only book key file. */
   GENERATE_BOOK_KEY_FILE,

@@ -357,6 +357,8 @@ class ReportingContractTypesTest {
         ContractResponse.CommitGuarantee.fromGuaranteed(false));
     assertEquals("verified", SqliteCompileOptionsVerificationStatus.VERIFIED.wireValue());
     assertEquals("verified", SqliteCompileOptionsVerificationStatus.VERIFIED.toString());
+    assertEquals("failed", SqliteCompileOptionsVerificationStatus.FAILED.wireValue());
+    assertEquals("failed", SqliteCompileOptionsVerificationStatus.FAILED.toString());
     assertEquals("not-verified", SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.wireValue());
     assertEquals("not-verified", SqliteCompileOptionsVerificationStatus.NOT_VERIFIED.toString());
   }

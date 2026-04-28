@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.27.0"
+version: "0.28.0"
 domain: USER_QUICK_START
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -92,6 +92,11 @@ Start from the canonical posting template:
 ```bash
 fingrind print-request-template > ./request.json
 ```
+
+That scaffold intentionally uses `actorType: "AGENT"` together with
+`replace-before-commit-effective-date` plus `replace-before-commit-*` provenance placeholders.
+Replace every placeholder before you send the request. Reusing one committed `idempotencyKey`
+against the same book is rejected.
 
 Replace the contents of `./request.json` with one balanced entry, for example:
 

@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -121,6 +122,17 @@ class CliResponseWriterTestSupport {
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
       String diagnostics) {
+    SqliteRuntimeStatus runtimeStatus = SqliteRuntimeStatus.fromWireValue(state);
+    SqliteRuntimeProvenance runtimeProvenance =
+        runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE
+            ? null
+            : SqliteRuntimeProvenance.BUNDLE_MANAGED;
+    String loadedLibraryPath =
+        runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE ? null : "/tmp/libsqlite3.dylib";
+    String loadedSqliteSourceId =
+        runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE
+            ? null
+            : SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID;
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
             RuntimeDistribution.fromWireValue(runtimeDistribution),
@@ -141,9 +153,13 @@ class CliResponseWriterTestSupport {
             compileOptionsVerification,
             SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
             SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
-            SqliteRuntimeStatus.fromWireValue(state),
+            SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+            runtimeStatus,
+            runtimeProvenance,
+            loadedLibraryPath,
             loadedSqliteVersion,
             loadedSqlite3mcVersion,
+            loadedSqliteSourceId,
             diagnostics));
   }
 

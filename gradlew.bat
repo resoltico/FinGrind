@@ -23,7 +23,7 @@
 @rem
 @rem ##########################################################################
 
-@rem Set local scope for the variables with windows NT shell
+@rem Set local scope for the variables, and ensure extensions are enabled
 if "%OS%"=="Windows_NT" setlocal EnableExtensions
 
 set DIRNAME=%~dp0

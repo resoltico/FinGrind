@@ -42,7 +42,9 @@ class BundleManifestRendererTest {
                   },
                   "managedSqlite": {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
-                    "requiredSqlite3mcVersion": "sqlite3mcVersion"
+                    "requiredSqlite3mcVersion": "sqlite3mcVersion",
+                    "requiredSqliteSourceId": "sqliteSourceId",
+                    "requiredCompileOptions": "compileOptions"
                   },
                   "bundleLayout": {
                     "bundleTargets": "bundleTargets",
@@ -98,7 +100,9 @@ class BundleManifestRendererTest {
                 """
                 {
                   "minimumSqliteVersion": "3.53.0",
-                  "sqlite3mcVersion": "2.3.3"
+                  "sqlite3mcVersion": "2.3.3",
+                  "sqliteSourceId": "2026-04-09 sqlite-source-id",
+                  "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"]
                 }
                 """.trimIndent(),
             )
@@ -175,6 +179,18 @@ class BundleManifestRendererTest {
             assertEquals(
                 "3.53.0",
                 manifest.path("managedSqlite").path("requiredMinimumSqliteVersion").requireText(),
+            )
+            assertEquals(
+                "2.3.3",
+                manifest.path("managedSqlite").path("requiredSqlite3mcVersion").requireText(),
+            )
+            assertEquals(
+                "2026-04-09 sqlite-source-id",
+                manifest.path("managedSqlite").path("requiredSqliteSourceId").requireText(),
+            )
+            assertEquals(
+                listOf("THREADSAFE=1", "SECURE_DELETE"),
+                manifest.path("managedSqlite").path("requiredCompileOptions").toList().map { it.requireText() },
             )
             assertEquals(
                 "print-plan-template",

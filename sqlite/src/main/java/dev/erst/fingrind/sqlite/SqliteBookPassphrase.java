@@ -8,6 +8,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -63,13 +64,23 @@ public final class SqliteBookPassphrase implements AutoCloseable {
       String sourceDescription, char[] characters) {
     String normalizedSource = normalizeSourceDescription(sourceDescription);
     Objects.requireNonNull(characters, "characters");
-    ByteBuffer encodedBytes = StandardCharsets.UTF_8.encode(CharBuffer.wrap(characters));
+    CharsetEncoder encoder =
+        StandardCharsets.UTF_8
+            .newEncoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT);
+    ByteBuffer encodedBytes = null;
     try {
+      encodedBytes = encoder.encode(CharBuffer.wrap(characters));
       byte[] copiedBytes = new byte[encodedBytes.remaining()];
       encodedBytes.get(copiedBytes);
       return fromUtf8BytesDecision(normalizedSource, copiedBytes);
+    } catch (CharacterCodingException exception) {
+      return ContractDecision.rejected(invalidUtf8PassphraseSourceFailure(normalizedSource));
     } finally {
-      zeroize(encodedBytes);
+      if (encodedBytes != null) {
+        zeroize(encodedBytes);
+      }
       Arrays.fill(characters, '\0');
     }
   }
@@ -142,12 +153,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
               .onUnmappableCharacter(CodingErrorAction.REPORT)
               .decode(ByteBuffer.wrap(keyBytes));
     } catch (CharacterCodingException exception) {
-      return ContractDecision.rejected(
-          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
-              "The FinGrind book passphrase source must contain a UTF-8 passphrase: "
-                  + sourceDescription,
-              "Provide one UTF-8 passphrase payload through the selected passphrase source and rerun the command.",
-              null));
+      return ContractDecision.rejected(invalidUtf8PassphraseSourceFailure(sourceDescription));
     }
     try {
       int offset = 0;
@@ -193,5 +199,13 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     for (int index = 0; index < duplicate.limit(); index++) {
       duplicate.put(index, '\0');
     }
+  }
+
+  private static dev.erst.fingrind.contract.ContractFailure invalidUtf8PassphraseSourceFailure(
+      String sourceDescription) {
+    return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+        "The FinGrind book passphrase source must contain a UTF-8 passphrase: " + sourceDescription,
+        "Provide one UTF-8 passphrase payload through the selected passphrase source and rerun the command.",
+        null);
   }
 }

@@ -28,7 +28,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
 
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
@@ -42,7 +42,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
@@ -58,7 +58,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 }));
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
@@ -76,8 +76,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
                 new String[] {
                   "post-entry",
@@ -97,8 +96,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream inspectOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock())
             .run(
                 new String[] {
                   "inspect-book",
@@ -113,10 +111,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(getPostingOutput),
-                fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(getPostingOutput), fixedClock())
             .run(
                 new String[] {
                   "get-posting",
@@ -132,7 +127,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
-        new FinGrindCli(
+        cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(listPostingsOutput),
                 fixedClock())
@@ -151,8 +146,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(balanceOutput), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(balanceOutput), fixedClock())
             .run(
                 new String[] {
                   "account-balance",

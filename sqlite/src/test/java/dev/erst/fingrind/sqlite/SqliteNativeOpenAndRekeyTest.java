@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailureException;
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
@@ -93,6 +95,24 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void enforceBookFilePermissions_wrapsIoFailuresAsStorageFailures() {
+    Path bookPath = tempDirectory.resolve("permission-hardening.sqlite");
+
+    SqliteStorageFailureException exception =
+        assertThrows(
+            SqliteStorageFailureException.class,
+            () ->
+                SqliteNativeConnections.enforceBookFilePermissions(
+                    bookPath,
+                    ignored -> {
+                      throw new IOException("chmod failed");
+                    }));
+
+    assertTrue(exception.getMessage().contains("book file permissions"));
+    assertEquals("chmod failed", exception.getCause().getMessage());
+  }
+
+  @Test
   void openExecutePrepareAndClose_roundTripThroughSystemLibrary() throws Exception {
     Path bookPath = tempDirectory.resolve("native-round-trip.sqlite");
 
@@ -163,6 +183,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             () -> SqliteNativeConnections.open(bookAccess(bookPath, "different-book-key")));
 
     assertTrue(exception.resultName().contains("SQLITE_NOTADB"));
+    assertFalse(String.valueOf(exception.getMessage()).contains("different-book-key"));
   }
 
   @Test
@@ -283,6 +304,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                 .contains(
                     "Failed to rekey the FinGrind SQLite book with passphrase material from"));
         assertEquals("boom", exception.getCause().getMessage());
+        assertFalse(exception.getMessage().contains("rotated-key"));
       }
     }
   }
@@ -334,6 +356,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
           exception
               .getMessage()
               .contains("Failed to apply the FinGrind SQLite book passphrase from"));
+      assertFalse(exception.getMessage().contains(TEST_BOOK_KEY));
     }
   }
 

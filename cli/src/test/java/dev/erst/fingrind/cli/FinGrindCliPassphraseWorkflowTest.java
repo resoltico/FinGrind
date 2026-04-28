@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.ContractDecision;
@@ -25,7 +26,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream((TEST_BOOK_KEY + "\n").getBytes(StandardCharsets.UTF_8)),
             utf8PrintStream(openOutput),
             fixedClock());
@@ -41,7 +42,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream((TEST_BOOK_KEY + "\n").getBytes(StandardCharsets.UTF_8)),
             utf8PrintStream(listOutput),
             fixedClock());
@@ -61,8 +62,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("no-console-books").resolve("entity.sqlite");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
-            new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
 
     int exitCode =
         cli.run(
@@ -93,7 +93,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(openOutput),
             fixedClock(),
@@ -110,7 +110,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
 
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(listOutput),
             fixedClock(),
@@ -123,5 +123,47 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
               "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-prompt"
             }));
     assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
+  void run_listAccountsWithWrongStandardInputPassphrase_doesNotEchoSecret() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("wrong-stdin-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
+
+    String wrongSecret = "wrong-stdin-secret";
+    ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
+    FinGrindCli listCli =
+        cli(
+            new ByteArrayInputStream((wrongSecret + "\n").getBytes(StandardCharsets.UTF_8)),
+            utf8PrintStream(listOutput),
+            fixedClock());
+
+    assertEquals(
+        2,
+        listCli.run(
+            new String[] {
+              "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
+            }));
+
+    String outputText = listOutput.toString(StandardCharsets.UTF_8);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
+    assertEquals(
+        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
+        failureEnvelope.path("code").asText());
+    assertFalse(outputText.contains(wrongSecret));
   }
 }

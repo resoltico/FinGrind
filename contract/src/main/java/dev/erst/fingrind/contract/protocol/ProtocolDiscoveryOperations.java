@@ -48,10 +48,11 @@ final class ProtocolDiscoveryOperations {
             List.of("--print-request-template"),
             List.of(),
             ExecutionMode.RAW_JSON,
-            "Print a minimal valid posting request JSON document.",
+            "Print the canonical minimal posting request scaffold JSON document.",
             List.of(
                 "fingrind %s > request.json"
-                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()))),
+                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()),
+                "Edit request.json and replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value before submission.")),
         ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,
@@ -59,8 +60,9 @@ final class ProtocolDiscoveryOperations {
             List.of("--print-plan-template"),
             List.of(),
             ExecutionMode.RAW_JSON,
-            "Print a minimal valid AI-agent ledger plan JSON document.",
+            "Print the canonical minimal AI-agent ledger plan scaffold JSON document.",
             List.of(
-                "fingrind %s > plan.json".formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName()))));
+                "fingrind %s > plan.json".formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName()),
+                "Edit plan.json and replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value before submission.")));
   }
 }

@@ -13,6 +13,7 @@ import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredText;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.contract.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
@@ -36,6 +37,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -55,25 +57,49 @@ final class CliPostingRequestParser {
         provenanceNode,
         ProtocolPostEntryFields.TopLevel.PROVENANCE,
         CliJsonRequestCodec.PROVENANCE_FIELDS);
+    LocalDate effectiveDate =
+        LocalDate.parse(
+            requiredRealText(
+                rootNode,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ScaffoldPlaceholders.EFFECTIVE_DATE,
+                null));
+    List<JournalLine> lines =
+        readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES));
+    PostingLineage reversal = readReversal(rootNode.get(ProtocolPostEntryFields.TopLevel.REVERSAL));
+    String actorId =
+        requiredRealProvenanceText(
+            provenanceNode,
+            ProtocolPostEntryFields.Provenance.ACTOR_ID,
+            ScaffoldPlaceholders.ACTOR_ID);
+    String commandId =
+        requiredRealProvenanceText(
+            provenanceNode,
+            ProtocolPostEntryFields.Provenance.COMMAND_ID,
+            ScaffoldPlaceholders.COMMAND_ID);
+    String idempotencyKey =
+        requiredRealProvenanceText(
+            provenanceNode,
+            ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
+            ScaffoldPlaceholders.IDEMPOTENCY_KEY);
+    String causationId =
+        requiredRealProvenanceText(
+            provenanceNode,
+            ProtocolPostEntryFields.Provenance.CAUSATION_ID,
+            ScaffoldPlaceholders.CAUSATION_ID);
     return new PostEntryCommand(
-        new JournalEntry(
-            LocalDate.parse(
-                requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE)),
-            readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES))),
-        readReversal(rootNode.get(ProtocolPostEntryFields.TopLevel.REVERSAL)),
+        new JournalEntry(effectiveDate, lines),
+        reversal,
         new RequestProvenance(
-            new ActorId(requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.ACTOR_ID)),
+            new ActorId(actorId),
             parseWireValue(
                 requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.ACTOR_TYPE),
                 ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
                 ActorType.wireValues(),
                 ActorType::fromWireValue),
-            new CommandId(
-                requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.COMMAND_ID)),
-            new IdempotencyKey(
-                requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY)),
-            new CausationId(
-                requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.CAUSATION_ID)),
+            new CommandId(commandId),
+            new IdempotencyKey(idempotencyKey),
+            new CausationId(causationId),
             optionalText(provenanceNode, ProtocolPostEntryFields.Provenance.CORRELATION_ID)
                 .map(CorrelationId::new)),
         SourceChannel.CLI);
@@ -133,5 +159,26 @@ final class CliPostingRequestParser {
             new PostingId(
                 requiredText(reversalObject, ProtocolPostEntryFields.Reversal.PRIOR_POSTING_ID))),
         new ReversalReason(requiredText(reversalObject, ProtocolPostEntryFields.Reversal.REASON)));
+  }
+
+  private static String requiredRealProvenanceText(
+      ObjectNode provenanceNode, String fieldName, String reservedValue) {
+    String value = requiredRealText(provenanceNode, fieldName, reservedValue, "provenance.");
+    return value;
+  }
+
+  private static String requiredRealText(
+      ObjectNode objectNode,
+      String fieldName,
+      String reservedValue,
+      @Nullable String contextPrefix) {
+    String value = requiredText(objectNode, fieldName);
+    if (reservedValue.equals(value)) {
+      throw new IllegalArgumentException(
+          "Scaffold placeholder must be replaced before submission: "
+              + (contextPrefix == null ? "" : contextPrefix)
+              + fieldName);
+    }
+    return value;
   }
 }

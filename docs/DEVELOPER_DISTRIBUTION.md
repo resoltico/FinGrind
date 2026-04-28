@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.27.0"
+version: "0.28.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -205,9 +205,9 @@ Unicode nested book/key paths across bundle and container acceptance.
 into `cli/src/bundle/root/`, so the shipped manifest stays valid JSON derived from the same
 canonical contract facts.
 The target archive format, launcher path, and native library filename now come from the shared
-`bundle-layout-contract.json` resource, and the managed SQLite version pins come from
-`managed-sqlite-contract.json`, so build logic, bundle metadata, and shell acceptance do not
-maintain separate per-platform lookup tables.
+`bundle-layout-contract.json` resource, and the managed SQLite version, source-id, and required
+compile-option pins come from `managed-sqlite-contract.json`, so build logic, bundle metadata, and
+shell acceptance do not maintain separate per-platform lookup tables.
 
 It is not the public release artifact.
 

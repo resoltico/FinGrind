@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.util.List;
+import java.util.function.Supplier;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
@@ -25,18 +28,30 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals("FINGRIND_SQLITE_LIBRARY", SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE);
     assertEquals("fingrind.bundle.home", SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY);
     assertEquals(
-        java.util.List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+        List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
         SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS);
     assertEquals("3.53.0", SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION);
     assertEquals("2.3.3", SqliteRuntime.REQUIRED_SQLITE3MC_VERSION);
+    assertEquals(
+        "2026-04-09 11:41:38 4525003a53a7fc63ca75c59b22c79608659ca12f0131f52c18637f829977f20b",
+        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
     assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.requiredSqliteSourceId());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.VERIFIED, runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
+    assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, runtimeProbe.runtimeProvenance());
+    assertFalse(runtimeProbe.loadedLibraryPath().isBlank());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
     assertFalse(SqliteRuntime.sqliteVersion().isBlank());
     assertEquals("2.3.3", SqliteRuntime.sqlite3MultipleCiphersVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, SqliteRuntime.sqliteSourceId());
+    assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, SqliteRuntime.runtimeProvenance());
+    assertFalse(SqliteRuntime.loadedLibraryPath().isBlank());
   }
 
   @Test
@@ -46,117 +61,170 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void sqliteRuntimeProbe_reportsUnavailableWhenConfiguredLibraryTargetIsInvalid() {
+    SqliteRuntime.Probe runtimeProbe =
+        SqliteRuntime.probeConfiguredTarget(
+            () -> {
+              throw new IllegalStateException("bundle launcher misconfigured");
+            });
+
+    assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        runtimeProbe.compileOptionsVerification());
+    assertTrue(runtimeProbe.issue().contains("bundle launcher misconfigured"));
+  }
+
+  @Test
   void probe_reportsIncompatibleRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
-        SqliteRuntime.probe(
-            () -> "managed-only",
+        probe(
             () -> {
-              throw new UnsupportedSqliteVersionException("3.51.0", "3.53.0", "managed-only");
+              throw new UnsupportedSqliteVersionException(
+                  "3.51.0",
+                  "3.53.0",
+                  "managed-only",
+                  "2.3.3",
+                  SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
             },
             () -> "2.3.3",
-            SqliteRuntime::failureDetail);
+            () -> SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
 
     assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
+    assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
+    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
     assertEquals("3.51.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
     assertTrue(runtimeProbe.issue().contains("requires SQLite 3.53.0 or newer"));
   }
 
   @Test
   void probe_reportsUnavailableRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
-        SqliteRuntime.probe(
-            () -> "managed-only",
+        probe(
             () -> {
               throw new IllegalStateException("sqlite runtime unavailable");
             },
             () -> "2.3.3",
-            SqliteRuntime::failureDetail);
+            () -> SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
 
     assertEquals("managed-only", runtimeProbe.libraryMode());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
     assertEquals("sqlite runtime unavailable", runtimeProbe.issue());
+    assertNull(runtimeProbe.runtimeProvenance());
+    assertNull(runtimeProbe.loadedLibraryPath());
     assertNull(runtimeProbe.loadedSqliteVersion());
     assertNull(runtimeProbe.loadedSqlite3mcVersion());
+    assertNull(runtimeProbe.loadedSqliteSourceId());
   }
 
   @Test
   void probe_reportsIncompatibleSqlite3mcRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
-        SqliteRuntime.probe(
-            () -> "managed-only",
+        probe(
             () -> "3.53.0",
             () -> {
               throw new UnsupportedSqliteMultipleCiphersVersionException(
-                  "2.3.2", "2.3.3", "managed-only");
+                  "2.3.2",
+                  "2.3.3",
+                  "managed-only",
+                  "3.53.0",
+                  SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
             },
-            SqliteRuntime::failureDetail);
+            () -> SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
 
     assertEquals("managed-only", runtimeProbe.libraryMode());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.2", runtimeProbe.loadedSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
     assertTrue(runtimeProbe.issue().contains("requires SQLite3 Multiple Ciphers 2.3.3"));
+  }
+
+  @Test
+  void probe_reportsIncompatibleSourceIdRuntimeWithoutThrowing() {
+    SqliteRuntime.Probe runtimeProbe =
+        probe(
+            () -> "3.53.0",
+            () -> "2.3.3",
+            () -> {
+              throw new UnsupportedSqliteSourceIdException(
+                  "2026-04-09 wrong-source-id",
+                  SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                  "managed-only",
+                  "3.53.0",
+                  "2.3.3");
+            });
+
+    assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        runtimeProbe.compileOptionsVerification());
+    assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
+    assertEquals("2026-04-09 wrong-source-id", runtimeProbe.loadedSqliteSourceId());
+    assertTrue(runtimeProbe.issue().contains("requires SQLite source id"));
   }
 
   @Test
   void probe_reportsIncompatibleCompileOptionsRuntimeWithoutThrowing() {
     SqliteRuntime.Probe runtimeProbe =
-        SqliteRuntime.probe(
-            () -> "managed-only",
+        probe(
             () -> {
               throw new UnsupportedSqliteCompileOptionsException(
-                  "3.53.0", "2.3.3", "managed-only", List.of("SECURE_DELETE"));
+                  "3.53.0",
+                  "2.3.3",
+                  SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                  "managed-only",
+                  List.of("SECURE_DELETE"));
             },
             () -> {
               throw new AssertionError("sqlite3mc version lookup should not run");
             },
-            SqliteRuntime::failureDetail);
+            () -> SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID);
 
     assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals(SqliteRuntime.Status.INCOMPATIBLE, runtimeProbe.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.FAILED, runtimeProbe.compileOptionsVerification());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
     assertTrue(runtimeProbe.issue().contains("missing required compile options"));
   }
 
   @Test
   void runtimeProbeAndStatusExposeStableValueSemantics() {
-    SqliteRuntime.Probe runtimeProbe =
-        new SqliteRuntime.Probe(
-            "managed-only", "3.53.0", "2.3.3", SqliteRuntime.Status.READY, "3.53.0", "2.3.3", null);
+    SqliteRuntime.Probe runtimeProbe = readyProbe();
 
     assertEquals("managed-only", runtimeProbe.libraryMode());
     assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.requiredSqliteSourceId());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.VERIFIED, runtimeProbe.compileOptionsVerification());
     assertEquals(SqliteRuntime.Status.READY, runtimeProbe.status());
+    assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
+    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
     assertEquals("3.53.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.3", runtimeProbe.loadedSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
     assertNull(runtimeProbe.issue());
-    assertEquals(
-        runtimeProbe,
-        new SqliteRuntime.Probe(
-            "managed-only",
-            "3.53.0",
-            "2.3.3",
-            SqliteRuntime.Status.READY,
-            "3.53.0",
-            "2.3.3",
-            null));
-    assertEquals(
-        runtimeProbe.hashCode(),
-        new SqliteRuntime.Probe(
-                "managed-only",
-                "3.53.0",
-                "2.3.3",
-                SqliteRuntime.Status.READY,
-                "3.53.0",
-                "2.3.3",
-                null)
-            .hashCode());
+    assertEquals(runtimeProbe, readyProbe());
+    assertEquals(runtimeProbe.hashCode(), readyProbe().hashCode());
     assertTrue(runtimeProbe.toString().contains("managed-only"));
     assertEquals("ready", SqliteRuntime.Status.READY.wireValue());
     assertEquals("unavailable", SqliteRuntime.Status.UNAVAILABLE.wireValue());
@@ -164,114 +232,337 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void runtimeProbe_normalizesWhitespaceAroundRequiredAndOptionalFields() {
+    SqliteRuntime.Probe runtimeProbe =
+        new SqliteRuntime.Probe(
+            "  managed-only  ",
+            "  3.53.0  ",
+            "  2.3.3  ",
+            "  " + SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID + "  ",
+            SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+            SqliteRuntime.Status.UNAVAILABLE,
+            null,
+            "   ",
+            "\t",
+            "\n",
+            "  ",
+            "  runtime unavailable  ");
+
+    assertEquals("managed-only", runtimeProbe.libraryMode());
+    assertEquals("3.53.0", runtimeProbe.requiredMinimumSqliteVersion());
+    assertEquals("2.3.3", runtimeProbe.requiredSqlite3mcVersion());
+    assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.requiredSqliteSourceId());
+    assertNull(runtimeProbe.loadedLibraryPath());
+    assertNull(runtimeProbe.loadedSqliteVersion());
+    assertNull(runtimeProbe.loadedSqlite3mcVersion());
+    assertNull(runtimeProbe.loadedSqliteSourceId());
+    assertEquals("runtime unavailable", runtimeProbe.issue());
+  }
+
+  @Test
   void runtimeProbe_rejectsInvalidStatusSpecificShapes() {
     assertThrows(
         NullPointerException.class,
-        () -> new SqliteRuntime.Probe("managed-only", "3.53.0", "2.3.3", null, null, null, "boom"));
+        () -> runtimeProbe("managed-only", null, null, null, null, null, null, null, "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
+            runtimeProbe(
                 "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
                 "3.53.0",
                 "2.3.3",
-                SqliteRuntime.Status.READY,
-                null,
-                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
+            runtimeProbe(
                 "managed-only",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntime.Status.READY,
+                null,
+                "/tmp/libsqlite3.dylib",
                 "3.53.0",
                 "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
                 SqliteRuntime.Status.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                null,
                 "3.53.0",
+                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntime.Status.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                null,
+                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntime.Status.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                "3.53.0",
+                null,
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntime.Status.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                "3.53.0",
+                "2.3.3",
                 null,
                 null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
+            runtimeProbe(
                 "managed-only",
-                "3.53.0",
-                "2.3.3",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
                 SqliteRuntime.Status.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
                 "3.53.0",
                 "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
+            runtimeProbe(
                 "managed-only",
-                "3.53.0",
-                "2.3.3",
+                SqliteCompileOptionsVerificationStatus.FAILED,
                 SqliteRuntime.Status.UNAVAILABLE,
-                "3.53.0",
+                null,
+                null,
+                null,
+                null,
                 null,
                 "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                "3.53.0",
+                null,
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                "/tmp/libsqlite3.dylib",
+                null,
+                null,
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                null,
+                "3.53.0",
+                null,
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                null,
+                null,
+                "2.3.3",
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                null,
+                null,
+                null,
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
                 "managed",
-                "3.53.0",
-                "2.3.3",
-                SqliteRuntime.Status.UNAVAILABLE,
-                null,
-                "2.3.3",
-                "boom"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new SqliteRuntime.Probe(
-                "managed-only",
-                "3.53.0",
-                "2.3.3",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
                 SqliteRuntime.Status.UNAVAILABLE,
                 null,
                 null,
-                null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new SqliteRuntime.Probe(
-                "managed-only",
-                "3.53.0",
-                "2.3.3",
-                SqliteRuntime.Status.INCOMPATIBLE,
                 null,
-                "2.3.3",
-                "boom"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new SqliteRuntime.Probe(
-                "managed-only",
-                "3.53.0",
-                "2.3.3",
-                SqliteRuntime.Status.INCOMPATIBLE,
-                "3.53.0",
+                null,
                 null,
                 "boom"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
+            runtimeProbe(
                 "managed-only",
-                "3.53.0",
-                "2.3.3",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
                 SqliteRuntime.Status.INCOMPATIBLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
                 "3.51.0",
                 "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.INCOMPATIBLE,
+                null,
+                "/tmp/libsqlite3.dylib",
+                "3.51.0",
+                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.INCOMPATIBLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                null,
+                "3.51.0",
+                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.INCOMPATIBLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                null,
+                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.INCOMPATIBLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                "3.53.0",
+                null,
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.INCOMPATIBLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                "3.51.0",
+                "2.3.3",
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.INCOMPATIBLE,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                "3.51.0",
+                "2.3.3",
+                SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SqliteRuntime.Probe(
-                " ", "3.53.0", "2.3.3", SqliteRuntime.Status.UNAVAILABLE, null, null, "boom"));
+            runtimeProbe(
+                " ",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.UNAVAILABLE,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "boom"));
   }
 
   @Test
@@ -287,5 +578,57 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals("SQLITE_CANTOPEN_ISDIR", SqliteNativeErrors.resultName(526));
     assertEquals("SQLITE_NOTADB", SqliteNativeErrors.resultName(26));
     assertEquals("SQLITE_999999", SqliteNativeErrors.resultName(999999));
+  }
+
+  private static SqliteRuntime.Probe probe(
+      Supplier<String> sqliteVersionSupplier,
+      Supplier<String> sqlite3mcVersionSupplier,
+      Supplier<String> sqliteSourceIdSupplier) {
+    return SqliteRuntime.probe(
+        () -> "managed-only",
+        () -> SqliteRuntimeProvenance.BUNDLE_MANAGED,
+        () -> "/tmp/libsqlite3.dylib",
+        sqliteVersionSupplier,
+        sqlite3mcVersionSupplier,
+        sqliteSourceIdSupplier,
+        SqliteRuntime::failureDetail);
+  }
+
+  private static SqliteRuntime.Probe readyProbe() {
+    return runtimeProbe(
+        "managed-only",
+        SqliteCompileOptionsVerificationStatus.VERIFIED,
+        SqliteRuntime.Status.READY,
+        SqliteRuntimeProvenance.BUNDLE_MANAGED,
+        "/tmp/libsqlite3.dylib",
+        "3.53.0",
+        "2.3.3",
+        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+        null);
+  }
+
+  private static SqliteRuntime.Probe runtimeProbe(
+      String libraryMode,
+      SqliteCompileOptionsVerificationStatus compileOptionsVerification,
+      SqliteRuntime.Status status,
+      SqliteRuntimeProvenance runtimeProvenance,
+      String loadedLibraryPath,
+      String loadedSqliteVersion,
+      String loadedSqlite3mcVersion,
+      String loadedSqliteSourceId,
+      String issue) {
+    return new SqliteRuntime.Probe(
+        libraryMode,
+        "3.53.0",
+        "2.3.3",
+        SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
+        compileOptionsVerification,
+        status,
+        runtimeProvenance,
+        loadedLibraryPath,
+        loadedSqliteVersion,
+        loadedSqlite3mcVersion,
+        loadedSqliteSourceId,
+        issue);
   }
 }

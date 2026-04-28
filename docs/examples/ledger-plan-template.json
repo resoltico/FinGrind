@@ -23,7 +23,7 @@
     "stepId" : "post-journal",
     "kind" : "post-entry",
     "posting" : {
-      "effectiveDate" : "2026-04-17",
+      "effectiveDate" : "replace-before-commit-effective-date",
       "lines" : [ {
         "accountCode" : "1000",
         "side" : "DEBIT",
@@ -36,11 +36,11 @@
         "amount" : "10.00"
       } ],
       "provenance" : {
-        "actorId" : "operator-1",
-        "actorType" : "HUMAN",
-        "commandId" : "command-1",
-        "idempotencyKey" : "idem-1",
-        "causationId" : "cause-1"
+        "actorId" : "replace-before-commit-actor-id",
+        "actorType" : "AGENT",
+        "commandId" : "replace-before-commit-command-id",
+        "idempotencyKey" : "replace-before-commit-idempotency-key",
+        "causationId" : "replace-before-commit-causation-id"
       }
     }
   }, {

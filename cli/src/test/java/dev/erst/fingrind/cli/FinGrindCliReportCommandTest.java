@@ -27,7 +27,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
         tempDirectory.resolve("reports odd").resolve("trial balance [office copy].pdf");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -61,7 +61,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     Path pdfOutputPath = tempDirectory.resolve("reports").resolve("trial-balance.pdf");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
@@ -106,19 +106,19 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()));
 
     FinGrindCli balanceCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(balanceOutput),
             fixedClock(),
             rejectedWorkflow);
     FinGrindCli ledgerCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(ledgerOutput),
             fixedClock(),
             rejectedWorkflow);
     FinGrindCli summaryCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(summaryOutput),
             fixedClock(),
@@ -196,19 +196,19 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             new PeriodSummaryResult.Reported(samplePeriodSummaryReport()));
 
     FinGrindCli balanceCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(balanceOutput),
             fixedClock(),
             successfulWorkflow);
     FinGrindCli ledgerCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(ledgerOutput),
             fixedClock(),
             successfulWorkflow);
     FinGrindCli summaryCli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(summaryOutput),
             fixedClock(),
@@ -278,7 +278,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        new FinGrindCli(
+        cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),

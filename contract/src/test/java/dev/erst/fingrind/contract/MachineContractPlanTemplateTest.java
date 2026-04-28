@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
+import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
@@ -34,10 +35,13 @@ class MachineContractPlanTemplateTest {
     assertEquals(NormalBalance.CREDIT, template.steps().get(2).declareAccount().normalBalance());
     assertEquals("post-journal", template.steps().get(3).stepId());
     assertEquals(LedgerStepKind.POST_ENTRY, template.steps().get(3).kind());
-    assertEquals("2026-04-17", template.steps().get(3).posting().effectiveDate());
+    assertEquals(
+        ScaffoldPlaceholders.EFFECTIVE_DATE, template.steps().get(3).posting().effectiveDate());
     assertEquals("1000", template.steps().get(3).posting().lines().get(0).accountCode());
     assertEquals("2000", template.steps().get(3).posting().lines().get(1).accountCode());
-    assertEquals("operator-1", template.steps().get(3).posting().provenance().actorId());
+    assertEquals(
+        ScaffoldPlaceholders.ACTOR_ID, template.steps().get(3).posting().provenance().actorId());
+    assertEquals(ActorType.AGENT, template.steps().get(3).posting().provenance().actorType());
     assertEquals("assert-cash-balance", template.steps().get(4).stepId());
     assertEquals(LedgerStepKind.ASSERT, template.steps().get(4).kind());
     assertEquals(
@@ -49,7 +53,7 @@ class MachineContractPlanTemplateTest {
 
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.27.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.28.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());

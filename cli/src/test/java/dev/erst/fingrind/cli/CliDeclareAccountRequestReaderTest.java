@@ -52,6 +52,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals("Missing required field: accountName", exception.getMessage());
+    assertEquals(CliJsonRequestCodec.declareAccountRequestHint(), exception.failure().hint());
   }
 
   @Test

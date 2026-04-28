@@ -47,9 +47,8 @@ final class ProtocolAdministrationOperations {
                         OperationId.OPEN_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_PASSPHRASE_PROMPT),
-                "printf '%s\\n' 'acme-demo-passphrase' | fingrind %s %s ./books/acme.sqlite %s"
+                "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s"
                     .formatted(
-                        "%s",
                         OperationId.OPEN_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_PASSPHRASE_STDIN))),

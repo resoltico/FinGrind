@@ -54,6 +54,9 @@ jobs:
       - name: Smoke test the self-contained CLI bundle
         run: ./scripts/bundle-smoke.sh
 
+      - name: Verify release-surface shell scripts
+        run: ./scripts/check-shell-syntax.sh
+
   windows-bundle-smoke:
     name: Windows bundle smoke
     runs-on: windows-latest

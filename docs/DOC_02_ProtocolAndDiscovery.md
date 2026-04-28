@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.27.0"
+version: "0.28.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-26"
+updated: "2026-04-28"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -262,7 +262,7 @@ public enum PlanFailurePolicy implements WireValue
 
 - Purpose: keep the plan execution contract typed through the public discovery/model surface
 
-## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, And `SqliteRuntimeStatus`
+## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, And `SqliteRuntimeStatus`
 
 These enums are the public runtime-surface vocabularies shared by discovery payloads, CLI
 rendering, shell verifiers, and build/distribution checks.
@@ -275,11 +275,13 @@ public enum StorageEngine implements WireValue
 public enum BookProtectionMode implements WireValue
 public enum BookCipher implements WireValue
 public enum SqliteLibraryMode implements WireValue
+public enum SqliteRuntimeProvenance implements WireValue
 public enum SqliteRuntimeStatus implements WireValue
 ```
 
 - Purpose: keep runtime distribution, public bundle identity, storage backend, protected-book
-  defaults, managed SQLite loading mode, and runtime readiness in enum-owned wire vocabularies
+  defaults, managed SQLite loading mode, runtime provenance, and runtime readiness in enum-owned
+  wire vocabularies
 - Validation surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and typed discovery
   records such as `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`, and
   `EnvironmentSqliteDescriptor`
@@ -348,10 +350,29 @@ public final class MachineContract
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
 - Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
   `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
+- Help behavior: `help()` now owns a curated typed quick-start workflow instead of flattening raw
+  protocol examples, so required scaffold-edit and provenance-replacement steps stay visible to
+  both human and machine readers
 - Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic scaffold
-  documents with the canonical example `effectiveDate` value `2026-04-17`, so checked-in template
-  fixtures can remain byte-identical to live command output until the contract intentionally
-  changes
+  documents with explicit replace-before-submit placeholders for `effectiveDate` and provenance,
+  so checked-in template fixtures remain byte-identical to live command output without publishing
+  stale commit-ready dates
+
+## `ScaffoldPlaceholders`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
+
+These public contract owners keep scaffold-placeholder and help-workflow guidance typed.
+
+```java
+public final class ScaffoldPlaceholders
+public enum WorkflowStepKind
+public record WorkflowStepDescriptor(...)
+```
+
+- `ScaffoldPlaceholders`: owns the canonical `replace-before-commit-*` sentinel values shared by
+  template publication, parser rejection, docs, and tests
+- `WorkflowStepKind`: distinguishes command, edit, and note steps in the public help workflow
+- `WorkflowStepDescriptor`: keeps the `HelpDescriptor.quickStart` sequence typed so machine
+  consumers can distinguish runnable commands from required file edits and explanatory notes
 
 ## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
 
@@ -373,6 +394,9 @@ public final class ContractTemplates
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
+- `HelpDescriptor.quickStart` is a typed `WorkflowStepDescriptor` list rather than a flat string
+  array, so canonical quick starts can encode required edit and note steps without implying that
+  every line is immediately runnable as a CLI command
 - `CommandCatalogDescriptor` groups full `CommandDescriptor` records by operation category, so the
   machine-readable `capabilities` payload publishes per-command identity, aliases, options,
   execution mode, output modes, artifact outputs, and summaries without falling back to one lossy

@@ -25,8 +25,7 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
     int exitCode =
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(
                 new String[] {
                   "declare-account",
@@ -52,8 +51,7 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
     int exitCode =
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(
                 new String[] {
                   "list-accounts",
@@ -78,8 +76,7 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
     int exitCode =
-        new FinGrindCli(
-                new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(
                 new String[] {
                   "preflight-entry",

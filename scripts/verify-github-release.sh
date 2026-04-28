@@ -9,10 +9,13 @@ die() {
     exit 1
 }
 
-tag_name="${RELEASE_TAG:-${GITHUB_REF_NAME:-}}"
-if [[ -z "${tag_name}" && $# -gt 0 && "$1" == v* ]]; then
+tag_name=''
+if [[ $# -gt 0 && "$1" == v* ]]; then
     tag_name="$1"
     shift
+fi
+if [[ -z "${tag_name}" ]]; then
+    tag_name="${RELEASE_TAG:-${GITHUB_REF_NAME:-}}"
 fi
 readonly tag_name
 readonly asset_names=("$@")

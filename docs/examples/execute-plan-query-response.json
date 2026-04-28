@@ -109,7 +109,7 @@
             {
               "kind": "text",
               "name": "effectiveDate",
-              "value": "2026-04-17"
+              "value": "2026-04-07"
             },
             {
               "kind": "text",
@@ -217,7 +217,7 @@
                 {
                   "kind": "text",
                   "name": "effectiveDate",
-                  "value": "2026-04-17"
+                  "value": "2026-04-07"
                 },
                 {
                   "kind": "text",
@@ -231,12 +231,12 @@
                     {
                       "kind": "text",
                       "name": "actorId",
-                      "value": "operator-1"
+                      "value": "agent-query-1"
                     },
                     {
                       "kind": "text",
                       "name": "actorType",
-                      "value": "HUMAN"
+                      "value": "AGENT"
                     },
                     {
                       "kind": "text",

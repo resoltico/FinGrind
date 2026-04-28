@@ -41,11 +41,18 @@ function Require-NoMatch {
     }
 }
 
-function Require-Java26 {
+function Require-JavaRuntimeVersion {
     param(
         [Parameter(Mandatory = $true)]
-        [string] $JavaCommand
+        [string] $JavaCommand,
+        [Parameter(Mandatory = $true)]
+        [string] $ExpectedSourceCheckoutJava
     )
+
+    $expectedFeatureVersion = $ExpectedSourceCheckoutJava.TrimEnd('+')
+    if ([string]::IsNullOrWhiteSpace($expectedFeatureVersion)) {
+        Fail "source-checkout Java contract must not be blank when verifying the bundled runtime"
+    }
 
     $versionOutput = (& $JavaCommand --version 2>&1 | Out-String) -replace "`r", ""
     $versionLines = @($versionOutput -split "`n" | Where-Object { $_ -ne "" })
@@ -53,9 +60,14 @@ function Require-Java26 {
     if ($versionLines.Count -gt 0) {
         $versionTokens = @($versionLines[0] -split '\s+' | Where-Object { $_ -ne "" })
     }
-    if ($versionTokens.Count -lt 2 -or ($versionTokens[1] -ne "26" -and -not $versionTokens[1].StartsWith("26."))) {
+    if (
+        $versionTokens.Count -lt 2 -or (
+            $versionTokens[1] -ne $expectedFeatureVersion -and
+            -not $versionTokens[1].StartsWith("$expectedFeatureVersion.")
+        )
+    ) {
         Write-Host $versionOutput
-        Fail "bundled Java runtime did not report Java 26"
+        Fail "bundled Java runtime did not report Java $expectedFeatureVersion"
     }
 }
 
