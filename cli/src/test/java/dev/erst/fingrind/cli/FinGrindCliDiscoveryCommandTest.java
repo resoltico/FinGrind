@@ -137,11 +137,12 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
               .readTree(helpOutputStream.toString(StandardCharsets.UTF_8))
               .path("payload");
       assertTrue(containsText(helpPayload, bundleLauncher + " post-entry"));
-      String failureOutput = failureOutputStream.toString(StandardCharsets.UTF_8);
-      assertTrue(failureOutput.contains("Unsupported argument: --bogus"));
-      assertTrue(
-          failureOutput.contains(
-              "Run '" + bundleLauncher + " help' to inspect the supported command syntax."));
+      JsonNode failurePayload =
+          new ObjectMapper().readTree(failureOutputStream.toString(StandardCharsets.UTF_8));
+      assertEquals("Unsupported argument: --bogus", failurePayload.path("message").asText());
+      assertEquals(
+          "Run '" + bundleLauncher + " help' to inspect the supported command syntax.",
+          failurePayload.path("hint").asText());
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
