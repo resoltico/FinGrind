@@ -238,6 +238,9 @@ Every release must verify:
 - the GitHub release object contains the complete bundle-and-checksum set
 - the container workflow waits for the complete GitHub release asset set before it publishes the
   public image, so Docker publication cannot outrun an incomplete release handoff
+- the container workflow keeps enough timeout budget for post-publish verification of both the
+  versioned and `latest` public tags on real GitHub-hosted runners, so a successful registry push
+  cannot still end as a red release-surface workflow
 
 Release helper scripts are part of that contract and must remain portable across the actual
 GitHub-hosted release runners. In practice this means publication-critical shell code must work

@@ -22,7 +22,12 @@ jobs:
   container:
     name: Build and push container image
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # This job intentionally includes release-asset gating, JAR build, SQLite verification,
+    # Docker smoke, multi-arch push, and post-publish tag verification. The former 20-minute
+    # ceiling allowed public publication to succeed while canceling the final verification step on
+    # slower GitHub-hosted runners, which left the release surface red despite a correct registry
+    # state. Keep enough budget for the verifier to run after the image push finishes.
+    timeout-minutes: 35
 
     permissions:
       contents: read
