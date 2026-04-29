@@ -59,6 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the committed source-channel contract so SQLite schema proofs, fixtures, and schema docs
   now tie the persisted `source_channel` value directly to the canonical `SourceChannel.CLI`
   owner instead of carrying free-floating `'CLI'` test literals.
+- Fixed the Jazzer deterministic verification surface so GitHub Actions no longer flips
+  harness-runner tests through ambient `GITHUB_ACTIONS` state, and deterministic pulse logs now
+  report truthful completed-class progress instead of a brittle precomputed total.
 
 ## [0.28.0] - 2026-04-28
 

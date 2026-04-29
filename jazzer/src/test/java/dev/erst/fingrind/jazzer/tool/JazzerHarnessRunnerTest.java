@@ -10,6 +10,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +68,7 @@ class JazzerHarnessRunnerTest {
       String[] executedMethod = new String[1];
 
       int exitCode =
-          JazzerHarnessRunner.run(
+          runIgnoringGitHubActions(
               SuccessfulFuzzHarnessFixture.class.getName(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true),
@@ -96,7 +97,7 @@ class JazzerHarnessRunnerTest {
       StringWriter errors = new StringWriter();
 
       int exitCode =
-          JazzerHarnessRunner.run(
+          runIgnoringGitHubActions(
               NonFuzzHarnessFixture.class.getName(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
@@ -112,7 +113,7 @@ class JazzerHarnessRunnerTest {
       StringWriter errors = new StringWriter();
 
       int exitCode =
-          JazzerHarnessRunner.run(
+          runIgnoringGitHubActions(
               MultiFuzzHarnessFixture.class.getName(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
@@ -130,7 +131,7 @@ class JazzerHarnessRunnerTest {
       StringWriter errors = new StringWriter();
 
       int exitCode =
-          JazzerHarnessRunner.run(
+          runIgnoringGitHubActions(
               SuccessfulFuzzHarnessFixture.class.getName(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true),
@@ -169,7 +170,7 @@ class JazzerHarnessRunnerTest {
       StringWriter errors = new StringWriter();
 
       int exitCode =
-          JazzerHarnessRunner.run(
+          runIgnoringGitHubActions(
               "dev.erst.fingrind.jazzer.tool.MissingHarnessFixture",
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
@@ -185,7 +186,7 @@ class JazzerHarnessRunnerTest {
       StringWriter errors = new StringWriter();
 
       int exitCode =
-          JazzerHarnessRunner.run(
+          runIgnoringGitHubActions(
               SuccessfulFuzzHarnessFixture.class.getName(),
               new PrintWriter(output, true),
               new PrintWriter(errors, true),
@@ -202,11 +203,17 @@ class JazzerHarnessRunnerTest {
     void run_overloadUsingDefaultOutputStreamStillReportsErrors() {
       StringWriter errors = new StringWriter();
 
-      int exitCode =
-          JazzerHarnessRunner.run(
-              "dev.erst.fingrind.jazzer.tool.MissingHarnessFixture", new PrintWriter(errors, true));
+      AtomicInteger exitCode = new AtomicInteger(-1);
+      JazzerHarnessRunner.withProductionWiringForTesting(
+          new NoOpHarnessExecutor(),
+          () -> false,
+          () ->
+              exitCode.set(
+                  JazzerHarnessRunner.run(
+                      "dev.erst.fingrind.jazzer.tool.MissingHarnessFixture",
+                      new PrintWriter(errors, true))));
 
-      assertEquals(1, exitCode);
+      assertEquals(1, exitCode.get());
       assertTrue(errors.toString().contains("Unable to load Jazzer harness class"));
     }
 
@@ -246,8 +253,12 @@ class JazzerHarnessRunnerTest {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     ByteArrayOutputStream errors = new ByteArrayOutputStream();
 
-    new JazzerHarnessRunner(output, errors, exitCode::set)
-        .run(new String[] {"--class", NonFuzzHarnessFixture.class.getName()});
+    JazzerHarnessRunner.withProductionWiringForTesting(
+        new NoOpHarnessExecutor(),
+        () -> false,
+        () ->
+            new JazzerHarnessRunner(output, errors, exitCode::set)
+                .run(new String[] {"--class", NonFuzzHarnessFixture.class.getName()}));
 
     assertEquals(1, exitCode.get());
     assertTrue(
@@ -336,6 +347,37 @@ class JazzerHarnessRunnerTest {
     }
   }
 
+  @Test
+  void run_overloadUsingExplicitExecutor_stillUsesProductionDetector() {
+    StringWriter output = new StringWriter();
+    StringWriter errors = new StringWriter();
+    AtomicInteger exitCode = new AtomicInteger(-1);
+
+    JazzerHarnessRunner.withProductionWiringForTesting(
+        new NoOpHarnessExecutor(),
+        () -> false,
+        () ->
+            exitCode.set(
+                JazzerHarnessRunner.run(
+                    SuccessfulFuzzHarnessFixture.class.getName(),
+                    new PrintWriter(output, true),
+                    new PrintWriter(errors, true),
+                    harness -> 23)));
+
+    assertEquals(23, exitCode.get());
+    assertTrue(
+        output.toString().contains("phase=finish status=FAILURE fuzz-test=fuzz exit-code=23"));
+    assertTrue(errors.toString().contains("exit code 23"));
+  }
+
+  @Test
+  void runningOnGitHubActions_matchesProcessEnvironment() throws Exception {
+    Method method = JazzerHarnessRunner.class.getDeclaredMethod("runningOnGitHubActions");
+    method.setAccessible(true);
+
+    assertEquals("true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS")), method.invoke(null));
+  }
+
   /** One-shot harness fixture used only to prove official runner discovery remains reachable. */
   static final class OneShotFuzzHarness extends SingleExecutionFuzzHarnessFixture {}
 
@@ -350,6 +392,27 @@ class JazzerHarnessRunnerTest {
     @Override
     public Optional<JazzerHarnessRunner.JazzerRunner> create(String className) {
       return runner;
+    }
+  }
+
+  private static int runIgnoringGitHubActions(
+      String className, PrintWriter outputWriter, PrintWriter errorWriter) {
+    return JazzerHarnessRunner.run(
+        className, outputWriter, errorWriter, new NoOpHarnessExecutor(), () -> false);
+  }
+
+  private static int runIgnoringGitHubActions(
+      String className,
+      PrintWriter outputWriter,
+      PrintWriter errorWriter,
+      JazzerHarnessRunner.HarnessExecutor executor) {
+    return JazzerHarnessRunner.run(className, outputWriter, errorWriter, executor, () -> false);
+  }
+
+  private static final class NoOpHarnessExecutor implements JazzerHarnessRunner.HarnessExecutor {
+    @Override
+    public int execute(JazzerHarnessRunner.HarnessDescriptor harness) {
+      throw new AssertionError("executor must not run");
     }
   }
 }

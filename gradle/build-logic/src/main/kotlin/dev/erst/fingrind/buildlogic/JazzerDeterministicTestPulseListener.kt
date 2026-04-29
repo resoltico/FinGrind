@@ -5,7 +5,6 @@ import org.gradle.api.tasks.testing.TestDescriptor
 import org.gradle.api.tasks.testing.TestResult
 
 internal class JazzerDeterministicTestPulseListener(
-    private val totalClasses: Int,
     pulseIntervalSeconds: Long = 15,
 ) : ScheduledPulseTestListener(
         threadName = "fingrind-jazzer-deterministic-pulse",
@@ -32,7 +31,7 @@ internal class JazzerDeterministicTestPulseListener(
                 return
             }
             rootStarted = true
-            emit("deterministic-tests phase=start total-classes=$totalClasses")
+            emit("deterministic-tests phase=start")
             startPulseLoop(::emitHeartbeat)
         }
     }
@@ -44,7 +43,7 @@ internal class JazzerDeterministicTestPulseListener(
         synchronized(lock) {
             finishActiveClass()
             emit(
-                "deterministic-tests phase=finish completed-classes=$completedClasses/$totalClasses completed-tests=$completedTests result=${result.resultType}",
+                "deterministic-tests phase=finish completed-classes=$completedClasses completed-tests=$completedTests result=${result.resultType}",
             )
             rootFinished = true
             stopPulseLoop()
@@ -96,7 +95,7 @@ internal class JazzerDeterministicTestPulseListener(
                 buildString {
                     append("deterministic-tests phase=test-progress")
                     append(" completed-tests=").append(completedTests)
-                    append(" completed-classes=").append(completedClasses).append('/').append(totalClasses)
+                    append(" completed-classes=").append(completedClasses)
                     append(" class=").append(pulseValue(className))
                     activeTestName?.let { testName ->
                         append(" name=").append(pulseValue(testName))
@@ -118,7 +117,7 @@ internal class JazzerDeterministicTestPulseListener(
         val topLevelClass = activeTopLevelClass ?: return
         completedClasses += 1
         emit(
-            "deterministic-tests phase=class-complete completed-classes=$completedClasses/$totalClasses class=${pulseValue(topLevelClass)} result=${activeClassResult()}",
+            "deterministic-tests phase=class-complete completed-classes=$completedClasses class=${pulseValue(topLevelClass)} result=${activeClassResult()}",
         )
         activeTopLevelClass = null
         activeClassTests = 0
