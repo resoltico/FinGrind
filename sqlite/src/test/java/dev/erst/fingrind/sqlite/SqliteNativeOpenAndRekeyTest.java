@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.contract.ContractFailureException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -30,9 +32,9 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void open_rejectsNonKeyFileAccessSelection() {
-    IllegalArgumentException exception =
+    ContractFailureException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            ContractFailureException.class,
             () ->
                 SqliteNativeConnections.open(
                     new BookAccess(
@@ -40,24 +42,32 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                         BookAccess.PassphraseSource.StandardInput.INSTANCE)));
 
     assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
+        exception.failure().code());
+    assertEquals(
         "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-stdin.",
-        exception.getMessage());
+        exception.failure().message());
   }
 
   @Test
   void requireKeyFile_rejectsInteractivePromptSelection() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                SqliteBookAccessRules.requireKeyFile(
-                    new BookAccess(
-                        tempDirectory.resolve("prompt-access.sqlite"),
-                        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE)));
+    ContractDecision<Path> decision =
+        SqliteBookAccessRules.requireKeyFile(
+            new BookAccess(
+                tempDirectory.resolve("prompt-access.sqlite"),
+                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE));
 
-    assertEquals(
-        "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-prompt.",
-        exception.getMessage());
+    switch (decision) {
+      case ContractDecision.Accepted<Path>(Path ignored) ->
+          throw new AssertionError("Expected prompt selection to be rejected.");
+      case ContractDecision.Rejected<Path>(ContractFailure failure) -> {
+        assertEquals(
+            ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(), failure.code());
+        assertEquals(
+            "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-prompt.",
+            failure.message());
+      }
+    }
   }
 
   @Test

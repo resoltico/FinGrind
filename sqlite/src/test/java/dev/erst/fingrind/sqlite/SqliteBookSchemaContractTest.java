@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -71,6 +72,22 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               SqliteBookContract.FORMAT_VERSION, queryInt(database, "pragma user_version"));
         });
+  }
+
+  @Test
+  void schemaResource_pinsCommittedSourceChannelToCanonicalOwner() throws Exception {
+    String schema =
+        new String(
+            java.util.Objects.requireNonNull(
+                    SqliteBookSchemaBootstrap.class.getResourceAsStream("book_schema.sql"),
+                    "Missing schema resource.")
+                .readAllBytes(),
+            StandardCharsets.UTF_8);
+
+    assertTrue(
+        schema.contains(
+            "source_channel text not null check (source_channel in ('%s'))"
+                .formatted(SourceChannel.CLI.wireValue())));
   }
 
   @Test
@@ -339,6 +356,120 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void canonicalStrictSchema_rejectsPersistedIdentifierValuesOutsideTheDomainContract() {
+    Path bookPath = tempDirectory.resolve("identifier-contract.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertInitializedAtRow(database);
+
+                  SqliteNativeException invalidAccountCode =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertAccountRow(
+                                  database, "_1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAccountCode.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAccountCode.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from account"));
+
+                  SqliteNativeException invalidAccountName =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertAccountRow(
+                                  database, "1000", "   ", "DEBIT", 1, "2026-04-07T10:15:30Z"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAccountName.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAccountName.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from account"));
+
+                  insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
+
+                  SqliteNativeException invalidIdempotencyKey =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () -> insertPostingFactRow(database, "posting-1", "idem key"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidIdempotencyKey.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidIdempotencyKey.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
+
+                  SqliteNativeException invalidActorId =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertPostingFactRow(
+                                  database,
+                                  "posting-actor",
+                                  "   ",
+                                  "command-actor",
+                                  "idem-actor",
+                                  "cause-actor",
+                                  "null"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidActorId.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidActorId.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
+
+                  SqliteNativeException invalidCommandId =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertPostingFactRow(
+                                  database,
+                                  "posting-command",
+                                  "actor-command",
+                                  "   ",
+                                  "idem-command",
+                                  "cause-command",
+                                  "null"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCommandId.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCommandId.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
+
+                  SqliteNativeException invalidCausationId =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertPostingFactRow(
+                                  database,
+                                  "posting-cause",
+                                  "actor-cause",
+                                  "command-cause",
+                                  "idem-cause",
+                                  "   ",
+                                  "null"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCausationId.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCausationId.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
+
+                  SqliteNativeException invalidCorrelationId =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              insertPostingFactRow(
+                                  database,
+                                  "posting-correlation",
+                                  "actor-correlation",
+                                  "command-correlation",
+                                  "idem-correlation",
+                                  "cause-correlation",
+                                  "'   '"));
+                  assertEquals(
+                      SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCorrelationId.resultCode());
+                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCorrelationId.resultName());
+                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
+                }));
+  }
+
+  @Test
   void loadInitializedAt_returnsEmptyWithoutMarkerAndValueWhenPresent() throws Exception {
     Path missingMarkerPath = tempDirectory.resolve("initialized-at-missing.sqlite");
     createSchemaOnlyBook(missingMarkerPath);
@@ -503,5 +634,53 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             bookAccess(versionOnlyPath),
             database -> bookStateReader.bookState(database).toString());
     assertEquals("FOREIGN_SQLITE", versionOnlyBookState);
+  }
+
+  private static void insertPostingFactRow(
+      SqliteNativeDatabase database,
+      String postingId,
+      String actorId,
+      String commandId,
+      String idempotencyKey,
+      String causationId,
+      String correlationIdSqlLiteral) {
+    database.executeStatement(
+        """
+        insert into posting_fact (
+            posting_id,
+            effective_date,
+            recorded_at,
+            actor_id,
+            actor_type,
+            command_id,
+            idempotency_key,
+            causation_id,
+            correlation_id,
+            reason,
+            source_channel,
+            prior_posting_id
+        ) values (
+            '%s',
+            '2026-04-07',
+            '2026-04-07T10:15:30Z',
+            '%s',
+            'AGENT',
+            '%s',
+            '%s',
+            '%s',
+            %s,
+            null,
+            '%s',
+            null
+        )
+        """
+            .formatted(
+                postingId,
+                actorId,
+                commandId,
+                idempotencyKey,
+                causationId,
+                correlationIdSqlLiteral,
+                SourceChannel.CLI.wireValue()));
   }
 }

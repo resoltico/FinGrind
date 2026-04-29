@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
+import dev.erst.fingrind.contract.BookFormatContract;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclareAccountResult;
@@ -81,14 +82,12 @@ public final class InMemoryBookSession
     return withLock(
         () -> {
           if (!initialized) {
-            return new BookInspection.Missing(
-                1, dev.erst.fingrind.contract.BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
+            return new BookInspection.Missing(BookFormatContract.FORMAT_VERSION);
           }
           return new BookInspection.Initialized(
-              1_179_079_236,
-              1,
-              1,
-              dev.erst.fingrind.contract.BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
+              BookFormatContract.APPLICATION_ID,
+              BookFormatContract.FORMAT_VERSION,
+              BookFormatContract.FORMAT_VERSION,
               initializedAt);
         });
   }
@@ -152,7 +151,7 @@ public final class InMemoryBookSession
                   accountName,
                   existingAccount == null ? normalBalance : existingAccount.normalBalance(),
                   true,
-                  existingAccount == null ? declaredAt : existingAccount.declaredAt());
+                  declaredAt);
           accountsByCode.put(accountCode, declaredAccount);
           return new DeclareAccountResult.Declared(declaredAccount);
         });

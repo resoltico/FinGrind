@@ -18,4 +18,13 @@ class IdempotencyKeyTest {
   void constructor_rejectsBlankValue() {
     assertThrows(IllegalArgumentException.class, () -> new IdempotencyKey(""));
   }
+
+  @Test
+  void constructor_rejectsOverlongAndInvalidValues() {
+    String tooLong = "I" + "1".repeat(IdempotencyKey.maxLength());
+
+    assertEquals("^[A-Za-z0-9](?:[A-Za-z0-9._:/-]{0,127})?$", IdempotencyKey.pattern());
+    assertThrows(IllegalArgumentException.class, () -> new IdempotencyKey("idem key"));
+    assertThrows(IllegalArgumentException.class, () -> new IdempotencyKey(tooLong));
+  }
 }

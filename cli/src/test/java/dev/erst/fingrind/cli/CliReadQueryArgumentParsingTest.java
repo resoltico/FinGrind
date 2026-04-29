@@ -268,6 +268,55 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_supportsSelectableOutputModesForBookQueries() {
+    GetPosting getPosting =
+        assertInstanceOf(
+            GetPosting.class,
+            CliArguments.parse(
+                new String[] {
+                  "get-posting",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--posting-id",
+                  "posting-1",
+                  "--output",
+                  "human"
+                }));
+    ListAccounts listAccounts =
+        assertInstanceOf(
+            ListAccounts.class,
+            CliArguments.parse(
+                new String[] {
+                  "list-accounts",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--output",
+                  "csv"
+                }));
+    ListPostings listPostings =
+        assertInstanceOf(
+            ListPostings.class,
+            CliArguments.parse(
+                new String[] {
+                  "list-postings",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--output",
+                  "human"
+                }));
+
+    assertEquals(OutputMode.HUMAN, getPosting.outputMode());
+    assertEquals(OutputMode.CSV, listAccounts.outputMode());
+    assertEquals(OutputMode.HUMAN, listPostings.outputMode());
+  }
+
+  @Test
   void parse_returnsListPostingsWithDefaultPagingWhenOmitted() {
     ListPostings command =
         assertInstanceOf(

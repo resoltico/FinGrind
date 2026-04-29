@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.28.0"
+version: "0.29.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
-  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, migration-policy]
+  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
 ---
 
@@ -12,7 +12,7 @@ route:
 
 This file documents the exported `contract` surfaces that define FinGrind's protocol catalog,
 discovery payloads, request and response descriptors, deterministic contract-error vocabulary, and
-public migration-policy metadata.
+public book-format metadata.
 
 ## `ProtocolCatalog`
 
@@ -126,21 +126,6 @@ public final class ProtocolOptions
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
   posting lookup, and date filters
-
-## `ProtocolUserCliDocumentSyncMain`
-
-`ProtocolUserCliDocumentSyncMain` is the contract-owned launcher that rewrites the generated
-command-table block inside `docs/USER_CLI.md` from the canonical protocol catalog.
-
-```java
-public final class ProtocolUserCliDocumentSyncMain
-```
-
-- Purpose: keep the public USER_CLI command table materially synchronized from the protocol owner
-  instead of relying on hand edits or a test-only comparison loop
-- Operational path: invoked through `./gradlew :contract:syncUserCliDocs`
-- Scope: replaces only the marked generated block and preserves exact canonical option spellings,
-  including raw `|`-delimited variants inside generated HTML code cells
 
 ## `ProtocolContractSchemaKeys`
 
@@ -305,8 +290,7 @@ public record PlanExecutionFacts(...)
 - Policy: these are not CLI-local prose constants
 - Related types: `BookBoundaryFact`, `BookEntityScopeFact`, `BookFilesystemFact`,
   `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
-  `BookMigrationFact`, and `BookCurrencyScopeFact` are the semantic text wrappers carried by
-  `BookModelFacts`
+  and `BookCurrencyScopeFact` are the semantic text wrappers carried by `BookModelFacts`
 
 ## `ProtocolSharedRequestFields`
 
@@ -350,29 +334,39 @@ public final class MachineContract
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
 - Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
   `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
-- Help behavior: `help()` now owns a curated typed quick-start workflow instead of flattening raw
-  protocol examples, so required scaffold-edit and provenance-replacement steps stay visible to
-  both human and machine readers
+- Help behavior: `help()` now owns curated typed quick-start workflows keyed by published surface,
+  so required scaffold-edit and provenance-replacement steps stay visible to both human and
+  machine readers without forcing one POSIX-only command stream onto every distribution
+- Command-help behavior: `help(OperationId)` and the CLI `<command> --help` alias both scope the
+  rendered discovery payload to one selected operation, while the CLI help renderer rewrites
+  canonical `fingrind ...` examples and repair hints to the active launcher surface such as
+  `./bin/fingrind` or `.\bin\fingrind.ps1`
 - Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic scaffold
   documents with explicit replace-before-submit placeholders for `effectiveDate` and provenance,
   so checked-in template fixtures remain byte-identical to live command output without publishing
   stale commit-ready dates
 
-## `ScaffoldPlaceholders`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
+## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
 
 These public contract owners keep scaffold-placeholder and help-workflow guidance typed.
 
 ```java
 public final class ScaffoldPlaceholders
+public enum WorkflowSurface
+public record WorkflowDescriptor(...)
 public enum WorkflowStepKind
 public record WorkflowStepDescriptor(...)
 ```
 
 - `ScaffoldPlaceholders`: owns the canonical `replace-before-commit-*` sentinel values shared by
   template publication, parser rejection, docs, and tests
+- `WorkflowSurface`: publishes the stable machine-readable quick-start surface keys such as the
+  self-contained POSIX-shell and Windows-PowerShell bundle flows
+- `WorkflowDescriptor`: groups one platform-specific quick-start sequence under its published
+  workflow surface
 - `WorkflowStepKind`: distinguishes command, edit, and note steps in the public help workflow
-- `WorkflowStepDescriptor`: keeps the `HelpDescriptor.quickStart` sequence typed so machine
-  consumers can distinguish runnable commands from required file edits and explanatory notes
+- `WorkflowStepDescriptor`: keeps each workflow step typed so machine consumers can distinguish
+  runnable commands from canonical file-write payloads and explanatory notes
 
 ## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
 
@@ -394,9 +388,10 @@ public final class ContractTemplates
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
-- `HelpDescriptor.quickStart` is a typed `WorkflowStepDescriptor` list rather than a flat string
-  array, so canonical quick starts can encode required edit and note steps without implying that
-  every line is immediately runnable as a CLI command
+- `HelpDescriptor.quickStart` is a typed `WorkflowDescriptor` list keyed by `WorkflowSurface`
+  rather than a flat string array, so canonical quick starts can publish platform-aware command,
+  file-write, and note steps without implying that one shell transcript fits every bundle target
+  or forcing agents to parse prose to reconstruct JSON seed files
 - `CommandCatalogDescriptor` groups full `CommandDescriptor` records by operation category, so the
   machine-readable `capabilities` payload publishes per-command identity, aliases, options,
   execution mode, output modes, artifact outputs, and summaries without falling back to one lossy
@@ -460,15 +455,15 @@ public final class ContractFailureException extends IllegalStateException
   preserving an exact deterministic `ContractFailure` for higher layers to map back into the
   public machine contract
 
-## `BookMigrationPolicy`
+## `BookFormatContract`
 
-`BookMigrationPolicy` is the public vocabulary of supported on-disk migration strategies.
+`BookFormatContract` is the canonical public owner of the FinGrind SQLite book identity and format
+version constants.
 
 ```java
-public enum BookMigrationPolicy {
-  SEQUENTIAL_IN_PLACE
-}
+public final class BookFormatContract
 ```
 
-- Purpose: make book migration policy explicit in inspection and discovery payloads
-- Wire contract: `wireValue()` returns `sequential-in-place`
+- Purpose: keep the stable `application_id` and supported on-disk format version in one contract
+  owner shared by inspections, fixtures, and storage adapters
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 1`

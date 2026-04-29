@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
+import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.LedgerJournalStep;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanId;
@@ -313,6 +315,63 @@ class LedgerPlanFuzzAssertionsTest {
   }
 
   @Test
+  void assertPlanResult_accepts_terminal_boundary_and_rejects_nonterminal_boundary()
+      throws Exception {
+    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
+    List<LedgerJournalEntry> succeededSteps =
+        plan.steps().stream()
+            .map(step -> succeededEntry(step.stepId().value(), step.kind(), List.of()))
+            .map(LedgerJournalEntry.class::cast)
+            .toList();
+    LedgerPlanResult.Rejected terminalBoundaryResult =
+        new LedgerPlanResult.Rejected(
+            plan.planId(),
+            new LedgerExecutionJournal(
+                Instant.parse("2026-04-07T12:00:00Z"),
+                Instant.parse("2026-04-07T12:00:01Z"),
+                java.util.stream.Stream.concat(
+                        succeededSteps.stream(),
+                        java.util.stream.Stream.of(
+                            boundaryRejectedEntry(
+                                "@plan-boundary:commit", LedgerBoundaryPhase.COMMIT)))
+                    .toList()));
+
+    LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
+        (LedgerPlanFuzzAssertions.ExecutionSnapshot)
+            invokePrivate(
+                "assertPlanResult",
+                new Class<?>[] {
+                  LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
+                },
+                plan,
+                terminalBoundaryResult);
+    assertEquals(LedgerPlanStatus.REJECTED, snapshot.executionStatus());
+    assertEquals(plan.steps().size() + 1, snapshot.journalStepCount());
+
+    LedgerPlanResult.Rejected nonterminalBoundaryResult =
+        new LedgerPlanResult.Rejected(
+            plan.planId(),
+            new LedgerExecutionJournal(
+                Instant.parse("2026-04-07T12:00:00Z"),
+                Instant.parse("2026-04-07T12:00:01Z"),
+                List.of(
+                    boundarySucceededEntry("@plan-boundary:begin", LedgerBoundaryPhase.BEGIN),
+                    rejectedEntry("open", LedgerStepKind.OPEN_BOOK, List.of()))));
+    IllegalStateException nonterminalBoundary =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                invokePrivate(
+                    "assertPlanResult",
+                    new Class<?>[] {
+                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
+                    },
+                    plan,
+                    nonterminalBoundaryResult));
+    assertTrue(String.valueOf(nonterminalBoundary.getMessage()).contains("must be terminal"));
+  }
+
+  @Test
   void assertPlanResult_and_fact_helpers_reject_invalid_query_shapes() throws Exception {
     LedgerJournalEntry.Succeeded structuredPostingPage =
         succeededEntry(
@@ -436,6 +495,16 @@ class LedgerPlanFuzzAssertionsTest {
                             LedgerFact.group(
                                 "account", List.of(LedgerFact.text("accountCode", "1000")))))));
     assertTrue(String.valueOf(rejectedAccountsSuccessOnlyFact.getMessage()).contains("account"));
+
+    IllegalArgumentException wrongListQueryKind =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                invokePrivate(
+                    "expectedListQueryGroupName",
+                    new Class<?>[] {LedgerJournalKind.class},
+                    LedgerJournalKind.OPEN_BOOK));
+    assertTrue(String.valueOf(wrongListQueryKind.getMessage()).contains("list-query journal kind"));
   }
 
   private static LedgerJournalEntry.Succeeded succeededEntry(
@@ -457,6 +526,27 @@ class LedgerPlanFuzzAssertionsTest {
         Instant.parse("2026-04-07T12:00:01Z"),
         facts,
         new LedgerStepFailure("rejected", "expected rejection", List.of()));
+  }
+
+  private static LedgerJournalEntry.Succeeded boundarySucceededEntry(
+      String stepId, LedgerBoundaryPhase phase) {
+    return new LedgerJournalEntry.Succeeded(
+        new LedgerStepId(stepId),
+        LedgerJournalStep.boundary(phase),
+        Instant.parse("2026-04-07T12:00:00Z"),
+        Instant.parse("2026-04-07T12:00:01Z"),
+        List.of());
+  }
+
+  private static LedgerJournalEntry.Rejected boundaryRejectedEntry(
+      String stepId, LedgerBoundaryPhase phase) {
+    return new LedgerJournalEntry.Rejected(
+        new LedgerStepId(stepId),
+        LedgerJournalStep.boundary(phase),
+        Instant.parse("2026-04-07T12:00:00Z"),
+        Instant.parse("2026-04-07T12:00:01Z"),
+        List.of(),
+        new LedgerStepFailure("boundary-rejected", "expected boundary rejection", List.of()));
   }
 
   private static Object invokePrivate(

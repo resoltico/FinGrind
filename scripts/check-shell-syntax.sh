@@ -41,6 +41,6 @@ if [[ -d "${repo_root}/jazzer/bin" ]]; then
 fi
 
 bash -n "${shell_syntax_targets[@]}"
-for script_path in "${check_stage5_script_paths[@]}"; do
+for script_path in "${check_stage5_executable_script_paths[@]}"; do
     bash "${repo_root}/${script_path}"
 done

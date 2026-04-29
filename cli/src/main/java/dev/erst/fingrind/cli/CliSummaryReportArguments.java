@@ -13,29 +13,42 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses book-wide summary report commands. */
 final class CliSummaryReportArguments {
+  private static final CliBookArgumentParser.CommandArgumentSpec TRIAL_BALANCE_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.EFFECTIVE_DATE_TO, ProtocolOptions.OUTPUT, ProtocolOptions.PDF_OUT),
+          List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec PERIOD_SUMMARY_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.EFFECTIVE_DATE_FROM,
+              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.OUTPUT,
+              ProtocolOptions.PDF_OUT),
+          List.of());
+
   private CliSummaryReportArguments() {}
 
   static CliCommand parseTrialBalanceCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, TRIAL_BALANCE_ARGUMENTS);
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.EFFECTIVE_DATE_TO ->
-            effectiveDateTo =
-                CliReportArguments.requireDateOption(
-                    effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
-        case ProtocolOptions.OUTPUT ->
-            outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
-        case ProtocolOptions.PDF_OUT ->
-            pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
-        default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+        effectiveDateTo =
+            CliReportArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+        continue;
       }
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+        continue;
+      }
+      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
     return new TrialBalance(
@@ -48,7 +61,7 @@ final class CliSummaryReportArguments {
 
   static CliCommand parsePeriodSummaryCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, PERIOD_SUMMARY_ARGUMENTS);
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable OutputMode outputMode = null;
@@ -56,22 +69,23 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.EFFECTIVE_DATE_FROM ->
-            effectiveDateFrom =
-                CliReportArguments.requireDateOption(
-                    effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
-        case ProtocolOptions.EFFECTIVE_DATE_TO ->
-            effectiveDateTo =
-                CliReportArguments.requireDateOption(
-                    effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
-        case ProtocolOptions.OUTPUT ->
-            outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
-        case ProtocolOptions.PDF_OUT ->
-            pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
-        default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+        effectiveDateFrom =
+            CliReportArguments.requireDateOption(
+                effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
+        continue;
       }
+      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+        effectiveDateTo =
+            CliReportArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+        continue;
+      }
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+        continue;
+      }
+      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(

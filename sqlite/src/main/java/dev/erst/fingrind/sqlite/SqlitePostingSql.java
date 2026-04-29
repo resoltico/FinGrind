@@ -198,7 +198,8 @@ final class SqlitePostingSql {
       ) values (?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
-          active = excluded.active
+          active = excluded.active,
+          declared_at = excluded.declared_at
       """;
 
   static String listAccounts() {

@@ -10,7 +10,6 @@ public record BookModelFacts(
     BookCredentialFact credentialFact,
     BookInitializationFact initializationFact,
     BookAccountRegistryFact accountRegistryFact,
-    BookMigrationFact migrationFact,
     BookCurrencyScopeFact currencyScopeFact) {
   /** Validates one book-model facts payload. */
   public BookModelFacts {
@@ -22,7 +21,6 @@ public record BookModelFacts(
         ContractDescriptorValidation.requireValue(initializationFact, "initializationFact");
     accountRegistryFact =
         ContractDescriptorValidation.requireValue(accountRegistryFact, "accountRegistryFact");
-    migrationFact = ContractDescriptorValidation.requireValue(migrationFact, "migrationFact");
     currencyScopeFact =
         ContractDescriptorValidation.requireValue(currencyScopeFact, "currencyScopeFact");
   }
@@ -35,7 +33,6 @@ public record BookModelFacts(
       String credential,
       String initialization,
       String accountRegistry,
-      String migration,
       String currencyScope) {
     this(
         new BookBoundaryFact(boundary),
@@ -44,7 +41,6 @@ public record BookModelFacts(
         new BookCredentialFact(credential),
         new BookInitializationFact(initialization),
         new BookAccountRegistryFact(accountRegistry),
-        new BookMigrationFact(migration),
         new BookCurrencyScopeFact(currencyScope));
   }
 
@@ -76,11 +72,6 @@ public record BookModelFacts(
   /** Returns the canonical account-registry wording for this book model. */
   public String accountRegistry() {
     return accountRegistryFact.value();
-  }
-
-  /** Returns the canonical migration wording for this book model. */
-  public String migration() {
-    return migrationFact.value();
   }
 
   /** Returns the canonical currency-scope wording for this book model. */

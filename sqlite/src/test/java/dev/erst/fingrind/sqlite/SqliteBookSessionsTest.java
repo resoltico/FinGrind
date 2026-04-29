@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import dev.erst.fingrind.contract.BookAccess;
@@ -18,10 +19,11 @@ import org.junit.jupiter.api.Test;
 class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void open_usesDefaultAndExplicitSessionModes() {
+    Path defaultCreatePath = tempDirectory.resolve("default-create.sqlite");
     assertSessionAccessMode(
-        SqliteBookSessions.open(
-            tempDirectory.resolve("default-create.sqlite"), passphrase("default create")),
+        SqliteBookSessions.open(defaultCreatePath, passphrase("default create")),
         SqliteStoreAccessMode.READ_WRITE_CREATE);
+    assertTrue(java.nio.file.Files.exists(defaultCreatePath));
     assertSessionAccessMode(
         SqliteBookSessions.open(
             tempDirectory.resolve("read-only.sqlite"),

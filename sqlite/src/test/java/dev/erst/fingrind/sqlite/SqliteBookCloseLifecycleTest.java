@@ -55,10 +55,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
         ThrowingSqliteNativeDatabase database = new ThrowingSqliteNativeDatabase()) {
       assertDoesNotThrow(() -> SqliteStoreOperations.closeReopenedDatabaseQuietly(closingDatabase));
       assertTrue(closingDatabase.closeAttempted());
-      assertDoesNotThrow(
-          () ->
-              SqliteStoreOperations.closeReopenedDatabaseQuietly(
-                  new SqliteSessionDatabase(closingDatabase)));
+      assertDoesNotThrow(() -> SqliteStoreOperations.closeReopenedDatabaseQuietly(closingDatabase));
       assertDoesNotThrow(() -> SqliteStoreOperations.closeReopenedDatabaseQuietly(database));
       assertTrue(database.closeAttempted());
       assertDoesNotThrow(

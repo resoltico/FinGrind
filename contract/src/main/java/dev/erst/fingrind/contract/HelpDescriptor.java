@@ -11,7 +11,7 @@ public record HelpDescriptor(
     List<String> usage,
     ContractResponse.BookModelDescriptor bookModel,
     List<CommandDescriptor> commands,
-    List<WorkflowStepDescriptor> quickStart,
+    List<WorkflowDescriptor> quickStart,
     List<ExitCodeDescriptor> exitCodes,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,

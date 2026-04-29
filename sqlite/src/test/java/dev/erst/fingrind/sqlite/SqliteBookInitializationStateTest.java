@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostingRejection;
@@ -21,7 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -31,18 +29,18 @@ import org.junit.jupiter.api.Test;
 class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
-  void storeOperations_handleMissingAndRawUninitializedSqliteBooks() {
+  void storeOperations_rejectDirectReadsForMissingAndRawUninitializedSqliteBooks() {
     Path missingBookPath = tempDirectory.resolve("missing-ops.sqlite");
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
       assertFalse(postingFactStore.isInitialized());
-      assertEquals(Optional.empty(), postingFactStore.findAccount(new AccountCode("1000")));
-      assertEquals(List.of(), listAccounts(postingFactStore));
-      assertEquals(
-          Optional.empty(), postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")));
-      assertEquals(Optional.empty(), postingFactStore.findPosting(new PostingId("posting-1")));
-      assertEquals(Optional.empty(), postingFactStore.findReversalFor(new PostingId("posting-1")));
+      assertInitializedQueryViewFailure(
+          () -> postingFactStore.findAccount(new AccountCode("1000")),
+          () -> postingFactStore.listAccounts(firstAccountPage()),
+          () -> postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")),
+          () -> postingFactStore.findPosting(new PostingId("posting-1")),
+          () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
       assertEquals(
           new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
@@ -63,12 +61,12 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(rawSqlitePath))) {
       assertFalse(postingFactStore.isInitialized());
-      assertEquals(Optional.empty(), postingFactStore.findAccount(new AccountCode("1000")));
-      assertEquals(List.of(), listAccounts(postingFactStore));
-      assertEquals(
-          Optional.empty(), postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")));
-      assertEquals(Optional.empty(), postingFactStore.findPosting(new PostingId("posting-1")));
-      assertEquals(Optional.empty(), postingFactStore.findReversalFor(new PostingId("posting-1")));
+      assertInitializedQueryViewFailure(
+          () -> postingFactStore.findAccount(new AccountCode("1000")),
+          () -> postingFactStore.listAccounts(firstAccountPage()),
+          () -> postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")),
+          () -> postingFactStore.findPosting(new PostingId("posting-1")),
+          () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
       assertEquals(
           new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
@@ -224,8 +222,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
       assertEquals(
-          new BookInspection.Missing(
-              SqliteBookContract.FORMAT_VERSION, BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+          new BookInspection.Missing(SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
 
@@ -235,11 +232,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
         new SqlitePostingFactStore(bookAccess(blankBookPath))) {
       assertEquals(
           new BookInspection.Existing(
-              BookInspection.Status.BLANK_SQLITE,
-              0,
-              0,
-              SqliteBookContract.FORMAT_VERSION,
-              BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+              BookInspection.Status.BLANK_SQLITE, 0, 0, SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
 
@@ -252,7 +245,6 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               SqliteBookContract.APPLICATION_ID,
               SqliteBookContract.FORMAT_VERSION,
               SqliteBookContract.FORMAT_VERSION,
-              BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
               Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.inspectBook());
     }
@@ -263,11 +255,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
         new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
       assertEquals(
           new BookInspection.Existing(
-              BookInspection.Status.FOREIGN_SQLITE,
-              0,
-              0,
-              SqliteBookContract.FORMAT_VERSION,
-              BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+              BookInspection.Status.FOREIGN_SQLITE, 0, 0, SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
 
@@ -283,8 +271,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
               SqliteBookContract.APPLICATION_ID,
               2,
-              SqliteBookContract.FORMAT_VERSION,
-              BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+              SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
 
@@ -297,8 +284,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               BookInspection.Status.INCOMPLETE_FINGRIND,
               SqliteBookContract.APPLICATION_ID,
               SqliteBookContract.FORMAT_VERSION,
-              SqliteBookContract.FORMAT_VERSION,
-              BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+              SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
   }
@@ -318,5 +304,15 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
       assertTrue(exception.getMessage().contains("Failed to initialize SQLite book."));
       setStoreDatabase(postingFactStore, null);
     }
+  }
+
+  @Test
+  void bookStateSnapshot_rejectsNegativeHeaderMetadata() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new SqliteBookStateSnapshot(-1, 0, SqliteBookState.FOREIGN_SQLITE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new SqliteBookStateSnapshot(0, -1, SqliteBookState.FOREIGN_SQLITE));
   }
 }

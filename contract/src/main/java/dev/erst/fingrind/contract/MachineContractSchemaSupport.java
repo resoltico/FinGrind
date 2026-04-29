@@ -95,6 +95,11 @@ final class MachineContractSchemaSupport {
         "type", "string", "description", description, "pattern", NON_BLANK_TEXT_PATTERN);
   }
 
+  static Map<String, Object> tokenStringSchema(String description, String pattern, int maxLength) {
+    return orderedMap(
+        "type", "string", "description", description, "pattern", pattern, "maxLength", maxLength);
+  }
+
   static Map<String, Object> decimalAmountStringSchema(String description) {
     return orderedMap(
         "type", "string", "description", description, "pattern", POSITIVE_DECIMAL_PATTERN);

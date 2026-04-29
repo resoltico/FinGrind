@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.ContractResponse;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepStatus;
@@ -26,6 +25,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WireValue;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
+import java.util.Arrays;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -51,15 +51,19 @@ class CliWireValueContractTest {
     }
   }
 
+  @Test
+  void singletonWireOwnersExposeNonBlankTokens() {
+    assertFalse(SourceChannel.CLI.wireValue().isBlank());
+    assertTrue(Arrays.asList(SourceChannel.values()).contains(SourceChannel.CLI));
+  }
+
   private static Stream<Enum<?>[]> wireEnumFamilies() {
     return Stream.<Enum<?>[]>of(
         ActorType.values(),
         BalanceSide.values(),
         NormalBalance.values(),
-        SourceChannel.values(),
         JournalLine.EntrySide.values(),
         BookInspection.Status.values(),
-        BookMigrationPolicy.values(),
         ContractResponse.InitializationRequirement.values(),
         ContractResponse.CommitGuarantee.values(),
         LedgerPlanStatus.values(),

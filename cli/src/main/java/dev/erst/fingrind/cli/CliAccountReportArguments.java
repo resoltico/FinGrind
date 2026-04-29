@@ -14,6 +14,16 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses account-specific report commands that require one account code. */
 final class CliAccountReportArguments {
+  private static final CliBookArgumentParser.CommandArgumentSpec ACCOUNT_REPORT_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.ACCOUNT_CODE,
+              ProtocolOptions.EFFECTIVE_DATE_FROM,
+              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.OUTPUT,
+              ProtocolOptions.PDF_OUT),
+          List.of());
+
   private CliAccountReportArguments() {}
 
   static CliCommand parseAccountBalanceCommand(List<String> arguments) {
@@ -47,7 +57,7 @@ final class CliAccountReportArguments {
   private static ParsedAccountReportArguments parseAccountScopedReportArguments(
       List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, ACCOUNT_REPORT_ARGUMENTS);
     @Nullable String accountCodeValue = null;
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
@@ -56,31 +66,32 @@ final class CliAccountReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.ACCOUNT_CODE -> {
-          if (accountCodeValue != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.ACCOUNT_CODE,
-                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
-          }
-          accountCodeValue =
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+      if (ProtocolOptions.ACCOUNT_CODE.equals(argument)) {
+        if (accountCodeValue != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.ACCOUNT_CODE, "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
         }
-        case ProtocolOptions.EFFECTIVE_DATE_FROM ->
-            effectiveDateFrom =
-                CliReportArguments.requireDateOption(
-                    effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
-        case ProtocolOptions.EFFECTIVE_DATE_TO ->
-            effectiveDateTo =
-                CliReportArguments.requireDateOption(
-                    effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
-        case ProtocolOptions.OUTPUT ->
-            outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
-        case ProtocolOptions.PDF_OUT ->
-            pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
-        default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+        accountCodeValue =
+            CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+        continue;
       }
+      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+        effectiveDateFrom =
+            CliReportArguments.requireDateOption(
+                effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
+        continue;
+      }
+      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+        effectiveDateTo =
+            CliReportArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+        continue;
+      }
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+        continue;
+      }
+      pdfOutPath = CliArgumentValueParser.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (accountCodeValue == null) {
       throw CliArgumentValueParser.invalid(

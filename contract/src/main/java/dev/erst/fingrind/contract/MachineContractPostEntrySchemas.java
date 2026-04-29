@@ -1,7 +1,9 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
 import java.util.Map;
@@ -76,9 +78,11 @@ final class MachineContractPostEntrySchemas {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE,
-            "Declared book-local account code for this journal line.",
-            MachineContractSchemaSupport.nonBlankStringSchema(
-                "Declared book-local account code for this journal line.")),
+            "Declared book-local account code for this journal line. FinGrind accepts ASCII letters or digits followed by ASCII letters, digits, '.', '_', ':', '/', or '-'.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Declared book-local account code for this journal line.",
+                AccountCode.pattern(),
+                AccountCode.maxLength())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.JournalLine.SIDE,
             "Journal side that carries the line amount.",
@@ -116,9 +120,11 @@ final class MachineContractPostEntrySchemas {
                 "Caller-generated command identity for this request.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
-            "Book-local idempotency key used to detect duplicate commit attempts.",
-            MachineContractSchemaSupport.nonBlankStringSchema(
-                "Book-local idempotency key used to detect duplicate commit attempts.")),
+            "Book-local idempotency key used to detect duplicate commit attempts. FinGrind accepts ASCII letters or digits followed by ASCII letters, digits, '.', '_', ':', '/', or '-'.",
+            MachineContractSchemaSupport.tokenStringSchema(
+                "Book-local idempotency key used to detect duplicate commit attempts.",
+                IdempotencyKey.pattern(),
+                IdempotencyKey.maxLength())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Provenance.CAUSATION_ID,
             "Caller-supplied causation identifier for upstream traceability.",

@@ -36,7 +36,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             pluginManager.apply("net.ltgt.errorprone")
             pluginManager.apply("pmd")
 
-            repositories.mavenCentral()
+            configureFinGrindArtifactRepositories()
 
             val libs = versionCatalog()
             val buildMetadata = FinGrindBuildMetadata.load(this)

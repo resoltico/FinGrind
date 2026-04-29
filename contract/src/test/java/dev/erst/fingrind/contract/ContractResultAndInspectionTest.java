@@ -70,10 +70,9 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
   void inspectionAssertionsAndViolationsCoverOptionalAndPositiveBranches() {
     BookInspection inspection =
         new BookInspection.Initialized(
-            0x46475244,
-            1,
-            1,
-            BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
+            BookFormatContract.APPLICATION_ID,
+            BookFormatContract.FORMAT_VERSION,
+            BookFormatContract.FORMAT_VERSION,
             Instant.parse("2026-04-07T10:15:30Z"));
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
@@ -105,7 +104,9 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new PostingRejection.InactiveAccount(new AccountCode("2000"));
 
     assertEquals(BookInspection.Status.INITIALIZED, inspection.status());
-    assertEquals(0x46475244, ((BookInspection.Initialized) inspection).applicationId());
+    assertEquals(
+        BookFormatContract.APPLICATION_ID,
+        ((BookInspection.Initialized) inspection).applicationId());
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), snapshot.effectiveDateFrom());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), snapshot.effectiveDateTo());
     assertEquals(new AccountCode("1000"), active.accountCode());
@@ -123,37 +124,32 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
   void inspectionVariantsExposeTheirStructuralStateAndRejectInvalidMetadata() {
     List<BookInspection> inspections =
         List.of(
-            new BookInspection.Missing(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+            new BookInspection.Missing(BookFormatContract.FORMAT_VERSION),
             new BookInspection.Existing(
                 BookInspection.Status.BLANK_SQLITE,
-                0x46475244,
+                BookFormatContract.APPLICATION_ID,
                 0,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+                BookFormatContract.FORMAT_VERSION),
             new BookInspection.Initialized(
-                0x46475244,
-                1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
+                BookFormatContract.APPLICATION_ID,
+                BookFormatContract.FORMAT_VERSION,
+                BookFormatContract.FORMAT_VERSION,
                 Instant.parse("2026-04-07T10:15:30Z")),
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
                 0x12345678,
                 0,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+                BookFormatContract.FORMAT_VERSION),
             new BookInspection.Existing(
                 BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
-                0x46475244,
+                BookFormatContract.APPLICATION_ID,
                 2,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+                BookFormatContract.FORMAT_VERSION),
             new BookInspection.Existing(
                 BookInspection.Status.INCOMPLETE_FINGRIND,
-                0x46475244,
-                1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+                BookFormatContract.APPLICATION_ID,
+                BookFormatContract.FORMAT_VERSION,
+                BookFormatContract.FORMAT_VERSION));
     List<BookInspection.Status> statuses =
         List.of(
             BookInspection.Status.MISSING,
@@ -164,7 +160,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             BookInspection.Status.INCOMPLETE_FINGRIND);
     List<Boolean> initialized = List.of(false, false, true, false, false, false);
     List<Boolean> compatibleWithCurrentBinary = List.of(false, false, true, false, false, false);
-    List<Boolean> canInitializeWithOpenBook = List.of(false, true, false, false, false, false);
+    List<Boolean> canInitializeWithOpenBook = List.of(true, true, false, false, false, false);
 
     for (int index = 0; index < inspections.size(); index++) {
       assertEquals(statuses.get(index), inspections.get(index).status());
@@ -172,49 +168,37 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
       assertEquals(initialized.get(index), status.initialized());
       assertEquals(compatibleWithCurrentBinary.get(index), status.compatibleWithCurrentBinary());
       assertEquals(canInitializeWithOpenBook.get(index), status.canInitializeWithOpenBook());
-      assertEquals(1, inspections.get(index).supportedBookFormatVersion());
       assertEquals(
-          BookMigrationPolicy.SEQUENTIAL_IN_PLACE, inspections.get(index).migrationPolicy());
+          BookFormatContract.FORMAT_VERSION, inspections.get(index).supportedBookFormatVersion());
     }
 
     assertEquals(
         BookInspection.Status.BLANK_SQLITE, BookInspection.Status.fromWireValue("blank-sqlite"));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new BookInspection.Missing(0, BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BookInspection.Existing(
-                BookInspection.Status.BLANK_SQLITE,
-                0x46475244,
-                -1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+    assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new BookInspection.Existing(
                 BookInspection.Status.BLANK_SQLITE,
+                BookFormatContract.APPLICATION_ID,
                 -1,
-                0,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+                BookFormatContract.FORMAT_VERSION));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookInspection.Existing(
+                BookInspection.Status.BLANK_SQLITE, -1, 0, BookFormatContract.FORMAT_VERSION));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new BookInspection.Existing(
                 BookInspection.Status.INITIALIZED,
-                0x46475244,
-                1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
-    assertThrows(NullPointerException.class, () -> new BookInspection.Missing(1, null));
+                BookFormatContract.APPLICATION_ID,
+                BookFormatContract.FORMAT_VERSION,
+                BookFormatContract.FORMAT_VERSION));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new BookInspection.Initialized(
-                0x46475244, 1, 1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE, null));
+        () -> new BookInspection.Initialized(BookFormatContract.APPLICATION_ID, 1, 1, null));
   }
 }

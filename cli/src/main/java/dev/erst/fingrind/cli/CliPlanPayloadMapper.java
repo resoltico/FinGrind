@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
@@ -62,6 +63,7 @@ final class CliPlanPayloadMapper {
         entry.stepId().value(),
         entry.kind(),
         detailKind(entry.journalStep()),
+        boundaryPhase(entry.journalStep()),
         entry.status(),
         entry.startedAt().toString(),
         entry.finishedAt().toString(),
@@ -70,10 +72,11 @@ final class CliPlanPayloadMapper {
   }
 
   private static @Nullable LedgerAssertionKind detailKind(LedgerJournalStep journalStep) {
-    return switch (journalStep) {
-      case LedgerJournalStep.Standard _ -> null;
-      case LedgerJournalStep.Assertion assertion -> assertion.detailKind();
-    };
+    return journalStep.detailKind();
+  }
+
+  private static @Nullable LedgerBoundaryPhase boundaryPhase(LedgerJournalStep journalStep) {
+    return journalStep.boundaryPhase();
   }
 
   private static CliPlanJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(

@@ -41,7 +41,7 @@ final class SqliteAccountLedgerReader {
           new AccountLedgerEntry(
               postingFact,
               SqliteBalanceMath.currencyBalance(
-                  movement.currencyCode, movement.debit, movement.credit, account.normalBalance()),
+                  movement.currencyCode, movement.debit, movement.credit),
               new Money(movement.currencyCode, runningSigned.abs()),
               runningBalanceSide(runningSigned)));
     }

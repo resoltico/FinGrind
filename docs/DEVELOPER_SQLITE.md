@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -40,8 +40,9 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `1`, owned by the SQLite migration planner
-- the published migration policy is sequential in-place migration
+- the current supported book format is `1`, owned by `BookFormatContract`
+- there is no published migration executor or historical upgrade catalog yet because the public
+  line starts at format `1`
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
@@ -319,8 +320,7 @@ text or re-querying after rollback.
 - the canonical schema uses SQLite `STRICT` tables for `book_meta`, `account`, `posting_fact`, and
   `journal_line`
 - there are no versioned migration file names such as `V1__...`
-- the migration planner is the canonical owner of the supported format version and the sequential
-  in-place migration policy
+- `BookFormatContract` is the canonical owner of the supported format version
 - no upgrade step files are bundled yet because there are no earlier FinGrind on-disk versions
   than the current format `1`
 

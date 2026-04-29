@@ -2,7 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
@@ -60,24 +59,24 @@ final class CliJsonRequestCodec {
   }
 
   static String postEntryRequestHint() {
-    return "Run 'fingrind "
-        + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
-        + "' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run 'fingrind "
-        + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
+    return "Run '"
+        + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+        + "' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run '"
+        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
         + "' for accepted enums and fields.";
   }
 
   static String declareAccountRequestHint() {
-    return "Run 'fingrind "
-        + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
+    return "Run '"
+        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
         + "' for the accepted account-declaration request fields and enums.";
   }
 
   static String ledgerPlanRequestHint() {
-    return "Run 'fingrind "
-        + ProtocolCatalog.operationName(OperationId.PRINT_PLAN_TEMPLATE)
-        + "' for the canonical ledger plan scaffold, then replace its scaffold placeholders before submission, or run 'fingrind "
-        + ProtocolCatalog.operationName(OperationId.CAPABILITIES)
+    return "Run '"
+        + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)
+        + "' for the canonical ledger plan scaffold, then replace its scaffold placeholders before submission, or run '"
+        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
         + "' for accepted enums and fields.";
   }
 

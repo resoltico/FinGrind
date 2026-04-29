@@ -3,9 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.PostingPageCursor;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -162,9 +160,7 @@ final class CliArgumentValueParser {
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         argument,
         message,
-        "Run 'fingrind "
-            + ProtocolCatalog.operationName(OperationId.HELP)
-            + "' to inspect the supported command syntax.");
+        CliInvocationText.helpSyntaxHint());
   }
 
   static CliArgumentsException invalid(String argument, String message, Throwable cause) {
@@ -172,9 +168,7 @@ final class CliArgumentValueParser {
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         argument,
         message,
-        "Run 'fingrind "
-            + ProtocolCatalog.operationName(OperationId.HELP)
-            + "' to inspect the supported command syntax.",
+        CliInvocationText.helpSyntaxHint(),
         cause);
   }
 
@@ -183,8 +177,6 @@ final class CliArgumentValueParser {
         ContractErrors.Descriptor.UNKNOWN_COMMAND.code(),
         commandName,
         "Unsupported command: " + commandName,
-        "Run 'fingrind "
-            + ProtocolCatalog.operationName(OperationId.HELP)
-            + "' to inspect the supported commands and examples.");
+        CliInvocationText.helpExamplesHint());
   }
 }

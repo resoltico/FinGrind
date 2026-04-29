@@ -14,11 +14,15 @@ final class ProtocolDiscoveryOperations {
             "Help",
             List.of("--help", "-h"),
             List.of(
+                "[<command>]",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print command usage, examples, and workflow guidance.",
-            List.of()),
+            List.of(
+                "fingrind help post-entry",
+                "fingrind post-entry --help",
+                "fingrind help post-entry --output json")),
         ProtocolOperationDefinitions.operation(
             OperationId.VERSION,
             OperationCategory.DISCOVERY,

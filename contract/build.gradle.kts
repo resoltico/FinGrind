@@ -72,8 +72,8 @@ tasks.register<JavaExec>("syncUserCliDocs") {
     group = "documentation"
     description =
         "Synchronizes docs/USER_CLI.md generated command-table blocks from the canonical protocol catalog."
-    dependsOn(tasks.named("classes"))
-    classpath = sourceSets.main.get().runtimeClasspath
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.erst.fingrind.contract.protocol.ProtocolUserCliDocumentSyncMain")
     args(rootProject.layout.projectDirectory.file("docs/USER_CLI.md").asFile.absolutePath)
 }

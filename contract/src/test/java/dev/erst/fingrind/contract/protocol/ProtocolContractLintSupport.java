@@ -2,7 +2,10 @@ package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.RequestFieldPresence;
+import dev.erst.fingrind.contract.WorkflowSurface;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -91,7 +94,7 @@ class ProtocolContractLintSupport {
       try (Stream<Path> sources = Files.walk(root.resolve(sourceDirectory))) {
         sources
             .filter(path -> path.toString().endsWith(".java"))
-            .filter(path -> !isContractProtocolSource(root, path))
+            .filter(path -> !isOperationVocabularyOwner(root, path))
             .forEach(files::add);
       }
     }
@@ -342,6 +345,22 @@ class ProtocolContractLintSupport {
                 "protocol"));
   }
 
+  protected final boolean isOperationVocabularyOwner(Path root, Path path) {
+    Path relativePath = root.relativize(path);
+    return isContractProtocolSource(root, path)
+        || relativePath.equals(
+            Path.of(
+                "contract",
+                "src",
+                "main",
+                "java",
+                "dev",
+                "erst",
+                "fingrind",
+                "contract",
+                "LedgerJournalKind.java"));
+  }
+
   protected final String sorted(Set<String> values) {
     return values.stream().sorted().collect(java.util.stream.Collectors.joining("\n"));
   }
@@ -394,7 +413,6 @@ class ProtocolContractLintSupport {
                 "runtime-failure",
                 "sqlite-book-roundtrip",
                 "sqlite-jdbc",
-                "sequential-in-place",
                 "test-complete",
                 "test-progress",
                 "unknown-account",
@@ -407,6 +425,8 @@ class ProtocolContractLintSupport {
             .map(dev.erst.fingrind.contract.ContractResponse.ErrorDescriptor::code)
             .toList());
     ids.addAll(LedgerAssertionKind.wireValues());
+    ids.addAll(LedgerBoundaryPhase.wireValues());
+    ids.addAll(LedgerJournalKind.wireValues());
     ids.addAll(RequestFieldPresence.wireValues());
     ids.addAll(RuntimeDistribution.wireValues());
     ids.addAll(PublicCliDistribution.wireValues());
@@ -416,6 +436,7 @@ class ProtocolContractLintSupport {
     ids.addAll(BookCipher.wireValues());
     ids.addAll(SqliteLibraryMode.wireValues());
     ids.addAll(SqliteRuntimeStatus.wireValues());
+    ids.addAll(WorkflowSurface.wireValues());
     ids.addAll(ProtocolSuccessStatus.wireValues());
     ids.addAll(ProtocolRejectionStatus.wireValues());
     ids.addAll(ProtocolFailureStatus.wireValues());

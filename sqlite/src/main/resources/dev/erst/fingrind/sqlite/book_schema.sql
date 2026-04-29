@@ -7,8 +7,12 @@ create table if not exists book_meta (
 ) strict;
 
 create table if not exists account (
-    account_code text primary key,
-    account_name text not null,
+    account_code text primary key check (
+        length(account_code) between 1 and 255
+        and account_code glob '[A-Za-z0-9]*'
+        and account_code not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    account_name text not null check (length(trim(account_name)) > 0),
     normal_balance text not null check (normal_balance in ('DEBIT', 'CREDIT')),
     active integer not null check (active in (0, 1)),
     declared_at text not null
@@ -18,12 +22,16 @@ create table if not exists posting_fact (
     posting_id text primary key,
     effective_date text not null,
     recorded_at text not null,
-    actor_id text not null,
+    actor_id text not null check (length(trim(actor_id)) > 0),
     actor_type text not null check (actor_type in ('HUMAN', 'SYSTEM', 'AGENT')),
-    command_id text not null,
-    idempotency_key text not null,
-    causation_id text not null,
-    correlation_id text,
+    command_id text not null check (length(trim(command_id)) > 0),
+    idempotency_key text not null check (
+        length(idempotency_key) between 1 and 128
+        and idempotency_key glob '[A-Za-z0-9]*'
+        and idempotency_key not glob '*[^A-Za-z0-9._:/-]*'
+    ),
+    causation_id text not null check (length(trim(causation_id)) > 0),
+    correlation_id text check (correlation_id is null or length(trim(correlation_id)) > 0),
     reason text,
     source_channel text not null check (source_channel in ('CLI')),
     prior_posting_id text,
@@ -39,7 +47,11 @@ create table if not exists posting_fact (
 create table if not exists journal_line (
     posting_id text not null,
     line_order integer not null check (line_order >= 0),
-    account_code text not null,
+    account_code text not null check (
+        length(account_code) between 1 and 255
+        and account_code glob '[A-Za-z0-9]*'
+        and account_code not glob '*[^A-Za-z0-9._:/-]*'
+    ),
     entry_side text not null check (entry_side in ('DEBIT', 'CREDIT')),
     currency_code text not null,
     amount text not null,

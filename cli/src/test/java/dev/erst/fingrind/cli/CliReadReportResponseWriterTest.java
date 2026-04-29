@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
@@ -52,24 +51,14 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
         writer ->
             writer.writeBookInspection(
                 Path.of("office/report.sqlite"),
-                new BookInspection.Initialized(
-                    123,
-                    1,
-                    1,
-                    BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                    Instant.parse("2026-04-07T10:15:30Z")),
+                new BookInspection.Initialized(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"ok\"");
     assertWriterOutput(
         writer ->
             writer.writeBookInspection(
                 Path.of("office/report.sqlite"),
-                new BookInspection.Initialized(
-                    123,
-                    1,
-                    1,
-                    BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                    Instant.parse("2026-04-07T10:15:30Z")),
+                new BookInspection.Initialized(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                 dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
         "Initialized at");
     assertWriterOutput(
@@ -287,11 +276,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 .writeBookInspection(
                     Path.of("office/report.sqlite"),
                     new BookInspection.Initialized(
-                        123,
-                        1,
-                        1,
-                        BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                        Instant.parse("2026-04-07T10:15:30Z")),
+                        123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                     dev.erst.fingrind.contract.protocol.OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -307,11 +292,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 .writeBookInspection(
                     Path.of("office/report.sqlite"),
                     new BookInspection.Initialized(
-                        123,
-                        1,
-                        1,
-                        BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                        Instant.parse("2026-04-07T10:15:30Z")),
+                        123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                     null));
     assertThrows(
         NullPointerException.class,

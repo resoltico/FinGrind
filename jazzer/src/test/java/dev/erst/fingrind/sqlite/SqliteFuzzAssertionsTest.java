@@ -198,7 +198,7 @@ class SqliteFuzzAssertionsTest {
     Object lifecycle = lifecycleField.get(store);
     Field databaseField = lifecycle.getClass().getDeclaredField("database");
     databaseField.setAccessible(true);
-    databaseField.set(lifecycle, new SqliteSessionDatabase(database));
+    databaseField.set(lifecycle, database);
   }
 
   private static String basicValidRequest() {

@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
-import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -30,13 +29,18 @@ public sealed interface LedgerJournalEntry
   LedgerStepStatus status();
 
   /** Returns the canonical step kind executed for this journal entry. */
-  default LedgerStepKind kind() {
+  default LedgerJournalKind kind() {
     return journalStep().kind();
   }
 
   /** Returns the nested assertion kind for assertion steps only. */
   default @Nullable LedgerAssertionKind detailKind() {
     return journalStep().detailKind();
+  }
+
+  /** Returns the nested boundary phase for plan-boundary journal entries only. */
+  default @Nullable LedgerBoundaryPhase boundaryPhase() {
+    return journalStep().boundaryPhase();
   }
 
   /** Returns the optional failure payload for this step journal entry. */

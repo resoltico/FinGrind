@@ -92,6 +92,7 @@ val dockerRuntimeModuleListOutputFile = layout.buildDirectory.file("docker/runti
 val dockerEntryPointOutputFile = layout.buildDirectory.file("docker/docker-entrypoint.sh")
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
+val bundleWorkspaceDirectory = layout.buildDirectory.dir("bundle")
 val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
 val bundleManifestOutputFile =
     layout.buildDirectory.file("generated/bundle/root/bundle-manifest.json")
@@ -307,7 +308,15 @@ val writeBundleManifest =
 val cleanBundleRoot =
     tasks.register<Delete>("cleanBundleRoot") {
         group = "distribution"
-        description = "Deletes the staged self-contained FinGrind CLI bundle directory."
+        description =
+            "Deletes staged self-contained FinGrind CLI bundle directories for all prior versions."
+        delete(
+            bundleWorkspaceDirectory.map { bundleDirectory ->
+                bundleDirectory.asFile.listFiles()?.filter { candidate ->
+                    candidate.isDirectory && candidate.name.startsWith("fingrind-")
+                } ?: emptyList()
+            },
+        )
         delete(bundleRootDirectory)
     }
 

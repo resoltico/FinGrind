@@ -31,7 +31,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.28.0",
+                "0.29.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -41,7 +41,6 @@ class CliDiscoveryOutputRendererTest {
                     "key-file",
                     "explicit-open-book",
                     "declared-accounts",
-                    "hard-break-only",
                     "single-currency-entry"),
                 List.of(
                     new CommandDescriptor(
@@ -70,7 +69,10 @@ class CliDiscoveryOutputRendererTest {
                         List.of(),
                         List.of(),
                         "Print one plan template")),
-                List.of(),
+                List.of(
+                    new dev.erst.fingrind.contract.WorkflowDescriptor(
+                        dev.erst.fingrind.contract.WorkflowSurface.BUNDLE_POSIX_SHELL,
+                        List.of(dev.erst.fingrind.contract.WorkflowStepDescriptor.note("demo")))),
                 List.of(new ExitCodeDescriptor(0, "ok")),
                 new ContractResponse.PreflightDescriptor(
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
@@ -83,7 +85,185 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("json envelope (fixed)"));
     assertTrue(rendered.contains("raw json (fixed)"));
     assertTrue(rendered.contains("Quick Start"));
+    assertTrue(rendered.contains("Self-Contained Bundle (POSIX Shell)"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersNoneForAbsentQuickStartWorkflows() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                "FinGrind",
+                "0.29.0",
+                "desc",
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show help"),
+                    new CommandDescriptor(
+                        OperationId.VERSION,
+                        List.of("--version"),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show version")),
+                List.of(),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                environment()));
+
+    assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("(none)"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersCommandScopedHelpWithUsageAndExamples() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                "FinGrind",
+                "0.29.0",
+                "desc",
+                List.of("fingrind post-entry --book-file <path>"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.POST_ENTRY,
+                        List.of(),
+                        List.of("--book-file <path>", "--request-file <path|->"),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Commit one posting request")),
+                List.of(),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                environment()));
+
+    assertTrue(rendered.contains("Command"));
+    assertTrue(rendered.contains("Usage"));
+    assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("post-entry"));
+    assertTrue(rendered.contains("Commit one posting request"));
+    assertTrue(rendered.contains("fingrind print-request-template > request.json"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersScopedHelpFallbackSectionsWhenMetadataIsAbsent() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                "FinGrind",
+                "0.29.0",
+                "desc",
+                List.of(),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.VERSION,
+                        List.of("--version"),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show version")),
+                List.of(),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                environment()));
+
+    assertTrue(rendered.contains("Aliases"));
+    assertTrue(rendered.contains("--version"));
+    assertTrue(rendered.contains("Usage"));
+    assertTrue(rendered.contains("Options"));
+    assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("(none)"));
+  }
+
+  @Test
+  void renderHelpHuman_treatsSingleCommandWithQuickStartAsGeneralHelp() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                "FinGrind",
+                "0.29.0",
+                "desc",
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of("--help", "-h"),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show help")),
+                List.of(
+                    new dev.erst.fingrind.contract.WorkflowDescriptor(
+                        dev.erst.fingrind.contract.WorkflowSurface.BUNDLE_POSIX_SHELL,
+                        List.of(dev.erst.fingrind.contract.WorkflowStepDescriptor.note("demo")))),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                environment()));
+
+    assertTrue(rendered.contains("Commands"));
+    assertTrue(rendered.contains("Quick Start"));
+    assertTrue(rendered.contains("help"));
   }
 
   @Test
@@ -110,13 +290,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.28.0"));
+    assertTrue(rendered.contains("0.29.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.28.0",
+        "0.29.0",
         "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
   }
 

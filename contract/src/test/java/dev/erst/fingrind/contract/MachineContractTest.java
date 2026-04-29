@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.ActorType;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link MachineContract}. */
@@ -162,42 +164,80 @@ class MachineContractTest {
     assertEquals(5, help.exitCodes().size());
     assertEquals("advisory", help.preflight().semantics());
     assertEquals(environment, help.environment());
+    assertEquals(
+        List.of(WorkflowSurface.BUNDLE_POSIX_SHELL, WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+        help.quickStart().stream().map(WorkflowDescriptor::surface).toList());
     assertTrue(
-        help.quickStart().stream().noneMatch(step -> step.text().contains("docs/examples/")));
+        quickStartSteps(help)
+            .noneMatch(step -> step.text() != null && step.text().contains("docs/examples/")));
     assertTrue(
-        help.quickStart().stream()
+        quickStartSteps(help)
+            .filter(step -> step.kind() == WorkflowStepKind.COMMAND)
+            .allMatch(
+                step ->
+                    step.text() != null
+                        && (step.text().startsWith("./bin/fingrind")
+                            || step.text().startsWith(".\\bin\\fingrind.ps1"))));
+    assertTrue(
+        quickStartSteps(help)
             .anyMatch(
                 step ->
                     step.kind() == WorkflowStepKind.EDIT
-                        && step.text().contains("./declare-account-cash.json")));
+                        && "./declare-account-cash.json".equals(step.path())
+                        && step.content() != null
+                        && step.content().contains("\"accountCode\": \"1000\"")));
     assertTrue(
-        help.quickStart().stream()
+        quickStartSteps(help)
             .anyMatch(
                 step ->
                     step.kind() == WorkflowStepKind.COMMAND
+                        && step.text() != null
                         && step.text().contains("./declare-account-cash.json")));
     assertTrue(
-        help.quickStart().stream()
+        quickStartSteps(help)
             .anyMatch(
                 step ->
                     step.kind() == WorkflowStepKind.EDIT
-                        && step.text().contains("./declare-account-revenue.json")));
+                        && "./declare-account-revenue.json".equals(step.path())
+                        && step.content() != null
+                        && step.content().contains("\"accountCode\": \"2000\"")));
     assertTrue(
-        help.quickStart().stream()
+        quickStartSteps(help)
             .anyMatch(
                 step ->
                     step.kind() == WorkflowStepKind.COMMAND
+                        && step.text() != null
                         && step.text().contains("./declare-account-revenue.json")));
     assertTrue(
-        help.quickStart().stream()
+        quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.EDIT && step.text().contains("effectiveDate")));
+                    step.kind() == WorkflowStepKind.NOTE
+                        && step.text() != null
+                        && step.text().contains("effectiveDate")));
+    assertTrue(
+        quickStartSteps(help)
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.EDIT
+                        && ".\\declare-account-cash.json".equals(step.path())));
+    assertTrue(
+        quickStartSteps(help)
+            .anyMatch(
+                step ->
+                    step.kind() == WorkflowStepKind.COMMAND
+                        && step.text() != null
+                        && step.text().contains(".\\request.json")));
     assertFalse(
-        help.quickStart().stream()
+        quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.text().contains("./cash.json") || step.text().contains("./revenue.json")));
+                    (step.text() != null
+                            && (step.text().contains("./cash.json")
+                                || step.text().contains("./revenue.json")))
+                        || (step.path() != null
+                            && (step.path().contains("./cash.json")
+                                || step.path().contains("./revenue.json")))));
 
     assertEquals("0.9.0", version.version());
     assertEquals(
@@ -214,8 +254,47 @@ class MachineContractTest {
     assertEquals("posting-1", reversalTemplate.priorPostingId());
   }
 
+  @Test
+  void bundleLayoutCommandsRemainSurfaceConsistent() {
+    assertEquals(
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64),
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_X86_64));
+    assertEquals(
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64),
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.LINUX_X86_64));
+    assertEquals(
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64),
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.LINUX_AARCH64));
+    assertEquals(
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64),
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_AARCH64));
+  }
+
+  @Test
+  void help_canBeScopedToOneCommandTopic() {
+    ApplicationIdentity identity =
+        new ApplicationIdentity("FinGrind", "0.9.0", "Finance-grade bookkeeping kernel");
+    EnvironmentDescriptor environment = ContractFixtures.environmentDescriptor();
+
+    HelpDescriptor help = MachineContract.help(identity, environment, OperationId.POST_ENTRY);
+
+    assertEquals(
+        List.of(
+            "fingrind post-entry --book-file <path> [--book-key-file <path> |"
+                + " --book-passphrase-stdin | --book-passphrase-prompt] --request-file <path|->"
+                + " [--output <json|human>]"),
+        help.usage());
+    assertEquals(1, help.commands().size());
+    assertEquals(OperationId.POST_ENTRY, help.commands().getFirst().name());
+    assertTrue(help.quickStart().isEmpty());
+  }
+
   private static List<String> enumValues(Enum<?>[] values) {
     return Arrays.stream(values).map(Enum::name).toList();
+  }
+
+  private static Stream<WorkflowStepDescriptor> quickStartSteps(HelpDescriptor help) {
+    return help.quickStart().stream().flatMap(workflow -> workflow.steps().stream());
   }
 
   private static List<String> vocabularyValues(

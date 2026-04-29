@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.28.0"
+version: "0.29.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -52,10 +52,14 @@ Current posting-request rules:
   notation such as `1e6` is rejected
 - `effectiveDate`, `lines`, and `provenance` are required
 - `lines` must contain at least one journal line
+- `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
+  letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every entry must contain at least one `DEBIT` line and at least one `CREDIT` line
 - every line inside one entry must share the same `currencyCode`
 - `reversal` is optional
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
+- `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only
+  ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
 - optional provenance field is `correlationId`
 - `reversal.priorPostingId` and `reversal.reason` are both required when `reversal` is present
 - `provenance.recordedAt` and `provenance.sourceChannel` are not accepted
@@ -80,7 +84,9 @@ Current posting-request rules:
 
 Current account-declaration rules:
 - `accountCode`, `accountName`, and `normalBalance` are required
-- `accountCode` and `accountName` must be non-blank strings
+- `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
+  digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
+- `accountName` must be a non-blank string
 - `normalBalance` must describe the side that increases the account
 - redeclaring an existing account may update the display name and reactivate the account
 - redeclaring an existing account with a different `normalBalance` is rejected
@@ -126,7 +132,12 @@ Current ledger-plan rules:
 - `print-plan-template` emits the canonical `execute-plan` scaffold shape, but the emitted
   placeholder values must be replaced before the request is accepted
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, and
-  return a complete per-step journal with canonical `kind` plus optional `detailKind`
+  return a complete journal whose ordinary business steps keep their canonical `kind`, whose
+  assertion entries optionally add `detailKind`, and whose unexpected begin,
+  initialization-check, commit, or rollback failures end the journal with `kind:
+  "plan-boundary"` plus `boundaryPhase`
+- unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
+  into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
 - successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
   `hasMore`, and repeated grouped `account` facts
@@ -233,13 +244,15 @@ rendered:
 - optional `payload.applicationId`
 - optional `payload.detectedBookFormatVersion`
 - `payload.supportedBookFormatVersion`
-- `payload.migrationPolicy`
 - optional `payload.initializedAt`
 
 `payload.state` uses the stable lower-case vocabulary `missing`, `blank-sqlite`, `initialized`,
 `foreign-sqlite`, `unsupported-format-version`, or `incomplete-fingrind`.
 That `state` field is the canonical lifecycle discriminator; the JSON payload does not duplicate it
 with a separate `initialized` flag.
+`payload.canInitializeWithOpenBook` is true exactly when `open-book` may initialize the selected
+path directly. The current public line reports `true` for `missing` and `blank-sqlite`, and
+`false` for every other inspection state.
 
 `list-accounts` success returns:
 - `payload.limit`

@@ -87,4 +87,25 @@ class ContractNormalizationTest {
 
     assertEquals("EUR", balance.netAmount().currencyCode().value());
   }
+
+  @Test
+  void currencyBalance_rejectsMixedCurrencies() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CurrencyBalance(
+                new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
+                new Money(new CurrencyCode("USD"), BigDecimal.ZERO),
+                new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
+                BalanceSide.DEBIT));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CurrencyBalance(
+                new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
+                new Money(new CurrencyCode("EUR"), BigDecimal.ZERO),
+                new Money(new CurrencyCode("USD"), new BigDecimal("15.00")),
+                BalanceSide.DEBIT));
+  }
 }

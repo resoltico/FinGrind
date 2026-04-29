@@ -65,6 +65,17 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
+  void cliBuild_prunesStaleVersionedBundleRootsBeforeStagingTheCurrentBundle() throws IOException {
+    String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+
+    assertTrue(
+        buildScript.contains(
+            "Deletes staged self-contained FinGrind CLI bundle directories for all prior versions."));
+    assertTrue(
+        buildScript.contains("candidate.isDirectory && candidate.name.startsWith(\"fingrind-\")"));
+  }
+
+  @Test
   void repoOwnedAgentMetadata_isTrackedButExcludedFromPublicSourceArchives() throws IOException {
     Path repositoryRoot = repositoryRoot();
     Assumptions.assumeTrue(

@@ -37,17 +37,9 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
-    assertEquals(
-        BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-        BookMigrationPolicy.fromWireValue("sequential-in-place"));
-    assertEquals(List.of("sequential-in-place"), BookMigrationPolicy.wireValues());
-    assertEquals("sequential-in-place", BookMigrationPolicy.SEQUENTIAL_IN_PLACE.wireValue());
-    assertEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
-    assertEquals("sequential-in-place", BookMigrationPolicy.SEQUENTIAL_IN_PLACE.toString());
-    assertNotEquals(null, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
-    assertNotEquals("sequential-in-place", BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
-    assertNotEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, null);
-    assertNotEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, "sequential-in-place");
+    assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
+    assertEquals(1, BookFormatContract.FORMAT_VERSION);
+    assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
             "assert-account-declared",
@@ -63,9 +55,6 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class, () -> LedgerAssertionKind.fromWireValue("assert-unknown"));
     assertThrows(IllegalArgumentException.class, () -> OperationId.fromWireValue("post_entry"));
-    assertThrows(NullPointerException.class, () -> BookMigrationPolicy.fromWireValue(null));
-    assertThrows(
-        IllegalArgumentException.class, () -> BookMigrationPolicy.fromWireValue("migrate"));
   }
 
   @Test

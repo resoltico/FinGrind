@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.28.0"
+version: "0.29.0"
 domain: USER_CLI
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -29,6 +29,8 @@ Every book-bound command also requires exactly one passphrase source:
 `help` is returned when no command is supplied.
 `help`, `version`, and `capabilities` default to human-readable discovery output and also accept
 `--output json` for machine parsing.
+`help <command>` and `<command> --help` both return command-scoped usage, options, examples, and
+exit-code guidance for one selected command.
 `print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
 or piped into another process.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
@@ -85,7 +87,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><th>Command</th><th>Aliases</th><th>Extra Arguments</th><th>Result</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
+    <tr><td><code>help</code></td><td><code>--help</code><br><code>-h</code></td><td><code>[&lt;command&gt;]</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Print command usage, examples, and workflow guidance.</td></tr>
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|human&gt;]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
     <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td>none</td><td>Print the canonical minimal posting request scaffold JSON document.</td></tr>
@@ -140,9 +142,9 @@ version pins that the source checkout, release automation, and shell acceptance 
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.28.0-macos-aarch64.tar.gz
-./fingrind-0.28.0-macos-aarch64/bin/fingrind help
-./fingrind-0.28.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.29.0-macos-aarch64.tar.gz
+./fingrind-0.29.0-macos-aarch64/bin/fingrind help
+./fingrind-0.29.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
@@ -153,9 +155,9 @@ Edit `./request.json` and replace `replace-before-commit-effective-date` plus ev
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.28.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.28.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.28.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.29.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.29.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.29.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -164,6 +166,8 @@ Edit `.\request.json` and replace `replace-before-commit-effective-date` plus ev
 `post-entry`.
 
 In the examples below, `fingrind` means the extracted bundle launcher.
+Command-scoped help and repair hints emitted from a self-contained bundle use that same launcher
+path, such as `./bin/fingrind` on POSIX bundles or `.\bin\fingrind.ps1` on Windows bundles.
 
 For source-driven local use, prefer:
 
@@ -177,6 +181,9 @@ For local bundle verification from a source checkout:
 ./gradlew :cli:bundleCliArchive
 ./scripts/bundle-smoke.sh
 ```
+
+If you restage a local bundle repeatedly from a source checkout, FinGrind now prunes older
+`cli/build/bundle/fingrind-*` staging roots before writing the current versioned bundle tree.
 
 The raw `java -jar` path is still available for advanced contributor work, but it is not the
 public FinGrind download contract:

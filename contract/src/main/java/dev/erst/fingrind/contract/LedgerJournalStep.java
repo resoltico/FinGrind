@@ -7,12 +7,17 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical journal-visible step identity for one ledger-plan entry. */
 public sealed interface LedgerJournalStep
-    permits LedgerJournalStep.Standard, LedgerJournalStep.Assertion {
+    permits LedgerJournalStep.Standard, LedgerJournalStep.Assertion, LedgerJournalStep.Boundary {
   /** Returns the top-level journal kind for this step identity. */
-  LedgerStepKind kind();
+  LedgerJournalKind kind();
 
   /** Returns the nested assertion kind when the journal step represents an assertion. */
   @Nullable LedgerAssertionKind detailKind();
+
+  /** Returns the nested boundary phase when the journal step represents one plan-boundary phase. */
+  default @Nullable LedgerBoundaryPhase boundaryPhase() {
+    return null;
+  }
 
   /** Creates one non-assert journal step identity. */
   static LedgerJournalStep standard(LedgerStepKind kind) {
@@ -24,15 +29,25 @@ public sealed interface LedgerJournalStep
     return new Assertion(detailKind);
   }
 
+  /** Creates one plan-boundary journal step identity. */
+  static LedgerJournalStep boundary(LedgerBoundaryPhase phase) {
+    return new Boundary(phase);
+  }
+
   /** Journal step identity for one non-assert plan step. */
-  record Standard(LedgerStepKind kind) implements LedgerJournalStep {
+  record Standard(LedgerStepKind stepKind) implements LedgerJournalStep {
     /** Validates one standard journal step identity. */
     public Standard {
-      Objects.requireNonNull(kind, "kind");
-      if (kind == LedgerStepKind.ASSERT) {
+      Objects.requireNonNull(stepKind, "stepKind");
+      if (stepKind == LedgerStepKind.ASSERT) {
         throw new IllegalArgumentException(
             "Standard journal step identities must not use the assert step kind.");
       }
+    }
+
+    @Override
+    public LedgerJournalKind kind() {
+      return LedgerJournalKind.fromWireValue(stepKind.wireValue());
     }
 
     @Override
@@ -49,8 +64,30 @@ public sealed interface LedgerJournalStep
     }
 
     @Override
-    public LedgerStepKind kind() {
-      return LedgerStepKind.ASSERT;
+    public LedgerJournalKind kind() {
+      return LedgerJournalKind.ASSERT;
+    }
+  }
+
+  /** Journal step identity for one begin/commit/rollback boundary phase. */
+  record Boundary(LedgerBoundaryPhase phase) implements LedgerJournalStep {
+    public Boundary {
+      Objects.requireNonNull(phase, "phase");
+    }
+
+    @Override
+    public LedgerJournalKind kind() {
+      return LedgerJournalKind.PLAN_BOUNDARY;
+    }
+
+    @Override
+    public @Nullable LedgerAssertionKind detailKind() {
+      return null;
+    }
+
+    @Override
+    public LedgerBoundaryPhase boundaryPhase() {
+      return phase;
     }
   }
 }

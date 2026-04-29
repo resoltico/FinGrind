@@ -27,7 +27,6 @@ final class CliBookInspectionOutputRenderer {
         List.of(
             "Supported book format version",
             Integer.toString(inspection.supportedBookFormatVersion())));
-    rows.add(List.of("Migration policy", inspection.migrationPolicy().wireValue()));
     rows.addAll(detailRows(inspection));
     return CliTextFormat.renderTitledBlock(
         "Book Inspection", CliTextFormat.renderKeyValueBlock(rows));

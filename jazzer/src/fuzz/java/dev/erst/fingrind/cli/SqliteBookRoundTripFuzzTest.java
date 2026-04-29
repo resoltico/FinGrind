@@ -159,7 +159,7 @@ public class SqliteBookRoundTripFuzzTest {
     if (!postingFact.provenance().recordedAt().equals(CliFuzzFixtures.fixedClock().instant())) {
       throw new IllegalStateException("Reloaded recorded-at differs from the deterministic clock.");
     }
-    if (postingFact.provenance().sourceChannel() != command.sourceChannel()) {
+    if (!postingFact.provenance().sourceChannel().equals(command.sourceChannel())) {
       throw new IllegalStateException("Reloaded source channel differs from the parsed command.");
     }
   }

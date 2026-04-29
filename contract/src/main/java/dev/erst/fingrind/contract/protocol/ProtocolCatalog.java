@@ -129,6 +129,16 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliBundleTargets();
   }
 
+  /** Returns the canonical launcher command for one public bundle target. */
+  public static String bundleLauncherCommand(PublicCliBundleTarget target) {
+    return ProtocolCatalogFacts.bundleLayoutContract().bundleTarget(target).launcherCommand();
+  }
+
+  /** Returns the canonical launcher path for one public bundle target. */
+  public static String bundleLauncherPath(PublicCliBundleTarget target) {
+    return ProtocolCatalogFacts.bundleLayoutContract().bundleTarget(target).launcherPath();
+  }
+
   /** Returns the canonical minimum Java line for source-checkout execution. */
   public static String sourceCheckoutJava() {
     return ProtocolCatalogFacts.runtimeEnvironmentContract().sourceCheckoutJava();

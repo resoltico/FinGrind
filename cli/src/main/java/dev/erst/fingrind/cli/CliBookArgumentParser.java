@@ -15,19 +15,27 @@ final class CliBookArgumentParser {
   private CliBookArgumentParser() {}
 
   static ParsedBookArguments parseRequestBoundArguments(List<String> arguments) {
-    return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND);
+    return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND, null);
   }
 
-  static ParsedBookArguments parseRequestBoundCommandArguments(List<String> arguments) {
-    return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS);
+  static ParsedBookArguments parseRequestBoundCommandArguments(
+      List<String> arguments, CommandArgumentSpec commandArgumentSpec) {
+    Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
+    return parseBookArguments(
+        arguments, BookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
   }
 
-  static ParsedBookArguments parseBookAndCommandArguments(List<String> arguments) {
-    return parseBookArguments(arguments, BookArgumentMode.BOOK_WITH_COMMAND_ARGUMENTS);
+  static ParsedBookArguments parseBookAndCommandArguments(
+      List<String> arguments, CommandArgumentSpec commandArgumentSpec) {
+    Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
+    return parseBookArguments(
+        arguments, BookArgumentMode.BOOK_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
   }
 
   private static ParsedBookArguments parseBookArguments(
-      List<String> arguments, BookArgumentMode mode) {
+      List<String> arguments,
+      BookArgumentMode mode,
+      @Nullable CommandArgumentSpec commandArgumentSpec) {
     Path bookFilePath = null;
     Path bookKeyFilePath = null;
     CliBookPassphraseParser.PassphraseSourceKind passphraseSourceKind = null;
@@ -83,7 +91,14 @@ final class CliBookArgumentParser {
           if (!mode.collectsCommandArguments()) {
             throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
           }
+          if (!Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec")
+              .supports(argument)) {
+            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+          }
           commandArguments.add(argument);
+          if (commandArgumentSpec.requiresValue(argument)) {
+            commandArguments.add(CliArgumentValueParser.requireValue(argumentIterator, argument));
+          }
         }
       }
     }
@@ -115,6 +130,11 @@ final class CliBookArgumentParser {
         new BookAccess(bookFilePath, passphraseSource), requestFile, commandArguments);
   }
 
+  static CommandArgumentSpec commandArgumentSpec(
+      List<String> valueOptions, List<String> flagOptions) {
+    return new CommandArgumentSpec(valueOptions, flagOptions);
+  }
+
   /** Parsed path arguments shared by commands that address one book file. */
   record ParsedBookArguments(
       BookAccess bookAccess, @Nullable Path requestFile, List<String> commandArguments) {
@@ -125,6 +145,22 @@ final class CliBookArgumentParser {
 
     Optional<Path> optionalRequestFile() {
       return Optional.ofNullable(requestFile);
+    }
+  }
+
+  /** Allowed command-specific tail arguments for book-addressed commands. */
+  record CommandArgumentSpec(List<String> valueOptions, List<String> flagOptions) {
+    CommandArgumentSpec {
+      valueOptions = List.copyOf(Objects.requireNonNull(valueOptions, "valueOptions"));
+      flagOptions = List.copyOf(Objects.requireNonNull(flagOptions, "flagOptions"));
+    }
+
+    boolean supports(String argument) {
+      return valueOptions.contains(argument) || flagOptions.contains(argument);
+    }
+
+    boolean requiresValue(String argument) {
+      return valueOptions.contains(argument);
     }
   }
 

@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.core.SourceChannel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -203,10 +204,11 @@ class SqliteStoreFixtureSupport {
                   'cause-1',
                   null,
                   null,
-                  'CLI',
+                  '%s',
                   null
               )
-              """);
+              """
+                  .formatted(SourceChannel.CLI.wireValue()));
         });
   }
 

@@ -17,18 +17,35 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses book-query CLI commands that inspect or read posting data without report exports. */
 final class CliBookQueryArguments {
+  private static final CliBookArgumentParser.CommandArgumentSpec INSPECT_BOOK_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec GET_POSTING_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(ProtocolOptions.POSTING_ID, ProtocolOptions.OUTPUT), List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec LIST_ACCOUNTS_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(ProtocolOptions.LIMIT, ProtocolOptions.CURSOR, ProtocolOptions.OUTPUT),
+          List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec LIST_POSTINGS_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.ACCOUNT_CODE,
+              ProtocolOptions.EFFECTIVE_DATE_FROM,
+              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.LIMIT,
+              ProtocolOptions.CURSOR,
+              ProtocolOptions.OUTPUT),
+          List.of());
+
   private CliBookQueryArguments() {}
 
   static CliCommand parseInspectBookCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, INSPECT_BOOK_ARGUMENTS);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
-      }
+      argumentIterator.next();
       outputMode =
           CliArgumentValueParser.requireOutputMode(
               outputMode,
@@ -41,30 +58,26 @@ final class CliBookQueryArguments {
 
   static CliCommand parseGetPostingCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, GET_POSTING_ARGUMENTS);
     @Nullable String postingIdValue = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.POSTING_ID -> {
-          if (postingIdValue != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
-          }
-          postingIdValue =
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
+      if (ProtocolOptions.POSTING_ID.equals(argument)) {
+        if (postingIdValue != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
         }
-        case ProtocolOptions.OUTPUT ->
-            outputMode =
-                CliArgumentValueParser.requireOutputMode(
-                    outputMode,
-                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
-        default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+        postingIdValue =
+            CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
+        continue;
       }
+      outputMode =
+          CliArgumentValueParser.requireOutputMode(
+              outputMode,
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
     }
     if (postingIdValue == null) {
       throw CliArgumentValueParser.invalid(
@@ -80,41 +93,38 @@ final class CliBookQueryArguments {
 
   static CliCommand parseListAccountsCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, LIST_ACCOUNTS_ARGUMENTS);
     Integer limit = null;
     @Nullable String cursor = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.LIMIT -> {
-          if (limit != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
-          }
-          limit =
-              CliArgumentValueParser.parseIntegerOption(
-                  CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.LIMIT),
-                  ProtocolOptions.LIMIT);
+      if (ProtocolOptions.LIMIT.equals(argument)) {
+        if (limit != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
         }
-        case ProtocolOptions.CURSOR -> {
-          if (cursor != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
-          }
-          cursor = CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.CURSOR);
-        }
-        case ProtocolOptions.OUTPUT ->
-            outputMode =
-                CliArgumentValueParser.requireOutputMode(
-                    outputMode,
-                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(
-                        OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
-        default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+        limit =
+            CliArgumentValueParser.parseIntegerOption(
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.LIMIT),
+                ProtocolOptions.LIMIT);
+        continue;
       }
+      if (ProtocolOptions.CURSOR.equals(argument)) {
+        if (cursor != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
+        }
+        cursor = CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.CURSOR);
+        continue;
+      }
+      outputMode =
+          CliArgumentValueParser.requireOutputMode(
+              outputMode,
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(
+                  OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
     }
     int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
     Optional<AccountPageCursor> resolvedCursor =
@@ -128,7 +138,7 @@ final class CliBookQueryArguments {
 
   static CliCommand parseListPostingsCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, LIST_POSTINGS_ARGUMENTS);
     @Nullable String accountCodeValue = null;
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
@@ -138,67 +148,66 @@ final class CliBookQueryArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolOptions.ACCOUNT_CODE -> {
-          if (accountCodeValue != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.ACCOUNT_CODE,
-                "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
-          }
-          accountCodeValue =
-              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+      if (ProtocolOptions.ACCOUNT_CODE.equals(argument)) {
+        if (accountCodeValue != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.ACCOUNT_CODE, "Duplicate argument: " + ProtocolOptions.ACCOUNT_CODE);
         }
-        case ProtocolOptions.EFFECTIVE_DATE_FROM -> {
-          if (effectiveDateFrom != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.EFFECTIVE_DATE_FROM,
-                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
-          }
-          effectiveDateFrom =
-              CliArgumentValueParser.parseLocalDateOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
-                  ProtocolOptions.EFFECTIVE_DATE_FROM);
-        }
-        case ProtocolOptions.EFFECTIVE_DATE_TO -> {
-          if (effectiveDateTo != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.EFFECTIVE_DATE_TO,
-                "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
-          }
-          effectiveDateTo =
-              CliArgumentValueParser.parseLocalDateOption(
-                  CliArgumentValueParser.requireValue(
-                      argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
-                  ProtocolOptions.EFFECTIVE_DATE_TO);
-        }
-        case ProtocolOptions.LIMIT -> {
-          if (limit != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
-          }
-          limit =
-              CliArgumentValueParser.parseIntegerOption(
-                  CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.LIMIT),
-                  ProtocolOptions.LIMIT);
-        }
-        case ProtocolOptions.CURSOR -> {
-          if (cursor != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
-          }
-          cursor = CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.CURSOR);
-        }
-        case ProtocolOptions.OUTPUT ->
-            outputMode =
-                CliArgumentValueParser.requireOutputMode(
-                    outputMode,
-                    CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                    CliArgumentValueParser.supportedOutputModes(
-                        OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
-        default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+        accountCodeValue =
+            CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.ACCOUNT_CODE);
+        continue;
       }
+      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+        if (effectiveDateFrom != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.EFFECTIVE_DATE_FROM,
+              "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_FROM);
+        }
+        effectiveDateFrom =
+            CliArgumentValueParser.parseLocalDateOption(
+                CliArgumentValueParser.requireValue(
+                    argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM),
+                ProtocolOptions.EFFECTIVE_DATE_FROM);
+        continue;
+      }
+      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+        if (effectiveDateTo != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.EFFECTIVE_DATE_TO,
+              "Duplicate argument: " + ProtocolOptions.EFFECTIVE_DATE_TO);
+        }
+        effectiveDateTo =
+            CliArgumentValueParser.parseLocalDateOption(
+                CliArgumentValueParser.requireValue(
+                    argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO),
+                ProtocolOptions.EFFECTIVE_DATE_TO);
+        continue;
+      }
+      if (ProtocolOptions.LIMIT.equals(argument)) {
+        if (limit != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
+        }
+        limit =
+            CliArgumentValueParser.parseIntegerOption(
+                CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.LIMIT),
+                ProtocolOptions.LIMIT);
+        continue;
+      }
+      if (ProtocolOptions.CURSOR.equals(argument)) {
+        if (cursor != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
+        }
+        cursor = CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.CURSOR);
+        continue;
+      }
+      outputMode =
+          CliArgumentValueParser.requireOutputMode(
+              outputMode,
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(
+                  OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
     }
     String resolvedAccountCodeValue = accountCodeValue;
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;

@@ -4,8 +4,10 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import java.util.List;
@@ -57,6 +59,7 @@ public final class ContractTemplates {
     /** Validates one journal-line template descriptor payload. */
     public JournalLineTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
+      new AccountCode(accountCode);
       side = ContractDescriptorValidation.requireValue(side, "side");
       currencyCode = ContractDescriptorValidation.requireText(currencyCode, "currencyCode");
       amount = ContractDescriptorValidation.requireText(amount, "amount");
@@ -78,6 +81,7 @@ public final class ContractTemplates {
       actorType = ContractDescriptorValidation.requireValue(actorType, "actorType");
       commandId = ContractDescriptorValidation.requireText(commandId, "commandId");
       idempotencyKey = ContractDescriptorValidation.requireText(idempotencyKey, "idempotencyKey");
+      new IdempotencyKey(idempotencyKey);
       causationId = ContractDescriptorValidation.requireText(causationId, "causationId");
       correlationId =
           ContractDescriptorValidation.requireOptionalText(correlationId, "correlationId");
@@ -163,6 +167,7 @@ public final class ContractTemplates {
     /** Validates one declare-account template descriptor payload. */
     public DeclareAccountTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
+      new AccountCode(accountCode);
       accountName = ContractDescriptorValidation.requireText(accountName, "accountName");
       normalBalance = ContractDescriptorValidation.requireValue(normalBalance, "normalBalance");
     }

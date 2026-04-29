@@ -1,10 +1,13 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Discovery-oriented CLI commands that never require a book session. */
-record Help(OutputMode outputMode) implements CliCommand.OutputModeCommand {
+record Help(@Nullable OperationId commandTopic, OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
   Help {
     Objects.requireNonNull(outputMode, "outputMode");
   }
@@ -13,7 +16,7 @@ record Help(OutputMode outputMode) implements CliCommand.OutputModeCommand {
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeHelp(outputMode);
+        .writeHelp(commandTopic, outputMode);
   }
 }
 

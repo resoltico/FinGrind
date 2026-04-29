@@ -1,8 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
@@ -132,5 +135,89 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals("plan-assertion-failed", json.path("status").asText());
     assertEquals("assertion-failed", json.path("code").asText());
     assertEquals("assertion-failed", json.path("details").path("plan").path("status").asText());
+  }
+
+  @Test
+  void writeLedgerPlanResult_emitsBoundaryJournalEntriesWithBoundaryPhase() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Rejected boundaryEntry =
+        new LedgerJournalEntry.Rejected(
+            stepId("@plan-boundary:commit"),
+            LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure("storage-commit-failed", "Commit failed.", List.of()));
+
+    responseWriter.writeLedgerPlanResult(
+        new LedgerPlanResult.Rejected(
+            planId("plan-1"),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(boundaryEntry))));
+
+    JsonNode step =
+        readJson(outputStream).path("details").path("plan").path("journal").path("steps").get(0);
+
+    assertEquals("plan-boundary", step.path("kind").asText());
+    assertEquals("commit", step.path("boundaryPhase").asText());
+    assertTrue(step.path("detailKind").isMissingNode() || step.path("detailKind").isNull());
+  }
+
+  @Test
+  void ledgerPlanPayload_mapsStandardAssertionAndBoundaryJournalKinds() {
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Succeeded standardEntry =
+        new LedgerJournalEntry.Succeeded(
+            stepId("open"),
+            LedgerJournalStep.standard(LedgerStepKind.OPEN_BOOK),
+            startedAt,
+            finishedAt,
+            List.of());
+    LedgerJournalEntry.AssertionFailed assertionEntry =
+        new LedgerJournalEntry.AssertionFailed(
+            stepId("assert-balance"),
+            LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure("assertion-failed", "Balance mismatch.", List.of()));
+    LedgerJournalEntry.Rejected boundaryEntry =
+        new LedgerJournalEntry.Rejected(
+            stepId("@plan-boundary:commit"),
+            LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure("storage-commit-failed", "Commit failed.", List.of()));
+
+    CliPlanJsonModels.LedgerPlanPayload rejectedPayload =
+        CliResponsePayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Rejected(
+                planId("plan-1"),
+                new LedgerExecutionJournal(
+                    startedAt, finishedAt, List.of(standardEntry, boundaryEntry))));
+
+    List<CliPlanJsonModels.LedgerJournalEntryPayload> steps = rejectedPayload.journal().steps();
+    assertEquals("open-book", steps.get(0).kind().wireValue());
+    assertNull(steps.get(0).detailKind());
+    assertNull(steps.get(0).boundaryPhase());
+    assertEquals("plan-boundary", steps.get(1).kind().wireValue());
+    assertNull(steps.get(1).detailKind());
+    assertEquals(LedgerBoundaryPhase.COMMIT, steps.get(1).boundaryPhase());
+
+    CliPlanJsonModels.LedgerPlanPayload assertionFailedPayload =
+        CliResponsePayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.AssertionFailed(
+                planId("plan-2"),
+                new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionEntry))));
+
+    CliPlanJsonModels.LedgerJournalEntryPayload assertionStep =
+        assertionFailedPayload.journal().steps().getFirst();
+    assertEquals("assert", assertionStep.kind().wireValue());
+    assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertionStep.detailKind());
+    assertNull(assertionStep.boundaryPhase());
   }
 }

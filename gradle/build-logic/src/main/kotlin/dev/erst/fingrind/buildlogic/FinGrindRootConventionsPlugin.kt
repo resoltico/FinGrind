@@ -23,7 +23,7 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             val libs = versionCatalog()
 
             description = providers.gradleProperty("fingrindDescription").get()
-            repositories.mavenCentral()
+            configureFinGrindArtifactRepositories()
 
             allprojects {
                 group = providers.gradleProperty("group").get()

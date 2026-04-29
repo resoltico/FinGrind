@@ -19,13 +19,17 @@ readonly check_stage_labels=(
     'Stage 6/6: running Docker acceptance test'
 )
 
-readonly check_stage5_script_paths=(
+readonly check_stage5_executable_script_paths=(
+    scripts/test-devcontainer-workflow.sh
     scripts/test-ci-shell-syntax-workflow.sh
     scripts/test-prepare-release-version.sh
     scripts/test-read-contract-values.sh
     scripts/test-bundle-smoke-powershell.sh
     scripts/test-release-smoke-workflow.sh
     scripts/test-release-protocol-pr-diff-fallback.sh
+    scripts/test-verify-jacoco-snapshot.sh
+    scripts/test-verify-release-candidate-tag.sh
+    scripts/test-verify-release-merge-handoff.sh
     scripts/test-verify-public-container-surface.sh
     scripts/test-gradlew-bat-wrapper.sh
     scripts/test-gradle-wrapper-support.sh
@@ -35,7 +39,14 @@ readonly check_stage5_script_paths=(
     scripts/test-verify-github-release.sh
     scripts/test-verify-release-primary-checkout.sh
     scripts/test-verify-managed-sqlite-runtime.sh
+    scripts/validate-devcontainer.sh
     scripts/verify-managed-sqlite-runtime.sh
+    scripts/verify-jacoco-snapshot.sh
+)
+
+readonly check_stage5_shell_only_script_paths=(
+    scripts/verify-release-candidate-tag.sh
+    scripts/verify-release-merge-handoff.sh
 )
 
 check_stage_usage_lines() {

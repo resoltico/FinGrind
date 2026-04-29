@@ -3,13 +3,11 @@ package dev.erst.fingrind.sqlite;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
 
-/** Open in-process SQLite database handle backed by the configured SQLite C library. */
+/** Thread-confined SQLite database handle backed by the configured SQLite C library. */
 class SqliteNativeDatabase implements AutoCloseable {
   private final MemorySegment databaseHandle;
   private final SqliteNativeApi sqliteApi;
-  private final ReentrantLock closeLock = new ReentrantLock();
   private boolean closed;
 
   SqliteNativeDatabase(MemorySegment databaseHandle) {
@@ -60,26 +58,16 @@ class SqliteNativeDatabase implements AutoCloseable {
 
   @Override
   public void close() {
-    closeLock.lock();
-    try {
-      if (closed) {
-        return;
-      }
-      SqliteNativeConnections.close(databaseHandle, sqliteApi);
-      closed = true;
-    } finally {
-      closeLock.unlock();
+    if (closed) {
+      return;
     }
+    SqliteNativeConnections.close(databaseHandle, sqliteApi);
+    closed = true;
   }
 
   private void ensureOpen() {
-    closeLock.lock();
-    try {
-      if (closed) {
-        throw new IllegalStateException("SQLite native database handle is already closed.");
-      }
-    } finally {
-      closeLock.unlock();
+    if (closed) {
+      throw new IllegalStateException("SQLite native database handle is already closed.");
     }
   }
 }

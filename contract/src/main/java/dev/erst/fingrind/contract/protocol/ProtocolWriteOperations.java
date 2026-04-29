@@ -20,6 +20,7 @@ final class ProtocolWriteOperations {
             ExecutionMode.JSON_ENVELOPE,
             "Execute one ordered AI-agent ledger plan inside a single atomic book transaction.",
             List.of(
+                "fingrind %s > plan.json".formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName()),
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s plan.json"
                     .formatted(
                         OperationId.EXECUTE_PLAN.wireName(),
@@ -41,6 +42,8 @@ final class ProtocolWriteOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Validate one posting request without committing it.",
             List.of(
+                "fingrind %s > request.json"
+                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()),
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
                     .formatted(
                         OperationId.PREFLIGHT_ENTRY.wireName(),
@@ -62,6 +65,8 @@ final class ProtocolWriteOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Commit one posting request into the selected SQLite book.",
             List.of(
+                "fingrind %s > request.json"
+                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()),
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
                     .formatted(
                         OperationId.POST_ENTRY.wireName(),

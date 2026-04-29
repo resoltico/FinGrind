@@ -33,7 +33,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 layout.buildDirectory.set(file(projectCacheDir.resolve("jazzer-build")))
             }
 
-            repositories.mavenCentral()
+            configureFinGrindArtifactRepositories()
 
             val topology = JazzerTopology.load(this)
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -267,17 +267,13 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             )
 
             tasks.named<Test>("test") {
-                val deterministicTestClassCount =
-                    fileTree("src/test/java") {
-                        include("**/*Test.java")
-                    }.files.size
                 description = "Runs deterministic Jazzer replay and harness tests."
                 group = "verification"
                 useJUnitPlatform()
                 maxParallelForks = 1
                 enableNativeAccess()
                 doFirst {
-                    addTestListener(JazzerDeterministicTestPulseListener(deterministicTestClassCount))
+                    addTestListener(JazzerDeterministicTestPulseListener())
                 }
             }
 

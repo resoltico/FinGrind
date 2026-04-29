@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
 import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.core.SourceChannel;
 
 /** Fuzzes FinGrind CLI request decoding from raw JSON payloads. */
 public class CliRequestFuzzTest {
@@ -14,7 +15,7 @@ public class CliRequestFuzzTest {
       if (command == null) {
         throw new IllegalStateException("readPostEntryCommand returned null");
       }
-      if (command.sourceChannel() != dev.erst.fingrind.core.SourceChannel.CLI) {
+      if (!command.sourceChannel().equals(SourceChannel.CLI)) {
         throw new IllegalStateException("CLI request parsing must stamp the CLI source channel.");
       }
       if (command.requestProvenance().idempotencyKey().value().isBlank()) {

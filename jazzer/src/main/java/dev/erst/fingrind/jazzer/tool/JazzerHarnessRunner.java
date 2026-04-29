@@ -130,8 +130,8 @@ public final class JazzerHarnessRunner {
         className,
         outputWriter,
         errorWriter,
-        OfficialHarnessExecutor.INSTANCE,
-        JazzerHarnessRunner::runningOnGitHubActions);
+        productionExecutor(),
+        productionGithubActionsDetector());
   }
 
   /** Executes one Jazzer harness class and returns a process-style exit code. */
@@ -140,12 +140,7 @@ public final class JazzerHarnessRunner {
       PrintWriter outputWriter,
       PrintWriter errorWriter,
       HarnessExecutor executor) {
-    return run(
-        className,
-        outputWriter,
-        errorWriter,
-        executor,
-        JazzerHarnessRunner::runningOnGitHubActions);
+    return run(className, outputWriter, errorWriter, executor, productionGithubActionsDetector());
   }
 
   static int run(

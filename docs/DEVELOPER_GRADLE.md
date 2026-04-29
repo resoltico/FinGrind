@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -25,10 +25,10 @@ FinGrind's machine-level setup rule is simple:
 - prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
   cache relocation
 
-The wrapper version is currently `9.5.0-rc-4`, as declared in
+The wrapper version is currently `9.5.0`, as declared in
 [gradle/wrapper/gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties).
-That pin is intentionally temporary and prerelease-sensitive: move to the matching stable `9.5.x`
-line as soon as it exists and the wrapper/custom-launcher surface verifies cleanly.
+Treat wrapper upgrades as supply-chain-sensitive changes and keep them on the current verified
+stable `9.5.x` line.
 
 This file therefore documents build architecture and ownership boundaries, not how to install a
 global Gradle command on a machine.
@@ -161,6 +161,14 @@ Spotless, Error Prone, NullAway, PMD, JaCoCo, or the shared source/Jackson polic
 The root version catalog in `gradle/libs.versions.toml` is the shared dependency authority. The
 nested Jazzer build imports that catalog instead of repeating overlapping coordinates locally. That
 avoids silent version skew between the main product modules and Jazzer support code.
+
+The shared repository owner now also lives in `gradle/build-logic`: FinGrind uses Maven Central as
+the default repository and scopes the Sonatype Maven snapshots repository to `org.jacoco` only.
+JaCoCo's published "snapshot build" label 0.8.15.202604281210 is not a literal Maven version; the
+build resolves through the mutable Maven coordinate 0.8.15-SNAPSHOT, which currently maps to the
+pinned timestamped artifact 0.8.15-20260428.121054-96. `scripts/verify-jacoco-snapshot.sh` is
+therefore part of the release surface and fails when the alias drifts away from that exact
+published snapshot build.
 
 ### One managed-SQLite contract
 
@@ -361,7 +369,7 @@ the changelog instead of letting the system drift silently.
 Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazzer upgrades:
 
 - Does `gradle/build-logic` still compile and emit JVM 26 bytecode after the current Kotlin plugin pin?
-- Is the Gradle wrapper still `9.5.0-rc-4`, and can it move to the matching stable 9.5.x line yet?
+- Is the Gradle wrapper still on the current verified stable `9.5.x` line?
 - Is the build-logic Kotlin pin still `2.4.0-Beta2`, and can it move to the matching stable 2.4.x line yet?
 - Has anyone reintroduced manual output wiping or disabled incremental compilation in
   `gradle/build-logic`?

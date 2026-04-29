@@ -77,6 +77,12 @@ jobs:
             exit 1
           fi
 
+      - name: Verify release candidate tag handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
+        run: ./scripts/verify-release-candidate-tag.sh
+
       - name: Wait for GitHub release assets before publishing the container
         env:
           GH_TOKEN: ${{ github.token }}

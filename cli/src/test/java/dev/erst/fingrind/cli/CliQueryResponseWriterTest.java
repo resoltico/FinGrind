@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
@@ -128,18 +127,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
     inspectionWriter.writeBookInspection(
         Path.of("book.sqlite"),
-        new BookInspection.Initialized(
-            1_179_079_236,
-            1,
-            1,
-            BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-            Instant.parse("2026-04-07T10:15:30Z")));
+        new BookInspection.Initialized(1_179_079_236, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream missingInspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter missingInspectionWriter =
         new CliResponseWriter(utf8PrintStream(missingInspectionOutput));
     missingInspectionWriter.writeBookInspection(
-        Path.of("missing.sqlite"),
-        new BookInspection.Missing(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+        Path.of("missing.sqlite"), new BookInspection.Missing(1));
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     CliResponseWriter getPostingWriter = new CliResponseWriter(utf8PrintStream(getPostingOutput));
     getPostingWriter.writeGetPostingResult(new GetPostingResult.Found(postingFact));
@@ -175,6 +168,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
     assertTrue(
         inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
+    assertTrue(
+        missingInspectionOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"canInitializeWithOpenBook\":true"));
     assertFalse(
         missingInspectionOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
     assertTrue(
@@ -414,30 +411,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   void writeBookInspection_writesEveryExistingBookVariant() throws IOException {
     List<BookInspection> inspections =
         List.of(
+            new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 1_179_079_236, 0, 1),
+            new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 1_179_079_236, 0, 1),
             new BookInspection.Existing(
-                BookInspection.Status.BLANK_SQLITE,
-                1_179_079_236,
-                0,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
+                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1_179_079_236, 2, 1),
             new BookInspection.Existing(
-                BookInspection.Status.FOREIGN_SQLITE,
-                1_179_079_236,
-                0,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
-            new BookInspection.Existing(
-                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
-                1_179_079_236,
-                2,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE),
-            new BookInspection.Existing(
-                BookInspection.Status.INCOMPLETE_FINGRIND,
-                1_179_079_236,
-                1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+                BookInspection.Status.INCOMPLETE_FINGRIND, 1_179_079_236, 1, 1));
     List<String> states =
         List.of(
             "blank-sqlite", "foreign-sqlite", "unsupported-format-version", "incomplete-fingrind");
@@ -448,7 +427,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
       assertEquals(states.get(index), payload.path("state").asString());
       assertEquals(1_179_079_236, payload.path("applicationId").asInt());
       assertEquals(1, payload.path("supportedBookFormatVersion").asInt());
-      assertEquals("sequential-in-place", payload.path("migrationPolicy").asString());
+      assertFalse(payload.has("migrationPolicy"));
       assertFalse(payload.has("initializedAt"));
     }
   }

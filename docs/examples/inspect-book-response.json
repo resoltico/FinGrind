@@ -8,7 +8,6 @@
     "applicationId": 1179079236,
     "detectedBookFormatVersion": 1,
     "supportedBookFormatVersion": 1,
-    "migrationPolicy": "sequential-in-place",
     "initializedAt": "2026-04-13T11:58:35.532739Z"
   }
 }

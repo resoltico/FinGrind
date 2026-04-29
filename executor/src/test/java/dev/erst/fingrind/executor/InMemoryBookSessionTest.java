@@ -103,7 +103,7 @@ class InMemoryBookSessionTest {
   }
 
   @Test
-  void declareAccount_reactivatesExistingAccountWithoutChangingDeclaredAt() {
+  void declareAccount_reactivatesExistingAccountUsingThePersistedRedeclarationTimestamp() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT);
       bookSession.declareAccount(
@@ -124,7 +124,7 @@ class InMemoryBookSessionTest {
                   new AccountName("Cash main"),
                   NormalBalance.DEBIT,
                   true,
-                  FIXED_INSTANT)),
+                  Instant.parse("2026-04-08T11:00:00Z"))),
           result);
     }
   }

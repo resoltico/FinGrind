@@ -10,6 +10,9 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses lifecycle-style mutation commands such as key generation, open-book, and rekey-book. */
 final class CliLifecycleMutationArguments {
+  private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+
   private CliLifecycleMutationArguments() {}
 
   static CliCommand parseGenerateBookKeyFileCommand(List<String> arguments) {
@@ -50,14 +53,11 @@ final class CliLifecycleMutationArguments {
 
   static CliCommand parseOpenBookCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments);
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
-      }
+      argumentIterator.next();
       outputMode =
           CliArgumentValueParser.requireOutputMode(
               outputMode,

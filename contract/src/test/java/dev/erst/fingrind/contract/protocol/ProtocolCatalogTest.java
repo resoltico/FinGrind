@@ -335,6 +335,12 @@ class ProtocolCatalogTest {
                 ProtocolCatalog.supportedPublicCliBundleTargets().stream(),
                 ProtocolCatalog.unsupportedPublicCliBundleTargets().stream())
             .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new)));
+    assertEquals(
+        "./bin/fingrind",
+        ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64));
+    assertEquals(
+        "bin/fingrind.ps1",
+        ProtocolCatalog.bundleLauncherPath(PublicCliBundleTarget.WINDOWS_X86_64));
   }
 
   @Test

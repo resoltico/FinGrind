@@ -72,7 +72,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                   new AccountName("Cash main"),
                   NormalBalance.DEBIT,
                   true,
-                  Instant.parse("2026-04-07T10:15:30Z"))),
+                  Instant.parse("2026-04-08T10:15:30Z"))),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash main"),
@@ -85,7 +85,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                   new AccountName("Cash main"),
                   NormalBalance.DEBIT,
                   true,
-                  Instant.parse("2026-04-07T10:15:30Z"))),
+                  Instant.parse("2026-04-08T10:15:30Z"))),
           listAccounts(postingFactStore));
     }
   }
@@ -186,7 +186,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void mutationWriterUpsertAccount_preservesImmutableBalanceAndDeclarationColumns() {
+  void mutationWriterUpsertAccount_preservesImmutableBalanceAndUpdatesRedeclarationTimestamp() {
     Path databasePath = tempDirectory.resolve("upsert-account-columns.sqlite");
 
     assertDoesNotThrow(
@@ -223,7 +223,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           database,
                           "select normal_balance from account where account_code = '1000'"));
                   assertEquals(
-                      "2026-04-07T10:15:30Z",
+                      "2026-04-08T10:15:30Z",
                       queryText(
                           database, "select declared_at from account where account_code = '1000'"));
                 }));
