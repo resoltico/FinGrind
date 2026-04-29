@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: CORE
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -284,18 +284,17 @@ public record ReversalReference(PostingId priorPostingId)
 
 ## `SourceChannel`
 
-`SourceChannel` is the operating surface through which one posting entered FinGrind.
+`SourceChannel` is the singleton owner of the current public committed-entry surface token.
 
 ```java
-public enum SourceChannel implements WireValue {
-  CLI
-}
+public final class SourceChannel implements WireValue
 ```
 
-- Purpose: record committed ingress explicitly
-- Current scope: only `CLI` is currently supported
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
+- Purpose: record committed ingress explicitly without pretending the current public line has an
+  extensible source-channel taxonomy
+- Current scope: only the singleton `CLI` instance is currently supported
+- Wire contract: `CLI.wireValue()`, `wireValues()`, `values()`, and `fromWireValue(...)` own the
+  stable public vocabulary
 
 ## `WireValue`
 

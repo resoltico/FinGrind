@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.OpenBookResult;
@@ -39,26 +38,15 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
     String missingInspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
-            Path.of("office/report.sqlite"),
-            new BookInspection.Missing(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+            Path.of("office/report.sqlite"), new BookInspection.Missing(1));
     String existingInspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
-            new BookInspection.Existing(
-                BookInspection.Status.BLANK_SQLITE,
-                123,
-                0,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
+            new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 123, 0, 1));
     String initializedInspection =
         CliQueryOutputRenderer.renderBookInspectionHuman(
             Path.of("office/report.sqlite"),
-            new BookInspection.Initialized(
-                123,
-                1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                Instant.parse("2026-04-07T10:15:30Z")));
+            new BookInspection.Initialized(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
     AccountPageCursor nextAccountCursor = AccountPageCursor.fromAccount(cashAccount);
     String accountsHuman =
         CliQueryOutputRenderer.renderAccountsHuman(
@@ -89,7 +77,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new PostingPage(List.of(postingFact), 10, Optional.empty()));
 
     assertTrue(missingInspection.contains("missing"));
-    assertTrue(missingInspection.contains("Migration policy"));
+    assertTrue(missingInspection.contains("Can initialize with open-book"));
+    assertTrue(missingInspection.contains("true"));
     assertTrue(missingInspection.contains("Supported book format version"));
     assertTrue(existingInspection.contains("SQLite applicationId"));
     assertTrue(existingInspection.contains("State"));

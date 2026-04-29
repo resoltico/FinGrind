@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import java.math.BigDecimal;
 import java.util.Objects;
 
@@ -13,14 +12,10 @@ final class SqliteBalanceMath {
   private SqliteBalanceMath() {}
 
   static CurrencyBalance currencyBalance(
-      CurrencyCode currencyCode,
-      BigDecimal debitTotal,
-      BigDecimal creditTotal,
-      NormalBalance accountNormalBalance) {
+      CurrencyCode currencyCode, BigDecimal debitTotal, BigDecimal creditTotal) {
     Objects.requireNonNull(currencyCode, "currencyCode");
     Objects.requireNonNull(debitTotal, "debitTotal");
     Objects.requireNonNull(creditTotal, "creditTotal");
-    Objects.requireNonNull(accountNormalBalance, "accountNormalBalance");
     BigDecimal net = debitTotal.subtract(creditTotal);
     BigDecimal absoluteNet = net.abs();
     BalanceSide balanceSide = net.signum() > 0 ? BalanceSide.DEBIT : BalanceSide.CREDIT;

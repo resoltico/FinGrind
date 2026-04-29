@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Files;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,49 +35,42 @@ final class SqliteStoreQueryOperations {
   BookInspection inspectBook() {
     store.ensureOpenSession();
     if (Files.notExists(store.bookPath())) {
-      return new BookInspection.Missing(
-          SqliteBookContract.FORMAT_VERSION, SqliteBookContract.MIGRATION_POLICY);
+      return new BookInspection.Missing(SqliteBookContract.FORMAT_VERSION);
     }
     try {
-      SqliteSessionDatabase activeDatabase = store.database();
-      SqliteBookStateSnapshot snapshot = store.stateSnapshot(activeDatabase.nativeDatabase());
+      SqliteNativeDatabase activeDatabase = store.database();
+      SqliteBookStateSnapshot snapshot = store.stateSnapshot(activeDatabase);
       return switch (snapshot.state()) {
         case BLANK_SQLITE ->
             new BookInspection.Existing(
                 BookInspection.Status.BLANK_SQLITE,
                 snapshot.applicationId(),
                 snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION,
-                SqliteBookContract.MIGRATION_POLICY);
+                SqliteBookContract.FORMAT_VERSION);
         case INITIALIZED_FINGRIND ->
             new BookInspection.Initialized(
                 snapshot.applicationId(),
                 snapshot.userVersion(),
                 SqliteBookContract.FORMAT_VERSION,
-                SqliteBookContract.MIGRATION_POLICY,
-                SqliteStatementQueries.loadInitializedAt(activeDatabase.nativeDatabase())
-                    .orElseThrow());
+                SqliteStatementQueries.loadInitializedAt(activeDatabase).orElseThrow());
         case FOREIGN_SQLITE ->
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
                 snapshot.applicationId(),
                 snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION,
-                SqliteBookContract.MIGRATION_POLICY);
+                SqliteBookContract.FORMAT_VERSION);
         case UNSUPPORTED_FINGRIND_VERSION ->
             new BookInspection.Existing(
                 BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
                 snapshot.applicationId(),
                 snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION,
-                SqliteBookContract.MIGRATION_POLICY);
+                SqliteBookContract.FORMAT_VERSION);
         case INCOMPLETE_FINGRIND ->
             new BookInspection.Existing(
                 BookInspection.Status.INCOMPLETE_FINGRIND,
                 snapshot.applicationId(),
                 snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION,
-                SqliteBookContract.MIGRATION_POLICY);
+                SqliteBookContract.FORMAT_VERSION);
       };
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to inspect SQLite book.", exception);
@@ -91,7 +83,7 @@ final class SqliteStoreQueryOperations {
       return false;
     }
     try {
-      SqliteBookStateSnapshot snapshot = store.stateSnapshot(store.database().nativeDatabase());
+      SqliteBookStateSnapshot snapshot = store.stateSnapshot(store.database());
       return switch (snapshot.state()) {
         case BLANK_SQLITE -> false;
         case INITIALIZED_FINGRIND -> true;
@@ -108,9 +100,6 @@ final class SqliteStoreQueryOperations {
 
   Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
     store.ensureOpenSession();
-    if (missingOrBlankBook()) {
-      return Optional.empty();
-    }
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> SqliteStatementQueries.findOneAccount(activeDatabase, accountCode));
@@ -120,7 +109,7 @@ final class SqliteStoreQueryOperations {
     store.ensureOpenSession();
     Set<AccountCode> requestedAccounts =
         new LinkedHashSet<>(Objects.requireNonNull(accountCodes, "accountCodes"));
-    if (requestedAccounts.isEmpty() || missingOrBlankBook()) {
+    if (requestedAccounts.isEmpty()) {
       return Map.of();
     }
     return queryInitialized(
@@ -130,9 +119,6 @@ final class SqliteStoreQueryOperations {
 
   AccountPage listAccounts(ListAccountsQuery query) {
     store.ensureOpenSession();
-    if (missingOrBlankBook()) {
-      return new AccountPage(List.of(), query.limit(), Optional.empty());
-    }
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> SqliteStatementQueries.loadAccountPage(activeDatabase, query));
@@ -140,9 +126,6 @@ final class SqliteStoreQueryOperations {
 
   Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
     store.ensureOpenSession();
-    if (missingOrBlankBook()) {
-      return Optional.empty();
-    }
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
@@ -156,9 +139,6 @@ final class SqliteStoreQueryOperations {
 
   Optional<PostingFact> findPosting(PostingId postingId) {
     store.ensureOpenSession();
-    if (missingOrBlankBook()) {
-      return Optional.empty();
-    }
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
@@ -172,9 +152,6 @@ final class SqliteStoreQueryOperations {
 
   Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
     store.ensureOpenSession();
-    if (missingOrBlankBook()) {
-      return Optional.empty();
-    }
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
@@ -188,35 +165,14 @@ final class SqliteStoreQueryOperations {
 
   PostingPage listPostings(ListPostingsQuery query) {
     store.ensureOpenSession();
-    if (missingOrBlankBook()) {
-      return new PostingPage(List.of(), query.limit(), Optional.empty());
-    }
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> store.postingReader().loadPostingPage(activeDatabase, query));
   }
 
-  private boolean missingOrBlankBook() {
-    if (Files.notExists(store.bookPath())) {
-      return true;
-    }
-    try {
-      return store.stateSnapshot(store.database().nativeDatabase()).state()
-          == SqliteBookState.BLANK_SQLITE;
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
-  }
-
-  private SqliteNativeDatabase initializedDatabase() {
-    SqliteSessionDatabase activeDatabase = store.database();
-    store.requireInitializedBook(activeDatabase.nativeDatabase());
-    return activeDatabase.nativeDatabase();
-  }
-
   private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {
     try {
-      return query.run(initializedDatabase());
+      return query.run(store.initializedQueryDatabase());
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
     }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WireValue;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,7 +25,7 @@ public final class JazzerJson {
   private static final JsonMapper JSON_MAPPER =
       JsonMapper.builder()
           .enable(SerializationFeature.INDENT_OUTPUT)
-          .addModule(finGrindEnumModule())
+          .addModule(finGrindWireValueModule())
           .build();
 
   private JazzerJson() {}
@@ -61,10 +62,35 @@ public final class JazzerJson {
     return JSON_MAPPER.writeValueAsString(value);
   }
 
-  private static SimpleModule finGrindEnumModule() {
-    return new SimpleModule("finGrindEnumWireValues")
+  private static SimpleModule finGrindWireValueModule() {
+    return new SimpleModule("finGrindWireValues")
+        .addSerializer(
+            SourceChannel.class, new FinGrindConcreteWireValueSerializer<>(SourceChannel.class))
+        .addDeserializer(
+            SourceChannel.class, new FinGrindConcreteWireValueDeserializer<>(SourceChannel.class))
         .addSerializer(new FinGrindEnumSerializer())
         .addDeserializer(Enum.class, new FinGrindEnumDeserializer());
+  }
+
+  /** Serializer that forces one concrete FinGrind-owned WireValue type onto its wire value. */
+  private static final class FinGrindConcreteWireValueSerializer<T extends WireValue>
+      extends ValueSerializer<T> {
+    private final Class<T> wireValueType;
+
+    private FinGrindConcreteWireValueSerializer(Class<T> wireValueType) {
+      this.wireValueType = Objects.requireNonNull(wireValueType, "wireValueType");
+    }
+
+    @Override
+    public void serialize(
+        T value, JsonGenerator jsonGenerator, SerializationContext serializationContext) {
+      jsonGenerator.writeString(wireValue(value));
+    }
+
+    @Override
+    public Class<?> handledType() {
+      return wireValueType;
+    }
   }
 
   /** Serializer that forces FinGrind-owned enums onto their explicit wire values. */
@@ -78,6 +104,31 @@ public final class JazzerJson {
     @Override
     public Class<?> handledType() {
       return Enum.class;
+    }
+  }
+
+  /** Deserializer that reads one concrete FinGrind-owned WireValue type from its wire value. */
+  private static final class FinGrindConcreteWireValueDeserializer<T extends WireValue>
+      extends ValueDeserializer<T> {
+    private final Class<T> wireValueType;
+
+    private FinGrindConcreteWireValueDeserializer(Class<T> wireValueType) {
+      this.wireValueType = Objects.requireNonNull(wireValueType, "wireValueType");
+    }
+
+    @Override
+    public T deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) {
+      String text = jsonParser.getValueAsString();
+      if (text == null) {
+        return wireValueType.cast(
+            deserializationContext.handleUnexpectedToken(wireValueType, jsonParser));
+      }
+      return parseWireValueType(wireValueType, text, deserializationContext);
+    }
+
+    @Override
+    public Class<?> handledType() {
+      return wireValueType;
     }
   }
 
@@ -145,22 +196,30 @@ public final class JazzerJson {
     }
   }
 
-  private static String wireValue(Enum<?> value) {
+  private static String wireValue(Object value) {
     Objects.requireNonNull(value, "value");
-    Class<?> enumType = value.getDeclaringClass();
     if (value instanceof WireValue wireValue) {
       String serialized = wireValue.wireValue();
       if (serialized != null && !serialized.isBlank()) {
         return serialized;
       }
       throw new IllegalStateException(
-          "Jazzer JSON wireValue() must return a non-blank String for " + enumType.getName() + ".");
+          "Jazzer JSON wireValue() must return a non-blank String for "
+              + value.getClass().getName()
+              + ".");
     }
-    if (enumType.getPackageName().startsWith("dev.erst.fingrind.")) {
-      throw new IllegalStateException(
-          "FinGrind enum " + enumType.getName() + " must implement WireValue for Jazzer JSON.");
+    if (value instanceof Enum<?> enumValue) {
+      Class<?> enumType = enumValue.getDeclaringClass();
+      if (enumType.getPackageName().startsWith("dev.erst.fingrind.")) {
+        throw new IllegalStateException(
+            "FinGrind enum " + enumType.getName() + " must implement WireValue for Jazzer JSON.");
+      }
+      return enumValue.name();
     }
-    return value.name();
+    throw new IllegalStateException(
+        "Jazzer JSON value "
+            + value.getClass().getName()
+            + " must implement WireValue or be an enum.");
   }
 
   private static Enum<?> parseEnum(
@@ -218,6 +277,41 @@ public final class JazzerJson {
     } catch (IllegalAccessException exception) {
       throw new IllegalStateException(
           "Unable to access Jazzer JSON fromWireValue(String) for " + enumType.getName() + ".",
+          exception);
+    }
+  }
+
+  private static <T extends WireValue> T parseWireValueType(
+      Class<T> wireValueType, String wireValue, DeserializationContext deserializationContext) {
+    try {
+      Method fromWireValue = wireValueType.getMethod("fromWireValue", String.class);
+      Object resolved = fromWireValue.invoke(null, wireValue);
+      if (wireValueType.isInstance(resolved)) {
+        return wireValueType.cast(resolved);
+      }
+      throw new IllegalStateException(
+          "Jazzer JSON fromWireValue(String) must return a WireValue assignable to "
+              + wireValueType.getName()
+              + ".");
+    } catch (NoSuchMethodException exception) {
+      return wireValueType.cast(
+          deserializationContext.handleWeirdStringValue(
+              wireValueType,
+              wireValue,
+              "FinGrind WireValue type %s must declare static fromWireValue(String).",
+              wireValueType.getName()));
+    } catch (InvocationTargetException exception) {
+      Throwable cause = exception.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        return wireValueType.cast(
+            deserializationContext.handleWeirdStringValue(
+                wireValueType, wireValue, runtimeException.getMessage()));
+      }
+      throw new IllegalStateException(
+          "Failed to decode Jazzer JSON wire value for " + wireValueType.getName() + ".", cause);
+    } catch (IllegalAccessException exception) {
+      throw new IllegalStateException(
+          "Unable to access Jazzer JSON fromWireValue(String) for " + wireValueType.getName() + ".",
           exception);
     }
   }

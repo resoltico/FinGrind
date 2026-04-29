@@ -316,23 +316,11 @@ class BookQueryModelTest {
         BookInspection.Status.fromWireValue("unsupported-format-version"));
     assertThrows(
         IllegalArgumentException.class, () -> BookInspection.Status.fromWireValue("UNKNOWN"));
-    assertThrows(NullPointerException.class, () -> new BookInspection.Missing(1, null));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new BookInspection.Existing(
-                BookInspection.Status.BLANK_SQLITE,
-                0,
-                -1,
-                1,
-                BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookInspection.Initialized(1, 1, 1, null, Instant.now()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new BookInspection.Initialized(1, 1, 1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE, null));
+        () -> new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 0, -1, 1));
+    assertThrows(NullPointerException.class, () -> new BookInspection.Initialized(1, 1, 1, null));
+    assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
   }
 
   @Test

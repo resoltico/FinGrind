@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,9 +21,9 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
   void constructor_rejectsNonKeyFileAccessSelection() {
-    IllegalArgumentException exception =
+    ContractFailureException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            ContractFailureException.class,
             () ->
                 new SqlitePostingFactStore(
                     new BookAccess(
@@ -29,8 +31,11 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
                         BookAccess.PassphraseSource.StandardInput.INSTANCE)));
 
     assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
+        exception.failure().code());
+    assertEquals(
         "SQLite same-package file-backed stores require a --book-key-file access selection, not --book-passphrase-stdin.",
-        exception.getMessage());
+        exception.failure().message());
   }
 
   @Test

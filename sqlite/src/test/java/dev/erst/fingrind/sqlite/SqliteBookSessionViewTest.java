@@ -46,36 +46,52 @@ import org.junit.jupiter.api.Test;
 @NullUnmarked
 class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
-  void findByIdempotency_returnsEmptyWhenPostingIsMissing() {
+  void findByIdempotency_requiresInitializedBookWhenPostingIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing.sqlite");
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
       assertEquals(
-          Optional.empty(),
-          postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          exception.getMessage());
       assertFalse(Files.exists(databasePath));
     }
   }
 
   @Test
-  void findByPostingId_returnsEmptyWhenBookIsMissing() {
+  void findByPostingId_requiresInitializedBookWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-posting.sqlite");
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      assertEquals(Optional.empty(), postingFactStore.findPosting(new PostingId("posting-1")));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findPosting(new PostingId("posting-1")));
+      assertEquals(
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          exception.getMessage());
       assertFalse(Files.exists(databasePath));
     }
   }
 
   @Test
-  void findReversalFor_returnsEmptyWhenBookIsMissing() {
+  void findReversalFor_requiresInitializedBookWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-reversal.sqlite");
 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      assertEquals(Optional.empty(), postingFactStore.findReversalFor(new PostingId("posting-1")));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
+      assertEquals(
+          "The selected SQLite file is not initialized as a FinGrind book.",
+          exception.getMessage());
       assertFalse(Files.exists(databasePath));
     }
   }

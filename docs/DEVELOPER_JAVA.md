@@ -1,17 +1,21 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
 ---
 
-# Java 26 And Gradle Workstation Setup
+# Java 26 And Gradle Host-Native Setup
 
-**Purpose**: Document the best-practice macOS workstation setup for FinGrind contributors, including how Java and Gradle should be sourced and why.
+**Purpose**: Document the supported host-native macOS Java and Gradle setup for FinGrind contributors, including how Java and Gradle should be sourced and why.
 **Prerequisites**: macOS with zsh.
+
+The preferred contributor workflow is now the committed devcontainer described in
+[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). This document owns the host-native
+fallback path for contributors who explicitly want local-shell Java.
 
 Supported workstation shape:
 - the repository preferably lives on the Mac's local filesystem for best performance
@@ -46,7 +50,7 @@ For wrapped Gradle projects, this is the best-practice stance:
 | Global `gradle` | absent by default | avoids a second moving part and avoids Homebrew `openjdk` dependency churn |
 | Brand-new Gradle repo bootstrap | temporary Gradle install only to generate and commit wrapper files | the wrapper becomes canonical immediately afterward |
 
-FinGrind contributors should therefore treat:
+FinGrind contributors using the host-native path should therefore treat:
 - `./gradlew` as the only supported Gradle entrypoint in this repo
 - a missing global `gradle` command as healthy
 - Brew `gradle` as outside the supported setup
@@ -82,8 +86,8 @@ Release-build note:
 
 Java 26 is GA. The OpenJDK JDK 26 project page lists `General Availability` on `2026-03-17`.
 
-For FinGrind, the source of truth for Java 26 information and the place from which the binary
-download must be chosen is explicitly `https://openjdk.org`.
+For FinGrind's host-native path, the source of truth for Java 26 information and the place from
+which the binary download must be chosen is explicitly `https://openjdk.org`.
 
 Authoritative route:
 - start at [`https://openjdk.org/projects/jdk/26/`](https://openjdk.org/projects/jdk/26/)
@@ -222,9 +226,9 @@ FinGrind's product modules, runtime baseline, and shared included build logic al
 `gradle/build-logic` now compiles with Kotlin `2.4.0-Beta2` and emits JVM 26 bytecode directly.
 `./gradlew --version` still reports the Kotlin version embedded in the Gradle distribution itself;
 that discovery output is not the authoritative owner of the build-logic Kotlin plugin pin.
-Both the wrapper and this Kotlin build-logic pin are intentionally temporary prerelease choices;
-move them to the matching stable `9.5.x` and `2.4.x` lines as soon as those releases are
-available and the included-build surface still verifies cleanly here.
+The Kotlin build-logic pin is still an intentionally temporary prerelease choice; move it to the
+matching stable `2.4.x` line as soon as that release is available and the included-build surface
+still verifies cleanly here.
 
 ## Java 26 Feature Adoption
 
@@ -281,7 +285,7 @@ Expected outcomes:
 - `JAVA_HOME` resolves inside `jdk-26.jdk`
 - both zsh modes resolve `java` and `javac`
 - `java --version` and `javac --version` report version 26
-- `./gradlew --version` reports Gradle `9.5.0-rc-4`
+- `./gradlew --version` reports Gradle `9.5.0`
 
 ## Full Toolchain Verification
 

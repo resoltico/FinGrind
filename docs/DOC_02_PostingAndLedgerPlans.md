@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -138,13 +138,15 @@ public sealed interface LedgerFact
 - Families: `Text`, `Flag`, `Count`, `Group`
 - Purpose: keep step observations machine-readable without collapsing everything to strings
 
-## `LedgerStepKind`, `LedgerAssertionKind`, `LedgerStepStatus`, And `LedgerPlanStatus`
+## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus`
 
 These enums own the stable ledger-plan wire vocabulary.
 
 ```java
 public enum LedgerStepKind
+public enum LedgerJournalKind
 public enum LedgerAssertionKind
+public enum LedgerBoundaryPhase
 public enum LedgerStepStatus
 public enum LedgerPlanStatus
 ```
@@ -166,8 +168,9 @@ public sealed interface LedgerPlanResult
 ```
 
 - Purpose: return one plan-level result plus one per-step journal that agents can inspect safely
-- Structure: `LedgerJournalStep` owns the canonical `kind` plus assertion-only `detailKind`
-  pairing, so assertion detail is structural rather than `Optional`-encoded state
+- Structure: `LedgerJournalStep` owns the canonical journal kind; assertion entries may attach
+  `detailKind`, while unexpected begin, initialization-check, commit, or rollback failures use the
+  dedicated `plan-boundary` kind plus a `boundaryPhase`
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
 
 ## `PostingApplicationService`

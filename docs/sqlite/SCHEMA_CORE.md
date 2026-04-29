@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -111,6 +111,8 @@ Field groups:
 - audit time: `recorded_at`
 - request provenance: `actor_*`, `command_id`, `idempotency_key`, `causation_id`, `correlation_id`
 - committed audit channel: `source_channel`
+  The current public line owns exactly one committed-entry surface token here, matching
+  `SourceChannel.CLI.wireValue()`.
 - reversal linkage: `prior_posting_id` plus the coupled `reason`
 
 Important rules:
@@ -172,5 +174,5 @@ Important rules:
 - This is the only current schema file for new books.
 - There is no schema version table.
 - There are no migration files.
-- FinGrind publishes sequential in-place migration as the book policy. The current supported book
-  format is `1`, so there are no historical upgrade steps bundled yet.
+- `BookFormatContract` publishes the current supported book format as `1`, so there are no
+  historical upgrade steps bundled yet.

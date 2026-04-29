@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: CONTRACT_EXECUTOR_INDEX
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, contract, executor, api, overview, routing, protocol, reports, ledger-plan]
   questions: ["where is the split contract and executor api reference in fingrind", "which doc covers protocol discovery versus reports in fingrind", "where should I look for posting and ledger plan contract types"]
@@ -15,7 +15,7 @@ The detailed entries now live in smaller AFAD reference files so protocol/discov
 and write/ledger-plan surfaces can evolve without recreating one retrieval-hostile god-file.
 
 Use these files:
-- [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md): contract-owned protocol metadata, discovery descriptors, request/response shapes, deterministic contract errors, and migration policy
+- [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md): contract-owned protocol metadata, discovery descriptors, request/response shapes, and deterministic contract errors
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md): administration DTOs, lifecycle inspection, queries, reports, and read-side rejections
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md): posting commands, posting results, write-side rejections, ledger plans, plan journals, and executor write services
 

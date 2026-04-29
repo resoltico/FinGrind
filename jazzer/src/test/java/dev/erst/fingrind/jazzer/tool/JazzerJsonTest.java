@@ -50,8 +50,21 @@ class JazzerJsonTest {
     assertTrue(json.contains("\"outcomeKind\" : \"success\""));
     assertTrue(json.contains("\"type\" : \"CLI_REQUEST\""));
     assertTrue(json.contains("\"actorType\" : \"AGENT\""));
+    assertTrue(json.contains("\"sourceChannel\" : \"CLI\""));
     assertEquals(expectation, reloaded);
     assertInstanceOf(CliRequestReplayDetails.class, reloaded.details());
+  }
+
+  @Test
+  void sourceChannel_roundTrips_as_top_level_wire_value() throws IOException {
+    Path sourceChannelPath = tempDirectory.resolve("source-channel.json");
+
+    JazzerJson.write(sourceChannelPath, SourceChannel.CLI);
+    SourceChannel reloaded = JazzerJson.read(sourceChannelPath, SourceChannel.class);
+
+    assertEquals("\"CLI\"", Files.readString(sourceChannelPath).trim());
+    assertEquals("\"CLI\"", JazzerJson.toJson(SourceChannel.CLI).trim());
+    assertEquals(SourceChannel.CLI, reloaded);
   }
 
   @Test
@@ -242,6 +255,42 @@ class JazzerJsonTest {
   }
 
   @Test
+  void jazzerJson_private_concrete_wire_value_helpers_report_handled_types_and_unexpected_tokens()
+      throws Exception {
+    Constructor<?> serializerConstructor =
+        Class.forName(
+                "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindConcreteWireValueSerializer")
+            .getDeclaredConstructor(Class.class);
+    serializerConstructor.setAccessible(true);
+    Object serializer = serializerConstructor.newInstance(SourceChannel.class);
+    assertEquals(SourceChannel.class, invokePrivateInstanceMethod(serializer, "handledType"));
+
+    Constructor<?> deserializerConstructor =
+        Class.forName(
+                "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindConcreteWireValueDeserializer")
+            .getDeclaredConstructor(Class.class);
+    deserializerConstructor.setAccessible(true);
+    Object deserializer = deserializerConstructor.newInstance(SourceChannel.class);
+    assertEquals(SourceChannel.class, invokePrivateInstanceMethod(deserializer, "handledType"));
+
+    DeserializationContext unexpectedTokenContext =
+        new WireValueReturnDeserializationContext(
+            deserializationContext("{}", SourceChannel.class));
+    try (var parser = jsonMapper().createParser("{}")) {
+      parser.nextToken();
+      assertEquals(
+          SourceChannel.CLI,
+          invokePrivateInstanceMethod(
+              deserializer,
+              "deserialize",
+              new Class<?>[] {
+                Class.forName("tools.jackson.core.JsonParser"), DeserializationContext.class
+              },
+              new Object[] {parser, unexpectedTokenContext}));
+    }
+  }
+
+  @Test
   void jazzerJson_private_enum_helpers_cover_contextual_resolution_and_unexpected_tokens()
       throws Exception {
     Object deserializer =
@@ -380,6 +429,105 @@ class JazzerJsonTest {
             new Object[] {RuntimeFailureEnum.class, "alpha", context}));
   }
 
+  @Test
+  void jazzerJson_private_concrete_wire_value_helpers_cover_weird_string_branches()
+      throws Exception {
+    DeserializationContext context = deserializationContext("\"alpha\"", SourceChannel.class);
+
+    Exception missingFactory =
+        assertThrows(
+            Exception.class,
+            () ->
+                invokePrivateStaticMethod(
+                    "parseWireValueType",
+                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+                    new Object[] {MissingFactoryWireValue.class, "alpha", context}));
+    assertTrue(
+        String.valueOf(rootCause(missingFactory).getMessage()).contains("must declare static"));
+
+    Exception wrongReturn =
+        assertThrows(
+            Exception.class,
+            () ->
+                invokePrivateStaticMethod(
+                    "parseWireValueType",
+                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+                    new Object[] {WrongReturnWireValue.class, "alpha", context}));
+    assertTrue(
+        String.valueOf(rootCause(wrongReturn).getMessage())
+            .contains("must return a WireValue assignable"));
+
+    Exception runtimeFailure =
+        assertThrows(
+            Exception.class,
+            () ->
+                invokePrivateStaticMethod(
+                    "parseWireValueType",
+                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+                    new Object[] {RuntimeFailureWireValue.class, "alpha", context}));
+    assertTrue(
+        String.valueOf(rootCause(runtimeFailure).getMessage()).contains("runtime decode failure"));
+
+    Exception checkedFailure =
+        assertThrows(
+            Exception.class,
+            () ->
+                invokePrivateStaticMethod(
+                    "parseWireValueType",
+                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+                    new Object[] {CheckedFailureWireValue.class, "alpha", context}));
+    assertTrue(
+        String.valueOf(checkedFailure.getMessage())
+            .contains("Failed to decode Jazzer JSON wire value"));
+
+    IllegalStateException inaccessibleFactory =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                invokePrivateStaticMethod(
+                    "parseWireValueType",
+                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+                    new Object[] {
+                      Class.forName(
+                          "dev.erst.fingrind.jazzer.tool.external.InaccessibleWireValueType"),
+                      "alpha",
+                      context
+                    }));
+    assertTrue(
+        String.valueOf(inaccessibleFactory.getMessage()).contains("Unable to access Jazzer JSON"));
+
+    Exception unsupportedValueCarrier =
+        assertThrows(
+            Exception.class,
+            () ->
+                invokePrivateStaticMethod(
+                    "wireValue", new Class<?>[] {Object.class}, new Object[] {new Object()}));
+    assertTrue(
+        String.valueOf(rootCause(unsupportedValueCarrier).getMessage())
+            .contains("must implement WireValue or be an enum"));
+  }
+
+  @Test
+  void jazzerJson_private_concrete_wire_value_helpers_cover_non_throwing_handler_paths()
+      throws Exception {
+    DeserializationContext context =
+        new WireValueReturnDeserializationContext(
+            deserializationContext("\"alpha\"", SourceChannel.class));
+
+    assertEquals(
+        MissingFactoryWireValue.ALPHA,
+        invokePrivateStaticMethod(
+            "parseWireValueType",
+            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+            new Object[] {MissingFactoryWireValue.class, "alpha", context}));
+    assertEquals(
+        RuntimeFailureWireValue.ALPHA,
+        invokePrivateStaticMethod(
+            "parseWireValueType",
+            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
+            new Object[] {RuntimeFailureWireValue.class, "alpha", context}));
+  }
+
   private enum FinGrindEnumWithoutWireValue {
     ALPHA
   }
@@ -502,6 +650,80 @@ class JazzerJsonTest {
   private record RuntimeFailureHolder(RuntimeFailureEnum value) {}
 
   private record CheckedFailureHolder(CheckedFailureEnum value) {}
+
+  private static final class MissingFactoryWireValue implements WireValue {
+    private static final MissingFactoryWireValue ALPHA = new MissingFactoryWireValue("alpha");
+
+    private final String wireValue;
+
+    private MissingFactoryWireValue(String wireValue) {
+      this.wireValue = wireValue;
+    }
+
+    @Override
+    public String wireValue() {
+      return wireValue;
+    }
+  }
+
+  private static final class WrongReturnWireValue implements WireValue {
+    private final String wireValue;
+
+    private WrongReturnWireValue(String wireValue) {
+      this.wireValue = wireValue;
+    }
+
+    @Override
+    public String wireValue() {
+      return wireValue;
+    }
+
+    @SuppressWarnings("EffectivelyPrivate")
+    public static Object fromWireValue(String wireValue) {
+      java.util.Objects.requireNonNull(wireValue);
+      return wireValue;
+    }
+  }
+
+  private static final class RuntimeFailureWireValue implements WireValue {
+    private static final RuntimeFailureWireValue ALPHA = new RuntimeFailureWireValue("alpha");
+
+    private final String wireValue;
+
+    private RuntimeFailureWireValue(String wireValue) {
+      this.wireValue = wireValue;
+    }
+
+    @Override
+    public String wireValue() {
+      return wireValue;
+    }
+
+    @SuppressWarnings({"DoNotCallSuggester", "EffectivelyPrivate"})
+    public static RuntimeFailureWireValue fromWireValue(String wireValue) {
+      java.util.Objects.requireNonNull(wireValue);
+      throw new IllegalArgumentException("runtime decode failure");
+    }
+  }
+
+  private static final class CheckedFailureWireValue implements WireValue {
+    private final String wireValue;
+
+    private CheckedFailureWireValue(String wireValue) {
+      this.wireValue = wireValue;
+    }
+
+    @Override
+    public String wireValue() {
+      return wireValue;
+    }
+
+    @SuppressWarnings({"DoNotCallSuggester", "EffectivelyPrivate"})
+    public static CheckedFailureWireValue fromWireValue(String wireValue) throws IOException {
+      java.util.Objects.requireNonNull(wireValue);
+      throw new IOException("checked decode failure");
+    }
+  }
 
   private static Object invokeJsonMethod(
       String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Exception {
@@ -672,7 +894,7 @@ class JazzerJsonTest {
     return current;
   }
 
-  private static final class ReturnValueDeserializationContext
+  private static class ReturnValueDeserializationContext
       extends tools.jackson.databind.deser.DeserializationContextExt {
     private ReturnValueDeserializationContext(DeserializationContext base) throws Exception {
       super(
@@ -703,6 +925,36 @@ class JazzerJsonTest {
       java.util.Objects.requireNonNull(targetType);
       java.util.Objects.requireNonNull(parser);
       return ReplayOutcomeKind.SUCCESS;
+    }
+  }
+
+  private static final class WireValueReturnDeserializationContext
+      extends ReturnValueDeserializationContext {
+    private WireValueReturnDeserializationContext(DeserializationContext base) throws Exception {
+      super(base);
+    }
+
+    @Override
+    public Object handleWeirdStringValue(
+        Class<?> targetType, String value, String message, Object... arguments) {
+      java.util.Objects.requireNonNull(targetType);
+      return switch (targetType.getName()) {
+        case "dev.erst.fingrind.core.SourceChannel" -> SourceChannel.CLI;
+        case "dev.erst.fingrind.jazzer.tool.JazzerJsonTest$MissingFactoryWireValue" ->
+            MissingFactoryWireValue.ALPHA;
+        case "dev.erst.fingrind.jazzer.tool.JazzerJsonTest$RuntimeFailureWireValue" ->
+            RuntimeFailureWireValue.ALPHA;
+        default -> super.handleWeirdStringValue(targetType, value, message, arguments);
+      };
+    }
+
+    @Override
+    public Object handleUnexpectedToken(Class<?> targetType, tools.jackson.core.JsonParser parser) {
+      java.util.Objects.requireNonNull(targetType);
+      if (targetType == SourceChannel.class) {
+        return SourceChannel.CLI;
+      }
+      return super.handleUnexpectedToken(targetType, parser);
     }
   }
 

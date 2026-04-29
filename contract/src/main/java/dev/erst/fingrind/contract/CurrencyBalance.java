@@ -13,5 +13,9 @@ public record CurrencyBalance(
     Objects.requireNonNull(creditTotal, "creditTotal");
     Objects.requireNonNull(netAmount, "netAmount");
     Objects.requireNonNull(balanceSide, "balanceSide");
+    if (!debitTotal.currencyCode().equals(creditTotal.currencyCode())
+        || !debitTotal.currencyCode().equals(netAmount.currencyCode())) {
+      throw new IllegalArgumentException("Currency balance totals must share one currencyCode.");
+    }
   }
 }

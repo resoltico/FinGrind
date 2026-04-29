@@ -60,9 +60,9 @@ final class SqliteStoreReportOperations {
     if (Files.notExists(store.bookPath())) {
       throw new IllegalStateException(SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE);
     }
-    SqliteSessionDatabase activeDatabase = store.database();
-    store.requireInitializedBook(activeDatabase.nativeDatabase());
-    return activeDatabase.nativeDatabase();
+    SqliteNativeDatabase activeDatabase = store.database();
+    store.requireInitializedBook(activeDatabase);
+    return activeDatabase;
   }
 
   private <T> T queryReport(String failureMessage, NativeReport<T> query) {

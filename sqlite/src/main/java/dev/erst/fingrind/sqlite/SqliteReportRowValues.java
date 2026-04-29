@@ -76,10 +76,7 @@ final class SqliteReportRowValues {
                   new TrialBalanceRow(
                       account,
                       SqliteBalanceMath.currencyBalance(
-                          entry.getKey(),
-                          entry.getValue().debit,
-                          entry.getValue().credit,
-                          account.normalBalance())))
+                          entry.getKey(), entry.getValue().debit, entry.getValue().credit)))
           .toList();
     }
 
@@ -91,10 +88,7 @@ final class SqliteReportRowValues {
                   new PeriodAccountActivityRow(
                       account,
                       SqliteBalanceMath.currencyBalance(
-                          entry.getKey(),
-                          entry.getValue().debit,
-                          entry.getValue().credit,
-                          account.normalBalance())))
+                          entry.getKey(), entry.getValue().debit, entry.getValue().credit)))
           .toList();
     }
   }

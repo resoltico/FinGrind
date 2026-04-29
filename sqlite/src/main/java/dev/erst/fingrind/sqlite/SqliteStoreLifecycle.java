@@ -20,7 +20,7 @@ final class SqliteStoreLifecycle {
   private final Supplier<SqliteNativeApi> sqliteApiSupplier;
   private @Nullable SqliteBookPassphrase bookPassphrase;
 
-  private @Nullable SqliteSessionDatabase database;
+  private @Nullable SqliteNativeDatabase database;
   private @Nullable SqliteBookStateSnapshot cachedBookState;
   private boolean closed;
   private boolean ledgerPlanTransactionActive;
@@ -96,7 +96,7 @@ final class SqliteStoreLifecycle {
     boolean rollbackDatabase = ledgerPlanTransactionBegunInDatabase;
     ledgerPlanTransactionBegunInDatabase = false;
     if (rollbackDatabase && database != null) {
-      SqliteStoreOperations.rollbackQuietly(database.nativeDatabase());
+      SqliteStoreOperations.rollbackQuietly(database);
     }
   }
 
@@ -106,7 +106,7 @@ final class SqliteStoreLifecycle {
     }
     try {
       if (database != null) {
-        SqliteStoreContext.closeOwnedDatabase(database.nativeDatabase());
+        SqliteStoreContext.closeOwnedDatabase(database);
       }
       database = null;
       cachedBookState = null;
@@ -142,17 +142,16 @@ final class SqliteStoreLifecycle {
     return snapshot;
   }
 
-  SqliteSessionDatabase database() {
-    SqliteSessionDatabase activeDatabase = database;
+  SqliteNativeDatabase database() {
+    SqliteNativeDatabase activeDatabase = database;
     if (activeDatabase != null) {
       return activeDatabase;
     }
-    ContractDecision<SqliteSessionDatabase> openedDatabase = openDatabase();
+    ContractDecision<SqliteNativeDatabase> openedDatabase = openDatabase();
     return switch (openedDatabase) {
-      case ContractDecision.Accepted<SqliteSessionDatabase>(
-              SqliteSessionDatabase resolvedDatabase) ->
+      case ContractDecision.Accepted<SqliteNativeDatabase>(SqliteNativeDatabase resolvedDatabase) ->
           resolvedDatabase;
-      case ContractDecision.Rejected<SqliteSessionDatabase>(ContractFailure failure) ->
+      case ContractDecision.Rejected<SqliteNativeDatabase>(ContractFailure failure) ->
           throw rememberTerminalFailure(new ContractFailureException(failure));
     };
   }
@@ -169,18 +168,17 @@ final class SqliteStoreLifecycle {
         .fold(ignored -> ContractDecision.accepted(this), ContractDecision::rejected);
   }
 
-  private ContractDecision<SqliteSessionDatabase> openDatabase() {
+  private ContractDecision<SqliteNativeDatabase> openDatabase() {
     try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
       if (accessMode.createsFiles() && Files.notExists(bookPath)) {
         SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
       }
       SqliteNativeApi sqliteApi = sqliteApiSupplier.get();
-      SqliteSessionDatabase openedDatabase =
-          new SqliteSessionDatabase(
-              SqliteConnectionConfigurer.configureOpenedDatabase(
-                  SqliteNativeConnections.open(
-                      bookPath, passphrase, accessMode.nativeOpenMode(), sqliteApi),
-                  accessMode));
+      SqliteNativeDatabase openedDatabase =
+          SqliteConnectionConfigurer.configureOpenedDatabase(
+              SqliteNativeConnections.open(
+                  bookPath, passphrase, accessMode.nativeOpenMode(), sqliteApi),
+              accessMode);
       database = openedDatabase;
       beginLedgerPlanTransactionIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
@@ -205,12 +203,12 @@ final class SqliteStoreLifecycle {
     if (Files.notExists(bookPath)) {
       throw new IllegalStateException(notInitializedBookMessage);
     }
-    SqliteSessionDatabase activeDatabase = database();
-    requireInitializedBook(activeDatabase.nativeDatabase());
-    return activeDatabase.nativeDatabase();
+    SqliteNativeDatabase activeDatabase = database();
+    requireInitializedBook(activeDatabase);
+    return activeDatabase;
   }
 
-  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase) {
+  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
     if (ledgerPlanTransactionActive) {
       beginLedgerPlanTransactionIfNeeded(activeDatabase);
       return SqliteTransactionOwnership.SHARED;
@@ -245,15 +243,15 @@ final class SqliteStoreLifecycle {
   }
 
   void publishDatabase(SqliteNativeDatabase activeDatabase) {
-    database = new SqliteSessionDatabase(Objects.requireNonNull(activeDatabase, "activeDatabase"));
+    database = Objects.requireNonNull(activeDatabase, "activeDatabase");
   }
 
   void replaceDatabase(@Nullable SqliteNativeDatabase nativeDatabase) {
-    database = nativeDatabase == null ? null : new SqliteSessionDatabase(nativeDatabase);
+    database = nativeDatabase;
   }
 
   @Nullable SqliteNativeDatabase currentDatabaseHandle() {
-    return database == null ? null : database.nativeDatabase();
+    return database;
   }
 
   void replacePendingPassphrase(@Nullable SqliteBookPassphrase passphrase) {
@@ -286,7 +284,7 @@ final class SqliteStoreLifecycle {
     }
   }
 
-  private void beginLedgerPlanTransactionIfNeeded(SqliteSessionDatabase activeDatabase) {
+  private void beginLedgerPlanTransactionIfNeeded(SqliteNativeDatabase activeDatabase) {
     if (ledgerPlanTransactionActive && !ledgerPlanTransactionBegunInDatabase) {
       activeDatabase.executeStatement("begin immediate");
       ledgerPlanTransactionBegunInDatabase = true;

@@ -178,10 +178,10 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             'cause-1',
             null,
             null,
-            'CLI',
+            '%s',
             null
         )
         """
-            .formatted(postingId, postingId, idempotencyKey));
+            .formatted(postingId, postingId, idempotencyKey, SourceChannel.CLI.wireValue()));
   }
 }

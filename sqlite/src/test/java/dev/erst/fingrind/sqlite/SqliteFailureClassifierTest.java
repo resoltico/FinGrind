@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -67,18 +66,5 @@ class SqliteFailureClassifierTest {
         "storage failure", new SqliteStorageFailureException("storage failure").getMessage());
     assertEquals("storage failure", exception.getMessage());
     assertSame(cause, exception.getCause());
-  }
-
-  @Test
-  void migrationPlanner_validatesPolicyAndVersion() {
-    SqliteBookMigrationPlanner planner =
-        new SqliteBookMigrationPlanner(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
-
-    assertEquals(1, planner.currentBookFormatVersion());
-    assertEquals(BookMigrationPolicy.SEQUENTIAL_IN_PLACE, planner.policy());
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new SqliteBookMigrationPlanner(0, BookMigrationPolicy.SEQUENTIAL_IN_PLACE));
-    assertThrows(NullPointerException.class, () -> new SqliteBookMigrationPlanner(1, null));
   }
 }

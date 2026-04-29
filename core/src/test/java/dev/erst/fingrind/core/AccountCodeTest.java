@@ -18,4 +18,13 @@ class AccountCodeTest {
   void constructor_rejectsBlankValue() {
     assertThrows(IllegalArgumentException.class, () -> new AccountCode("   "));
   }
+
+  @Test
+  void constructor_rejectsOverlongAndInvalidValues() {
+    String tooLong = "A" + "1".repeat(AccountCode.maxLength());
+
+    assertEquals("^[A-Za-z0-9](?:[A-Za-z0-9._:/-]{0,254})?$", AccountCode.pattern());
+    assertThrows(IllegalArgumentException.class, () -> new AccountCode("cash account"));
+    assertThrows(IllegalArgumentException.class, () -> new AccountCode(tooLong));
+  }
 }

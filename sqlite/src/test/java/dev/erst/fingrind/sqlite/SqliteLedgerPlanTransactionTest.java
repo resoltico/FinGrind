@@ -108,7 +108,8 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertFalse(postingFactStore.isInitialized());
-      assertTrue(postingFactStore.findAccount(new AccountCode("1000")).isEmpty());
+      assertInitializedQueryViewFailure(
+          () -> postingFactStore.findAccount(new AccountCode("1000")));
     }
   }
 
@@ -189,14 +190,14 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingPath))) {
       assertEquals(Map.of(), postingFactStore.findAccounts(Set.of()));
-      assertEquals(Map.of(), postingFactStore.findAccounts(requestedAccounts));
+      assertInitializedQueryViewFailure(() -> postingFactStore.findAccounts(requestedAccounts));
     }
 
     Path blankPath = tempDirectory.resolve("find-accounts-blank.sqlite");
     createEmptySqliteFile(blankPath);
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(blankPath))) {
-      assertEquals(Map.of(), postingFactStore.findAccounts(requestedAccounts));
+      assertInitializedQueryViewFailure(() -> postingFactStore.findAccounts(requestedAccounts));
     }
 
     Path initializedPath = tempDirectory.resolve("find-accounts-initialized.sqlite");

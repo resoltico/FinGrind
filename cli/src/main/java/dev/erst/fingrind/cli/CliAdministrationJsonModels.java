@@ -34,13 +34,11 @@ interface CliAdministrationJsonModels {
       String state,
       boolean compatibleWithCurrentBinary,
       boolean canInitializeWithOpenBook,
-      int supportedBookFormatVersion,
-      String migrationPolicy) {
+      int supportedBookFormatVersion) {
     public MissingBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
-      migrationPolicy = requireText(migrationPolicy, "migrationPolicy");
     }
   }
 
@@ -51,15 +49,13 @@ interface CliAdministrationJsonModels {
       boolean canInitializeWithOpenBook,
       int applicationId,
       int detectedBookFormatVersion,
-      int supportedBookFormatVersion,
-      String migrationPolicy) {
+      int supportedBookFormatVersion) {
     public ExistingBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");
       CliJsonModelValidation.requireNonNegative(
           detectedBookFormatVersion, "detectedBookFormatVersion");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
-      migrationPolicy = requireText(migrationPolicy, "migrationPolicy");
     }
   }
 
@@ -71,7 +67,6 @@ interface CliAdministrationJsonModels {
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
-      String migrationPolicy,
       String initializedAt) {
     public InitializedBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
@@ -79,7 +74,6 @@ interface CliAdministrationJsonModels {
       CliJsonModelValidation.requireNonNegative(
           detectedBookFormatVersion, "detectedBookFormatVersion");
       requirePositive(supportedBookFormatVersion, "supportedBookFormatVersion");
-      migrationPolicy = requireText(migrationPolicy, "migrationPolicy");
       initializedAt = requireText(initializedAt, "initializedAt");
     }
   }

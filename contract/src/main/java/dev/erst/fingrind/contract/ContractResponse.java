@@ -90,7 +90,6 @@ public final class ContractResponse {
       String credential,
       String initialization,
       String accountRegistry,
-      String migration,
       String currencyScope)
       implements ResponseDescriptorType {
     /** Validates one book-model descriptor payload. */
@@ -102,7 +101,6 @@ public final class ContractResponse {
       initialization = ContractDescriptorValidation.requireText(initialization, "initialization");
       accountRegistry =
           ContractDescriptorValidation.requireText(accountRegistry, "accountRegistry");
-      migration = ContractDescriptorValidation.requireText(migration, "migration");
       currencyScope = ContractDescriptorValidation.requireText(currencyScope, "currencyScope");
     }
   }

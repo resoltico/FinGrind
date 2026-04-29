@@ -58,14 +58,80 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("open-book"));
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
-    assertTrue(help.contains("Edit: Create ./declare-account-cash.json"));
+    assertTrue(
+        help.contains("./bin/fingrind generate-book-key-file --book-key-file ./acme.book-key"));
+    assertTrue(help.contains("Write: ./declare-account-cash.json"));
+    assertTrue(help.contains("\"accountCode\": \"1000\""));
     assertTrue(help.contains("--request-file ./declare-account-cash.json"));
-    assertTrue(help.contains("Edit: Create ./declare-account-revenue.json"));
+    assertTrue(help.contains("Write: ./declare-account-revenue.json"));
+    assertTrue(help.contains("\"accountCode\": \"2000\""));
     assertTrue(help.contains("--request-file ./declare-account-revenue.json"));
     assertFalse(help.contains("--request-file ./cash.json"));
     assertFalse(help.contains("--request-file ./revenue.json"));
-    assertTrue(help.contains("Edit: Replace scaffold placeholders such as effectiveDate"));
+    assertTrue(help.contains("Note: Replace scaffold placeholders such as effectiveDate"));
     assertTrue(help.contains("Note: Use a fresh provenance.idempotencyKey"));
+  }
+
+  @Test
+  void run_returnsScopedHelpForExplicitHelpTopic() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"help", "post-entry"});
+
+    assertEquals(0, exitCode);
+    String help = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(help.contains("Command"));
+    assertTrue(help.contains("Usage"));
+    assertTrue(help.contains("Examples"));
+    assertTrue(help.contains("post-entry"));
+    assertTrue(help.contains("--request-file <path|->"));
+  }
+
+  @Test
+  void run_returnsScopedHelpForCommandHelpAlias() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"post-entry", "--help"});
+
+    assertEquals(0, exitCode);
+    String help = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(help.contains("post-entry"));
+    assertTrue(help.contains("Usage"));
+    assertTrue(help.contains("Examples"));
+  }
+
+  @Test
+  void run_rewritesBundleHelpUsageAndHintsToTheBundleLauncher() {
+    String priorDistribution =
+        System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
+    try {
+      System.setProperty(
+          FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      FinGrindCli cli =
+          cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+      int helpExitCode = cli.run(new String[] {"help", "post-entry", "--output", "json"});
+      int failureExitCode = cli.run(new String[] {"post-entry", "--bogus"});
+
+      assertEquals(0, helpExitCode);
+      assertEquals(1, failureExitCode);
+      String output = outputStream.toString(StandardCharsets.UTF_8);
+      assertTrue(output.contains("./bin/fingrind post-entry"));
+      assertTrue(output.contains("Unsupported argument: --bogus"));
+      assertTrue(
+          output.contains("Run './bin/fingrind help' to inspect the supported command syntax."));
+    } finally {
+      if ("__missing__".equals(priorDistribution)) {
+        System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
+      } else {
+        System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, priorDistribution);
+      }
+    }
   }
 
   @Test

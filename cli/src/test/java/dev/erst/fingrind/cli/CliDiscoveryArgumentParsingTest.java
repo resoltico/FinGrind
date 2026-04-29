@@ -31,6 +31,91 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_returnsScopedHelpForHelpTopic() {
+    Help command =
+        assertInstanceOf(Help.class, CliArguments.parse(new String[] {"help", "post-entry"}));
+
+    assertEquals(
+        dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY, command.commandTopic());
+  }
+
+  @Test
+  void parse_returnsScopedHelpForCommandHelpAlias() {
+    Help command =
+        assertInstanceOf(Help.class, CliArguments.parse(new String[] {"post-entry", "--help"}));
+
+    assertEquals(
+        dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY, command.commandTopic());
+  }
+
+  @Test
+  void parse_returnsScopedHelpForShortCommandHelpAlias() {
+    Help command =
+        assertInstanceOf(Help.class, CliArguments.parse(new String[] {"post-entry", "-h"}));
+
+    assertEquals(
+        dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY, command.commandTopic());
+  }
+
+  @Test
+  void parse_supportsJsonOutputForCommandHelpAlias() {
+    Help command =
+        assertInstanceOf(
+            Help.class,
+            CliArguments.parse(new String[] {"post-entry", "--help", "--output", "json"}));
+
+    assertEquals(
+        dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY, command.commandTopic());
+    assertEquals(dev.erst.fingrind.contract.protocol.OutputMode.JSON, command.outputMode());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedAdditionalArgumentForHelpTopic() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"help", "post-entry", "--wat"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--wat", exception.argument());
+    assertEquals("Unsupported argument: --wat", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUnsupportedAdditionalArgumentForCommandHelpAlias() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"post-entry", "--help", "--wat"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--wat", exception.argument());
+    assertEquals("Unsupported argument: --wat", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUnknownHelpTopic() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class, () -> CliArguments.parse(new String[] {"help", "wat"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("wat", exception.argument());
+    assertEquals("Unsupported help topic: wat", exception.getMessage());
+  }
+
+  @Test
+  void parse_rejectsUnknownCommandEvenWhenSecondTokenLooksLikeHelp() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class, () -> CliArguments.parse(new String[] {"wat", "--help"}));
+
+    assertEquals("unknown-command", exception.code());
+    assertEquals("wat", exception.argument());
+    assertEquals("Unsupported command: wat", exception.getMessage());
+  }
+
+  @Test
   void parse_returnsPrintRequestTemplateForCommand() {
     assertInstanceOf(
         PrintRequestTemplate.class, CliArguments.parse(new String[] {"print-request-template"}));

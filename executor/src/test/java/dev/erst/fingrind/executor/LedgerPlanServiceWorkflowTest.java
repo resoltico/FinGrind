@@ -8,15 +8,17 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.postEntryCommand;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.textFact;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.LedgerAssertion;
+import dev.erst.fingrind.contract.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStep;
@@ -24,7 +26,6 @@ import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
-import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
@@ -92,8 +93,8 @@ class LedgerPlanServiceWorkflowTest {
       assertTrue(
           result.journal().steps().stream()
               .allMatch(step -> step.status() == LedgerStepStatus.SUCCEEDED));
-      assertEquals(LedgerStepKind.OPEN_BOOK, result.journal().steps().getFirst().kind());
-      assertEquals(LedgerStepKind.ASSERT, result.journal().steps().getLast().kind());
+      assertEquals(LedgerJournalKind.OPEN_BOOK, result.journal().steps().getFirst().kind());
+      assertEquals(LedgerJournalKind.ASSERT, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
           result.journal().steps().getLast().detailKind());
@@ -253,19 +254,235 @@ class LedgerPlanServiceWorkflowTest {
   }
 
   @Test
-  void execute_rollsBackWhenUnexpectedRuntimeFailureEscapes() {
+  void execute_rollsBackAndJournalsUnexpectedRuntimeFailures() {
     try (LedgerPlanServiceTestSupport.ThrowingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.ThrowingLedgerPlanSession()) {
       LedgerPlanService service =
           new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
 
-      assertThrows(
-          IllegalStateException.class,
-          () ->
-              service.execute(
-                  new LedgerPlan(
-                      planId("plan-1"), List.of(new LedgerStep.OpenBook(stepId("open"))))));
+      var result =
+          service.execute(
+              new LedgerPlan(planId("plan-1"), List.of(new LedgerStep.OpenBook(stepId("open")))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "unexpected-step-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertTrue(
+          result
+              .journal()
+              .steps()
+              .getLast()
+              .requiredFailure()
+              .message()
+              .contains("step 'open': boom"));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(
+                  fact -> textFact(fact, "exceptionType", IllegalStateException.class.getName())));
       assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_preservesPriorSuccessfulStepsBeforeUnexpectedRuntimeFailure() {
+    try (LedgerPlanServiceTestSupport.DeclareRuntimeFailingLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.DeclareRuntimeFailingLedgerPlanSession()) {
+      LedgerPlanService service =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+
+      var result =
+          service.execute(
+              new LedgerPlan(
+                  planId("plan-1"),
+                  List.of(
+                      new LedgerStep.OpenBook(stepId("open")),
+                      new LedgerStep.DeclareAccount(
+                          stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(2, result.journal().steps().size());
+      assertEquals("open", result.journal().steps().get(0).stepId().value());
+      assertEquals(LedgerStepStatus.SUCCEEDED, result.journal().steps().get(0).status());
+      assertEquals("cash", result.journal().steps().get(1).stepId().value());
+      assertEquals(
+          "unexpected-step-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_returnsStructuredRejectionWhenTransactionBeginFails() {
+    try (LedgerPlanServiceTestSupport.BeginFailingLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.BeginFailingLedgerPlanSession()) {
+      LedgerPlanService service =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+
+      var result =
+          service.execute(
+              new LedgerPlan(planId("plan-1"), List.of(new LedgerStep.OpenBook(stepId("open")))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(LedgerBoundaryPhase.BEGIN, result.journal().steps().getLast().boundaryPhase());
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().message().contains("during begin"));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "phase", "begin")));
+    }
+  }
+
+  @Test
+  void execute_returnsStructuredRejectionWhenInitializationCheckThrows() {
+    try (LedgerPlanServiceTestSupport.InitializationCheckFailingLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.InitializationCheckFailingLedgerPlanSession()) {
+      LedgerPlanService service =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+
+      var result =
+          service.execute(
+              new LedgerPlan(
+                  planId("plan-1"),
+                  List.of(
+                      new LedgerStep.DeclareAccount(
+                          stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerBoundaryPhase.INITIALIZATION_CHECK,
+          result.journal().steps().getLast().boundaryPhase());
+      assertTrue(
+          result
+              .journal()
+              .steps()
+              .getLast()
+              .requiredFailure()
+              .message()
+              .contains("during initialization-check before step 'cash': initialization boom"));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "phase", "initialization-check")));
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_returnsStructuredRejectionWhenCommitFailsAfterSuccessfulSteps() {
+    try (LedgerPlanServiceTestSupport.CommitFailingLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.CommitFailingLedgerPlanSession()) {
+      LedgerPlanService service =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+
+      var result =
+          service.execute(
+              new LedgerPlan(planId("plan-1"), List.of(new LedgerStep.OpenBook(stepId("open")))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(LedgerBoundaryPhase.COMMIT, result.journal().steps().getLast().boundaryPhase());
+      assertTrue(
+          result
+              .journal()
+              .steps()
+              .getLast()
+              .requiredFailure()
+              .message()
+              .contains("during commit after step 'open': commit boom"));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "phase", "commit")));
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_returnsStructuredRejectionWhenRollbackFailsAfterDeterministicStepFailure() {
+    try (LedgerPlanServiceTestSupport.RollbackFailingLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.RollbackFailingLedgerPlanSession()) {
+      LedgerPlanService service =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+
+      var result =
+          service.execute(
+              new LedgerPlan(
+                  planId("plan-1"),
+                  List.of(
+                      new LedgerStep.DeclareAccount(
+                          stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerBoundaryPhase.ROLLBACK, result.journal().steps().getLast().boundaryPhase());
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "phase", "rollback")));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(
+                  fact ->
+                      fact instanceof dev.erst.fingrind.contract.LedgerFact.Group group
+                          && "priorFailure".equals(group.name())
+                          && group.facts().stream()
+                              .anyMatch(
+                                  child ->
+                                      textFact(
+                                          child,
+                                          "code",
+                                          BookAdministrationRejection.wireCode(
+                                              new BookAdministrationRejection
+                                                  .BookNotInitialized())))));
+    }
+  }
+
+  @Test
+  void execute_returnsStructuredRejectionWhenRollbackFailsAfterUnexpectedStepFailure() {
+    try (LedgerPlanServiceTestSupport.RuntimeRollbackFailingLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.RuntimeRollbackFailingLedgerPlanSession()) {
+      LedgerPlanService service =
+          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+
+      var result =
+          service.execute(
+              new LedgerPlan(planId("plan-1"), List.of(new LedgerStep.OpenBook(stepId("open")))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
+      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerBoundaryPhase.ROLLBACK, result.journal().steps().getLast().boundaryPhase());
+      assertTrue(
+          result
+              .journal()
+              .steps()
+              .getLast()
+              .requiredFailure()
+              .message()
+              .contains("during rollback after step 'open': rollback boom"));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(fact -> textFact(fact, "phase", "rollback")));
+      assertTrue(
+          result.journal().steps().getLast().requiredFailure().facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "priorFailure",
+                          "code",
+                          "unexpected-step-failure",
+                          "message",
+                          "Ledger plan execution failed unexpectedly during step 'open': boom")));
     }
   }
 }

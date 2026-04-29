@@ -67,6 +67,6 @@ final class SqlitePostingFactStore extends SqliteStoreContext {
 
   /** Returns the active native database handle when one has already been opened. */
   SqliteNativeDatabase activeNativeDatabase() {
-    return database().nativeDatabase();
+    return database();
   }
 }

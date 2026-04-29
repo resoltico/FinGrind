@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookMigrationPolicy;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.ContractDecision;
@@ -253,11 +252,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
           public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
             return accepted(
                 new BookInspection.Initialized(
-                    1_179_079_236,
-                    1,
-                    1,
-                    BookMigrationPolicy.SEQUENTIAL_IN_PLACE,
-                    Instant.parse("2026-04-07T10:15:30Z")));
+                    1_179_079_236, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
           }
 
           @Override

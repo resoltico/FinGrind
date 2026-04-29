@@ -118,4 +118,29 @@ class CliJsonRequestCodecTest {
     assertEquals("Failed to read request JSON.", exception.getMessage());
     assertEquals("schema hint", exception.failure().hint());
   }
+
+  @Test
+  void requestHints_followTheBundleLauncherWhenRunningFromTheBundleSurface() {
+    String priorDistribution =
+        System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
+    try {
+      System.setProperty(
+          FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
+
+      assertTrue(
+          CliJsonRequestCodec.postEntryRequestHint()
+              .contains("./bin/fingrind print-request-template"));
+      assertTrue(
+          CliJsonRequestCodec.ledgerPlanRequestHint()
+              .contains("./bin/fingrind print-plan-template"));
+      assertTrue(
+          CliJsonRequestCodec.declareAccountRequestHint().contains("./bin/fingrind capabilities"));
+    } finally {
+      if ("__missing__".equals(priorDistribution)) {
+        System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
+      } else {
+        System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, priorDistribution);
+      }
+    }
+  }
 }

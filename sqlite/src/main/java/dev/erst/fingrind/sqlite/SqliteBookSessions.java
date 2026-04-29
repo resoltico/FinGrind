@@ -17,10 +17,7 @@ public final class SqliteBookSessions {
   /** Opens one SQLite-backed book session for the supplied intent. */
   public static SqliteBookSession open(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteBookSessionMode sessionMode) {
-    return new SqlitePostingFactStore(
-        bookPath,
-        bookPassphrase,
-        toStoreAccessMode(Objects.requireNonNull(sessionMode, "sessionMode")));
+    return openResolved(bookPath, bookPassphrase, sessionMode).requireAccepted();
   }
 
   /** Opens and primes one SQLite-backed book session for explicit result handling. */

@@ -30,25 +30,21 @@ import org.junit.jupiter.api.Test;
 class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
-  void listPostings_returnsEmptyPagesForMissingAndBlankBooks() throws Exception {
+  void listPostings_requiresInitializedBookForMissingAndBlankBooks() throws Exception {
     ListPostingsQuery firstPage =
         new ListPostingsQuery(Optional.empty(), null, null, 2, Optional.empty());
 
     Path missingBookPath = tempDirectory.resolve("list-postings-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
-      assertEquals(
-          new PostingPage(List.of(), 2, Optional.empty()),
-          postingFactStore.listPostings(firstPage));
+      assertInitializedQueryViewFailure(() -> postingFactStore.listPostings(firstPage));
     }
 
     Path blankBookPath = tempDirectory.resolve("list-postings-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(blankBookPath))) {
-      assertEquals(
-          new PostingPage(List.of(), 2, Optional.empty()),
-          postingFactStore.listPostings(firstPage));
+      assertInitializedQueryViewFailure(() -> postingFactStore.listPostings(firstPage));
     }
   }
 

@@ -58,9 +58,12 @@ public sealed interface BookInspection
       return this == INITIALIZED;
     }
 
-    /** Returns whether `open-book` may initialize an existing file in this state. */
+    /** Returns whether `open-book` may initialize the selected path from this state. */
     public boolean canInitializeWithOpenBook() {
-      return this == BLANK_SQLITE;
+      return switch (this) {
+        case MISSING, BLANK_SQLITE -> true;
+        case INITIALIZED, FOREIGN_SQLITE, UNSUPPORTED_FORMAT_VERSION, INCOMPLETE_FINGRIND -> false;
+      };
     }
   }
 
@@ -69,9 +72,6 @@ public sealed interface BookInspection
 
   /** Book format version supported by the current FinGrind binary. */
   int supportedBookFormatVersion();
-
-  /** Migration policy that governs incompatible on-disk books. */
-  BookMigrationPolicy migrationPolicy();
 
   private static void requireSupportedBookFormatVersion(int supportedBookFormatVersion) {
     if (supportedBookFormatVersion < 1) {
@@ -91,12 +91,10 @@ public sealed interface BookInspection
   }
 
   /** Inspection state for a missing book path. */
-  record Missing(int supportedBookFormatVersion, BookMigrationPolicy migrationPolicy)
-      implements BookInspection {
+  record Missing(int supportedBookFormatVersion) implements BookInspection {
     /** Validates one missing-book inspection snapshot. */
     public Missing {
       requireSupportedBookFormatVersion(supportedBookFormatVersion);
-      Objects.requireNonNull(migrationPolicy, "migrationPolicy");
     }
 
     @Override
@@ -110,8 +108,7 @@ public sealed interface BookInspection
       Status status,
       int applicationId,
       int detectedBookFormatVersion,
-      int supportedBookFormatVersion,
-      BookMigrationPolicy migrationPolicy)
+      int supportedBookFormatVersion)
       implements BookInspection {
     /** Validates one existing-book inspection snapshot. */
     public Existing {
@@ -123,7 +120,6 @@ public sealed interface BookInspection
       }
       requireDetectedBookMetadata(
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
-      Objects.requireNonNull(migrationPolicy, "migrationPolicy");
     }
   }
 
@@ -132,14 +128,12 @@ public sealed interface BookInspection
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
-      BookMigrationPolicy migrationPolicy,
       Instant initializedAt)
       implements BookInspection {
     /** Validates one initialized-book inspection snapshot. */
     public Initialized {
       requireDetectedBookMetadata(
           applicationId, detectedBookFormatVersion, supportedBookFormatVersion);
-      Objects.requireNonNull(migrationPolicy, "migrationPolicy");
       Objects.requireNonNull(initializedAt, "initializedAt");
     }
 

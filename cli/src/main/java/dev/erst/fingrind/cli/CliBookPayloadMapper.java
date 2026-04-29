@@ -24,8 +24,7 @@ final class CliBookPayloadMapper {
               status.wireValue(),
               status.compatibleWithCurrentBinary(),
               status.canInitializeWithOpenBook(),
-              missing.supportedBookFormatVersion(),
-              missing.migrationPolicy().wireValue());
+              missing.supportedBookFormatVersion());
       case BookInspection.Existing existing ->
           new CliAdministrationJsonModels.ExistingBookInspectionPayload(
               absolutePath(bookFilePath),
@@ -34,8 +33,7 @@ final class CliBookPayloadMapper {
               status.canInitializeWithOpenBook(),
               existing.applicationId(),
               existing.detectedBookFormatVersion(),
-              existing.supportedBookFormatVersion(),
-              existing.migrationPolicy().wireValue());
+              existing.supportedBookFormatVersion());
       case BookInspection.Initialized initialized ->
           new CliAdministrationJsonModels.InitializedBookInspectionPayload(
               absolutePath(bookFilePath),
@@ -45,7 +43,6 @@ final class CliBookPayloadMapper {
               initialized.applicationId(),
               initialized.detectedBookFormatVersion(),
               initialized.supportedBookFormatVersion(),
-              initialized.migrationPolicy().wireValue(),
               initialized.initializedAt().toString());
     };
   }

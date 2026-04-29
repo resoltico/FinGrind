@@ -90,6 +90,17 @@ class CliPostingQueryArgumentValidationTest extends CliArgumentParsingTestSuppor
   }
 
   @Test
+  void parse_rejectsUnsupportedListPostingsArgumentBeforeMissingBookArguments() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"list-postings", "--extra"}));
+
+    assertEquals("--extra", exception.argument());
+    assertEquals("Unsupported argument: --extra", exception.getMessage());
+  }
+
+  @Test
   void parse_rejectsListPostingsDuplicateAndUnsupportedArguments() {
     CliArgumentsException duplicateDateFrom =
         assertThrows(

@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
@@ -11,24 +13,59 @@ import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
   private MachineContract() {}
 
+  private static final String DECLARE_ACCOUNT_CASH_JSON =
+      """
+      {
+        "accountCode": "1000",
+        "accountName": "Cash",
+        "normalBalance": "DEBIT"
+      }
+      """;
+
+  private static final String DECLARE_ACCOUNT_REVENUE_JSON =
+      """
+      {
+        "accountCode": "2000",
+        "accountName": "Revenue",
+        "normalBalance": "CREDIT"
+      }
+      """;
+
   /** Builds the canonical help descriptor. */
   public static HelpDescriptor help(
       ApplicationIdentity identity, EnvironmentDescriptor environment) {
+    return help(identity, environment, null);
+  }
+
+  /** Builds the canonical help descriptor, optionally filtered to one command topic. */
+  public static HelpDescriptor help(
+      ApplicationIdentity identity,
+      EnvironmentDescriptor environment,
+      @Nullable OperationId commandTopic) {
     Objects.requireNonNull(identity, "identity");
     Objects.requireNonNull(environment, "environment");
+    @Nullable ProtocolOperation selectedOperation =
+        commandTopic == null ? null : ProtocolCatalog.operation(commandTopic);
     return new HelpDescriptor(
         identity.application(),
         identity.version(),
         identity.description(),
-        ProtocolCatalog.operations().stream().map(operation -> operation.usage()).toList(),
+        selectedOperation == null
+            ? ProtocolCatalog.operations().stream().map(ProtocolOperation::usage).toList()
+            : List.of(selectedOperation.usage()),
         MachineContractDomainDescriptors.bookModel(),
-        MachineContractDomainDescriptors.commandDescriptors(),
-        canonicalQuickStart(),
+        selectedOperation == null
+            ? MachineContractDomainDescriptors.commandDescriptors()
+            : MachineContractDomainDescriptors.commandDescriptors().stream()
+                .filter(command -> command.name() == commandTopic)
+                .toList(),
+        selectedOperation == null ? canonicalQuickStart() : List.of(),
         MachineContractDomainDescriptors.exitCodes(),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
@@ -136,39 +173,122 @@ public final class MachineContract {
                 null)));
   }
 
-  private static List<WorkflowStepDescriptor> canonicalQuickStart() {
+  private static List<WorkflowDescriptor> canonicalQuickStart() {
     return List.of(
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-key-file ./acme.book-key"
-                .formatted(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))),
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-file ./acme.sqlite --book-key-file ./acme.book-key"
-                .formatted(ProtocolCatalog.operationName(OperationId.OPEN_BOOK))),
-        WorkflowStepDescriptor.edit(
-            "Create ./declare-account-cash.json with {\"accountCode\":\"1000\",\"accountName\":\"Cash\",\"normalBalance\":\"DEBIT\"}."),
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-cash.json"
-                .formatted(ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
-        WorkflowStepDescriptor.edit(
-            "Create ./declare-account-revenue.json with {\"accountCode\":\"2000\",\"accountName\":\"Revenue\",\"normalBalance\":\"CREDIT\"}."),
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-revenue.json"
-                .formatted(ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
-        WorkflowStepDescriptor.command(
-            "fingrind %s > ./request.json"
-                .formatted(ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))),
-        WorkflowStepDescriptor.edit(
-            "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in ./request.json before submitting the request."),
-        WorkflowStepDescriptor.note(
-            "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json"
-                .formatted(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))),
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json"
-                .formatted(ProtocolCatalog.operationName(OperationId.POST_ENTRY))),
-        WorkflowStepDescriptor.command(
-            "fingrind %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --output human"
-                .formatted(ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE))));
+        new WorkflowDescriptor(
+            WorkflowSurface.BUNDLE_POSIX_SHELL,
+            List.of(
+                WorkflowStepDescriptor.note(
+                    "Run commands from the extracted bundle root so the canonical launcher path resolves directly."),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-key-file ./acme.book-key"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.OPEN_BOOK))),
+                WorkflowStepDescriptor.edit(
+                    "./declare-account-cash.json", DECLARE_ACCOUNT_CASH_JSON),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-cash.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
+                WorkflowStepDescriptor.edit(
+                    "./declare-account-revenue.json", DECLARE_ACCOUNT_REVENUE_JSON),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-revenue.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
+                WorkflowStepDescriptor.command(
+                    "%s %s > ./request.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))),
+                WorkflowStepDescriptor.note(
+                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in ./request.json before submitting the request."),
+                WorkflowStepDescriptor.note(
+                    "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.POST_ENTRY))),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --output human"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
+                            ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE))))),
+        new WorkflowDescriptor(
+            WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL,
+            List.of(
+                WorkflowStepDescriptor.note(
+                    "Run commands from the extracted bundle root so the canonical PowerShell launcher path resolves directly."),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-key-file .\\acme.book-key"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.OPEN_BOOK))),
+                WorkflowStepDescriptor.edit(
+                    ".\\declare-account-cash.json", DECLARE_ACCOUNT_CASH_JSON),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\declare-account-cash.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
+                WorkflowStepDescriptor.edit(
+                    ".\\declare-account-revenue.json", DECLARE_ACCOUNT_REVENUE_JSON),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\declare-account-revenue.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
+                WorkflowStepDescriptor.command(
+                    "%s %s > .\\request.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))),
+                WorkflowStepDescriptor.note(
+                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in .\\request.json before submitting the request."),
+                WorkflowStepDescriptor.note(
+                    "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\request.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\request.json"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.POST_ENTRY))),
+                WorkflowStepDescriptor.command(
+                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --output human"
+                        .formatted(
+                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
+                            ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE))))));
+  }
+
+  private static String launcherCommand(WorkflowSurface surface) {
+    return switch (surface) {
+      case BUNDLE_POSIX_SHELL ->
+          ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64);
+      case BUNDLE_WINDOWS_POWERSHELL ->
+          ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64);
+    };
   }
 }

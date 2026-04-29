@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -50,10 +49,7 @@ final class SqlitePeriodSummaryReader {
                 entry ->
                     new PeriodCurrencySummary(
                         SqliteBalanceMath.currencyBalance(
-                            entry.getKey(),
-                            entry.getValue().debit(),
-                            entry.getValue().credit(),
-                            NormalBalance.DEBIT)))
+                            entry.getKey(), entry.getValue().debit(), entry.getValue().credit())))
             .toList();
     List<PeriodAccountActivityRow> activityRows =
         accountActivity.entrySet().stream()

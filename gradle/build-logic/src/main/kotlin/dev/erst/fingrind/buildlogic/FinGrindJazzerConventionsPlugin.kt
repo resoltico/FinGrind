@@ -33,7 +33,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 layout.buildDirectory.set(file(projectCacheDir.resolve("jazzer-build")))
             }
 
-            repositories.mavenCentral()
+            configureFinGrindArtifactRepositories()
 
             val topology = JazzerTopology.load(this)
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")

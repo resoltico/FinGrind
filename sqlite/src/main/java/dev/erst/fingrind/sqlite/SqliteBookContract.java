@@ -1,16 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookMigrationPolicy;
+import dev.erst.fingrind.contract.BookFormatContract;
 
 /** Canonical SQLite book-format facts shared across SQLite-backed session adapters. */
 final class SqliteBookContract {
-  static final int APPLICATION_ID = 1_179_079_236; // "FGRD"
-  private static final SqliteBookMigrationPlanner BOOK_MIGRATION_PLANNER =
-      new SqliteBookMigrationPlanner(1, BookMigrationPolicy.SEQUENTIAL_IN_PLACE);
-  static final int FORMAT_VERSION = BOOK_MIGRATION_PLANNER.currentBookFormatVersion();
+  static final int APPLICATION_ID = BookFormatContract.APPLICATION_ID;
+  static final int FORMAT_VERSION = BookFormatContract.FORMAT_VERSION;
   static final String NOT_INITIALIZED_BOOK_MESSAGE =
       "The selected SQLite file is not initialized as a FinGrind book.";
-  static final BookMigrationPolicy MIGRATION_POLICY = BOOK_MIGRATION_PLANNER.policy();
 
   private static final String ACCOUNT_TABLE = "account";
   private static final String BOOK_META_TABLE = "book_meta";

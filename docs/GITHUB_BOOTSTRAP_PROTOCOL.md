@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -95,6 +95,11 @@ For FinGrind, the required checks are:
 - `Windows bundle smoke`
 - `Docker smoke`
 
+The committed `Contributor devcontainer` job is intentionally **not** part of the protected branch
+check set. FinGrind follows the same stance as the sibling project: the job stays CI-visible and
+the release protocol treats it as release-blocking later, but GitHub branch protection itself keeps
+the protected context set to the three public-product checks above.
+
 Apply protection:
 
 ```bash
@@ -124,6 +129,8 @@ Recommended repository settings alignment:
 - Actions workflow permissions default to write
 - `main` protection enforces admins
 - required checks remain exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
+- the separate `Contributor devcontainer` CI job exists and remains release-blocking even though
+  it is not a protected branch-check context
 
 ## Step 7
 

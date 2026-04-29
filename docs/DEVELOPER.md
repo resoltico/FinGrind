@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: DEVELOPER
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -13,7 +13,12 @@ route:
 **Purpose**: Build, test, architecture, and workflow reference for FinGrind contributors.
 **Prerequisites**: Java 26 active in the current shell from the OpenJDK 26 bundle installed via [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md). Docker active in the current shell when running `./check.sh`, as codified in [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). No global Gradle install is required for repo work; use `./gradlew`.
 
+The preferred contributor path is now the committed devcontainer in
+[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). Host-native Java remains supported for
+contributors who explicitly need it, but the devcontainer is the documented default.
+
 Companion documents:
+- [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md)
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md)
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md)
@@ -125,8 +130,8 @@ FinGrind's current public model is:
 - one journal entry is exactly one currency
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the published book migration policy is sequential in-place migration, and the current supported
-  on-disk format is `1`
+- the current supported on-disk format is `1`, owned by `BookFormatContract`, and no historical
+  upgrade steps are bundled yet because the public line starts at that format
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - `./gradlew` relocates per-checkout project cache, included build output, and JaCoCo execution
@@ -139,23 +144,22 @@ FinGrind's current public model is:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
-| Gradle Wrapper | 9.5.0-rc-4 |
+| Gradle Wrapper | 9.5.0 |
 | Kotlin build logic | 2.4.0-Beta2 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build plus `--enable-native-access=ALL-UNNAMED` on the Java command line |
 | Jackson Databind | 3.1.2 |
 | JUnit Jupiter | 6.0.3 |
 | Jazzer | 0.30.0 |
+| JaCoCo | snapshot build 0.8.15.202604281210 via Maven coordinate 0.8.15-SNAPSHOT |
 | PMD | 7.24.0 |
 
-The current wrapper and build-logic Kotlin pins are intentionally prerelease:
-- Gradle wrapper: `9.5.0-rc-4`
+The build-logic Kotlin pin is intentionally prerelease:
 - Kotlin build logic: `2.4.0-Beta2`
 
-Treat those as temporary compatibility-sensitive choices rather than a steady-state baseline.
-Removal trigger: move to the matching stable `9.5.x` and stable `2.4.x` lines as soon as those
-releases are available and verified against this repository's wrapper, included-build, and plugin
-surface.
+Treat that as a temporary compatibility-sensitive choice rather than a steady-state baseline.
+Removal trigger: move to the matching stable `2.4.x` line as soon as that release is available
+and verified against this repository's wrapper, included-build, and plugin surface.
 
 ## Java 26 Feature Policy
 
@@ -281,6 +285,13 @@ java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar capabil
 - shell syntax checks for release-surface scripts
 - Docker smoke verification, including semantic JSON assertions for discovery, explicit book lifecycle, and write responses
 
+The committed contributor-devcontainer surface is a separate first-class contributor verification
+entrypoint:
+
+```bash
+./scripts/validate-devcontainer.sh
+```
+
 The Docker smoke stage now runs public-image operations through a temporary anonymous
 `DOCKER_CONFIG` while targeting the active local Docker engine derived from the current context.
 That keeps the gate aligned with the real Docker runtime without making public pulls depend on
@@ -323,23 +334,28 @@ root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 
-The repository currently ships four workflow surfaces:
+The repository currently ships four workflow files and five named automation surfaces:
 - `CI` runs on pushes and pull requests to `main`, and publishes the protected checks `Check`,
-  `Windows bundle smoke`, and `Docker smoke`.
+  `Windows bundle smoke`, and `Docker smoke`, plus the committed `Contributor devcontainer` job
+  that the release protocol treats as release-blocking even though branch protection does not
+  require it.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
+- `Contributor devcontainer` is the CI-visible owner of the committed contributor-container
+  contract through `./scripts/validate-devcontainer.sh`.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
 the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0, SQLite3 Multiple
 Ciphers 2.3.3, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
-GitHub workflows do not run active fuzzing, standalone Jazzer deterministic tests, or regression
-replay.
-Jazzer remains a local-only verification surface through `./check.sh` and the nested `jazzer/`
-build. Active harness execution also hard-fails when `GITHUB_ACTIONS=true`, so a future workflow
-cannot silently become a live-fuzz surface by mistake.
+GitHub workflows do not run active fuzzing.
+They now do run the nested deterministic Jazzer verification surface through
+`./gradlew -p jazzer check`, so deterministic corpus replay is part of CI while active fuzzing
+remains local-only through `./check.sh` and the nested `jazzer/` build. Active harness execution
+also hard-fails when `GITHUB_ACTIONS=true`, so a future workflow cannot silently become a
+live-fuzz surface by mistake.
 
 Operational protocols for those surfaces live in:
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
@@ -359,8 +375,8 @@ FinGrind deliberately keeps several boundaries sharp:
   plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
   `key=` / `hexkey=` secret transport.
 - There is no generic database-independence layer.
-- There is one canonical current SQLite schema, with the supported format version and migration
-  policy owned by the SQLite migration planner.
+- There is one canonical current SQLite schema, with the supported format version owned by
+  `BookFormatContract`; there is no published migration executor or historical upgrade catalog yet.
 - The CLI never bypasses the contract and executor boundary.
 - Caller-supplied request provenance is distinct from committed audit metadata.
 - Deterministic rejections stay separate from malformed requests and runtime failures.

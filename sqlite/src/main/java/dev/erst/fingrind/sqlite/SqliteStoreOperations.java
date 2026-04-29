@@ -33,11 +33,6 @@ final class SqliteStoreOperations {
     }
   }
 
-  static void closeReopenedDatabaseQuietly(@Nullable SqliteSessionDatabase reopenedDatabase) {
-    closeReopenedDatabaseQuietly(
-        reopenedDatabase == null ? null : reopenedDatabase.nativeDatabase());
-  }
-
   static void commitIfOwned(
       SqliteNativeDatabase activeDatabase, SqliteTransactionOwnership transactionOwnership) {
     if (transactionOwnership == SqliteTransactionOwnership.OWNED) {
@@ -99,6 +94,7 @@ final class SqliteStoreOperations {
 
   static ContractDecision<SqliteBookPassphrase> passphraseFor(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    return SqliteBookKeyFile.loadDecision(SqliteBookAccessRules.requireKeyFile(bookAccess));
+    return SqliteBookAccessRules.requireKeyFile(bookAccess)
+        .fold(SqliteBookKeyFile::loadDecision, ContractDecision::rejected);
   }
 }

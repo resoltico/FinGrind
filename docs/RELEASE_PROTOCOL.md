@@ -1,8 +1,8 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -80,6 +80,9 @@ exported patch before closeout. Stale work must be dropped. Never leave the prim
 stale `main` plus unpublished overlays.
 
 Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
+That gate now includes `scripts/verify-jacoco-snapshot.sh`, so a release that still depends on the
+current JaCoCo snapshot line must prove the mutable Maven alias has not drifted away from the
+repository's pinned exact snapshot build identity.
 
 Then verify every non-version item in this checklist. These repository and runtime conditions must
 be true before any release commit or tag:
@@ -91,6 +94,8 @@ be true before any release commit or tag:
   - `delete_branch_on_merge` is enabled
   - `main` is protected with admin enforcement
   - required status checks are exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
+  - the CI workflow also publishes `Contributor devcontainer`, and later release-handoff steps
+    treat it as release-blocking even though branch protection does not
 
 Before cutting the release branch, enumerate open PRs so dependency-automation work is never
 surprise-discovered after publication:
@@ -217,6 +222,10 @@ At the time of writing that means `Check`, `Windows bundle smoke`, and `Docker s
 If any required job fails, fix the failure, push to the release branch, and wait again — do not
 merge a red PR.
 
+If the visible `Contributor devcontainer` job fails on the release branch, fix it before merging
+even though GitHub branch protection does not require it directly. The post-merge handoff and tag
+verification steps below still treat that job as release-blocking.
+
 ### Step 4
 
 Merge PR and verify the merge handoff.
@@ -226,6 +235,7 @@ gh pr merge <N> --merge --admin --delete-branch --subject "release: bump version
 git checkout main
 git pull
 gh pr view <N> --json number,state,mergedAt,headRefName,baseRefName,url
+./scripts/verify-release-merge-handoff.sh
 ```
 
 The `--admin` flag uses administrator privileges to bypass branch-protection requirements,
@@ -240,6 +250,9 @@ Requirements before continuing:
 - `mergedAt` is populated.
 - Local `main` contains the merge commit you expect.
 - The remote release branch is deleted by the merge step.
+- `./scripts/verify-release-merge-handoff.sh` succeeds on the merged `main` commit, which means
+  the release-blocking CI set `Check`, `Windows bundle smoke`, `Docker smoke`, and
+  `Contributor devcontainer` are all green on the exact commit that will be tagged.
 
 GitHub auto-delete on merge should also be enabled at the repository level. `--delete-branch`
 remains mandatory here so the release handoff stays self-contained even if the repo setting is
@@ -262,10 +275,16 @@ git push origin vX.Y.Z
 
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 gh api "repos/$REPO/git/ref/tags/vX.Y.Z"
+./scripts/verify-release-candidate-tag.sh vX.Y.Z
 ```
 
 Do not proceed until the remote tag ref exists. Never infer a successful tag push from the
 absence of a local git error alone — verify the remote ref through GitHub.
+
+`./scripts/verify-release-candidate-tag.sh vX.Y.Z` is mandatory here. It proves the checked-out
+commit matches the remote tag, the tag version matches `gradle.properties`, the tag commit is
+still reachable from `origin/main`, and the release-blocking CI set is still green on that exact
+commit before any publication workflow is trusted.
 
 The tag push is what triggers the Release and Container workflows. The PR merge alone does
 not. These are two separate actions — both are required.
@@ -278,6 +297,11 @@ gh workflow run container.yml -f release_tag=vX.Y.Z
 ```
 
 Never create a second tag or move an existing release tag just to retry CI.
+
+The `Release` and `Container` workflows also run `./scripts/verify-release-candidate-tag.sh`
+internally before they build or publish anything. That guard is intentional: tag-driven release
+publication must not depend on a human remembering the verification step only from the prose
+protocol.
 
 ### Step 6
 

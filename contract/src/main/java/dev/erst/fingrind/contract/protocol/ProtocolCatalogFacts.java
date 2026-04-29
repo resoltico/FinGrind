@@ -19,9 +19,6 @@ final class ProtocolCatalogFacts {
               + ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
           "books must be opened explicitly before any posting or account declaration",
           "every posting line must reference a declared active account",
-          "sequential in-place migration is the canonical strategy. The current public line starts at book-format version 1, so no historical upgrade steps exist yet, but "
-              + OperationId.INSPECT_BOOK.wireName()
-              + " exposes detected and supported book-format versions plus compatibility state before mutating commands run",
           "single-currency-per-entry");
   private static final CurrencyFacts CURRENCY =
       new CurrencyFacts(

@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.io.IOException;
@@ -20,18 +19,25 @@ final class SqliteNativeConnections {
 
   static SqliteNativeDatabase open(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    ContractDecision<SqliteBookPassphrase> passphraseDecision =
-        SqliteBookKeyFile.loadDecision(SqliteBookAccessRules.requireKeyFile(bookAccess));
-    return passphraseDecision.fold(
-        bookPassphrase -> {
-          try (bookPassphrase) {
-            return open(
-                bookAccess.bookFilePath(), bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
-          }
-        },
-        failure -> {
-          throw new ContractFailureException(failure);
-        });
+    return SqliteBookAccessRules.requireKeyFile(bookAccess)
+        .fold(
+            keyFilePath ->
+                SqliteBookKeyFile.loadDecision(keyFilePath)
+                    .fold(
+                        bookPassphrase -> {
+                          try (bookPassphrase) {
+                            return open(
+                                bookAccess.bookFilePath(),
+                                bookPassphrase,
+                                SqliteNativeOpenMode.READ_WRITE_CREATE);
+                          }
+                        },
+                        failure -> {
+                          throw new ContractFailureException(failure);
+                        }),
+            failure -> {
+              throw new ContractFailureException(failure);
+            });
   }
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase) {

@@ -1,0 +1,54 @@
+{
+  "name": "FinGrind Contributor",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "workspaceFolder": "/workspaces/fingrind",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/fingrind,type=bind,consistency=cached",
+  "mounts": [
+    "source=fingrind-gradle-home,target=/home/vscode/.gradle,type=volume",
+    "source=fingrind-java-cache,target=/home/vscode/.cache,type=volume"
+  ],
+  "containerEnv": {
+    "FINGRIND_DEVCONTAINER": "1"
+  },
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-26",
+            "path": "/usr/lib/jvm/zulu-26",
+            "default": true
+          }
+        ],
+        "java.import.gradle.enabled": true,
+        "java.gradle.buildServer.enabled": "on",
+        "remote.extensionKind": {
+          "redhat.java": [
+            "workspace"
+          ],
+          "vscjava.vscode-gradle": [
+            "workspace"
+          ],
+          "vscjava.vscode-java-test": [
+            "workspace"
+          ]
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "redhat.java",
+        "vscjava.vscode-gradle",
+        "vscjava.vscode-java-test"
+      ]
+    }
+  }
+}

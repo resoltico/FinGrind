@@ -2,12 +2,16 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.ApplicationIdentity;
 import dev.erst.fingrind.contract.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.HelpDescriptor;
 import dev.erst.fingrind.contract.MachineContract;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Executes discovery and template commands that render contract-owned CLI metadata. */
 final class CliDiscoveryCommandExecutor {
@@ -21,9 +25,11 @@ final class CliDiscoveryCommandExecutor {
     this.clock = Objects.requireNonNull(clock, "clock");
   }
 
-  int writeHelp(OutputMode outputMode) {
+  int writeHelp(@Nullable OperationId commandTopic, OutputMode outputMode) {
     responseWriter.writeHelp(
-        MachineContract.help(applicationIdentity(), environmentDescriptor()), outputMode);
+        launcherAwareHelp(
+            MachineContract.help(applicationIdentity(), environmentDescriptor(), commandTopic)),
+        outputMode);
     return 0;
   }
 
@@ -52,6 +58,23 @@ final class CliDiscoveryCommandExecutor {
 
   private ApplicationIdentity applicationIdentity() {
     return CliRuntimeContractDescriptors.applicationIdentity(metadata);
+  }
+
+  private static HelpDescriptor launcherAwareHelp(HelpDescriptor helpDescriptor) {
+    List<String> usage =
+        helpDescriptor.usage().stream().map(CliInvocationText::rewriteInvocationPrefix).toList();
+    return new HelpDescriptor(
+        helpDescriptor.application(),
+        helpDescriptor.version(),
+        helpDescriptor.description(),
+        usage,
+        helpDescriptor.bookModel(),
+        helpDescriptor.commands(),
+        helpDescriptor.quickStart(),
+        helpDescriptor.exitCodes(),
+        helpDescriptor.preflight(),
+        helpDescriptor.currencyModel(),
+        helpDescriptor.environment());
   }
 
   private EnvironmentDescriptor environmentDescriptor() {

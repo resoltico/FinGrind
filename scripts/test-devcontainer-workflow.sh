@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Keep the committed contributor-devcontainer surface wired through CI and docs.
+
+set -euo pipefail
+
+die() {
+    printf 'error: %s\n' "$1" >&2
+    exit 1
+}
+
+resolve_script_dir() {
+    local source_path="${BASH_SOURCE[0]}"
+    while [[ -h "${source_path}" ]]; do
+        local source_dir
+        source_dir="$(cd -P -- "$(dirname -- "${source_path}")" && pwd)"
+        source_path="$(readlink "${source_path}")"
+        if [[ "${source_path}" != /* ]]; then
+            source_path="${source_dir}/${source_path}"
+        fi
+    done
+    cd -P -- "$(dirname -- "${source_path}")" && pwd
+}
+
+readonly script_dir="$(resolve_script_dir)"
+readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
+readonly developer_devcontainer_doc="${repo_root}/docs/DEVELOPER_DEVCONTAINER.md"
+readonly developer_docker_doc="${repo_root}/docs/DEVELOPER_DOCKER.md"
+readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
+
+[[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
+[[ -f "${developer_devcontainer_doc}" ]] || die \
+    "missing contributor devcontainer doc at ${developer_devcontainer_doc}"
+[[ -f "${developer_docker_doc}" ]] || die "missing Docker doc at ${developer_docker_doc}"
+[[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
+
+grep -Fq 'name: Contributor devcontainer' "${workflow_file}" || die \
+    "CI workflow no longer advertises the contributor devcontainer job"
+grep -Fq './scripts/validate-devcontainer.sh' "${workflow_file}" || die \
+    "CI workflow no longer runs the contributor devcontainer validator"
+grep -Fq './scripts/validate-devcontainer.sh' "${developer_devcontainer_doc}" || die \
+    "developer devcontainer doc no longer points at the validator"
+grep -Fq '[DEVELOPER_DEVCONTAINER.md]' "${developer_docker_doc}" || die \
+    "Docker doc no longer distinguishes the contributor devcontainer companion reference"
+grep -Fq 'Contributor devcontainer' "${release_protocol}" || die \
+    "release protocol no longer treats the contributor devcontainer surface as release-blocking"
+
+printf 'devcontainer workflow regression: success\n'

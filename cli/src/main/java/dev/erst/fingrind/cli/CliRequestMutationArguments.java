@@ -12,18 +12,18 @@ import org.jspecify.annotations.Nullable;
  * Parses request-bound mutation commands such as declare-account, execute-plan, and posting flows.
  */
 final class CliRequestMutationArguments {
+  private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+
   private CliRequestMutationArguments() {}
 
   static CliCommand parseDeclareAccountCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments);
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
-      }
+      argumentIterator.next();
       outputMode =
           CliArgumentValueParser.requireOutputMode(
               outputMode,
@@ -54,14 +54,11 @@ final class CliRequestMutationArguments {
   private static CliCommand parseRequestBoundOutputCommand(
       List<String> arguments, RequestBoundOutputCommandFactory commandFactory) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments);
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
-      }
+      argumentIterator.next();
       outputMode =
           CliArgumentValueParser.requireOutputMode(
               outputMode,

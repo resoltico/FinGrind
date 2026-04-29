@@ -250,7 +250,7 @@ class SqliteStoreContext implements SqliteBookSession {
     return lifecycle.stateSnapshot(activeDatabase);
   }
 
-  SqliteSessionDatabase database() {
+  SqliteNativeDatabase database() {
     return lifecycle.database();
   }
 
@@ -270,7 +270,7 @@ class SqliteStoreContext implements SqliteBookSession {
     return reportReader;
   }
 
-  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteSessionDatabase activeDatabase) {
+  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
     return lifecycle.beginImmediateIfNeeded(activeDatabase);
   }
 
@@ -294,12 +294,11 @@ class SqliteStoreContext implements SqliteBookSession {
     lifecycle.publishDatabase(activeDatabase);
   }
 
-  SqliteSessionDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
-    return new SqliteSessionDatabase(
-        SqliteConnectionConfigurer.configureOpenedDatabase(
-            SqliteNativeConnections.open(
-                bookPath(), bookPassphrase, accessMode().nativeOpenMode(), lifecycle.sqliteApi()),
-            accessMode()));
+  SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
+    return SqliteConnectionConfigurer.configureOpenedDatabase(
+        SqliteNativeConnections.open(
+            bookPath(), bookPassphrase, accessMode().nativeOpenMode(), lifecycle.sqliteApi()),
+        accessMode());
   }
 
   SqliteStoreLifecycle lifecycle() {

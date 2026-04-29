@@ -181,6 +181,18 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_rejectsUnsupportedEntryArgumentBeforeMissingRequiredBookArguments() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"post-entry", "--bogus"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--bogus", exception.argument());
+    assertEquals("Unsupported argument: --bogus", exception.getMessage());
+  }
+
+  @Test
   void parse_rejectsMissingBookFileValue() {
     CliArgumentsException exception =
         assertThrows(

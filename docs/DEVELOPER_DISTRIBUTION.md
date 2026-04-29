@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.28.0"
+version: "0.29.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -13,7 +13,8 @@ route:
 **Purpose**: Codify the public FinGrind CLI artifact contract and the rules for building and
 publishing it.
 **Prerequisites**: Familiarity with [DEVELOPER.md](./DEVELOPER.md),
-[DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md), and [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md).
+[DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md), [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md),
+and [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md).
 
 ## Canonical Public Artifact
 
@@ -39,6 +40,10 @@ That keeps public execution independent from:
 - ambient host `libsqlite3` fallback
 
 This is the supported public CLI contract.
+
+The contributor devcontainer is intentionally not part of this public artifact contract. It is a
+developer shell documented in [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md), not a
+published runtime surface.
 
 ## Why Bundles, Not A Bare JAR
 
@@ -148,6 +153,10 @@ Bundle entrypoints:
 ./gradlew :cli:bundleCliArchive
 ./scripts/bundle-smoke.sh
 ```
+
+Local bundle restaging prunes older `cli/build/bundle/fingrind-*` trees before writing the
+current versioned root, so repeated source-checkout bundle builds no longer leave stale staged
+bundle directories behind.
 
 On Windows PowerShell, use:
 

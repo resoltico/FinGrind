@@ -1,18 +1,20 @@
 ---
 afad: "3.5"
-version: "0.28.0"
+version: "0.29.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-04-28"
+updated: "2026-04-29"
 route:
-  keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container]
-  questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh"]
+  keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
+  questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
 ---
 
-# Docker Workstation Setup
+# Docker Runtime And Workstation Setup
 
-**Purpose**: Codify the supported Docker setup for FinGrind contributors on macOS.
+**Purpose**: Codify the supported Docker setup for FinGrind contributors on macOS and distinguish
+the contributor devcontainer from the published runtime container.
 **Prerequisites**: Java 26 and wrapper-based Gradle setup already in place through
-[DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md).
+[DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md), or the preferred contributor devcontainer path through
+[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md).
 
 Supported workstation shape:
 - Docker Desktop installed from Docker's own macOS distribution path on `docker.com`
@@ -24,6 +26,8 @@ Supported workstation shape:
 ## Canonical Stance
 
 For FinGrind's local container work, the documented standard is:
+- the preferred contributor workflow is the committed devcontainer documented in
+  [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md)
 - Docker comes from Docker Desktop, not from a separate Homebrew-only container-runtime story
 - `docker` and the Docker daemon must already work in the current shell before `./check.sh`
 - `docker buildx` is required; the smoke gate uses `docker buildx build --load`, not Docker's
@@ -35,6 +39,11 @@ For FinGrind's local container work, the documented standard is:
   filesystem-security contract as production, not a weakened test-only variant
 
 The repository now enforces these Docker-runtime rules in `scripts/docker-smoke.sh`.
+
+This Docker runtime guidance is separate from the contributor devcontainer:
+- the devcontainer is a glibc-based contributor shell with a full Zulu 26 JDK and editor tooling
+- the published runtime container is the public execution artifact verified by Docker smoke and
+  release publication checks
 
 The container image itself also stays on the same managed-runtime policy as the bundle archives:
 - it verifies the pinned vendored SQLite3MC source hash during image build before compiling the

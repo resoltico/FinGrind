@@ -5,6 +5,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-04-29
+
+### Changed
+
+- Removed the public `BookMigrationPolicy` contract surface and the passive SQLite migration
+  placeholder types, and moved the `USER_CLI` command-table sync launcher out of production
+  sources so the public contract now exposes only real book-format facts and runtime surfaces.
+- Added a committed contributor devcontainer surface, a CI validation job for it, and release
+  merge-handoff/tag verifiers that now treat `Contributor devcontainer` as release-blocking even
+  though GitHub branch protection still protects only `Check`, `Windows bundle smoke`, and
+  `Docker smoke`.
+- Split the public help quick-start contract into surface-keyed POSIX-shell and Windows-PowerShell
+  workflows with canonical launcher commands plus explicit file-write steps instead of one
+  flattened shell transcript, and moved the Gradle wrapper onto the stable `9.5.0` line while
+  keeping the JVM 26 build baseline intact.
+- Replaced the fake one-value `SourceChannel` enum with a singleton contract owner so the current
+  public line records the durable committed-entry surface truthfully without pretending it already
+  has an extensible source-channel taxonomy.
+
+### Fixed
+
+- Fixed the public help/discovery surface so `help <command>` and `<command> --help` now return
+  scoped command usage/examples, bundle-launched repair hints and scoped help rewrite to the real
+  extracted launcher path instead of bare `fingrind`, and local bundle restaging prunes stale
+  `cli/build/bundle/fingrind-*` roots instead of leaving old versioned bundle trees behind.
+- Removed the stale tracked `gradle/build-logic/bin/` shadow tree, added canonical domain
+  invariants for `CurrencyBalance`, `AccountCode`, and `IdempotencyKey`, and derived the machine
+  request schemas from those same identifier owners so contract docs and runtime validation no
+  longer drift.
+- Fixed the remaining request/inspection/storage drift so `inspect-book` now reports
+  `canInitializeWithOpenBook` truthfully for missing book paths, `execute-plan` maps begin,
+  commit, and rollback failures into structured rejected journals instead of leaking raw
+  exceptions, and the SQLite schema now enforces the same account-code and idempotency-key
+  identifier contract as the Java/domain and machine-schema surfaces.
+- Fixed SQLite session and mutation seams so public `SqliteBookSessions.open(...)` variants now
+  prime their sessions, non-key-file same-package access rejects through typed `ContractDecision`
+  failures, account reactivation updates the persisted `declaredAt` timestamp consistently, and
+  unexpected ledger-plan runtime failures are journaled as structured step-failure rejections
+  instead of escaping unchecked.
+- Fixed SQLite/native diagnostics so more primary and extended result codes now surface stable
+  names, negative book-state snapshots are rejected at construction time, and the CI workflow now
+  runs deterministic nested Jazzer coverage instead of leaving that regression surface local-only.
+- Fixed the Gradle/JaCoCo toolchain surface so FinGrind now resolves the upstream Java 26-ready
+  JaCoCo snapshot build 0.8.15.202604281210 through the real Maven alias 0.8.15-SNAPSHOT, and
+  added a release-surface verifier that fails if that mutable alias drifts away from the
+  repository's pinned timestamped snapshot artifact.
+- Fixed plan-journal truth and storage-boundary drift so unexpected begin, initialization-check,
+  commit, and rollback failures now end `execute-plan` with explicit `plan-boundary` journal
+  entries, the canonical SQLite schema rejects blank persisted account/provenance identifiers, and
+  the protocol plus developer docs no longer describe a removed migration planner or sequential
+  in-place migration policy.
+- Fixed the committed source-channel contract so SQLite schema proofs, fixtures, and schema docs
+  now tie the persisted `source_channel` value directly to the canonical `SourceChannel.CLI`
+  owner instead of carrying free-floating `'CLI'` test literals.
+
 ## [0.28.0] - 2026-04-28
 
 ### Changed
@@ -1112,7 +1167,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.29.0
 [0.28.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.28.0
 [0.27.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.27.0
 [0.26.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.26.0

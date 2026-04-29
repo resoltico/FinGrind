@@ -119,7 +119,7 @@ class SqliteNativeInteropTest {
                       """));
 
       assertEquals(1, exception.resultCode());
-      assertEquals("SQLITE_1", exception.resultName());
+      assertEquals("SQLITE_ERROR", exception.resultName());
     }
   }
 

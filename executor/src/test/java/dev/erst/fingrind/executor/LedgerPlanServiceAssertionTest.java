@@ -49,6 +49,10 @@ class LedgerPlanServiceAssertionTest {
                                   new PostingId("posting-missing"))))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
+      assertEquals(3, result.journal().steps().size());
+      assertEquals("open", result.journal().steps().get(0).stepId().value());
+      assertEquals("cash", result.journal().steps().get(1).stepId().value());
+      assertEquals("missing-posting", result.journal().steps().get(2).stepId().value());
       assertEquals("assertion-failed", result.journal().steps().getLast().requiredFailure().code());
       assertFalse(bookSession.isInitialized());
     }

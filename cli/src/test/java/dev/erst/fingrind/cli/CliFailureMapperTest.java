@@ -87,7 +87,7 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
             Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")));
     CliCommand.ReportOutput humanReport = new CliCommand.ReportOutput(OutputMode.HUMAN, null);
 
-    assertEquals(OutputMode.HUMAN, new Help(OutputMode.HUMAN).failureOutputMode());
+    assertEquals(OutputMode.HUMAN, new Help(null, OutputMode.HUMAN).failureOutputMode());
     assertEquals(OutputMode.JSON, new Capabilities(OutputMode.JSON).failureOutputMode());
     assertEquals(OutputMode.HUMAN, new Version(OutputMode.HUMAN).failureOutputMode());
     assertEquals(OutputMode.JSON, new PrintRequestTemplate().failureOutputMode());

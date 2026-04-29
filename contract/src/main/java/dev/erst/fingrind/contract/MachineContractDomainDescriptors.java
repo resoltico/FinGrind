@@ -25,7 +25,6 @@ final class MachineContractDomainDescriptors {
         bookModel.credential(),
         bookModel.initialization(),
         bookModel.accountRegistry(),
-        bookModel.migration(),
         bookModel.currencyScope());
   }
 
