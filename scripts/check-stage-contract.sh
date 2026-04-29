@@ -22,6 +22,7 @@ readonly check_stage_labels=(
 readonly check_stage5_executable_script_paths=(
     scripts/test-devcontainer-workflow.sh
     scripts/test-ci-shell-syntax-workflow.sh
+    scripts/test-container-workflow-timeout.sh
     scripts/test-prepare-release-version.sh
     scripts/test-read-contract-values.sh
     scripts/test-bundle-smoke-powershell.sh

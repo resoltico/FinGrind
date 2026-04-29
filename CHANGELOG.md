@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Increased the tagged container-publication workflow budget so its final public-tag verification
+  no longer times out after a successful multi-arch `ghcr.io` push, and added a shell regression
+  guard that keeps the workflow's release-asset gate, publication verifier, and timeout contract
+  aligned.
+
 ## [0.29.0] - 2026-04-29
 
 ### Changed
