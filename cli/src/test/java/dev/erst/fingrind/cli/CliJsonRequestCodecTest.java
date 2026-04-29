@@ -126,15 +126,19 @@ class CliJsonRequestCodecTest {
     try {
       System.setProperty(
           FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
+      String bundleLauncher =
+          CliInvocationText.launcherCommandFor(
+              FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
 
       assertTrue(
           CliJsonRequestCodec.postEntryRequestHint()
-              .contains("./bin/fingrind print-request-template"));
+              .contains(bundleLauncher + " print-request-template"));
       assertTrue(
           CliJsonRequestCodec.ledgerPlanRequestHint()
-              .contains("./bin/fingrind print-plan-template"));
+              .contains(bundleLauncher + " print-plan-template"));
       assertTrue(
-          CliJsonRequestCodec.declareAccountRequestHint().contains("./bin/fingrind capabilities"));
+          CliJsonRequestCodec.declareAccountRequestHint()
+              .contains(bundleLauncher + " capabilities"));
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);

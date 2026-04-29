@@ -31,9 +31,13 @@ class CliInvocationTextTest {
     System.setProperty(
         FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
     try {
+      String expectedBundleLauncher =
+          CliInvocationText.launcherCommandFor(
+              FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
       assertEquals("Usage", CliInvocationText.rewriteInvocationPrefix("Usage"));
       assertEquals(
-          "./bin/fingrind help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
+          expectedBundleLauncher + " help",
+          CliInvocationText.rewriteInvocationPrefix("fingrind help"));
     } finally {
       System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, originalDistribution);
     }

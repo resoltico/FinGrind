@@ -111,6 +111,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     try {
       System.setProperty(
           FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
+      String bundleLauncher =
+          CliInvocationText.launcherCommandFor(
+              FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       FinGrindCli cli =
           cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
@@ -121,10 +124,11 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       assertEquals(0, helpExitCode);
       assertEquals(1, failureExitCode);
       String output = outputStream.toString(StandardCharsets.UTF_8);
-      assertTrue(output.contains("./bin/fingrind post-entry"));
+      assertTrue(output.contains(bundleLauncher + " post-entry"));
       assertTrue(output.contains("Unsupported argument: --bogus"));
       assertTrue(
-          output.contains("Run './bin/fingrind help' to inspect the supported command syntax."));
+          output.contains(
+              "Run '" + bundleLauncher + " help' to inspect the supported command syntax."));
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
