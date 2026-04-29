@@ -114,20 +114,33 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       String bundleLauncher =
           CliInvocationText.launcherCommandFor(
               FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
-      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      FinGrindCli cli =
-          cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+      ByteArrayOutputStream helpOutputStream = new ByteArrayOutputStream();
+      FinGrindCli helpCli =
+          cli(
+              new ByteArrayInputStream(new byte[0]),
+              utf8PrintStream(helpOutputStream),
+              fixedClock());
+      ByteArrayOutputStream failureOutputStream = new ByteArrayOutputStream();
+      FinGrindCli failureCli =
+          cli(
+              new ByteArrayInputStream(new byte[0]),
+              utf8PrintStream(failureOutputStream),
+              fixedClock());
 
-      int helpExitCode = cli.run(new String[] {"help", "post-entry", "--output", "json"});
-      int failureExitCode = cli.run(new String[] {"post-entry", "--bogus"});
+      int helpExitCode = helpCli.run(new String[] {"help", "post-entry", "--output", "json"});
+      int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
 
       assertEquals(0, helpExitCode);
       assertEquals(1, failureExitCode);
-      String output = outputStream.toString(StandardCharsets.UTF_8);
-      assertTrue(output.contains(bundleLauncher + " post-entry"));
-      assertTrue(output.contains("Unsupported argument: --bogus"));
+      JsonNode helpPayload =
+          new ObjectMapper()
+              .readTree(helpOutputStream.toString(StandardCharsets.UTF_8))
+              .path("payload");
+      assertTrue(containsText(helpPayload, bundleLauncher + " post-entry"));
+      String failureOutput = failureOutputStream.toString(StandardCharsets.UTF_8);
+      assertTrue(failureOutput.contains("Unsupported argument: --bogus"));
       assertTrue(
-          output.contains(
+          failureOutput.contains(
               "Run '" + bundleLauncher + " help' to inspect the supported command syntax."));
     } finally {
       if ("__missing__".equals(priorDistribution)) {
@@ -167,6 +180,20 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     List<String> names = new ArrayList<>();
     commands.forEach(command -> names.add(command.path("name").asText()));
     return List.copyOf(names);
+  }
+
+  private static boolean containsText(JsonNode node, String expected) {
+    if (node.isTextual() && node.asText().contains(expected)) {
+      return true;
+    }
+    if (node.isObject() || node.isArray()) {
+      for (JsonNode child : node) {
+        if (containsText(child, expected)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private static JsonNode commandDescriptor(JsonNode commands, String operationId) {
