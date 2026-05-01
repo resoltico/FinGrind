@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.ContractDecision;
@@ -23,16 +22,14 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(publishedPath))) {
       setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(publishedPath)));
-      assertSame(
-          postingFactStore.lifecycle(), postingFactStore.lifecycle().prime().requireAccepted());
+      assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
 
     Path existingPath = tempDirectory.resolve("prime-existing.sqlite");
     initializeBookOnDisk(existingPath);
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(existingPath))) {
-      assertSame(
-          postingFactStore.lifecycle(), postingFactStore.lifecycle().prime().requireAccepted());
+      assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
 
     Path existingReadWriteExistingPath =
@@ -41,8 +38,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
             bookAccess(existingReadWriteExistingPath), SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
-      assertSame(
-          postingFactStore.lifecycle(), postingFactStore.lifecycle().prime().requireAccepted());
+      assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
 
     Path initializedPath = tempDirectory.resolve("prime-wrong-passphrase.sqlite");
@@ -53,11 +49,11 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
         SqlitePostingFactStore postingFactStore =
             new SqlitePostingFactStore(
                 initializedPath, wrongPassphrase, SqliteStoreAccessMode.READ_WRITE_CREATE)) {
-      ContractDecision<SqliteStoreLifecycle> decision = postingFactStore.lifecycle().prime();
+      ContractDecision<SqlitePostingFactStore> decision = postingFactStore.prime();
       switch (decision) {
-        case ContractDecision.Accepted<SqliteStoreLifecycle> _ ->
+        case ContractDecision.Accepted<SqlitePostingFactStore> _ ->
             throw new AssertionError("Expected lifecycle priming to be rejected.");
-        case ContractDecision.Rejected<SqliteStoreLifecycle>(var failure) ->
+        case ContractDecision.Rejected<SqlitePostingFactStore>(var failure) ->
             assertEquals(
                 ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(), failure.code());
       }

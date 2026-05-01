@@ -18,3 +18,11 @@
 !third_party/sqlite/
 !third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/
 !third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/sqlite3mc_amalgamation.c
+
+# Allow root legal files for inclusion in the published container image.
+!LICENSE
+!LICENSE-APACHE-2.0
+!LICENSE-SIL-OFL-1.1
+!LICENSE-SQLITE3MULTIPLECIPHERS
+!NOTICE
+!PATENTS.md

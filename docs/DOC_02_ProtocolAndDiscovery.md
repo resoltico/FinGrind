@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.29.0"
+version: "0.30.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -267,6 +267,9 @@ public enum SqliteRuntimeStatus implements WireValue
 - Purpose: keep runtime distribution, public bundle identity, storage backend, protected-book
   defaults, managed SQLite loading mode, runtime provenance, and runtime readiness in enum-owned
   wire vocabularies
+- `SqliteRuntimeStatus`: distinguishes `ready`, `unavailable`, `failed`, and `incompatible`, so
+  discovery can separate missing-runtime failures from late probe failures after one concrete
+  library target was already resolved
 - Validation surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and typed discovery
   records such as `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`, and
   `EnvironmentSqliteDescriptor`
@@ -388,6 +391,9 @@ public final class ContractTemplates
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
+- `EnvironmentStorageDescriptor.defaultProtectedBookFormat` publishes the canonical protected-book
+  cipher, page-size, reserve-byte, and KDF facts as one typed contract record instead of leaking
+  those defaults through loosely related scalar fields
 - `HelpDescriptor.quickStart` is a typed `WorkflowDescriptor` list keyed by `WorkflowSurface`
   rather than a flat string array, so canonical quick starts can publish platform-aware command,
   file-write, and note steps without implying that one shell transcript fits every bundle target
@@ -447,6 +453,9 @@ public final class ContractFailureException extends IllegalStateException
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
   `invalid-page-cursor`, `book-authentication-failed`, `managed-runtime-failure`,
   `storage-runtime-failure`, `pdf-export-failure`, and `interactive-prompt-unavailable`
+- `invalid-request` now advertises structured `detailFields` when the malformed request reaches
+  aggregated journal grammar validation, with `details.violations[]` carrying the full ordered
+  set of detected issues
 - `ContractFailure` carries the stable descriptor plus the caller-facing message, optional hint,
   and optional argument name without routing expected failures through exceptions
 - `ContractDecision` carries either the accepted typed payload or one deterministic
@@ -467,3 +476,21 @@ public final class BookFormatContract
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
 - Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 1`
+
+## `ProtectedBookFormatContract`
+
+`ProtectedBookFormatContract` is the canonical public owner of the active SQLite protected-book
+format defaults that discovery, runtime verification, fixtures, and shell/build contracts share.
+
+```java
+public record ProtectedBookFormatContract(...)
+```
+
+- Purpose: keep one typed contract for the default cipher, page size, reserve bytes, legacy mode,
+  legacy page size, KDF iteration count, and plaintext-header policy instead of duplicating those
+  facts across runtime discovery, fixture metadata, and build-time contract readers
+- Discovery reach: `EnvironmentStorageDescriptor.defaultProtectedBookFormat` exposes the same
+  typed defaults through `capabilities`, so machine consumers do not need to reconstruct the
+  protected-book format from partial scalar fields
+- Verification reach: the managed SQLite runtime probe, committed compatibility fixture metadata,
+  and newly created protected books all compare back to this contract before repository gates pass

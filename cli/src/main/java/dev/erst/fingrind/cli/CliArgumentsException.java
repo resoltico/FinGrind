@@ -37,6 +37,13 @@ final class CliArgumentsException extends IllegalArgumentException implements Cl
     return hint;
   }
 
+  CliArgumentsException withHint(String replacementHint) {
+    String message = Objects.requireNonNullElse(getMessage(), "CLI arguments are invalid.");
+    return getCause() == null
+        ? new CliArgumentsException(code, argument, message, replacementHint)
+        : new CliArgumentsException(code, argument, message, replacementHint, getCause());
+  }
+
   @Override
   public CliFailure failure() {
     return new CliFailure(

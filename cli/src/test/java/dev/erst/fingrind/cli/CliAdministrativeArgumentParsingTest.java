@@ -77,7 +77,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--new-book-key-file",
+                  "--replacement-book-key-file",
                   "book-new.key",
                   "--output",
                   "human"

@@ -40,7 +40,9 @@ final class MachineContractResponseDescriptors {
             new ContractResponse.FieldDescriptor(
                 "hint", "Optional operator hint for repairing the invocation."),
             new ContractResponse.FieldDescriptor(
-                "argument", "Optional argument name associated with the failure.")));
+                "argument", "Optional argument name associated with the failure."),
+            new ContractResponse.FieldDescriptor(
+                "details", "Optional structured error-specific detail object.")));
   }
 
   private static List<ContractResponse.RejectionDescriptor> rejectionDescriptors() {

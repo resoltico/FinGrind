@@ -125,7 +125,7 @@ class CliIoFixtureSupport {
 
   protected static List<String> readTextArray(JsonNode node) {
     List<String> values = new ArrayList<>();
-    node.forEach(element -> values.add(element.asText()));
+    node.forEach(element -> values.add(element.stringValue()));
     return List.copyOf(values);
   }
 

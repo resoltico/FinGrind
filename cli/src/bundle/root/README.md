@@ -36,3 +36,8 @@ The best machine-readable contract after startup is:
 
 For the full command surface, examples, and deterministic error guidance:
 - `${bundleLauncherCommand} help`
+
+Legal:
+See LICENSE, LICENSE-APACHE-2.0, LICENSE-SIL-OFL-1.1, LICENSE-SQLITE3MULTIPLECIPHERS,
+NOTICE, and PATENTS.md in this archive for license texts, attribution notices, and
+patent considerations.

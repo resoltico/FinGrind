@@ -284,6 +284,13 @@ class ProtocolCatalogTest {
     assertEquals(StorageDriver.SQLITE_FFM_SQLITE3MC, ProtocolCatalog.storageDriver());
     assertEquals(StorageEngine.SQLITE, ProtocolCatalog.storageEngine());
     assertEquals(BookProtectionMode.REQUIRED, ProtocolCatalog.bookProtectionMode());
+    assertEquals(BookCipher.CHACHA20, ProtocolCatalog.protectedBookFormat().cipher());
+    assertFalse(ProtocolCatalog.protectedBookFormat().legacyMode());
+    assertEquals(4096, ProtocolCatalog.protectedBookFormat().pageSize());
+    assertEquals(32, ProtocolCatalog.protectedBookFormat().reservedBytes());
+    assertEquals(4096, ProtocolCatalog.protectedBookFormat().legacyPageSize());
+    assertEquals(64007, ProtocolCatalog.protectedBookFormat().kdfIter());
+    assertEquals(0, ProtocolCatalog.protectedBookFormat().plaintextHeaderSize());
     assertEquals(BookCipher.CHACHA20, ProtocolCatalog.defaultBookCipher());
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
     assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());

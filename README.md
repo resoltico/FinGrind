@@ -1,115 +1,78 @@
-<!--
-RETRIEVAL_HINTS:
-  keywords: [fingrind, bookkeeping, protected book, balances, reports, pdf, automation, quick start]
-  answers: [what is fingrind, who is fingrind for, what changes with fingrind, where is the quick start]
-  related: [docs/USER_QUICK_START.md, docs/USER_CLI.md, docs/USER_EXAMPLES.md, docs/README.md]
--->
+[![FinGrind Art](https://raw.githubusercontent.com/resoltico/FinGrind/main/images/FinGrind.png)](https://github.com/resoltico/FinGrind)
 
-# FinGrind — calmer bookkeeping in one protected book
+[![Release](https://img.shields.io/github/v/release/resoltico/FinGrind?label=release)](https://github.com/resoltico/FinGrind/releases)
+[![CI](https://github.com/resoltico/FinGrind/actions/workflows/ci.yml/badge.svg)](https://github.com/resoltico/FinGrind/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Java 26](https://img.shields.io/badge/java-26-orange.svg)](https://openjdk.org/projects/jdk/26/)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/resoltico/FinGrind/releases)
+[![Encrypted](https://img.shields.io/badge/storage-encrypted%20SQLite-blueviolet.svg)](https://utelle.github.io/SQLite3MultipleCiphers/)
 
-*FinGrind is a bookkeeping tool for people who want one protected book per business, strict checks before entries land, and clear answers when they need balances or reports.*
+# FinGrind — command-line double-entry bookkeeping with one protected book per business
 
-## At a Glance
+FinGrind is a command-line bookkeeping tool. Each business gets one encrypted SQLite file. Every
+entry is validated before it commits. Balances, ledgers, and period summaries come back as tables,
+JSON, CSV, or PDF.
 
-- Keep one protected book for one business instead of letting records sprawl.
-- Catch bad posting input before it becomes cleanup work later.
-- Read back balances, ledgers, trial balances, and period summaries from the same place you post.
-- Export the same reporting work as readable output, CSV, or PDF when the day calls for it.
+Every bookkeeping setup hits the same morning problem: you need to know where things stand and the
+answer is spread across notes, tabs, and half-finished checks. With FinGrind the daily grind stays
+clean — one protected file, one command to read it back, and bad entries rejected before they
+ever reach the book.
 
-## Who It Helps
+- Open one encrypted book per business, protected by a generated key file
+- Declare accounts before posting; unbalanced entries and undeclared accounts are rejected at commit
+- Post double-entry journal entries with provenance and idempotency keys
+- Read back account balances, trial balances, account ledgers, and period summaries
+- Export any report as human-readable tables, JSON, CSV, or PDF
 
-FinGrind fits operators, finance-minded owners, and small teams who want bookkeeping to stay
-explicit. It works especially well when a person and a repeatable workflow both need the same clear
-rules instead of a loose spreadsheet process.
+[Quick start](docs/USER_QUICK_START.md) · [Command guide](docs/USER_CLI.md)
 
-It is a good fit if you want:
-- one book file per business,
-- declared accounts before posting,
-- predictable rejection of bad input,
-- reporting you can read yourself or hand to automation,
-- one machine-readable contract surface, via `capabilities` and the template commands, for the
-  same request and plan rules humans use, including typed field descriptors and executable JSON
-  Schema for posting and ledger-plan payloads.
+## The Daily Grind
 
-## What Changes
+Every command reads from or writes to the same protected file. The key file is required every time
+— lose the key and the book stays locked:
 
-- You stop wondering whether a book is ready. Books are opened explicitly, and their state stays
-  visible.
-- You stop finding some problems too late. FinGrind rejects missing accounts, inactive accounts,
-  duplicate request keys, and invalid reversals at the point where they happen.
-- You stop piecing basic answers together by hand. The same tool can show posting history, account
-  balances, a trial balance, an account ledger, or a period summary.
+```bash
+# Create one protected book
+fingrind generate-book-key-file --book-key-file ./acme.key
+fingrind open-book --book-file ./acme.sqlite --book-key-file ./acme.key
 
-## In the Flow of a Day
+# Declare accounts, then post a balanced entry
+fingrind declare-account --book-file ./acme.sqlite --book-key-file ./acme.key \
+  --request-file ./cash-account.json
+fingrind post-entry --book-file ./acme.sqlite --book-key-file ./acme.key \
+  --request-file ./entry.json
 
-You open the book you care about, do the work you need to do, and then read back where things
-stand. That makes FinGrind a calm first stop when you want the morning picture to be clear instead
-of spread across notes, spreadsheets, and half-finished checks.
+# Read the trial balance back
+fingrind trial-balance --book-file ./acme.sqlite --book-key-file ./acme.key
+```
 
-## Proof and Trust
+```
+Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | EUR      |      500.00 |         0.00 |     500.00 | DEBIT
+2000    | Revenue | EUR      |        0.00 |       500.00 |     500.00 | CREDIT
+```
 
-- Books stay protected at rest, and wrong-key failures come back as clear FinGrind errors rather
-  than raw storage noise.
-- Public downloads are ready to run on the current macOS, Linux, and Windows bundle targets, and
-  the live bundle matrix is disclosed consistently through `capabilities` and `bundle-manifest.json`.
-- The self-contained bundle and the public container disclose the same runtime contract instead of
-  drifting onto separate packaging stories.
-- The machine-readable discovery and template surfaces come from the same canonical contract facts
-  the CLI, bundle, Docker image, and shell verifiers use.
-- `capabilities` now publishes grouped per-command stdout and artifact contracts directly, so
-  automation does not have to guess which commands negotiate `--output` and which stay fixed.
-- The checked-in request and plan scaffold fixtures stay byte-identical to the live template
-  commands until the contract itself changes, so examples do not silently drift away from the real
-  machine bootstrap surface.
-- The reporting surface already covers the questions most people ask first: account balance, trial
-  balance, account ledger, and period summary.
-- The model stays intentionally strict: one book per business, one currency per entry, positive line
-  amounts, and balanced entries only.
-- FinGrind is open source under MIT, with bundled dependency license texts, notices, and patent
-  notes linked below.
+Wrong entries come back as clear errors before they land: unbalanced lines, undeclared accounts,
+duplicate idempotency keys — all rejected at the point where they happen.
 
-## Start Here
+## Where It Fits
 
-If this sounds like the right shape of bookkeeping, start with:
+Finance-minded owners, small teams, and operators who want explicit bookkeeping without a
+spreadsheet. One book per business, one tool to post and read back.
 
-- [the quick start](./docs/USER_QUICK_START.md)
-- [example flows and outputs](./docs/USER_EXAMPLES.md)
-- [the full user docs](./docs/README.md)
-- [developer and verification guides](./docs/DEVELOPER.md)
-- [the latest download](https://github.com/resoltico/FinGrind/releases/latest)
+## Get It
 
-## Questions
+[Download for macOS, Linux, or Windows →](https://github.com/resoltico/FinGrind/releases/latest)
 
-### Is this one book for one company, or one tool for many companies?
-
-FinGrind is one tool for many books, but each book file is for one business. That boundary is part
-of the design, because it keeps ownership, protection, and reporting scope easy to reason about.
-
-### Do I need to be a developer to use it?
-
-No. You do need to be comfortable using a command-line tool and following a short setup flow. The
-public downloads are self-contained, and the quick start walks through the first run directly.
-
-### What can I ask it for after I post entries?
-
-You can inspect the book, list accounts, look up postings, page through posting history, check one
-account balance, and generate a trial balance, account ledger, or period summary. Those readbacks
-can also be rendered as readable output, CSV, or PDF, and optional PDF write problems come back as
-warnings without replacing the primary report result.
-
-### What is it not trying to be?
-
-It is not a free-form spreadsheet, and it is not a broad multi-user desktop accounting suite.
-FinGrind is strongest when you want explicit rules, one protected book per business, and a workflow
-that stays legible.
-
----
+The download is self-contained — no separate Java install needed. The
+[quick start](docs/USER_QUICK_START.md) walks from download to first posted entry.
 
 ## Legal
 
-- [LICENSE](./LICENSE)
-- [LICENSE-APACHE-2.0](./LICENSE-APACHE-2.0)
-- [LICENSE-SIL-OFL-1.1](./LICENSE-SIL-OFL-1.1)
-- [NOTICE](./NOTICE)
-- [PATENTS.md](./PATENTS.md)
-- [LICENSE-SQLITE3MULTIPLECIPHERS](./LICENSE-SQLITE3MULTIPLECIPHERS)
+FinGrind is MIT-licensed. Its self-contained bundle vendors Jackson and Apache PDFBox (Apache 2.0),
+Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers 2.3.3 with SQLite 3.53.0 (MIT / public
+domain). See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
+patent considerations.
+
+[LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS)

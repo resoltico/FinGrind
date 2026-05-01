@@ -1,9 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.BookAccess;
@@ -20,6 +22,7 @@ import dev.erst.fingrind.core.PostingId;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -40,6 +43,43 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     assertEquals("--flag", argumentFailure.argument());
     assertEquals("invalid-request", requestFailure.code());
     assertNull(requestFailure.argument());
+    assertNull(argumentFailure.details());
+    assertNull(requestFailure.details());
+  }
+
+  @Test
+  void cliFailure_preservesStructuredInvalidRequestDetails() {
+    CliFailure requestFailure =
+        CliFailureMapper.cliFailure(
+            new CliRequestException(
+                "invalid-request",
+                "bad request",
+                "fix request",
+                null,
+                new CliErrorJsonModels.InvalidRequestDetails(List.of("Problem one."))));
+
+    assertEquals(
+        List.of("Problem one."),
+        assertInstanceOf(CliErrorJsonModels.InvalidRequestDetails.class, requestFailure.details())
+            .violations());
+  }
+
+  @Test
+  void cliFailure_preservesStructuredInvalidJsonDetails() {
+    CliFailure requestFailure =
+        CliFailureMapper.cliFailure(
+            new CliRequestException(
+                "invalid-request",
+                "bad request",
+                "fix request",
+                null,
+                new CliErrorJsonModels.InvalidJsonDetails("Unexpected token", 4, 12)));
+
+    CliErrorJsonModels.InvalidJsonDetails details =
+        assertInstanceOf(CliErrorJsonModels.InvalidJsonDetails.class, requestFailure.details());
+    assertEquals("Unexpected token", details.parseMessage());
+    assertEquals(4, details.line());
+    assertEquals(12, details.column());
   }
 
   @Test

@@ -10,11 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WireValue;
+import dev.erst.fingrind.jazzer.tool.external.InaccessibleWireValueFixtures;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.BeanProperty;
 import tools.jackson.databind.DeserializationContext;
-import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.util.LinkedNode;
 
 /** Pins the local Jazzer JSON contract that Jackson 3 still honors the annotation namespace. */
 class JazzerJsonTest {
@@ -85,49 +82,17 @@ class JazzerJsonTest {
 
   @Test
   void readResource_and_null_guards_fail_fast() {
+    assertThrows(NullPointerException.class, () -> JazzerJson.write(nullValue(), "value"));
+    assertThrows(NullPointerException.class, () -> JazzerJson.write(tempDirectory, nullValue()));
+    assertThrows(
+        NullPointerException.class, () -> JazzerJson.read(nullValue(), ReplayExpectation.class));
+    assertThrows(NullPointerException.class, () -> JazzerJson.read(tempDirectory, nullValue()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            invokeJsonMethod(
-                "write", new Class<?>[] {Path.class, Object.class}, new Object[] {null, "value"}));
+        () -> JazzerJson.readResource(nullValue(), ReplayOutcomeKind.class));
     assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeJsonMethod(
-                "write",
-                new Class<?>[] {Path.class, Object.class},
-                new Object[] {tempDirectory, null}));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeJsonMethod(
-                "read",
-                new Class<?>[] {Path.class, Class.class},
-                new Object[] {null, ReplayExpectation.class}));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeJsonMethod(
-                "read",
-                new Class<?>[] {Path.class, Class.class},
-                new Object[] {tempDirectory, null}));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeJsonMethod(
-                "readResource",
-                new Class<?>[] {String.class, Class.class},
-                new Object[] {null, ReplayOutcomeKind.class}));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeJsonMethod(
-                "readResource",
-                new Class<?>[] {String.class, Class.class},
-                new Object[] {"/missing", null}));
-    assertThrows(
-        NullPointerException.class,
-        () -> invokeJsonMethod("toJson", new Class<?>[] {Object.class}, new Object[] {null}));
+        NullPointerException.class, () -> JazzerJson.readResource("/missing", nullValue()));
+    assertThrows(NullPointerException.class, () -> JazzerJson.toJson(nullValue()));
     IOException missingResource =
         assertThrows(
             IOException.class,
@@ -224,32 +189,17 @@ class JazzerJsonTest {
 
   @Test
   void jazzerJson_private_enum_helpers_report_handled_types_and_illegal_access() throws Exception {
-    assertEquals(
-        Enum.class,
-        invokePrivateInstanceMethod(
-            constructPrivateNestedInstance(
-                "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindEnumSerializer"),
-            "handledType"));
-    assertEquals(
-        Enum.class,
-        invokePrivateInstanceMethod(
-            constructPrivateNestedInstance(
-                "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindEnumDeserializer"),
-            "handledType"));
+    assertEquals(Enum.class, new JazzerJson.FinGrindEnumSerializer().handledType());
+    assertEquals(Enum.class, new JazzerJson.FinGrindEnumDeserializer().handledType());
 
     IllegalStateException inaccessibleFactory =
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueEnum",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {
-                      Class.forName(
-                          "dev.erst.fingrind.jazzer.tool.external.InaccessibleWireValueEnum"),
-                      "alpha",
-                      null
-                    }));
+                JazzerJson.parseWireValueEnum(
+                    InaccessibleWireValueFixtures.inaccessibleWireValueEnumClass(),
+                    "alpha",
+                    nullValue()));
     assertTrue(
         String.valueOf(inaccessibleFactory.getMessage()).contains("Unable to access Jazzer JSON"));
   }
@@ -257,119 +207,65 @@ class JazzerJsonTest {
   @Test
   void jazzerJson_private_concrete_wire_value_helpers_report_handled_types_and_unexpected_tokens()
       throws Exception {
-    Constructor<?> serializerConstructor =
-        Class.forName(
-                "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindConcreteWireValueSerializer")
-            .getDeclaredConstructor(Class.class);
-    serializerConstructor.setAccessible(true);
-    Object serializer = serializerConstructor.newInstance(SourceChannel.class);
-    assertEquals(SourceChannel.class, invokePrivateInstanceMethod(serializer, "handledType"));
+    JazzerJson.FinGrindConcreteWireValueSerializer<SourceChannel> serializer =
+        new JazzerJson.FinGrindConcreteWireValueSerializer<>(SourceChannel.class);
+    assertEquals(SourceChannel.class, serializer.handledType());
 
-    Constructor<?> deserializerConstructor =
-        Class.forName(
-                "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindConcreteWireValueDeserializer")
-            .getDeclaredConstructor(Class.class);
-    deserializerConstructor.setAccessible(true);
-    Object deserializer = deserializerConstructor.newInstance(SourceChannel.class);
-    assertEquals(SourceChannel.class, invokePrivateInstanceMethod(deserializer, "handledType"));
+    JazzerJson.FinGrindConcreteWireValueDeserializer<SourceChannel> deserializer =
+        new JazzerJson.FinGrindConcreteWireValueDeserializer<>(SourceChannel.class);
+    assertEquals(SourceChannel.class, deserializer.handledType());
 
     DeserializationContext unexpectedTokenContext =
-        new WireValueReturnDeserializationContext(
-            deserializationContext("{}", SourceChannel.class));
-    try (var parser = jsonMapper().createParser("{}")) {
+        new WireValueReturnDeserializationContext(SourceChannel.class);
+    try (var parser = JazzerJson.jsonMapper().createParser("{}")) {
       parser.nextToken();
-      assertEquals(
-          SourceChannel.CLI,
-          invokePrivateInstanceMethod(
-              deserializer,
-              "deserialize",
-              new Class<?>[] {
-                Class.forName("tools.jackson.core.JsonParser"), DeserializationContext.class
-              },
-              new Object[] {parser, unexpectedTokenContext}));
+      assertEquals(SourceChannel.CLI, deserializer.deserialize(parser, unexpectedTokenContext));
     }
   }
 
   @Test
   void jazzerJson_private_enum_helpers_cover_contextual_resolution_and_unexpected_tokens()
       throws Exception {
-    Object deserializer =
-        constructPrivateNestedInstance(
-            "dev.erst.fingrind.jazzer.tool.JazzerJson$FinGrindEnumDeserializer");
+    JazzerJson.FinGrindEnumDeserializer deserializer = new JazzerJson.FinGrindEnumDeserializer();
     DeserializationContext contextualEnumContext =
-        deserializationContext("\"success\"", ReplayOutcomeKind.class);
+        new ThrowingDeserializationContext(ReplayOutcomeKind.class);
     BeanProperty enumProperty = enumProperty(ReplayOutcomeKind.class);
 
+    assertEquals(ReplayOutcomeKind.class, deserializer.requireEnumType(contextualEnumContext));
     assertEquals(
         ReplayOutcomeKind.class,
-        invokePrivateInstanceMethod(
-            deserializer,
-            "requireEnumType",
-            new Class<?>[] {DeserializationContext.class},
-            new Object[] {contextualEnumContext}));
-    assertEquals(
-        ReplayOutcomeKind.class,
-        invokePrivateInstanceMethod(
-            deserializer,
-            "contextualEnumType",
-            new Class<?>[] {DeserializationContext.class, BeanProperty.class},
-            new Object[] {deserializationContext("\"success\"", null), enumProperty}));
+        JazzerJson.FinGrindEnumDeserializer.contextualEnumType(
+            new ThrowingDeserializationContext(null), enumProperty));
     assertNull(
-        invokePrivateInstanceMethod(
-            deserializer,
-            "contextualEnumType",
-            new Class<?>[] {DeserializationContext.class, BeanProperty.class},
-            new Object[] {deserializationContext("\"success\"", null), null}));
+        JazzerJson.FinGrindEnumDeserializer.contextualEnumType(
+            new ThrowingDeserializationContext(null), null));
     assertNull(
-        invokePrivateInstanceMethod(
-            deserializer,
-            "contextualEnumType",
-            new Class<?>[] {DeserializationContext.class, BeanProperty.class},
-            new Object[] {
-              deserializationContext("\"success\"", null), enumProperty(String.class)
-            }));
+        JazzerJson.FinGrindEnumDeserializer.contextualEnumType(
+            new ThrowingDeserializationContext(null), enumProperty(String.class)));
 
     DeserializationContext unexpectedTokenContext =
-        new ReturnValueDeserializationContext(
-            deserializationContext("{}", ReplayOutcomeKind.class));
-    try (var parser = jsonMapper().createParser("{}")) {
+        new ReturnValueDeserializationContext(ReplayOutcomeKind.class);
+    try (var parser = JazzerJson.jsonMapper().createParser("{}")) {
       parser.nextToken();
       assertEquals(
-          ReplayOutcomeKind.SUCCESS,
-          invokePrivateInstanceMethod(
-              deserializer,
-              "deserialize",
-              new Class<?>[] {
-                Class.forName("tools.jackson.core.JsonParser"), DeserializationContext.class
-              },
-              new Object[] {parser, unexpectedTokenContext}));
+          ReplayOutcomeKind.SUCCESS, deserializer.deserialize(parser, unexpectedTokenContext));
     }
   }
 
   @Test
   void jazzerJson_private_enum_helpers_cover_weird_string_branches() throws Exception {
-    DeserializationContext context = deserializationContext("\"alpha\"", ReplayOutcomeKind.class);
+    DeserializationContext context = new ThrowingDeserializationContext(ReplayOutcomeKind.class);
 
     Exception missingWireValue =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseEnum",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {FinGrindEnumWithoutWireValue.class, "ALPHA", context}));
+            () -> JazzerJson.parseEnum(FinGrindEnumWithoutWireValue.class, "ALPHA", context));
     assertTrue(
         String.valueOf(rootCause(missingWireValue).getMessage())
             .contains("must implement WireValue"));
 
     Exception unsupportedForeignValue =
-        assertThrows(
-            Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseEnum",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {Month.class, "OMEGA", context}));
+        assertThrows(Exception.class, () -> JazzerJson.parseEnum(Month.class, "OMEGA", context));
     assertTrue(
         String.valueOf(rootCause(unsupportedForeignValue).getMessage())
             .contains("Unsupported enum value"));
@@ -377,82 +273,50 @@ class JazzerJsonTest {
     Exception missingFactory =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueEnum",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {MissingFactoryEnum.class, "alpha", context}));
+            () -> JazzerJson.parseWireValueEnum(MissingFactoryEnum.class, "alpha", context));
     assertTrue(
         String.valueOf(rootCause(missingFactory).getMessage()).contains("must declare static"));
 
     Exception runtimeFailure =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueEnum",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {RuntimeFailureEnum.class, "alpha", context}));
+            () -> JazzerJson.parseWireValueEnum(RuntimeFailureEnum.class, "alpha", context));
     assertTrue(
         String.valueOf(rootCause(runtimeFailure).getMessage()).contains("runtime decode failure"));
   }
 
   @Test
   void jazzerJson_private_enum_helpers_cover_non_throwing_handler_paths() throws Exception {
-    DeserializationContext context =
-        new ReturnValueDeserializationContext(
-            deserializationContext("\"alpha\"", ReplayOutcomeKind.class));
+    DeserializationContext context = new ReturnValueDeserializationContext(ReplayOutcomeKind.class);
 
     assertEquals(
         FinGrindEnumWithoutWireValue.ALPHA,
-        invokePrivateStaticMethod(
-            "parseEnum",
-            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-            new Object[] {FinGrindEnumWithoutWireValue.class, "ALPHA", context}));
-    assertEquals(
-        Month.JANUARY,
-        invokePrivateStaticMethod(
-            "parseEnum",
-            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-            new Object[] {Month.class, "OMEGA", context}));
+        JazzerJson.parseEnum(FinGrindEnumWithoutWireValue.class, "ALPHA", context));
+    assertEquals(Month.JANUARY, JazzerJson.parseEnum(Month.class, "OMEGA", context));
     assertEquals(
         MissingFactoryEnum.ALPHA,
-        invokePrivateStaticMethod(
-            "parseWireValueEnum",
-            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-            new Object[] {MissingFactoryEnum.class, "alpha", context}));
+        JazzerJson.parseWireValueEnum(MissingFactoryEnum.class, "alpha", context));
     assertEquals(
         RuntimeFailureEnum.ALPHA,
-        invokePrivateStaticMethod(
-            "parseWireValueEnum",
-            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-            new Object[] {RuntimeFailureEnum.class, "alpha", context}));
+        JazzerJson.parseWireValueEnum(RuntimeFailureEnum.class, "alpha", context));
   }
 
   @Test
   void jazzerJson_private_concrete_wire_value_helpers_cover_weird_string_branches()
       throws Exception {
-    DeserializationContext context = deserializationContext("\"alpha\"", SourceChannel.class);
+    DeserializationContext context = new ThrowingDeserializationContext(SourceChannel.class);
 
     Exception missingFactory =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueType",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {MissingFactoryWireValue.class, "alpha", context}));
+            () -> JazzerJson.parseWireValueType(MissingFactoryWireValue.class, "alpha", context));
     assertTrue(
         String.valueOf(rootCause(missingFactory).getMessage()).contains("must declare static"));
 
     Exception wrongReturn =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueType",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {WrongReturnWireValue.class, "alpha", context}));
+            () -> JazzerJson.parseWireValueType(WrongReturnWireValue.class, "alpha", context));
     assertTrue(
         String.valueOf(rootCause(wrongReturn).getMessage())
             .contains("must return a WireValue assignable"));
@@ -460,48 +324,26 @@ class JazzerJsonTest {
     Exception runtimeFailure =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueType",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {RuntimeFailureWireValue.class, "alpha", context}));
+            () -> JazzerJson.parseWireValueType(RuntimeFailureWireValue.class, "alpha", context));
     assertTrue(
         String.valueOf(rootCause(runtimeFailure).getMessage()).contains("runtime decode failure"));
 
     Exception checkedFailure =
         assertThrows(
             Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueType",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {CheckedFailureWireValue.class, "alpha", context}));
+            () -> JazzerJson.parseWireValueType(CheckedFailureWireValue.class, "alpha", context));
     assertTrue(
         String.valueOf(checkedFailure.getMessage())
             .contains("Failed to decode Jazzer JSON wire value"));
 
     IllegalStateException inaccessibleFactory =
         assertThrows(
-            IllegalStateException.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "parseWireValueType",
-                    new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-                    new Object[] {
-                      Class.forName(
-                          "dev.erst.fingrind.jazzer.tool.external.InaccessibleWireValueType"),
-                      "alpha",
-                      context
-                    }));
+            IllegalStateException.class, () -> parseInaccessibleWireValueType("alpha", context));
     assertTrue(
         String.valueOf(inaccessibleFactory.getMessage()).contains("Unable to access Jazzer JSON"));
 
     Exception unsupportedValueCarrier =
-        assertThrows(
-            Exception.class,
-            () ->
-                invokePrivateStaticMethod(
-                    "wireValue", new Class<?>[] {Object.class}, new Object[] {new Object()}));
+        assertThrows(Exception.class, () -> JazzerJson.wireValue(new Object()));
     assertTrue(
         String.valueOf(rootCause(unsupportedValueCarrier).getMessage())
             .contains("must implement WireValue or be an enum"));
@@ -510,22 +352,14 @@ class JazzerJsonTest {
   @Test
   void jazzerJson_private_concrete_wire_value_helpers_cover_non_throwing_handler_paths()
       throws Exception {
-    DeserializationContext context =
-        new WireValueReturnDeserializationContext(
-            deserializationContext("\"alpha\"", SourceChannel.class));
+    DeserializationContext context = new WireValueReturnDeserializationContext(SourceChannel.class);
 
     assertEquals(
         MissingFactoryWireValue.ALPHA,
-        invokePrivateStaticMethod(
-            "parseWireValueType",
-            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-            new Object[] {MissingFactoryWireValue.class, "alpha", context}));
+        JazzerJson.parseWireValueType(MissingFactoryWireValue.class, "alpha", context));
     assertEquals(
         RuntimeFailureWireValue.ALPHA,
-        invokePrivateStaticMethod(
-            "parseWireValueType",
-            new Class<?>[] {Class.class, String.class, DeserializationContext.class},
-            new Object[] {RuntimeFailureWireValue.class, "alpha", context}));
+        JazzerJson.parseWireValueType(RuntimeFailureWireValue.class, "alpha", context));
   }
 
   private enum FinGrindEnumWithoutWireValue {
@@ -666,6 +500,7 @@ class JazzerJsonTest {
     }
   }
 
+  @SuppressWarnings("UnusedMethod")
   private static final class WrongReturnWireValue implements WireValue {
     private final String wireValue;
 
@@ -685,6 +520,7 @@ class JazzerJsonTest {
     }
   }
 
+  @SuppressWarnings("UnusedMethod")
   private static final class RuntimeFailureWireValue implements WireValue {
     private static final RuntimeFailureWireValue ALPHA = new RuntimeFailureWireValue("alpha");
 
@@ -706,6 +542,7 @@ class JazzerJsonTest {
     }
   }
 
+  @SuppressWarnings("UnusedMethod")
   private static final class CheckedFailureWireValue implements WireValue {
     private final String wireValue;
 
@@ -725,71 +562,14 @@ class JazzerJsonTest {
     }
   }
 
-  private static Object invokeJsonMethod(
-      String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Exception {
-    Method method = JazzerJson.class.getDeclaredMethod(methodName, parameterTypes);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static Object constructPrivateNestedInstance(String binaryClassName) throws Exception {
-    Constructor<?> constructor = Class.forName(binaryClassName).getDeclaredConstructor();
-    constructor.setAccessible(true);
-    return constructor.newInstance();
-  }
-
-  private static JsonMapper jsonMapper() throws Exception {
-    Field mapperField = JazzerJson.class.getDeclaredField("JSON_MAPPER");
-    mapperField.setAccessible(true);
-    return (JsonMapper) mapperField.get(null);
-  }
-
-  private static DeserializationContext deserializationContext(
-      String json, @Nullable Class<?> contextualType) throws Exception {
-    JsonMapper mapper = jsonMapper();
-    try (var parser = mapper.createParser(json)) {
-      parser.nextToken();
-      Method contextFactory =
-          JsonMapper.class
-              .getSuperclass()
-              .getDeclaredMethod(
-                  "_deserializationContext", Class.forName("tools.jackson.core.JsonParser"));
-      contextFactory.setAccessible(true);
-      DeserializationContext context =
-          (DeserializationContext) contextFactory.invoke(mapper, parser);
-      if (contextualType == null) {
-        return context;
-      }
-      Field currentTypeField = DeserializationContext.class.getDeclaredField("_currentType");
-      currentTypeField.setAccessible(true);
-      Class<?> linkedNodeClass = Class.forName("tools.jackson.databind.util.LinkedNode");
-      Constructor<?> linkedNodeConstructor =
-          linkedNodeClass.getDeclaredConstructor(Object.class, linkedNodeClass);
-      linkedNodeConstructor.setAccessible(true);
-      currentTypeField.set(
-          context, linkedNodeConstructor.newInstance(mapper.constructType(contextualType), null));
-      return context;
-    }
-  }
-
-  private static BeanProperty enumProperty(Class<?> enumType) throws Exception {
+  private static BeanProperty enumProperty(Class<?> enumType) {
     return (BeanProperty)
         Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(),
             new Class<?>[] {BeanProperty.class},
             (proxy, method, arguments) -> {
               return switch (method.getName()) {
-                case "getType" -> jsonMapper().constructType(enumType);
+                case "getType" -> JazzerJson.jsonMapper().constructType(enumType);
                 case "isRequired", "isVirtual" -> false;
                 case "findAliases" -> List.of();
                 case "getMetadata",
@@ -831,61 +611,6 @@ class JazzerJsonTest {
     };
   }
 
-  private static Object invokePrivateInstanceMethod(Object target, String methodName)
-      throws Exception {
-    Method method = target.getClass().getDeclaredMethod(methodName);
-    method.setAccessible(true);
-    try {
-      return method.invoke(target);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static Object invokePrivateInstanceMethod(
-      Object target, String methodName, Class<?>[] parameterTypes, Object[] arguments)
-      throws Exception {
-    Method method = target.getClass().getDeclaredMethod(methodName, parameterTypes);
-    method.setAccessible(true);
-    try {
-      return method.invoke(target, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static Object invokePrivateStaticMethod(
-      String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Exception {
-    Method method = JazzerJson.class.getDeclaredMethod(methodName, parameterTypes);
-    method.setAccessible(true);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
   private static Throwable rootCause(Throwable throwable) {
     Throwable current = throwable;
     while (current.getCause() != null) {
@@ -894,20 +619,47 @@ class JazzerJsonTest {
     return current;
   }
 
-  private static class ReturnValueDeserializationContext
+  @SuppressWarnings("unchecked")
+  private abstract static class TestDeserializationContext
       extends tools.jackson.databind.deser.DeserializationContextExt {
-    private ReturnValueDeserializationContext(DeserializationContext base) throws Exception {
+    private TestDeserializationContext(@Nullable Class<?> contextualType) {
       super(
-          (tools.jackson.core.TokenStreamFactory) reflectedField(base, "_streamFactory"),
-          (tools.jackson.databind.deser.DeserializerFactory) reflectedField(base, "_factory"),
-          (tools.jackson.databind.deser.DeserializerCache) reflectedField(base, "_cache"),
-          (tools.jackson.databind.DeserializationConfig) reflectedField(base, "_config"),
-          (tools.jackson.core.FormatSchema) reflectedField(base, "_schema"),
-          (tools.jackson.databind.InjectableValues) reflectedField(base, "_injectableValues"));
-      _currentType =
-          (tools.jackson.databind.util.LinkedNode<tools.jackson.databind.JavaType>)
-              reflectedField(base, "_currentType");
-      _parser = (tools.jackson.core.JsonParser) reflectedField(base, "_parser");
+          JazzerJson.jsonMapper().tokenStreamFactory(),
+          tools.jackson.databind.deser.BeanDeserializerFactory.instance,
+          new tools.jackson.databind.deser.DeserializerCache(),
+          JazzerJson.jsonMapper().deserializationConfig(),
+          null,
+          JazzerJson.jsonMapper().getInjectableValues());
+      if (contextualType != null) {
+        _currentType =
+            new LinkedNode<>(JazzerJson.jsonMapper().constructType(contextualType), null);
+      }
+    }
+
+    @Override
+    public tools.jackson.databind.deser.ReadableObjectId findObjectId(
+        Object id,
+        com.fasterxml.jackson.annotation.ObjectIdGenerator<?> generator,
+        com.fasterxml.jackson.annotation.ObjectIdResolver resolver) {
+      throw new UnsupportedOperationException(
+          "Object id resolution is not used in JazzerJson tests.");
+    }
+
+    @Override
+    public void checkUnresolvedObjectId() {}
+
+    @Override
+    public tools.jackson.databind.ValueDeserializer<Object> deserializerInstance(
+        tools.jackson.databind.introspect.Annotated annotated, Object deserDef) {
+      throw new UnsupportedOperationException(
+          "Deserializer instantiation is not used in JazzerJson tests.");
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static class ReturnValueDeserializationContext extends TestDeserializationContext {
+    private ReturnValueDeserializationContext(@Nullable Class<?> contextualType) {
+      super(contextualType);
     }
 
     @Override
@@ -917,7 +669,7 @@ class JazzerJsonTest {
       java.util.Objects.requireNonNull(value);
       java.util.Objects.requireNonNull(message);
       java.util.Objects.requireNonNull(arguments);
-      return ((Enum<?>[]) targetType.getEnumConstants())[0];
+      return (Enum<?>) targetType.getEnumConstants()[0];
     }
 
     @Override
@@ -928,10 +680,11 @@ class JazzerJsonTest {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private static final class WireValueReturnDeserializationContext
       extends ReturnValueDeserializationContext {
-    private WireValueReturnDeserializationContext(DeserializationContext base) throws Exception {
-      super(base);
+    private WireValueReturnDeserializationContext(@Nullable Class<?> contextualType) {
+      super(contextualType);
     }
 
     @Override
@@ -958,17 +711,40 @@ class JazzerJsonTest {
     }
   }
 
-  private static Object reflectedField(Object target, String fieldName) throws Exception {
-    Class<?> currentType = target.getClass();
-    while (currentType != null) {
-      try {
-        Field field = currentType.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        return field.get(target);
-      } catch (NoSuchFieldException ignored) {
-        currentType = currentType.getSuperclass();
-      }
+  @SuppressWarnings("unchecked")
+  private static final class ThrowingDeserializationContext extends TestDeserializationContext {
+    private ThrowingDeserializationContext(@Nullable Class<?> contextualType) {
+      super(contextualType);
     }
-    throw new NoSuchFieldException(fieldName);
+
+    @Override
+    @SuppressWarnings("AnnotateFormatMethod")
+    public Object handleWeirdStringValue(
+        Class<?> targetType, String value, String message, Object... arguments) {
+      throw new IllegalArgumentException(message.formatted(arguments));
+    }
+
+    @Override
+    public Object handleUnexpectedToken(Class<?> targetType, tools.jackson.core.JsonParser parser) {
+      throw new IllegalStateException("Unexpected token for " + targetType.getName());
+    }
+  }
+
+  private static WireValue parseInaccessibleWireValueType(
+      String wireValue, DeserializationContext deserializationContext) {
+    return parseWireValueFixtureType(
+        InaccessibleWireValueFixtures.inaccessibleWireValueTypeClass(),
+        wireValue,
+        deserializationContext);
+  }
+
+  private static <T extends WireValue> T parseWireValueFixtureType(
+      Class<T> wireValueType, String wireValue, DeserializationContext deserializationContext) {
+    return JazzerJson.parseWireValueType(wireValueType, wireValue, deserializationContext);
+  }
+
+  @SuppressWarnings({"NullAway", "TypeParameterUnusedInFormals"})
+  private static <T> T nullValue() {
+    return null;
   }
 }

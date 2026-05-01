@@ -142,6 +142,9 @@ run_monitored_command() {
 
 emit_final_status() {
     local exit_code=$?
+    if declare -F cleanup_lock >/dev/null 2>&1; then
+        cleanup_lock
+    fi
     local total_elapsed_seconds
     total_elapsed_seconds=$(($(epoch_seconds) - check_started_at))
     [[ "${emit_final_status_enabled}" == true ]] || return 0

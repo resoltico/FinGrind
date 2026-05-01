@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -9,16 +10,27 @@ final class CliRequestException extends IllegalArgumentException implements CliC
 
   private final String code;
   private final String hint;
+  private final CliErrorJsonModels.@Nullable ErrorDetails details;
 
   CliRequestException(String code, String message, String hint, @Nullable Throwable cause) {
+    this(code, message, hint, cause, null);
+  }
+
+  CliRequestException(
+      String code,
+      String message,
+      String hint,
+      @Nullable Throwable cause,
+      CliErrorJsonModels.@Nullable ErrorDetails details) {
     super(message, cause);
     this.code = code;
     this.hint = hint;
+    this.details = details;
   }
 
   @Override
   public CliFailure failure() {
     return new CliFailure(
-        code, Objects.requireNonNullElse(getMessage(), "Request is invalid."), hint, null);
+        code, Objects.requireNonNullElse(getMessage(), "Request is invalid."), hint, null, details);
   }
 }

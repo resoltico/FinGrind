@@ -100,6 +100,23 @@ public record EnvironmentSqliteDescriptor(
         throw new IllegalArgumentException(
             "runtimeIssue is required when SQLite runtime status is UNAVAILABLE.");
       }
+    } else if (runtimeStatus == SqliteRuntimeStatus.FAILED) {
+      if (compileOptionsVerification != SqliteCompileOptionsVerificationStatus.NOT_VERIFIED) {
+        throw new IllegalArgumentException(
+            "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is FAILED.");
+      }
+      if (runtimeProvenance == null) {
+        throw new IllegalArgumentException(
+            "runtimeProvenance is required when SQLite runtime status is FAILED.");
+      }
+      if (loadedLibraryPath == null) {
+        throw new IllegalArgumentException(
+            "loadedLibraryPath is required when SQLite runtime status is FAILED.");
+      }
+      if (runtimeIssue == null) {
+        throw new IllegalArgumentException(
+            "runtimeIssue is required when SQLite runtime status is FAILED.");
+      }
     } else {
       if (compileOptionsVerification == SqliteCompileOptionsVerificationStatus.VERIFIED) {
         throw new IllegalArgumentException(

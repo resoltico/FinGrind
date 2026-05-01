@@ -118,7 +118,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         new ObjectMapper()
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
             .path("postingId")
-            .asText();
+            .stringValue();
 
     assertCommandOutputContains(
         new String[] {

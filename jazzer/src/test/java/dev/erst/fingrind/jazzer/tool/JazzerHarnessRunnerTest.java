@@ -6,12 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Nested;
@@ -200,24 +201,6 @@ class JazzerHarnessRunnerTest {
     }
 
     @Test
-    void run_overloadUsingDefaultOutputStreamStillReportsErrors() {
-      StringWriter errors = new StringWriter();
-
-      AtomicInteger exitCode = new AtomicInteger(-1);
-      JazzerHarnessRunner.withProductionWiringForTesting(
-          new NoOpHarnessExecutor(),
-          () -> false,
-          () ->
-              exitCode.set(
-                  JazzerHarnessRunner.run(
-                      "dev.erst.fingrind.jazzer.tool.MissingHarnessFixture",
-                      new PrintWriter(errors, true))));
-
-      assertEquals(1, exitCode.get());
-      assertTrue(errors.toString().contains("Unable to load Jazzer harness class"));
-    }
-
-    @Test
     void instanceRun_skipsExitHandlerOnSuccessWhenInjectedExecutorSucceeds() {
       AtomicInteger exitCode = new AtomicInteger(-1);
       ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -248,17 +231,13 @@ class JazzerHarnessRunnerTest {
   }
 
   @Test
-  void instanceRun_callsExitHandlerForFailures_and_mainRunsEndToEnd() {
+  void instanceRun_callsExitHandlerForFailures() {
     AtomicInteger exitCode = new AtomicInteger(-1);
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     ByteArrayOutputStream errors = new ByteArrayOutputStream();
 
-    JazzerHarnessRunner.withProductionWiringForTesting(
-        new NoOpHarnessExecutor(),
-        () -> false,
-        () ->
-            new JazzerHarnessRunner(output, errors, exitCode::set)
-                .run(new String[] {"--class", NonFuzzHarnessFixture.class.getName()}));
+    new JazzerHarnessRunner(output, errors, exitCode::set, new NoOpHarnessExecutor(), () -> false)
+        .run(new String[] {"--class", NonFuzzHarnessFixture.class.getName()});
 
     assertEquals(1, exitCode.get());
     assertTrue(
@@ -276,16 +255,19 @@ class JazzerHarnessRunnerTest {
   }
 
   @Test
-  void main_returnsNormallyWhenOfficialExecutorSucceeds() {
+  void instanceRun_returnsNormallyWhenInjectedOfficialExecutorSucceeds() {
     assertDoesNotThrow(
         () ->
-            JazzerHarnessRunner.withProductionWiringForTesting(
-                new JazzerHarnessRunner.OfficialHarnessExecutor(
-                    new TestRunnerFactory(true, Optional.of(() -> 0))),
-                () -> false,
-                () ->
-                    JazzerHarnessRunner.main(
-                        new String[] {"--class", SuccessfulFuzzHarnessFixture.class.getName()})));
+            new JazzerHarnessRunner(
+                    new ByteArrayOutputStream(),
+                    new ByteArrayOutputStream(),
+                    exitCode -> {
+                      throw new AssertionError("success must not trigger exit");
+                    },
+                    new JazzerHarnessRunner.OfficialHarnessExecutor(
+                        new TestRunnerFactory(true, Optional.of(() -> 0))),
+                    () -> false)
+                .run(new String[] {"--class", SuccessfulFuzzHarnessFixture.class.getName()}));
   }
 
   @Test
@@ -327,16 +309,10 @@ class JazzerHarnessRunnerTest {
   }
 
   @Test
-  void officialRunner_defaultFactory_is_reachable_without_launching_fuzzing() throws Exception {
-    Constructor<JazzerHarnessRunner.OfficialHarnessExecutor> constructor =
-        JazzerHarnessRunner.OfficialHarnessExecutor.class.getDeclaredConstructor();
-    constructor.setAccessible(true);
-    JazzerHarnessRunner.OfficialHarnessExecutor executor = constructor.newInstance();
-    Field runnerFactoryField =
-        JazzerHarnessRunner.OfficialHarnessExecutor.class.getDeclaredField("runnerFactory");
-    runnerFactoryField.setAccessible(true);
-    JazzerHarnessRunner.JUnitRunnerFactory runnerFactory =
-        (JazzerHarnessRunner.JUnitRunnerFactory) runnerFactoryField.get(executor);
+  void officialRunner_defaultFactory_is_reachable_without_launching_fuzzing() {
+    JazzerHarnessRunner.OfficialHarnessExecutor executor =
+        new JazzerHarnessRunner.OfficialHarnessExecutor();
+    JazzerHarnessRunner.JUnitRunnerFactory runnerFactory = executor.runnerFactory();
 
     assertEquals(
         com.code_intelligence.jazzer.driver.junit.JUnitRunner.isSupported(),
@@ -348,34 +324,35 @@ class JazzerHarnessRunnerTest {
   }
 
   @Test
-  void run_overloadUsingExplicitExecutor_stillUsesProductionDetector() {
+  void run_overloadUsingExplicitExecutor_honorsInjectedDetector() {
     StringWriter output = new StringWriter();
     StringWriter errors = new StringWriter();
-    AtomicInteger exitCode = new AtomicInteger(-1);
+    int exitCode =
+        JazzerHarnessRunner.run(
+            SuccessfulFuzzHarnessFixture.class.getName(),
+            new PrintWriter(output, true),
+            new PrintWriter(errors, true),
+            harness -> 23,
+            () -> false);
 
-    JazzerHarnessRunner.withProductionWiringForTesting(
-        new NoOpHarnessExecutor(),
-        () -> false,
-        () ->
-            exitCode.set(
-                JazzerHarnessRunner.run(
-                    SuccessfulFuzzHarnessFixture.class.getName(),
-                    new PrintWriter(output, true),
-                    new PrintWriter(errors, true),
-                    harness -> 23)));
-
-    assertEquals(23, exitCode.get());
+    assertEquals(23, exitCode);
     assertTrue(
         output.toString().contains("phase=finish status=FAILURE fuzz-test=fuzz exit-code=23"));
     assertTrue(errors.toString().contains("exit code 23"));
   }
 
   @Test
-  void runningOnGitHubActions_matchesProcessEnvironment() throws Exception {
-    Method method = JazzerHarnessRunner.class.getDeclaredMethod("runningOnGitHubActions");
-    method.setAccessible(true);
+  void main_runsSupportedHarnessToCompletionInChildJvm() throws Exception {
+    ChildProcessResult result =
+        runHarnessRunnerMainInChildJvm(SingleExecutionFuzzHarnessFixture.class.getName());
+    assertEquals(0, result.exitCode(), result.output());
+  }
 
-    assertEquals("true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS")), method.invoke(null));
+  @Test
+  void runningOnGitHubActions_matchesProcessEnvironment() {
+    assertEquals(
+        "true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS")),
+        JazzerHarnessRunner.runningOnGitHubActions());
   }
 
   /** One-shot harness fixture used only to prove official runner discovery remains reachable. */
@@ -408,6 +385,57 @@ class JazzerHarnessRunnerTest {
       JazzerHarnessRunner.HarnessExecutor executor) {
     return JazzerHarnessRunner.run(className, outputWriter, errorWriter, executor, () -> false);
   }
+
+  private static ChildProcessResult runHarnessRunnerMainInChildJvm(String harnessClassName)
+      throws IOException {
+    List<String> command = new ArrayList<>();
+    command.add(javaCommand());
+    command.addAll(jacocoAgentArguments());
+    command.add("-cp");
+    command.add(System.getProperty("java.class.path"));
+    command.add(JazzerHarnessRunner.class.getName());
+    command.add("--class");
+    command.add(harnessClassName);
+    Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+    try (process;
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        var processOutput = process.getInputStream()) {
+      processOutput.transferTo(output);
+      int exitCode = waitFor(process, command);
+      return new ChildProcessResult(exitCode, output.toString(StandardCharsets.UTF_8));
+    }
+  }
+
+  private static List<String> jacocoAgentArguments() {
+    List<String> agentArguments = new ArrayList<>();
+    for (String argument : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+      if (!argument.startsWith("-javaagent:")) {
+        continue;
+      }
+      if (argument.contains("jacoco")) {
+        agentArguments.add(argument.contains("append=") ? argument : argument + ",append=true");
+      }
+    }
+    return List.copyOf(agentArguments);
+  }
+
+  private static String javaCommand() {
+    String javaHome = System.getProperty("java.home");
+    return javaHome + "/bin/java";
+  }
+
+  private static int waitFor(Process process, List<String> command) throws IOException {
+    try {
+      return process.waitFor();
+    } catch (InterruptedException interruptedException) {
+      Thread.currentThread().interrupt();
+      throw new IOException(
+          "Interrupted while running JazzerHarnessRunner child JVM: " + String.join(" ", command),
+          interruptedException);
+    }
+  }
+
+  private record ChildProcessResult(int exitCode, String output) {}
 
   private static final class NoOpHarnessExecutor implements JazzerHarnessRunner.HarnessExecutor {
     @Override

@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliInvocationText}. */
@@ -17,9 +18,24 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandFor(
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        "fingrind",
+        "./cli/build/install/cli-shadow/bin/cli",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, "Mac OS X"));
+    assertEquals(
+        ".\\cli\\build\\install\\cli-shadow\\bin\\cli.bat",
+        CliInvocationText.launcherCommandFor(
+            FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, "Windows 11"));
+    assertEquals(
+        ProtocolCatalog.directJavaLauncherCommand(false),
+        CliInvocationText.launcherCommandFor(
+            FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Linux"));
+    assertEquals(
+        ProtocolCatalog.directJavaLauncherCommand(true),
+        CliInvocationText.launcherCommandFor(
+            FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Windows 11"));
+    assertEquals(
+        "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>",
+        CliInvocationText.launcherCommandFor(FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION, "Linux"));
   }
 
   @Test
@@ -38,6 +54,22 @@ class CliInvocationTextTest {
       assertEquals(
           expectedBundleLauncher + " help",
           CliInvocationText.rewriteInvocationPrefix("fingrind help"));
+    } finally {
+      System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, originalDistribution);
+    }
+  }
+
+  @Test
+  void launcherCommandFor_fallsBackToBareCommandForUnknownRuntimeDistribution() {
+    assertEquals("fingrind", CliInvocationText.launcherCommandFor("mystery-runtime", "Linux"));
+
+    String originalDistribution =
+        System.getProperty(
+            FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY,
+            FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION);
+    System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "mystery-runtime");
+    try {
+      assertEquals("fingrind help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
     } finally {
       System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, originalDistribution);
     }

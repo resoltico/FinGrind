@@ -6,27 +6,21 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Implements the supported local Jazzer operator commands beyond active fuzz launchers. */
 public final class JazzerCli {
+  private static final String PROJECT_ROOT_OPTION = "--project-root";
+  private static final Path UNUSED_PROJECT_DIRECTORY =
+      Path.of(System.getProperty("java.io.tmpdir")).resolve("fingrind-unused-jazzer-root");
   private final Path projectDirectory;
   private final OutputStream outputStream;
   private final OutputStream errorStream;
   private final ExitHandler exitHandler;
-
-  /**
-   * Creates the production Jazzer CLI entrypoint backed by process streams and {@code
-   * System::exit}.
-   */
-  public JazzerCli() {
-    this(Path.of("").toAbsolutePath().normalize(), System.out, System.err, System::exit);
-  }
 
   JazzerCli(
       Path projectDirectory,
@@ -42,7 +36,9 @@ public final class JazzerCli {
 
   /** Dispatches one Jazzer operator command and exits non-zero on usage errors or bugs. */
   public static void main(String[] arguments) throws IOException {
-    new JazzerCli().run(arguments);
+    MainArguments mainArguments = MainArguments.parse(arguments);
+    new JazzerCli(mainArguments.projectDirectory(), System.out, System.err, System::exit)
+        .run(mainArguments.commandArguments().toArray(String[]::new));
   }
 
   void run(String[] arguments) throws IOException {
@@ -91,6 +87,8 @@ public final class JazzerCli {
         case REPLAY -> replay(args.subList(1, args.size()), outputWriter);
         case LIST_FINDINGS ->
             listFindings(projectDirectory, args.subList(1, args.size()), outputWriter);
+        case ACTIVE_TARGET_KEYS ->
+            printActiveTargetKeys(args.subList(1, args.size()), outputWriter);
       };
     } catch (IllegalArgumentException exception) {
       errorWriter.println(exception.getMessage());
@@ -102,10 +100,21 @@ public final class JazzerCli {
 
   private static int replay(List<String> args, PrintWriter outputWriter) throws IOException {
     ReplayCommandArguments replayArguments = ReplayCommandArguments.parse(args);
+    byte[] inputBytes;
+    try {
+      inputBytes = Files.readAllBytes(replayArguments.inputPath());
+    } catch (IOException exception) {
+      throw usageError(
+          "Failed to read replay input path: "
+              + replayArguments.inputPath()
+              + " ("
+              + exception.getMessage()
+              + ")",
+          Command.REPLAY,
+          exception);
+    }
     ReplayOutcome outcome =
-        JazzerReplayRunner.replay(
-            replayArguments.target().replayHarness(),
-            Files.readAllBytes(replayArguments.inputPath()));
+        JazzerReplayRunner.replay(replayArguments.target().replayHarness(), inputBytes);
     if (replayArguments.jsonOutput()) {
       outputWriter.println(JazzerJson.toJson(outcome));
     } else {
@@ -128,25 +137,36 @@ public final class JazzerCli {
                 .toList()
             : List.of(JazzerRunTarget.fromKey(listFindingsArguments.targetKey()));
 
-    List<FindingArtifact> findings = new java.util.ArrayList<>();
+    List<List<FindingArtifact>> findingsByTarget = new ArrayList<>(targets.size());
     for (JazzerRunTarget target : targets) {
-      findings.addAll(JazzerFindingSupport.findingArtifacts(projectDirectory, target));
+      findingsByTarget.add(JazzerFindingSupport.findingArtifacts(projectDirectory, target));
     }
 
     if (listFindingsArguments.jsonOutput()) {
-      outputWriter.println(JazzerJson.toJson(findings));
+      outputWriter.println(
+          JazzerJson.toJson(findingsByTarget.stream().flatMap(List::stream).toList()));
       return 0;
     }
 
     for (int index = 0; index < targets.size(); index++) {
-      JazzerRunTarget target = targets.get(index);
       if (index > 0) {
         outputWriter.println();
       }
       outputWriter.println(
-          renderFindingListing(
-              target.key(), JazzerFindingSupport.findingArtifacts(projectDirectory, target)));
+          renderFindingListing(targets.get(index).key(), findingsByTarget.get(index)));
     }
+    return 0;
+  }
+
+  private static int printActiveTargetKeys(List<String> args, PrintWriter outputWriter) {
+    if (!args.isEmpty()) {
+      throw usageError(
+          "active-target-keys does not accept additional arguments.", Command.ACTIVE_TARGET_KEYS);
+    }
+    Arrays.stream(JazzerRunTarget.values())
+        .filter(JazzerRunTarget::activeFuzzing)
+        .map(JazzerRunTarget::key)
+        .forEach(outputWriter::println);
     return 0;
   }
 
@@ -161,7 +181,7 @@ public final class JazzerCli {
         JazzerJson.toJson(outcome.details()));
   }
 
-  private static String renderFindingListing(String targetKey, List<FindingArtifact> findings) {
+  static String renderFindingListing(String targetKey, List<FindingArtifact> findings) {
     long unexpectedFailures =
         findings.stream()
             .filter(
@@ -220,13 +240,21 @@ public final class JazzerCli {
     return String.join(
         System.lineSeparator(),
         "Usage:",
-        "  JazzerCli " + Command.REPLAY.usageSynopsis(),
-        "  JazzerCli " + Command.LIST_FINDINGS.usageSynopsis(),
+        "  JazzerCli "
+            + PROJECT_ROOT_OPTION
+            + " <jazzer-project-dir> "
+            + Command.REPLAY.usageSynopsis(),
+        "  JazzerCli "
+            + PROJECT_ROOT_OPTION
+            + " <jazzer-project-dir> "
+            + Command.LIST_FINDINGS.usageSynopsis(),
+        "  JazzerCli " + Command.ACTIVE_TARGET_KEYS.usageSynopsis(),
         "  JazzerCli --help",
         "",
         "Commands:",
         "  replay         Replay one raw local input against one replayable harness.",
         "  list-findings  Replay-classify raw local finding artifacts for one or all harnesses.",
+        "  active-target-keys  Print the active fuzz target keys in canonical topology order.",
         "",
         "Replayable targets:",
         "  " + supportedReplayTargets());
@@ -243,8 +271,9 @@ public final class JazzerCli {
 
   /** Supported top-level Jazzer operator commands exposed by the local CLI wrapper. */
   private enum Command {
-    REPLAY("replay --target <target-key> --input <input-path> [--json]"),
-    LIST_FINDINGS("list-findings [--target <target-key>] [--json]");
+    REPLAY("replay <target-key> <input-path> [--json]"),
+    LIST_FINDINGS("list-findings [<target-key>] [--json]"),
+    ACTIVE_TARGET_KEYS("active-target-keys");
 
     private final String usageSynopsis;
 
@@ -256,6 +285,7 @@ public final class JazzerCli {
       return switch (Objects.requireNonNull(token, "token must not be null")) {
         case "replay" -> REPLAY;
         case "list-findings" -> LIST_FINDINGS;
+        case "active-target-keys" -> ACTIVE_TARGET_KEYS;
         default -> throw new IllegalArgumentException("Unknown Jazzer subcommand: " + token);
       };
     }
@@ -277,92 +307,114 @@ public final class JazzerCli {
     }
 
     private static ReplayCommandArguments parse(List<String> args) {
-      String targetKey = null;
-      String inputPath = null;
-      boolean jsonOutput = false;
-      Set<String> seenFlags = new LinkedHashSet<>();
-      int index = 0;
-      while (index < args.size()) {
-        String argument = args.get(index);
-        switch (argument) {
-          case "--target" -> {
-            requireUniqueFlag(seenFlags, argument, Command.REPLAY);
-            targetKey = requireNextValue(args, index, argument, Command.REPLAY);
-            index += 2;
-          }
-          case "--input" -> {
-            requireUniqueFlag(seenFlags, argument, Command.REPLAY);
-            inputPath = requireNextValue(args, index, argument, Command.REPLAY);
-            index += 2;
-          }
-          case "--json" -> {
-            requireUniqueFlag(seenFlags, argument, Command.REPLAY);
-            jsonOutput = true;
-            index++;
-          }
-          default -> throw usageError("Unexpected replay argument: " + argument, Command.REPLAY);
-        }
+      if (args.isEmpty() || args.getFirst().startsWith("-")) {
+        throw usageError("Missing required target key.", Command.REPLAY);
       }
-      if (targetKey == null) {
-        throw usageError("Missing required option --target", Command.REPLAY);
+      String targetKey = args.getFirst();
+      if (args.size() < 2 || args.get(1).startsWith("-")) {
+        throw usageError("Missing required input path.", Command.REPLAY);
       }
-      if (inputPath == null) {
-        throw usageError("Missing required option --input", Command.REPLAY);
+      String inputPath = args.get(1);
+      if (args.size() > 2 && !"--json".equals(args.get(2))) {
+        throw usageError("Unexpected replay argument: " + args.get(2), Command.REPLAY);
       }
+      if (args.size() > 3) {
+        throw usageError("Unexpected replay argument: " + args.get(3), Command.REPLAY);
+      }
+      boolean jsonOutput = args.size() > 2;
       JazzerRunTarget target = JazzerRunTarget.fromKey(targetKey);
       if (!target.replayable()) {
         throw usageError(
             "Replay requires a single-harness target, not " + target.key(), Command.REPLAY);
       }
-      return new ReplayCommandArguments(
-          target, Path.of(inputPath).toAbsolutePath().normalize(), jsonOutput);
+      Path normalizedInputPath = Path.of(inputPath).toAbsolutePath().normalize();
+      if (!Files.exists(normalizedInputPath)) {
+        throw usageError(
+            "Replay input path does not exist: " + normalizedInputPath, Command.REPLAY);
+      }
+      if (!Files.isRegularFile(normalizedInputPath)) {
+        throw usageError(
+            "Replay input path must be a regular file: " + normalizedInputPath, Command.REPLAY);
+      }
+      return new ReplayCommandArguments(target, normalizedInputPath, jsonOutput);
     }
   }
 
   private record ListFindingsCommandArguments(@Nullable String targetKey, boolean jsonOutput) {
     private static ListFindingsCommandArguments parse(List<String> args) {
       String targetKey = null;
-      boolean jsonOutput = false;
-      Set<String> seenFlags = new LinkedHashSet<>();
       int index = 0;
-      while (index < args.size()) {
+      if (!args.isEmpty() && !args.getFirst().startsWith("-")) {
+        targetKey = args.getFirst();
+        index = 1;
+      }
+      boolean jsonOutput = false;
+      if (index < args.size()) {
         String argument = args.get(index);
-        switch (argument) {
-          case "--target" -> {
-            requireUniqueFlag(seenFlags, argument, Command.LIST_FINDINGS);
-            targetKey = requireNextValue(args, index, argument, Command.LIST_FINDINGS);
-            index += 2;
-          }
-          case "--json" -> {
-            requireUniqueFlag(seenFlags, argument, Command.LIST_FINDINGS);
-            jsonOutput = true;
-            index++;
-          }
-          default ->
-              throw usageError(
-                  "Unexpected list-findings argument: " + argument, Command.LIST_FINDINGS);
+        if ("--json".equals(argument)) {
+          jsonOutput = true;
+          index++;
+        } else {
+          throw usageError("Unexpected list-findings argument: " + argument, Command.LIST_FINDINGS);
         }
+      }
+      if (index < args.size()) {
+        throw usageError(
+            "Unexpected list-findings argument: " + args.get(index), Command.LIST_FINDINGS);
       }
       return new ListFindingsCommandArguments(targetKey, jsonOutput);
     }
   }
 
-  private static void requireUniqueFlag(Set<String> seenFlags, String flag, Command command) {
-    if (!seenFlags.add(flag)) {
-      throw usageError("Duplicate option " + flag, command);
+  record MainArguments(Path projectDirectory, List<String> commandArguments) {
+    static MainArguments parse(String[] arguments) {
+      Objects.requireNonNull(arguments, "arguments must not be null");
+      if (allowsProjectRootlessInvocation(arguments)) {
+        return new MainArguments(UNUSED_PROJECT_DIRECTORY, List.of(arguments.clone()));
+      }
+      requireProjectRootInvocation(arguments);
+      String projectRoot = arguments[1];
+      if (projectRoot.isBlank()) {
+        throw new IllegalArgumentException(PROJECT_ROOT_OPTION + " must not be blank");
+      }
+      return new MainArguments(
+          Path.of(projectRoot).toAbsolutePath().normalize(),
+          List.of(Arrays.copyOfRange(arguments, 2, arguments.length)));
     }
-  }
 
-  private static String requireNextValue(
-      List<String> args, int flagIndex, String flag, Command command) {
-    if (flagIndex + 1 >= args.size()) {
-      throw usageError("Missing value after " + flag, command);
+    private static boolean allowsProjectRootlessInvocation(String[] arguments) {
+      if (arguments.length == 0) {
+        return true;
+      }
+      String firstArgument = arguments[0];
+      return (arguments.length == 1 && "--help".equals(firstArgument))
+          || "active-target-keys".equals(firstArgument);
     }
-    return args.get(flagIndex + 1);
+
+    private static void requireProjectRootInvocation(String[] arguments) {
+      if (arguments.length < 3) {
+        throw usageException();
+      }
+      if (!PROJECT_ROOT_OPTION.equals(arguments[0])) {
+        throw usageException();
+      }
+    }
+
+    private static IllegalArgumentException usageException() {
+      return new IllegalArgumentException(
+          "Usage: JazzerCli "
+              + PROJECT_ROOT_OPTION
+              + " <jazzer-project-dir> <command> [command-options]");
+    }
   }
 
   private static IllegalArgumentException usageError(String message, Command command) {
     return new IllegalArgumentException(message + System.lineSeparator() + command.usage());
+  }
+
+  private static IllegalArgumentException usageError(
+      String message, Command command, Throwable cause) {
+    return new IllegalArgumentException(message + System.lineSeparator() + command.usage(), cause);
   }
 
   /** Terminates the process with one computed exit code. */

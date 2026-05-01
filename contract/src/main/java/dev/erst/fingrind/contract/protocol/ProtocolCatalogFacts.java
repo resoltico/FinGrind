@@ -52,6 +52,8 @@ final class ProtocolCatalogFacts {
       List.of(ProtocolRejectionStatus.values());
   private static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
       RuntimeEnvironmentContract.current();
+  private static final ProtectedBookFormatContract PROTECTED_BOOK_FORMAT_CONTRACT =
+      ProtectedBookFormatContracts.current();
   private static final PublicDistributionContract PUBLIC_DISTRIBUTION_CONTRACT =
       PublicDistributionContracts.current();
   private static final ManagedSqliteContract MANAGED_SQLITE_CONTRACT =
@@ -95,6 +97,10 @@ final class ProtocolCatalogFacts {
 
   static RuntimeSurfaceContract runtimeSurfaceContract() {
     return RUNTIME_SURFACE_CONTRACT;
+  }
+
+  static ProtectedBookFormatContract protectedBookFormatContract() {
+    return PROTECTED_BOOK_FORMAT_CONTRACT;
   }
 
   static PublicDistributionContract publicDistributionContract() {

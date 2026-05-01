@@ -1,8 +1,8 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.BookProtectionMode;
+import dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract;
 import dev.erst.fingrind.contract.protocol.StorageDriver;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
 
@@ -11,7 +11,7 @@ public record EnvironmentStorageDescriptor(
     StorageDriver storageDriver,
     StorageEngine storageEngine,
     BookProtectionMode bookProtectionMode,
-    BookCipher defaultBookCipher)
+    ProtectedBookFormatContract defaultProtectedBookFormat)
     implements ContractDiscoveryDescriptor {
   /** Validates one environment storage descriptor payload. */
   public EnvironmentStorageDescriptor {
@@ -19,7 +19,8 @@ public record EnvironmentStorageDescriptor(
     storageEngine = ContractDescriptorValidation.requireValue(storageEngine, "storageEngine");
     bookProtectionMode =
         ContractDescriptorValidation.requireValue(bookProtectionMode, "bookProtectionMode");
-    defaultBookCipher =
-        ContractDescriptorValidation.requireValue(defaultBookCipher, "defaultBookCipher");
+    defaultProtectedBookFormat =
+        ContractDescriptorValidation.requireValue(
+            defaultProtectedBookFormat, "defaultProtectedBookFormat");
   }
 }

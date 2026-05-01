@@ -161,8 +161,17 @@ function Assert-BundleCapabilitiesContract {
     if ($storage.bookProtectionMode -ne $script:ContractValues.runtimeSurface.bookProtectionMode) {
         Fail "capabilities output did not report required book protection"
     }
-    if ($storage.defaultBookCipher -ne $script:ContractValues.runtimeSurface.defaultBookCipher) {
+    if ($storage.defaultProtectedBookFormat.cipher -ne $script:ContractValues.protectedBookFormat.cipher) {
         Fail "capabilities output did not report the canonical default book cipher"
+    }
+    if ($storage.defaultProtectedBookFormat.legacyMode -ne $script:ContractValues.protectedBookFormat.legacyMode) {
+        Fail "capabilities output did not report the canonical legacy-mode flag"
+    }
+    if ($storage.defaultProtectedBookFormat.pageSize -ne $script:ContractValues.protectedBookFormat.pageSize) {
+        Fail "capabilities output did not report the canonical protected-book page size"
+    }
+    if ($storage.defaultProtectedBookFormat.reservedBytes -ne $script:ContractValues.protectedBookFormat.reservedBytes) {
+        Fail "capabilities output did not report the canonical protected-book reserved bytes"
     }
     if ($sqlite.requiredMinimumSqliteVersion -ne $script:ContractValues.managedSqlite.requiredMinimumSqliteVersion) {
         Fail "capabilities output did not report the canonical minimum SQLite version"

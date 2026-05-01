@@ -89,12 +89,20 @@ public final class CliFuzzFixtures {
       BookAdministrationService administrationService, PostEntryCommand command) {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
     Objects.requireNonNull(command, "command must not be null");
+    return declarePostingAccountCommands(command).stream()
+        .map(administrationService::declareAccount)
+        .map(CliFuzzFixtures::requireDeclaredAccount)
+        .toList();
+  }
+
+  /** Returns deterministic declare-account commands for every distinct posting account. */
+  public static List<DeclareAccountCommand> declarePostingAccountCommands(
+      PostEntryCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
     return command.journalEntry().lines().stream()
         .map(line -> line.accountCode())
         .distinct()
         .map(CliFuzzFixtures::syntheticDeclareAccountCommand)
-        .map(administrationService::declareAccount)
-        .map(CliFuzzFixtures::requireDeclaredAccount)
         .toList();
   }
 

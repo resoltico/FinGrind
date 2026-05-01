@@ -74,14 +74,14 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code(),
-        failureEnvelope.path("code").asString());
+        failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
             .path("message")
-            .asString()
+            .stringValue()
             .contains(
                 "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
-    assertTrue(failureEnvelope.path("hint").asString().contains("--book-key-file"));
+    assertTrue(failureEnvelope.path("hint").stringValue().contains("--book-key-file"));
   }
 
   @Test
@@ -163,7 +163,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
         ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
-        failureEnvelope.path("code").asText());
+        failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains(wrongSecret));
   }
 }

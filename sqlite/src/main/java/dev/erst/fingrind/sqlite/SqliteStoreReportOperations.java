@@ -22,46 +22,48 @@ final class SqliteStoreReportOperations {
     T run(SqliteNativeDatabase activeDatabase);
   }
 
-  private final SqliteStoreContext store;
+  private final SqliteStoreContext context;
+  private final SqliteStoreLifecycle lifecycle;
 
-  SqliteStoreReportOperations(SqliteStoreContext store) {
-    this.store = Objects.requireNonNull(store, "store");
+  SqliteStoreReportOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
+    this.context = Objects.requireNonNull(context, "context");
+    this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
   Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.postingReader().accountBalance(activeDatabase, query));
+        activeDatabase -> context.postingReader().accountBalance(activeDatabase, query));
   }
 
   TrialBalanceReport trialBalance(TrialBalanceQuery query) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.reportReader().trialBalance(activeDatabase, query));
+        activeDatabase -> context.reportReader().trialBalance(activeDatabase, query));
   }
 
   AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.reportReader().accountLedger(activeDatabase, query, account));
+        activeDatabase -> context.reportReader().accountLedger(activeDatabase, query, account));
   }
 
   PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> store.reportReader().periodSummary(activeDatabase, query));
+        activeDatabase -> context.reportReader().periodSummary(activeDatabase, query));
   }
 
   private SqliteNativeDatabase initializedReportDatabase() {
-    if (Files.notExists(store.bookPath())) {
+    if (Files.notExists(context.bookPath())) {
       throw new IllegalStateException(SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE);
     }
-    SqliteNativeDatabase activeDatabase = store.database();
-    store.requireInitializedBook(activeDatabase);
+    SqliteNativeDatabase activeDatabase = lifecycle.database();
+    lifecycle.requireInitializedBook(activeDatabase);
     return activeDatabase;
   }
 

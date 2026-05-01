@@ -1,7 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,7 +12,6 @@ import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
@@ -72,45 +72,39 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void takeBookPassphrase_rejectsSecondConsumption() {
-    try (SqlitePostingFactStore postingFactStore =
-        new SqlitePostingFactStore(
-            tempDirectory.resolve("passphrase-consumption.sqlite"),
-            SqliteBookPassphrase.fromCharacters(
-                "test passphrase consumption", TEST_BOOK_KEY.toCharArray()))) {
-      try (SqliteBookPassphrase ignored =
-          SqliteStoreTestAccess.takePendingPassphrase(postingFactStore)) {
-        IllegalStateException exception =
-            assertThrows(
-                IllegalStateException.class,
-                () -> SqliteStoreTestAccess.takePendingPassphrase(postingFactStore));
+  void sessionReopensCleanlyAfterDatabaseStateReset() throws Exception {
+    Path bookPath = tempDirectory.resolve("session-reopen.sqlite");
+    initializeBookOnDisk(bookPath);
 
-        assertEquals("SQLite book passphrase is no longer available.", exception.getMessage());
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      assertTrue(postingFactStore.isInitialized());
+      try (SqliteNativeDatabase firstDatabase = requireStoreDatabase(postingFactStore)) {
+        clearPublishedDatabaseState(postingFactStore);
+        assertNotSame(firstDatabase, postingFactStore.activeNativeDatabase());
       }
+      assertTrue(postingFactStore.isInitialized());
     }
   }
 
   @Test
-  void openBook_remembersConsumedPassphraseFailureAsTerminalState() {
+  void reusedSessionKeepsWorkingAfterStateResetForInitializationFlow() throws Exception {
+    Path bookPath = tempDirectory.resolve("state-reset-initialization.sqlite");
+    initializeBookOnDisk(bookPath);
+
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
-            tempDirectory.resolve("consumed-passphrase.sqlite"),
+            bookPath,
             SqliteBookPassphrase.fromCharacters(
-                "test consumed passphrase", TEST_BOOK_KEY.toCharArray()))) {
-      try (SqliteBookPassphrase ignored =
-          SqliteStoreTestAccess.takePendingPassphrase(postingFactStore)) {
-        IllegalStateException firstFailure =
-            assertThrows(
-                IllegalStateException.class,
-                () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
-        IllegalStateException secondFailure =
-            assertThrows(
-                IllegalStateException.class,
-                () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
-
-        assertEquals("SQLite book passphrase is no longer available.", firstFailure.getMessage());
-        assertSame(firstFailure, secondFailure);
+                "test session secret reuse", TEST_BOOK_KEY.toCharArray()),
+            SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
+      assertTrue(postingFactStore.isInitialized());
+      try (SqliteNativeDatabase firstDatabase = requireStoreDatabase(postingFactStore)) {
+        assertDoesNotThrow(firstDatabase::handle);
+        clearPublishedDatabaseState(postingFactStore);
       }
+
+      assertDoesNotThrow(postingFactStore::isInitialized);
     }
   }
 }

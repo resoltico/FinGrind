@@ -2,16 +2,30 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.invoke.MethodHandle;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.CodeSource;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import org.jspecify.annotations.Nullable;
 
 /** Shared runtime lookup and compatibility validation support for the SQLite native bridge. */
 final class SqliteNativeRuntimePolicy {
+  private static final String SOURCE_CHECKOUT_ROOT_SYSTEM_PROPERTY =
+      "fingrind.source-checkout.root";
+  private static final String SOURCE_CHECKOUT_ROOT_MANIFEST_ATTRIBUTE =
+      "FinGrind-Source-Checkout-Root";
+
   private SqliteNativeRuntimePolicy() {}
 
   static int compareVersions(String leftVersion, String rightVersion) {
@@ -169,6 +183,14 @@ final class SqliteNativeRuntimePolicy {
 
   static SqliteLibraryTarget configuredLibraryTarget(
       @Nullable String configuredLibraryPath, @Nullable String bundleHomePath) {
+    return configuredLibraryTarget(
+        configuredLibraryPath, bundleHomePath, SqliteNativeRuntimePolicy::sourceCheckoutRoots);
+  }
+
+  static SqliteLibraryTarget configuredLibraryTarget(
+      @Nullable String configuredLibraryPath,
+      @Nullable String bundleHomePath,
+      Supplier<List<Path>> sourceCheckoutRootsSupplier) {
     String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
     if (normalizedConfiguredPath != null) {
       return new SqliteLibraryTarget(
@@ -179,6 +201,11 @@ final class SqliteNativeRuntimePolicy {
     String normalizedBundleHomePath = normalizeNullablePath(bundleHomePath);
     if (normalizedBundleHomePath != null) {
       return bundledLibraryTarget(normalizedBundleHomePath);
+    }
+    SqliteLibraryTarget sourceCheckoutLibraryTarget =
+        sourceCheckoutLibraryTarget(sourceCheckoutRootsSupplier);
+    if (sourceCheckoutLibraryTarget != null) {
+      return sourceCheckoutLibraryTarget;
     }
     throw missingLibraryTargetFailure();
   }
@@ -230,7 +257,7 @@ final class SqliteNativeRuntimePolicy {
               + normalizedBundleHomePath
               + " does not contain the managed SQLite library at "
               + bundleLibraryPath
-              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or for a local source checkout set "
+              + ". Use the published FinGrind bundle launcher as extracted (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout. For custom direct-Java launches outside the checkout, set "
               + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
               + " to the managed "
               + managedSqliteVersionLabel()
@@ -244,11 +271,156 @@ final class SqliteNativeRuntimePolicy {
 
   private static ManagedSqliteRuntimeUnavailableException missingLibraryTargetFailure() {
     return new ManagedSqliteRuntimeUnavailableException(
-        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or for a local source checkout set "
+        "FinGrind could not locate the managed SQLite runtime. Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows; bin\\fingrind.cmd remains a compatibility wrapper), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout. For custom direct-Java launches outside the checkout, set "
             + SqliteRuntime.LIBRARY_ENVIRONMENT_VARIABLE
             + " to the managed "
             + managedSqliteVersionLabel()
             + " shared library produced by ./gradlew prepareManagedSqlite.");
+  }
+
+  private static @Nullable SqliteLibraryTarget sourceCheckoutLibraryTarget(
+      Supplier<List<Path>> sourceCheckoutRootsSupplier) {
+    Objects.requireNonNull(sourceCheckoutRootsSupplier, "sourceCheckoutRootsSupplier");
+    for (Path sourceCheckoutRoot : sourceCheckoutRootsSupplier.get()) {
+      Path managedLibraryPath = sourceCheckoutManagedLibraryPath(sourceCheckoutRoot);
+      if (managedLibraryPath != null) {
+        return new SqliteLibraryTarget(
+            SqliteRuntime.LIBRARY_MODE,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+            managedLibraryPath.toString());
+      }
+    }
+    return null;
+  }
+
+  private static List<Path> sourceCheckoutRoots() {
+    Path codeSourcePath = codeSourcePath();
+    return sourceCheckoutRoots(
+        normalizeNullablePath(System.getProperty(SOURCE_CHECKOUT_ROOT_SYSTEM_PROPERTY)),
+        sourceCheckoutRootFromManifest(codeSourcePath, SqliteNativeRuntimePolicy::manifestFromJar),
+        sourceCheckoutRootFromCodeSource(codeSourcePath));
+  }
+
+  static List<Path> sourceCheckoutRoots(
+      @Nullable String configuredRootPath,
+      @Nullable String manifestRootPath,
+      @Nullable String codeSourceRootPath) {
+    Set<Path> candidates = new LinkedHashSet<>();
+    addSourceCheckoutRoots(candidates, configuredRootPath);
+    addSourceCheckoutRoots(candidates, manifestRootPath);
+    addSourceCheckoutRoots(candidates, codeSourceRootPath);
+    return List.copyOf(candidates);
+  }
+
+  private static void addSourceCheckoutRoots(Set<Path> candidates, @Nullable String rawRootPath) {
+    if (rawRootPath == null) {
+      return;
+    }
+    Path candidate = Path.of(rawRootPath).toAbsolutePath().normalize();
+    if (Files.isRegularFile(candidate)) {
+      candidate = candidate.getParent();
+    }
+    while (candidate != null) {
+      if (looksLikeSourceCheckoutRoot(candidate)) {
+        candidates.add(candidate);
+      }
+      candidate = candidate.getParent();
+    }
+  }
+
+  private static boolean looksLikeSourceCheckoutRoot(Path candidate) {
+    return Files.isRegularFile(candidate.resolve("gradlew"))
+        && Files.isDirectory(candidate.resolve("cli"));
+  }
+
+  static @Nullable String sourceCheckoutRootFromManifest(
+      @Nullable Path codeSourcePath, ManifestReader manifestReader) {
+    if (codeSourcePath == null || !Files.isRegularFile(codeSourcePath)) {
+      return null;
+    }
+    try {
+      Manifest manifest = manifestReader.read(codeSourcePath);
+      if (manifest == null) {
+        return null;
+      }
+      return normalizeNullablePath(
+          manifest.getMainAttributes().getValue(SOURCE_CHECKOUT_ROOT_MANIFEST_ATTRIBUTE));
+    } catch (IOException exception) {
+      return null;
+    }
+  }
+
+  static @Nullable String sourceCheckoutRootFromCodeSource(@Nullable Path codeSourcePath) {
+    if (codeSourcePath == null) {
+      return null;
+    }
+    Path normalizedCodeSourcePath = codeSourcePath.toAbsolutePath().normalize();
+    return Files.isRegularFile(normalizedCodeSourcePath)
+        ? Objects.requireNonNull(
+                normalizedCodeSourcePath.getParent(), "normalizedCodeSourcePath.getParent()")
+            .toString()
+        : normalizedCodeSourcePath.toString();
+  }
+
+  private static @Nullable Path codeSourcePath() {
+    return codeSourcePath(SqliteNativeRuntimePolicy.class.getProtectionDomain().getCodeSource());
+  }
+
+  static @Nullable Path codeSourcePath(@Nullable CodeSource codeSource) {
+    if (codeSource == null) {
+      return null;
+    }
+    return codeSourcePath(
+        codeSource.getLocation() == null ? null : codeSource.getLocation().toExternalForm());
+  }
+
+  static @Nullable Path codeSourcePath(@Nullable String codeSourceLocation) {
+    if (codeSourceLocation == null) {
+      return null;
+    }
+    try {
+      return Path.of(URI.create(codeSourceLocation)).toAbsolutePath().normalize();
+    } catch (Exception exception) {
+      return null;
+    }
+  }
+
+  private static @Nullable Path sourceCheckoutManagedLibraryPath(Path sourceCheckoutRoot) {
+    return sourceCheckoutManagedLibraryPath(
+        sourceCheckoutRoot, SqliteNativeRuntimePolicy::findManagedLibrary);
+  }
+
+  static @Nullable Path sourceCheckoutManagedLibraryPath(
+      Path sourceCheckoutRoot, ManagedLibraryFinder managedLibraryFinder) {
+    Path managedSqliteRoot = sourceCheckoutRoot.resolve("build").resolve("managed-sqlite");
+    if (!Files.isDirectory(managedSqliteRoot)) {
+      return null;
+    }
+    String expectedFileName = supportedNativeLibraryFileName();
+    try {
+      return managedLibraryFinder.find(managedSqliteRoot, expectedFileName);
+    } catch (IOException exception) {
+      return null;
+    }
+  }
+
+  private static @Nullable Path findManagedLibrary(Path managedSqliteRoot, String expectedFileName)
+      throws IOException {
+    try (var pathStream =
+        Files.find(
+            managedSqliteRoot,
+            2,
+            (path, attributes) ->
+                attributes.isRegularFile()
+                    && path.getFileName().toString().equals(expectedFileName))) {
+      return pathStream.sorted().findFirst().orElse(null);
+    }
+  }
+
+  private static Manifest manifestFromJar(Path codeSourcePath) throws IOException {
+    try (JarFile jarFile = new JarFile(codeSourcePath.toFile())) {
+      return jarFile.getManifest();
+    }
   }
 
   private static String managedSqliteVersionLabel() {
@@ -286,5 +458,19 @@ final class SqliteNativeRuntimePolicy {
       }
     }
     return parsedParts;
+  }
+
+  /** Opens one manifest view for one code-source artifact. */
+  @FunctionalInterface
+  interface ManifestReader {
+    /** Reads the manifest for the provided code-source artifact. */
+    @Nullable Manifest read(Path codeSourcePath) throws IOException;
+  }
+
+  /** Locates one managed SQLite library candidate under one managed-runtime root. */
+  @FunctionalInterface
+  interface ManagedLibraryFinder {
+    /** Finds the managed SQLite library path under the provided managed-runtime root. */
+    @Nullable Path find(Path managedSqliteRoot, String expectedFileName) throws IOException;
   }
 }

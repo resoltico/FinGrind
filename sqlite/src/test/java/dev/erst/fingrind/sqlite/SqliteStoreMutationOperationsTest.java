@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -99,22 +100,22 @@ class SqliteStoreMutationOperationsTest {
   @Test
   void publishRekeyedDatabase_closesReplacementHandleWhenPublicationFailsBeforeSwap() {
     Path bookPath = tempDirectory.resolve("publish-rekeyed-database.sqlite");
-    CapturingStoreContext store =
-        new CapturingStoreContext(
-            bookPath,
+    try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters(
-                "store mutation test book", "book-key".toCharArray()));
-
-    try (store;
+                "store mutation test book", "book-key".toCharArray());
         SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "store mutation test replacement", "replacement-key".toCharArray())) {
-      SqliteStoreMutationOperations operations = new SqliteStoreMutationOperations(store);
+      CapturingStoreContext context =
+          new CapturingStoreContext(bookPath, SqliteNativeBootstrap::api);
+      CapturingStoreLifecycle lifecycle = new CapturingStoreLifecycle(context, bookPassphrase);
+      SqliteStoreMutationOperations operations =
+          new SqliteStoreMutationOperations(context, lifecycle);
       SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
-      SqliteBookSchemaBootstrap.initializeBook(store.database());
+      SqliteBookSchemaBootstrap.initializeBook(lifecycle.database());
       SqliteMutationWriter.insertInitializedAt(
-          store.database(), Instant.parse("2026-04-29T10:15:30Z"));
-      SqliteNativeConnections.rekey(store.database(), replacementPassphrase);
+          lifecycle.database(), Instant.parse("2026-04-29T10:15:30Z"));
+      SqliteNativeConnections.rekey(lifecycle.database(), replacementPassphrase);
       SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
       try {
         IllegalStateException failure =
@@ -122,33 +123,27 @@ class SqliteStoreMutationOperationsTest {
                 IllegalStateException.class,
                 () ->
                     operations.publishRekeyedDatabase(
-                        store.database(), replacementPassphrase, rollbackFile));
+                        lifecycle.database(), replacementPassphrase, rollbackFile));
         assertEquals("forced validation failure", failure.getMessage());
-        assertNotNull(store.reopenedDatabase());
+        assertNotNull(context.reopenedDatabase());
         IllegalStateException closedHandleFailure =
-            assertThrows(IllegalStateException.class, () -> store.reopenedDatabase().handle());
+            assertThrows(IllegalStateException.class, () -> context.reopenedDatabase().handle());
         assertEquals(
             "SQLite native database handle is already closed.", closedHandleFailure.getMessage());
       } finally {
         rollbackFile.deleteQuietly();
+        assertDoesNotThrow(lifecycle::close);
       }
     }
   }
 
-  /** Test-only store seam that captures the reopened replacement handle before publication. */
+  /** Test-only context seam that captures the reopened replacement handle before publication. */
   private static final class CapturingStoreContext extends SqliteStoreContext {
     private SqliteNativeDatabase reopenedDatabase;
 
-    CapturingStoreContext(Path bookPath, SqliteBookPassphrase bookPassphrase) {
-      super(bookPath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_CREATE);
-    }
-
-    @Override
-    void requireInitializedBook(SqliteNativeDatabase activeDatabase) {
-      if (activeDatabase.equals(reopenedDatabase)) {
-        throw new IllegalStateException("forced validation failure");
-      }
-      super.requireInitializedBook(activeDatabase);
+    CapturingStoreContext(
+        Path bookPath, java.util.function.Supplier<SqliteNativeApi> sqliteApiSupplier) {
+      super(bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, sqliteApiSupplier);
     }
 
     @Override
@@ -159,6 +154,24 @@ class SqliteStoreMutationOperationsTest {
 
     SqliteNativeDatabase reopenedDatabase() {
       return reopenedDatabase;
+    }
+  }
+
+  /** Test-only lifecycle seam that forces validation failure on the reopened replacement handle. */
+  private static final class CapturingStoreLifecycle extends SqliteStoreLifecycle {
+    private final CapturingStoreContext context;
+
+    CapturingStoreLifecycle(CapturingStoreContext context, SqliteBookPassphrase bookPassphrase) {
+      super(context, new SqliteSessionSecret(bookPassphrase));
+      this.context = context;
+    }
+
+    @Override
+    void requireInitializedBook(SqliteNativeDatabase activeDatabase) {
+      if (activeDatabase.equals(context.reopenedDatabase())) {
+        throw new IllegalStateException("forced validation failure");
+      }
+      super.requireInitializedBook(activeDatabase);
     }
   }
 }

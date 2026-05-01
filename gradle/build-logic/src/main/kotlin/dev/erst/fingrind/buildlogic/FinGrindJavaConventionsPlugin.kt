@@ -169,6 +169,13 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                     }
                 }
             }
+            val testTasks = tasks.withType<Test>()
+            val jacocoExecutionData =
+                providers.provider<List<java.io.File>> {
+                    testTasks.mapNotNull { testTask ->
+                        testTask.extensions.findByType(JacocoTaskExtension::class.java)?.destinationFile
+                    }
+                }
 
             tasks.withType<JavaExec>().configureEach {
                 enableNativeAccess()
@@ -179,8 +186,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.named<JacocoReport>("jacocoTestReport") {
-                dependsOn(tasks.named("test"))
-                executionData.from(FinGrindFilesystemLayout.jacocoDestinationFile(project, "test"))
+                dependsOn(testTasks)
+                executionData.from(jacocoExecutionData)
                 reports {
                     xml.required.set(true)
                     html.required.set(true)
@@ -188,8 +195,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             }
 
             tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
-                dependsOn(tasks.named("test"))
-                executionData.from(FinGrindFilesystemLayout.jacocoDestinationFile(project, "test"))
+                dependsOn(testTasks)
+                executionData.from(jacocoExecutionData)
                 violationRules {
                     rule {
                         limit {

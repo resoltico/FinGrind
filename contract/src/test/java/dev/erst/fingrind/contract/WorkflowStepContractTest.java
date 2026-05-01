@@ -31,11 +31,20 @@ class WorkflowStepContractTest {
         WireValue.fromWireValue(WorkflowStepKind.class, "edit", "Unsupported workflow step kind"));
     assertEquals(List.of("command", "edit", "note"), WireValue.wireValues(WorkflowStepKind.class));
     assertEquals(
-        List.of("bundle-posix-shell", "bundle-windows-powershell"),
+        List.of(
+            "bundle-posix-shell",
+            "bundle-windows-powershell",
+            "source-checkout-posix-shell",
+            "source-checkout-windows-powershell",
+            "direct-java-posix-shell",
+            "direct-java-windows-powershell",
+            "container-docker"),
         WireValue.wireValues(WorkflowSurface.class));
     assertEquals(
         WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL,
         WorkflowSurface.fromWireValue("bundle-windows-powershell"));
+    assertEquals(
+        WorkflowSurface.CONTAINER_DOCKER, WorkflowSurface.fromWireValue("container-docker"));
   }
 
   @Test

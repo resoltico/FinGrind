@@ -154,7 +154,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--new-book-key-file",
+                  "--replacement-book-key-file",
                   tempDirectory.resolve("replacement.key").toString()
                 }));
     assertEquals(

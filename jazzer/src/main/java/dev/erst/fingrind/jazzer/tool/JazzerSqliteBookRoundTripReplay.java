@@ -1,20 +1,11 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.cli.SqliteRoundTripWorkflowAssertions;
+import dev.erst.fingrind.cli.SqliteRoundTripWorkflowAssertions.SqliteRoundTripWorkflowSnapshot;
 import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.executor.BookAdministrationService;
-import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
-import dev.erst.fingrind.sqlite.SqliteBookSession;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
 
 /** Replays posting-command workflows against the SQLite-backed round-trip harness. */
 final class JazzerSqliteBookRoundTripReplay {
@@ -54,78 +45,15 @@ final class JazzerSqliteBookRoundTripReplay {
 
   private static void exerciseRoundTripWorkflow(
       PostEntryCommand command, byte[] input, SqliteRoundTripReplayState state) throws IOException {
-    try (JazzerReplayScratchDirectory scratchDirectory =
-        JazzerReplayScratchDirectory.create("fingrind-jazzer-replay-")) {
-      Path bookPath = scratchDirectory.resolve(Path.of("nested", "entity-book.sqlite"));
-
-      try (SqliteBookSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
-        BookAdministrationService administrationService =
-            CliFuzzFixtures.administrationService(postingFactStore.administrationSession());
-        PostingApplicationService applicationService =
-            new PostingApplicationService(
-                postingFactStore.postingSession(),
-                CliFuzzFixtures.postingIdGenerator(input),
-                CliFuzzFixtures.fixedClock());
-
-        state.uninitializedCommitStatus =
-            JazzerReplayDetailsMapper.rejectionStatus(
-                JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
-                    .rejection());
-
-        CliFuzzFixtures.openBook(administrationService);
-
-        state.undeclaredCommitStatus =
-            JazzerReplayDetailsMapper.rejectionStatus(
-                JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
-                    .rejection());
-
-        List<DeclaredAccount> declaredAccounts =
-            CliFuzzFixtures.declarePostingAccounts(administrationService, command);
-        SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(
-            CliFuzzFixtures.listAccounts(postingFactStore.readSession()).size(),
-            declaredAccounts.size());
-        DeclaredAccount primaryAccount = declaredAccounts.getFirst();
-        SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
-        state.inactiveCommitStatus =
-            JazzerReplayDetailsMapper.rejectionStatus(
-                JazzerReplayDetailsMapper.requiredCommitRejected(applicationService.commit(command))
-                    .rejection());
-
-        CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
-
-        CommitEntryResult committedResult = applicationService.commit(command);
-        switch (committedResult) {
-          case Committed committed -> {
-            state.finalCommitStatus = PostingLifecycleStatus.COMMITTED;
-            try (SqliteBookSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
-              PostingFact postingFact =
-                  SqliteRoundTripReplayVerifier.requireStoredPosting(
-                      reloadedStore.findExistingPosting(
-                          command.requestProvenance().idempotencyKey()));
-              SqliteRoundTripReplayVerifier.verifyReloadedPosting(postingFact, committed, command);
-              state.storedFactPresent = true;
-              state.reloadStatus = PostingLifecycleStatus.RELOADED;
-
-              PostingApplicationService duplicateService =
-                  new PostingApplicationService(
-                      reloadedStore.postingSession(),
-                      CliFuzzFixtures.postingIdGenerator(input),
-                      CliFuzzFixtures.fixedClock());
-              state.duplicateStatus =
-                  SqliteRoundTripReplayVerifier.requireDuplicateRejection(
-                      duplicateService.commit(command));
-            }
-          }
-          case CommitRejected rejected -> {
-            state.finalCommitStatus =
-                JazzerReplayDetailsMapper.rejectionStatus(rejected.rejection());
-            state.duplicateStatus =
-                SqliteRoundTripReplayVerifier.verifyRejectedCommitConsistency(
-                    rejected, applicationService.commit(command));
-          }
-        }
-      }
-    }
+    SqliteRoundTripWorkflowSnapshot snapshot =
+        SqliteRoundTripWorkflowAssertions.exerciseRoundTripWorkflow(command, input);
+    state.uninitializedCommitStatus = snapshot.uninitializedCommitStatus();
+    state.undeclaredCommitStatus = snapshot.undeclaredCommitStatus();
+    state.inactiveCommitStatus = snapshot.inactiveCommitStatus();
+    state.finalCommitStatus = snapshot.finalCommitStatus();
+    state.reloadStatus = snapshot.reloadStatus();
+    state.duplicateStatus = snapshot.duplicateStatus();
+    state.storedFactPresent = snapshot.storedFactPresent();
   }
 
   /** Parses one SQLite round-trip replay input into the production posting command model. */

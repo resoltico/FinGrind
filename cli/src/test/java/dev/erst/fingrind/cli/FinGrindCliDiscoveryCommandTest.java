@@ -17,6 +17,7 @@ import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.contract.RequestFieldPresence;
 import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.core.AccountCode;
@@ -59,7 +60,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
     assertTrue(
-        help.contains("./bin/fingrind generate-book-key-file --book-key-file ./acme.book-key"));
+        help.contains(
+            CliInvocationText.commandExample(OperationId.GENERATE_BOOK_KEY_FILE)
+                + " --book-key-file ./acme.book-key"));
     assertTrue(help.contains("Write: ./declare-account-cash.json"));
     assertTrue(help.contains("\"accountCode\": \"1000\""));
     assertTrue(help.contains("--request-file ./declare-account-cash.json"));
@@ -139,10 +142,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       assertTrue(containsText(helpPayload, bundleLauncher + " post-entry"));
       JsonNode failurePayload =
           new ObjectMapper().readTree(failureOutputStream.toString(StandardCharsets.UTF_8));
-      assertEquals("Unsupported argument: --bogus", failurePayload.path("message").asText());
+      assertEquals("Unsupported argument: --bogus", failurePayload.path("message").stringValue());
       assertEquals(
-          "Run '" + bundleLauncher + " help' to inspect the supported command syntax.",
-          failurePayload.path("hint").asText());
+          "Run '" + bundleLauncher + " help post-entry' to inspect the supported command syntax.",
+          failurePayload.path("hint").stringValue());
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
@@ -150,6 +153,30 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, priorDistribution);
       }
     }
+  }
+
+  @Test
+  void run_rewritesSourceCheckoutHelpToTheGeneratedLauncherSurface() {
+    assertRuntimeSpecificHelpSurface(
+        FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION,
+        "./cli/build/install/cli-shadow/bin/cli",
+        "Source Checkout Launcher");
+  }
+
+  @Test
+  void run_rewritesDirectJavaHelpToTheDeveloperJarSurface() {
+    assertRuntimeSpecificHelpSurface(
+        FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
+        ProtocolCatalog.directJavaLauncherCommand(false),
+        "Developer Raw JAR");
+  }
+
+  @Test
+  void run_rewritesContainerHelpToTheDockerSurface() {
+    assertRuntimeSpecificHelpSurface(
+        FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
+        "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>",
+        "Container Image");
   }
 
   @Test
@@ -179,12 +206,12 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
 
   private static List<String> commandNames(JsonNode commands) {
     List<String> names = new ArrayList<>();
-    commands.forEach(command -> names.add(command.path("name").asText()));
+    commands.forEach(command -> names.add(command.path("name").stringValue()));
     return List.copyOf(names);
   }
 
   private static boolean containsText(JsonNode node, String expected) {
-    if (node.isTextual() && node.asText().contains(expected)) {
+    if (node.isString() && node.stringValue().contains(expected)) {
       return true;
     }
     if (node.isObject() || node.isArray()) {
@@ -197,9 +224,50 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     return false;
   }
 
+  private void assertRuntimeSpecificHelpSurface(
+      String runtimeDistribution, String expectedLauncher, String expectedQuickStartTitle) {
+    String priorDistribution =
+        System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, "__missing__");
+    try {
+      System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, runtimeDistribution);
+      ByteArrayOutputStream helpOutputStream = new ByteArrayOutputStream();
+      FinGrindCli helpCli =
+          cli(
+              new ByteArrayInputStream(new byte[0]),
+              utf8PrintStream(helpOutputStream),
+              fixedClock());
+      ByteArrayOutputStream failureOutputStream = new ByteArrayOutputStream();
+      FinGrindCli failureCli =
+          cli(
+              new ByteArrayInputStream(new byte[0]),
+              utf8PrintStream(failureOutputStream),
+              fixedClock());
+
+      int helpExitCode = helpCli.run(new String[0]);
+      int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
+
+      assertEquals(0, helpExitCode);
+      assertEquals(1, failureExitCode);
+      String help = helpOutputStream.toString(StandardCharsets.UTF_8);
+      assertTrue(help.contains(expectedQuickStartTitle), help);
+      assertTrue(help.contains(expectedLauncher), help);
+      JsonNode failurePayload =
+          new ObjectMapper().readTree(failureOutputStream.toString(StandardCharsets.UTF_8));
+      assertEquals(
+          "Run '" + expectedLauncher + " help post-entry' to inspect the supported command syntax.",
+          failurePayload.path("hint").stringValue());
+    } finally {
+      if ("__missing__".equals(priorDistribution)) {
+        System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
+      } else {
+        System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, priorDistribution);
+      }
+    }
+  }
+
   private static JsonNode commandDescriptor(JsonNode commands, String operationId) {
     for (JsonNode command : commands) {
-      if (operationId.equals(command.path("name").asText())) {
+      if (operationId.equals(command.path("name").stringValue())) {
         return command;
       }
     }
@@ -229,9 +297,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode trialBalance =
         commandDescriptor(payload.path("commands").path("query"), "trial-balance");
     assertEquals("[\"json\",\"human\",\"csv\"]", trialBalance.path("outputModes").toString());
-    assertEquals("pdf", trialBalance.path("artifactOutputs").get(0).path("format").asText());
+    assertEquals("pdf", trialBalance.path("artifactOutputs").get(0).path("format").stringValue());
     assertEquals(
-        "--pdf-out <path>", trialBalance.path("artifactOutputs").get(0).path("option").asText());
+        "--pdf-out <path>",
+        trialBalance.path("artifactOutputs").get(0).path("option").stringValue());
   }
 
   private static void assertCapabilitiesRequestShapes(JsonNode payload) {
@@ -239,13 +308,13 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(payload.path("requestShapes").has("declareAccount"));
     assertEquals(
         "https://json-schema.org/draft/2020-12/schema",
-        payload.path("requestShapes").path("schemaDialect").asText());
-    assertEquals("advisory", payload.path("preflight").path("semantics").asString());
-    assertEquals("not-guaranteed", payload.path("preflight").path("commitGuarantee").asString());
+        payload.path("requestShapes").path("schemaDialect").stringValue());
+    assertEquals("advisory", payload.path("preflight").path("semantics").stringValue());
+    assertEquals("not-guaranteed", payload.path("preflight").path("commitGuarantee").stringValue());
     assertEquals(
-        "single-currency-per-entry", payload.path("currencyModel").path("scope").asString());
+        "single-currency-per-entry", payload.path("currencyModel").path("scope").stringValue());
     assertEquals(
-        "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").asString());
+        "not-supported", payload.path("currencyModel").path("multiCurrencyStatus").stringValue());
     assertTrue(payload.path("requestShapes").path("postEntry").path("topLevelFields").isArray());
     assertEquals(
         "effectiveDate",
@@ -255,7 +324,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("topLevelFields")
             .get(0)
             .path("name")
-            .asString());
+            .stringValue());
     assertEquals(
         RequestFieldPresence.REQUIRED.wireValue(),
         payload
@@ -264,10 +333,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("topLevelFields")
             .get(0)
             .path("presence")
-            .asString());
+            .stringValue());
     assertEquals(
         "object",
-        payload.path("requestShapes").path("postEntry").path("schema").path("type").asText());
+        payload.path("requestShapes").path("postEntry").path("schema").path("type").stringValue());
     assertEquals(
         "array",
         payload
@@ -277,40 +346,73 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("properties")
             .path("steps")
             .path("type")
-            .asText());
+            .stringValue());
     assertEquals(
         "conditional",
         descriptorField(
                 payload.path("requestShapes").path("ledgerPlan").path("stepFields"), "posting")
             .path("presence")
-            .asText());
+            .stringValue());
     assertEquals(
         "conditional",
         descriptorField(
                 payload.path("requestShapes").path("ledgerPlan").path("queryFields"), "accountCode")
             .path("presence")
-            .asText());
+            .stringValue());
   }
 
   private static void assertCapabilitiesRuntimeContract(JsonNode payload) {
     assertEquals(
         ProtocolCatalog.storageDriver().wireValue(),
-        payload.path("environment").path("storage").path("storageDriver").asString());
+        payload.path("environment").path("storage").path("storageDriver").stringValue());
     assertEquals(
         ProtocolCatalog.bookProtectionMode().wireValue(),
-        payload.path("environment").path("storage").path("bookProtectionMode").asString());
+        payload.path("environment").path("storage").path("bookProtectionMode").stringValue());
     assertEquals(
-        ProtocolCatalog.defaultBookCipher().wireValue(),
-        payload.path("environment").path("storage").path("defaultBookCipher").asString());
+        ProtocolCatalog.protectedBookFormat().cipher().wireValue(),
+        payload
+            .path("environment")
+            .path("storage")
+            .path("defaultProtectedBookFormat")
+            .path("cipher")
+            .stringValue());
+    assertEquals(
+        ProtocolCatalog.protectedBookFormat().legacyMode(),
+        payload
+            .path("environment")
+            .path("storage")
+            .path("defaultProtectedBookFormat")
+            .path("legacyMode")
+            .booleanValue());
+    assertEquals(
+        ProtocolCatalog.protectedBookFormat().pageSize(),
+        payload
+            .path("environment")
+            .path("storage")
+            .path("defaultProtectedBookFormat")
+            .path("pageSize")
+            .intValue());
+    assertEquals(
+        ProtocolCatalog.protectedBookFormat().reservedBytes(),
+        payload
+            .path("environment")
+            .path("storage")
+            .path("defaultProtectedBookFormat")
+            .path("reservedBytes")
+            .intValue());
     assertEquals(
         ProtocolCatalog.sqliteLibraryMode().wireValue(),
-        payload.path("environment").path("sqlite").path("libraryMode").asString());
+        payload.path("environment").path("sqlite").path("libraryMode").stringValue());
     assertEquals(
         ProtocolCatalog.publicCliDistribution().wireValue(),
-        payload.path("environment").path("distribution").path("publicCliDistribution").asString());
+        payload
+            .path("environment")
+            .path("distribution")
+            .path("publicCliDistribution")
+            .stringValue());
     assertEquals(
         FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
-        payload.path("environment").path("distribution").path("runtimeDistribution").asString());
+        payload.path("environment").path("distribution").path("runtimeDistribution").stringValue());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
@@ -331,39 +433,57 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
                 .path("unsupportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
-        payload.path("environment").path("sqlite").path("libraryEnvironmentVariable").asString());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("libraryEnvironmentVariable")
+            .stringValue());
     assertEquals(
         ProtocolCatalog.sqliteBundleHomeSystemProperty(),
-        payload.path("environment").path("sqlite").path("bundleHomeSystemProperty").asString());
+        payload.path("environment").path("sqlite").path("bundleHomeSystemProperty").stringValue());
     assertEquals(
         ProtocolCatalog.requiredSqliteCompileOptions(),
         readTextArray(payload.path("environment").path("sqlite").path("requiredCompileOptions")));
     assertEquals(
         "verified",
-        payload.path("environment").path("sqlite").path("compileOptionsVerification").asString());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("compileOptionsVerification")
+            .stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-        payload.path("environment").path("sqlite").path("requiredSqliteSourceId").asString());
+        payload.path("environment").path("sqlite").path("requiredSqliteSourceId").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
-        payload.path("environment").path("sqlite").path("requiredSqlite3mcVersion").asString());
+        payload.path("environment").path("sqlite").path("requiredSqlite3mcVersion").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
-        payload.path("environment").path("sqlite").path("loadedSqlite3mcVersion").asString());
+        payload.path("environment").path("sqlite").path("loadedSqlite3mcVersion").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-        payload.path("environment").path("sqlite").path("loadedSqliteSourceId").asString());
+        payload.path("environment").path("sqlite").path("loadedSqliteSourceId").stringValue());
     assertFalse(
-        payload.path("environment").path("sqlite").path("loadedLibraryPath").asText().isBlank());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("loadedLibraryPath")
+            .stringValue()
+            .isBlank());
     assertFalse(
-        payload.path("environment").path("sqlite").path("runtimeProvenance").asText().isBlank());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("runtimeProvenance")
+            .stringValue()
+            .isBlank());
   }
 
   private static void assertCapabilitiesRequestInput(JsonNode payload) {
     assertEquals(
         "[\"--book-key-file\",\"--book-passphrase-stdin\",\"--book-passphrase-prompt\"]",
         payload.path("requestInput").path("bookPassphraseOptions").toString());
-    assertEquals("--output", payload.path("requestInput").path("outputOption").asString());
+    assertEquals("--output", payload.path("requestInput").path("outputOption").stringValue());
     assertFalse(payload.path("requestInput").has("queryOutputModes"));
     assertTrue(
         payload
@@ -449,7 +569,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(
         ProtocolCatalog.bookProtectionMode(), environmentDescriptor.storage().bookProtectionMode());
     assertEquals(
-        ProtocolCatalog.defaultBookCipher(), environmentDescriptor.storage().defaultBookCipher());
+        ProtocolCatalog.protectedBookFormat(),
+        environmentDescriptor.storage().defaultProtectedBookFormat());
     assertEquals(ProtocolCatalog.sqliteLibraryMode(), environmentDescriptor.sqlite().libraryMode());
     assertEquals(
         ProtocolCatalog.publicCliDistribution(),
@@ -506,11 +627,11 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(0, exitCode);
     assertTrue(Files.isRegularFile(keyFilePath));
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
-    assertGeneratedKeyFileIsSecure(keyFilePath, payload.path("permissions").asString());
+    assertGeneratedKeyFileIsSecure(keyFilePath, payload.path("permissions").stringValue());
     assertEquals(
         keyFilePath.toAbsolutePath().normalize().toString(),
-        payload.path("bookKeyFile").asString());
-    assertEquals("base64url-no-padding", payload.path("encoding").asString());
+        payload.path("bookKeyFile").stringValue());
+    assertEquals("base64url-no-padding", payload.path("encoding").stringValue());
     assertEquals(256, payload.path("entropyBits").asInt());
     assertFalse(
         outputStream.toString(StandardCharsets.UTF_8).contains(Files.readString(keyFilePath)));
@@ -532,8 +653,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.code(),
-        failureEnvelope.path("code").asString());
-    assertTrue(failureEnvelope.path("message").asString().contains("already exists"));
+        failureEnvelope.path("code").stringValue());
+    assertTrue(failureEnvelope.path("message").stringValue().contains("already exists"));
   }
 
   @Test
@@ -565,20 +686,20 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     JsonNode json =
         assertDoesNotThrow(
             () -> new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8)));
-    assertEquals("plan-1", json.path("planId").asText());
+    assertEquals("plan-1", json.path("planId").stringValue());
     assertFalse(json.has("executionPolicy"));
-    assertEquals("initialize-book", json.path("steps").get(0).path("stepId").asText());
-    assertEquals("assert-cash-balance", json.path("steps").get(4).path("stepId").asText());
+    assertEquals("initialize-book", json.path("steps").get(0).path("stepId").stringValue());
+    assertEquals("assert-cash-balance", json.path("steps").get(4).path("stepId").stringValue());
     assertEquals(
         "assert-account-balance",
-        json.path("steps").get(4).path("assertion").path("kind").asText());
+        json.path("steps").get(4).path("assertion").path("kind").stringValue());
     assertTrue(json.path("steps").get(4).has("assertion"));
     assertFalse(json.path("steps").get(4).has("accountBalanceAssertion"));
   }
 
   private static JsonNode descriptorField(JsonNode fields, String fieldName) {
     for (JsonNode field : fields) {
-      if (fieldName.equals(field.path("name").asText())) {
+      if (fieldName.equals(field.path("name").stringValue())) {
         return field;
       }
     }

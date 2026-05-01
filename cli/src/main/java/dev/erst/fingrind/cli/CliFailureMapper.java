@@ -36,7 +36,7 @@ final class CliFailureMapper {
     String hint =
         switch (SqliteFailureClassifier.classify(exception)) {
           case MANAGED_RUNTIME ->
-              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or for a local source checkout build the managed SQLite runtime with ./gradlew prepareManagedSqlite and set FINGRIND_SQLITE_LIBRARY before rerunning.";
+              "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows), or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer raw JAR from that checkout. For custom direct-Java launches outside the checkout, set FINGRIND_SQLITE_LIBRARY explicitly.";
           case STORAGE ->
               "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem.";
           case OTHER ->

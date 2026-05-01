@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -54,6 +54,9 @@ When behavior changes, update the matching docs in the same change:
   that now serves only as a router
 - keep the reference spine limited to main-source public surfaces; test fixtures do not belong in
   `DOC_*.md`
+- `docs/README.md` is the human-facing documentation router and must list every checked-in
+  top-level guide plus subdirectory schema/reference page that a contributor or operator is
+  expected to discover from the docs tree
 - CLI surface or JSON behavior changes: update user guides and any affected example payloads
 - `docs/USER_CLI.md` keeps its command table in a generated block rendered from the canonical
   protocol catalog; update the catalog first and keep the generated block synchronized in the

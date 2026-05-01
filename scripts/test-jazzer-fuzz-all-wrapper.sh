@@ -8,6 +8,18 @@ die() {
     exit 1
 }
 
+die_with_run_log() {
+    local message=$1
+
+    printf 'error: %s\n' "${message}" >&2
+    if [[ -f "${run_log:-}" ]]; then
+        printf '%s\n' '--- fuzz-all run log ---' >&2
+        cat "${run_log}" >&2
+        printf '%s\n' '--- end fuzz-all run log ---' >&2
+    fi
+    exit 1
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -25,11 +37,9 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly source_wrapper="${repo_root}/jazzer/bin/fuzz-all"
 readonly source_common="${repo_root}/jazzer/bin/common.sh"
-readonly topology_path="${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
 
 [[ -f "${source_wrapper}" ]] || die "missing fuzz-all wrapper"
 [[ -f "${source_common}" ]] || die "missing common.sh wrapper library"
-[[ -f "${topology_path}" ]] || die "missing Jazzer topology file"
 
 tmp_dir="$(mktemp -d)"
 cleanup() {
@@ -49,16 +59,7 @@ declare -a active_target_keys=()
 while IFS= read -r target_key; do
     active_target_keys+=("${target_key}")
 done < <(
-    python3 - "${topology_path}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-for run_target in document["runTargets"]:
-    if run_target.get("activeFuzzing"):
-        print(run_target["key"])
-PY
+    "${repo_root}/gradlew" -p "${repo_root}/jazzer" --no-daemon --no-configuration-cache -q jazzerActiveTargets
 )
 
 [[ "${#active_target_keys[@]}" -ge 2 ]] || die "expected at least two active Jazzer targets"
@@ -101,33 +102,33 @@ EOF
 chmod +x "${tmp_dir}/list-findings"
 
 set +e
-FG_REPO_ROOT="${repo_root}" FG_JAZZER_DIR="${repo_root}/jazzer" FG_JAZZER_TOPOLOGY_PATH="${topology_path}" \
+FG_REPO_ROOT="${repo_root}" FG_JAZZER_DIR="${repo_root}/jazzer" \
     "${tmp_dir}/fuzz-all" --console=plain > "${run_log}" 2>&1
 status=$?
 set -e
 
 [[ ${status} -eq 1 ]] || die "fuzz-all should stop with exit 1 after an actionable harness failure"
 grep -Fq "[JAZZER-WRAPPER] Starting fuzz-${timeout_target}" "${run_log}" ||
-    die "fuzz-all did not start the first harness"
+    die_with_run_log "fuzz-all did not start the first harness"
 grep -Fq "[JAZZER-WRAPPER] Finished fuzz-${timeout_target} with exit code 124" "${run_log}" ||
-    die "fuzz-all did not keep the timeout result for the first harness"
+    die_with_run_log "fuzz-all did not keep the timeout result for the first harness"
 grep -Fq "[JAZZER-WRAPPER] Starting fuzz-${failure_target}" "${run_log}" ||
-    die "fuzz-all did not continue to the second harness after a timeout"
+    die_with_run_log "fuzz-all did not continue to the second harness after a timeout"
 grep -Fq "[JAZZER-WRAPPER] Finished fuzz-${failure_target} with exit code 1" "${run_log}" ||
-    die "fuzz-all did not record the actionable failure exit code"
+    die_with_run_log "fuzz-all did not record the actionable failure exit code"
 grep -Fq "[JAZZER-WRAPPER] Classified findings for ${failure_target}:" "${run_log}" ||
-    die "fuzz-all did not surface classified findings after the actionable failure"
+    die_with_run_log "fuzz-all did not surface classified findings after the actionable failure"
 grep -Fq 'Summary: actionable=1 expected-invalid=0 replay-clean=0' "${run_log}" ||
-    die "fuzz-all did not print the classified finding summary"
+    die_with_run_log "fuzz-all did not print the classified finding summary"
 grep -Fq "[JAZZER-WRAPPER] Stopping after actionable failure in fuzz-${failure_target}." "${run_log}" ||
-    die "fuzz-all did not announce fail-fast shutdown after the actionable failure"
+    die_with_run_log "fuzz-all did not announce fail-fast shutdown after the actionable failure"
 for target_key in "${active_target_keys[@]:2}"; do
     if grep -Fq "[JAZZER-WRAPPER] Starting fuzz-${target_key}" "${run_log}"; then
-        die "fuzz-all should not continue to later harnesses after an actionable failure"
+        die_with_run_log "fuzz-all should not continue to later harnesses after an actionable failure"
     fi
 done
-[[ -f "${list_findings_args}" ]] || die "fuzz-all did not invoke list-findings"
+[[ -f "${list_findings_args}" ]] || die_with_run_log "fuzz-all did not invoke list-findings"
 [[ "$(cat "${list_findings_args}")" == "${failure_target} --console=plain" ]] ||
-    die "fuzz-all called list-findings with unexpected arguments"
+    die_with_run_log "fuzz-all called list-findings with unexpected arguments"
 
 printf 'jazzer fuzz-all wrapper regression: success\n'

@@ -16,14 +16,16 @@ public final class ProtocolOptions {
   /** Option requesting the current book passphrase from the controlling terminal. */
   public static final String BOOK_PASSPHRASE_PROMPT = "--book-passphrase-prompt";
 
-  /** Option selecting the replacement book key file during rekey. */
-  public static final String NEW_BOOK_KEY_FILE = "--new-book-key-file";
+  /** Option selecting one existing replacement book key file during rekey. */
+  public static final String REPLACEMENT_BOOK_KEY_FILE = "--replacement-book-key-file";
 
   /** Option requesting the replacement passphrase from standard input during rekey. */
-  public static final String NEW_BOOK_PASSPHRASE_STDIN = "--new-book-passphrase-stdin";
+  public static final String REPLACEMENT_BOOK_PASSPHRASE_STDIN =
+      "--replacement-book-passphrase-stdin";
 
   /** Option requesting the replacement passphrase from the terminal during rekey. */
-  public static final String NEW_BOOK_PASSPHRASE_PROMPT = "--new-book-passphrase-prompt";
+  public static final String REPLACEMENT_BOOK_PASSPHRASE_PROMPT =
+      "--replacement-book-passphrase-prompt";
 
   /** Option selecting a JSON request document. */
   public static final String REQUEST_FILE = "--request-file";
@@ -69,11 +71,11 @@ public final class ProtocolOptions {
 
   /** Returns the rendered replacement-passphrase source syntax. */
   public static String replacementPassphraseSourceSyntax() {
-    return NEW_BOOK_KEY_FILE
-        + " <path> | "
-        + NEW_BOOK_PASSPHRASE_STDIN
+    return REPLACEMENT_BOOK_KEY_FILE
+        + " <existing-path> | "
+        + REPLACEMENT_BOOK_PASSPHRASE_STDIN
         + " | "
-        + NEW_BOOK_PASSPHRASE_PROMPT;
+        + REPLACEMENT_BOOK_PASSPHRASE_PROMPT;
   }
 
   /** Returns the rendered optional page-limit syntax. */

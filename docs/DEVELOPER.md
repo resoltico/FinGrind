@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -11,11 +11,17 @@ route:
 # Developer Reference
 
 **Purpose**: Build, test, architecture, and workflow reference for FinGrind contributors.
-**Prerequisites**: Java 26 active in the current shell from the OpenJDK 26 bundle installed via [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md). Docker active in the current shell when running `./check.sh`, as codified in [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). No global Gradle install is required for repo work; use `./gradlew`.
+**Prerequisites**: Either the preferred committed devcontainer path from
+[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md), or the host-native Java 26 setup from
+[DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) plus Docker in the active shell as codified in
+[DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). No global Gradle install is required for repo work;
+use `./gradlew`.
 
-The preferred contributor path is now the committed devcontainer in
-[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). Host-native Java remains supported for
-contributors who explicitly need it, but the devcontainer is the documented default.
+The preferred contributor path is the committed devcontainer in
+[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). VS Code is one supported client, not the
+mandatory environment owner; the canonical environment is the committed Dev Container Spec surface.
+Host-native Java remains supported for contributors who explicitly need it, but the devcontainer is
+the documented default.
 
 Companion documents:
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md)
@@ -147,11 +153,11 @@ FinGrind's current public model is:
 | Gradle Wrapper | 9.5.0 |
 | Kotlin build logic | 2.4.0-Beta2 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` requires `FINGRIND_SQLITE_LIBRARY` pointing at the managed build plus `--enable-native-access=ALL-UNNAMED` on the Java command line |
+| SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, generated source-checkout launchers, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` auto-discovers that managed runtime when it runs from a prepared checkout and only needs explicit `FINGRIND_SQLITE_LIBRARY` when launched outside that checkout layout |
 | Jackson Databind | 3.1.2 |
-| JUnit Jupiter | 6.0.3 |
+| JUnit Jupiter | 6.1.0-RC1 |
 | Jazzer | 0.30.0 |
-| JaCoCo | snapshot build 0.8.15.202604281210 via Maven coordinate 0.8.15-SNAPSHOT |
+| JaCoCo | pinned snapshot artifact 0.8.15-20260429.155228-97 |
 | PMD | 7.24.0 |
 
 The build-logic Kotlin pin is intentionally prerelease:
@@ -208,9 +214,9 @@ java --version
 Nested Jazzer verification:
 
 ```bash
-./gradlew -p jazzer test
-./gradlew -p jazzer jazzerRegression
-./gradlew -p jazzer check
+jazzer/bin/test --console=plain
+jazzer/bin/regression --console=plain
+jazzer/bin/check --console=plain
 jazzer/bin/fuzz-cli-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-ledger-plan-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
@@ -222,8 +228,11 @@ jazzer/bin/list-findings cli-request --console=plain
 
 `jazzer/bin/fuzz-all` now continues past pure timebox expirations but stops on the first
 actionable harness failure and prints replay-classified findings for that target before returning.
-`./gradlew -p jazzer check` now also applies the same Spotless, Error Prone, NullAway, PMD,
-JaCoCo, and policy-task gate stack that the production Java modules use.
+`jazzer/bin/check` now drives the same nested `check` task that applies Spotless, Error Prone,
+NullAway, PMD,
+JaCoCo, and policy-task gate stack that the production Java modules use, and the deterministic
+`jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check` entrypoints each start from a
+clean relocated nested-build output so stale classfiles cannot poison coverage verification.
 
 Local CLI usage from source:
 
@@ -256,8 +265,9 @@ This matters even when a repo currently has only the default Gradle `test` task:
 Root Gradle tests and `:cli:run` enable Java native access explicitly, compile a managed SQLite
 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library from
 `third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/`, inject that library through
-`FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI surfaces on the same
-`--enable-native-access=ALL-UNNAMED` runtime contract.
+`FINGRIND_SQLITE_LIBRARY`, and keep the packaged CLI surfaces on the same native-access/runtime
+contract. The generated source-checkout launcher and developer raw JAR then discover that prepared
+checkout runtime without requiring another manual export.
 
 Public release verification now centers on the self-contained bundle archive, not the raw JAR.
 `./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` on
@@ -266,20 +276,20 @@ without ambient Java or a preconfigured `FINGRIND_SQLITE_LIBRARY`. That smoke ga
 the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract.
 
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
-Java surface. If you want that JAR to run, run `./gradlew prepareManagedSqlite` as well and point
-`FINGRIND_SQLITE_LIBRARY` at
-the resulting file under `build/managed-sqlite/` when the project build tree stays in-checkout,
-or under the wrapper-owned relocated build root on fragile mounted filesystems, for example:
+Java surface. If you want that JAR to run from the checkout, prepare the managed runtime first:
 
 ```bash
-export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar capabilities
+./gradlew :cli:shadowJar prepareManagedSqlite
+java -jar cli/build/libs/fingrind.jar capabilities
 ```
+
+When that JAR is moved outside the prepared checkout layout, provide `FINGRIND_SQLITE_LIBRARY`
+explicitly again.
 
 `./check.sh` is the local full-stack gate. It runs:
 - root `check`
 - root `coverage`
-- nested `./gradlew -p jazzer check`
+- `jazzer/bin/check`
 - `:cli:bundleCliArchive`
 - self-contained bundle smoke verification
 - shell syntax checks for release-surface scripts
@@ -303,6 +313,9 @@ The Docker path also verifies its managed SQLite source integrity and trimmed pr
 bundle and container publication stay on the same public runtime contract.
 
 During Stage 1, `./check.sh` tracks root `Test` task progress through semantic `[GRADLE-TEST-PULSE]` lines with class-start, class-complete, and scheduled in-flight test-progress heartbeats instead of relying only on stale Gradle task banners.
+That stage now runs through `./scripts/run-quality-gates.sh`, which pairs root `check coverage`
+with the included `gradle/build-logic:test` surface so the canonical local gate and CI exercise
+the repository's verification plugins as first-class code.
 
 During Stage 2, `./check.sh` tracks nested Jazzer deterministic tests and regression replay
 through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
@@ -313,15 +326,25 @@ source, compiles its own managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 
 from `../third_party/sqlite/`, and injects that path through `FINGRIND_SQLITE_LIBRARY` for its
 deterministic tests, regression replay, and local active fuzzing commands.
 
-For active fuzzing, the supported operator surface is now `jazzer/bin/*`.
-Those wrappers force active fuzz runs onto `--no-daemon`, serialize Jazzer commands through one
-run lock, and own interrupt cleanup. Raw `./gradlew -p jazzer fuzz...` task names remain build
-internals and are not the supported live-fuzz entrypoint.
+For all Jazzer operations, the supported operator surface is now `jazzer/bin/*`.
+Those wrappers serialize FinGrind verification through the shared repo lock and own the deterministic
+and active-fuzz launch contract. Active fuzz runs force `--no-daemon` and own interrupt cleanup.
+Raw `./gradlew -p jazzer ...` task names remain nested-build internals and are not the supported
+Jazzer operator entrypoint. Wrapper target discovery is owned by `jazzerActiveTargets` plus
+`jazzerReplayableTargets` instead of shell-local JSON parsing.
 The documented shell operator surface, including `./check.sh` and `jazzer/bin/*`, must also remain
 compatible with stock macOS `/bin/bash` 3.2 under `set -u`; in particular, do not assume
 empty-array `"${array[@]}"` expansion is safe there.
 If wrapper shell logic or Jazzer topology changes, run at least one live `jazzer/bin/*` command in
 addition to deterministic nested `check`.
+
+Root `./check.sh`, `./scripts/docker-smoke.sh`, `./scripts/validate-devcontainer.sh`, and the
+Jazzer wrappers now also share one repo-scoped `GRADLE_USER_HOME` plus the repo-wide verification
+lock under the user cache root (`${XDG_CACHE_HOME:-$HOME/.cache}/fingrind/repo-verification-locks`
+by default, keyed by repository path). That isolation keeps full verification from sharing daemon
+or cache state accidentally with sibling commands without perturbing Gradle's observed repository
+inputs. Descendant shell processes reenter that lock through published owner metadata in the lock
+directory, so monitored shell shapes such as `bash ... > >(tee ...)` do not break wrapper reentry.
 
 Shared Gradle plugins, managed-SQLite task types, and pulse listeners now live under
 `gradle/build-logic`, and the nested Jazzer build imports both that included build and the root
@@ -351,9 +374,9 @@ Ciphers 2.3.3, required protected-book metadata, and wrong-key failure behavior 
 library path.
 
 GitHub workflows do not run active fuzzing.
-They now do run the nested deterministic Jazzer verification surface through
-`./gradlew -p jazzer check`, so deterministic corpus replay is part of CI while active fuzzing
-remains local-only through `./check.sh` and the nested `jazzer/` build. Active harness execution
+They now do run the deterministic Jazzer verification wrapper through `./jazzer/bin/check`, so
+deterministic corpus replay is part of CI while active fuzzing remains local-only through
+`./check.sh` and `jazzer/bin/*`. Active harness execution
 also hard-fails when `GITHUB_ACTIONS=true`, so a future workflow cannot silently become a
 live-fuzz surface by mistake.
 

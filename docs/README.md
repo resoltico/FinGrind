@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.29.0"
+version: "0.30.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -63,17 +63,19 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 
 ## Developer Guides
 
-- [DEVELOPER.md](./DEVELOPER.md)
-- [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md)
-- [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
-- [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
-- [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
-- [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
-- [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
-- [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md)
-- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
-- [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md)
-- [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md)
+- [DEVELOPER.md](./DEVELOPER.md): contributor architecture, quality gates, build entrypoints, and cross-module ownership
+- [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md): preferred contributor container workflow and editor-agnostic container use
+- [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md): bundle layout, public artifact rules, and release-asset expectations
+- [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md): documentation placement, maintenance, and reference-spine rules
+- [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md): contributor Docker posture, smoke workflow, and runtime-container boundaries
+- [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md): Gradle architecture, included build logic, wrapper policy, and nested Jazzer build structure
+- [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md): host Java 26 setup and wrapper-first contributor posture
+- [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md): Jazzer purpose, boundaries, and local-only fuzzing stance
+- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md): supported Jazzer wrapper commands, findings workflow, and operator recovery paths
+- [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): committed harness coverage and remaining hostile-input focus areas
+- [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary
+- [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
+- [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag verification, and public artifact publication flow
 
 ## Reference And Schema
 

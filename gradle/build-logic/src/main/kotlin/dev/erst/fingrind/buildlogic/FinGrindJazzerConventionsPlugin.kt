@@ -21,17 +21,19 @@ import org.gradle.kotlin.dsl.withType
 import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.api.provider.Provider
 
+private const val jazzerTestProjectRootProperty = "fingrind.jazzer.test-project-root"
+
 class FinGrindJazzerConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
+            gradle.startParameter.projectCacheDir?.let { projectCacheDir ->
+                layout.buildDirectory.set(file(projectCacheDir.resolve("jazzer-build")))
+            }
+
             pluginManager.apply("java")
             pluginManager.apply("dev.erst.fingrind.java-conventions")
 
             description = "Local-only Jazzer fuzzing layer for FinGrind"
-
-            gradle.startParameter.projectCacheDir?.let { projectCacheDir ->
-                layout.buildDirectory.set(file(projectCacheDir.resolve("jazzer-build")))
-            }
 
             configureFinGrindArtifactRepositories()
 
@@ -81,8 +83,19 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 options.release.set(fingrindJavaVersion)
             }
 
+            tasks.named<JavaCompile>("compileJava").configure {
+                doFirst {
+                    // The nested Jazzer build lives under a wrapper-owned cache directory.
+                    // When helper types disappear from a source file, javac does not remove the
+                    // orphaned nested classfiles on its own, so prune the main source-set output
+                    // directory before each real main compile run.
+                    project.delete(destinationDirectory.get().asFile)
+                }
+            }
+
             val sourceSets = extensions.getByType<SourceSetContainer>()
             val mainSourceSet = sourceSets.getByName("main")
+            val testSourceSet = sourceSets.getByName("test")
             val fuzzSourceSet = sourceSets.create("fuzz") {
                 java.setSrcDirs(listOf("src/fuzz/java"))
                 resources.setSrcDirs(listOf("src/fuzz/resources"))
@@ -98,9 +111,11 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                             "Can-Set-Native-Method-Prefix" to "true",
                         ),
                     )
-                }
+            }
             fuzzSourceSet.compileClasspath += mainSourceSet.output
             fuzzSourceSet.runtimeClasspath += mainSourceSet.output
+            testSourceSet.compileClasspath += fuzzSourceSet.output
+            testSourceSet.runtimeClasspath += fuzzSourceSet.output
 
             configurations.named(fuzzSourceSet.implementationConfigurationName) {
                 extendsFrom(configurations.getByName("implementation"))
@@ -122,6 +137,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 add("implementation", "dev.erst.fingrind:executor")
                 add("implementation", project.dependencies.testFixtures("dev.erst.fingrind:executor"))
                 add("implementation", "dev.erst.fingrind:sqlite")
+                add("implementation", project.dependencies.testFixtures("dev.erst.fingrind:sqlite"))
                 add("implementation", "dev.erst.fingrind:cli")
 
                 add("testImplementation", platform(libs.library("junit-bom")))
@@ -152,6 +168,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 workingDir = layout.projectDirectory.asFile
                 dependsOn(jazzerAgentJar)
                 enableNativeAccess()
+                allowSunMiscUnsafeMemoryAccess()
+                disableClassDataSharing()
                 jvmArgs("-javaagent:${jazzerAgentJar.flatMap { it.archiveFile }.get().asFile.absolutePath}")
                 if (jazzerMaxDuration != null) {
                     systemProperty("jazzer.max_duration", jazzerMaxDuration)
@@ -166,18 +184,32 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 outputs.upToDateWhen { false }
                 workingDir = layout.projectDirectory.asFile
                 enableNativeAccess()
+                allowSunMiscUnsafeMemoryAccess()
+                disableClassDataSharing()
             }
 
             fun registerToolTask(
                 name: String,
                 descriptionText: String,
                 argumentsProvider: Provider<List<String>>,
+                requiresProjectRoot: Boolean = true,
             ) = tasks.register<JavaExec>(name) {
                 description = descriptionText
                 group = "verification"
                 configureMainSourceSet()
                 mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerCli")
-                argumentProviders.add(ProviderBackedArguments(argumentsProvider))
+                argumentProviders.add(
+                    ProviderBackedArguments(
+                        providers.provider {
+                            if (!requiresProjectRoot) {
+                                argumentsProvider.get()
+                            } else {
+                                listOf("--project-root", layout.projectDirectory.asFile.absolutePath) +
+                                    argumentsProvider.get()
+                            }
+                        },
+                    ),
+                )
             }
 
             fun registerFuzzTask(
@@ -201,7 +233,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                     group = "verification"
                     configureMainSourceSet()
                     mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerRegressionRunner")
-                    args("--target", harness.key)
+                    args("--project-root", layout.projectDirectory.asFile.absolutePath, "--target", harness.key)
                     workingDir = layout.projectDirectory.asFile
                 }
 
@@ -232,12 +264,10 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 providers.provider {
                     buildList {
                         add("replay")
-                        add("--target")
                         add(
                             jazzerTargetProperty.orNull
                                 ?: throw IllegalArgumentException("Missing Gradle property: jazzerTarget"),
                         )
-                        add("--input")
                         add(
                             jazzerInputProperty.orNull
                                 ?: throw IllegalArgumentException("Missing Gradle property: jazzerInput"),
@@ -255,10 +285,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 providers.provider {
                     buildList {
                         add("list-findings")
-                        jazzerTargetProperty.orNull?.let {
-                            add("--target")
-                            add(it)
-                        }
+                        jazzerTargetProperty.orNull?.let(::add)
                         if (jazzerJsonOutputProperty.orNull == "true") {
                             add("--json")
                         }
@@ -266,12 +293,32 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 },
             )
 
+            registerToolTask(
+                "jazzerActiveTargets",
+                "Prints the active local-only Jazzer target keys in canonical topology order.",
+                providers.provider { listOf("active-target-keys") },
+                requiresProjectRoot = false,
+            )
+
+            tasks.register("jazzerReplayableTargets") {
+                description = "Prints replayable Jazzer target keys in canonical topology order."
+                group = "verification"
+                doLast {
+                    topology.runTargets
+                        .filter { it.harnessKeys.size == 1 }
+                        .forEach { println(it.key) }
+                }
+            }
+
             tasks.named<Test>("test") {
                 description = "Runs deterministic Jazzer replay and harness tests."
                 group = "verification"
                 useJUnitPlatform()
                 maxParallelForks = 1
                 enableNativeAccess()
+                allowSunMiscUnsafeMemoryAccess()
+                disableClassDataSharing()
+                systemProperty(jazzerTestProjectRootProperty, layout.projectDirectory.asFile.absolutePath)
                 doFirst {
                     addTestListener(JazzerDeterministicTestPulseListener())
                 }

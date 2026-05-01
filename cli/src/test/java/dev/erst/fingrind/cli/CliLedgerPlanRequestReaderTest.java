@@ -121,6 +121,197 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
+  void readLedgerPlan_guidesFlattenedDeclareAccountPayloadBackUnderDeclareAccount() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "declare-account",
+                      "accountCode": "1000",
+                      "accountName": "Cash",
+                      "normalBalance": "DEBIT"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Fields accountCode, accountName, normalBalance must be nested under declareAccount for declare-account ledger plan steps.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_guidesFlattenedPostingPayloadBackUnderPosting() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "post-entry",
+                      "effectiveDate": "2026-04-07"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Field effectiveDate must be nested under posting for post-entry ledger plan steps.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_guidesFlattenedQueryPayloadBackUnderQuery() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "account-balance",
+                      "accountCode": "1000"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Field accountCode must be nested under query for account-balance ledger plan steps.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_guidesFlattenedAssertionPayloadBackUnderAssertion() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "assert",
+                      "balanceSide": "DEBIT"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Field balanceSide must be nested under assertion for assert ledger plan steps.",
+        exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsUnexpectedDeclareAccountStepFieldWhenNoNestedPayloadFieldMatches() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "declare-account",
+                      "bogus": true
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: bogus", exception.getMessage());
+  }
+
+  @Test
+  void
+      readLedgerPlan_rejectsUnexpectedFlattenedFieldWhenNestedDeclareAccountPayloadAlreadyExists() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "declare-account",
+                      "declareAccount": {
+                        "accountCode": "1000",
+                        "accountName": "Cash",
+                        "normalBalance": "DEBIT"
+                      },
+                      "accountCode": "2000"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: accountCode", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsUnexpectedFieldForUnrelatedStepKinds() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "open-book",
+                      "accountCode": "1000"
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: accountCode", exception.getMessage());
+  }
+
+  @Test
   void readLedgerPlan_reportsInvalidDateValues() {
     CliRequestReader requestReader =
         new CliRequestReader(

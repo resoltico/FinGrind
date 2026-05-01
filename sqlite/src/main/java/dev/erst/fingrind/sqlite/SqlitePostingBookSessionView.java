@@ -16,45 +16,48 @@ import java.util.Set;
 
 /** Narrow posting-session view over one SQLite-backed store. */
 final class SqlitePostingBookSessionView implements PostingBookSession {
-  private final SqliteStoreContext store;
+  private final SqliteStoreReadOperations readOperations;
+  private final SqliteStoreMutationOperations mutationOperations;
 
-  SqlitePostingBookSessionView(SqliteStoreContext store) {
-    this.store = Objects.requireNonNull(store, "store");
+  SqlitePostingBookSessionView(
+      SqliteStoreReadOperations readOperations, SqliteStoreMutationOperations mutationOperations) {
+    this.readOperations = Objects.requireNonNull(readOperations, "readOperations");
+    this.mutationOperations = Objects.requireNonNull(mutationOperations, "mutationOperations");
   }
 
   @Override
   public boolean isInitialized() {
-    return store.isInitialized();
+    return readOperations.isInitialized();
   }
 
   @Override
   public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
-    return store.findAccount(accountCode);
+    return readOperations.findAccount(accountCode);
   }
 
   @Override
   public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
-    return store.findAccounts(accountCodes);
+    return readOperations.findAccounts(accountCodes);
   }
 
   @Override
   public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
-    return store.findExistingPosting(idempotencyKey);
+    return readOperations.findExistingPosting(idempotencyKey);
   }
 
   @Override
   public Optional<PostingFact> findPosting(PostingId postingId) {
-    return store.findPosting(postingId);
+    return readOperations.findPosting(postingId);
   }
 
   @Override
   public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
-    return store.findReversalFor(priorPostingId);
+    return readOperations.findReversalFor(priorPostingId);
   }
 
   @Override
   public PostingCommitResult commit(
       PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-    return store.commit(postingDraft, postingIdGenerator);
+    return mutationOperations.commit(postingDraft, postingIdGenerator);
   }
 }

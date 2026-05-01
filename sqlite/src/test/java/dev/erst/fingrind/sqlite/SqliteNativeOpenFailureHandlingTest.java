@@ -54,7 +54,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 "native open validation failure", TEST_BOOK_KEY.toCharArray())) {
       MemorySegment fakeDatabaseHandle = arena.allocate(1);
       Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[1] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -69,7 +69,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           MemorySegment.class)),
               0,
               fakeDatabaseHandle);
-      sqliteApiArguments[2] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -79,7 +79,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[8] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_EXEC] =
           constantMethodHandle(
               26,
               MemorySegment.class,
@@ -87,7 +87,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               MemorySegment.class,
               MemorySegment.class,
               MemorySegment.class);
-      sqliteApiArguments[20] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
           constantMethodHandle(arena.allocateFrom("file is not a database"), int.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
 
@@ -116,7 +116,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 "configure-opened-error", TEST_BOOK_KEY.toCharArray())) {
       MemorySegment fakeDatabaseHandle = arena.allocate(1);
       Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[2] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -126,7 +126,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[6] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_BUSY_TIMEOUT] =
           throwingMethodHandle(
               new AssertionError("boom"), int.class, MemorySegment.class, int.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
@@ -152,8 +152,9 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 "configure-opened-close-failure", TEST_BOOK_KEY.toCharArray())) {
       MemorySegment fakeDatabaseHandle = arena.allocate(1);
       Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[2] = constantMethodHandle(14, MemorySegment.class);
-      sqliteApiArguments[6] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+          constantMethodHandle(14, MemorySegment.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_BUSY_TIMEOUT] =
           throwingMethodHandle(
               new IllegalStateException("busy-timeout boom"),
               int.class,
@@ -184,7 +185,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 "native open configuration failure", TEST_BOOK_KEY.toCharArray())) {
       MemorySegment fakeDatabaseHandle = arena.allocate(1);
       Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[1] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -199,7 +200,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           MemorySegment.class)),
               0,
               fakeDatabaseHandle);
-      sqliteApiArguments[2] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -209,7 +210,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[6] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_BUSY_TIMEOUT] =
           throwingMethodHandle(
               new IllegalStateException("busy-timeout boom"),
               int.class,
@@ -243,7 +244,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 "native open cleanup failure", TEST_BOOK_KEY.toCharArray())) {
       MemorySegment fakeDatabaseHandle = arena.allocate(1);
       Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[1] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -258,7 +259,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           MemorySegment.class)),
               0,
               fakeDatabaseHandle);
-      sqliteApiArguments[2] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -268,7 +269,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[20] = constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
+          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
 
       SqliteNativeException exception =
@@ -295,10 +297,10 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
             SqliteBookPassphrase.fromCharacters(
                 "native open null handle failure", TEST_BOOK_KEY.toCharArray())) {
       Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[1] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
           constantMethodHandle(
               14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class);
-      sqliteApiArguments[2] =
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
           MethodHandles.insertArguments(
               MethodHandles.lookup()
                   .findStatic(
@@ -308,7 +310,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[20] = constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
+          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
 
       SqliteNativeException exception =

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -137,6 +138,54 @@ class JsonContractResourceSupportTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> JsonContractResourceSupport.optionalStringArray(blankElement, "values"));
+  }
+
+  @Test
+  void requireBooleanAndRequireInt_rejectWrongShapesAndReturnTypedValues() {
+    JsonNode valid =
+        JsonContractResourceSupport.loadObject(
+            new ByteArrayInputStream(
+                "{\"flag\":true,\"count\":7}".getBytes(StandardCharsets.UTF_8)),
+            "/valid-scalars.json",
+            "test contract");
+    JsonNode missing =
+        JsonContractResourceSupport.loadObject(
+            new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8)),
+            "/missing-scalars.json",
+            "test contract");
+    JsonNode withNulls =
+        JsonContractResourceSupport.loadObject(
+            new ByteArrayInputStream(
+                "{\"flag\":null,\"count\":null}".getBytes(StandardCharsets.UTF_8)),
+            "/null-scalars.json",
+            "test contract");
+    JsonNode withWrongTypes =
+        JsonContractResourceSupport.loadObject(
+            new ByteArrayInputStream(
+                "{\"flag\":\"true\",\"count\":\"7\"}".getBytes(StandardCharsets.UTF_8)),
+            "/wrong-scalars.json",
+            "test contract");
+
+    assertTrue(JsonContractResourceSupport.requireBoolean(valid, "flag"));
+    assertEquals(7, JsonContractResourceSupport.requireInt(valid, "count"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonContractResourceSupport.requireBoolean(missing, "flag"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonContractResourceSupport.requireBoolean(withNulls, "flag"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonContractResourceSupport.requireBoolean(withWrongTypes, "flag"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonContractResourceSupport.requireInt(missing, "count"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonContractResourceSupport.requireInt(withNulls, "count"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonContractResourceSupport.requireInt(withWrongTypes, "count"));
   }
 
   private static InputStream failingInputStream() {

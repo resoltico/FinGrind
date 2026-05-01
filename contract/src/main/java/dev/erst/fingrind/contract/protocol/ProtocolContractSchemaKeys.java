@@ -12,6 +12,7 @@ final class ProtocolContractSchemaKeys {
   private static final ProtocolContractSchemaKeys CURRENT = loadCurrent();
 
   private final RuntimeSurface runtimeSurface;
+  private final ProtectedBookFormat protectedBookFormat;
   private final PublicDistribution publicDistribution;
   private final ManagedSqlite managedSqlite;
   private final BundleLayout bundleLayout;
@@ -19,11 +20,13 @@ final class ProtocolContractSchemaKeys {
 
   private ProtocolContractSchemaKeys(
       RuntimeSurface runtimeSurface,
+      ProtectedBookFormat protectedBookFormat,
       PublicDistribution publicDistribution,
       ManagedSqlite managedSqlite,
       BundleLayout bundleLayout,
       OperationIds operationIds) {
     this.runtimeSurface = Objects.requireNonNull(runtimeSurface, "runtimeSurface");
+    this.protectedBookFormat = Objects.requireNonNull(protectedBookFormat, "protectedBookFormat");
     this.publicDistribution = Objects.requireNonNull(publicDistribution, "publicDistribution");
     this.managedSqlite = Objects.requireNonNull(managedSqlite, "managedSqlite");
     this.bundleLayout = Objects.requireNonNull(bundleLayout, "bundleLayout");
@@ -36,6 +39,10 @@ final class ProtocolContractSchemaKeys {
 
   RuntimeSurface runtimeSurface() {
     return runtimeSurface;
+  }
+
+  ProtectedBookFormat protectedBookFormat() {
+    return protectedBookFormat;
   }
 
   PublicDistribution publicDistribution() {
@@ -61,6 +68,7 @@ final class ProtocolContractSchemaKeys {
         JsonContractResourceSupport.loadObject(
             resourceStream, resourcePath, "protocol contract schema keys");
     JsonNode runtimeSurfaceNode = requiredObject(document, "runtimeSurface");
+    JsonNode protectedBookFormatNode = requiredObject(document, "protectedBookFormat");
     JsonNode publicDistributionNode = requiredObject(document, "publicDistribution");
     JsonNode managedSqliteNode = requiredObject(document, "managedSqlite");
     JsonNode bundleLayoutNode = requiredObject(document, "bundleLayout");
@@ -79,6 +87,14 @@ final class ProtocolContractSchemaKeys {
             requireText(runtimeSurfaceNode, "sqliteLibraryMode"),
             requireText(runtimeSurfaceNode, "sqliteLibraryEnvironmentVariable"),
             requireText(runtimeSurfaceNode, "sqliteBundleHomeSystemProperty")),
+        new ProtectedBookFormat(
+            requireText(protectedBookFormatNode, "cipher"),
+            requireText(protectedBookFormatNode, "legacyMode"),
+            requireText(protectedBookFormatNode, "pageSize"),
+            requireText(protectedBookFormatNode, "reservedBytes"),
+            requireText(protectedBookFormatNode, "legacyPageSize"),
+            requireText(protectedBookFormatNode, "kdfIter"),
+            requireText(protectedBookFormatNode, "plaintextHeaderSize")),
         new PublicDistribution(
             requireText(publicDistributionNode, "supportedPublicCliBundleTargets"),
             requireText(publicDistributionNode, "unsupportedPublicCliBundleTargets")),
@@ -149,6 +165,16 @@ final class ProtocolContractSchemaKeys {
       String sqliteLibraryMode,
       String sqliteLibraryEnvironmentVariable,
       String sqliteBundleHomeSystemProperty) {}
+
+  /** Canonical external field names for the protected-book-format contract resource. */
+  record ProtectedBookFormat(
+      String cipher,
+      String legacyMode,
+      String pageSize,
+      String reservedBytes,
+      String legacyPageSize,
+      String kdfIter,
+      String plaintextHeaderSize) {}
 
   /** Canonical external field names for the public-distribution contract resource. */
   record PublicDistribution(

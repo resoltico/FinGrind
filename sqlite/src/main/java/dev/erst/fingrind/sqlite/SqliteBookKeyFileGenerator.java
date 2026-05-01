@@ -151,11 +151,14 @@ public final class SqliteBookKeyFileGenerator {
   }
 
   static void deleteQuietly(Path normalizedPath) {
+    deleteQuietly(normalizedPath, SqliteBestEffort::reportCleanupFailure);
+  }
+
+  static void deleteQuietly(Path normalizedPath, SqliteBestEffort.Reporter reporter) {
     try {
       Files.deleteIfExists(normalizedPath);
     } catch (IOException exception) {
-      SqliteBestEffort.reportCleanupFailure(
-          "deleting one partially created book-key path", exception);
+      reporter.report("deleting one partially created book-key path", exception);
     }
   }
 

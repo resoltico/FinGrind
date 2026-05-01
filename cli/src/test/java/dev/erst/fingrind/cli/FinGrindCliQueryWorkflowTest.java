@@ -91,7 +91,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         new ObjectMapper()
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
             .path("postingId")
-            .asText();
+            .stringValue();
 
     ByteArrayOutputStream inspectOutput = new ByteArrayOutputStream();
     assertEquals(

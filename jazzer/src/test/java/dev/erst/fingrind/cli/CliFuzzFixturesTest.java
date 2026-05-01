@@ -17,8 +17,6 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.InMemoryBookSession;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,20 +47,9 @@ class CliFuzzFixturesTest {
         CliFuzzFixtures.postingIdGenerator("other".getBytes(UTF_8)).nextPostingId().value());
     assertEquals(Instant.parse("2026-04-07T12:00:00Z"), CliFuzzFixtures.fixedClock().instant());
     assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeFixtureMethod(
-                "readPostEntryCommand", new Class<?>[] {byte[].class}, new Object[] {null}));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeFixtureMethod(
-                "readLedgerPlan", new Class<?>[] {byte[].class}, new Object[] {null}));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            invokeFixtureMethod(
-                "postingIdGenerator", new Class<?>[] {byte[].class}, new Object[] {null}));
+        NullPointerException.class, () -> CliFuzzFixtures.readPostEntryCommand(nullValue()));
+    assertThrows(NullPointerException.class, () -> CliFuzzFixtures.readLedgerPlan(nullValue()));
+    assertThrows(NullPointerException.class, () -> CliFuzzFixtures.postingIdGenerator(nullValue()));
   }
 
   @Test
@@ -324,20 +311,8 @@ class CliFuzzFixturesTest {
         """;
   }
 
-  private static Object invokeFixtureMethod(
-      String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Exception {
-    Method method = CliFuzzFixtures.class.getDeclaredMethod(methodName, parameterTypes);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
+  @SuppressWarnings({"NullAway", "TypeParameterUnusedInFormals"})
+  private static <T> T nullValue() {
+    return null;
   }
 }

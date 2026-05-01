@@ -56,11 +56,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
-        failureEnvelope.path("code").asString());
-    assertEquals("--cursor", failureEnvelope.path("argument").asString());
+        failureEnvelope.path("code").stringValue());
+    assertEquals("--cursor", failureEnvelope.path("argument").stringValue());
     assertTrue(
-        failureEnvelope.path("message").asString().contains("Unsupported posting page cursor"));
-    assertTrue(failureEnvelope.path("hint").asString().contains("nextCursor"));
+        failureEnvelope.path("message").stringValue().contains("Unsupported posting page cursor"));
+    assertTrue(failureEnvelope.path("hint").stringValue().contains("nextCursor"));
   }
 
   @Test
@@ -119,17 +119,17 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
-              "--new-book-key-file",
+              "--replacement-book-key-file",
               tempDirectory.resolve("replacement.key").toString()
             });
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
             .path("hint")
-            .asString()
+            .stringValue()
             .contains(
                 "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
@@ -160,11 +160,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
             .path("hint")
-            .asString()
+            .stringValue()
             .contains(
                 "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
@@ -196,11 +196,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
             .path("hint")
-            .asString()
+            .stringValue()
             .contains(
                 "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }
@@ -232,11 +232,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(4, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("managed-runtime-failure", failureEnvelope.path("code").asString());
+    assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
             .path("hint")
-            .asString()
+            .stringValue()
             .contains(
                 "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
   }

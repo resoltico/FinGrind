@@ -15,6 +15,7 @@ class ProtocolContractSchemaKeysTest {
 
     assertEquals(
         "directJavaRuntimeDistribution", current.runtimeSurface().directJavaRuntimeDistribution());
+    assertEquals("cipher", current.protectedBookFormat().cipher());
     assertEquals(
         "unsupportedPublicCliBundleTargets",
         current.publicDistribution().unsupportedPublicCliBundleTargets());
@@ -40,6 +41,7 @@ class ProtocolContractSchemaKeysTest {
                         """
                         {
                           "runtimeSurface": {},
+                          "protectedBookFormat": {},
                           "managedSqlite": {},
                           "bundleLayout": {},
                           "operationIdContract": {}
@@ -60,6 +62,7 @@ class ProtocolContractSchemaKeysTest {
                         """
                         {
                           "runtimeSurface": 1,
+                          "protectedBookFormat": {},
                           "managedSqlite": {},
                           "bundleLayout": {},
                           "publicDistribution": {},

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.29.0"
+version: "0.30.0"
 domain: USER_CLI
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -14,8 +14,11 @@ route:
 **Prerequisites**: For public use, download one self-contained FinGrind release bundle and unpack it.
 No separate Java install is required for that path. For source-driven local runs,
 `./gradlew :cli:run` manages SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically.
-The raw `java -jar` route remains developer-only and requires `./gradlew prepareManagedSqlite`
-plus `FINGRIND_SQLITE_LIBRARY` and `--enable-native-access=ALL-UNNAMED`.
+The generated source-checkout launcher from `./gradlew :cli:installShadowDist prepareManagedSqlite`
+also carries the managed native-access, source-checkout runtime-distribution, and managed-SQLite
+checkout-discovery defaults for you. The raw `java -jar` route remains developer-only, but when
+it is launched from a prepared checkout it now inherits the same native-access manifest contract
+and managed-SQLite checkout discovery automatically.
 
 ## Overview
 
@@ -94,7 +97,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
-    <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;path&gt; | --new-book-passphrase-stdin | --new-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
+    <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
     <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
     <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
@@ -142,9 +145,9 @@ version pins that the source checkout, release automation, and shell acceptance 
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.29.0-macos-aarch64.tar.gz
-./fingrind-0.29.0-macos-aarch64/bin/fingrind help
-./fingrind-0.29.0-macos-aarch64/bin/fingrind \
+tar -xzf fingrind-0.30.0-macos-aarch64.tar.gz
+./fingrind-0.30.0-macos-aarch64/bin/fingrind help
+./fingrind-0.30.0-macos-aarch64/bin/fingrind \
   print-request-template > ./request.json
 ```
 
@@ -155,9 +158,9 @@ Edit `./request.json` and replace `replace-before-commit-effective-date` plus ev
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.29.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.29.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.29.0-windows-x86_64\bin\fingrind.ps1 `
+Expand-Archive fingrind-0.30.0-windows-x86_64.zip -DestinationPath .
+.\fingrind-0.30.0-windows-x86_64\bin\fingrind.ps1 help
+.\fingrind-0.30.0-windows-x86_64\bin\fingrind.ps1 `
   print-request-template > .\request.json
 ```
 
@@ -175,6 +178,16 @@ For source-driven local use, prefer:
 ./gradlew :cli:run --args="help"
 ```
 
+For a source-checkout launcher that behaves like a local installed executable:
+
+```bash
+./gradlew :cli:installShadowDist prepareManagedSqlite
+./cli/build/install/cli-shadow/bin/cli help
+```
+
+That generated launcher already carries the native-access flag, the source-checkout
+runtime-distribution marker, and the managed-SQLite checkout lookup.
+
 For local bundle verification from a source checkout:
 
 ```bash
@@ -182,8 +195,10 @@ For local bundle verification from a source checkout:
 ./scripts/bundle-smoke.sh
 ```
 
-If you restage a local bundle repeatedly from a source checkout, FinGrind now prunes older
-`cli/build/bundle/fingrind-*` staging roots before writing the current versioned bundle tree.
+If you restage a local bundle repeatedly from a source checkout, FinGrind prunes older
+`cli/build/bundle/fingrind-*` staging roots before writing the current versioned bundle tree, and
+`./gradlew :cli:bundleCliArchive` removes obsolete `cli/build/distributions/fingrind-*` archives
+and checksum files before writing the current host bundle artifact.
 
 The raw `java -jar` path is still available for advanced contributor work, but it is not the
 public FinGrind download contract:
@@ -192,11 +207,14 @@ These example paths assume the project `build/` tree stays inside the checkout. 
 filesystems, `./gradlew` may relocate that tree into the wrapper-owned local cache.
 
 ```bash
-./gradlew :cli:shadowJar
-./gradlew prepareManagedSqlite
-export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar help
+./gradlew :cli:shadowJar prepareManagedSqlite
+java -jar cli/build/libs/fingrind.jar help
 ```
+
+When that JAR stays under the prepared checkout layout, it auto-discovers the managed SQLite
+library and reads the required native-access permission from the JAR manifest. Manual
+`FINGRIND_SQLITE_LIBRARY` export remains relevant only for custom direct-Java launches outside the
+prepared checkout.
 
 `--request-file -` means read the request JSON from standard input.
 `--book-passphrase-stdin` means read the book passphrase from standard input instead.
@@ -229,7 +247,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `1` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
 | unreadable or missing `--request-file` payload | `1` | `invalid-request` | `Request file does not exist: ...`, `Request file is not readable: ...`, or `Failed to read request file: ...` |
-| malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON.`, `Failed to read request JSON from standard input.`, or domain-validation text |
+| malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON at line ..., column ....`, `Failed to read request JSON from standard input.`, or domain-validation text; malformed JSON also publishes `details.parseMessage`, `details.line`, and `details.column`, and journal grammar failures publish `details.violations` |
 | malformed `list-accounts --cursor` or `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported account page cursor: ...` or `Unsupported posting page cursor: ...` |
 | book is missing or never opened | `2` | `administration-book-not-initialized`, `query-book-not-initialized`, or `posting-book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
@@ -239,7 +257,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | invalid key-file contents or permissions | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.` |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
-| extracted bundle is incomplete, or developer-only `java -jar` is missing `FINGRIND_SQLITE_LIBRARY` | `4` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
+| extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `4` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
 | other unexpected runtime failure outside the managed-runtime and storage families | `4` | `runtime-failure` | generic runtime-failure envelope with the thrown message and repair hint |
 
@@ -262,9 +280,12 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   process rather than embedding the passphrase literal in shell history.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
 - `rekey-book` requires one current passphrase source plus one replacement passphrase source.
-  The replacement options are `--new-book-key-file`, `--new-book-passphrase-stdin`, and
-  `--new-book-passphrase-prompt`.
-- `--new-book-passphrase-prompt` asks for the replacement secret twice and rejects mismatched
+  The replacement options are `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, and
+  `--replacement-book-passphrase-prompt`.
+- `--replacement-book-key-file` must point to an existing generated or operator-supplied secret
+  file. Generate that file first with `generate-book-key-file` if you want FinGrind to create it
+  for you.
+- `--replacement-book-passphrase-prompt` asks for the replacement secret twice and rejects mismatched
   entries.
 - `rekey-book` rejects using the same key-file path for both current and replacement secrets, and
   standard input cannot supply both current and replacement secrets in the same invocation.
@@ -332,19 +353,25 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.sqlite.loadedSqlite3mcVersion`,
   `environment.sqlite.loadedSqliteSourceId`,
   `environment.storage.bookProtectionMode`, and
-  `environment.storage.defaultBookCipher`.
+  `environment.storage.defaultProtectedBookFormat.cipher`,
+  `environment.storage.defaultProtectedBookFormat.legacyMode`,
+  `environment.storage.defaultProtectedBookFormat.pageSize`,
+  `environment.storage.defaultProtectedBookFormat.reservedBytes`,
+  `environment.storage.defaultProtectedBookFormat.kdfIter`, and
+  `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize`.
 - `environment.sqlite.compileOptionsVerification` is `verified` only when the managed runtime is
   ready, `failed` when the loaded library is present but missing one or more required compile
-  options, and "not-verified" when the runtime is unavailable or an earlier compatibility gate
+  options, and "not-verified" when the runtime is unavailable, when the probe resolved one runtime
+  target but aborted before verification could finish, or when an earlier compatibility gate
   prevents a compile-option verdict.
 - `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and
   `currencyModel` so agents can discover the advisory preflight contract and single-currency
   scope without reading source code.
-- Gradle-driven local runs and the container image use a managed SQLite 3.53.0 / SQLite3 Multiple
-  Ciphers 2.3.3 shared library.
-- The developer-only `java -jar` path relies on `FINGRIND_SQLITE_LIBRARY` pointing at the managed
-  SQLite3MC library produced by `prepareManagedSqlite` and `--enable-native-access=ALL-UNNAMED`
-  on the `java` command line.
+- Gradle-driven local runs, the generated source-checkout launcher, and the container image use a
+  managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library.
+- The developer-only `java -jar` path auto-discovers that managed SQLite3MC library and native
+  access when it runs from a prepared checkout. Custom direct-Java launches outside that checkout
+  shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while
   `capabilities.commands.<group>[]` publishes the authoritative per-command stdout and artifact
@@ -367,6 +394,11 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - FinGrind does not accept SQLite URI `key=` or `hexkey=` transport, plaintext CLI passphrase
   arguments, or environment-variable passphrase transport. The protected-book contract is always
   one explicit safe passphrase source plus the upstream default `chacha20` cipher.
+- Protected-book encryption covers the SQLite book bytes themselves, but not decoded query
+  results in process memory, copied backups, exported reports, or key files stored beside the
+  database. Treat those artifacts as separate protection problems.
+- FinGrind forces SQLite temp storage into memory. If an operator changes that policy outside the
+  supported runtime, any temp spill files fall outside the documented encrypted-book boundary.
 - successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`
 - posting-side account failures are reported as `account-state-violations` with one or more
   structured issue objects in `details.violations`

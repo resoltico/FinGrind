@@ -164,12 +164,12 @@ class SqliteBookKeyFileGeneratorTest {
         Files.createDirectory(tempDirectory.resolve("non-empty-delete-target"));
     Files.writeString(nonEmptyDirectory.resolve("child.txt"), "keep", StandardCharsets.UTF_8);
     List<String> cleanupReports = new ArrayList<>();
-    try (SqliteBestEffort.ReporterOverride ignored =
-        SqliteBestEffort.replaceReporterForTesting(
-            (action, exception) ->
-                cleanupReports.add(action + "|" + exception.getClass().getSimpleName()))) {
-      assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.deleteQuietly(nonEmptyDirectory));
-    }
+    assertDoesNotThrow(
+        () ->
+            SqliteBookKeyFileGenerator.deleteQuietly(
+                nonEmptyDirectory,
+                (action, exception) ->
+                    cleanupReports.add(action + "|" + exception.getClass().getSimpleName())));
     assertTrue(Files.exists(nonEmptyDirectory));
     assertEquals(
         List.of("deleting one partially created book-key path|DirectoryNotEmptyException"),

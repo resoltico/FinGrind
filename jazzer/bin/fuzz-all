@@ -7,11 +7,32 @@ readonly script_dir
 . "${script_dir}/common.sh"
 
 fg_initialize_wrapper "$0"
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/fuzz-all [supported Gradle options]
+
+Runs each active jazzer/bin/fuzz-* wrapper in order.
+Stops after the first actionable failure, but preserves exit 124 when only timeouts occur.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
 
 declare -a harness_scripts=()
-while IFS= read -r harness_script; do
-    harness_scripts+=("${harness_script}")
-done < <(fg_active_wrapper_scripts)
+active_wrapper_output="$(fg_active_wrapper_scripts)"
+status=$?
+if [[ ${status} -ne 0 ]]; then
+    exit "${status}"
+fi
+if [[ -n "${active_wrapper_output}" ]]; then
+    while IFS= read -r harness_script; do
+        harness_scripts+=("${harness_script}")
+    done <<< "${active_wrapper_output}"
+fi
+if [[ "${#harness_scripts[@]}" -eq 0 ]]; then
+    printf '%s\n' "[JAZZER-WRAPPER] No active fuzz harnesses are configured."
+    exit 1
+fi
 readonly harness_scripts
 
 overall_status=0

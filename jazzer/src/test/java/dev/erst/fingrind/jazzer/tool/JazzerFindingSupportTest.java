@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerRunTarget;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -68,9 +66,7 @@ class JazzerFindingSupportTest {
                 "boom",
                 "stack",
                 new UnparsedCliRequestReplayDetails())));
-    assertThrows(
-        NullPointerException.class,
-        JazzerFindingSupportTest::invokeReplayMessageReflectivelyWithNull);
+    assertThrows(NullPointerException.class, () -> JazzerFindingSupport.replayMessage(nullValue()));
   }
 
   @Test
@@ -80,52 +76,17 @@ class JazzerFindingSupportTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivate(
-                    "findingArtifact",
-                    new Class<?>[] {JazzerRunTarget.class, Path.class},
-                    JazzerRunTarget.cliRequest(),
-                    projectDirectory.resolve("missing-artifact")));
+                JazzerFindingSupport.findingArtifact(
+                    JazzerRunTarget.cliRequest(), projectDirectory.resolve("missing-artifact")));
     assertTrue(
         String.valueOf(unreadableArtifact.getMessage())
             .contains("Unable to read raw finding artifact"));
 
-    assertEquals(
-        "artifact",
-        invokePrivate("rawArtifactKind", new Class<?>[] {Path.class}, Path.of("artifact")));
+    assertEquals("artifact", JazzerFindingSupport.rawArtifactKind(Path.of("artifact")));
   }
 
-  private static String invokeReplayMessageReflectivelyWithNull() throws Exception {
-    Method method =
-        JazzerFindingSupport.class.getDeclaredMethod("replayMessage", ReplayOutcome.class);
-    try {
-      return (String) method.invoke(null, (Object) null);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static Object invokePrivate(
-      String methodName, Class<?>[] parameterTypes, Object... arguments) throws Exception {
-    Method method = JazzerFindingSupport.class.getDeclaredMethod(methodName, parameterTypes);
-    method.setAccessible(true);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
+  @SuppressWarnings("NullAway")
+  private static ReplayOutcome nullValue() {
+    return null;
   }
 }

@@ -22,39 +22,41 @@ import org.jspecify.annotations.Nullable;
 
 /** Mutation operations over one SQLite-backed book session. */
 final class SqliteStoreMutationOperations {
-  /** One mutation callback that borrows the store-owned SQLite handle without closing it. */
+  /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
   @FunctionalInterface
   private interface BorrowedDatabaseAction<T> {
-    /** Runs one mutation callback against the active store-owned SQLite handle. */
+    /** Runs one mutation callback against the active SQLite handle. */
     T run(SqliteNativeDatabase activeDatabase);
   }
 
-  private final SqliteStoreContext store;
+  private final SqliteStoreContext context;
+  private final SqliteStoreLifecycle lifecycle;
 
-  SqliteStoreMutationOperations(SqliteStoreContext store) {
-    this.store = Objects.requireNonNull(store, "store");
+  SqliteStoreMutationOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
+    this.context = Objects.requireNonNull(context, "context");
+    this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
   OpenBookResult openBook(Instant initializedAt) {
-    store.ensureOpenSession();
-    store.accessMode().requireWritableInitialization();
-    SqliteBookSchemaBootstrap.ensureParentDirectory(store.bookPath());
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableInitialization();
+    SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
     return withBorrowedDatabase(
         activeDatabase -> {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
-            SqliteBookStateSnapshot snapshot = store.stateSnapshot(activeDatabase);
+            SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
             Optional<OpenBookResult> preexistingOutcome =
                 snapshot.state().openBookResult(snapshot.userVersion());
             if (preexistingOutcome.isPresent()) {
               return preexistingOutcome.orElseThrow();
             }
 
-            transactionOwnership = store.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
             SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
             SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            store.cacheState(
+            lifecycle.cacheState(
                 new SqliteBookStateSnapshot(
                     SqliteBookContract.APPLICATION_ID,
                     SqliteBookContract.FORMAT_VERSION,
@@ -73,9 +75,9 @@ final class SqliteStoreMutationOperations {
       AccountName accountName,
       NormalBalance normalBalance,
       Instant declaredAt) {
-    store.ensureOpenSession();
-    store.accessMode().requireWritableMutation();
-    if (Files.notExists(store.bookPath())) {
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    if (Files.notExists(context.bookPath())) {
       return new DeclareAccountResult.Rejected(
           new BookAdministrationRejection.BookNotInitialized());
     }
@@ -83,12 +85,12 @@ final class SqliteStoreMutationOperations {
         activeDatabase -> {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
-            if (!store.isInitializedBook(activeDatabase)) {
+            if (!lifecycle.isInitializedBook(activeDatabase)) {
               return new DeclareAccountResult.Rejected(
                   new BookAdministrationRejection.BookNotInitialized());
             }
 
-            transactionOwnership = store.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
             Optional<DeclaredAccount> existingAccount =
                 SqliteStatementQueries.findOneAccount(activeDatabase, accountCode);
             if (existingAccount.isPresent()
@@ -125,20 +127,20 @@ final class SqliteStoreMutationOperations {
   }
 
   PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-    store.ensureOpenSession();
-    store.accessMode().requireWritableMutation();
-    if (Files.notExists(store.bookPath())) {
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    if (Files.notExists(context.bookPath())) {
       return new PostingCommitResult.Rejected(new PostingRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
         activeDatabase -> {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
-            transactionOwnership = store.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
             Optional<PostingRejection> ordinaryOutcome =
                 PostingValidation.rejectionFor(
                     postingDraft,
-                    new SqliteTransactionValidationBook(activeDatabase, store.postingReader()));
+                    new SqliteTransactionValidationBook(activeDatabase, context.postingReader()));
             if (ordinaryOutcome.isPresent()) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
               return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
@@ -160,22 +162,22 @@ final class SqliteStoreMutationOperations {
   }
 
   RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase) {
-    store.ensureOpenSession();
-    store.accessMode().requireWritableMutation();
-    SqliteOwnedPassphrase activeReplacementPassphrase =
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    try (SqliteOwnedPassphrase activeReplacementPassphrase =
         new SqliteOwnedPassphrase(
-            Objects.requireNonNull(replacementPassphrase, "replacementPassphrase"));
-    try {
-      if (Files.notExists(store.bookPath())) {
+            Objects.requireNonNull(replacementPassphrase, "replacementPassphrase"))) {
+      if (Files.notExists(context.bookPath())) {
         return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
       }
       return withBorrowedDatabase(
           activeDatabase -> {
-            if (!store.isInitializedBook(activeDatabase)) {
+            if (!lifecycle.isInitializedBook(activeDatabase)) {
               return new RekeyBookResult.Rejected(
                   new BookAdministrationRejection.BookNotInitialized());
             }
-            SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(store.bookPath());
+            SqliteRekeyRollbackFile rollbackFile =
+                SqliteRekeyRollbackFile.create(context.bookPath());
             SqliteNativeConnections.rekey(
                 activeDatabase, activeReplacementPassphrase.nativePassphrase());
             try {
@@ -185,17 +187,15 @@ final class SqliteStoreMutationOperations {
               RuntimeException closeFailure =
                   captureBestEffortRuntimeFailure(
                       () -> SqliteStoreContext.closeOwnedDatabase(activeDatabase));
-              store.clearDatabaseState();
+              lifecycle.clearDatabaseState();
               RuntimeException restoreFailure =
-                  captureBestEffortRuntimeFailure(() -> rollbackFile.restore(store.bookPath()));
+                  captureBestEffortRuntimeFailure(() -> rollbackFile.restore(context.bookPath()));
               throw finalizeFailedRekey(
                   exception, restoreFailure, closeFailure, rollbackFile::deleteQuietly);
             }
           });
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to rekey SQLite book.", exception);
-    } finally {
-      activeReplacementPassphrase.close();
     }
   }
 
@@ -203,16 +203,17 @@ final class SqliteStoreMutationOperations {
       SqliteNativeDatabase activeDatabase,
       SqliteBookPassphrase replacementPassphrase,
       SqliteRekeyRollbackFile rollbackFile) {
-    SqliteNativeDatabase reopenedDatabase = store.openConfiguredDatabase(replacementPassphrase);
+    SqliteNativeDatabase reopenedDatabase = context.openConfiguredDatabase(replacementPassphrase);
     boolean published = false;
     try {
-      store.requireInitializedBook(reopenedDatabase);
+      lifecycle.requireInitializedBook(reopenedDatabase);
       SqliteStoreContext.closeOwnedDatabase(activeDatabase);
-      store.clearDatabaseState();
-      store.publishDatabase(reopenedDatabase);
+      lifecycle.clearDatabaseState();
+      lifecycle.publishDatabase(reopenedDatabase);
+      lifecycle.rotateSessionSecret(replacementPassphrase);
       published = true;
       rollbackFile.deleteQuietly();
-      return new RekeyBookResult.Rekeyed(store.bookPath());
+      return new RekeyBookResult.Rekeyed(context.bookPath());
     } finally {
       if (!published) {
         SqliteStoreOperations.closeReopenedDatabaseQuietly(reopenedDatabase);
@@ -221,7 +222,7 @@ final class SqliteStoreMutationOperations {
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {
-    return action.run(store.database());
+    return action.run(lifecycle.database());
   }
 
   static @Nullable RuntimeException captureBestEffortRuntimeFailure(
@@ -264,6 +265,7 @@ final class SqliteStoreMutationOperations {
 
   static IllegalStateException restoredOriginalBookFailure(
       RuntimeException verificationFailure, @Nullable RuntimeException closeFailure) {
+    Objects.requireNonNull(verificationFailure, "verificationFailure");
     if (closeFailure != null) {
       verificationFailure.addSuppressed(closeFailure);
     }
@@ -272,10 +274,10 @@ final class SqliteStoreMutationOperations {
         verificationFailure);
   }
 
-  /** Runs a best-effort cleanup action that must never replace the primary failure. */
+  /** One action that may raise a runtime failure while preserving the primary rekey outcome. */
   @FunctionalInterface
   interface BestEffortRuntimeAction {
-    /** Executes the cleanup action, reporting but not throwing best-effort runtime failures. */
+    /** Runs one best-effort runtime action. */
     void run();
   }
 }

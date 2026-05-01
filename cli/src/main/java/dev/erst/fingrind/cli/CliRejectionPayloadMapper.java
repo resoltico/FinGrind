@@ -1,11 +1,12 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
-import org.jspecify.annotations.Nullable;
 
 /** Maps deterministic rejection families into the CLI JSON envelope model. */
 final class CliRejectionPayloadMapper {
@@ -41,7 +42,8 @@ final class CliRejectionPayloadMapper {
         queryRejectionDetails(rejection));
   }
 
-  private static @Nullable Object postingRejectionDetails(PostingRejection rejection) {
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      postingRejectionDetails(PostingRejection rejection) {
     return switch (rejection) {
       case PostingRejection.BookNotInitialized _ -> null;
       case PostingRejection.AccountStateViolations violations ->
@@ -74,8 +76,8 @@ final class CliRejectionPayloadMapper {
     };
   }
 
-  private static @Nullable Object administrationRejectionDetails(
-      BookAdministrationRejection rejection) {
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      administrationRejectionDetails(BookAdministrationRejection rejection) {
     return switch (rejection) {
       case BookAdministrationRejection.BookAlreadyInitialized _ -> null;
       case BookAdministrationRejection.BookNotInitialized _ -> null;
@@ -88,7 +90,8 @@ final class CliRejectionPayloadMapper {
     };
   }
 
-  private static @Nullable Object queryRejectionDetails(BookQueryRejection rejection) {
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      queryRejectionDetails(BookQueryRejection rejection) {
     return switch (rejection) {
       case BookQueryRejection.BookNotInitialized _ -> null;
       case BookQueryRejection.UnknownAccount unknownAccount ->

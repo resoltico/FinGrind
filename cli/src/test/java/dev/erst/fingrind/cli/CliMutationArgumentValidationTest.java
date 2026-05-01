@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -81,7 +82,7 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
     assertEquals("invalid-request", exception.code());
     assertEquals("--book-file", exception.argument());
     assertEquals("Duplicate argument: --book-file", exception.getMessage());
-    assertEquals("Run 'fingrind help' to inspect the supported command syntax.", exception.hint());
+    assertEquals(CliInvocationText.helpSyntaxHint(OperationId.POST_ENTRY), exception.hint());
   }
 
   @Test

@@ -144,6 +144,13 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.runtimeEnvironmentContract().sourceCheckoutJava();
   }
 
+  /** Returns the canonical direct-Java launcher command for one host shell family. */
+  public static String directJavaLauncherCommand(boolean windows) {
+    return windows
+        ? "java -jar .\\cli\\build\\libs\\fingrind.jar"
+        : "java -jar ./cli/build/libs/fingrind.jar";
+  }
+
   /** Returns the canonical storage-driver identifier. */
   public static StorageDriver storageDriver() {
     return ProtocolCatalogFacts.runtimeSurfaceContract().storageDriver();
@@ -159,9 +166,14 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.runtimeSurfaceContract().bookProtectionMode();
   }
 
+  /** Returns the canonical protected-book format contract. */
+  public static ProtectedBookFormatContract protectedBookFormat() {
+    return ProtocolCatalogFacts.protectedBookFormatContract();
+  }
+
   /** Returns the canonical default book cipher. */
   public static BookCipher defaultBookCipher() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().defaultBookCipher();
+    return protectedBookFormat().cipher();
   }
 
   /** Returns the canonical SQLite library mode. */

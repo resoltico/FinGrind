@@ -66,12 +66,22 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Rotate the passphrase that protects one existing book.",
             List.of(
+                "fingrind %s %s ./secrets/acme-replacement.book-key"
+                    .formatted(
+                        OperationId.GENERATE_BOOK_KEY_FILE.wireName(),
+                        ProtocolOptions.BOOK_KEY_FILE),
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key"
+                    .formatted(
+                        OperationId.REKEY_BOOK.wireName(),
+                        ProtocolOptions.BOOK_FILE,
+                        ProtocolOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE),
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
                     .formatted(
                         OperationId.REKEY_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT))),
+                        ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT))),
         ProtocolOperationDefinitions.operation(
             OperationId.DECLARE_ACCOUNT,
             OperationCategory.ADMINISTRATION,

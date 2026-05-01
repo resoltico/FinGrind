@@ -52,7 +52,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               currentBookKeyFilePath.toString(),
-              "--new-book-key-file",
+              "--replacement-book-key-file",
               replacementBookKeyFilePath.toString()
             }));
     assertTrue(rekeyOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
@@ -73,8 +73,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     JsonNode oldKeyFailureEnvelope = new ObjectMapper().readTree(oldKeyOutput.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
-        oldKeyFailureEnvelope.path("code").asString());
-    assertFalse(oldKeyFailureEnvelope.path("message").asString().contains("SQLITE_NOTADB"));
+        oldKeyFailureEnvelope.path("code").stringValue());
+    assertFalse(oldKeyFailureEnvelope.path("message").stringValue().contains("SQLITE_NOTADB"));
 
     ByteArrayOutputStream newKeyOutput = new ByteArrayOutputStream();
     FinGrindCli newKeyCli =
@@ -209,8 +209,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             }));
 
     JsonNode envelope = new ObjectMapper().readTree(commitOutput.toString(StandardCharsets.UTF_8));
-    assertEquals("committed", envelope.path("status").asString());
-    UUID postingId = UUID.fromString(envelope.path("postingId").asString());
+    assertEquals("committed", envelope.path("status").stringValue());
+    UUID postingId = UUID.fromString(envelope.path("postingId").stringValue());
     assertEquals(7, postingId.version());
     assertEquals(2, postingId.variant());
     assertTrue(Files.exists(bookFilePath));
@@ -251,7 +251,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               wrongCurrentBookKeyFilePath.toString(),
-              "--new-book-key-file",
+              "--replacement-book-key-file",
               replacementBookKeyFilePath.toString()
             }));
 
@@ -259,7 +259,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
         ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
-        failureEnvelope.path("code").asText());
+        failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains("wrong-current-secret"));
     assertFalse(outputText.contains("replacement-secret"));
   }

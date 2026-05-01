@@ -1,8 +1,17 @@
 {
   "fixtureName": "current-default-protected-book.sqlite",
-  "purpose": "Current default protected-book compatibility fixture for reopen, wrong-key, and backup-restore tests.",
+  "purpose": "Current default protected-book compatibility fixture for format, reopen, wrong-key, and backup-restore tests.",
   "testOnlyPassphraseUtf8": "posting-fact-store-test-book-key",
   "initializedAt": "2026-04-07T10:15:30Z",
+  "protectedBookFormat": {
+    "cipher": "chacha20",
+    "legacyMode": false,
+    "pageSize": 4096,
+    "reservedBytes": 32,
+    "legacyPageSize": 4096,
+    "kdfIter": 64007,
+    "plaintextHeaderSize": 0
+  },
   "accounts": [
     {
       "accountCode": "1000",

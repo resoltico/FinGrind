@@ -60,7 +60,7 @@ final class ContractFixtures {
             ProtocolCatalog.storageDriver(),
             ProtocolCatalog.storageEngine(),
             ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.defaultBookCipher()),
+            ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),

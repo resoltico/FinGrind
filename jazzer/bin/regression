@@ -6,4 +6,13 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 . "${script_dir}/common.sh"
 
 fg_initialize_wrapper "$0"
-fg_run_passive_command "jazzerRegression" "$@"
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/regression [supported Gradle options]
+
+Replays every committed Jazzer regression input against its owning harness.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+fg_run_verification_command "jazzerRegression" "$@"

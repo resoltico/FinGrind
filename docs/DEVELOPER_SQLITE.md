@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -126,15 +126,18 @@ License and attribution stance:
   managed-source integrity contract used in Gradle
 - public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
   runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
-- standalone `java -jar` execution remains developer-only and must receive
-  `FINGRIND_SQLITE_LIBRARY` pointing at the library produced by `prepareManagedSqlite` plus
-  `--enable-native-access=ALL-UNNAMED` on the `java` command line
+- generated source-checkout launchers are managed-only as well: after
+  `./gradlew :cli:installShadowDist prepareManagedSqlite`, the launcher resolves the managed
+  SQLite library from that prepared checkout automatically
+- standalone `java -jar` execution remains developer-only, but when it runs from a prepared
+  checkout it resolves the same managed SQLite library automatically and reads the native-access
+  permission from the JAR manifest
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
-  wants the managed native library must also run `prepareManagedSqlite` first and point
-  `FINGRIND_SQLITE_LIBRARY` at the resulting file under `build/managed-sqlite/` when the build
-  tree remains in-checkout, or under the wrapper-owned relocated build root on fragile mounted
-  filesystems, then launch the JAR with `--enable-native-access=ALL-UNNAMED`
+  wants the managed native library must also run `prepareManagedSqlite` first. When the resulting
+  JAR stays under the prepared checkout layout it then resolves the managed library automatically;
+  only custom direct-Java launches outside that layout need an explicit
+  `FINGRIND_SQLITE_LIBRARY`
 
 ## Adapter Composition
 
@@ -148,15 +151,19 @@ The SQLite adapter is split into focused collaborators:
   and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
   stable public session contract and factory for CLI, tooling, and fuzz harnesses
 - [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java):
-  thin package-private session wrapper for one thread-confined protected-book boundary; the shared
-  lifecycle, query, report, and mutation behavior now lives on `SqliteStoreContext`
+  thin package-private session wrapper for one thread-confined protected-book boundary; it composes
+  one immutable store context plus one mutable lifecycle owner instead of inheriting one wide
+  mutable sink
 - [`SqliteStoreOpening`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreOpening.java),
   [`SqliteStoreContext`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreContext.java),
   [`SqliteStoreLifecycle`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreLifecycle.java),
   [`SqliteStoreReadOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreReadOperations.java),
   and [`SqliteStoreMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreMutationOperations.java):
-  focused collaborators for open-time ownership transfer, lifecycle hardening, query/report reads,
-  rekeying, and durable writes
+  focused collaborators for open-time ownership transfer, immutable dependency wiring, mutable
+  lifecycle state, query/report reads, rekeying, and durable writes
+- [`SqliteSessionSecret`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSessionSecret.java):
+  durable session-secret owner that clones one reusable protected-book passphrase and mints
+  short-lived working copies for each native open or rekey handoff
 - [`SqliteBookAccessRules`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookAccessRules.java):
   canonical same-package rule owner for SQLite file-backed key-file access requirements
 - [`SqliteBookAdministrationSessionView`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookAdministrationSessionView.java),
@@ -233,7 +240,8 @@ The SQLite adapter is split into focused collaborators:
   `journal_line.account_code -> account.account_code` foreign key
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
-- runtime probes distinguish bundle-managed versus environment-configured library provenance and
+- runtime probes distinguish bundle-managed, source-checkout-managed, and
+  environment-configured library provenance and
   report `environment.sqlite.requiredCompileOptions`,
   `environment.sqlite.requiredMinimumSqliteVersion`,
   `environment.sqlite.requiredSqlite3mcVersion`,
@@ -246,11 +254,20 @@ The SQLite adapter is split into focused collaborators:
   `environment.sqlite.loadedSqlite3mcVersion`,
   `environment.sqlite.loadedSqliteSourceId`,
   `environment.storage.bookProtectionMode`, and
-  `environment.storage.defaultBookCipher` through `capabilities`
+  `environment.storage.defaultProtectedBookFormat.cipher`,
+  `environment.storage.defaultProtectedBookFormat.legacyMode`,
+  `environment.storage.defaultProtectedBookFormat.pageSize`,
+  `environment.storage.defaultProtectedBookFormat.reservedBytes`,
+  `environment.storage.defaultProtectedBookFormat.kdfIter`, and
+  `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize` through `capabilities`
 - `environment.sqlite.compileOptionsVerification` is `verified` only when the runtime reaches the
   ready state, `failed` when the loaded library is present but misses one or more required compile
-  options, and "not-verified" when the runtime is unavailable or an earlier version/source-id gate
-  prevents a compile-option verdict
+  options, and "not-verified" when the runtime is unavailable, when a late probe failure already
+  exposed the selected runtime but could not finish verification, or when an earlier
+  version/source-id gate prevents a compile-option verdict
+- `environment.sqlite.runtimeStatus` is `failed` when the probe already knows the resolved runtime
+  provenance and library path but later discovery work aborts before the runtime can be classified
+  as ready or incompatible
 
 The posting seam distinguishes ordinary domain outcomes from true runtime failures:
 - accepted commits return `PostingCommitResult.Committed`
@@ -279,6 +296,9 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - the supported operator backup path is a closed-book encrypted file copy: stop using the selected
   book, copy the `.sqlite` file to protected storage, preserve the key file separately, and
   restore by replacing the closed `.sqlite` file from that encrypted copy before reopening it
+- same-book multi-session access is allowed, but one writer holding `begin immediate` will block
+  another writer until SQLite's busy timeout expires and the second writer fails with one busy or
+  locked result instead of silently interleaving journal mutations
 - FinGrind validates the configured key by executing `SELECT count(*) FROM sqlite_master;` before
   any schema or business operation can proceed
 - FinGrind intentionally relies on the upstream default `sqleet` / `chacha20` cipher and does not
@@ -295,14 +315,33 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
   plaintext-leak check
 - committed compatibility fixtures under
   [`sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/`](../sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/)
-  prove that the current default protected-book format reopens across test runs, rejects the wrong
-  key deterministically, and remains restorable from one closed-book encrypted copy without
-  exposing plaintext
+  now record the canonical protected-book format facts directly in fixture metadata and prove that
+  the current default protected-book format reopens across test runs, rejects the wrong key
+  deterministically, and remains restorable from one closed-book encrypted copy without exposing
+  plaintext
+
+### Protection Boundary
+
+- The protected-book contract covers the encrypted SQLite database pages plus the encrypted
+  rollback-journal or WAL bytes that SQLite3MC writes for that book.
+- FinGrind forces `temp_store=MEMORY`; if that policy is weakened, temporary spill artifacts fall
+  outside the documented at-rest protection boundary.
+- Process memory, passphrase bytes before zeroization, query results after they are decoded into
+  Java objects, and any crash dump or live debugger view are outside the SQLite3MC at-rest
+  boundary.
+- Exported JSON, CSV, PDF, copied backups, and any other derived files are not encrypted unless
+  the operator protects those outputs separately.
+- Key files stored beside the database are outside the encrypted-book boundary; proximity to the
+  `.sqlite` file does not make the key file protected.
+- The canonical protected-book format currently uses `plaintextHeaderSize=0`; if that ever
+  changes, those plaintext header bytes are outside the encrypted-page boundary and must not be
+  treated as a secret-bearing surface.
 
 ## Transaction Model
 
 - one `SqliteBookSession` instance, implemented by one thin `SqlitePostingFactStore` over one
-  `SqliteStoreContext`, owns at most one open native SQLite handle
+  immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`, owns at most one open
+  native SQLite handle
 - read methods reuse that handle when it exists
 - commit uses SQLite's `begin immediate` transaction mode and performs ordinary duplicate checks
   before insert on the same native handle
@@ -339,9 +378,10 @@ Reasons for the current design:
 Managed runtime targets currently build SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 from the
 vendored amalgamation on macOS and Linux. The public bundle launcher starts its private runtime
 with `--enable-native-access=ALL-UNNAMED`, Gradle `Test` and `JavaExec` tasks are configured with
-the same native-access flag, the developer-only raw-JAR route must pass that flag explicitly, and
-controlled surfaces resolve the managed library either through `fingrind.bundle.home` or
-`FINGRIND_SQLITE_LIBRARY`.
+the same native-access flag, generated source-checkout launchers plus the developer raw JAR inherit
+that contract automatically from the prepared checkout build, and controlled surfaces resolve the
+managed library through `fingrind.bundle.home`, source-checkout discovery, or
+`FINGRIND_SQLITE_LIBRARY` as the explicit escape hatch.
 
 Distribution note:
 - public bundle archives and the public container image both package a private `jlink` runtime so
@@ -353,7 +393,8 @@ Native bridge notes:
   intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
   session
 - native library lookup has no platform-default fallback; it uses extracted bundle home for the
-  public launcher and `FINGRIND_SQLITE_LIBRARY` for the developer-only raw-JAR route
+  public launcher, prepared-checkout discovery for generated launchers and developer raw JARs, and
+  `FINGRIND_SQLITE_LIBRARY` only as the explicit direct-Java override
 - runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
   Ciphers version before any book operation is allowed
 - runtime initialization also validates the required compile-option hardening before the managed

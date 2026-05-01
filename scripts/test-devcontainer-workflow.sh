@@ -26,12 +26,14 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
 readonly developer_devcontainer_doc="${repo_root}/docs/DEVELOPER_DEVCONTAINER.md"
 readonly developer_docker_doc="${repo_root}/docs/DEVELOPER_DOCKER.md"
+readonly developer_jazzer_doc="${repo_root}/docs/DEVELOPER_JAZZER_OPERATIONS.md"
 readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
 
 [[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
 [[ -f "${developer_devcontainer_doc}" ]] || die \
     "missing contributor devcontainer doc at ${developer_devcontainer_doc}"
 [[ -f "${developer_docker_doc}" ]] || die "missing Docker doc at ${developer_docker_doc}"
+[[ -f "${developer_jazzer_doc}" ]] || die "missing Jazzer operations doc at ${developer_jazzer_doc}"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
 
 grep -Fq 'name: Contributor devcontainer' "${workflow_file}" || die \
@@ -40,8 +42,16 @@ grep -Fq './scripts/validate-devcontainer.sh' "${workflow_file}" || die \
     "CI workflow no longer runs the contributor devcontainer validator"
 grep -Fq './scripts/validate-devcontainer.sh' "${developer_devcontainer_doc}" || die \
     "developer devcontainer doc no longer points at the validator"
+grep -Fq 'devcontainer up --workspace-folder .' "${developer_devcontainer_doc}" || die \
+    "developer devcontainer doc no longer documents the tooling-agnostic devcontainer CLI workflow"
+grep -Fq 'VS Code is not mandatory.' "${developer_devcontainer_doc}" || die \
+    "developer devcontainer doc no longer states that VS Code is optional"
 grep -Fq '[DEVELOPER_DEVCONTAINER.md]' "${developer_docker_doc}" || die \
     "Docker doc no longer distinguishes the contributor devcontainer companion reference"
+grep -Fq 'Run One Docker-Only Fuzz Session From A Fresh Terminal' "${developer_jazzer_doc}" || die \
+    "Jazzer operations doc no longer keeps the Docker-only fuzz workflow"
+grep -Fq 'docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .devcontainer' "${developer_jazzer_doc}" || die \
+    "Jazzer operations doc no longer documents the Docker-only contributor-image build step"
 grep -Fq 'Contributor devcontainer' "${release_protocol}" || die \
     "release protocol no longer treats the contributor devcontainer surface as release-blocking"
 

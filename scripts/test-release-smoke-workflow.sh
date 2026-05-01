@@ -25,7 +25,9 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_py="${repo_root}/scripts/release-smoke-workflow.py"
 readonly workflow_package_dir="${repo_root}/scripts/release_smoke_workflow"
-readonly workflow_sh="${repo_root}/scripts/release-smoke-workflow.sh"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
+readonly common_support_sh="${repo_root}/scripts/release-smoke-common.sh"
+readonly workflow_support_sh="${repo_root}/scripts/release-smoke-workflow-support.sh"
 readonly bundle_support_sh="${repo_root}/scripts/release-smoke-support.sh"
 readonly bundle_office_worker_ps1="${repo_root}/scripts/bundle-smoke-office-worker.ps1"
 readonly bundle_command_bridge_ps1="${repo_root}/scripts/bundle-smoke-command-bridge.ps1"
@@ -34,14 +36,18 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
 
 [[ -f "${workflow_py}" ]] || die "missing shared release smoke workflow runner at ${workflow_py}"
 [[ -d "${workflow_package_dir}" ]] || die "missing release smoke workflow package at ${workflow_package_dir}"
-[[ -f "${workflow_sh}" ]] || die "missing Bash release smoke workflow wrapper at ${workflow_sh}"
+[[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
+[[ -f "${common_support_sh}" ]] || die "missing Bash release smoke common helper at ${common_support_sh}"
+[[ -f "${workflow_support_sh}" ]] || die "missing Bash release smoke workflow support helper at ${workflow_support_sh}"
 [[ -f "${bundle_support_sh}" ]] || die "missing Bash release smoke support wrapper at ${bundle_support_sh}"
 [[ -f "${bundle_office_worker_ps1}" ]] || die "missing PowerShell office-worker wrapper at ${bundle_office_worker_ps1}"
 [[ -f "${bundle_command_bridge_ps1}" ]] || die "missing PowerShell command bridge at ${bundle_command_bridge_ps1}"
 [[ -f "${bundle_smoke_sh}" ]] || die "missing Bash bundle smoke entrypoint at ${bundle_smoke_sh}"
 [[ -f "${docker_smoke_sh}" ]] || die "missing Bash Docker smoke entrypoint at ${docker_smoke_sh}"
-grep -Fq 'release-smoke-workflow.py' "${workflow_sh}" || die \
-    "release-smoke-workflow.sh no longer delegates to the shared Python workflow owner"
+grep -Fq 'release-smoke-workflow-support.sh' "${bundle_support_sh}" || die \
+    "release-smoke-support.sh no longer sources the shared workflow support helper"
+grep -Fq 'release-smoke-workflow.py' "${workflow_support_sh}" || die \
+    "release-smoke-workflow-support.sh no longer delegates to the shared Python workflow owner"
 grep -Fq 'release_smoke_workflow.runner import main' "${workflow_py}" || die \
     "release-smoke-workflow.py no longer delegates into the release_smoke_workflow package"
 grep -Fq 'release-smoke-workflow.py' "${bundle_office_worker_ps1}" || die \
@@ -58,8 +64,36 @@ fi
 if grep -Fq 'release-smoke-assertions.sh' "${bundle_support_sh}"; then
     die "release-smoke-support.sh still sources the deleted Bash assertion owner"
 fi
+
+assert_source_only_guard() {
+    local script_path=$1
+    local expected_fragment=$2
+    local output
+    local status
+
+    set +e
+    output="$(bash "${script_path}" 2>&1)"
+    status=$?
+    set -e
+
+    [[ ${status} -ne 0 ]] || die "${script_path} unexpectedly succeeded when executed directly"
+    [[ "${output}" == *"${expected_fragment}"* ]] || die \
+        "${script_path} did not explain that it must be sourced"
+}
+
+assert_source_only_guard \
+    "${common_support_sh}" \
+    "release-smoke-common.sh is a library and must be sourced by a release-smoke support script."
+assert_source_only_guard \
+    "${bundle_support_sh}" \
+    "release-smoke-support.sh is a library and must be sourced by a release-smoke entrypoint."
+assert_source_only_guard \
+    "${workflow_support_sh}" \
+    "release-smoke-workflow-support.sh is a library and must be sourced by release-smoke-support.sh."
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${bundle_smoke_sh}" || die \
     "bundle-smoke.sh no longer publishes the compact shared work-root contract"
+grep -Fq 'Bundle acceptance: using archive' "${bundle_smoke_sh}" || die \
+    "bundle-smoke.sh no longer reports which archive the acceptance run selected"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${bundle_smoke_sh}" || die \
     "bundle-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_sh}" || die \
@@ -76,6 +110,11 @@ fi
 if grep -Fq 'FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG' "${docker_smoke_sh}"; then
     die "docker-smoke.sh still exports legacy per-path release-smoke arguments"
 fi
+
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+
+prepare_python_runtime_env
 
 python3 -m py_compile "${workflow_py}" "${workflow_package_dir}"/*.py >/dev/null
 python3 - <<'PY' "${repo_root}"

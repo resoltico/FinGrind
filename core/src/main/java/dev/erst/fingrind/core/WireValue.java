@@ -1,10 +1,10 @@
 package dev.erst.fingrind.core;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** Stable public wire-value contract for machine-visible FinGrind vocabulary types. */
 @FunctionalInterface
@@ -16,8 +16,11 @@ public interface WireValue {
           if (!type.isEnum() || !WireValue.class.isAssignableFrom(type)) {
             throw new IllegalArgumentException("WireValue enum metadata requires an enum type.");
           }
-          List<String> wireValues = new ArrayList<>();
-          Map<String, Enum<?>> valuesByWireValue = new ConcurrentHashMap<>();
+          // ClassValue serializes construction for each enum type, so this ordered builder is not
+          // a concurrent mutation surface and must preserve declaration order for the public
+          // wire-value contract.
+          Map<String, Enum<?>> valuesByWireValue = // NOPMD - see comment above.
+              new LinkedHashMap<>();
           for (Object value : type.getEnumConstants()) {
             Enum<?> constant = (Enum<?>) value;
             String wireValue = Objects.requireNonNull(((WireValue) value).wireValue(), "wireValue");
@@ -25,14 +28,15 @@ public interface WireValue {
               throw new IllegalStateException(
                   type.getSimpleName() + " must not publish blank wire values.");
             }
-            Enum<?> prior = valuesByWireValue.putIfAbsent(wireValue, constant);
+            Enum<?> prior = valuesByWireValue.put(wireValue, constant);
             if (prior != null) {
               throw new IllegalStateException(
                   type.getSimpleName() + " duplicates wire value '" + wireValue + "'.");
             }
-            wireValues.add(wireValue);
           }
-          return new EnumVocabulary(List.copyOf(wireValues), Map.copyOf(valuesByWireValue));
+          return new EnumVocabulary(
+              List.copyOf(new ArrayList<>(valuesByWireValue.keySet())),
+              Map.copyOf(valuesByWireValue));
         }
       };
 

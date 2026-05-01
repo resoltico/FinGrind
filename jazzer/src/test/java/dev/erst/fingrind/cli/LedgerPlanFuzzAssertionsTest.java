@@ -17,9 +17,8 @@ import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.LedgerStepId;
+import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -141,16 +140,13 @@ class LedgerPlanFuzzAssertionsTest {
                 LedgerFact.flag("hasMore", true),
                 LedgerFact.text("nextCursor", "cursor-1"),
                 LedgerFact.group("account", List.of(LedgerFact.text("accountCode", "1000")))));
-    invokePrivateVoid(
-        "assertStructuredListQueryFacts", LedgerJournalEntry.class, structuredAccountPage);
+    LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(structuredAccountPage);
 
     IllegalStateException missingCursor =
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertStructuredListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -166,23 +162,18 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivate(
-                    "requiredCountFact",
-                    new Class<?>[] {List.class, String.class},
-                    List.of(LedgerFact.flag("count", true)),
-                    "count"));
+                LedgerPlanFuzzAssertions.requiredCountFact(
+                    List.of(LedgerFact.flag("count", true)), "count"));
     assertTrue(String.valueOf(wrongType.getMessage()).contains("wrong fact kind"));
 
     LedgerJournalEntry.Rejected rejectedEntry =
         rejectedEntry("list-postings", LedgerStepKind.LIST_POSTINGS, List.of());
-    invokePrivateVoid("assertRejectedListQueryFacts", LedgerJournalEntry.class, rejectedEntry);
+    LedgerPlanFuzzAssertions.assertRejectedListQueryFacts(rejectedEntry);
     IllegalStateException successOnlyFact =
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertRejectedListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertRejectedListQueryFacts(
                     rejectedEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -208,11 +199,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivate(
-                    "assertPlanResult",
-                    new Class<?>[] {
-                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                    },
+                LedgerPlanFuzzAssertions.assertPlanResult(
                     new LedgerPlan(new LedgerPlanId("other-plan"), plan.steps()),
                     truncatedSuccess));
     assertTrue(String.valueOf(mismatchedPlanId.getMessage()).contains("changed the plan id"));
@@ -220,14 +207,7 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException incompleteSuccess =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                invokePrivate(
-                    "assertPlanResult",
-                    new Class<?>[] {
-                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                    },
-                    plan,
-                    truncatedSuccess));
+            () -> LedgerPlanFuzzAssertions.assertPlanResult(plan, truncatedSuccess));
     assertTrue(String.valueOf(incompleteSuccess.getMessage()).contains("omitted journal steps"));
   }
 
@@ -255,14 +235,7 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException overflow =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                invokePrivate(
-                    "assertPlanResult",
-                    new Class<?>[] {
-                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                    },
-                    plan,
-                    journalOverflow));
+            () -> LedgerPlanFuzzAssertions.assertPlanResult(plan, journalOverflow));
     assertTrue(String.valueOf(overflow.getMessage()).contains("exceeded the declared step count"));
 
     LedgerPlanResult.Succeeded stepIdMismatch =
@@ -277,14 +250,7 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException stepIdDrift =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                invokePrivate(
-                    "assertPlanResult",
-                    new Class<?>[] {
-                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                    },
-                    plan,
-                    stepIdMismatch));
+            () -> LedgerPlanFuzzAssertions.assertPlanResult(plan, stepIdMismatch));
     assertTrue(String.valueOf(stepIdDrift.getMessage()).contains("changed step order or identity"));
 
     LedgerPlanResult.Succeeded stepKindMismatch =
@@ -302,14 +268,7 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException stepKindDrift =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                invokePrivate(
-                    "assertPlanResult",
-                    new Class<?>[] {
-                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                    },
-                    plan,
-                    stepKindMismatch));
+            () -> LedgerPlanFuzzAssertions.assertPlanResult(plan, stepKindMismatch));
     assertTrue(
         String.valueOf(stepKindDrift.getMessage()).contains("changed the declared step kind"));
   }
@@ -337,14 +296,7 @@ class LedgerPlanFuzzAssertionsTest {
                     .toList()));
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
-        (LedgerPlanFuzzAssertions.ExecutionSnapshot)
-            invokePrivate(
-                "assertPlanResult",
-                new Class<?>[] {
-                  LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                },
-                plan,
-                terminalBoundaryResult);
+        LedgerPlanFuzzAssertions.assertPlanResult(plan, terminalBoundaryResult);
     assertEquals(LedgerPlanStatus.REJECTED, snapshot.executionStatus());
     assertEquals(plan.steps().size() + 1, snapshot.journalStepCount());
 
@@ -360,15 +312,97 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException nonterminalBoundary =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                invokePrivate(
-                    "assertPlanResult",
-                    new Class<?>[] {
-                      LedgerPlan.class, dev.erst.fingrind.contract.LedgerPlanResult.class
-                    },
-                    plan,
-                    nonterminalBoundaryResult));
+            () -> LedgerPlanFuzzAssertions.assertPlanResult(plan, nonterminalBoundaryResult));
     assertTrue(String.valueOf(nonterminalBoundary.getMessage()).contains("must be terminal"));
+  }
+
+  @Test
+  void assertPlanResult_accepts_structured_account_and_posting_list_query_steps() throws Exception {
+    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(validLedgerPlanWithQueries().getBytes(UTF_8));
+    LedgerPlanResult.Succeeded structuredQuerySuccess =
+        new LedgerPlanResult.Succeeded(
+            plan.planId(),
+            new LedgerExecutionJournal(
+                Instant.parse("2026-04-07T12:00:00Z"),
+                Instant.parse("2026-04-07T12:00:01Z"),
+                List.of(
+                    succeededEntry("open", LedgerStepKind.OPEN_BOOK, List.of()),
+                    succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
+                    succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
+                    succeededEntry("post-sale", LedgerStepKind.POST_ENTRY, List.of()),
+                    succeededEntry(
+                        "page-accounts",
+                        LedgerStepKind.LIST_ACCOUNTS,
+                        List.of(
+                            LedgerFact.count("count", 1),
+                            LedgerFact.count("pageLimit", 1),
+                            LedgerFact.flag("hasMore", false),
+                            LedgerFact.group(
+                                "account", List.of(LedgerFact.text("accountCode", "1000"))))),
+                    succeededEntry(
+                        "page-postings",
+                        LedgerStepKind.LIST_POSTINGS,
+                        List.of(
+                            LedgerFact.count("count", 1),
+                            LedgerFact.count("pageLimit", 1),
+                            LedgerFact.flag("hasMore", false),
+                            LedgerFact.group(
+                                "posting", List.of(LedgerFact.text("postingId", "posting-1"))))))));
+
+    LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
+        LedgerPlanFuzzAssertions.assertPlanResult(plan, structuredQuerySuccess);
+
+    assertEquals(LedgerPlanStatus.SUCCEEDED, snapshot.executionStatus());
+    assertEquals(plan.steps().size(), snapshot.journalStepCount());
+    assertEquals(2, snapshot.listQueryStepCount());
+    assertEquals(2, snapshot.structuredListQueryStepCount());
+  }
+
+  @Test
+  void assertPlanResult_accepts_every_declared_non_boundary_journal_kind() throws Exception {
+    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(fullSpectrumLedgerPlan().getBytes(UTF_8));
+    LedgerPlanResult.Succeeded fullSpectrumSuccess =
+        new LedgerPlanResult.Succeeded(
+            plan.planId(),
+            new LedgerExecutionJournal(
+                Instant.parse("2026-04-07T12:00:00Z"),
+                Instant.parse("2026-04-07T12:00:01Z"),
+                List.of(
+                    succeededEntry("open", LedgerStepKind.OPEN_BOOK, List.of()),
+                    succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
+                    succeededEntry("preflight-sale", LedgerStepKind.PREFLIGHT_ENTRY, List.of()),
+                    succeededEntry("post-sale", LedgerStepKind.POST_ENTRY, List.of()),
+                    succeededEntry("inspect-book", LedgerStepKind.INSPECT_BOOK, List.of()),
+                    succeededEntry(
+                        "page-accounts",
+                        LedgerStepKind.LIST_ACCOUNTS,
+                        List.of(
+                            LedgerFact.count("count", 1),
+                            LedgerFact.count("pageLimit", 2),
+                            LedgerFact.flag("hasMore", false),
+                            LedgerFact.group(
+                                "account", List.of(LedgerFact.text("accountCode", "1000"))))),
+                    succeededEntry("get-posting", LedgerStepKind.GET_POSTING, List.of()),
+                    succeededEntry(
+                        "page-postings",
+                        LedgerStepKind.LIST_POSTINGS,
+                        List.of(
+                            LedgerFact.count("count", 1),
+                            LedgerFact.count("pageLimit", 2),
+                            LedgerFact.flag("hasMore", false),
+                            LedgerFact.group(
+                                "posting", List.of(LedgerFact.text("postingId", "posting-1"))))),
+                    succeededEntry("account-balance", LedgerStepKind.ACCOUNT_BALANCE, List.of()),
+                    succeededAssertionEntry(
+                        "assert-balance", LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS))));
+
+    LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
+        LedgerPlanFuzzAssertions.assertPlanResult(plan, fullSpectrumSuccess);
+
+    assertEquals(LedgerPlanStatus.SUCCEEDED, snapshot.executionStatus());
+    assertEquals(plan.steps().size(), snapshot.journalStepCount());
+    assertEquals(2, snapshot.listQueryStepCount());
+    assertEquals(2, snapshot.structuredListQueryStepCount());
   }
 
   @Test
@@ -385,20 +419,14 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException invalidCount =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                invokePrivateVoid(
-                    "assertStructuredListQueryFacts",
-                    LedgerJournalEntry.class,
-                    structuredPostingPage));
+            () -> LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(structuredPostingPage));
     assertTrue(String.valueOf(invalidCount.getMessage()).contains("invalid count"));
 
     IllegalStateException negativeCount =
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertStructuredListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -412,9 +440,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertStructuredListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -428,9 +454,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertStructuredListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -444,9 +468,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertStructuredListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -463,20 +485,15 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivate(
-                    "requiredCountFact",
-                    new Class<?>[] {List.class, String.class},
-                    List.of(LedgerFact.count("count", 1), LedgerFact.count("count", 2)),
-                    "count"));
+                LedgerPlanFuzzAssertions.requiredCountFact(
+                    List.of(LedgerFact.count("count", 1), LedgerFact.count("count", 2)), "count"));
     assertTrue(String.valueOf(duplicateCount.getMessage()).contains("exactly one count fact"));
 
     IllegalStateException duplicateFlag =
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivate(
-                    "requiredFlagFact",
-                    new Class<?>[] {List.class, String.class},
+                LedgerPlanFuzzAssertions.requiredFlagFact(
                     List.of(LedgerFact.flag("hasMore", true), LedgerFact.flag("hasMore", false)),
                     "hasMore"));
     assertTrue(String.valueOf(duplicateFlag.getMessage()).contains("exactly one flag fact"));
@@ -485,9 +502,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                invokePrivateVoid(
-                    "assertRejectedListQueryFacts",
-                    LedgerJournalEntry.class,
+                LedgerPlanFuzzAssertions.assertRejectedListQueryFacts(
                     rejectedEntry(
                         "list-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -499,11 +514,7 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalArgumentException wrongListQueryKind =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                invokePrivate(
-                    "expectedListQueryGroupName",
-                    new Class<?>[] {LedgerJournalKind.class},
-                    LedgerJournalKind.OPEN_BOOK));
+            () -> LedgerPlanFuzzAssertions.expectedListQueryGroupName(LedgerJournalKind.OPEN_BOOK));
     assertTrue(String.valueOf(wrongListQueryKind.getMessage()).contains("list-query journal kind"));
   }
 
@@ -528,6 +539,16 @@ class LedgerPlanFuzzAssertionsTest {
         new LedgerStepFailure("rejected", "expected rejection", List.of()));
   }
 
+  private static LedgerJournalEntry.Succeeded succeededAssertionEntry(
+      String stepId, LedgerAssertionKind assertionKind) {
+    return new LedgerJournalEntry.Succeeded(
+        new LedgerStepId(stepId),
+        LedgerJournalStep.assertion(assertionKind),
+        Instant.parse("2026-04-07T12:00:00Z"),
+        Instant.parse("2026-04-07T12:00:01Z"),
+        List.of());
+  }
+
   private static LedgerJournalEntry.Succeeded boundarySucceededEntry(
       String stepId, LedgerBoundaryPhase phase) {
     return new LedgerJournalEntry.Succeeded(
@@ -547,29 +568,6 @@ class LedgerPlanFuzzAssertionsTest {
         Instant.parse("2026-04-07T12:00:01Z"),
         List.of(),
         new LedgerStepFailure("boundary-rejected", "expected boundary rejection", List.of()));
-  }
-
-  private static Object invokePrivate(
-      String methodName, Class<?>[] parameterTypes, Object... arguments) throws Exception {
-    Method method = LedgerPlanFuzzAssertions.class.getDeclaredMethod(methodName, parameterTypes);
-    method.setAccessible(true);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static void invokePrivateVoid(String methodName, Class<?> parameterType, Object argument)
-      throws Exception {
-    invokePrivate(methodName, new Class<?>[] {parameterType}, argument);
   }
 
   private static String basicValidLedgerPlan() {
@@ -662,6 +660,130 @@ class LedgerPlanFuzzAssertionsTest {
               "kind": "list-postings",
               "query": {
                 "limit": 1
+              }
+            }
+          ]
+        }
+        """;
+  }
+
+  private static String fullSpectrumLedgerPlan() {
+    return """
+        {
+          "planId": "plan-spectrum-1",
+          "steps": [
+            {
+              "stepId": "open",
+              "kind": "open-book"
+            },
+            {
+              "stepId": "declare-cash",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "1000",
+                "accountName": "Cash",
+                "normalBalance": "DEBIT"
+              }
+            },
+            {
+              "stepId": "preflight-sale",
+              "kind": "preflight-entry",
+              "posting": {
+                "effectiveDate": "2026-04-07",
+                "lines": [
+                  {
+                    "accountCode": "1000",
+                    "side": "DEBIT",
+                    "currencyCode": "EUR",
+                    "amount": "10.00"
+                  },
+                  {
+                    "accountCode": "2000",
+                    "side": "CREDIT",
+                    "currencyCode": "EUR",
+                    "amount": "10.00"
+                  }
+                ],
+                "provenance": {
+                  "actorId": "agent-1",
+                  "actorType": "AGENT",
+                  "commandId": "command-spectrum-1",
+                  "idempotencyKey": "idem-spectrum-1",
+                  "causationId": "cause-spectrum-1"
+                }
+              }
+            },
+            {
+              "stepId": "post-sale",
+              "kind": "post-entry",
+              "posting": {
+                "effectiveDate": "2026-04-07",
+                "lines": [
+                  {
+                    "accountCode": "1000",
+                    "side": "DEBIT",
+                    "currencyCode": "EUR",
+                    "amount": "10.00"
+                  },
+                  {
+                    "accountCode": "2000",
+                    "side": "CREDIT",
+                    "currencyCode": "EUR",
+                    "amount": "10.00"
+                  }
+                ],
+                "provenance": {
+                  "actorId": "agent-1",
+                  "actorType": "AGENT",
+                  "commandId": "command-spectrum-2",
+                  "idempotencyKey": "idem-spectrum-2",
+                  "causationId": "cause-spectrum-2"
+                }
+              }
+            },
+            {
+              "stepId": "inspect-book",
+              "kind": "inspect-book"
+            },
+            {
+              "stepId": "page-accounts",
+              "kind": "list-accounts",
+              "query": {
+                "limit": 1
+              }
+            },
+            {
+              "stepId": "get-posting",
+              "kind": "get-posting",
+              "postingId": "posting-1"
+            },
+            {
+              "stepId": "page-postings",
+              "kind": "list-postings",
+              "query": {
+                "limit": 1
+              }
+            },
+            {
+              "stepId": "account-balance",
+              "kind": "account-balance",
+              "query": {
+                "accountCode": "1000",
+                "effectiveDateFrom": "2026-04-01",
+                "effectiveDateTo": "2026-04-30"
+              }
+            },
+            {
+              "stepId": "assert-balance",
+              "kind": "assert",
+              "assertion": {
+                "kind": "assert-account-balance",
+                "accountCode": "1000",
+                "effectiveDateFrom": "2026-04-01",
+                "effectiveDateTo": "2026-04-30",
+                "currencyCode": "EUR",
+                "netAmount": "10.00",
+                "balanceSide": "DEBIT"
               }
             }
           ]

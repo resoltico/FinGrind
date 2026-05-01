@@ -230,17 +230,17 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             .path("steps")
             .get(0)
             .path("facts");
-    assertEquals("count", facts.get(0).path("name").asText());
+    assertEquals("count", facts.get(0).path("name").stringValue());
     assertEquals(1, facts.get(0).path("value").asInt());
-    assertEquals("pageLimit", facts.get(1).path("name").asText());
+    assertEquals("pageLimit", facts.get(1).path("name").stringValue());
     assertEquals(1, facts.get(1).path("value").asInt());
-    assertEquals("nextCursor", facts.get(2).path("name").asText());
-    assertTrue(facts.get(2).path("value").asText().length() > 4);
-    assertEquals("hasMore", facts.get(3).path("name").asText());
+    assertEquals("nextCursor", facts.get(2).path("name").stringValue());
+    assertTrue(facts.get(2).path("value").stringValue().length() > 4);
+    assertEquals("hasMore", facts.get(3).path("name").stringValue());
     assertTrue(facts.get(3).path("value").asBoolean());
-    assertEquals("account", facts.get(4).path("name").asText());
-    assertEquals("1000", facts.get(4).path("facts").get(0).path("value").asText());
-    assertEquals("Cash", facts.get(4).path("facts").get(1).path("value").asText());
-    assertEquals("DEBIT", facts.get(4).path("facts").get(2).path("value").asText());
+    assertEquals("account", facts.get(4).path("name").stringValue());
+    assertEquals("1000", facts.get(4).path("facts").get(0).path("value").stringValue());
+    assertEquals("Cash", facts.get(4).path("facts").get(1).path("value").stringValue());
+    assertEquals("DEBIT", facts.get(4).path("facts").get(2).path("value").stringValue());
   }
 }

@@ -86,6 +86,23 @@ public final class ContractErrors {
     }
 
     private ContractResponse.ErrorDescriptor descriptor() {
+      if (this == INVALID_REQUEST) {
+        return new ContractResponse.ErrorDescriptor(
+            code(),
+            description(),
+            List.of(
+                new ContractResponse.FieldDescriptor(
+                    "parseMessage",
+                    "Parser-provided explanation for syntactically invalid JSON request input."),
+                new ContractResponse.FieldDescriptor(
+                    "line", "1-based JSON source line for syntactically invalid request input."),
+                new ContractResponse.FieldDescriptor(
+                    "column",
+                    "1-based JSON source column for syntactically invalid request input."),
+                new ContractResponse.FieldDescriptor(
+                    "violations",
+                    "Ordered list of deterministic request-validation violations when one malformed request produces more than one diagnosis.")));
+      }
       return new ContractResponse.ErrorDescriptor(code(), description());
     }
 

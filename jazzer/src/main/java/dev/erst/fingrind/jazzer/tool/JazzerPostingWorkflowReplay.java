@@ -14,6 +14,7 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.PostingWorkflowInvariantAssertions;
 import java.util.List;
 
 /** Replays posting-command workflows against the in-memory bookkeeping harness. */
@@ -85,7 +86,7 @@ final class JazzerPostingWorkflowReplay {
 
       List<DeclaredAccount> declaredAccounts =
           CliFuzzFixtures.declarePostingAccounts(administrationService, command);
-      PostingWorkflowReplayVerifier.verifyDeclaredAccountListing(
+      PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
           CliFuzzFixtures.listAccounts(bookSession).size(), declaredAccounts.size());
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       bookSession.deactivateAccount(primaryAccount.accountCode());
@@ -100,43 +101,44 @@ final class JazzerPostingWorkflowReplay {
                   .rejection());
 
       CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
+      PostingWorkflowInvariantAssertions.assertAccountReactivationPersisted(
+          CliFuzzFixtures.listAccounts(bookSession), primaryAccount);
 
       PreflightEntryResult preflight = applicationService.preflight(command);
       CommitEntryResult committedResult = applicationService.commit(command);
       switch (preflight) {
         case PreflightAccepted accepted -> {
-          PostingWorkflowReplayVerifier.verifyAcceptedPreflight(accepted, command);
+          PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(accepted, command);
           state.finalPreflightStatus = PostingLifecycleStatus.PREFLIGHT_ACCEPTED;
-          Committed committed = requireCommittedAfterAcceptedPreflight(committedResult);
+          Committed committed =
+              PostingWorkflowInvariantAssertions.requireCommittedAfterAcceptedPreflight(
+                  committedResult);
           state.finalCommitStatus = PostingLifecycleStatus.COMMITTED;
 
           PostingFact postingFact =
-              PostingWorkflowReplayVerifier.requireStoredPosting(
+              PostingWorkflowInvariantAssertions.requireStoredPosting(
                   bookSession.findExistingPosting(command.requestProvenance().idempotencyKey()));
-          PostingWorkflowReplayVerifier.verifyStoredPosting(postingFact, committed, command);
+          PostingWorkflowInvariantAssertions.verifyStoredPosting(postingFact, committed, command);
           state.storedFactPresent = true;
           state.duplicateStatus =
-              PostingWorkflowReplayVerifier.requireDuplicateRejection(
-                  applicationService.commit(command));
+              JazzerReplayDetailsMapper.rejectionStatus(
+                  PostingWorkflowInvariantAssertions.requireDuplicateRejection(
+                          applicationService.commit(command))
+                      .rejection());
         }
         case PreflightRejected preflightRejected -> {
           state.finalPreflightStatus =
               JazzerReplayDetailsMapper.rejectionStatus(preflightRejected.rejection());
-          state.finalCommitStatus =
-              PostingWorkflowReplayVerifier.verifyRejectedPreflightAndCommit(
+          CommitRejected commitRejected =
+              PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
                   preflightRejected, committedResult);
+          state.finalCommitStatus =
+              JazzerReplayDetailsMapper.rejectionStatus(commitRejected.rejection());
+          PostingWorkflowInvariantAssertions.assertRejectedStateDidNotPersistPosting(
+              bookSession.findExistingPosting(command.requestProvenance().idempotencyKey()));
         }
       }
     }
-  }
-
-  static Committed requireCommittedAfterAcceptedPreflight(CommitEntryResult committedResult) {
-    return switch (committedResult) {
-      case Committed committed -> committed;
-      case CommitRejected _ ->
-          throw new IllegalStateException(
-              "Accepted preflight should commit on a fresh valid book.");
-    };
   }
 
   /** Parses one posting-workflow replay input into the production posting command model. */

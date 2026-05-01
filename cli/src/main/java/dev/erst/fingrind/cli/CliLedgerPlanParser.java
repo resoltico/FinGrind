@@ -59,7 +59,6 @@ final class CliLedgerPlanParser {
   }
 
   private static LedgerStep readLedgerStep(ObjectNode stepNode) {
-    rejectUnexpectedFields(stepNode, null, CliJsonRequestCodec.LEDGER_STEP_FIELDS);
     LedgerStepId stepId =
         new LedgerStepId(requiredText(stepNode, ProtocolLedgerPlanFields.Step.STEP_ID));
     LedgerStepKind kind =
@@ -68,6 +67,7 @@ final class CliLedgerPlanParser {
             ProtocolLedgerPlanFields.Step.KIND,
             LedgerStepKind.wireValues(),
             LedgerStepKind::fromWireValue);
+    rejectUnexpectedStepFields(stepNode, kind);
     return switch (kind) {
       case OPEN_BOOK -> new LedgerStep.OpenBook(stepId);
       case DECLARE_ACCOUNT ->
@@ -109,6 +109,76 @@ final class CliLedgerPlanParser {
               readLedgerAssertion(
                   requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ASSERTION)));
     };
+  }
+
+  private static void rejectUnexpectedStepFields(ObjectNode stepNode, LedgerStepKind kind) {
+    List<String> unexpectedFields =
+        CliJsonRequestCodec.unexpectedFields(
+            stepNode, null, CliJsonRequestCodec.LEDGER_STEP_FIELDS);
+    if (unexpectedFields.isEmpty()) {
+      return;
+    }
+    rejectFlattenedNestedStepPayload(
+        stepNode,
+        kind,
+        unexpectedFields,
+        ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT,
+        CliJsonRequestCodec.DECLARE_ACCOUNT_FIELDS,
+        LedgerStepKind.DECLARE_ACCOUNT);
+    rejectFlattenedNestedStepPayload(
+        stepNode,
+        kind,
+        unexpectedFields,
+        ProtocolLedgerPlanFields.Step.POSTING,
+        CliJsonRequestCodec.POST_ENTRY_TOP_LEVEL_FIELDS,
+        LedgerStepKind.PREFLIGHT_ENTRY,
+        LedgerStepKind.POST_ENTRY);
+    rejectFlattenedNestedStepPayload(
+        stepNode,
+        kind,
+        unexpectedFields,
+        ProtocolLedgerPlanFields.Step.QUERY,
+        CliJsonRequestCodec.LEDGER_QUERY_FIELDS,
+        LedgerStepKind.LIST_ACCOUNTS,
+        LedgerStepKind.LIST_POSTINGS,
+        LedgerStepKind.ACCOUNT_BALANCE);
+    rejectFlattenedNestedStepPayload(
+        stepNode,
+        kind,
+        unexpectedFields,
+        ProtocolLedgerPlanFields.Step.ASSERTION,
+        CliJsonRequestCodec.LEDGER_ASSERTION_FIELDS,
+        LedgerStepKind.ASSERT);
+    throw CliJsonRequestCodec.unexpectedFieldsFailure(unexpectedFields);
+  }
+
+  private static void rejectFlattenedNestedStepPayload(
+      ObjectNode stepNode,
+      LedgerStepKind actualKind,
+      List<String> unexpectedFields,
+      String nestedFieldName,
+      java.util.Set<String> nestedAcceptedFields,
+      LedgerStepKind... matchingKinds) {
+    if (stepNode.has(nestedFieldName)
+        || java.util.Arrays.stream(matchingKinds).noneMatch(actualKind::equals)) {
+      return;
+    }
+    List<String> flattenedFields =
+        unexpectedFields.stream().filter(nestedAcceptedFields::contains).toList();
+    if (flattenedFields.isEmpty()) {
+      return;
+    }
+    String flattenedFieldLabel =
+        flattenedFields.size() == 1
+            ? "Field " + flattenedFields.getFirst()
+            : "Fields " + String.join(", ", flattenedFields);
+    throw new IllegalArgumentException(
+        flattenedFieldLabel
+            + " must be nested under "
+            + nestedFieldName
+            + " for "
+            + actualKind.wireValue()
+            + " ledger plan steps.");
   }
 
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {

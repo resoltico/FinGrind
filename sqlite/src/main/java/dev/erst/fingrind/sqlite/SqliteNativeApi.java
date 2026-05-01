@@ -15,6 +15,10 @@ record SqliteNativeApi(
     MethodHandle sqlite3Shutdown,
     MethodHandle sqlite3BusyTimeout,
     MethodHandle sqlite3ExtendedResultCodes,
+    MethodHandle sqlite3mcConfig,
+    MethodHandle sqlite3mcConfigCipher,
+    MethodHandle sqlite3mcCipherName,
+    MethodHandle sqlite3FileControl,
     MethodHandle sqlite3Exec,
     MethodHandle sqlite3Free,
     MethodHandle sqlite3PrepareV2,
@@ -43,6 +47,10 @@ record SqliteNativeApi(
     Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
     Objects.requireNonNull(sqlite3BusyTimeout, "sqlite3BusyTimeout");
     Objects.requireNonNull(sqlite3ExtendedResultCodes, "sqlite3ExtendedResultCodes");
+    Objects.requireNonNull(sqlite3mcConfig, "sqlite3mcConfig");
+    Objects.requireNonNull(sqlite3mcConfigCipher, "sqlite3mcConfigCipher");
+    Objects.requireNonNull(sqlite3mcCipherName, "sqlite3mcCipherName");
+    Objects.requireNonNull(sqlite3FileControl, "sqlite3FileControl");
     Objects.requireNonNull(sqlite3Exec, "sqlite3Exec");
     Objects.requireNonNull(sqlite3Free, "sqlite3Free");
     Objects.requireNonNull(sqlite3PrepareV2, "sqlite3PrepareV2");

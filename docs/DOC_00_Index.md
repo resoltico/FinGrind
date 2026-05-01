@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: INDEX
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers BookReadSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -40,6 +40,7 @@ route:
 | `CurrencyCode` | `DOC_01_Core.md` | `CurrencyCode` |
 | `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
 | `JournalEntry` | `DOC_01_Core.md` | `JournalEntry` |
+| `JournalEntryValidationException` | `DOC_01_Core.md` | `JournalEntryValidationException` |
 | `JournalLine` | `DOC_01_Core.md` | `JournalLine` |
 | `JournalLine.EntrySide` | `DOC_01_Core.md` | `JournalLine.EntrySide` |
 | `Money` | `DOC_01_Core.md` | `Money` |
@@ -166,6 +167,7 @@ route:
 | `ContractDecision` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailureException` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `BookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `BookFormatContract` |
+| `ProtectedBookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `ProtectedBookFormatContract` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookReadService` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
 | `DeclareAccountCommand` | `DOC_02_AdministrationAndReports.md` | `DeclareAccountCommand` |

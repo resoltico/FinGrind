@@ -4,21 +4,15 @@ import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
-/** Owns connection, transaction, cached state, and terminal-failure lifecycle for one store. */
-final class SqliteStoreLifecycle {
-  private final Path bookPath;
-  private final SqliteStoreAccessMode accessMode;
-  private final SqliteBookStateReader bookStateReader;
-  private final int bookFormatVersion;
-  private final String notInitializedBookMessage;
-  private final Supplier<SqliteNativeApi> sqliteApiSupplier;
-  private @Nullable SqliteBookPassphrase bookPassphrase;
+/** Owns the mutable database/session state for one SQLite-backed book session. */
+class SqliteStoreLifecycle {
+  private final SqliteStoreContext context;
+  private final SqliteSessionSecret sessionSecret;
+  private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
 
   private @Nullable SqliteNativeDatabase database;
   private @Nullable SqliteBookStateSnapshot cachedBookState;
@@ -27,36 +21,24 @@ final class SqliteStoreLifecycle {
   private boolean ledgerPlanTransactionBegunInDatabase;
   private @Nullable IllegalStateException terminalFailure;
 
-  SqliteStoreLifecycle(
-      Path bookPath,
-      SqliteBookPassphrase bookPassphrase,
-      SqliteStoreAccessMode accessMode,
-      SqliteBookStateReader bookStateReader,
-      int bookFormatVersion,
-      String notInitializedBookMessage,
-      Supplier<SqliteNativeApi> sqliteApiSupplier) {
-    this.bookPath = Objects.requireNonNull(bookPath, "bookPath");
-    this.bookPassphrase = Objects.requireNonNull(bookPassphrase, "bookPassphrase");
-    this.accessMode = Objects.requireNonNull(accessMode, "accessMode");
-    this.bookStateReader = Objects.requireNonNull(bookStateReader, "bookStateReader");
-    this.bookFormatVersion = bookFormatVersion;
-    this.notInitializedBookMessage =
-        Objects.requireNonNull(notInitializedBookMessage, "notInitializedBookMessage");
-    this.sqliteApiSupplier = Objects.requireNonNull(sqliteApiSupplier, "sqliteApiSupplier");
+  SqliteStoreLifecycle(SqliteStoreContext context, SqliteSessionSecret sessionSecret) {
+    this.context = Objects.requireNonNull(context, "context");
+    this.sessionSecret = Objects.requireNonNull(sessionSecret, "sessionSecret");
   }
 
   void beginLedgerPlanTransaction() {
+    threadOwner.requireOwnerThread();
     ensureOpen();
-    accessMode.requireWritableMutation();
+    context.accessMode().requireWritableMutation();
     if (ledgerPlanTransactionActive) {
       throw new IllegalStateException("Ledger plan transaction is already active.");
     }
     ledgerPlanTransactionActive = true;
     ledgerPlanTransactionBegunInDatabase = false;
-    if (accessMode.defersMissingBookOpen() && Files.notExists(bookPath)) {
+    if (context.accessMode().defersMissingBookOpen() && Files.notExists(context.bookPath())) {
       return;
     }
-    SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
+    SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
     try {
       database();
     } catch (IllegalStateException exception) {
@@ -67,6 +49,7 @@ final class SqliteStoreLifecycle {
   }
 
   void commitLedgerPlanTransaction() {
+    threadOwner.requireOwnerThread();
     ensureOpen();
     if (!ledgerPlanTransactionActive) {
       throw new IllegalStateException("No ledger plan transaction is active.");
@@ -89,6 +72,7 @@ final class SqliteStoreLifecycle {
   }
 
   void rollbackLedgerPlanTransaction() {
+    threadOwner.requireOwnerThread();
     if (!ledgerPlanTransactionActive) {
       return;
     }
@@ -101,48 +85,65 @@ final class SqliteStoreLifecycle {
   }
 
   void close() {
+    threadOwner.requireOwnerThread();
     if (closed) {
       return;
     }
-    try {
-      if (database != null) {
-        SqliteStoreContext.closeOwnedDatabase(database);
-      }
-      database = null;
-      cachedBookState = null;
-      closed = true;
+    SqliteNativeDatabase closingDatabase = database;
+    SqliteSessionSecret closingSecret = sessionSecret;
+    database = null;
+    cachedBookState = null;
+    ledgerPlanTransactionActive = false;
+    ledgerPlanTransactionBegunInDatabase = false;
+    closed = true;
+    try (closingSecret;
+        closingDatabase) {
+      // Resources close on scope exit; any close failure poisons this session permanently.
     } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure(
-          "Failed to close SQLite book connection.", exception);
-    } finally {
-      if (database == null) {
-        closePendingPassphrase();
-      }
+      String detail = Objects.requireNonNullElse(exception.getMessage(), "SQLite native failure.");
+      SqliteStorageFailureException closeFailure =
+          new SqliteStorageFailureException(
+              "Failed to close SQLite book connection. " + exception.resultName() + ": " + detail,
+              exception);
+      terminalFailure = closeFailure;
+      throw closeFailure;
+    } catch (IllegalStateException exception) {
+      IllegalStateException closeFailure =
+          new IllegalStateException("Failed to close SQLite book connection.", exception);
+      terminalFailure = closeFailure;
+      throw closeFailure;
     }
   }
 
   boolean isInitializedBook(SqliteNativeDatabase activeDatabase) {
+    threadOwner.requireOwnerThread();
     return stateSnapshot(activeDatabase).state() == SqliteBookState.INITIALIZED_FINGRIND;
   }
 
   void requireInitializedBook(SqliteNativeDatabase activeDatabase) {
+    threadOwner.requireOwnerThread();
     SqliteBookStateSnapshot snapshot = stateSnapshot(activeDatabase);
     snapshot
         .state()
-        .requireInitialized(snapshot.userVersion(), bookFormatVersion, notInitializedBookMessage);
+        .requireInitialized(
+            snapshot.userVersion(),
+            context.bookFormatVersion(),
+            context.notInitializedBookMessage());
   }
 
   SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
+    threadOwner.requireOwnerThread();
     SqliteBookStateSnapshot snapshot = cachedBookState;
     if (snapshot != null) {
       return snapshot;
     }
-    snapshot = bookStateReader.snapshot(activeDatabase);
+    snapshot = context.bookStateReader().snapshot(activeDatabase);
     cachedBookState = snapshot;
     return snapshot;
   }
 
   SqliteNativeDatabase database() {
+    threadOwner.requireOwnerThread();
     SqliteNativeDatabase activeDatabase = database;
     if (activeDatabase != null) {
       return activeDatabase;
@@ -157,28 +158,97 @@ final class SqliteStoreLifecycle {
   }
 
   ContractDecision<SqliteStoreLifecycle> prime() {
+    threadOwner.requireOwnerThread();
     ensureOpen();
     if (database != null) {
       return ContractDecision.accepted(this);
     }
-    if (accessMode.defersMissingBookOpen() && Files.notExists(bookPath)) {
+    if (context.accessMode().defersMissingBookOpen() && Files.notExists(context.bookPath())) {
       return ContractDecision.accepted(this);
     }
     return openDatabase()
         .fold(ignored -> ContractDecision.accepted(this), ContractDecision::rejected);
   }
 
+  void ensureOpenSession() {
+    threadOwner.requireOwnerThread();
+    ensureOpen();
+  }
+
+  SqliteNativeDatabase initializedQueryDatabase() {
+    threadOwner.requireOwnerThread();
+    if (Files.notExists(context.bookPath())) {
+      throw new IllegalStateException(context.notInitializedBookMessage());
+    }
+    SqliteNativeDatabase activeDatabase = database();
+    requireInitializedBook(activeDatabase);
+    return activeDatabase;
+  }
+
+  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
+    threadOwner.requireOwnerThread();
+    if (ledgerPlanTransactionActive) {
+      beginLedgerPlanTransactionIfNeeded(activeDatabase);
+      return SqliteTransactionOwnership.SHARED;
+    }
+    activeDatabase.executeStatement("begin immediate");
+    return SqliteTransactionOwnership.OWNED;
+  }
+
+  void cacheState(SqliteBookStateSnapshot snapshot) {
+    threadOwner.requireOwnerThread();
+    cachedBookState = Objects.requireNonNull(snapshot, "snapshot");
+  }
+
+  void clearCachedState() {
+    threadOwner.requireOwnerThread();
+    cachedBookState = null;
+  }
+
+  void clearDatabaseState() {
+    threadOwner.requireOwnerThread();
+    database = null;
+    cachedBookState = null;
+  }
+
+  void publishDatabase(SqliteNativeDatabase activeDatabase) {
+    threadOwner.requireOwnerThread();
+    database = Objects.requireNonNull(activeDatabase, "activeDatabase");
+  }
+
+  void rotateSessionSecret(SqliteBookPassphrase replacementPassphrase) {
+    threadOwner.requireOwnerThread();
+    sessionSecret.rotateTo(replacementPassphrase);
+  }
+
+  @Nullable SqliteNativeDatabase publishedDatabase() {
+    threadOwner.requireOwnerThread();
+    return database;
+  }
+
+  boolean closed() {
+    threadOwner.requireOwnerThread();
+    return closed;
+  }
+
+  boolean ledgerPlanTransactionActive() {
+    threadOwner.requireOwnerThread();
+    return ledgerPlanTransactionActive;
+  }
+
+  boolean ledgerPlanTransactionBegunInDatabase() {
+    threadOwner.requireOwnerThread();
+    return ledgerPlanTransactionBegunInDatabase;
+  }
+
   private ContractDecision<SqliteNativeDatabase> openDatabase() {
-    try (SqliteBookPassphrase passphrase = takeBookPassphrase()) {
-      if (accessMode.createsFiles() && Files.notExists(bookPath)) {
-        SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
+    threadOwner.requireOwnerThread();
+    try (SqliteOwnedPassphrase workingPassphrase = sessionSecret.borrowWorkingCopy()) {
+      if (context.accessMode().createsFiles() && Files.notExists(context.bookPath())) {
+        SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
       }
-      SqliteNativeApi sqliteApi = sqliteApiSupplier.get();
       SqliteNativeDatabase openedDatabase =
-          SqliteConnectionConfigurer.configureOpenedDatabase(
-              SqliteNativeConnections.open(
-                  bookPath, passphrase, accessMode.nativeOpenMode(), sqliteApi),
-              accessMode);
+          context.openConfiguredDatabase(workingPassphrase.nativePassphrase());
       database = openedDatabase;
       beginLedgerPlanTransactionIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
@@ -195,116 +265,23 @@ final class SqliteStoreLifecycle {
     }
   }
 
-  void ensureOpenSession() {
-    ensureOpen();
-  }
-
-  SqliteNativeDatabase initializedQueryDatabase() {
-    if (Files.notExists(bookPath)) {
-      throw new IllegalStateException(notInitializedBookMessage);
-    }
-    SqliteNativeDatabase activeDatabase = database();
-    requireInitializedBook(activeDatabase);
-    return activeDatabase;
-  }
-
-  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
-    if (ledgerPlanTransactionActive) {
-      beginLedgerPlanTransactionIfNeeded(activeDatabase);
-      return SqliteTransactionOwnership.SHARED;
-    }
-    activeDatabase.executeStatement("begin immediate");
-    return SqliteTransactionOwnership.OWNED;
-  }
-
-  Path bookPath() {
-    return bookPath;
-  }
-
-  SqliteStoreAccessMode accessMode() {
-    return accessMode;
-  }
-
-  SqliteNativeApi sqliteApi() {
-    return sqliteApiSupplier.get();
-  }
-
-  void cacheState(SqliteBookStateSnapshot snapshot) {
-    cachedBookState = Objects.requireNonNull(snapshot, "snapshot");
-  }
-
-  void replaceCachedState(@Nullable SqliteBookStateSnapshot snapshot) {
-    cachedBookState = snapshot;
-  }
-
-  void clearDatabaseState() {
-    database = null;
-    cachedBookState = null;
-  }
-
-  void publishDatabase(SqliteNativeDatabase activeDatabase) {
-    database = Objects.requireNonNull(activeDatabase, "activeDatabase");
-  }
-
-  void replaceDatabase(@Nullable SqliteNativeDatabase nativeDatabase) {
-    database = nativeDatabase;
-  }
-
-  @Nullable SqliteNativeDatabase currentDatabaseHandle() {
-    return database;
-  }
-
-  void replacePendingPassphrase(@Nullable SqliteBookPassphrase passphrase) {
-    bookPassphrase = passphrase;
-  }
-
-  SqliteBookPassphrase takePendingPassphrase() {
-    return takeBookPassphrase();
-  }
-
-  boolean closed() {
-    return closed;
-  }
-
-  boolean ledgerPlanTransactionActive() {
-    return ledgerPlanTransactionActive;
-  }
-
-  boolean ledgerPlanTransactionBegunInDatabase() {
-    return ledgerPlanTransactionBegunInDatabase;
-  }
-
   private void ensureOpen() {
-    if (closed) {
-      throw new IllegalStateException("SQLite book session is already closed.");
-    }
+    threadOwner.requireOwnerThread();
     IllegalStateException failure = terminalFailure;
     if (failure != null) {
       throw failure;
     }
+    if (closed) {
+      throw new IllegalStateException("SQLite book session is already closed.");
+    }
   }
 
   private void beginLedgerPlanTransactionIfNeeded(SqliteNativeDatabase activeDatabase) {
+    threadOwner.requireOwnerThread();
     if (ledgerPlanTransactionActive && !ledgerPlanTransactionBegunInDatabase) {
       activeDatabase.executeStatement("begin immediate");
       ledgerPlanTransactionBegunInDatabase = true;
     }
-  }
-
-  private void closePendingPassphrase() {
-    if (bookPassphrase == null) {
-      return;
-    }
-    takeBookPassphrase().close();
-  }
-
-  private SqliteBookPassphrase takeBookPassphrase() {
-    SqliteBookPassphrase passphrase = bookPassphrase;
-    bookPassphrase = null;
-    if (passphrase == null) {
-      throw new IllegalStateException("SQLite book passphrase is no longer available.");
-    }
-    return passphrase;
   }
 
   private IllegalStateException rememberTerminalFailure(IllegalStateException failure) {

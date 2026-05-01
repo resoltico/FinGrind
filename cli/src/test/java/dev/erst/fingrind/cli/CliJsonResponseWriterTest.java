@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -35,7 +37,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
 
     JsonNode json = readJson(outputStream);
 
-    assertEquals("ok", json.path("status").asText());
+    assertEquals("ok", json.path("status").stringValue());
     assertEquals(2, json.path("count").asInt());
   }
 
@@ -56,6 +58,26 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void writeFailure_supportsHumanOutputWithStructuredViolations() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeFailure(
+        new CliFailure(
+            "invalid-request",
+            "Journal entry is invalid.",
+            "Fix the request.",
+            null,
+            new CliErrorJsonModels.InvalidRequestDetails(
+                List.of("Journal entry must balance debits and credits."))),
+        OutputMode.HUMAN);
+
+    String text = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(text.contains("Violations"));
+    assertTrue(text.contains("Journal entry must balance debits and credits."));
+  }
+
+  @Test
   void writeFailure_writesErrorEnvelope() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
@@ -63,5 +85,28 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
     responseWriter.writeFailure("invalid-request", "bad request");
 
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"error\""));
+  }
+
+  @Test
+  void writeFailure_writesStructuredInvalidRequestDetails() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+
+    responseWriter.writeFailure(
+        new CliFailure(
+            "invalid-request",
+            "Journal entry is invalid.",
+            "Fix the request.",
+            null,
+            new CliErrorJsonModels.InvalidRequestDetails(
+                List.of("Journal entry must balance debits and credits."))));
+
+    JsonNode json = readJson(outputStream);
+
+    assertEquals("error", json.path("status").stringValue());
+    assertEquals("invalid-request", json.path("code").stringValue());
+    assertEquals(
+        "Journal entry must balance debits and credits.",
+        json.path("details").path("violations").get(0).stringValue());
   }
 }

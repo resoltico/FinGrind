@@ -4,10 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.CodeSource;
+import java.security.cert.Certificate;
+import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
@@ -20,10 +27,12 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null, List::of));
 
     assertTrue(exception.getMessage().contains("bundle launcher"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
+    assertThrows(
+        IllegalStateException.class, () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null));
   }
 
   @Test
@@ -77,6 +86,85 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void configuredLibraryTarget_resolvesManagedLibraryFromTheSourceCheckout() throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Path managedLibraryPath =
+        sourceCheckoutRoot
+            .resolve("build")
+            .resolve("managed-sqlite")
+            .resolve("host")
+            .resolve(expectedNativeLibraryFileName());
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.createDirectories(managedLibraryPath.getParent());
+    Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
+
+    SqliteLibraryTarget libraryTarget =
+        SqliteNativeRuntimePolicy.configuredLibraryTarget(
+            null, null, () -> List.of(sourceCheckoutRoot));
+
+    assertEquals("managed-only", libraryTarget.mode());
+    assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
+    assertEquals(
+        managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
+  }
+
+  @Test
+  void configuredLibraryTarget_resolvesManagedLibraryFromDefaultSourceCheckoutDetection()
+      throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Path managedLibraryPath =
+        sourceCheckoutRoot
+            .resolve("build")
+            .resolve("managed-sqlite")
+            .resolve("host")
+            .resolve(expectedNativeLibraryFileName());
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.createDirectories(managedLibraryPath.getParent());
+    Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
+
+    String originalSourceCheckoutRoot = System.getProperty("fingrind.source-checkout.root");
+    try {
+      System.setProperty(
+          "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
+
+      SqliteLibraryTarget libraryTarget =
+          SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null);
+
+      assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
+      assertEquals(
+          managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
+    } finally {
+      restoreSystemProperty("fingrind.source-checkout.root", originalSourceCheckoutRoot);
+    }
+  }
+
+  @Test
+  void configuredLibraryTarget_skipsSourceCheckoutCandidatesWithoutManagedLibrary()
+      throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Path managedSqliteRoot =
+        sourceCheckoutRoot.resolve("build").resolve("managed-sqlite").resolve("host");
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.createDirectories(managedSqliteRoot);
+    Files.writeString(
+        managedSqliteRoot.resolve("not-the-managed-library.txt"),
+        "sqlite3mc",
+        StandardCharsets.UTF_8);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    null, null, () -> List.of(sourceCheckoutRoot)));
+
+    assertTrue(exception.getMessage().contains("prepareManagedSqlite"));
+  }
+
+  @Test
   void configuredLibraryTarget_rejectsIncompleteBundleHome() throws IOException {
     Path bundleHomePath = tempDirectory.resolve("fingrind-0.14.0-test");
     Files.createDirectories(bundleHomePath);
@@ -96,19 +184,136 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     IllegalStateException missingEverywhere =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null, List::of));
     IllegalStateException blankConfiguredPath =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   ", null));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   ", null, List::of));
     IllegalStateException blankBundleHome =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, "   "));
+            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, "   ", List::of));
 
     assertTrue(missingEverywhere.getMessage().contains("bundle launcher"));
     assertTrue(blankConfiguredPath.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
     assertTrue(blankBundleHome.getMessage().contains("bundle launcher"));
+  }
+
+  @Test
+  void sourceCheckoutRoots_deduplicateNestedCandidatesAndAcceptNullInputs() throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Path incompleteCandidate = tempDirectory.resolve("incomplete");
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli").resolve("nested"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.createDirectories(incompleteCandidate);
+    Files.writeString(incompleteCandidate.resolve("gradlew"), "#!/usr/bin/env bash\n");
+
+    assertEquals(List.of(), SqliteNativeRuntimePolicy.sourceCheckoutRoots(null, null, null));
+    assertEquals(
+        List.of(sourceCheckoutRoot.toAbsolutePath().normalize()),
+        SqliteNativeRuntimePolicy.sourceCheckoutRoots(
+            incompleteCandidate.toString(),
+            sourceCheckoutRoot.resolve("gradlew").toString(),
+            sourceCheckoutRoot.resolve("cli").resolve("nested").toString()));
+  }
+
+  @Test
+  void sourceCheckoutRootFromManifest_handlesNullDirectoriesManifestsAndIoFailures()
+      throws IOException {
+    Path codeSourceJar = tempDirectory.resolve("fingrind.jar");
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.writeString(codeSourceJar, "jar", StandardCharsets.UTF_8);
+
+    Manifest manifest = new Manifest();
+    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+    manifest
+        .getMainAttributes()
+        .putValue("FinGrind-Source-Checkout-Root", sourceCheckoutRoot.toString());
+
+    assertEquals(
+        sourceCheckoutRoot.toAbsolutePath().normalize().toString(),
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
+            codeSourceJar, ignored -> manifest));
+    assertEquals(
+        null, SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(null, ignored -> manifest));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
+            tempDirectory, ignored -> manifest));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(codeSourceJar, ignored -> null));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
+            codeSourceJar,
+            ignored -> {
+              throw new IOException("boom");
+            }));
+  }
+
+  @Test
+  void sourceCheckoutRootFromCodeSource_handlesNullFilesAndDirectories() throws IOException {
+    Path codeSourceDirectory = tempDirectory.resolve("classes");
+    Path codeSourceJar = tempDirectory.resolve("fingrind.jar");
+    Path codeSourcePathWithoutExistingFile = tempDirectory.resolve("missing-classes");
+    Files.createDirectories(codeSourceDirectory);
+    Files.writeString(codeSourceJar, "jar", StandardCharsets.UTF_8);
+
+    assertEquals(null, SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(null));
+    assertEquals(
+        codeSourcePathWithoutExistingFile.toAbsolutePath().normalize().toString(),
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(
+            codeSourcePathWithoutExistingFile));
+    assertEquals(
+        codeSourceJar.getParent().toString(),
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(codeSourceJar));
+    assertEquals(
+        codeSourceDirectory.toString(),
+        SqliteNativeRuntimePolicy.sourceCheckoutRootFromCodeSource(codeSourceDirectory));
+  }
+
+  @Test
+  void codeSourcePath_handlesNullValidAndInvalidLocations() throws IOException {
+    Path classesDirectory = tempDirectory.resolve("classes");
+    Files.createDirectories(classesDirectory);
+
+    assertEquals(null, SqliteNativeRuntimePolicy.codeSourcePath((String) null));
+    assertEquals(null, SqliteNativeRuntimePolicy.codeSourcePath((CodeSource) null));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.codeSourcePath(new CodeSource((URL) null, (Certificate[]) null)));
+    assertEquals(
+        classesDirectory.toAbsolutePath().normalize(),
+        SqliteNativeRuntimePolicy.codeSourcePath(classesDirectory.toUri().toString()));
+    assertEquals(null, SqliteNativeRuntimePolicy.codeSourcePath("://bad"));
+  }
+
+  @Test
+  void sourceCheckoutManagedLibraryPath_returnsNullWhenDirectoryIsMissingOrFinderFails()
+      throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Path managedSqliteRoot =
+        sourceCheckoutRoot.resolve("build").resolve("managed-sqlite").resolve("host");
+
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutManagedLibraryPath(
+            sourceCheckoutRoot,
+            (root, expectedFileName) -> {
+              throw new IOException("boom");
+            }));
+
+    Files.createDirectories(managedSqliteRoot);
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutManagedLibraryPath(
+            sourceCheckoutRoot,
+            (root, expectedFileName) -> {
+              throw new IOException("boom");
+            }));
   }
 
   @Test

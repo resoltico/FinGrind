@@ -23,104 +23,59 @@ import java.util.Optional;
 
 /** Narrow unified read-session view over one SQLite-backed store. */
 final class SqliteBookReadSessionView implements BookReadSession {
-  private final SqliteStoreContext store;
+  private final SqliteStoreReadOperations readOperations;
 
-  SqliteBookReadSessionView(SqliteStoreContext store) {
-    this.store = Objects.requireNonNull(store, "store");
+  SqliteBookReadSessionView(SqliteStoreReadOperations readOperations) {
+    this.readOperations = Objects.requireNonNull(readOperations, "readOperations");
   }
 
   @Override
   public BookInspection inspectBook() {
-    return store.inspectBook();
+    return readOperations.inspectBook();
   }
 
   @Override
   public boolean isInitialized() {
-    return store.isInitialized();
+    return readOperations.isInitialized();
   }
 
   @Override
   public AccountPage listAccounts(ListAccountsQuery query) {
-    store.ensureOpenSession();
-    try {
-      return SqliteStatementQueries.loadAccountPage(store.initializedQueryDatabase(), query);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.listAccounts(query);
   }
 
   @Override
   public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
-    store.ensureOpenSession();
-    try {
-      return SqliteStatementQueries.findOneAccount(store.initializedQueryDatabase(), accountCode);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.findAccount(accountCode);
   }
 
   @Override
   public Optional<PostingFact> findPosting(PostingId postingId) {
-    store.ensureOpenSession();
-    try {
-      return store
-          .postingReader()
-          .findOnePosting(
-              store.initializedQueryDatabase(),
-              SqlitePostingSql.FIND_POSTING_BY_ID,
-              statement -> statement.bindText(1, postingId.value()));
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.findPosting(postingId);
   }
 
   @Override
   public PostingPage listPostings(ListPostingsQuery query) {
-    store.ensureOpenSession();
-    try {
-      return store.postingReader().loadPostingPage(store.initializedQueryDatabase(), query);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.listPostings(query);
   }
 
   @Override
   public Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
-    store.ensureOpenSession();
-    try {
-      return store.postingReader().accountBalance(store.initializedQueryDatabase(), query);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.accountBalance(query);
   }
 
   @Override
   public TrialBalanceReport trialBalance(TrialBalanceQuery query) {
-    store.ensureOpenSession();
-    try {
-      return store.reportReader().trialBalance(store.initializedQueryDatabase(), query);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.trialBalance(query);
   }
 
   @Override
   public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
-    store.ensureOpenSession();
-    try {
-      return store.reportReader().accountLedger(store.initializedQueryDatabase(), query, account);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.accountLedger(query, account);
   }
 
   @Override
   public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
-    store.ensureOpenSession();
-    try {
-      return store.reportReader().periodSummary(store.initializedQueryDatabase(), query);
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
-    }
+    return readOperations.periodSummary(query);
   }
 }

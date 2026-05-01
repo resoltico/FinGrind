@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,7 +20,7 @@ import org.junit.jupiter.api.Test;
 class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
-  void close_retainsDatabaseHandleUntilCloseEventuallySucceeds() throws Exception {
+  void close_failureMarksSessionClosedAndRequiresFreshHandleOwnerForCleanup() throws Exception {
     Path databasePath = tempDirectory.resolve("close-retry.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
@@ -38,14 +37,9 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
           assertThrows(IllegalStateException.class, postingFactStore::close);
 
       assertTrue(exception.getMessage().contains("Failed to close SQLite book connection."));
-      assertSame(activeHandle, requireStoreDatabase(postingFactStore).handle());
-      assertFalse(storeBooleanField(postingFactStore, "closed"));
-
-      setStoreDatabase(postingFactStore, new SqliteNativeDatabase(activeHandle));
-
-      assertDoesNotThrow(postingFactStore::close);
       assertNull(storeDatabase(postingFactStore));
       assertTrue(storeBooleanField(postingFactStore, "closed"));
+      assertDoesNotThrow(() -> new SqliteNativeDatabase(activeHandle).close());
     }
   }
 
@@ -88,15 +82,12 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   void closeAfterConfigurationFailure_reportsNativeCloseFailureWithoutThrowing() throws Exception {
     List<String> cleanupReports = new ArrayList<>();
 
-    try (SqliteBestEffort.ReporterOverride ignored =
-        SqliteBestEffort.replaceReporterForTesting(
-            (action, exception) ->
-                cleanupReports.add(action + "|" + exception.getClass().getSimpleName()))) {
-      assertDoesNotThrow(
-          () ->
-              SqliteConnectionConfigurer.closeAfterConfigurationFailure(
-                  staleDatabaseHandle(tempDirectory.resolve("stale-close.sqlite"))));
-    }
+    assertDoesNotThrow(
+        () ->
+            SqliteConnectionConfigurer.closeAfterConfigurationFailure(
+                staleDatabaseHandle(tempDirectory.resolve("stale-close.sqlite")),
+                (action, exception) ->
+                    cleanupReports.add(action + "|" + exception.getClass().getSimpleName())));
 
     assertEquals(
         List.of("closing one SQLite database after configuration failure|SqliteNativeException"),
@@ -130,6 +121,23 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
 
       assertTrue(exception.getMessage().contains("Failed to close SQLite book connection."));
       setStoreDatabase(postingFactStore, null);
+    }
+  }
+
+  @Test
+  void close_wrapsLifecycleCloseFailureAndMarksSessionTerminal() {
+    Path bookPath = tempDirectory.resolve("close-illegal-state-failure.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      setStoreDatabase(postingFactStore, new IllegalStateClosingSqliteNativeDatabase());
+
+      IllegalStateException exception =
+          assertThrows(IllegalStateException.class, postingFactStore::close);
+
+      assertEquals("Failed to close SQLite book connection.", exception.getMessage());
+      assertEquals("Simulated lifecycle close failure.", exception.getCause().getMessage());
+      assertNull(storeDatabase(postingFactStore));
+      assertTrue(storeBooleanField(postingFactStore, "closed"));
     }
   }
 }

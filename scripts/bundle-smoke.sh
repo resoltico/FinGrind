@@ -4,6 +4,23 @@
 
 set -euo pipefail
 
+print_usage() {
+    printf '%s\n' \
+        'Usage: ./scripts/bundle-smoke.sh [bundle-archive-path]' \
+        '' \
+        'Extracts one self-contained FinGrind CLI bundle and runs the public office-worker acceptance workflow.' \
+        'When no archive path is supplied, the script uses the host bundle produced under cli/build/distributions/.'
+}
+
+for argument in "$@"; do
+    case "${argument}" in
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+    esac
+done
+
 # shellcheck source=/dev/null
 source "$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/release-smoke-support.sh"
 
@@ -67,6 +84,8 @@ fi
 readonly bundle_archive_path
 readonly bundle_checksum_path="${bundle_archive_path}.sha256"
 [[ -f "${bundle_checksum_path}" ]] || die "missing bundle checksum file at ${bundle_checksum_path}"
+
+printf 'Bundle acceptance: using archive %s\n' "${bundle_archive_path}"
 
 expected_archive_name="$(awk 'NF { print $2; exit }' "${bundle_checksum_path}")"
 expected_archive_name="${expected_archive_name#\*}"

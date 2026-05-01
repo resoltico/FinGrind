@@ -5,12 +5,152 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-05-02
+
+### Changed
+
+- Replaced the application description string with "Command-line double-entry bookkeeping with one
+  encrypted book per business" in `gradle.properties` as the single source of truth, propagated
+  through `processResources` to the packaged `fingrind.properties` resource, and updated
+  `CliMetadataTest` to assert against the packaged value instead of a hardcoded literal so the
+  description cannot drift between the build and test layers.
+- Overhauled the root `README.md`.
+- Added Apache Commons Logging (transitive via PDFBox) to `NOTICE` and `PATENTS.md`;
+  added full PDFBox/FontBox sub-attributions required by Apache 2.0 Section 4(d) for the
+  Adobe Glyph List, Zapf Dingbats Glyph List, Bidi Mirroring Glyph Property, TwelveMonkeys ImageIO,
+  CMYK ICC-profile, and Script Property third-party content embedded in the PDFBox JARs;
+  added jackson-core FastDoubleParser attribution with a pointer to the preserved
+  `META-INF/FastDoubleParser-NOTICE` and `META-INF/thirdparty-LICENSE` in the distributed JAR;
+  corrected PDFBox/FontBox/PDFBox IO copyright year from 2025 to 2026;
+  added `LICENSE-SQLITE3MULTIPLECIPHERS` to the shadow JAR `META-INF` so the SQLite3 Multiple
+  Ciphers license is accessible in every distribution mode including Docker; added all six root
+  legal files to the Docker image at `/opt/fingrind/doc/` and allowlisted them in `.dockerignore`;
+  added a legal pointer to the bundle `README.md` template; updated `PATENTS.md` component
+  description and table to include Apache Commons Logging.
+- Standardized the contributor environment around the Dev Container Specification instead of a
+  VS-Code-only mental model, and documented the official tooling-agnostic `devcontainer` CLI path
+  plus a noob-safe Docker-only Jazzer session from first terminal prompt through live fuzz output.
+- Pinned JaCoCo directly to one exact Java-26-ready snapshot artifact in the version catalog
+  as `0.8.15-20260429.155228-97` instead of resolving through the mutable `0.8.15-SNAPSHOT`
+  alias, removed the alias-drift sidecar verifier from the release surface, and tightened the
+  Gradle coverage wiring so module and aggregated reports both consume every local
+  `build/jacoco/*.exec` file produced by every `Test` task.
+- Upgraded the shared JUnit BOM to `6.1.0-RC1` and refreshed the developer docs to keep the
+  documented test baseline aligned with the build.
+
 ### Fixed
 
+- Promoted the protected-book format to one canonical protocol contract, taught discovery to
+  publish the full `environment.storage.defaultProtectedBookFormat` object, proved the managed
+  SQLite3MC default cipher settings through native introspection, recorded the committed fixture's
+  persisted format facts in metadata, added deterministic same-book writer-contention coverage,
+  and expanded the SQLite docs to spell out the real encryption boundary around temp storage,
+  memory, backups, exports, and colocated key files.
+- Extended the canonical Stage 1 quality gate so `./check.sh`, CI, and the new
+  `scripts/run-quality-gates.sh` helper now execute the included `gradle/build-logic:test`
+  surface alongside root `check coverage`, closing the gap where repository verification plugins
+  could drift behind a green top-level gate.
+- Field-tested the operator and local-execution surfaces so shell wrappers now return truthful
+  `--help` output without falling through to raw Gradle or full acceptance runs, `rekey-book`
+  now names replacement-key inputs as existing replacement secret files, ledger-plan shape
+  failures now point agents directly at the required nested object, the real interactive
+  passphrase prompt path is exercised under pseudo-terminal coverage instead of only the
+  no-console branch, malformed request JSON now carries parse-message plus line/column details,
+  the generated source-checkout launcher and developer raw JAR now auto-discover the managed
+  SQLite runtime from a prepared checkout instead of requiring manual `FINGRIND_SQLITE_LIBRARY`
+  setup there, and command help now rewrites its quick-start examples to the active runtime
+  surface instead of assuming a bundle-only launcher.
 - Increased the tagged container-publication workflow budget so its final public-tag verification
   no longer times out after a successful multi-arch `ghcr.io` push, and added a shell regression
   guard that keeps the workflow's release-asset gate, publication verifier, and timeout contract
   aligned.
+- Narrowed the CLI module's Jackson reflection boundary to one dedicated `dev.erst.fingrind.cli.json`
+  package instead of opening the whole CLI implementation package, and moved the transport JSON
+  record owners into that package so JPMS reflective access now matches the real deserialization
+  seam.
+- Hardened contributor and verification infrastructure so the devcontainer now repairs root-owned
+  cache volumes on start, the validator proves that repair path explicitly, the release protocol
+  now documents worktree-safe payload bootstrap and detached merge handoff, and `./check.sh`,
+  Docker smoke, devcontainer validation, and Jazzer wrappers all serialize through one repo-wide
+  verification lock with repo-scoped Gradle state. Lock reentry for descendant shell and Gradle
+  processes now follows published lock-owner metadata instead of fragile parent-PID inference, and
+  the shared shell/Python verification paths also redirect Python bytecode caches into system temp
+  so checks no longer leave `__pycache__` residue in the repository tree.
+- Hardened SQLite bootstrap and rekey handling so the process-global `strlen` lookup stays lazy,
+  active-connection counter underflow now fails fast instead of silently suppressing shutdown, and
+  rekey-owned passphrases now follow Java's `AutoCloseable` resource contract directly.
+- Rebuilt the internal SQLite session seam around one immutable store context plus one mutable
+  lifecycle owner with a durable session-secret collaborator, so close failures now end the session
+  decisively, read views route through the focused read operations, and discovery preserves resolved
+  SQLite runtime facts when late probe work fails.
+- Journal-entry validation now accumulates every detected grammar violation into one deterministic
+  failure, the core API publishes that aggregated failure through
+  `JournalEntryValidationException`, and CLI `invalid-request` responses now expose those ordered
+  violations structurally under `details.violations`.
+- Hardened the Jazzer operator surface so deterministic local and CI-safe verification now runs
+  through `jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check` instead of raw
+  nested-Gradle commands, the wrapper/regression surfaces derive active target keys from the
+  canonical `jazzerActiveTargets` task instead of an embedded Python JSON parser, and the Java
+  replay/list-findings/regression entrypoints require an explicit `--project-root` contract rather
+  than inferring the project from caller cwd. Those deterministic wrapper entrypoints now also
+  start from a clean relocated nested-build output so removed inner classes cannot survive across
+  sessions and poison JaCoCo verification.
+- Hardened the nested Jazzer Gradle build so `compileJava` prunes its cached main source-set
+  output directory before recompiling. Direct `./gradlew --project-dir jazzer ...` runs no longer
+  carry orphaned helper classfiles forward into JaCoCo or deterministic replay after a source file
+  deletes nested types.
+- Fixed the remaining Jazzer and release-surface rough edges so `./check.sh --help` and
+  `./scripts/bundle-smoke.sh --help` and `./scripts/docker-smoke.sh --help` exit before
+  Python/bootstrap or temp-directory work, the operator-help regression now proves those help
+  paths leave no temp residue behind, `jazzer/README.md` plus local GitHub-block messages now
+  point humans and agents at the wrapper-owned Jazzer commands instead of obsolete raw
+  nested-Gradle invocations, `JazzerCli` now uses the same positional replay/list-findings
+  grammar as `jazzer/bin/replay` and `jazzer/bin/list-findings`, `jazzer/bin/list-findings`
+  renders text and JSON from one replay pass instead of reclassifying every raw artifact twice,
+  the public `NOTICE` file now matches the checkout-managed raw-JAR SQLite runtime contract, and
+  the pinned Jazzer JVMs now opt into `--sun-misc-unsafe-memory-access=allow` plus `-Xshare:off`
+  so Java 26 verification no longer emits terminal `sun.misc.Unsafe` or bootstrap-classpath CDS
+  warnings from the upstream fuzzing stack.
+- Field-tested the packaged, source-checkout, raw-JAR, and Jazzer operator surfaces again so the
+  developer raw-JAR quick start now prints a real `java -jar` command instead of a bare Java
+  version label, command-specific CLI argument failures now point directly at `help <command>`
+  instead of only the global help index, `jazzer/bin/replay --json` and
+  `jazzer/bin/list-findings --json` now emit machine-clean JSON without Gradle task chatter, and
+  `./scripts/bundle-smoke.sh` now reports which bundle archive it exercised when multiple local
+  archives are present.
+- Fixed bundle archive ownership so `:cli:bundleCliArchive` no longer leaves obsolete
+  `cli/build/distributions/fingrind-*` archives and checksum files behind after repeated local
+  packaging runs, and added a regression that seeds stale artifacts and proves the real build task
+  prunes them before writing the current host bundle.
+- Tightened the remaining SQLite/Jazzer/operator ownership seams so SQLite book sessions and native
+  handles now reject cross-thread access explicitly instead of only documenting thread confinement,
+  Bash release-smoke support files now fail fast when executed directly instead of returning a
+  false-green no-op, and Jazzer wrapper replay/list-findings target validation now comes from
+  Gradle-owned `jazzerActiveTargets` plus `jazzerReplayableTargets` query tasks instead of
+  shell-local topology scraping.
+- Expanded the committed `sqlite-book-roundtrip` Jazzer surface so parsed SQLite seeds now also
+  drive executed read/report response rendering, corrupt pre-schema book-path failures,
+  concurrent contender behavior, and derived reversal near misses and duplicate reversals, and
+  collapsed the Jazzer open-gap register onto one canonical coverage document.
+- Split the SQLite round-trip Jazzer helper into focused rendering, lifecycle, derivation,
+  concurrency-outcome, and resource owners with matching focused proof classes, renamed the Stage
+  5 release-surface gate to `scripts/check-release-surface-scripts.sh`, and stopped
+  `jazzer/bin/replay`, `jazzer/bin/list-findings`, and local Jazzer cleanup wrappers from wiping
+  nested build outputs before read-only inspection or maintenance runs.
+- Collapsed the in-memory posting-workflow Jazzer invariant surface onto one shared owner used by
+  both fuzz and replay, removed the duplicate replay verifier, and added direct invariant proofs
+  so the local coverage gate now enforces one committed posting-workflow theory instead of two
+  drifting copies.
+- Fixed the remaining Stage 5 and Jazzer replay operator rough edges so
+  `scripts/check-release-surface-scripts.sh --help` now exits through a real side-effect-free help
+  path, the operator-help regression now guards that public Stage 5 entrypoint too, replay input
+  paths now fail at the wrapper or direct-CLI boundary with one command-owned diagnostic instead of
+  shell `cd` errors or Java `NoSuchFileException` stacktraces, and held repo-verification locks no
+  longer mislabel valid Jazzer targets as unknown or claim that no active harnesses exist.
+- Reworked the SQLite concurrent-writer Jazzer coverage so encrypted-session setup is serialized
+  before the contested commit race begins and timed-out worker cleanup now uses explicit daemon
+  executor cancellation, preventing the Stage 2 Jazzer gate from wedging indefinitely inside the
+  concurrent round-trip proof.
 
 ## [0.29.0] - 2026-04-29
 
@@ -1177,7 +1317,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.30.0
 [0.29.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.29.0
 [0.28.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.28.0
 [0.27.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.27.0

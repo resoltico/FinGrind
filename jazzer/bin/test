@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+fg_initialize_wrapper "$0"
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/test [supported Gradle options]
+
+Runs the deterministic Jazzer JUnit suite without the regression-replay stage.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+fg_run_verification_command "test" "$@"

@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
@@ -21,7 +20,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -260,148 +258,6 @@ class JazzerReplayInternalsTest {
   }
 
   @Test
-  void postingWorkflowReplayVerifier_enforces_storage_and_duplicate_invariants() {
-    PostEntryCommand command = parsedCommand();
-    PostingFact postingFact = postingFact(command, "posting-1");
-    Committed committed = committed(command, "posting-1");
-    PostEntryCommand reversalCommand = reversalCommand();
-    PreflightAccepted accepted =
-        new PreflightAccepted(
-            command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
-    PreflightRejected rejected =
-        new PreflightRejected(
-            command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
-    CommitRejected duplicateRejected =
-        new CommitRejected(
-            command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
-
-    PostingWorkflowReplayVerifier.verifyDeclaredAccountListing(2, 2);
-    PostingWorkflowReplayVerifier.verifyAcceptedPreflight(accepted, command);
-    assertEquals(
-        postingFact,
-        PostingWorkflowReplayVerifier.requireStoredPosting(java.util.Optional.of(postingFact)));
-    PostingWorkflowReplayVerifier.verifyStoredPosting(postingFact, committed, command);
-    assertEquals(
-        PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        PostingWorkflowReplayVerifier.requireDuplicateRejection(duplicateRejected));
-    assertEquals(
-        PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        PostingWorkflowReplayVerifier.verifyRejectedPreflightAndCommit(
-            rejected, duplicateRejected));
-
-    assertThrows(
-        IllegalStateException.class,
-        () -> PostingWorkflowReplayVerifier.verifyDeclaredAccountListing(1, 2));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyAcceptedPreflight(
-                new PreflightAccepted(
-                    reversalCommand.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate()),
-                command));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyAcceptedPreflight(
-                new PreflightAccepted(
-                    command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate().plusDays(1)),
-                command));
-    assertThrows(
-        IllegalStateException.class,
-        () -> PostingWorkflowReplayVerifier.requireStoredPosting(java.util.Optional.empty()));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyStoredPosting(
-                postingFact(command, "posting-2"), committed, command));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyStoredPosting(
-                postingFact(
-                    "posting-1",
-                    reversalCommand.journalEntry(),
-                    command.postingLineage(),
-                    command.requestProvenance(),
-                    CliFuzzFixtures.fixedClock().instant(),
-                    command.sourceChannel()),
-                committed,
-                command));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyStoredPosting(
-                postingFact(
-                    "posting-1",
-                    command.journalEntry(),
-                    reversalCommand.postingLineage(),
-                    command.requestProvenance(),
-                    CliFuzzFixtures.fixedClock().instant(),
-                    command.sourceChannel()),
-                committed,
-                command));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyStoredPosting(
-                postingFact(
-                    "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
-                    reversalCommand.requestProvenance(),
-                    CliFuzzFixtures.fixedClock().instant(),
-                    command.sourceChannel()),
-                committed,
-                command));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyStoredPosting(
-                postingFact(
-                    "posting-1",
-                    command.journalEntry(),
-                    command.postingLineage(),
-                    command.requestProvenance(),
-                    CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
-                    command.sourceChannel()),
-                committed,
-                command));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.requireDuplicateRejection(
-                new Committed(
-                    new PostingId("posting-1"),
-                    command.requestProvenance().idempotencyKey(),
-                    command.journalEntry().effectiveDate(),
-                    CliFuzzFixtures.fixedClock().instant())));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.requireDuplicateRejection(
-                new CommitRejected(
-                    command.requestProvenance().idempotencyKey(),
-                    new PostingRejection.BookNotInitialized())));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyRejectedPreflightAndCommit(
-                rejected, committed(command, "posting-1")));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            PostingWorkflowReplayVerifier.verifyRejectedPreflightAndCommit(
-                rejected,
-                new CommitRejected(
-                    command.requestProvenance().idempotencyKey(),
-                    new PostingRejection.BookNotInitialized())));
-  }
-
-  @Test
   void sqliteRoundTripReplayVerifier_rejects_reloaded_posting_id_drift() {
     PostEntryCommand command = parsedCommand();
 
@@ -526,23 +382,6 @@ class JazzerReplayInternalsTest {
   }
 
   @Test
-  void acceptedPreflight_commit_guard_rejects_commit_rejections() {
-    PostEntryCommand command = parsedCommand();
-
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            JazzerPostingWorkflowReplay.requireCommittedAfterAcceptedPreflight(
-                new CommitRejected(
-                    command.requestProvenance().idempotencyKey(),
-                    new PostingRejection.BookNotInitialized())));
-    assertEquals(
-        committed(command, "posting-1"),
-        JazzerPostingWorkflowReplay.requireCommittedAfterAcceptedPreflight(
-            committed(command, "posting-1")));
-  }
-
-  @Test
   void replay_model_types_expose_wire_vocabularies_and_path_normalization() {
     CliRequestReplayDetails details =
         new CliRequestReplayDetails(
@@ -604,7 +443,9 @@ class JazzerReplayInternalsTest {
         () ->
             new RegressionSeedMetadata(
                 "cli-request", Path.of("/tmp/absolute.json").toString(), metadata.expectation()));
-    assertThrows(NullPointerException.class, JazzerReplayInternalsTest::newNullPlanShapeDetails);
+    assertThrows(
+        NullPointerException.class,
+        () -> new ParsedLedgerPlanShapeReplayDetails(nullLedgerPlanShapeDetails()));
     assertFalse(
         new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false).reversalPresent());
   }
@@ -651,21 +492,8 @@ class JazzerReplayInternalsTest {
         CliFuzzFixtures.fixedClock().instant());
   }
 
-  private static ParsedLedgerPlanShapeReplayDetails newNullPlanShapeDetails() throws Exception {
-    Constructor<ParsedLedgerPlanShapeReplayDetails> constructor =
-        ParsedLedgerPlanShapeReplayDetails.class.getDeclaredConstructor(
-            LedgerPlanShapeDetails.class);
-    try {
-      return constructor.newInstance((Object) null);
-    } catch (java.lang.reflect.InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
+  @SuppressWarnings("NullAway")
+  private static LedgerPlanShapeDetails nullLedgerPlanShapeDetails() {
+    return null;
   }
 }

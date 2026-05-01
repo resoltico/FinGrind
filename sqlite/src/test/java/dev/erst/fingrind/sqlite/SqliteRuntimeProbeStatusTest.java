@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import java.util.List;
 import java.util.function.Supplier;
@@ -52,6 +53,15 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, SqliteRuntime.sqliteSourceId());
     assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, SqliteRuntime.runtimeProvenance());
     assertFalse(SqliteRuntime.loadedLibraryPath().isBlank());
+    assertEquals(
+        new SqliteProtectedBookFormatIntrospection.CipherSettings(
+            ProtocolCatalog.protectedBookFormat().cipher(),
+            ProtocolCatalog.protectedBookFormat().legacyMode(),
+            ProtocolCatalog.protectedBookFormat().legacyPageSize(),
+            ProtocolCatalog.protectedBookFormat().kdfIter(),
+            ProtocolCatalog.protectedBookFormat().plaintextHeaderSize()),
+        SqliteProtectedBookFormatIntrospection.runtimeDefaultCipherSettings(
+            SqliteNativeBootstrap.api()));
   }
 
   @Test
@@ -106,7 +116,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void probe_reportsUnavailableRuntimeWithoutThrowing() {
+  void probe_reportsFailedRuntimeWithoutDiscardingResolvedRuntimeFacts() {
     SqliteRuntime.Probe runtimeProbe =
         probe(
             () -> {
@@ -119,10 +129,10 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(
         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
         runtimeProbe.compileOptionsVerification());
-    assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
+    assertEquals(SqliteRuntime.Status.FAILED, runtimeProbe.status());
     assertEquals("sqlite runtime unavailable", runtimeProbe.issue());
-    assertNull(runtimeProbe.runtimeProvenance());
-    assertNull(runtimeProbe.loadedLibraryPath());
+    assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
+    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
     assertNull(runtimeProbe.loadedSqliteVersion());
     assertNull(runtimeProbe.loadedSqlite3mcVersion());
     assertNull(runtimeProbe.loadedSqliteSourceId());
@@ -459,6 +469,58 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
                 null,
                 null,
                 "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntime.Status.FAILED,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                null,
+                null,
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.FAILED,
+                null,
+                "/tmp/libsqlite3.dylib",
+                null,
+                null,
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.FAILED,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                null,
+                null,
+                null,
+                null,
+                "boom"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            runtimeProbe(
+                "managed-only",
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntime.Status.FAILED,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                "/tmp/libsqlite3.dylib",
+                null,
+                null,
+                null,
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->

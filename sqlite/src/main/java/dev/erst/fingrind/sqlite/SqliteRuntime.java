@@ -121,7 +121,13 @@ public final class SqliteRuntime {
     String libraryMode = libraryModeSupplier.get();
     SqliteRuntimeProvenance runtimeProvenance = runtimeProvenanceSupplier.get();
     String loadedLibraryPath = loadedLibraryPathSupplier.get();
+    String loadedSqliteVersion = null;
+    String loadedSqlite3mcVersion = null;
+    String loadedSqliteSourceId = null;
     try {
+      loadedSqliteVersion = sqliteVersionSupplier.get();
+      loadedSqlite3mcVersion = sqlite3MultipleCiphersVersionSupplier.get();
+      loadedSqliteSourceId = sqliteSourceIdSupplier.get();
       return new Probe(
           libraryMode,
           REQUIRED_MINIMUM_SQLITE_VERSION,
@@ -131,9 +137,9 @@ public final class SqliteRuntime {
           Status.READY,
           runtimeProvenance,
           loadedLibraryPath,
-          sqliteVersionSupplier.get(),
-          sqlite3MultipleCiphersVersionSupplier.get(),
-          sqliteSourceIdSupplier.get(),
+          loadedSqliteVersion,
+          loadedSqlite3mcVersion,
+          loadedSqliteSourceId,
           null);
     } catch (UnsupportedSqliteVersionException exception) {
       return new Probe(
@@ -198,12 +204,12 @@ public final class SqliteRuntime {
           REQUIRED_SQLITE3MC_VERSION,
           REQUIRED_SQLITE_SOURCE_ID,
           SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.UNAVAILABLE,
-          null,
-          null,
-          null,
-          null,
-          null,
+          Status.FAILED,
+          runtimeProvenance,
+          loadedLibraryPath,
+          loadedSqliteVersion,
+          loadedSqlite3mcVersion,
+          loadedSqliteSourceId,
           failureDetail.apply(throwable));
     }
   }
@@ -296,6 +302,23 @@ public final class SqliteRuntime {
           throw new IllegalArgumentException(
               "loadedSqliteSourceId must be absent when SQLite runtime status is UNAVAILABLE.");
         }
+      } else if (status == Status.FAILED) {
+        if (compileOptionsVerification != SqliteCompileOptionsVerificationStatus.NOT_VERIFIED) {
+          throw new IllegalArgumentException(
+              "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is FAILED.");
+        }
+        if (runtimeProvenance == null) {
+          throw new IllegalArgumentException(
+              "runtimeProvenance is required when SQLite runtime status is FAILED.");
+        }
+        if (loadedLibraryPath == null) {
+          throw new IllegalArgumentException(
+              "loadedLibraryPath is required when SQLite runtime status is FAILED.");
+        }
+        if (issue == null) {
+          throw new IllegalArgumentException(
+              "issue is required when SQLite runtime status is FAILED.");
+        }
       } else {
         if (compileOptionsVerification == SqliteCompileOptionsVerificationStatus.VERIFIED) {
           throw new IllegalArgumentException(
@@ -349,6 +372,7 @@ public final class SqliteRuntime {
   public enum Status implements WireValue {
     READY("ready"),
     UNAVAILABLE("unavailable"),
+    FAILED("failed"),
     INCOMPATIBLE("incompatible");
 
     private final String wireValue;

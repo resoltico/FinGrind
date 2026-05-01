@@ -3,6 +3,9 @@ package dev.erst.fingrind.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -10,6 +13,9 @@ import org.junit.jupiter.api.Test;
 /** Tests for the shared {@link WireValue} enum vocabulary cache. */
 @NullUnmarked
 class WireValueTest {
+  private static final MethodHandle WIRE_VALUES = wireValueMethod("wireValues");
+  private static final MethodHandle FROM_WIRE_VALUE = wireValueMethod("fromWireValue");
+
   @Test
   void helpers_publishAndParseStableEnumVocabularies() {
     assertEquals(List.of("DEBIT", "CREDIT"), WireValue.wireValues(NormalBalance.class));
@@ -48,12 +54,44 @@ class WireValueTest {
   }
 
   private static List<String> unsafeWireValues(Class<?> enumType) {
-    return WireValue.wireValues((Class) enumType);
+    Object result = invokeWireValueHelper(WIRE_VALUES, enumType);
+    return ((List<?>) result).stream().map(String.class::cast).toList();
   }
 
   private static Object unsafeFromWireValue(
       Class<?> enumType, String wireValue, String unsupportedValueLabel) {
-    return WireValue.fromWireValue((Class) enumType, wireValue, unsupportedValueLabel);
+    return invokeWireValueHelper(FROM_WIRE_VALUE, enumType, wireValue, unsupportedValueLabel);
+  }
+
+  private static Object invokeWireValueHelper(MethodHandle helper, Object... arguments) {
+    try {
+      return helper.invokeWithArguments(arguments);
+    } catch (RuntimeException | Error exception) {
+      throw exception;
+    } catch (Throwable throwable) {
+      throw new LinkageError("Failed to invoke a WireValue helper.", throwable);
+    }
+  }
+
+  private static MethodHandle wireValueMethod(String methodName) {
+    try {
+      return switch (methodName) {
+        case "wireValues" ->
+            MethodHandles.lookup()
+                .findStatic(
+                    WireValue.class, methodName, MethodType.methodType(List.class, Class.class));
+        case "fromWireValue" ->
+            MethodHandles.lookup()
+                .findStatic(
+                    WireValue.class,
+                    methodName,
+                    MethodType.methodType(Enum.class, Class.class, String.class, String.class));
+        default ->
+            throw new IllegalArgumentException("Unsupported WireValue helper: " + methodName);
+      };
+    } catch (NoSuchMethodException | IllegalAccessException exception) {
+      throw new LinkageError("Failed to bind WireValue helper " + methodName + ".", exception);
+    }
   }
 
   /** Enum without the {@link WireValue} contract. */

@@ -7,6 +7,7 @@ import java.util.Objects;
 /** Stable machine-readable provenance for the loaded SQLite runtime artifact. */
 public enum SqliteRuntimeProvenance implements WireValue {
   BUNDLE_MANAGED("bundle-managed"),
+  SOURCE_CHECKOUT_MANAGED("source-checkout-managed"),
   ENVIRONMENT_CONFIGURED("environment-configured");
 
   private final String wireValue;

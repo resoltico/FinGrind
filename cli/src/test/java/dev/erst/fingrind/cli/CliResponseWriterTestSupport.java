@@ -144,7 +144,7 @@ class CliResponseWriterTestSupport {
             ProtocolCatalog.storageDriver(),
             ProtocolCatalog.storageEngine(),
             ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.defaultBookCipher()),
+            ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
@@ -204,7 +204,7 @@ class CliResponseWriterTestSupport {
 
   static List<String> readTextArray(JsonNode node) {
     List<String> values = new java.util.ArrayList<>();
-    node.forEach(element -> values.add(element.asText()));
+    node.forEach(element -> values.add(element.stringValue()));
     return List.copyOf(values);
   }
 

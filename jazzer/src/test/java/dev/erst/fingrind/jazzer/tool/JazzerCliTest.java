@@ -2,16 +2,18 @@ package dev.erst.fingrind.jazzer.tool;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.jazzer.support.JazzerRunTarget;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -84,26 +86,97 @@ class JazzerCliTest {
     ByteArrayOutputStream errors = new ByteArrayOutputStream();
 
     new JazzerCli(projectDirectory, output, errors, exitCode::set)
-        .run(new String[] {"replay", "--target", "cli-request"});
+        .run(new String[] {"replay", "cli-request"});
 
     assertEquals(1, exitCode.get());
-    assertTrue(errors.toString(UTF_8).contains("Missing required option --input"));
+    assertTrue(errors.toString(UTF_8).contains("Missing required input path."));
 
-    SystemStreams previousStreams = new SystemStreams(System.out, System.err);
     ByteArrayOutputStream mainOutput = new ByteArrayOutputStream();
     ByteArrayOutputStream mainErrors = new ByteArrayOutputStream();
-    try (var redirectedOut = new java.io.PrintStream(mainOutput, false, UTF_8);
-        var redirectedErr = new java.io.PrintStream(mainErrors, false, UTF_8)) {
-      System.setOut(redirectedOut);
-      System.setErr(redirectedErr);
+    try (var ignored = new RedirectedSystemStreams(mainOutput, mainErrors)) {
       JazzerCli.main(new String[] {"--help"});
-    } finally {
-      System.setOut(previousStreams.out());
-      System.setErr(previousStreams.err());
     }
 
     assertTrue(mainOutput.toString(UTF_8).contains("Commands:"));
     assertTrue(mainErrors.toString(UTF_8).isBlank());
+  }
+
+  @Test
+  void run_printsCanonicalActiveTargetKeys_and_rejectsUnexpectedArguments() throws Exception {
+    StringWriter output = new StringWriter();
+    StringWriter errors = new StringWriter();
+
+    int exitCode =
+        JazzerCli.run(
+            projectDirectory,
+            new String[] {"active-target-keys"},
+            new PrintWriter(output, true),
+            new PrintWriter(errors, true));
+
+    assertEquals(0, exitCode);
+    assertEquals(
+        java.util.Arrays.stream(JazzerRunTarget.values())
+            .filter(JazzerRunTarget::activeFuzzing)
+            .map(JazzerRunTarget::key)
+            .toList(),
+        output.toString().lines().filter(line -> !line.isBlank()).toList());
+    assertTrue(errors.toString().isBlank());
+
+    AtomicInteger rejectedExitCode = new AtomicInteger(-1);
+    ByteArrayOutputStream rejectedOutput = new ByteArrayOutputStream();
+    ByteArrayOutputStream rejectedErrors = new ByteArrayOutputStream();
+    new JazzerCli(projectDirectory, rejectedOutput, rejectedErrors, rejectedExitCode::set)
+        .run(new String[] {"active-target-keys", "--bogus"});
+    assertEquals(1, rejectedExitCode.get());
+    assertTrue(
+        rejectedErrors
+            .toString(UTF_8)
+            .contains("active-target-keys does not accept additional arguments."));
+  }
+
+  @Test
+  void mainArguments_parse_rejects_invalid_shapes_and_normalizes_supported_entrypoints()
+      throws Exception {
+    JazzerCli.MainArguments helpArguments = JazzerCli.MainArguments.parse(new String[] {"--help"});
+    assertEquals(
+        "fingrind-unused-jazzer-root", helpArguments.projectDirectory().getFileName().toString());
+    assertEquals(List.of("--help"), helpArguments.commandArguments());
+
+    JazzerCli.MainArguments emptyArguments = JazzerCli.MainArguments.parse(new String[0]);
+    assertTrue(emptyArguments.commandArguments().isEmpty());
+
+    JazzerCli.MainArguments activeTargetArguments =
+        JazzerCli.MainArguments.parse(new String[] {"active-target-keys"});
+    assertEquals(List.of("active-target-keys"), activeTargetArguments.commandArguments());
+
+    JazzerCli.MainArguments replayArguments =
+        JazzerCli.MainArguments.parse(
+            new String[] {
+              "--project-root", projectDirectory.toString(), "replay", "cli-request", "input.bin"
+            });
+    assertEquals(projectDirectory.toAbsolutePath().normalize(), replayArguments.projectDirectory());
+    assertEquals(List.of("replay", "cli-request", "input.bin"), replayArguments.commandArguments());
+
+    IllegalArgumentException usageError =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JazzerCli.MainArguments.parse(new String[] {"replay"}));
+    assertTrue(String.valueOf(usageError.getMessage()).contains("Usage: JazzerCli"));
+
+    IllegalArgumentException wrongFlagError =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                JazzerCli.MainArguments.parse(
+                    new String[] {"--bogus", projectDirectory.toString(), "replay"}));
+    assertTrue(String.valueOf(wrongFlagError.getMessage()).contains("Usage: JazzerCli"));
+
+    IllegalArgumentException blankRootError =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JazzerCli.MainArguments.parse(new String[] {"--project-root", " ", "replay"}));
+    assertTrue(
+        String.valueOf(blankRootError.getMessage()).contains("--project-root must not be blank"));
   }
 
   @Nested
@@ -118,13 +191,13 @@ class JazzerCliTest {
       int exitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"replay", "--target", "cli-request", "--input", inputPath.toString()},
+              new String[] {"replay", "cli-request", inputPath.toString()},
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 
       assertEquals(0, exitCode);
       assertTrue(output.toString().contains("Outcome: expected-invalid"));
-      assertTrue(output.toString().contains("Message: Failed to read request JSON."));
+      assertTrue(output.toString().contains("Message: Failed to read request JSON at line"));
       assertTrue(output.toString().contains("\"type\" : \"CLI_REQUEST_UNPARSED\""));
       assertTrue(errors.toString().isBlank());
     }
@@ -139,85 +212,166 @@ class JazzerCliTest {
       int exitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {
-                "replay", "--target", "cli-request", "--input", inputPath.toString(), "--json"
-              },
+              new String[] {"replay", "cli-request", inputPath.toString(), "--json"},
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 
       assertEquals(0, exitCode);
       assertTrue(output.toString().contains("\"outcomeKind\" : \"expected-invalid\""));
       assertTrue(output.toString().contains("\"invalidKind\" : \"CliRequestException\""));
-      assertTrue(output.toString().contains("\"message\" : \"Failed to read request JSON.\""));
+      assertTrue(output.toString().contains("\"message\" : \"Failed to read request JSON at line"));
       assertTrue(output.toString().contains("\"type\" : \"CLI_REQUEST_UNPARSED\""));
       assertTrue(errors.toString().isBlank());
     }
 
     @Test
-    void run_rejects_duplicate_or_invalid_replay_arguments() throws Exception {
+    void run_rejects_invalid_replay_arguments() throws Exception {
       Path inputPath = projectDirectory.resolve("raw-input.bin");
       Files.writeString(inputPath, JazzerReplayRequestFixtures.basicValidRequest(), UTF_8);
 
-      StringWriter duplicateErrors = new StringWriter();
-      int duplicateExitCode =
+      StringWriter unexpectedExtraArgumentErrors = new StringWriter();
+      int unexpectedExtraArgumentExitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {
-                "replay",
-                "--target",
-                "cli-request",
-                "--target",
-                "cli-request",
-                "--input",
-                inputPath.toString()
-              },
+              new String[] {"replay", "cli-request", inputPath.toString(), "extra"},
               new PrintWriter(new StringWriter(), true),
-              new PrintWriter(duplicateErrors, true));
-      assertEquals(1, duplicateExitCode);
-      assertTrue(duplicateErrors.toString().contains("Duplicate option --target"));
+              new PrintWriter(unexpectedExtraArgumentErrors, true));
+      assertEquals(1, unexpectedExtraArgumentExitCode);
+      assertTrue(
+          unexpectedExtraArgumentErrors.toString().contains("Unexpected replay argument: extra"));
 
       StringWriter aggregateErrors = new StringWriter();
       int aggregateExitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"replay", "--target", "regression", "--input", inputPath.toString()},
+              new String[] {"replay", "regression", inputPath.toString()},
               new PrintWriter(new StringWriter(), true),
               new PrintWriter(aggregateErrors, true));
       assertEquals(1, aggregateExitCode);
       assertTrue(aggregateErrors.toString().contains("Replay requires a single-harness target"));
 
-      StringWriter missingValueErrors = new StringWriter();
-      int missingValueExitCode =
+      StringWriter missingInputErrors = new StringWriter();
+      int missingInputExitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"replay", "--target", "cli-request", "--input"},
+              new String[] {"replay", "cli-request"},
               new PrintWriter(new StringWriter(), true),
-              new PrintWriter(missingValueErrors, true));
-      assertEquals(1, missingValueExitCode);
-      assertTrue(missingValueErrors.toString().contains("Missing value after --input"));
+              new PrintWriter(missingInputErrors, true));
+      assertEquals(1, missingInputExitCode);
+      assertTrue(missingInputErrors.toString().contains("Missing required input path."));
+
+      Path missingFilePath = projectDirectory.resolve("missing-input.bin");
+      StringWriter missingFileErrors = new StringWriter();
+      int missingFileExitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"replay", "cli-request", missingFilePath.toString()},
+              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(missingFileErrors, true));
+      assertEquals(1, missingFileExitCode);
+      assertTrue(
+          missingFileErrors
+              .toString()
+              .contains(
+                  "Replay input path does not exist: "
+                      + missingFilePath.toAbsolutePath().normalize()));
+
+      Path inputDirectoryPath = Files.createDirectory(projectDirectory.resolve("input-directory"));
+      StringWriter directoryInputErrors = new StringWriter();
+      int directoryInputExitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"replay", "cli-request", inputDirectoryPath.toString()},
+              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(directoryInputErrors, true));
+      assertEquals(1, directoryInputExitCode);
+      assertTrue(
+          directoryInputErrors
+              .toString()
+              .contains(
+                  "Replay input path must be a regular file: "
+                      + inputDirectoryPath.toAbsolutePath().normalize()));
 
       StringWriter missingTargetErrors = new StringWriter();
       int missingTargetExitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"replay", "--input", inputPath.toString()},
+              new String[] {"replay"},
               new PrintWriter(new StringWriter(), true),
               new PrintWriter(missingTargetErrors, true));
       assertEquals(1, missingTargetExitCode);
-      assertTrue(missingTargetErrors.toString().contains("Missing required option --target"));
+      assertTrue(missingTargetErrors.toString().contains("Missing required target key."));
+
+      StringWriter flagOnlyErrors = new StringWriter();
+      int flagOnlyExitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"replay", "--json"},
+              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(flagOnlyErrors, true));
+      assertEquals(1, flagOnlyExitCode);
+      assertTrue(flagOnlyErrors.toString().contains("Missing required target key."));
+
+      StringWriter jsonBeforeInputErrors = new StringWriter();
+      int jsonBeforeInputExitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"replay", "cli-request", "--json"},
+              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(jsonBeforeInputErrors, true));
+      assertEquals(1, jsonBeforeInputExitCode);
+      assertTrue(jsonBeforeInputErrors.toString().contains("Missing required input path."));
 
       StringWriter unexpectedArgumentErrors = new StringWriter();
       int unexpectedArgumentExitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {
-                "replay", "--target", "cli-request", "--input", inputPath.toString(), "--bogus"
-              },
+              new String[] {"replay", "cli-request", inputPath.toString(), "--bogus"},
               new PrintWriter(new StringWriter(), true),
               new PrintWriter(unexpectedArgumentErrors, true));
       assertEquals(1, unexpectedArgumentExitCode);
       assertTrue(
           unexpectedArgumentErrors.toString().contains("Unexpected replay argument: --bogus"));
+
+      StringWriter unexpectedAfterJsonErrors = new StringWriter();
+      int unexpectedAfterJsonExitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"replay", "cli-request", inputPath.toString(), "--json", "extra"},
+              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(unexpectedAfterJsonErrors, true));
+      assertEquals(1, unexpectedAfterJsonExitCode);
+      assertTrue(
+          unexpectedAfterJsonErrors.toString().contains("Unexpected replay argument: extra"));
+    }
+
+    @Test
+    void run_reports_replay_input_read_failures_as_usage_errors() throws Exception {
+      Path inputPath = projectDirectory.resolve("unreadable-input.bin");
+      Files.writeString(inputPath, JazzerReplayRequestFixtures.basicValidRequest(), UTF_8);
+      Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(inputPath);
+      try {
+        Files.setPosixFilePermissions(inputPath, Set.of());
+        StringWriter output = new StringWriter();
+        StringWriter errors = new StringWriter();
+
+        int exitCode =
+            JazzerCli.run(
+                projectDirectory,
+                new String[] {"replay", "cli-request", inputPath.toString()},
+                new PrintWriter(output, true),
+                new PrintWriter(errors, true));
+
+        assertEquals(1, exitCode);
+        assertTrue(output.toString().isBlank());
+        assertTrue(
+            errors
+                .toString()
+                .contains(
+                    "Failed to read replay input path: " + inputPath.toAbsolutePath().normalize()));
+      } finally {
+        Files.setPosixFilePermissions(inputPath, originalPermissions);
+      }
     }
   }
 
@@ -235,7 +389,7 @@ class JazzerCliTest {
       int exitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"list-findings", "--target", "cli-request"},
+              new String[] {"list-findings", "cli-request"},
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 
@@ -244,7 +398,7 @@ class JazzerCliTest {
           output.toString().contains("Summary: actionable=0 expected-invalid=1 replay-clean=0"));
       assertTrue(output.toString().contains(rawArtifact.getFileName().toString()));
       assertTrue(output.toString().contains("expected-invalid"));
-      assertTrue(output.toString().contains("Failed to read request JSON."));
+      assertTrue(output.toString().contains("Failed to read request JSON at line"));
       assertTrue(errors.toString().isBlank());
     }
 
@@ -260,7 +414,7 @@ class JazzerCliTest {
       int exitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"list-findings", "--target", "cli-request", "--json"},
+              new String[] {"list-findings", "cli-request", "--json"},
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 
@@ -268,6 +422,23 @@ class JazzerCliTest {
       assertTrue(output.toString().contains("\"targetKey\" : \"cli-request\""));
       assertTrue(output.toString().contains("\"rawArtifactKind\" : \"crash\""));
       assertTrue(output.toString().contains("\"replayClassification\" : \"expected-invalid\""));
+      assertTrue(errors.toString().isBlank());
+    }
+
+    @Test
+    void run_listsAllTargetsInJsonModeWithoutAnExplicitTarget() throws Exception {
+      StringWriter output = new StringWriter();
+      StringWriter errors = new StringWriter();
+
+      int exitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"list-findings", "--json"},
+              new PrintWriter(output, true),
+              new PrintWriter(errors, true));
+
+      assertEquals(0, exitCode);
+      assertTrue(output.toString().startsWith("["));
       assertTrue(errors.toString().isBlank());
     }
 
@@ -286,7 +457,7 @@ class JazzerCliTest {
       int exitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"list-findings", "--target", "ledger-plan-request"},
+              new String[] {"list-findings", "ledger-plan-request"},
               new PrintWriter(output, true),
               new PrintWriter(errors, true));
 
@@ -333,7 +504,7 @@ class JazzerCliTest {
       int emptyExitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"list-findings", "--target", "posting-workflow"},
+              new String[] {"list-findings", "posting-workflow"},
               new PrintWriter(emptyOutput, true),
               new PrintWriter(new StringWriter(), true));
       assertEquals(0, emptyExitCode);
@@ -350,22 +521,24 @@ class JazzerCliTest {
       int exitCode =
           JazzerCli.run(
               projectDirectory,
-              new String[] {"list-findings", "--target", "cli-request", "--target", "cli-request"},
+              new String[] {"list-findings", "cli-request", "ledger-plan-request"},
               new PrintWriter(new StringWriter(), true),
               new PrintWriter(errors, true));
 
       assertEquals(1, exitCode);
-      assertTrue(errors.toString().contains("Duplicate option --target"));
+      assertTrue(
+          errors.toString().contains("Unexpected list-findings argument: ledger-plan-request"));
 
-      StringWriter missingValueErrors = new StringWriter();
-      int missingValueExitCode =
+      StringWriter flagStyleErrors = new StringWriter();
+      int flagStyleExitCode =
           JazzerCli.run(
               projectDirectory,
               new String[] {"list-findings", "--target"},
               new PrintWriter(new StringWriter(), true),
-              new PrintWriter(missingValueErrors, true));
-      assertEquals(1, missingValueExitCode);
-      assertTrue(missingValueErrors.toString().contains("Missing value after --target"));
+              new PrintWriter(flagStyleErrors, true));
+      assertEquals(1, flagStyleExitCode);
+      assertTrue(
+          flagStyleErrors.toString().contains("Unexpected list-findings argument: --target"));
 
       StringWriter unexpectedArgumentErrors = new StringWriter();
       int unexpectedArgumentExitCode =
@@ -379,6 +552,19 @@ class JazzerCliTest {
           unexpectedArgumentErrors
               .toString()
               .contains("Unexpected list-findings argument: --bogus"));
+
+      StringWriter unexpectedAfterJsonErrors = new StringWriter();
+      int unexpectedAfterJsonExitCode =
+          JazzerCli.run(
+              projectDirectory,
+              new String[] {"list-findings", "cli-request", "--json", "extra"},
+              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(unexpectedAfterJsonErrors, true));
+      assertEquals(1, unexpectedAfterJsonExitCode);
+      assertTrue(
+          unexpectedAfterJsonErrors
+              .toString()
+              .contains("Unexpected list-findings argument: extra"));
     }
   }
 
@@ -410,12 +596,8 @@ class JazzerCliTest {
             "boom");
 
     String listing =
-        (String)
-            invokePrivate(
-                "renderFindingListing",
-                new Class<?>[] {String.class, List.class},
-                "cli-request",
-                List.of(replayClean, expectedInvalid, unexpectedFailure));
+        JazzerCli.renderFindingListing(
+            "cli-request", List.of(replayClean, expectedInvalid, unexpectedFailure));
 
     assertTrue(listing.contains("Summary: actionable=1 expected-invalid=1 replay-clean=1"));
     assertTrue(listing.contains("oom-c | unexpected-failure | boom"));
@@ -438,23 +620,28 @@ class JazzerCliTest {
                 new UnparsedCliRequestReplayDetails())));
   }
 
-  private record SystemStreams(java.io.PrintStream out, java.io.PrintStream err) {}
+  private static final class RedirectedSystemStreams implements AutoCloseable {
+    private final java.io.PrintStream previousOut;
+    private final java.io.PrintStream previousErr;
+    private final java.io.PrintStream redirectedOut;
+    private final java.io.PrintStream redirectedErr;
 
-  private static Object invokePrivate(
-      String methodName, Class<?>[] parameterTypes, Object... arguments) throws Exception {
-    Method method = JazzerCli.class.getDeclaredMethod(methodName, parameterTypes);
-    method.setAccessible(true);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
+    private RedirectedSystemStreams(
+        ByteArrayOutputStream redirectedOutput, ByteArrayOutputStream redirectedErrors) {
+      previousOut = System.out;
+      previousErr = System.err;
+      redirectedOut = new java.io.PrintStream(redirectedOutput, false, UTF_8);
+      redirectedErr = new java.io.PrintStream(redirectedErrors, false, UTF_8);
+      System.setOut(redirectedOut);
+      System.setErr(redirectedErr);
+    }
+
+    @Override
+    public void close() {
+      System.setOut(previousOut);
+      System.setErr(previousErr);
+      redirectedOut.close();
+      redirectedErr.close();
     }
   }
 }

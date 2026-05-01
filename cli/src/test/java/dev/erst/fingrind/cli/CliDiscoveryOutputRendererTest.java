@@ -31,7 +31,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.29.0",
+                "0.30.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -86,6 +86,56 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("raw json (fixed)"));
     assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("Self-Contained Bundle (POSIX Shell)"));
+    assertTrue(rendered.contains("demo"));
+  }
+
+  @Test
+  void renderHelpHuman_rendersExpandedRuntimeSpecificQuickStartTitles() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpHuman(
+            new HelpDescriptor(
+                "FinGrind",
+                "0.30.0",
+                "desc",
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.HUMAN),
+                        List.of(),
+                        "Show help")),
+                List.of(
+                    new dev.erst.fingrind.contract.WorkflowDescriptor(
+                        dev.erst.fingrind.contract.WorkflowSurface.SOURCE_CHECKOUT_POSIX_SHELL,
+                        List.of(dev.erst.fingrind.contract.WorkflowStepDescriptor.note("posix"))),
+                    new dev.erst.fingrind.contract.WorkflowDescriptor(
+                        dev.erst.fingrind.contract.WorkflowSurface.DIRECT_JAVA_WINDOWS_POWERSHELL,
+                        List.of(dev.erst.fingrind.contract.WorkflowStepDescriptor.note("java"))),
+                    new dev.erst.fingrind.contract.WorkflowDescriptor(
+                        dev.erst.fingrind.contract.WorkflowSurface.CONTAINER_DOCKER,
+                        List.of(dev.erst.fingrind.contract.WorkflowStepDescriptor.note("docker")))),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                environment()));
+
+    assertTrue(rendered.contains("Source Checkout Launcher (POSIX Shell)"));
+    assertTrue(rendered.contains("Developer Raw JAR (Windows PowerShell)"));
+    assertTrue(rendered.contains("Container Image (Docker CLI)"));
   }
 
   @Test
@@ -94,7 +144,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.29.0",
+                "0.30.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -143,7 +193,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.29.0",
+                "0.30.0",
                 "desc",
                 List.of("fingrind post-entry --book-file <path>"),
                 new ContractResponse.BookModelDescriptor(
@@ -177,7 +227,10 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("Examples"));
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Commit one posting request"));
-    assertTrue(rendered.contains("fingrind print-request-template > request.json"));
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " > request.json"));
   }
 
   @Test
@@ -186,7 +239,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.29.0",
+                "0.30.0",
                 "desc",
                 List.of(),
                 new ContractResponse.BookModelDescriptor(
@@ -229,7 +282,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.29.0",
+                "0.30.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -290,14 +343,14 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.29.0"));
+    assertTrue(rendered.contains("0.30.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.29.0",
-        "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
+        "0.30.0",
+        "Command-line double-entry bookkeeping with one encrypted book per business");
   }
 
   private static EnvironmentDescriptor environment() {
@@ -312,7 +365,7 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.storageDriver(),
             ProtocolCatalog.storageEngine(),
             ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.defaultBookCipher()),
+            ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),

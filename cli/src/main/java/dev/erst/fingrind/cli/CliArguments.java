@@ -24,7 +24,11 @@ final class CliArguments {
     ProtocolOperation operation =
         ProtocolCatalog.findByToken(arguments.getFirst())
             .orElseThrow(() -> CliArgumentValueParser.unknownCommand(arguments.getFirst()));
-    return CliCommandParsingRegistry.parse(operation.id(), arguments);
+    try {
+      return CliCommandParsingRegistry.parse(operation.id(), arguments);
+    } catch (CliArgumentsException exception) {
+      throw rewriteSyntaxHintForOperation(exception, operation.id(), arguments);
+    }
   }
 
   private static @Nullable CliCommand parseCommandSpecificHelp(List<String> arguments) {
@@ -39,6 +43,34 @@ final class CliArguments {
     if (!"--help".equals(secondToken) && !"-h".equals(secondToken)) {
       return null;
     }
-    return CliDiscoveryArguments.parseCommandHelp(operation.id(), arguments);
+    try {
+      return CliDiscoveryArguments.parseCommandHelp(operation.id(), arguments);
+    } catch (CliArgumentsException exception) {
+      throw rewriteSyntaxHintForOperation(exception, operation.id(), arguments);
+    }
+  }
+
+  private static CliArgumentsException rewriteSyntaxHintForOperation(
+      CliArgumentsException exception,
+      dev.erst.fingrind.contract.protocol.OperationId operationId,
+      List<String> arguments) {
+    if (!CliInvocationText.helpSyntaxHint().equals(exception.hint())) {
+      return exception;
+    }
+    return exception.withHint(
+        CliInvocationText.helpSyntaxHint(helpHintOperationId(operationId, arguments)));
+  }
+
+  private static dev.erst.fingrind.contract.protocol.OperationId helpHintOperationId(
+      dev.erst.fingrind.contract.protocol.OperationId operationId, List<String> arguments) {
+    if (operationId != dev.erst.fingrind.contract.protocol.OperationId.HELP) {
+      return operationId;
+    }
+    return arguments.stream()
+        .skip(1)
+        .findFirst()
+        .flatMap(ProtocolCatalog::findByToken)
+        .map(ProtocolOperation::id)
+        .orElse(operationId);
   }
 }

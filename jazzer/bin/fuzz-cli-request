@@ -6,4 +6,13 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 . "${script_dir}/common.sh"
 
 fg_initialize_wrapper "$0"
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/fuzz-cli-request [supported Gradle options]
+
+Launches the active cli-request Jazzer harness.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
 fg_run_active_command "cli-request" "fuzzCliRequest" "$@"

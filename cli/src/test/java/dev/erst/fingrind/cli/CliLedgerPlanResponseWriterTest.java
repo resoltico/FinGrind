@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
@@ -71,15 +72,15 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode facts =
         readJson(outputStream).path("payload").path("journal").path("steps").get(0).path("facts");
 
-    assertEquals("text", facts.get(0).path("kind").asText());
-    assertEquals("accountCode", facts.get(0).path("name").asText());
-    assertEquals("1000", facts.get(0).path("value").asText());
-    assertEquals("count", facts.get(1).path("kind").asText());
+    assertEquals("text", facts.get(0).path("kind").stringValue());
+    assertEquals("accountCode", facts.get(0).path("name").stringValue());
+    assertEquals("1000", facts.get(0).path("value").stringValue());
+    assertEquals("count", facts.get(1).path("kind").stringValue());
     assertEquals(1, facts.get(1).path("value").asInt());
-    assertEquals("group", facts.get(2).path("kind").asText());
-    assertEquals("balance", facts.get(2).path("name").asText());
-    assertEquals("currencyCode", facts.get(2).path("facts").get(0).path("name").asText());
-    assertEquals("EUR", facts.get(2).path("facts").get(0).path("value").asText());
+    assertEquals("group", facts.get(2).path("kind").stringValue());
+    assertEquals("balance", facts.get(2).path("name").stringValue());
+    assertEquals("currencyCode", facts.get(2).path("facts").get(0).path("name").stringValue());
+    assertEquals("EUR", facts.get(2).path("facts").get(0).path("value").stringValue());
   }
 
   @Test
@@ -105,9 +106,9 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
 
     JsonNode json = readJson(outputStream);
 
-    assertEquals("plan-rejected", json.path("status").asText());
-    assertEquals("administration-book-not-initialized", json.path("code").asText());
-    assertEquals("rejected", json.path("details").path("plan").path("status").asText());
+    assertEquals("plan-rejected", json.path("status").stringValue());
+    assertEquals("administration-book-not-initialized", json.path("code").stringValue());
+    assertEquals("rejected", json.path("details").path("plan").path("status").stringValue());
   }
 
   @Test
@@ -132,9 +133,10 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
 
     JsonNode json = readJson(outputStream);
 
-    assertEquals("plan-assertion-failed", json.path("status").asText());
-    assertEquals("assertion-failed", json.path("code").asText());
-    assertEquals("assertion-failed", json.path("details").path("plan").path("status").asText());
+    assertEquals("plan-assertion-failed", json.path("status").stringValue());
+    assertEquals("assertion-failed", json.path("code").stringValue());
+    assertEquals(
+        "assertion-failed", json.path("details").path("plan").path("status").stringValue());
   }
 
   @Test
@@ -160,8 +162,8 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode step =
         readJson(outputStream).path("details").path("plan").path("journal").path("steps").get(0);
 
-    assertEquals("plan-boundary", step.path("kind").asText());
-    assertEquals("commit", step.path("boundaryPhase").asText());
+    assertEquals("plan-boundary", step.path("kind").stringValue());
+    assertEquals("commit", step.path("boundaryPhase").stringValue());
     assertTrue(step.path("detailKind").isMissingNode() || step.path("detailKind").isNull());
   }
 

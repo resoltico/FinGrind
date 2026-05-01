@@ -11,12 +11,9 @@ import java.util.function.Supplier;
 /** Process-scoped bootstrap and publication of the SQLite native API bundle. */
 final class SqliteNativeBootstrap {
   private static final java.lang.foreign.Linker LINKER = java.lang.foreign.Linker.nativeLinker();
-  private static final java.lang.foreign.SymbolLookup DEFAULT_LOOKUP = LINKER.defaultLookup();
   private static final String STRLEN_SYMBOL = "strlen";
   private static final java.lang.foreign.FunctionDescriptor STRLEN_DESCRIPTOR =
       java.lang.foreign.FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS);
-  private static final MethodHandle STRLEN =
-      SqliteNativeApiLoader.downcall(DEFAULT_LOOKUP, STRLEN_SYMBOL, STRLEN_DESCRIPTOR);
   private static final AtomicInteger ACTIVE_CONNECTIONS = new AtomicInteger();
 
   private SqliteNativeBootstrap() {}
@@ -26,7 +23,7 @@ final class SqliteNativeBootstrap {
   }
 
   static MethodHandle strlen() {
-    return STRLEN;
+    return initialize(() -> StrlenHolder.INSTANCE);
   }
 
   static <T> T initialize(Supplier<T> initializer) {
@@ -56,7 +53,7 @@ final class SqliteNativeBootstrap {
   }
 
   static String sqliteVersion(MethodHandle libraryVersionHandle) {
-    return sqliteVersion(libraryVersionHandle, STRLEN);
+    return sqliteVersion(libraryVersionHandle, strlen());
   }
 
   static String sqliteVersion(MethodHandle libraryVersionHandle, MethodHandle strlenHandle) {
@@ -78,7 +75,7 @@ final class SqliteNativeBootstrap {
   }
 
   static String sqlite3MultipleCiphersVersion(MethodHandle versionHandle) {
-    return sqlite3MultipleCiphersVersion(versionHandle, STRLEN);
+    return sqlite3MultipleCiphersVersion(versionHandle, strlen());
   }
 
   static String sqlite3MultipleCiphersVersion(
@@ -93,7 +90,7 @@ final class SqliteNativeBootstrap {
   }
 
   static String sqliteSourceId(MethodHandle sourceIdHandle) {
-    return sqliteSourceId(sourceIdHandle, STRLEN);
+    return sqliteSourceId(sourceIdHandle, strlen());
   }
 
   static String sqliteSourceId(MethodHandle sourceIdHandle, MethodHandle strlenHandle) {
@@ -110,7 +107,11 @@ final class SqliteNativeBootstrap {
   }
 
   static void recordClosedConnection() {
-    ACTIVE_CONNECTIONS.decrementAndGet();
+    int remainingConnections = ACTIVE_CONNECTIONS.decrementAndGet();
+    if (remainingConnections < 0) {
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      throw new IllegalStateException("SQLite active connection count underflow.");
+    }
   }
 
   static int activeConnectionCount() {
@@ -125,12 +126,16 @@ final class SqliteNativeBootstrap {
   }
 
   static void shutdownQuietly(MethodHandle sqlite3Shutdown) {
+    shutdownQuietly(sqlite3Shutdown, SqliteBestEffort::reportCleanupFailure);
+  }
+
+  static void shutdownQuietly(MethodHandle sqlite3Shutdown, SqliteBestEffort.Reporter reporter) {
     Objects.requireNonNull(sqlite3Shutdown, "sqlite3Shutdown");
+    Objects.requireNonNull(reporter, "reporter");
     try {
       SqliteNativeCalls.noArgInt(sqlite3Shutdown).invoke();
     } catch (RuntimeException exception) {
-      SqliteBestEffort.reportCleanupFailure(
-          "shutting down the process-scoped SQLite runtime", exception);
+      reporter.report("shutting down the process-scoped SQLite runtime", exception);
     }
   }
 
@@ -139,5 +144,13 @@ final class SqliteNativeBootstrap {
     private static final SqliteNativeApi INSTANCE = SqliteNativeApiLoader.loadApi();
 
     private SqliteApiHolder() {}
+  }
+
+  /** Lazily resolves the process-global C runtime {@code strlen} symbol on first use. */
+  private static final class StrlenHolder {
+    private static final MethodHandle INSTANCE =
+        SqliteNativeApiLoader.downcall(LINKER.defaultLookup(), STRLEN_SYMBOL, STRLEN_DESCRIPTOR);
+
+    private StrlenHolder() {}
   }
 }

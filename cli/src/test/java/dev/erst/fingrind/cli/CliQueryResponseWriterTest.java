@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
@@ -57,8 +58,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         OutputMode.JSON);
 
     JsonNode json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").asText());
-    assertEquals("query-book-not-initialized", json.path("code").asText());
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("query-book-not-initialized", json.path("code").stringValue());
   }
 
   @Test
@@ -93,14 +94,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     outputStream.reset();
     outputChannel.writeQueryRejection(OutputMode.JSON, envelope);
     JsonNode json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").asText());
-    assertEquals("query-book-not-initialized", json.path("code").asText());
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("query-book-not-initialized", json.path("code").stringValue());
 
     outputStream.reset();
     outputChannel.writeQueryRejection(OutputMode.CSV, envelope);
     json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").asText());
-    assertEquals("query-book-not-initialized", json.path("code").asText());
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("query-book-not-initialized", json.path("code").stringValue());
   }
 
   @Test
@@ -301,12 +302,15 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         .writeTrialBalanceResult(
             new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.JSON);
     JsonNode trialBalanceJson = readJson(trialBalanceJsonOutput);
-    assertEquals("ok", trialBalanceJson.path("status").asText());
-    assertEquals("2026-04-30", trialBalanceJson.path("payload").path("effectiveDateTo").asText());
+    assertEquals("ok", trialBalanceJson.path("status").stringValue());
     assertEquals(
-        "1000", trialBalanceJson.path("payload").path("rows").get(0).path("accountCode").asText());
+        "2026-04-30", trialBalanceJson.path("payload").path("effectiveDateTo").stringValue());
     assertEquals(
-        "10", trialBalanceJson.path("payload").path("rows").get(0).path("debitTotal").asText());
+        "1000",
+        trialBalanceJson.path("payload").path("rows").get(0).path("accountCode").stringValue());
+    assertEquals(
+        "10",
+        trialBalanceJson.path("payload").path("rows").get(0).path("debitTotal").stringValue());
     assertFalse(trialBalanceJson.toString().contains("\"value\""));
 
     ByteArrayOutputStream trialBalanceHumanOutput = new ByteArrayOutputStream();
@@ -334,12 +338,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
             OutputMode.JSON);
     JsonNode accountLedgerJson = readJson(accountLedgerJsonOutput);
-    assertEquals("1000", accountLedgerJson.path("payload").path("accountCode").asText());
+    assertEquals("1000", accountLedgerJson.path("payload").path("accountCode").stringValue());
     assertEquals(
-        "2026-04-01", accountLedgerJson.path("payload").path("effectiveDateFrom").asText());
+        "2026-04-01", accountLedgerJson.path("payload").path("effectiveDateFrom").stringValue());
     assertEquals(
         "posting-1",
-        accountLedgerJson.path("payload").path("entries").get(0).path("postingId").asText());
+        accountLedgerJson.path("payload").path("entries").get(0).path("postingId").stringValue());
     assertEquals(
         "2000",
         accountLedgerJson
@@ -348,7 +352,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .get(0)
             .path("counterpartAccounts")
             .get(0)
-            .asText());
+            .stringValue());
     assertFalse(accountLedgerJson.toString().contains("\"postingFact\""));
 
     ByteArrayOutputStream accountLedgerCsvOutput = new ByteArrayOutputStream();
@@ -381,7 +385,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             OutputMode.JSON);
     JsonNode periodSummaryJson = readJson(periodSummaryJsonOutput);
     assertEquals(
-        "2026-04-01", periodSummaryJson.path("payload").path("effectiveDateFrom").asText());
+        "2026-04-01", periodSummaryJson.path("payload").path("effectiveDateFrom").stringValue());
     assertEquals(1, periodSummaryJson.path("payload").path("postingCount").asInt());
     assertEquals(
         "1000",
@@ -390,7 +394,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("accountActivity")
             .get(0)
             .path("accountCode")
-            .asText());
+            .stringValue());
     assertFalse(periodSummaryJson.toString().contains("\"account\":{\"accountCode\""));
 
     ByteArrayOutputStream periodSummaryCsvOutput = new ByteArrayOutputStream();
@@ -424,7 +428,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     for (int index = 0; index < inspections.size(); index++) {
       JsonNode payload = writeInspection(inspections.get(index));
 
-      assertEquals(states.get(index), payload.path("state").asString());
+      assertEquals(states.get(index), payload.path("state").stringValue());
       assertEquals(1_179_079_236, payload.path("applicationId").asInt());
       assertEquals(1, payload.path("supportedBookFormatVersion").asInt());
       assertFalse(payload.has("migrationPolicy"));

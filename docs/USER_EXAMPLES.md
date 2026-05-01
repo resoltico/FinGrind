@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.29.0"
+version: "0.30.0"
 domain: USER_EXAMPLES
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -13,8 +13,8 @@ route:
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
 below, `fingrind` means that launcher, for example
-`./fingrind-0.29.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.29.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
+`./fingrind-0.30.0-macos-aarch64/bin/fingrind` on macOS/Linux or
+`.\fingrind-0.30.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
 the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
@@ -99,18 +99,38 @@ with the current binary, and safe for `open-book`, `declare-account`, or `post-e
 
 ## Rotate One Book Passphrase
 
+Generate the replacement key file before you ask `rekey-book` to use it:
+
+```bash
+fingrind \
+  generate-book-key-file \
+  --book-key-file ./acme.rotated.book-key
+```
+
 ```bash
 fingrind \
   rekey-book \
   --book-file ./acme.sqlite \
   --book-key-file ./acme.book-key \
-  --new-book-passphrase-prompt
+  --replacement-book-key-file ./acme.rotated.book-key
 ```
 
-`rekey-book` also accepts `--new-book-key-file` and `--new-book-passphrase-stdin` for the
-replacement secret. The interactive replacement prompt asks for the new passphrase twice and
-rejects mismatched entries. FinGrind creates one same-directory rollback copy before rotating the
-book and restores the pre-rekey file automatically if replacement-passphrase verification fails.
+`--replacement-book-key-file` must point to an existing generated or operator-supplied secret
+file. `rekey-book` also accepts `--replacement-book-passphrase-stdin` and
+`--replacement-book-passphrase-prompt` for the replacement secret. The interactive replacement
+prompt asks for the new passphrase twice and rejects mismatched entries. FinGrind creates one
+same-directory rollback copy before rotating the book and restores the pre-rekey file
+automatically if replacement-passphrase verification fails.
+
+If you prefer the interactive replacement prompt instead of an existing file:
+
+```bash
+fingrind \
+  rekey-book \
+  --book-file ./acme.sqlite \
+  --book-key-file ./acme.book-key \
+  --replacement-book-passphrase-prompt
+```
 
 One successful response:
 
@@ -501,7 +521,7 @@ fingrind \
 One invalid-request response:
 
 ```json
-{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run 'fingrind capabilities' for accepted enums and fields."}
+{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its scaffold placeholders before submission, or run 'fingrind capabilities' for accepted enums and fields.","details":{"violations":["Journal entry must contain at least one line."]}}
 ```
 
 ## Invalid Cursor Is Rejected Deterministically

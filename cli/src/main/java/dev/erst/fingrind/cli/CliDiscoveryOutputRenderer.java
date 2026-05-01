@@ -200,6 +200,12 @@ final class CliDiscoveryOutputRenderer {
         switch (workflow.surface()) {
           case BUNDLE_POSIX_SHELL -> "Self-Contained Bundle (POSIX Shell)";
           case BUNDLE_WINDOWS_POWERSHELL -> "Self-Contained Bundle (Windows PowerShell)";
+          case SOURCE_CHECKOUT_POSIX_SHELL -> "Source Checkout Launcher (POSIX Shell)";
+          case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
+              "Source Checkout Launcher (Windows PowerShell)";
+          case DIRECT_JAVA_POSIX_SHELL -> "Developer Raw JAR (POSIX Shell)";
+          case DIRECT_JAVA_WINDOWS_POWERSHELL -> "Developer Raw JAR (Windows PowerShell)";
+          case CONTAINER_DOCKER -> "Container Image (Docker CLI)";
         };
     return title
         + System.lineSeparator()

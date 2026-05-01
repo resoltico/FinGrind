@@ -45,9 +45,9 @@ final class CliBookPassphraseParser {
 
   static String replacementOptionName(PassphraseSourceKind passphraseSourceKind) {
     return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
-      case KEY_FILE -> ProtocolOptions.NEW_BOOK_KEY_FILE;
-      case STANDARD_INPUT -> ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN;
-      case INTERACTIVE_PROMPT -> ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT;
+      case KEY_FILE -> ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE;
+      case STANDARD_INPUT -> ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN;
+      case INTERACTIVE_PROMPT -> ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT;
     };
   }
 
