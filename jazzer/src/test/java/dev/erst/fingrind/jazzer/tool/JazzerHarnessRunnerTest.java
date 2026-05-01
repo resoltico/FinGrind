@@ -13,8 +13,10 @@ import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -344,8 +346,22 @@ class JazzerHarnessRunnerTest {
   @Test
   void main_runsSupportedHarnessToCompletionInChildJvm() throws Exception {
     ChildProcessResult result =
-        runHarnessRunnerMainInChildJvm(SingleExecutionFuzzHarnessFixture.class.getName());
+        runHarnessRunnerMainInChildJvm(
+            SingleExecutionFuzzHarnessFixture.class.getName(),
+            childEnvironment -> childEnvironment.remove("GITHUB_ACTIONS"));
     assertEquals(0, result.exitCode(), result.output());
+  }
+
+  @Test
+  void main_refusesToRunHarnessOnGitHubActionsInChildJvm() throws Exception {
+    ChildProcessResult result =
+        runHarnessRunnerMainInChildJvm(
+            SingleExecutionFuzzHarnessFixture.class.getName(),
+            childEnvironment -> childEnvironment.put("GITHUB_ACTIONS", "true"));
+
+    assertEquals(1, result.exitCode(), result.output());
+    assertTrue(result.output().contains("must not run on GitHub Actions"), result.output());
+    assertTrue(result.output().contains("'jazzer/bin/*'"), result.output());
   }
 
   @Test
@@ -386,7 +402,8 @@ class JazzerHarnessRunnerTest {
     return JazzerHarnessRunner.run(className, outputWriter, errorWriter, executor, () -> false);
   }
 
-  private static ChildProcessResult runHarnessRunnerMainInChildJvm(String harnessClassName)
+  private static ChildProcessResult runHarnessRunnerMainInChildJvm(
+      String harnessClassName, Consumer<Map<String, String>> environmentCustomizer)
       throws IOException {
     List<String> command = new ArrayList<>();
     command.add(javaCommand());
@@ -396,7 +413,9 @@ class JazzerHarnessRunnerTest {
     command.add(JazzerHarnessRunner.class.getName());
     command.add("--class");
     command.add(harnessClassName);
-    Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+    ProcessBuilder processBuilder = new ProcessBuilder(command).redirectErrorStream(true);
+    environmentCustomizer.accept(processBuilder.environment());
+    Process process = processBuilder.start();
     try (process;
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         var processOutput = process.getInputStream()) {
