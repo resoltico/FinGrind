@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -62,13 +63,15 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(
         help.contains(
             CliInvocationText.commandExample(OperationId.GENERATE_BOOK_KEY_FILE)
-                + " --book-key-file ./acme.book-key"));
-    assertTrue(help.contains("Write: ./declare-account-cash.json"));
+                + " --book-key-file "
+                + currentExamplePath("acme.book-key")));
+    assertTrue(help.contains("Write: " + currentExamplePath("declare-account-cash.json")));
     assertTrue(help.contains("\"accountCode\": \"1000\""));
-    assertTrue(help.contains("--request-file ./declare-account-cash.json"));
-    assertTrue(help.contains("Write: ./declare-account-revenue.json"));
+    assertTrue(help.contains("--request-file " + currentExamplePath("declare-account-cash.json")));
+    assertTrue(help.contains("Write: " + currentExamplePath("declare-account-revenue.json")));
     assertTrue(help.contains("\"accountCode\": \"2000\""));
-    assertTrue(help.contains("--request-file ./declare-account-revenue.json"));
+    assertTrue(
+        help.contains("--request-file " + currentExamplePath("declare-account-revenue.json")));
     assertFalse(help.contains("--request-file ./cash.json"));
     assertFalse(help.contains("--request-file ./revenue.json"));
     assertTrue(help.contains("Note: Replace scaffold placeholders such as effectiveDate"));
@@ -159,7 +162,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   void run_rewritesSourceCheckoutHelpToTheGeneratedLauncherSurface() {
     assertRuntimeSpecificHelpSurface(
         FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION,
-        "./cli/build/install/cli-shadow/bin/cli",
+        CliInvocationText.launcherCommandFor(
+            FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, System.getProperty("os.name", "")),
         "Source Checkout Launcher");
   }
 
@@ -167,7 +171,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   void run_rewritesDirectJavaHelpToTheDeveloperJarSurface() {
     assertRuntimeSpecificHelpSurface(
         FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION,
-        ProtocolCatalog.directJavaLauncherCommand(false),
+        ProtocolCatalog.directJavaLauncherCommand(isWindowsHost()),
         "Developer Raw JAR");
   }
 
@@ -222,6 +226,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       }
     }
     return false;
+  }
+
+  private static String currentExamplePath(String filename) {
+    return isWindowsHost() ? ".\\" + filename : "./" + filename;
+  }
+
+  private static boolean isWindowsHost() {
+    return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
   }
 
   private void assertRuntimeSpecificHelpSurface(

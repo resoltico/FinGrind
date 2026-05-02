@@ -10,8 +10,22 @@ import java.nio.file.attribute.BasicFileAttributes
 
 internal object LocalJazzerStateCleaner {
     private const val CORPUS_DIRECTORY_NAME = ".cifuzz-corpus"
+    internal fun interface DeleteOperations {
+        @Throws(IOException::class)
+        fun deleteIfExists(path: Path): Boolean
+    }
+
+    private val fileSystemDeleteOperations = DeleteOperations { path -> Files.deleteIfExists(path) }
 
     fun deleteGeneratedCorpora(localPath: Path, warningConsumer: (String) -> Unit = {}) {
+        deleteGeneratedCorpora(localPath, fileSystemDeleteOperations, warningConsumer)
+    }
+
+    internal fun deleteGeneratedCorpora(
+        localPath: Path,
+        deleteOperations: DeleteOperations,
+        warningConsumer: (String) -> Unit,
+    ) {
         if (!Files.exists(localPath)) {
             return
         }
@@ -40,7 +54,7 @@ internal object LocalJazzerStateCleaner {
                 }
             },
         )
-        corpusRoots.forEach { corpusRoot -> deleteCorpusTree(corpusRoot, warningConsumer) }
+        corpusRoots.forEach { corpusRoot -> deleteCorpusTree(corpusRoot, deleteOperations, warningConsumer) }
     }
 
     fun deleteRunFindings(runsPath: Path, warningConsumer: (String) -> Unit = {}) {
@@ -63,7 +77,7 @@ internal object LocalJazzerStateCleaner {
                     file: Path,
                     attrs: BasicFileAttributes,
                 ): java.nio.file.FileVisitResult {
-                    deleteFile(file, warningConsumer)
+                    deleteFile(file, fileSystemDeleteOperations, warningConsumer)
                     return java.nio.file.FileVisitResult.CONTINUE
                 }
 
@@ -72,7 +86,7 @@ internal object LocalJazzerStateCleaner {
                     exception: IOException,
                 ): java.nio.file.FileVisitResult {
                     if (!isUnderCorpus(file)) {
-                        deleteFile(file, warningConsumer)
+                        deleteFile(file, fileSystemDeleteOperations, warningConsumer)
                     }
                     return java.nio.file.FileVisitResult.CONTINUE
                 }
@@ -91,7 +105,11 @@ internal object LocalJazzerStateCleaner {
         )
     }
 
-    private fun deleteCorpusTree(corpusRoot: Path, warningConsumer: (String) -> Unit) {
+    private fun deleteCorpusTree(
+        corpusRoot: Path,
+        deleteOperations: DeleteOperations,
+        warningConsumer: (String) -> Unit,
+    ) {
         try {
             Files.walkFileTree(
                 corpusRoot,
@@ -100,7 +118,7 @@ internal object LocalJazzerStateCleaner {
                         file: Path,
                         attrs: BasicFileAttributes,
                     ): java.nio.file.FileVisitResult {
-                        deleteFile(file, warningConsumer)
+                        deleteFile(file, deleteOperations, warningConsumer)
                         return java.nio.file.FileVisitResult.CONTINUE
                     }
 
@@ -108,7 +126,7 @@ internal object LocalJazzerStateCleaner {
                         file: Path,
                         exception: IOException,
                     ): java.nio.file.FileVisitResult {
-                        deletePath(file, warningConsumer)
+                        deletePath(file, deleteOperations, warningConsumer)
                         return java.nio.file.FileVisitResult.CONTINUE
                     }
 
@@ -121,7 +139,7 @@ internal object LocalJazzerStateCleaner {
                                 "Unable to fully inspect local Jazzer corpus path '$dir': ${exception.message}",
                             )
                         }
-                        deletePath(dir, warningConsumer)
+                        deletePath(dir, deleteOperations, warningConsumer)
                         return java.nio.file.FileVisitResult.CONTINUE
                     }
                 },
@@ -133,9 +151,13 @@ internal object LocalJazzerStateCleaner {
         }
     }
 
-    private fun deleteFile(path: Path, warningConsumer: (String) -> Unit) {
+    private fun deleteFile(
+        path: Path,
+        deleteOperations: DeleteOperations,
+        warningConsumer: (String) -> Unit,
+    ) {
         try {
-            Files.deleteIfExists(path)
+            deleteOperations.deleteIfExists(path)
         } catch (exception: IOException) {
             warningConsumer("Unable to delete local Jazzer file '$path': ${exception.message}")
         }
@@ -164,9 +186,13 @@ internal object LocalJazzerStateCleaner {
         }
     }
 
-    private fun deletePath(path: Path, warningConsumer: (String) -> Unit) {
+    private fun deletePath(
+        path: Path,
+        deleteOperations: DeleteOperations,
+        warningConsumer: (String) -> Unit,
+    ) {
         try {
-            Files.deleteIfExists(path)
+            deleteOperations.deleteIfExists(path)
         } catch (_: DirectoryNotEmptyException) {
             warningConsumer("Local Jazzer corpus path '$path' still contains undeletable entries.")
         } catch (_: AccessDeniedException) {
