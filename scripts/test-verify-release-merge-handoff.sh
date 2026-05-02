@@ -38,5 +38,15 @@ grep -Fq './scripts/verify-release-merge-handoff.sh' "${release_protocol}" || di
     "release protocol no longer requires the merge-handoff verifier"
 grep -Fq 'Contributor devcontainer' "${verifier}" || die \
     "merge-handoff verifier no longer treats the contributor devcontainer job as release-blocking"
+grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS' "${release_protocol}" || die \
+    "release protocol no longer documents the merge-handoff verifier timeout override"
+
+readonly timeout_default="$(
+    sed -n 's/^readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-\([0-9][0-9]*\)}"$/\1/p' \
+        "${verifier}"
+)"
+[[ -n "${timeout_default}" ]] || die "failed to read merge-handoff verifier default timeout"
+(( timeout_default >= 1800 )) || die \
+    "merge-handoff verifier default timeout regressed below 1800 seconds (${timeout_default})"
 
 printf 'verify-release-merge-handoff regression: success\n'
