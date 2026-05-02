@@ -281,6 +281,14 @@ Requirements before continuing:
   the release-blocking CI set `Check`, `Windows bundle smoke`, `Docker smoke`, and
   `Contributor devcontainer` are all green on the exact commit that will be tagged.
 
+The verifier's default wait is intentionally long enough to cover the normal post-merge CI
+fan-out where `Windows bundle smoke` does not start until `Check` finishes. If GitHub Actions
+queueing is unusually slow, extend the wait explicitly instead of guessing:
+
+```bash
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=2400 ./scripts/verify-release-merge-handoff.sh
+```
+
 GitHub auto-delete on merge should also be enabled at the repository level. `--delete-branch`
 remains mandatory here so the release handoff stays self-contained even if the repo setting is
 misconfigured or temporarily changed.
