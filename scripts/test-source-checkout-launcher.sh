@@ -26,10 +26,12 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly launcher="${repo_root}/cli/build/install/cli-shadow/bin/cli"
 readonly raw_jar="${repo_root}/cli/build/libs/fingrind.jar"
 readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
+readonly repo_tmp_dir="${repo_root}/tmp"
 
 [[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
 
-tmp_dir="$(mktemp -d "${repo_root}/tmp/source-checkout-launcher.XXXXXX")"
+mkdir -p "${repo_tmp_dir}"
+tmp_dir="$(mktemp -d "${repo_tmp_dir}/source-checkout-launcher.XXXXXX")"
 cleanup() {
     rm -rf "${tmp_dir}"
 }
