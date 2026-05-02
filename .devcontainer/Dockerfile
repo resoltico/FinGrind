@@ -12,9 +12,20 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 USER root
 
-RUN apt-get update \
-    && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get install -y --no-install-recommends \
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && retry() { \
+        local attempt=1 max_attempts=5; \
+        until "$@"; do \
+            local exit_code=$?; \
+            if (( attempt >= max_attempts )); then \
+                return "${exit_code}"; \
+            fi; \
+            sleep $(( attempt * 2 )); \
+            attempt=$(( attempt + 1 )); \
+        done; \
+    } \
+    && retry apt-get update \
+    && retry apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         fontconfig \
@@ -30,13 +41,19 @@ RUN apt-get update \
         shellcheck \
         unzip \
         zip \
-    && curl -fsSL https://repos.azul.com/azul-repo.key \
-        | gpg --dearmor -o /usr/share/keyrings/azul.gpg \
+    && retry curl -fsSL \
+        --connect-timeout 15 \
+        --retry 5 \
+        --retry-all-errors \
+        --retry-delay 2 \
+        --output /tmp/azul-repo.key \
+        https://repos.azul.com/azul-repo.key \
+    && gpg --dearmor -o /usr/share/keyrings/azul.gpg /tmp/azul-repo.key \
     && chmod 644 /usr/share/keyrings/azul.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
         > /etc/apt/sources.list.d/zulu.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends zulu26-jdk \
+    && retry apt-get update \
+    && retry apt-get install -y --no-install-recommends zulu26-jdk \
     && zulu_home="$(find /usr/lib/jvm -maxdepth 1 -mindepth 1 -type d -name 'zulu26*' | sort | head -1)" \
     && [[ -n "${zulu_home}" ]] \
     && ln -sfn "${zulu_home}" /usr/lib/jvm/zulu-26 \
@@ -47,6 +64,7 @@ RUN apt-get update \
     && javac --version >/dev/null \
     && git --version >/dev/null \
     && shellcheck --version >/dev/null \
+    && rm -f /tmp/azul-repo.key \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
