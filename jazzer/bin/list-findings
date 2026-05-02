@@ -1,6 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/list-findings [<target-key>] [--json] [supported Gradle options]
+
+Prints replay-classified local finding artifacts for one active target or for every active target.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+
 target_key=""
 if [[ $# -gt 0 && "${1}" != "--json" && "${1}" != -* ]]; then
     target_key=$1
@@ -13,16 +27,18 @@ if [[ $# -gt 0 && "${1}" == "--json" ]]; then
     shift
 fi
 
-script_dir="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=./common.sh
-. "${script_dir}/common.sh"
-
 fg_initialize_wrapper "$0"
 gradle_args=()
 if [[ -n "${target_key}" ]]; then
+    fg_require_active_target_key "${target_key}"
     gradle_args+=("-PjazzerTarget=${target_key}")
 fi
 if [[ "${json_output}" == "true" ]]; then
     gradle_args+=("-PjazzerJsonOutput=true")
+    fg_run_machine_json_read_only_command \
+        "jazzerListFindings" \
+        ${gradle_args[@]+"${gradle_args[@]}"} \
+        "$@"
+    exit 0
 fi
-fg_run_passive_command "jazzerListFindings" "${gradle_args[@]}" "$@"
+fg_run_read_only_command "jazzerListFindings" ${gradle_args[@]+"${gradle_args[@]}"} "$@"

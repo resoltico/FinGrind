@@ -1,8 +1,8 @@
 package dev.erst.fingrind.buildlogic
 
+import java.nio.file.AccessDeniedException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermission
 import java.util.Comparator
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -56,67 +56,43 @@ class LocalJazzerStateCleanerTest {
     }
 
     @Test
-    fun deleteRunFindings_skipsUnreadableCorpusSubtrees() {
+    fun deleteRunFindings_preservesCorpusSubtreesWithoutTraversingThem() {
         val runsDirectory = Files.createTempDirectory("jazzer-runs")
-        val unreadableCorpusRoot = runsDirectory.resolve("sqlite-book-roundtrip/.cifuzz-corpus")
+        val preservedCorpusRoot = runsDirectory.resolve("sqlite-book-roundtrip/.cifuzz-corpus")
         try {
-            writeFile(unreadableCorpusRoot.resolve("queue/id_000001"), "seed")
+            writeFile(preservedCorpusRoot.resolve("queue/id_000001"), "seed")
             val latestLog = runsDirectory.resolve("sqlite-book-roundtrip/latest.log")
             writeFile(latestLog, "latest")
-            Files.setPosixFilePermissions(
-                unreadableCorpusRoot,
-                setOf(PosixFilePermission.OWNER_WRITE),
-            )
 
             LocalJazzerStateCleaner.deleteRunFindings(runsDirectory)
 
-            assertTrue(Files.exists(unreadableCorpusRoot))
+            assertTrue(Files.exists(preservedCorpusRoot))
             assertFalse(Files.exists(latestLog))
         } finally {
-            if (Files.exists(unreadableCorpusRoot)) {
-                Files.setPosixFilePermissions(
-                    unreadableCorpusRoot,
-                    setOf(
-                        PosixFilePermission.OWNER_READ,
-                        PosixFilePermission.OWNER_WRITE,
-                        PosixFilePermission.OWNER_EXECUTE,
-                    ),
-                )
-            }
             deleteTree(runsDirectory)
         }
     }
 
     @Test
-    fun deleteGeneratedCorpora_warnsButContinuesWhenOneCorpusRootIsUnreadable() {
+    fun deleteGeneratedCorpora_warnsButContinuesWhenOneCorpusRootCannotBeDeleted() {
         val localDirectory = Files.createTempDirectory("local-jazzer-state")
-        val unreadableCorpusRoot = localDirectory.resolve("runs/sqlite-book-roundtrip/.cifuzz-corpus")
+        val blockedCorpusRoot = localDirectory.resolve("runs/sqlite-book-roundtrip/.cifuzz-corpus")
         val warnings = mutableListOf<String>()
         try {
             val removableCorpusRoot = localDirectory.resolve("runs/ledger-plan-request/.cifuzz-corpus")
             writeFile(removableCorpusRoot.resolve("queue/id_000001"), "seed")
-            writeFile(unreadableCorpusRoot.resolve("queue/id_000001"), "seed")
-            Files.setPosixFilePermissions(
-                unreadableCorpusRoot,
-                setOf(PosixFilePermission.OWNER_WRITE),
+            writeFile(blockedCorpusRoot.resolve("queue/id_000001"), "seed")
+
+            LocalJazzerStateCleaner.deleteGeneratedCorpora(
+                localDirectory,
+                deleteOperations(blockedCorpusRoot),
+                warnings::add,
             )
 
-            LocalJazzerStateCleaner.deleteGeneratedCorpora(localDirectory, warnings::add)
-
             assertFalse(Files.exists(removableCorpusRoot))
-            assertTrue(Files.exists(unreadableCorpusRoot))
+            assertTrue(Files.exists(blockedCorpusRoot))
             assertTrue(warnings.isNotEmpty())
         } finally {
-            if (Files.exists(unreadableCorpusRoot)) {
-                Files.setPosixFilePermissions(
-                    unreadableCorpusRoot,
-                    setOf(
-                        PosixFilePermission.OWNER_READ,
-                        PosixFilePermission.OWNER_WRITE,
-                        PosixFilePermission.OWNER_EXECUTE,
-                    ),
-                )
-            }
             deleteTree(localDirectory)
         }
     }
@@ -125,6 +101,16 @@ class LocalJazzerStateCleanerTest {
         Files.createDirectories(path.parent)
         Files.writeString(path, contents)
     }
+
+    private fun deleteOperations(
+        blockedCorpusRoot: Path,
+    ): LocalJazzerStateCleaner.DeleteOperations =
+        LocalJazzerStateCleaner.DeleteOperations { path ->
+            if (path.startsWith(blockedCorpusRoot)) {
+                throw AccessDeniedException(path.toString())
+            }
+            Files.deleteIfExists(path)
+        }
 
     private fun deleteTree(rootPath: Path) {
         if (!Files.exists(rootPath)) {

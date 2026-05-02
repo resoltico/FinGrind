@@ -89,6 +89,17 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     }
   }
 
+  @Test
+  void recordClosedConnection_rejectsCounterUnderflow() {
+    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount());
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, SqliteNativeBootstrap::recordClosedConnection);
+
+    assertEquals("SQLite active connection count underflow.", exception.getMessage());
+    assertEquals(0, SqliteNativeBootstrap.activeConnectionCount());
+  }
+
   private static SqliteNativeApi closeBehaviorApi(String helperMethodName, AtomicInteger closeCalls)
       throws ReflectiveOperationException {
     SqliteNativeApi baseApi = SqliteNativeBootstrap.api();

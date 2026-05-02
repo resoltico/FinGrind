@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Shared low-level helpers for release-surface acceptance workflows.
 
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    printf 'error: %s\n' "release-smoke-common.sh is a library and must be sourced by a release-smoke support script." >&2
+    exit 1
+fi
+
 die() {
     printf 'error: %s\n' "$1" >&2
     exit 1

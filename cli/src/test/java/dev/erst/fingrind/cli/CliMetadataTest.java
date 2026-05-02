@@ -21,9 +21,7 @@ class CliMetadataTest {
     assertTrue(
         metadata.version().matches("\\d+\\.\\d+\\.\\d+"),
         "packaged metadata version should be a concrete semantic version");
-    assertEquals(
-        "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence",
-        metadata.description());
+    assertEquals(packagedProperties.getProperty("description"), metadata.description());
   }
 
   @Test

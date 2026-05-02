@@ -157,6 +157,25 @@ class SqliteStoreFixtureSupport {
     }
   }
 
+  /** Same-package deterministic lifecycle double that fails with one plain Java exception. */
+  static final class IllegalStateClosingSqliteNativeDatabase extends SqliteNativeDatabase {
+    boolean closeAttempted;
+
+    IllegalStateClosingSqliteNativeDatabase() {
+      super(MemorySegment.NULL);
+    }
+
+    @Override
+    public void close() {
+      closeAttempted = true;
+      throw new IllegalStateException("Simulated lifecycle close failure.");
+    }
+
+    boolean closeAttempted() {
+      return closeAttempted;
+    }
+  }
+
   static void createPostingFactOnlyBook(Path bookPath) {
     withStandaloneDatabase(
         staticBookAccess(bookPath),

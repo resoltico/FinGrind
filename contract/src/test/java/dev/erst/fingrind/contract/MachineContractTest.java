@@ -89,6 +89,11 @@ class MachineContractTest {
         capabilities.responseModel().errorDescriptors().stream()
             .map(ContractResponse.ErrorDescriptor::code)
             .toList();
+    ContractResponse.ErrorDescriptor invalidRequestError =
+        capabilities.responseModel().errorDescriptors().stream()
+            .filter(descriptor -> "invalid-request".equals(descriptor.code()))
+            .findFirst()
+            .orElseThrow();
     assertTrue(rejectionCodes.contains("administration-book-not-initialized"));
     assertTrue(rejectionCodes.contains("query-book-not-initialized"));
     assertTrue(rejectionCodes.contains("posting-book-not-initialized"));
@@ -102,6 +107,11 @@ class MachineContractTest {
     assertTrue(errorCodes.contains("managed-runtime-failure"));
     assertTrue(errorCodes.contains("storage-runtime-failure"));
     assertTrue(errorCodes.contains("pdf-export-failure"));
+    assertEquals(
+        List.of("parseMessage", "line", "column", "violations"),
+        invalidRequestError.detailFields().stream()
+            .map(ContractResponse.FieldDescriptor::name)
+            .toList());
     assertEquals(errorCodes.size(), errorCodes.stream().distinct().count());
   }
 
@@ -151,7 +161,7 @@ class MachineContractTest {
         command(help.commands(), OperationId.REKEY_BOOK)
             .options()
             .get(2)
-            .contains("--new-book-passphrase-prompt"));
+            .contains("--replacement-book-passphrase-prompt"));
     assertEquals(
         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
         command(help.commands(), OperationId.TRIAL_BALANCE).outputModes());
@@ -255,6 +265,36 @@ class MachineContractTest {
   }
 
   @Test
+  void help_quickStartTracksTheActiveRuntimeDistribution() {
+    ApplicationIdentity identity = new ApplicationIdentity("FinGrind", "0.9.0", "desc");
+
+    HelpDescriptor sourceCheckoutHelp =
+        MachineContract.help(
+            identity,
+            environmentDescriptorFor(ProtocolCatalog.sourceCheckoutRuntimeDistribution()));
+    HelpDescriptor directJavaHelp =
+        MachineContract.help(
+            identity, environmentDescriptorFor(ProtocolCatalog.directJavaRuntimeDistribution()));
+    HelpDescriptor containerHelp =
+        MachineContract.help(
+            identity, environmentDescriptorFor(ProtocolCatalog.containerRuntimeDistribution()));
+
+    assertEquals(
+        List.of(
+            WorkflowSurface.SOURCE_CHECKOUT_POSIX_SHELL,
+            WorkflowSurface.SOURCE_CHECKOUT_WINDOWS_POWERSHELL),
+        sourceCheckoutHelp.quickStart().stream().map(WorkflowDescriptor::surface).toList());
+    assertEquals(
+        List.of(
+            WorkflowSurface.DIRECT_JAVA_POSIX_SHELL,
+            WorkflowSurface.DIRECT_JAVA_WINDOWS_POWERSHELL),
+        directJavaHelp.quickStart().stream().map(WorkflowDescriptor::surface).toList());
+    assertEquals(
+        List.of(WorkflowSurface.CONTAINER_DOCKER),
+        containerHelp.quickStart().stream().map(WorkflowDescriptor::surface).toList());
+  }
+
+  @Test
   void bundleLayoutCommandsRemainSurfaceConsistent() {
     assertEquals(
         ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64),
@@ -331,9 +371,14 @@ class MachineContractTest {
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
+    return environmentDescriptorFor(ProtocolCatalog.bundleRuntimeDistribution());
+  }
+
+  private static EnvironmentDescriptor environmentDescriptorFor(
+      dev.erst.fingrind.contract.protocol.RuntimeDistribution runtimeDistribution) {
     return new EnvironmentDescriptor(
         new EnvironmentDistributionDescriptor(
-            ProtocolCatalog.bundleRuntimeDistribution(),
+            runtimeDistribution,
             ProtocolCatalog.publicCliDistribution(),
             ProtocolCatalog.supportedPublicCliBundleTargets(),
             ProtocolCatalog.unsupportedPublicCliBundleTargets(),
@@ -342,7 +387,7 @@ class MachineContractTest {
             ProtocolCatalog.storageDriver(),
             ProtocolCatalog.storageEngine(),
             ProtocolCatalog.bookProtectionMode(),
-            ProtocolCatalog.defaultBookCipher()),
+            ProtocolCatalog.protectedBookFormat()),
         new EnvironmentSqliteDescriptor(
             ProtocolCatalog.sqliteLibraryMode(),
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),

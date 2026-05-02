@@ -13,6 +13,15 @@
     "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
     "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty"
   },
+  "protectedBookFormat": {
+    "cipher": "cipher",
+    "legacyMode": "legacyMode",
+    "pageSize": "pageSize",
+    "reservedBytes": "reservedBytes",
+    "legacyPageSize": "legacyPageSize",
+    "kdfIter": "kdfIter",
+    "plaintextHeaderSize": "plaintextHeaderSize"
+  },
   "publicDistribution": {
     "supportedPublicCliBundleTargets": "supportedPublicCliBundleTargets",
     "unsupportedPublicCliBundleTargets": "unsupportedPublicCliBundleTargets"

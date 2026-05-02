@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +13,7 @@ import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.ByteArrayInputStream;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.foreign.Arena;
@@ -19,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -334,40 +335,11 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
-  void systemConsoleReader_reportsNoInteractiveConsoleInTheGradleTestEnvironment() {
-    assertTrue(CliBookPassphraseResolver.systemConsoleReader().isEmpty());
-  }
-
-  @Test
-  void systemConsoleReader_wrapsPromptingConsoleWhenAvailable() {
-    Optional<CliBookPassphraseResolver.Terminal> terminal =
-        CliBookPassphraseResolver.systemConsoleReader(
-            (format, arguments) -> {
-              assertEquals("%s", format);
-              assertEquals(1, arguments.length);
-              assertEquals("book.sqlite", arguments[0]);
-              return "console-secret".toCharArray();
-            });
-
-    assertTrue(terminal.isPresent());
-    assertEquals(
-        "console-secret",
-        new String(terminal.orElseThrow().readPassword("book.sqlite").requireAccepted()));
-  }
-
-  @Test
-  void systemConsoleReader_reportsMissingPromptingConsoleWhenUnavailable() {
-    assertTrue(CliBookPassphraseResolver.systemConsoleReader(missingPromptingConsole()).isEmpty());
-  }
-
-  @Test
   void promptingConsoleTerminal_readsPasswordFromTypedPromptingConsole() {
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            (format, arguments) -> {
-              assertEquals("%s", format);
-              assertEquals(1, arguments.length);
-              assertEquals("book.sqlite", arguments[0]);
+            prompt -> {
+              assertEquals("book.sqlite", prompt);
               return "console-secret".toCharArray();
             });
 
@@ -378,7 +350,7 @@ class CliBookPassphraseResolverTest {
   @Test
   void promptingConsoleTerminal_rejectsNullPasswordReads() {
     CliBookPassphraseResolver.Terminal terminal =
-        new CliBookPassphraseResolver.PromptingConsoleTerminal((format, arguments) -> null);
+        new CliBookPassphraseResolver.PromptingConsoleTerminal(prompt -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -394,11 +366,27 @@ class CliBookPassphraseResolverTest {
   void promptingConsoleTerminal_wrapsReadPasswordFailures() {
     CliBookPassphraseResolver.Terminal terminal =
         new CliBookPassphraseResolver.PromptingConsoleTerminal(
-            (format, arguments) -> {
-              assertEquals("%s", format);
-              assertEquals(1, arguments.length);
-              assertEquals("book.sqlite", arguments[0]);
+            prompt -> {
+              assertEquals("book.sqlite", prompt);
               throw new IllegalStateException("boom");
+            });
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> terminal.readPassword("book.sqlite").requireAccepted());
+
+    assertEquals(
+        "Failed to prompt for a book passphrase from the interactive console.",
+        exception.getMessage());
+  }
+
+  @Test
+  void promptingConsoleTerminal_wrapsConsoleIoErrors() {
+    CliBookPassphraseResolver.Terminal terminal =
+        new CliBookPassphraseResolver.PromptingConsoleTerminal(
+            prompt -> {
+              throw new IOError(new IOException("console boom"));
             });
 
     IllegalStateException exception =
@@ -424,6 +412,44 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void promptingConsoleLookupTerminal_rejectsUnavailableConsole() {
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                new CliBookPassphraseResolver.PromptingConsoleLookupTerminal(() -> null)
+                    .readPassword("prompt")
+                    .requireAccepted());
+
+    assertEquals(
+        "FinGrind cannot prompt for a book passphrase because no interactive console is available.",
+        exception.getMessage());
+  }
+
+  @Test
+  void promptingConsoleLookupTerminal_readsPasswordFromProvidedReader() {
+    CliBookPassphraseResolver.PromptingConsoleLookupTerminal terminal =
+        new CliBookPassphraseResolver.PromptingConsoleLookupTerminal(
+            promptingConsoleSupplier("secret"));
+    char[] password = terminal.readPassword("book.sqlite").requireAccepted();
+
+    assertEquals("secret", new String(password));
+  }
+
+  @Test
+  void promptingConsoleLookupTerminal_rejectsMissingConsoleReader() {
+    CliBookPassphraseResolver.PromptingConsoleLookupTerminal terminal =
+        new CliBookPassphraseResolver.PromptingConsoleLookupTerminal(() -> null);
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class, () -> terminal.readPassword("prompt").requireAccepted());
+
+    assertEquals(
+        "FinGrind cannot prompt for a book passphrase because no interactive console is available.",
+        exception.getMessage());
+  }
+
+  @Test
   void systemTerminal_rejectsWhenNoInteractiveConsoleIsAvailable() {
     IllegalStateException exception =
         assertThrows(
@@ -439,36 +465,65 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
-  void consoleBackedTerminal_readsPasswordFromProvidedReader() {
-    CliBookPassphraseResolver.ConsoleBackedTerminal terminal =
-        new CliBookPassphraseResolver.ConsoleBackedTerminal(readerSupplier("secret"));
-    char[] password = terminal.readPassword("book.sqlite").requireAccepted();
-
-    assertEquals("secret", new String(password));
+  void systemPromptingConsole_reportsUnavailableWhenMissing() {
+    assertNull(CliBookPassphraseResolver.availableSystemPromptingConsole(null));
   }
 
   @Test
-  void consoleBackedTerminal_rejectsMissingConsoleReader() {
-    CliBookPassphraseResolver.ConsoleBackedTerminal terminal =
-        new CliBookPassphraseResolver.ConsoleBackedTerminal(Optional::empty);
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class, () -> terminal.readPassword("prompt").requireAccepted());
+  void systemPromptingConsole_reportsUnavailableWhenNotInteractive() {
+    assertNull(
+        CliBookPassphraseResolver.availableSystemPromptingConsole(
+            new CliBookPassphraseResolver.SystemPromptingConsole() {
+              @Override
+              public boolean isTerminal() {
+                return false;
+              }
+
+              @Override
+              public char @Nullable [] readPassword(String prompt) {
+                throw new AssertionError("Non-interactive consoles must not prompt.");
+              }
+            }));
+  }
+
+  @Test
+  void systemPromptingConsole_preservesInteractivePromptReads() {
+    CliBookPassphraseResolver.PromptingConsole promptingConsole =
+        CliBookPassphraseResolver.availableSystemPromptingConsole(
+            new CliBookPassphraseResolver.SystemPromptingConsole() {
+              @Override
+              public boolean isTerminal() {
+                return true;
+              }
+
+              @Override
+              public char @Nullable [] readPassword(String prompt) {
+                assertEquals("book.sqlite", prompt);
+                return "console-secret".toCharArray();
+              }
+            });
 
     assertEquals(
-        "FinGrind cannot prompt for a book passphrase because no interactive console is available.",
-        exception.getMessage());
+        "console-secret",
+        new String(
+            Objects.requireNonNull(promptingConsole, "promptingConsole")
+                .readPassword("book.sqlite")));
   }
 
   @Test
-  void consoleBackedTerminal_rejectsNullSupplierResult() {
-    CliBookPassphraseResolver.ConsoleBackedTerminal terminal =
-        new CliBookPassphraseResolver.ConsoleBackedTerminal(() -> null);
+  void wrappedSystemConsole_delegatesTerminalStateAndPromptReads() {
+    CliBookPassphraseResolver.SystemPromptingConsole systemConsole =
+        CliBookPassphraseResolver.wrap(
+            () -> true,
+            (format, arguments) -> {
+              assertEquals("%s", format);
+              assertEquals(1, arguments.length);
+              assertEquals("book.sqlite", arguments[0]);
+              return "wrapped-secret".toCharArray();
+            });
 
-    NullPointerException exception =
-        assertThrows(NullPointerException.class, () -> terminal.readPassword("prompt"));
-
-    assertEquals("reader", exception.getMessage());
+    assertTrue(systemConsole.isTerminal());
+    assertEquals("wrapped-secret", new String(systemConsole.readPassword("book.sqlite")));
   }
 
   private static ContractDecision<char[]> failPrompt(String prompt) {
@@ -485,17 +540,12 @@ class CliBookPassphraseResolverTest {
     Files.writeString(keyFile, content, StandardCharsets.UTF_8);
   }
 
-  private static Supplier<Optional<CliBookPassphraseResolver.Terminal>> readerSupplier(
-      String password) {
+  private static Supplier<CliBookPassphraseResolver.@Nullable PromptingConsole>
+      promptingConsoleSupplier(String password) {
     return () ->
-        Optional.of(
-            prompt -> {
-              assertEquals("book.sqlite", prompt);
-              return ContractDecision.accepted(password.toCharArray());
-            });
-  }
-
-  private static CliBookPassphraseResolver.@Nullable PromptingConsole missingPromptingConsole() {
-    return null;
+        prompt -> {
+          assertEquals("book.sqlite", prompt);
+          return password.toCharArray();
+        };
   }
 }

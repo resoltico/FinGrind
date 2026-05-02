@@ -29,15 +29,18 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     SqliteStoreTestAccess.publishNativeDatabase(postingFactStore, database);
   }
 
-  static void setStoreBookPassphrase(
-      SqlitePostingFactStore postingFactStore, SqliteBookPassphrase bookPassphrase) {
-    SqliteStoreTestAccess.setPendingPassphrase(postingFactStore, bookPassphrase);
+  static void clearStoreSessionSecret(SqlitePostingFactStore postingFactStore) {
+    SqliteStoreTestAccess.clearSessionSecret(postingFactStore);
   }
 
   static void setStoreCachedBookState(
       SqlitePostingFactStore postingFactStore,
       @org.jspecify.annotations.Nullable SqliteBookStateSnapshot cachedBookState) {
     SqliteStoreTestAccess.setCachedState(postingFactStore, cachedBookState);
+  }
+
+  static void clearPublishedDatabaseState(SqlitePostingFactStore postingFactStore) {
+    SqliteStoreTestAccess.clearPublishedDatabaseState(postingFactStore);
   }
 
   static boolean storeBooleanField(SqlitePostingFactStore postingFactStore, String fieldName) {
@@ -53,7 +56,11 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static SqliteNativeDatabase storeDatabase(SqlitePostingFactStore postingFactStore) {
-    return SqliteStoreTestAccess.currentDatabaseHandle(postingFactStore);
+    return SqliteStoreTestAccess.publishedDatabase(postingFactStore);
+  }
+
+  static SqliteStoreAccessMode storeAccessMode(SqlitePostingFactStore postingFactStore) {
+    return SqliteStoreTestAccess.accessMode(postingFactStore);
   }
 
   static SqliteNativeDatabase requireStoreDatabase(SqlitePostingFactStore postingFactStore) {

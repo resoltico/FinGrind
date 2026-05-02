@@ -23,6 +23,19 @@ import org.junit.jupiter.api.io.TempDir;
 @NullUnmarked
 class SqliteNativeBridgeTestSupport {
   static final String TEST_BOOK_KEY = "native-library-test-book-key";
+  static final int SQLITE_API_ARGUMENT_OPEN_V2 = 1;
+  static final int SQLITE_API_ARGUMENT_CLOSE_V2 = 2;
+  static final int SQLITE_API_ARGUMENT_KEY = 3;
+  static final int SQLITE_API_ARGUMENT_BUSY_TIMEOUT = 6;
+  static final int SQLITE_API_ARGUMENT_EXTENDED_RESULT_CODES = 7;
+  static final int SQLITE_API_ARGUMENT_EXEC = 12;
+  static final int SQLITE_API_ARGUMENT_ERRMSG = 23;
+  static final int SQLITE_API_ARGUMENT_ERRSTR = 24;
+  static final int SQLITE_API_ARGUMENT_EXTENDED_ERRCODE = 25;
+  static final int SQLITE_API_ARGUMENT_LOADED_VERSION = 26;
+  static final int SQLITE_API_ARGUMENT_LOADED_SQLITE3MC_VERSION = 27;
+  static final int SQLITE_API_ARGUMENT_LOADED_SOURCE_ID = 28;
+  static final int SQLITE_API_ARGUMENT_LOADED_LIBRARY_PATH = 30;
 
   protected SqliteNativeBridgeTestSupport() {}
 
@@ -36,11 +49,11 @@ class SqliteNativeBridgeTestSupport {
       MethodHandle extendedErrcodeHandle)
       throws ReflectiveOperationException {
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
-    sqliteApiArguments[2] = closeHandle;
-    sqliteApiArguments[3] = keyHandle;
-    sqliteApiArguments[19] = errorMessageHandle;
-    sqliteApiArguments[20] = errorStringHandle;
-    sqliteApiArguments[21] = extendedErrcodeHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] = closeHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_KEY] = keyHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_ERRMSG] = errorMessageHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] = errorStringHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_EXTENDED_ERRCODE] = extendedErrcodeHandle;
     return buildSqliteApi(sqliteApiArguments);
   }
 
@@ -51,10 +64,10 @@ class SqliteNativeBridgeTestSupport {
       MethodHandle extendedErrcodeHandle)
       throws ReflectiveOperationException {
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
-    sqliteApiArguments[2] = closeHandle;
-    sqliteApiArguments[19] = errorMessageHandle;
-    sqliteApiArguments[20] = errorStringHandle;
-    sqliteApiArguments[21] = extendedErrcodeHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] = closeHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_ERRMSG] = errorMessageHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] = errorStringHandle;
+    sqliteApiArguments[SQLITE_API_ARGUMENT_EXTENDED_ERRCODE] = extendedErrcodeHandle;
     return buildSqliteApi(sqliteApiArguments);
   }
 
@@ -69,6 +82,12 @@ class SqliteNativeBridgeTestSupport {
       constantMethodHandle(0),
       constantMethodHandle(0, MemorySegment.class, int.class),
       constantMethodHandle(0, MemorySegment.class, int.class),
+      constantMethodHandle(0, MemorySegment.class, MemorySegment.class, int.class),
+      constantMethodHandle(
+          0, MemorySegment.class, MemorySegment.class, MemorySegment.class, int.class),
+      constantMethodHandle(MemorySegment.NULL, int.class),
+      constantMethodHandle(
+          0, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class),
       constantMethodHandle(
           0,
           MemorySegment.class,
@@ -128,11 +147,15 @@ class SqliteNativeBridgeTestSupport {
         (MethodHandle) sqliteApiArguments[19],
         (MethodHandle) sqliteApiArguments[20],
         (MethodHandle) sqliteApiArguments[21],
-        (String) sqliteApiArguments[22],
-        (String) sqliteApiArguments[23],
-        (String) sqliteApiArguments[24],
-        (SqliteRuntimeProvenance) sqliteApiArguments[25],
-        (String) sqliteApiArguments[26]);
+        (MethodHandle) sqliteApiArguments[22],
+        (MethodHandle) sqliteApiArguments[23],
+        (MethodHandle) sqliteApiArguments[24],
+        (MethodHandle) sqliteApiArguments[25],
+        (String) sqliteApiArguments[26],
+        (String) sqliteApiArguments[27],
+        (String) sqliteApiArguments[28],
+        (SqliteRuntimeProvenance) sqliteApiArguments[29],
+        (String) sqliteApiArguments[30]);
   }
 
   BookAccess bookAccess(Path bookPath) {

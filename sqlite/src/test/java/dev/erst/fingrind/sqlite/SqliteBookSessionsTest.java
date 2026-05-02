@@ -56,8 +56,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
     switch (acceptedDecision) {
       case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
         try (session) {
-          assertEquals(
-              SqliteStoreAccessMode.PLAN_EXECUTION, store(session).lifecycle().accessMode());
+          assertEquals(SqliteStoreAccessMode.PLAN_EXECUTION, storeAccessMode(store(session)));
           assertFalse(java.nio.file.Files.exists(acceptedPath));
         }
       }
@@ -93,7 +92,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
     switch (readOnlyDecision) {
       case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
         try (session) {
-          assertEquals(SqliteStoreAccessMode.READ_ONLY, store(session).lifecycle().accessMode());
+          assertEquals(SqliteStoreAccessMode.READ_ONLY, storeAccessMode(store(session)));
           assertFalse(java.nio.file.Files.exists(readOnlyMissingPath));
           assertFalse(session.readSession().isInitialized());
         }
@@ -112,8 +111,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
     switch (existingDecision) {
       case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
         try (session) {
-          assertEquals(
-              SqliteStoreAccessMode.READ_WRITE_EXISTING, store(session).lifecycle().accessMode());
+          assertEquals(SqliteStoreAccessMode.READ_WRITE_EXISTING, storeAccessMode(store(session)));
           assertFalse(java.nio.file.Files.exists(existingMissingPath));
           assertFalse(session.readSession().isInitialized());
         }
@@ -145,8 +143,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
     switch (decision) {
       case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
         try (session) {
-          assertEquals(
-              SqliteStoreAccessMode.READ_WRITE_CREATE, store(session).lifecycle().accessMode());
+          assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, storeAccessMode(store(session)));
         }
       }
       case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
@@ -170,8 +167,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
               return ContractDecision.accepted(passphrase("open resolver secret"));
             },
             SqlitePassphraseIntent.NEW_SECRET)) {
-      assertEquals(
-          SqliteStoreAccessMode.READ_WRITE_CREATE, store(session).lifecycle().accessMode());
+      assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, storeAccessMode(store(session)));
     }
 
     ContractFailureException exception =
@@ -198,7 +194,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
   private void assertSessionAccessMode(
       SqliteBookSession session, SqliteStoreAccessMode expectedAccessMode) {
     try (session) {
-      assertEquals(expectedAccessMode, store(session).lifecycle().accessMode());
+      assertEquals(expectedAccessMode, storeAccessMode(store(session)));
     }
   }
 

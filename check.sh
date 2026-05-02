@@ -11,9 +11,10 @@
 # The script is location-independent: it always targets the repository that contains this file,
 # even when invoked from another working directory or through a symlink.
 #
-# Local runs keep the Gradle daemon for speed. When CI is set, the script adds --no-daemon
-# automatically to match the GitHub workflows. Non-interactive runs use --console=plain unless
-# the caller already selected a console mode.
+# Full verification always uses --no-daemon plus one repo-scoped GRADLE_USER_HOME so root
+# verification, nested Jazzer checks, and direct Docker or devcontainer verification do not share
+# daemon or cache state accidentally. Non-interactive runs use --console=plain unless the caller
+# already selected a console mode.
 #
 # Local shell resolution must already provide Java 26. FinGrind's product modules, CLI fat JAR,
 # and release flow all rely on the ambient `java` and `javac` commands, not only Gradle
@@ -34,6 +35,63 @@ die() {
     printf 'error: %s\n' "$1" >&2
     exit 1
 }
+
+print_usage_stage_lines() {
+    printf '%s\n' \
+        '  1. scripts/run-quality-gates.sh (check coverage + included build-logic test)' \
+        '  2. jazzer/bin/check' \
+        '  3. :cli:bundleCliArchive' \
+        '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
+        '  5. ./scripts/check-release-surface-scripts.sh' \
+        '  6. scripts/docker-smoke.sh (Docker acceptance workflow)'
+}
+
+print_usage() {
+    printf '%s\n' \
+        'Usage: ./check.sh [supported gradle options]' \
+        '' \
+        'Runs six fixed stages against the repository that contains this script:'
+    print_usage_stage_lines
+    printf '%s\n' \
+        '' \
+        'Supported options:' \
+        '  -h, --help' \
+        '  --console=plain|auto|rich|verbose' \
+        '  --console plain|auto|rich|verbose' \
+        '  --warning-mode=all|fail|summary|none' \
+        '  --warning-mode all|fail|summary|none' \
+        '  --no-daemon' \
+        '  --dry-run, -m' \
+        '  --stacktrace, --full-stacktrace, -s, -S' \
+        '  --info, --debug, --warn, --quiet, -i, -q' \
+        '  --scan, --profile, --continue, --no-continue' \
+        '  --parallel, --no-parallel' \
+        '  --build-cache, --no-build-cache' \
+        '  --configuration-cache, --no-configuration-cache' \
+        '  --rerun-tasks, --refresh-dependencies, --offline' \
+        '  -Dname=value, -Pname=value' \
+        '' \
+        'Unsupported inputs:' \
+        '  - positional Gradle tasks/selectors such as help, test, tasks, or :cli:test' \
+        '  - project-location overrides such as --project-dir, --build-file, or --settings-file' \
+        '' \
+        'Diagnostic escalation:' \
+        '  - Use ./check.sh --info ONLY for normal project-verification failures when the default output' \
+        '    does not yet show enough assertion detail or task context to fix the code.' \
+        '  - Use ./check.sh --stacktrace ONLY for build-tool, plugin, environment, or filesystem' \
+        '    failures when the default output does not already point to the failing source location.' \
+        '' \
+        'For anything outside this fixed interface, run ./gradlew directly.'
+}
+
+for early_argument in "$@"; do
+    case "${early_argument}" in
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+    esac
+done
 
 require_shell_java_26() {
     local resolved_java resolved_javac java_version_line java_version_token javac_version_line javac_version_token
@@ -80,7 +138,11 @@ readonly repo_root="$(resolve_script_dir)"
 readonly gradlew="${repo_root}/gradlew"
 readonly process_support_script="${repo_root}/scripts/check-process-support.sh"
 readonly monitor_support_script="${repo_root}/scripts/check-monitor-support.sh"
+readonly repo_lock_support_script="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
+readonly python_runtime_support_script="${repo_root}/scripts/python-runtime-support.sh"
+readonly quality_gate_script="${repo_root}/scripts/run-quality-gates.sh"
+readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-${repo_root}/tmp/gradle-user-home}"
 current_stage_id='startup'
 current_stage_label='starting'
 current_stage_log_path=''
@@ -89,58 +151,46 @@ emit_final_status_enabled=true
 readonly pulse_interval_seconds=15
 readonly stall_threshold_seconds=90
 readonly gradle_test_pulse_interval_millis=$((pulse_interval_seconds * 1000))
-readonly jazzer_regression_target_count=3
 readonly diagnostics_command_timeout_seconds=5
 readonly diagnostics_process_capture_limit=6
 readonly stall_exit_code=124
 
 [[ -f "${process_support_script}" ]] || die "missing process support helper at ${process_support_script}"
 [[ -f "${monitor_support_script}" ]] || die "missing check monitor helper at ${monitor_support_script}"
+[[ -f "${repo_lock_support_script}" ]] || die "missing repo verification lock helper at ${repo_lock_support_script}"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
+[[ -f "${python_runtime_support_script}" ]] || die "missing Python runtime support helper at ${python_runtime_support_script}"
+[[ -f "${quality_gate_script}" ]] || die "missing quality gate helper at ${quality_gate_script}"
 # shellcheck source=/dev/null
 source "${process_support_script}"
 # shellcheck source=/dev/null
 source "${monitor_support_script}"
 # shellcheck source=/dev/null
+source "${repo_lock_support_script}"
+# shellcheck source=/dev/null
 source "${stage_contract_script}"
+# shellcheck source=/dev/null
+source "${python_runtime_support_script}"
 
-print_usage() {
-    printf '%s\n' \
-        'Usage: ./check.sh [supported gradle options]' \
-        '' \
-        'Runs six fixed stages against the repository that contains this script:'
-    check_stage_usage_lines
-    printf '%s\n' \
-        '' \
-        'Supported options:' \
-        '  -h, --help' \
-        '  --console=plain|auto|rich|verbose' \
-        '  --console plain|auto|rich|verbose' \
-        '  --warning-mode=all|fail|summary|none' \
-        '  --warning-mode all|fail|summary|none' \
-        '  --daemon, --no-daemon' \
-        '  --dry-run, -m' \
-        '  --stacktrace, --full-stacktrace, -s, -S' \
-        '  --info, --debug, --warn, --quiet, -i, -q' \
-        '  --scan, --profile, --continue, --no-continue' \
-        '  --parallel, --no-parallel' \
-        '  --build-cache, --no-build-cache' \
-        '  --configuration-cache, --no-configuration-cache' \
-        '  --rerun-tasks, --refresh-dependencies, --offline' \
-        '  -Dname=value, -Pname=value' \
-        '' \
-        'Unsupported inputs:' \
-        '  - positional Gradle tasks/selectors such as help, test, tasks, or :cli:test' \
-        '  - project-location overrides such as --project-dir, --build-file, or --settings-file' \
-        '' \
-        'Diagnostic escalation:' \
-        '  - Use ./check.sh --info ONLY for normal project-verification failures when the default output' \
-        '    does not yet show enough assertion detail or task context to fix the code.' \
-        '  - Use ./check.sh --stacktrace ONLY for build-tool, plugin, environment, or filesystem' \
-        '    failures when the default output does not already point to the failing source location.' \
-        '' \
-        'For anything outside this fixed interface, run ./gradlew directly.'
+prepare_python_runtime_env
+
+count_jazzer_regression_targets() {
+    local topology_path=$1
+    python3 - "${topology_path}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+topology_path = Path(sys.argv[1])
+document = json.loads(topology_path.read_text())
+print(len(document["harnesses"]))
+PY
 }
+
+readonly jazzer_regression_target_count="$(
+    count_jazzer_regression_targets \
+        "${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
+)"
 
 print_failure_guidance() {
     case "${current_stage_id}" in
@@ -176,7 +226,6 @@ current_stage_id='argument-validation'
 current_stage_label='argument validation'
 
 gradle_args=()
-has_daemon_flag=false
 has_console_flag=false
 expects_value=''
 for gradle_arg in "$@"; do
@@ -194,8 +243,10 @@ for gradle_arg in "$@"; do
             print_usage
             exit 0
             ;;
-        --daemon|--no-daemon)
-            has_daemon_flag=true
+        --daemon)
+            die "./check.sh always runs without the Gradle daemon; remove --daemon"
+            ;;
+        --no-daemon)
             gradle_args+=("${gradle_arg}")
             ;;
         --console)
@@ -231,7 +282,7 @@ done
 
 [[ -z "${expects_value}" ]] || die "option ${expects_value} requires a value"
 
-if [[ -n "${CI:-}" && "${has_daemon_flag}" == false ]]; then
+if ! printf '%s\n' "${gradle_args[@]}" | grep -Fx -- '--no-daemon' >/dev/null 2>&1; then
     gradle_args+=(--no-daemon)
 fi
 
@@ -242,6 +293,9 @@ fi
 current_stage_id='java-validation'
 current_stage_label='Java 26 shell validation'
 require_shell_java_26
+mkdir -p "${gradle_user_home}"
+export GRADLE_USER_HOME="${gradle_user_home}"
+acquire_lock
 
 run_stage() {
     local stage_id=$1
@@ -254,6 +308,12 @@ run_stage() {
             env
             "FINGRIND_TEST_PULSE=1"
             "FINGRIND_TEST_PULSE_INTERVAL_MS=${gradle_test_pulse_interval_millis}"
+            "GRADLE_USER_HOME=${gradle_user_home}"
+        )
+    else
+        command_prefix+=(
+            env
+            "GRADLE_USER_HOME=${gradle_user_home}"
         )
     fi
     run_monitored_command \
@@ -267,11 +327,49 @@ run_stage() {
         ${gradle_args[@]+"${gradle_args[@]}"}
 }
 
+verify_jazzer_stage_runtime_warnings() {
+    [[ "${current_stage_log_path}" != '' ]] || return 0
+    local warning_patterns=(
+        'WARNING: A terminally deprecated method in sun.misc.Unsafe has been called'
+        'sun.misc.Unsafe::objectFieldOffset has been called'
+        'Sharing is only supported for boot loader classes because bootstrap classpath has been appended'
+    )
+    local matched_pattern
+    for matched_pattern in "${warning_patterns[@]}"; do
+        if grep -Fq "${matched_pattern}" "${current_stage_log_path}"; then
+            printf 'Forbidden Jazzer runtime warning detected: %s\n' "${matched_pattern}" | tee -a "${current_stage_log_path}" >&2
+            return 1
+        fi
+    done
+}
+
 run_shell_stage() {
     local stage_id=$1
     local stage_label=$2
     shift 2
-    run_monitored_command "${stage_id}" "${stage_label}" "${repo_root}" "$@"
+    run_monitored_command "${stage_id}" "${stage_label}" "${repo_root}" "$@" || return $?
+    if [[ "${stage_id}" == 'jazzer-check' ]]; then
+        if ! verify_jazzer_stage_runtime_warnings; then
+            printf '[CHECK-PULSE] stage=%s phase=postcheck-failure reason=forbidden-runtime-warning log=%s\n' \
+                "${stage_id}" \
+                "${current_stage_log_path}"
+            return 1
+        fi
+    fi
+}
+
+run_quality_gate_stage() {
+    local stage_id=$1
+    local stage_label=$2
+    run_monitored_command \
+        "${stage_id}" \
+        "${stage_label}" \
+        "${repo_root}" \
+        env \
+        "FINGRIND_TEST_PULSE=1" \
+        "FINGRIND_TEST_PULSE_INTERVAL_MS=${gradle_test_pulse_interval_millis}" \
+        "${quality_gate_script}" \
+        ${gradle_args[@]+"${gradle_args[@]}"}
 }
 
 for stage_index in "${!check_stage_ids[@]}"; do

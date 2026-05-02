@@ -28,6 +28,15 @@ final class CliInvocationText {
         + "' to inspect the supported command syntax.";
   }
 
+  static String helpSyntaxHint(OperationId operationId) {
+    Objects.requireNonNull(operationId, "operationId");
+    return "Run '"
+        + commandExample(OperationId.HELP)
+        + " "
+        + ProtocolCatalog.operationName(operationId)
+        + "' to inspect the supported command syntax.";
+  }
+
   static String helpExamplesHint() {
     return "Run '"
         + commandExample(OperationId.HELP)
@@ -47,6 +56,17 @@ final class CliInvocationText {
               dev.erst.fingrind.contract.protocol.PublicCliBundleTarget.WINDOWS_X86_64)
           : ProtocolCatalog.bundleLauncherCommand(
               dev.erst.fingrind.contract.protocol.PublicCliBundleTarget.MACOS_AARCH64);
+    }
+    if (FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
+      return isWindows(osName)
+          ? ".\\cli\\build\\install\\cli-shadow\\bin\\cli.bat"
+          : "./cli/build/install/cli-shadow/bin/cli";
+    }
+    if (FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
+      return "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>";
+    }
+    if (FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
+      return ProtocolCatalog.directJavaLauncherCommand(isWindows(osName));
     }
     return "fingrind";
   }

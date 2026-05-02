@@ -300,15 +300,12 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   void shutdownQuietly_reportsRuntimeFailuresFromNativeShutdown() {
     List<String> cleanupReports = new ArrayList<>();
 
-    try (SqliteBestEffort.ReporterOverride ignored =
-        SqliteBestEffort.replaceReporterForTesting(
-            (action, exception) ->
-                cleanupReports.add(action + "|" + exception.getClass().getSimpleName()))) {
-      assertDoesNotThrow(
-          () ->
-              SqliteNativeBootstrap.shutdownQuietly(
-                  throwingMethodHandle(new IllegalStateException("boom"), int.class)));
-    }
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeBootstrap.shutdownQuietly(
+                throwingMethodHandle(new IllegalStateException("boom"), int.class),
+                (action, exception) ->
+                    cleanupReports.add(action + "|" + exception.getClass().getSimpleName())));
 
     assertEquals(
         List.of("shutting down the process-scoped SQLite runtime|IllegalStateException"),

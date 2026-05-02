@@ -63,6 +63,15 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "sqliteLibraryEnvironmentVariable": "sqliteLibraryEnvironmentVariable",
                 "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty",
             },
+            "protectedBookFormat": {
+                "cipher": "cipher",
+                "legacyMode": "legacyMode",
+                "pageSize": "pageSize",
+                "reservedBytes": "reservedBytes",
+                "legacyPageSize": "legacyPageSize",
+                "kdfIter": "kdfIter",
+                "plaintextHeaderSize": "plaintextHeaderSize",
+            },
             "publicDistribution": {
                 "supportedPublicCliBundleTargets": "supportedPublicCliBundleTargets",
                 "unsupportedPublicCliBundleTargets": "unsupportedPublicCliBundleTargets",
@@ -124,6 +133,18 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "sqliteLibraryMode": "managed-only",
             "sqliteLibraryEnvironmentVariable": "FINGRIND_SQLITE_LIBRARY",
             "sqliteBundleHomeSystemProperty": "fingrind.bundle.home",
+        },
+    )
+    write_json(
+        protocol_root / "protected-book-format-contract.json",
+        {
+            "cipher": "chacha20",
+            "legacyMode": False,
+            "pageSize": 4096,
+            "reservedBytes": 32,
+            "legacyPageSize": 4096,
+            "kdfIter": 64007,
+            "plaintextHeaderSize": 0,
         },
     )
     write_json(
@@ -210,6 +231,10 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         fixture_root, os_name="Windows 11", architecture="ARM64"
     )
     assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.0"
+    assert loaded["protectedBookFormat"]["cipher"] == "chacha20"
+    assert loaded["protectedBookFormat"]["legacyMode"] is False
+    assert loaded["protectedBookFormat"]["pageSize"] == 4096
+    assert loaded["protectedBookFormat"]["reservedBytes"] == 32
     assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.3"
     assert (
         loaded["managedSqlite"]["requiredSqliteSourceId"]

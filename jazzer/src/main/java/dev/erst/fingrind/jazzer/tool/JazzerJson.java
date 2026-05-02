@@ -62,6 +62,10 @@ public final class JazzerJson {
     return JSON_MAPPER.writeValueAsString(value);
   }
 
+  static JsonMapper jsonMapper() {
+    return JSON_MAPPER;
+  }
+
   private static SimpleModule finGrindWireValueModule() {
     return new SimpleModule("finGrindWireValues")
         .addSerializer(
@@ -73,11 +77,11 @@ public final class JazzerJson {
   }
 
   /** Serializer that forces one concrete FinGrind-owned WireValue type onto its wire value. */
-  private static final class FinGrindConcreteWireValueSerializer<T extends WireValue>
+  static final class FinGrindConcreteWireValueSerializer<T extends WireValue>
       extends ValueSerializer<T> {
     private final Class<T> wireValueType;
 
-    private FinGrindConcreteWireValueSerializer(Class<T> wireValueType) {
+    FinGrindConcreteWireValueSerializer(Class<T> wireValueType) {
       this.wireValueType = Objects.requireNonNull(wireValueType, "wireValueType");
     }
 
@@ -94,7 +98,7 @@ public final class JazzerJson {
   }
 
   /** Serializer that forces FinGrind-owned enums onto their explicit wire values. */
-  private static final class FinGrindEnumSerializer extends ValueSerializer<Enum<?>> {
+  static final class FinGrindEnumSerializer extends ValueSerializer<Enum<?>> {
     @Override
     public void serialize(
         Enum<?> value, JsonGenerator jsonGenerator, SerializationContext serializationContext) {
@@ -108,11 +112,11 @@ public final class JazzerJson {
   }
 
   /** Deserializer that reads one concrete FinGrind-owned WireValue type from its wire value. */
-  private static final class FinGrindConcreteWireValueDeserializer<T extends WireValue>
+  static final class FinGrindConcreteWireValueDeserializer<T extends WireValue>
       extends ValueDeserializer<T> {
     private final Class<T> wireValueType;
 
-    private FinGrindConcreteWireValueDeserializer(Class<T> wireValueType) {
+    FinGrindConcreteWireValueDeserializer(Class<T> wireValueType) {
       this.wireValueType = Objects.requireNonNull(wireValueType, "wireValueType");
     }
 
@@ -133,14 +137,14 @@ public final class JazzerJson {
   }
 
   /** Deserializer that reads FinGrind-owned enums back through their wire-value vocabulary. */
-  private static final class FinGrindEnumDeserializer extends ValueDeserializer<Enum<?>> {
+  static final class FinGrindEnumDeserializer extends ValueDeserializer<Enum<?>> {
     private final @Nullable Class<?> enumType;
 
-    private FinGrindEnumDeserializer() {
+    FinGrindEnumDeserializer() {
       enumType = null;
     }
 
-    private FinGrindEnumDeserializer(@Nullable Class<?> enumType) {
+    FinGrindEnumDeserializer(@Nullable Class<?> enumType) {
       this.enumType = enumType;
     }
 
@@ -167,7 +171,7 @@ public final class JazzerJson {
       return Enum.class;
     }
 
-    private Class<?> requireEnumType(DeserializationContext deserializationContext) {
+    Class<?> requireEnumType(DeserializationContext deserializationContext) {
       if (enumType != null) {
         return enumType;
       }
@@ -178,7 +182,7 @@ public final class JazzerJson {
       return contextualEnumType;
     }
 
-    private static @Nullable Class<?> contextualEnumType(
+    static @Nullable Class<?> contextualEnumType(
         DeserializationContext deserializationContext, @Nullable BeanProperty property) {
       if (property != null && property.getType().getRawClass().isEnum()) {
         return property.getType().getRawClass();
@@ -186,8 +190,7 @@ public final class JazzerJson {
       return contextualEnumType(deserializationContext);
     }
 
-    private static @Nullable Class<?> contextualEnumType(
-        DeserializationContext deserializationContext) {
+    static @Nullable Class<?> contextualEnumType(DeserializationContext deserializationContext) {
       if (deserializationContext.getContextualType() != null
           && deserializationContext.getContextualType().getRawClass().isEnum()) {
         return deserializationContext.getContextualType().getRawClass();
@@ -196,7 +199,7 @@ public final class JazzerJson {
     }
   }
 
-  private static String wireValue(Object value) {
+  static String wireValue(Object value) {
     Objects.requireNonNull(value, "value");
     if (value instanceof WireValue wireValue) {
       String serialized = wireValue.wireValue();
@@ -222,7 +225,7 @@ public final class JazzerJson {
             + " must implement WireValue or be an enum.");
   }
 
-  private static Enum<?> parseEnum(
+  static Enum<?> parseEnum(
       Class<?> enumType, String text, DeserializationContext deserializationContext) {
     if (WireValue.class.isAssignableFrom(enumType)) {
       return parseWireValueEnum(enumType, text, deserializationContext);
@@ -246,7 +249,7 @@ public final class JazzerJson {
             enumType, text, "Unsupported enum value for %s", enumType.getName());
   }
 
-  private static Enum<?> parseWireValueEnum(
+  static Enum<?> parseWireValueEnum(
       Class<?> enumType, String wireValue, DeserializationContext deserializationContext) {
     try {
       Method fromWireValue = enumType.getMethod("fromWireValue", String.class);
@@ -281,7 +284,7 @@ public final class JazzerJson {
     }
   }
 
-  private static <T extends WireValue> T parseWireValueType(
+  static <T extends WireValue> T parseWireValueType(
       Class<T> wireValueType, String wireValue, DeserializationContext deserializationContext) {
     try {
       Method fromWireValue = wireValueType.getMethod("fromWireValue", String.class);

@@ -4,7 +4,9 @@ import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.spotless.LineEnding
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.register
@@ -93,18 +95,24 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
             }
 
             val coverageProjects = subprojects.toList()
+            val coverageTestTasks =
+                coverageProjects.flatMap { subproject ->
+                    subproject.tasks.withType(Test::class.java).toList()
+                }
+            val coverageExecutionData =
+                providers.provider<List<java.io.File>> {
+                    coverageTestTasks.mapNotNull { testTask ->
+                        testTask.extensions.findByType(JacocoTaskExtension::class.java)?.destinationFile
+                    }
+                }
 
             tasks.register<JacocoReport>("jacocoAggregatedReport") {
                 group = "verification"
                 description = "Aggregates JaCoCo coverage reports from all modules into a single report."
 
-                dependsOn(coverageProjects.map { "${it.path}:test" })
+                dependsOn(coverageTestTasks)
 
-                executionData.from(
-                    coverageProjects.map { subproject ->
-                        FinGrindFilesystemLayout.jacocoDestinationFile(subproject, "test")
-                    }
-                )
+                executionData.from(coverageExecutionData)
                 sourceDirectories.from(
                     coverageProjects.map { it.layout.projectDirectory.dir("src/main/java").asFile }
                 )

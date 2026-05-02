@@ -22,11 +22,17 @@ final class SqliteNativeApiLoader {
   }
 
   static SqliteNativeApi loadApi(SqliteLibraryTarget libraryTarget) {
-    Arena libraryArena = Arena.ofShared();
+    return loadApi(libraryTarget, Arena.ofShared());
+  }
+
+  private static SqliteNativeApi loadApi(SqliteLibraryTarget libraryTarget, Arena libraryArena) {
     try {
       SymbolLookup lookup = libraryLookup(libraryTarget, libraryArena);
       LoadedRuntime runtime = validateRuntime(lookup, libraryTarget);
-      return SqliteNativeApiBindings.bind(lookup).api(libraryArena, runtime);
+      SqliteNativeApiBindings bindings = SqliteNativeApiBindings.bind(lookup);
+      SqliteNativeApi sqliteApi = bindings.api(libraryArena, runtime);
+      SqliteProtectedBookFormatIntrospection.requireRuntimeDefaultCipherContract(sqliteApi);
+      return sqliteApi;
     } catch (RuntimeException | Error exception) {
       libraryArena.close();
       throw exception;
@@ -97,12 +103,14 @@ final class SqliteNativeApiLoader {
 
   private record SqliteNativeApiBindings(
       SqliteConnectionCalls connections,
+      SqliteFormatCalls formatCalls,
       SqliteStatementCalls statements,
       SqliteErrorCalls errors,
       MethodHandle sqlite3Shutdown) {
     private static SqliteNativeApiBindings bind(SymbolLookup lookup) {
       return new SqliteNativeApiBindings(
           SqliteConnectionCalls.bind(lookup),
+          SqliteFormatCalls.bind(lookup),
           SqliteStatementCalls.bind(lookup),
           SqliteErrorCalls.bind(lookup),
           downcall(lookup, "sqlite3_shutdown", FunctionDescriptor.of(ValueLayout.JAVA_INT)));
@@ -118,6 +126,10 @@ final class SqliteNativeApiLoader {
           sqlite3Shutdown,
           connections.sqlite3BusyTimeout(),
           connections.sqlite3ExtendedResultCodes(),
+          formatCalls.sqlite3mcConfig(),
+          formatCalls.sqlite3mcConfigCipher(),
+          formatCalls.sqlite3mcCipherName(),
+          formatCalls.sqlite3FileControl(),
           connections.sqlite3Exec(),
           connections.sqlite3Free(),
           statements.sqlite3PrepareV2(),
@@ -137,6 +149,46 @@ final class SqliteNativeApiLoader {
           runtime.loadedSourceId(),
           runtime.runtimeProvenance(),
           runtime.loadedLibraryPath());
+    }
+  }
+
+  private record SqliteFormatCalls(
+      MethodHandle sqlite3mcConfig,
+      MethodHandle sqlite3mcConfigCipher,
+      MethodHandle sqlite3mcCipherName,
+      MethodHandle sqlite3FileControl) {
+    private static SqliteFormatCalls bind(SymbolLookup lookup) {
+      return new SqliteFormatCalls(
+          downcall(
+              lookup,
+              "sqlite3mc_config",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3mc_config_cipher",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3mc_cipher_name",
+              FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3_file_control",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS)));
     }
   }
 

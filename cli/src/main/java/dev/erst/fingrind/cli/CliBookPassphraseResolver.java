@@ -8,13 +8,12 @@ import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
-import java.io.Console;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
@@ -124,38 +123,46 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   }
 
   static Terminal systemTerminal() {
-    return new ConsoleBackedTerminal(CliBookPassphraseResolver::systemConsoleReader);
+    return new PromptingConsoleLookupTerminal(CliBookPassphraseResolver::systemPromptingConsole);
   }
 
-  static Optional<Terminal> systemConsoleReader() {
-    return Optional.ofNullable(System.console())
-        .filter(Console::isTerminal)
-        .flatMap(consoleHandle -> systemConsoleReader(consoleHandle::readPassword));
-  }
-
-  static Optional<Terminal> systemConsoleReader(@Nullable PromptingConsole promptingConsole) {
-    if (promptingConsole == null) {
-      return Optional.empty();
+  private static @Nullable PromptingConsole systemPromptingConsole() {
+    java.io.Console console = availableSystemConsole();
+    if (console == null) {
+      return null;
     }
-    return Optional.of(new PromptingConsoleTerminal(promptingConsole));
+    return availableSystemPromptingConsole(wrap(console::isTerminal, console::readPassword));
+  }
+
+  private static java.io.@Nullable Console availableSystemConsole() {
+    return System.console();
+  }
+
+  static @Nullable PromptingConsole availableSystemPromptingConsole(
+      @Nullable SystemPromptingConsole systemConsole) {
+    if (systemConsole == null || !systemConsole.isTerminal()) {
+      return null;
+    }
+    return systemConsole;
   }
 
   /** Terminal adapter that obtains the controlling prompt bridge lazily for each read. */
-  static final class ConsoleBackedTerminal implements Terminal {
-    private final Supplier<Optional<Terminal>> readerSupplier;
+  static final class PromptingConsoleLookupTerminal implements Terminal {
+    private final Supplier<@Nullable PromptingConsole> promptingConsoleSupplier;
 
-    ConsoleBackedTerminal(Supplier<Optional<Terminal>> readerSupplier) {
-      this.readerSupplier = Objects.requireNonNull(readerSupplier, "readerSupplier");
+    PromptingConsoleLookupTerminal(Supplier<@Nullable PromptingConsole> promptingConsoleSupplier) {
+      this.promptingConsoleSupplier =
+          Objects.requireNonNull(promptingConsoleSupplier, "promptingConsoleSupplier");
     }
 
     @Override
     public ContractDecision<char[]> readPassword(String prompt) {
       Objects.requireNonNull(prompt, "prompt");
-      Optional<Terminal> reader = Objects.requireNonNull(readerSupplier.get(), "reader");
-      if (reader.isEmpty()) {
+      PromptingConsole promptingConsole = promptingConsoleSupplier.get();
+      if (promptingConsole == null) {
         return ContractDecision.rejected(noConsole());
       }
-      return reader.orElseThrow().readPassword(prompt);
+      return new PromptingConsoleTerminal(promptingConsole).readPassword(prompt);
     }
   }
 
@@ -163,7 +170,55 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   @FunctionalInterface
   interface PromptingConsole {
     /** Reads one password from the underlying console prompt and may return {@code null} on EOF. */
+    char @Nullable [] readPassword(String prompt);
+  }
+
+  /** Typed system-console seam that exposes prompt and terminal state together. */
+  interface SystemPromptingConsole extends PromptingConsole {
+    /** Reports whether the backing console is interactive for password prompting. */
+    boolean isTerminal();
+  }
+
+  /** Typed boolean seam for one console-terminal check. */
+  @FunctionalInterface
+  interface TerminalState {
+    /** Reports whether the wrapped console is interactive for prompting. */
+    boolean isTerminal();
+  }
+
+  /** Typed formatted-password seam matching the JDK console contract. */
+  @FunctionalInterface
+  interface FormattedPasswordReader {
+    /**
+     * Reads a password with one format string plus arguments and may return {@code null} on EOF.
+     */
     char @Nullable [] readPassword(String format, Object... arguments);
+  }
+
+  static SystemPromptingConsole wrap(
+      TerminalState terminalState, FormattedPasswordReader passwordReader) {
+    return new WrappedConsole(terminalState, passwordReader);
+  }
+
+  /** JDK console adapter that exposes one interactive-terminal check plus prompt reads. */
+  static final class WrappedConsole implements SystemPromptingConsole {
+    private final TerminalState terminalState;
+    private final FormattedPasswordReader passwordReader;
+
+    WrappedConsole(TerminalState terminalState, FormattedPasswordReader passwordReader) {
+      this.terminalState = Objects.requireNonNull(terminalState, "terminalState");
+      this.passwordReader = Objects.requireNonNull(passwordReader, "passwordReader");
+    }
+
+    @Override
+    public boolean isTerminal() {
+      return terminalState.isTerminal();
+    }
+
+    @Override
+    public char @Nullable [] readPassword(String prompt) {
+      return passwordReader.readPassword("%s", prompt);
+    }
   }
 
   /** Shared terminal adapter that converts one typed prompt seam into FinGrind decisions. */
@@ -178,14 +233,14 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     public ContractDecision<char[]> readPassword(String prompt) {
       Objects.requireNonNull(prompt, "prompt");
       try {
-        char @Nullable [] password = promptingConsole.readPassword("%s", prompt);
+        char @Nullable [] password = promptingConsole.readPassword(prompt);
         if (password == null) {
           return ContractDecision.rejected(
               interactivePromptFailure(
                   "FinGrind did not receive a book passphrase from the interactive console."));
         }
         return ContractDecision.accepted(password);
-      } catch (RuntimeException exception) {
+      } catch (RuntimeException | IOError exception) {
         return ContractDecision.rejected(
             ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED.failure(
                 "Failed to prompt for a book passphrase from the interactive console.",

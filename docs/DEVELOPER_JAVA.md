@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER_JAVA
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -13,9 +13,10 @@ route:
 **Purpose**: Document the supported host-native macOS Java and Gradle setup for FinGrind contributors, including how Java and Gradle should be sourced and why.
 **Prerequisites**: macOS with zsh.
 
-The preferred contributor workflow is now the committed devcontainer described in
-[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). This document owns the host-native
-fallback path for contributors who explicitly want local-shell Java.
+The preferred contributor workflow is the committed devcontainer described in
+[DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). VS Code is optional there; the
+environment itself is the Dev Container Spec surface. This document owns the host-native fallback
+path for contributors who explicitly want local-shell Java.
 
 Supported workstation shape:
 - the repository preferably lives on the Mac's local filesystem for best performance
@@ -295,7 +296,7 @@ After Java 26 is active in the shell, the canonical FinGrind verification sequen
 java --version
 ./gradlew --version --console=plain
 ./gradlew check --no-daemon --console=plain
-./gradlew -p jazzer test jazzerRegression --no-daemon --console=plain
+jazzer/bin/check --no-daemon --console=plain
 ./gradlew :cli:bundleCliArchive --no-daemon --console=plain
 ./scripts/bundle-smoke.sh
 ./check.sh --console=plain

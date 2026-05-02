@@ -1,0 +1,114 @@
+package dev.erst.fingrind.cli;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.ContractDecision;
+import dev.erst.fingrind.contract.OpenBookResult;
+import java.nio.file.Path;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
+  @TempDir Path tempDirectory;
+
+  @Test
+  void inspection_open_and_commit_guards_cover_accepted_rejected_and_runtime_shapes()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("entity.sqlite");
+
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNonInitializedInspection(
+                () -> ContractDecision.accepted(new BookInspection.Missing(1)), bookPath));
+    IllegalStateException initializedInspection =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNonInitializedInspection(
+                    () ->
+                        ContractDecision.accepted(
+                            new BookInspection.Initialized(
+                                1, 1, 1, CliFuzzFixtures.fixedClock().instant())),
+                    bookPath));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        initializedInspection, "unexpectedly inspected as initialized");
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNonInitializedInspection(
+                () ->
+                    ContractDecision.rejected(
+                        SqliteRoundTripWorkflowTestSupport.contractFailure("inspection rejected")),
+                bookPath));
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNonInitializedInspection(
+                () -> {
+                  throw new IllegalStateException("inspection runtime");
+                },
+                bookPath));
+
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotOpened(
+                () ->
+                    ContractDecision.accepted(
+                        new OpenBookResult.Rejected(
+                            new dev.erst.fingrind.contract.BookAdministrationRejection
+                                .BookContainsSchema())),
+                bookPath));
+    IllegalStateException openedBook =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotOpened(
+                    () ->
+                        ContractDecision.accepted(
+                            new OpenBookResult.Opened(CliFuzzFixtures.fixedClock().instant())),
+                    bookPath));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        openedBook, "unexpectedly opened as a valid book");
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotOpened(
+                () ->
+                    ContractDecision.rejected(
+                        SqliteRoundTripWorkflowTestSupport.contractFailure("open rejected")),
+                bookPath));
+
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotCommitted(
+                () ->
+                    ContractDecision.accepted(
+                        SqliteRoundTripWorkflowTestSupport.commitRejected(
+                            new dev.erst.fingrind.contract.PostingRejection.BookNotInitialized())),
+                "book-not-initialized"));
+    IllegalStateException committedPosting =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotCommitted(
+                    () ->
+                        ContractDecision.accepted(
+                            SqliteRoundTripWorkflowTestSupport.committed("posting-1")),
+                    null));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        committedPosting, "unexpectedly committed a posting fact");
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotCommitted(
+                () ->
+                    ContractDecision.rejected(
+                        SqliteRoundTripWorkflowTestSupport.contractFailure("commit rejected")),
+                null));
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotCommitted(
+                () -> {
+                  throw new IllegalStateException("commit runtime");
+                },
+                null));
+  }
+}

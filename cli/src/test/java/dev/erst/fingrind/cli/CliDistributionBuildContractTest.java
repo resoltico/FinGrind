@@ -49,6 +49,35 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
+  void cliBuild_configuresSourceCheckoutLauncherWithManagedRuntimeDefaults() throws IOException {
+    String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+
+    assertTrue(
+        buildScript.indexOf("val sourceCheckoutRuntimeDistribution =")
+            < buildScript.indexOf("application {"));
+    assertTrue(buildScript.contains("applicationDefaultJvmArgs"));
+    assertTrue(buildScript.contains("\"--enable-native-access=ALL-UNNAMED\""));
+    assertTrue(
+        buildScript.contains(
+            "\"-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}\""));
+    assertTrue(
+        buildScript.contains("\"-Dfingrind.source-checkout.root=${repositoryRootDirectory}\""));
+    assertTrue(buildScript.contains("tasks.named<JavaExec>(\"run\")"));
+    assertFalse(buildScript.contains("jvmArgs(\"-Dfingrind.runtime.distribution="));
+  }
+
+  @Test
+  void cliBuild_stampsTheDeveloperRawJarWithNativeAccessAndCheckoutRootMetadata()
+      throws IOException {
+    String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+
+    assertTrue(buildScript.contains("\"Enable-Native-Access\" to \"ALL-UNNAMED\""));
+    assertTrue(
+        buildScript.contains(
+            "\"FinGrind-Source-Checkout-Root\" to repositoryRootDirectory.toString()"));
+  }
+
+  @Test
   void cliBuild_generatesBundleManifestFromCanonicalContractMetadata() throws IOException {
     Path repositoryRoot = repositoryRoot();
     String buildScript = Files.readString(repositoryRoot.resolve("cli/build.gradle.kts"));
@@ -65,14 +94,21 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
-  void cliBuild_prunesStaleVersionedBundleRootsBeforeStagingTheCurrentBundle() throws IOException {
+  void cliBuild_prunesStaleVersionedBundleRootsArchivesAndChecksumsBeforeStagingTheCurrentBundle()
+      throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
 
+    assertTrue(buildScript.contains("tasks.register<Delete>(\"cleanBundleOutputs\")"));
     assertTrue(
         buildScript.contains(
-            "Deletes staged self-contained FinGrind CLI bundle directories for all prior versions."));
+            "Deletes staged self-contained FinGrind CLI bundle directories plus prior bundle archives and checksum files."));
     assertTrue(
         buildScript.contains("candidate.isDirectory && candidate.name.startsWith(\"fingrind-\")"));
+    assertTrue(
+        buildScript.contains(
+            "candidate.name.startsWith(\"fingrind-\") && (candidate.isFile || candidate.isDirectory)"));
+    assertTrue(buildScript.contains("dependsOn(cleanBundleOutputs)"));
+    assertFalse(buildScript.contains("cleanBundleRoot"));
   }
 
   @Test
@@ -201,8 +237,10 @@ class CliDistributionBuildContractTest {
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-command-bridge.ps1"));
     String releaseSmokeSupport =
         Files.readString(repositoryRoot.resolve("scripts/release-smoke-support.sh"));
-    String releaseSmokeWorkflow =
-        Files.readString(repositoryRoot.resolve("scripts/release-smoke-workflow.sh"));
+    String releaseSmokeCommon =
+        Files.readString(repositoryRoot.resolve("scripts/release-smoke-common.sh"));
+    String releaseSmokeWorkflowSupport =
+        Files.readString(repositoryRoot.resolve("scripts/release-smoke-workflow-support.sh"));
     String releaseSmokeWorkflowPython =
         Files.readString(repositoryRoot.resolve("scripts/release-smoke-workflow.py"));
 
@@ -217,10 +255,13 @@ class CliDistributionBuildContractTest {
     assertFalse(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
     assertFalse(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
     assertTrue(releaseSmokeSupport.contains("release-smoke-common.sh"));
-    assertTrue(releaseSmokeSupport.contains("release-smoke-workflow.sh"));
+    assertTrue(releaseSmokeSupport.contains("release-smoke-workflow-support.sh"));
     assertFalse(releaseSmokeSupport.contains("release-smoke-fixtures.sh"));
     assertFalse(releaseSmokeSupport.contains("release-smoke-assertions.sh"));
-    assertTrue(releaseSmokeWorkflow.contains("release-smoke-workflow.py"));
+    assertTrue(releaseSmokeCommon.contains("must be sourced"));
+    assertTrue(releaseSmokeSupport.contains("must be sourced"));
+    assertTrue(releaseSmokeWorkflowSupport.contains("release-smoke-workflow.py"));
+    assertTrue(releaseSmokeWorkflowSupport.contains("must be sourced"));
     assertTrue(releaseSmokeWorkflowPython.contains("release_smoke_workflow.runner import main"));
     assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
     assertTrue(bundleOfficeWorker.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));

@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: CORE
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -160,7 +160,22 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
 - Purpose: carry one complete accounting event with its effective date and lines
 - Normalization: defensively copies `lines`
 - Validation: rejects `null` effective date, empty lines, entries that do not contain both a debit
-  and a credit side, mixed currencies, and unbalanced totals
+  and a credit side, mixed currencies, and unbalanced totals; validation now reports every detected
+  journal-entry violation in one deterministic pass
+
+## `JournalEntryValidationException`
+
+`JournalEntryValidationException` is the aggregated request-validation failure raised when one
+journal entry violates multiple grammar rules at once.
+
+```java
+public final class JournalEntryValidationException extends IllegalArgumentException
+```
+
+- Purpose: carry every detected journal-entry violation in one ordered failure object so callers can
+  repair the whole entry before retrying
+- Surface: `violations()` returns the full deterministic violation list, and `getMessage()` joins
+  that list into one caller-facing summary
 
 ## `JournalLine`
 

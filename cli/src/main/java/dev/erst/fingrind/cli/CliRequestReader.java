@@ -1,10 +1,12 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.JournalEntryValidationException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -61,6 +63,13 @@ final class CliRequestReader {
           CliJsonRequestCodec.requireRootObject(readRootNode(requestFile, requestHint)));
     } catch (CliRequestException exception) {
       throw exception;
+    } catch (JournalEntryValidationException exception) {
+      throw new CliRequestException(
+          ContractErrors.Descriptor.INVALID_REQUEST.code(),
+          CliJsonRequestCodec.normalizedMessage(exception),
+          requestHint,
+          exception,
+          new CliErrorJsonModels.InvalidRequestDetails(exception.violations()));
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
           ContractErrors.Descriptor.INVALID_REQUEST.code(),

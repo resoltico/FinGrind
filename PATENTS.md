@@ -6,16 +6,18 @@ permissions but does not contain an explicit patent grant or patent retaliation 
 ## Shipped Components
 
 The current distribution surfaces ship these notable component families.
-The packaged CLI JAR bundles FinGrind code plus the Jackson, PDFBox, and Noto Sans assets it
-needs directly.
-The public self-contained bundles additionally ship the managed SQLite runtime artifacts and their
-license texts.
+The packaged CLI JAR bundles FinGrind code plus Jackson (including jackson-core's embedded
+FastDoubleParser), Apache PDFBox (including FontBox and PDFBox IO with their embedded
+third-party content), Apache Commons Logging, and the Noto Sans font assets.
+The public self-contained bundles additionally ship the managed SQLite runtime artifacts and
+their license texts.
 
 | Component | License | Explicit Patent Grant |
 |:----------|:--------|:----------------------|
 | FinGrind | MIT | No (implicit only) |
 | Jackson Databind / Core / Annotations | Apache 2.0 | Yes |
 | Apache PDFBox / FontBox / PDFBox IO | Apache 2.0 | Yes |
+| Apache Commons Logging | Apache 2.0 | Yes |
 | Noto Sans | SIL OFL 1.1 | No separate express patent-grant section in the bundled license text |
 | SQLite3 Multiple Ciphers | MIT | No (implicit only) |
 | SQLite | Public Domain | No license-based patent grant text |

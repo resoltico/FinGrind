@@ -36,11 +36,15 @@ final class SqliteConnectionConfigurer {
   }
 
   static void closeAfterConfigurationFailure(SqliteNativeDatabase openedDatabase) {
+    closeAfterConfigurationFailure(openedDatabase, SqliteBestEffort::reportCleanupFailure);
+  }
+
+  static void closeAfterConfigurationFailure(
+      SqliteNativeDatabase openedDatabase, SqliteBestEffort.Reporter reporter) {
     try {
       openedDatabase.close();
     } catch (SqliteNativeException exception) {
-      SqliteBestEffort.reportCleanupFailure(
-          "closing one SQLite database after configuration failure", exception);
+      reporter.report("closing one SQLite database after configuration failure", exception);
     }
   }
 

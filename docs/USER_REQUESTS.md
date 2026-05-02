@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.29.0"
+version: "0.30.0"
 domain: HUMAN_REQUESTS
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -24,8 +24,8 @@ source:
 - `--book-passphrase-prompt` with an interactive non-echo terminal prompt
 
 `rekey-book` reuses those current-book routes and additionally requires exactly one replacement
-passphrase source: `--new-book-key-file`, `--new-book-passphrase-stdin`, or
-`--new-book-passphrase-prompt`.
+passphrase source: `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, or
+`--replacement-book-passphrase-prompt`.
 
 ## Posting Request Shape
 
@@ -363,6 +363,9 @@ Malformed JSON, wrong field types, missing required fields, invalid date/time te
 domain-validation failures return `status: "error"` with code `invalid-request`.
 Argument and parsing failures may also carry a `hint` and `argument` field so a caller can correct
 the invocation mechanically.
+Journal-entry validation now reports every detected journal grammar violation in one deterministic
+`invalid-request` response and publishes the full ordered set under `details.violations[]`, so
+callers can repair the whole request before retrying without scraping prose.
 
 Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)

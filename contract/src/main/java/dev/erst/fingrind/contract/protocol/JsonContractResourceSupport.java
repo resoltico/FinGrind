@@ -60,6 +60,26 @@ final class JsonContractResourceSupport {
     return normalized;
   }
 
+  static boolean requireBoolean(JsonNode document, String key) {
+    Objects.requireNonNull(document, "document");
+    Objects.requireNonNull(key, "key");
+    JsonNode value = document.get(key);
+    if (value == null || value.isNull() || !value.isBoolean()) {
+      throw new IllegalArgumentException(key + " must be one JSON boolean.");
+    }
+    return value.booleanValue();
+  }
+
+  static int requireInt(JsonNode document, String key) {
+    Objects.requireNonNull(document, "document");
+    Objects.requireNonNull(key, "key");
+    JsonNode value = document.get(key);
+    if (value == null || value.isNull() || !value.canConvertToInt()) {
+      throw new IllegalArgumentException(key + " must be one JSON integer.");
+    }
+    return value.intValue();
+  }
+
   static List<String> optionalStringArray(JsonNode document, String key) {
     Objects.requireNonNull(document, "document");
     Objects.requireNonNull(key, "key");

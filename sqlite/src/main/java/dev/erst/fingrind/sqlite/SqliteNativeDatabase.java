@@ -8,6 +8,8 @@ import java.util.Objects;
 class SqliteNativeDatabase implements AutoCloseable {
   private final MemorySegment databaseHandle;
   private final SqliteNativeApi sqliteApi;
+  private final SqliteThreadOwner threadOwner =
+      new SqliteThreadOwner("SQLite native database handle");
   private boolean closed;
 
   SqliteNativeDatabase(MemorySegment databaseHandle) {
@@ -20,15 +22,18 @@ class SqliteNativeDatabase implements AutoCloseable {
   }
 
   MemorySegment handle() {
+    threadOwner.requireOwnerThread();
     ensureOpen();
     return databaseHandle;
   }
 
   SqliteNativeApi sqliteApi() {
+    threadOwner.requireOwnerThread();
     return sqliteApi;
   }
 
   SqliteNativeStatement prepare(String sql) {
+    threadOwner.requireOwnerThread();
     ensureOpen();
     return SqliteNativeStatements.prepare(this, sql);
   }
@@ -39,6 +44,7 @@ class SqliteNativeDatabase implements AutoCloseable {
    * <p>Row-producing SQL uses {@link SqliteNativeStatement} directly instead of this helper.
    */
   void executeStatement(String sql) {
+    threadOwner.requireOwnerThread();
     ensureOpen();
     try (SqliteNativeStatement statement = prepare(sql)) {
       int resultCode = statement.step();
@@ -50,6 +56,7 @@ class SqliteNativeDatabase implements AutoCloseable {
 
   /** Executes one multi-statement SQL script through {@code sqlite3_exec}. */
   void executeScript(String sql) {
+    threadOwner.requireOwnerThread();
     ensureOpen();
     try (Arena arena = Arena.ofConfined()) {
       SqliteNativeStatements.executeScript(handle(), arena.allocateFrom(sql), sqliteApi);
@@ -58,6 +65,7 @@ class SqliteNativeDatabase implements AutoCloseable {
 
   @Override
   public void close() {
+    threadOwner.requireOwnerThread();
     if (closed) {
       return;
     }

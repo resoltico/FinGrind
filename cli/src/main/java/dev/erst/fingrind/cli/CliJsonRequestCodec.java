@@ -19,6 +19,7 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
+import tools.jackson.core.TokenStreamLocation;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -81,11 +82,13 @@ final class CliJsonRequestCodec {
   }
 
   static CliRequestException requestReadFailure(Exception exception, String hint) {
+    CliReadErrorDetails readErrorDetails = readErrorDetails(exception);
     return new CliRequestException(
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
-        readFailureMessage(exception),
+        readErrorDetails.message(),
         hint,
-        exception);
+        exception,
+        readErrorDetails.details());
   }
 
   static CliRequestException requestReadFailure(
@@ -111,8 +114,47 @@ final class CliJsonRequestCodec {
   }
 
   static String readFailureMessage(Exception exception) {
+    return readErrorDetails(exception).message();
+  }
+
+  private static CliReadErrorDetails readErrorDetails(Exception exception) {
     Objects.requireNonNull(exception, "exception");
-    return "Failed to read request JSON.";
+    if (exception instanceof JacksonException jacksonException) {
+      JsonParseLocation parseLocation = parseLocation(jacksonException);
+      if (parseLocation != null) {
+        return new CliReadErrorDetails(
+            "Failed to read request JSON at line "
+                + parseLocation.line()
+                + ", column "
+                + parseLocation.column()
+                + ".",
+            new dev.erst.fingrind.cli.json.CliErrorJsonModels.InvalidJsonDetails(
+                Objects.requireNonNullElse(
+                    jacksonException.getOriginalMessage(),
+                    Objects.requireNonNullElse(
+                        jacksonException.getMessage(), "Request JSON is invalid.")),
+                parseLocation.line(),
+                parseLocation.column()));
+      }
+    }
+    return new CliReadErrorDetails("Failed to read request JSON.", null);
+  }
+
+  static @Nullable JsonParseLocation parseLocation(JacksonException exception) {
+    Objects.requireNonNull(exception, "exception");
+    TokenStreamLocation location = exception.getLocation();
+    if (location == null) {
+      return null;
+    }
+    int lineNumber = location.getLineNr();
+    if (lineNumber <= 0) {
+      return null;
+    }
+    int columnNumber = location.getColumnNr();
+    if (columnNumber <= 0) {
+      return null;
+    }
+    return new JsonParseLocation(lineNumber, columnNumber);
   }
 
   private static String requestTransportFailureMessage(Path requestFile, Exception exception) {
@@ -134,6 +176,25 @@ final class CliJsonRequestCodec {
       return "Provide one readable JSON document on standard input, or pass --request-file <path> to read it from a file.";
     }
     return "Verify that the selected --request-file exists and is readable, or pass --request-file - to read one JSON document from standard input.";
+  }
+
+  private record CliReadErrorDetails(
+      String message,
+      dev.erst.fingrind.cli.json.CliErrorJsonModels.@Nullable ErrorDetails details) {
+    private CliReadErrorDetails {
+      Objects.requireNonNull(message, "message");
+    }
+  }
+
+  record JsonParseLocation(int line, int column) {
+    JsonParseLocation {
+      if (line <= 0) {
+        throw new IllegalArgumentException("line must be positive");
+      }
+      if (column <= 0) {
+        throw new IllegalArgumentException("column must be positive");
+      }
+    }
   }
 
   static boolean hasDuplicateObjectKeys(byte[] requestBytes) throws java.io.IOException {
@@ -167,20 +228,29 @@ final class CliJsonRequestCodec {
 
   static void rejectUnexpectedFields(
       ObjectNode rootNode, @Nullable String context, Set<String> acceptedFields) {
-    List<String> unexpectedFields =
-        rootNode
-            .propertyStream()
-            .map(java.util.Map.Entry::getKey)
-            .filter(fieldName -> !acceptedFields.contains(fieldName))
-            .map(fieldName -> context == null ? fieldName : context + "." + fieldName)
-            .toList();
+    List<String> unexpectedFields = unexpectedFields(rootNode, context, acceptedFields);
     if (unexpectedFields.isEmpty()) {
       return;
     }
+    throw unexpectedFieldsFailure(unexpectedFields);
+  }
+
+  static List<String> unexpectedFields(
+      ObjectNode rootNode, @Nullable String context, Set<String> acceptedFields) {
+    return rootNode
+        .propertyStream()
+        .map(java.util.Map.Entry::getKey)
+        .filter(fieldName -> !acceptedFields.contains(fieldName))
+        .map(fieldName -> context == null ? fieldName : context + "." + fieldName)
+        .toList();
+  }
+
+  static IllegalArgumentException unexpectedFieldsFailure(List<String> unexpectedFields) {
     if (unexpectedFields.size() == 1) {
-      throw new IllegalArgumentException("Unexpected field: " + unexpectedFields.getFirst());
+      return new IllegalArgumentException("Unexpected field: " + unexpectedFields.getFirst());
     }
-    throw new IllegalArgumentException("Unexpected fields: " + String.join(", ", unexpectedFields));
+    return new IllegalArgumentException(
+        "Unexpected fields: " + String.join(", ", unexpectedFields));
   }
 
   static void rejectForbiddenField(ObjectNode rootNode, String fieldName) {

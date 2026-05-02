@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# Shared repo-verification lock adapter for Jazzer launcher scripts.
+
+run_lock_repo_root="${FG_REPO_ROOT}"
+repo_lock_support="${run_lock_repo_root}/scripts/repo-verification-lock-support.sh"
+
+# shellcheck source=/dev/null
+source "${repo_lock_support}"

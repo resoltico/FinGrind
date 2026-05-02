@@ -4,6 +4,22 @@
 
 set -euo pipefail
 
+print_usage() {
+    printf '%s\n' \
+        'Usage: ./scripts/docker-smoke.sh' \
+        '' \
+        'Builds the local FinGrind Docker image and runs the mounted-workspace office-worker acceptance workflow.'
+}
+
+for argument in "$@"; do
+    case "${argument}" in
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+    esac
+done
+
 # shellcheck source=/dev/null
 source "$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/release-smoke-support.sh"
 
@@ -11,9 +27,12 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly gradlew="${repo_root}/gradlew"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly image_tag="fingrind-docker-acceptance:$$"
 readonly smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-acceptance.XXXXXX")"
 readonly docker_run_user="$(id -u):$(id -g)"
+readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-${repo_root}/tmp/gradle-user-home}"
 anonymous_docker_config=''
 docker_endpoint=''
 is_darwin=false
@@ -22,8 +41,16 @@ case "$(uname -s)" in
 esac
 
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
+[[ -f "${repo_lock_support}" ]] || die "missing repo verification lock helper at ${repo_lock_support}"
+[[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
+# shellcheck source=/dev/null
+source "${repo_lock_support}"
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+
+prepare_python_runtime_env
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
 readonly repo_cli_build_dir="${repo_root}/cli/build"
 
@@ -94,6 +121,7 @@ cleanup() {
         docker_with_repo_config image rm -f "${image_tag}" >/dev/null 2>&1 || true
         rm -rf "${anonymous_docker_config}" || true
     fi
+    cleanup_lock
     exit "${exit_code}"
 }
 
@@ -104,8 +132,12 @@ docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the 
 [[ -x "${gradlew}" ]] || die "missing Gradle wrapper at ${gradlew}"
 [[ -f "${repo_root}/Dockerfile" ]] || die "missing Dockerfile at ${repo_root}/Dockerfile"
 
+mkdir -p "${gradle_user_home}"
+acquire_lock
+
 printf 'Docker acceptance: refreshing internal container build inputs\n'
-"${gradlew}" :cli:shadowJar --console=plain
+env GRADLE_USER_HOME="${gradle_user_home}" \
+    "${gradlew}" :cli:shadowJar --console=plain --no-daemon
 
 [[ -f "${cli_build_dir}/libs/fingrind.jar" ]] || die \
     "missing internal application JAR at ${cli_build_dir}/libs/fingrind.jar after :cli:shadowJar"

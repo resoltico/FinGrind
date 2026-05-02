@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -31,8 +31,9 @@ That separation is deliberate:
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:
-- deterministic nested-build verification through `./gradlew -p jazzer ...`
-- active local fuzzing through `jazzer/bin/*`
+- deterministic local and CI-safe verification through `jazzer/bin/test`,
+  `jazzer/bin/regression`, and `jazzer/bin/check`
+- active local fuzzing through the remaining `jazzer/bin/*` wrappers
 
 Active harness launching now goes through Jazzer's official command-line JUnit runner instead of a
 local reimplementation of class discovery. That keeps the operator path aligned with Jazzer's real
@@ -42,13 +43,12 @@ local reimplementation of class discovery. That keeps the operator path aligned 
 
 Use these surfaces intentionally:
 
-- `./gradlew -p jazzer test`
-- `./gradlew -p jazzer jazzerRegression`
-- `./gradlew -p jazzer check`
+- `jazzer/bin/test`
+- `jazzer/bin/regression`
+- `jazzer/bin/check`
 
-Those Gradle commands are the deterministic nested-build surface. They are the supported way to
-run Jazzer deterministic tests and committed-seed replay locally, and they are the only
-Jazzer-shaped
+Those wrapper commands are the deterministic Jazzer surface. They are the supported way to run
+Jazzer deterministic tests and committed-seed replay locally, and they are the only Jazzer-shaped
 surface that GitHub should ever exercise.
 
 For active fuzzing, use only:
@@ -61,9 +61,8 @@ For active fuzzing, use only:
 - `jazzer/bin/replay`
 - `jazzer/bin/list-findings`
 
-Do not run active fuzzing through raw `./gradlew -p jazzer fuzz...` task invocations. Those tasks
-exist as build internals under the wrapper scripts, but they are not the supported fuzz operator
-surface.
+Do not run Jazzer workflows through raw `./gradlew -p jazzer ...` task invocations. Those nested
+build tasks exist as wrapper internals, but they are not the supported Jazzer operator surface.
 
 ## Safety Model
 
@@ -71,7 +70,7 @@ The supported local wrapper surface under `jazzer/bin/*` exists to own the opera
 that raw Gradle does not communicate clearly enough on its own:
 
 - active fuzzing is forced onto `--no-daemon`
-- only one Jazzer command runs at a time through `jazzer/.local/run-lock`
+- only one FinGrind verification command runs at a time through the repo-wide verification lock
 - active runs write per-target `latest.log` plus timestamped history logs
 - wrapper-owned interrupt handling tears down the launched Gradle client tree
 - wrapper-owned duration watchdogs enforce the requested max duration plus a fixed grace window
@@ -108,10 +107,9 @@ or tag-based launcher hints to fuzz classes.
 ## Main Commands
 
 ```bash
-./gradlew -p jazzer test
-./gradlew -p jazzer jazzerRegression
-./gradlew -p jazzer check
+jazzer/bin/test --console=plain
 jazzer/bin/regression --console=plain
+jazzer/bin/check --console=plain
 jazzer/bin/fuzz-cli-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-ledger-plan-request -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-posting-workflow -PjazzerMaxDuration=30s --console=plain
@@ -134,7 +132,7 @@ filesystem leaves one corpus root temporarily undeletable.
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
 | `ledger-plan-request` | ledger-plan JSON request decoding | valid plans parse, `open-book` remains first when present, assertion steps keep their canonical kind, removed `executionPolicy` is rejected, oversize plans are rejected at 100 steps, and unknown kind typos do not fall through into assertion-shape errors |
 | `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
-| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using deterministic UTF-8 passphrase material, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
+| `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using deterministic UTF-8 passphrase material, committed books and executed read/report commands render through the real CLI response writers, corrupt or directory-backed pre-schema paths map into owned runtime failures, concurrent contenders leave one durable winner plus one deterministic non-winning outcome, derived reversal near misses and duplicate reversals stay deterministic, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
 ## Deterministic Nested Tests
 
@@ -161,7 +159,7 @@ test suites.
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
 | `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `5` | explicit lifecycle setup plus success, invalid actor, exponent rejection, invalid missing reversal reason, missing reversal target |
-| `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, Unicode round-trip, exponent rejection, invalid type, invalid missing reversal reason, missing reversal target |
+| `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, invalid Unicode account-code rejection, exponent rejection, invalid type, invalid missing reversal reason, missing reversal target; valid parsed seeds also drive executed read/report rendering, corrupt pre-schema path failures, concurrent contenders, and derived reversal near-miss coverage |
 
 ## Regression Philosophy
 
@@ -175,10 +173,8 @@ It makes the currently expected replay result explicit and reviewable:
 - only replayed `unexpected-failure` findings should be treated as bugs
 - replay-clean and expected-invalid raw artifacts should be cleaned before final verification
 
-## Current Gaps
+## Coverage Authority
 
-Not yet fuzzed:
-- multi-command batch surfaces beyond one request at a time
-- concurrent access between multiple writers
-- corrupt or directory-backed pre-existing book paths before any valid schema exists
-- CLI JSON response rendering
+This overview does not maintain a separate open-gap register.
+The canonical coverage inventory and any future proven gaps belong in
+`docs/DEVELOPER_JAZZER_COVERAGE.md`.

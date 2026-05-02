@@ -9,17 +9,20 @@ readonly FG_JAZZER_BIN_DIR="${FG_JAZZER_BIN_DIR:-$(cd "$(dirname "${BASH_SOURCE[
 readonly FG_JAZZER_DIR="${FG_JAZZER_DIR:-$(cd "${FG_JAZZER_BIN_DIR}/.." && pwd)}"
 readonly FG_REPO_ROOT="${FG_REPO_ROOT:-$(cd "${FG_JAZZER_DIR}/.." && pwd)}"
 readonly FG_GRADLEW="${FG_GRADLEW:-${FG_REPO_ROOT}/gradlew}"
-readonly FG_JAZZER_TOPOLOGY_PATH="${FG_JAZZER_TOPOLOGY_PATH:-${FG_JAZZER_DIR}/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json}"
-readonly FG_LOCK_PARENT_DIR="${FG_JAZZER_DIR}/.local"
-readonly FG_LOCK_DIR="${FG_LOCK_PARENT_DIR}/run-lock"
-readonly FG_LOCK_OWNER_PID_FILE="${FG_LOCK_DIR}/owner.pid"
-readonly FG_LOCK_OWNER_COMMAND_FILE="${FG_LOCK_DIR}/owner.command"
+readonly FG_RUN_LOCK_SUPPORT="${FG_REPO_ROOT}/jazzer/bin/_run-lock-support"
 readonly FG_TIMEOUT_GRACE_SECONDS=15
 
-fg_lock_acquired=0
 fg_active_pid=""
 fg_watchdog_pid=""
 fg_wrapper_name=""
+
+[[ -f "${FG_RUN_LOCK_SUPPORT}" ]] || {
+    printf '%s\n' "Missing Jazzer run-lock support helper: ${FG_RUN_LOCK_SUPPORT}" >&2
+    exit 1
+}
+
+# shellcheck source=/dev/null
+source "${FG_RUN_LOCK_SUPPORT}"
 
 fg_initialize_wrapper() {
     fg_wrapper_name="$(basename "$1")"
@@ -32,62 +35,175 @@ fg_initialize_wrapper() {
     trap 'fg_on_signal 143' TERM
 }
 
-fg_active_target_keys() {
-    [[ -f "${FG_JAZZER_TOPOLOGY_PATH}" ]] || {
-        printf '%s\n' "Missing Jazzer topology file: ${FG_JAZZER_TOPOLOGY_PATH}" >&2
-        exit 1
-    }
-    command -v python3 >/dev/null 2>&1 || {
-        printf '%s\n' "python3 is required to read ${FG_JAZZER_TOPOLOGY_PATH}" >&2
-        exit 1
-    }
-    python3 - "${FG_JAZZER_TOPOLOGY_PATH}" <<'PY'
-import json
-import pathlib
-import sys
+fg_has_help_flag() {
+    local argument
 
-topology_path = pathlib.Path(sys.argv[1])
-document = json.loads(topology_path.read_text(encoding="utf-8"))
-for run_target in document["runTargets"]:
-    if run_target.get("activeFuzzing"):
-        print(run_target["key"])
-PY
+    for argument in "$@"; do
+        case "${argument}" in
+            -h|--help)
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+fg_print_gradle_passthrough_help() {
+    printf '%s\n' \
+        '' \
+        'Pass-through:' \
+        '  Any remaining arguments are forwarded to the owning Gradle task.' \
+        "  For raw Gradle task help, run ${FG_GRADLEW} -p ${FG_JAZZER_DIR} help --task <task-name>."
+}
+
+fg_restore_errexit() {
+    local errexit_enabled=$1
+
+    if [[ ${errexit_enabled} -eq 1 ]]; then
+        set -e
+        return 0
+    fi
+    set +e
+}
+
+fg_active_target_keys() {
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache -q jazzerActiveTargets
+}
+
+fg_replayable_target_keys() {
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache -q jazzerReplayableTargets
+}
+
+fg_require_replayable_target_key() {
+    local target_key=$1
+    local known_target
+    local known_targets_output
+    local status=0
+    local errexit_enabled=0
+
+    case $- in
+        *e*) errexit_enabled=1 ;;
+    esac
+
+    set +e
+    known_targets_output="$(fg_replayable_target_keys)"
+    status=$?
+    fg_restore_errexit "${errexit_enabled}"
+    if [[ ${status} -ne 0 ]]; then
+        return "${status}"
+    fi
+
+    while IFS= read -r known_target; do
+        [[ -n "${known_target}" ]] || continue
+        [[ "${known_target}" == "${target_key}" ]] && return 0
+    done <<< "${known_targets_output}"
+
+    printf '%s\n' "Unknown Jazzer run target: ${target_key}" >&2
+    return 1
+}
+
+fg_require_active_target_key() {
+    local target_key=$1
+    local known_target
+    local known_targets_output
+    local status=0
+    local errexit_enabled=0
+
+    case $- in
+        *e*) errexit_enabled=1 ;;
+    esac
+
+    set +e
+    known_targets_output="$(fg_active_target_keys)"
+    status=$?
+    fg_restore_errexit "${errexit_enabled}"
+    if [[ ${status} -ne 0 ]]; then
+        return "${status}"
+    fi
+
+    while IFS= read -r known_target; do
+        [[ -n "${known_target}" ]] || continue
+        [[ "${known_target}" == "${target_key}" ]] && return 0
+    done <<< "${known_targets_output}"
+
+    printf '%s\n' "Unknown active Jazzer run target: ${target_key}" >&2
+    return 1
 }
 
 fg_active_wrapper_scripts() {
+    local active_target_output
+    local status=0
     local target_key
+    local errexit_enabled=0
+
+    case $- in
+        *e*) errexit_enabled=1 ;;
+    esac
+
+    set +e
+    active_target_output="$(fg_active_target_keys)"
+    status=$?
+    fg_restore_errexit "${errexit_enabled}"
+    if [[ ${status} -ne 0 ]]; then
+        return "${status}"
+    fi
+
     while IFS= read -r target_key; do
+        [[ -n "${target_key}" ]] || continue
         printf 'fuzz-%s\n' "${target_key}"
-    done < <(fg_active_target_keys)
+    done <<< "${active_target_output}"
 }
 
 fg_on_exit() {
     fg_stop_watchdog
     fg_terminate_active_process
-    fg_release_lock
+    cleanup_lock
 }
 
 fg_on_signal() {
     local exit_code=$1
     fg_stop_watchdog
     fg_terminate_active_process
-    fg_release_lock
+    cleanup_lock
     trap - EXIT INT TERM
     exit "${exit_code}"
 }
 
-fg_run_passive_command() {
+fg_run_read_only_command() {
     local task_name=$1
     shift
-    fg_acquire_lock
+    acquire_lock
     "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache "${task_name}" "$@"
+}
+
+fg_run_machine_json_read_only_command() {
+    local task_name=$1
+    shift
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache -q "${task_name}" "$@"
+}
+
+fg_run_maintenance_command() {
+    local task_name=$1
+    shift
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache "${task_name}" "$@"
+}
+
+fg_run_verification_command() {
+    local task_name=$1
+    shift
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache clean "${task_name}" "$@"
 }
 
 fg_run_active_command() {
     local target_key=$1
     local task_name=$2
     shift 2
-    fg_acquire_lock
+    acquire_lock
     fg_run_active_command_unlocked "${target_key}" "${task_name}" "$@"
 }
 
@@ -130,51 +246,6 @@ fg_run_active_command_unlocked() {
         status=124
     fi
     return "${status}"
-}
-
-fg_acquire_lock() {
-    mkdir -p "${FG_LOCK_PARENT_DIR}"
-    while ! mkdir "${FG_LOCK_DIR}" 2>/dev/null; do
-        if fg_lock_is_stale; then
-            fg_remove_stale_lock
-            continue
-        fi
-        sleep 1
-    done
-    printf '%s\n' "$$" > "${FG_LOCK_OWNER_PID_FILE}"
-    printf '%s\n' "${fg_wrapper_name}" > "${FG_LOCK_OWNER_COMMAND_FILE}"
-    fg_lock_acquired=1
-}
-
-fg_release_lock() {
-    if [[ ${fg_lock_acquired} -eq 0 ]]; then
-        return
-    fi
-    rm -f "${FG_LOCK_OWNER_PID_FILE}" "${FG_LOCK_OWNER_COMMAND_FILE}"
-    rmdir "${FG_LOCK_DIR}" 2>/dev/null || true
-    fg_lock_acquired=0
-}
-
-fg_lock_is_stale() {
-    local owner_pid
-    owner_pid="$(fg_lock_owner_pid)"
-    if [[ -z "${owner_pid}" ]]; then
-        return 0
-    fi
-    ! fg_is_pid_alive "${owner_pid}"
-}
-
-fg_lock_owner_pid() {
-    if [[ ! -f "${FG_LOCK_OWNER_PID_FILE}" ]]; then
-        printf '%s' ""
-        return 0
-    fi
-    tr -cd '0-9' < "${FG_LOCK_OWNER_PID_FILE}"
-}
-
-fg_remove_stale_lock() {
-    rm -f "${FG_LOCK_OWNER_PID_FILE}" "${FG_LOCK_OWNER_COMMAND_FILE}"
-    rmdir "${FG_LOCK_DIR}" 2>/dev/null || true
 }
 
 fg_is_pid_alive() {
@@ -308,17 +379,53 @@ fg_parse_duration_seconds() {
     printf '%s\n' "$((number * multiplier))"
 }
 
-fg_resolve_existing_path() {
+fg_absolute_candidate_path() {
     local path=$1
+
+    if [[ "${path}" == /* ]]; then
+        printf '%s\n' "${path}"
+        return 0
+    fi
+    printf '%s/%s\n' "$(pwd -P)" "${path}"
+}
+
+fg_require_existing_regular_file_path() {
+    local path=$1
+    local candidate_path
     local directory_name
     local file_name
+    local resolved_directory
+    local resolved_path
+    local status=0
+    local errexit_enabled=0
 
+    case $- in
+        *e*) errexit_enabled=1 ;;
+    esac
+
+    candidate_path="$(fg_absolute_candidate_path "${path}")"
     directory_name="$(dirname "${path}")"
     file_name="$(basename "${path}")"
-    (
-        cd "${directory_name}" &&
-        printf '%s/%s\n' "$(pwd -P)" "${file_name}"
-    )
+
+    set +e
+    resolved_directory="$(cd "${directory_name}" 2>/dev/null && pwd -P)"
+    status=$?
+    fg_restore_errexit "${errexit_enabled}"
+    if [[ ${status} -ne 0 ]]; then
+        printf '%s\n' "Replay input path parent directory does not exist: ${candidate_path}" >&2
+        return 1
+    fi
+
+    resolved_path="${resolved_directory}/${file_name}"
+    if [[ ! -e "${resolved_path}" ]]; then
+        printf '%s\n' "Replay input path does not exist: ${resolved_path}" >&2
+        return 1
+    fi
+    if [[ ! -f "${resolved_path}" ]]; then
+        printf '%s\n' "Replay input path must be a regular file: ${resolved_path}" >&2
+        return 1
+    fi
+    printf '%s\n' "${resolved_path}"
 }
 
 fg_create_history_directory() {

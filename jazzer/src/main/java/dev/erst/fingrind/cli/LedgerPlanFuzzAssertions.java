@@ -49,7 +49,7 @@ public final class LedgerPlanFuzzAssertions {
     }
   }
 
-  private static ExecutionSnapshot assertPlanResult(LedgerPlan plan, LedgerPlanResult result) {
+  static ExecutionSnapshot assertPlanResult(LedgerPlan plan, LedgerPlanResult result) {
     if (!result.planId().equals(plan.planId())) {
       throw new IllegalStateException("Ledger plan execution changed the plan id.");
     }
@@ -69,21 +69,17 @@ public final class LedgerPlanFuzzAssertions {
     int declaredIndex = 0;
     for (int index = 0; index < journalSteps.size(); index++) {
       LedgerJournalEntry journalEntry = journalSteps.get(index);
-      if (journalEntry.kind() == LedgerJournalKind.PLAN_BOUNDARY) {
+      LedgerJournalKind journalKind = journalEntry.kind();
+      if (journalKind == LedgerJournalKind.PLAN_BOUNDARY) {
         if (index != journalSteps.size() - 1) {
           throw new IllegalStateException("Ledger plan boundary journal entries must be terminal.");
         }
         continue;
       }
-      var declaredStep = plan.steps().get(declaredIndex);
-      if (!journalEntry.stepId().equals(declaredStep.stepId())) {
-        throw new IllegalStateException("Ledger plan journal changed step order or identity.");
-      }
-      if (!journalEntry.kind().wireValue().equals(declaredStep.kind().wireValue())) {
-        throw new IllegalStateException("Ledger plan journal changed the declared step kind.");
-      }
+      assertDeclaredStep(plan, journalEntry, declaredIndex);
       declaredIndex++;
-      if (isListQueryKind(journalEntry.kind())) {
+      if (journalKind == LedgerJournalKind.LIST_ACCOUNTS
+          || journalKind == LedgerJournalKind.LIST_POSTINGS) {
         listQueryStepCount++;
         if (journalEntry.status() == LedgerStepStatus.SUCCEEDED) {
           assertStructuredListQueryFacts(journalEntry);
@@ -97,7 +93,7 @@ public final class LedgerPlanFuzzAssertions {
         result.status(), journalSteps.size(), listQueryStepCount, structuredListQueryStepCount);
   }
 
-  private static void assertStructuredListQueryFacts(LedgerJournalEntry journalEntry) {
+  static void assertStructuredListQueryFacts(LedgerJournalEntry journalEntry) {
     int count = requiredCountFact(journalEntry.facts(), "count").value();
     int pageLimit = requiredCountFact(journalEntry.facts(), "pageLimit").value();
     boolean hasMore = requiredFlagFact(journalEntry.facts(), "hasMore").value();
@@ -125,7 +121,7 @@ public final class LedgerPlanFuzzAssertions {
     }
   }
 
-  private static void assertRejectedListQueryFacts(LedgerJournalEntry journalEntry) {
+  static void assertRejectedListQueryFacts(LedgerJournalEntry journalEntry) {
     journalEntry.requiredFailure();
     String expectedGroupName = expectedListQueryGroupName(journalEntry.kind());
     for (String factName :
@@ -139,21 +135,25 @@ public final class LedgerPlanFuzzAssertions {
     }
   }
 
-  private static boolean isListQueryKind(LedgerJournalKind kind) {
-    return kind == LedgerJournalKind.LIST_ACCOUNTS || kind == LedgerJournalKind.LIST_POSTINGS;
-  }
-
-  private static String expectedListQueryGroupName(LedgerJournalKind kind) {
+  static String expectedListQueryGroupName(LedgerJournalKind kind) {
     return switch (kind) {
       case LIST_ACCOUNTS -> "account";
       case LIST_POSTINGS -> "posting";
-      default ->
+      case OPEN_BOOK,
+          DECLARE_ACCOUNT,
+          PREFLIGHT_ENTRY,
+          POST_ENTRY,
+          INSPECT_BOOK,
+          GET_POSTING,
+          ACCOUNT_BALANCE,
+          ASSERT,
+          PLAN_BOUNDARY ->
           throw new IllegalArgumentException(
               "Expected a list-query journal kind but received '%s'.".formatted(kind.wireValue()));
     };
   }
 
-  private static LedgerFact.Count requiredCountFact(List<LedgerFact> facts, String factName) {
+  static LedgerFact.Count requiredCountFact(List<LedgerFact> facts, String factName) {
     List<LedgerFact.Count> counts = requiredTypedFacts(facts, factName, LedgerFact.Count.class);
     if (counts.size() != 1) {
       throw new IllegalStateException(
@@ -162,7 +162,7 @@ public final class LedgerPlanFuzzAssertions {
     return counts.getFirst();
   }
 
-  private static LedgerFact.Flag requiredFlagFact(List<LedgerFact> facts, String factName) {
+  static LedgerFact.Flag requiredFlagFact(List<LedgerFact> facts, String factName) {
     List<LedgerFact.Flag> flags = requiredTypedFacts(facts, factName, LedgerFact.Flag.class);
     if (flags.size() != 1) {
       throw new IllegalStateException(
@@ -202,5 +202,16 @@ public final class LedgerPlanFuzzAssertions {
 
   private static boolean hasFactNamed(List<LedgerFact> facts, String factName) {
     return facts.stream().anyMatch(fact -> fact.name().equals(factName));
+  }
+
+  private static void assertDeclaredStep(
+      LedgerPlan plan, LedgerJournalEntry journalEntry, int declaredIndex) {
+    var declaredStep = plan.steps().get(declaredIndex);
+    if (!journalEntry.stepId().equals(declaredStep.stepId())) {
+      throw new IllegalStateException("Ledger plan journal changed step order or identity.");
+    }
+    if (!journalEntry.kind().wireValue().equals(declaredStep.kind().wireValue())) {
+      throw new IllegalStateException("Ledger plan journal changed the declared step kind.");
+    }
   }
 }

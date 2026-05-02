@@ -10,10 +10,8 @@ import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import java.lang.foreign.MemorySegment;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -53,24 +51,34 @@ class SqliteFuzzAssertionsTest {
   void sqliteAssertions_reject_invalid_store_shapes_and_broken_schema_checks() throws Exception {
     Path bookPath = tempDirectory.resolve("entity-book.sqlite");
     try (SqliteBookSession store = SqliteFuzzAssertions.openStore(bookPath)) {
-      Object database = activeNativeDatabase(store);
-
       IllegalStateException noRow =
           assertThrows(
               IllegalStateException.class,
-              () -> invokePrivate("assertQueryInt", database, "select 1 where 1 = 0", 1));
+              () ->
+                  SqliteFuzzAssertions.assertQueryInt(
+                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      "select 1 where 1 = 0",
+                      1));
       assertTrue(String.valueOf(noRow.getMessage()).contains("Expected one SQLite row"));
 
       IllegalStateException manyRows =
           assertThrows(
               IllegalStateException.class,
-              () -> invokePrivate("assertQueryInt", database, "select 1 union all select 2", 1));
+              () ->
+                  SqliteFuzzAssertions.assertQueryInt(
+                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      "select 1 union all select 2",
+                      1));
       assertTrue(String.valueOf(manyRows.getMessage()).contains("Expected one SQLite row only"));
 
       IllegalStateException wrongIntValue =
           assertThrows(
               IllegalStateException.class,
-              () -> invokePrivate("assertQueryInt", database, "select 2", 1));
+              () ->
+                  SqliteFuzzAssertions.assertQueryInt(
+                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      "select 2",
+                      1));
       assertTrue(
           String.valueOf(wrongIntValue.getMessage())
               .contains("Unexpected SQLite pragma/query value"));
@@ -78,7 +86,11 @@ class SqliteFuzzAssertionsTest {
       IllegalStateException wrongTextValue =
           assertThrows(
               IllegalStateException.class,
-              () -> invokePrivate("assertQueryText", database, "select 'wal'", "delete"));
+              () ->
+                  SqliteFuzzAssertions.assertQueryText(
+                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      "select 'wal'",
+                      "delete"));
       assertTrue(
           String.valueOf(wrongTextValue.getMessage())
               .contains("Unexpected SQLite pragma/query value"));
@@ -87,15 +99,20 @@ class SqliteFuzzAssertionsTest {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  invokePrivate("assertQueryText", database, "select 'wal' where 1 = 0", "delete"));
+                  SqliteFuzzAssertions.assertQueryText(
+                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      "select 'wal' where 1 = 0",
+                      "delete"));
       assertTrue(String.valueOf(noTextRow.getMessage()).contains("Expected one SQLite row"));
 
       IllegalStateException manyTextRows =
           assertThrows(
               IllegalStateException.class,
               () ->
-                  invokePrivate(
-                      "assertQueryText", database, "select 'a' union all select 'b'", "a"));
+                  SqliteFuzzAssertions.assertQueryText(
+                      SqliteFuzzAssertions.requireStoreImplementation(store).activeNativeDatabase(),
+                      "select 'a' union all select 'b'",
+                      "a"));
       assertTrue(
           String.valueOf(manyTextRows.getMessage()).contains("Expected one SQLite row only"));
     }
@@ -124,12 +141,12 @@ class SqliteFuzzAssertionsTest {
       IllegalArgumentException unsupported =
           assertThrows(
               IllegalArgumentException.class,
-              () -> invokePrivate("requireStoreImplementation", unsupportedSession));
+              () -> SqliteFuzzAssertions.requireStoreImplementation(unsupportedSession));
       assertTrue(
           String.valueOf(unsupported.getMessage())
               .contains("Unsupported SQLite book session implementation"));
     }
-    assertEquals("a''b", invokePrivate("escapeSqlLiteral", "a'b"));
+    assertEquals("a''b", SqliteFuzzAssertions.escapeSqlLiteral("a'b"));
   }
 
   @Test
@@ -137,7 +154,7 @@ class SqliteFuzzAssertionsTest {
     Path bookPath = tempDirectory.resolve("synthetic-book.sqlite");
     try (SqlitePostingFactStore store =
         new SqlitePostingFactStore(bookPath, SqliteFuzzAssertions.bookPassphrase())) {
-      injectActiveNativeDatabase(
+      SqliteStoreTestAccess.publishNativeDatabase(
           store,
           new ThrowingNativeDatabase(
               SqliteNativeBootstrap.api(),
@@ -153,52 +170,19 @@ class SqliteFuzzAssertionsTest {
     }
   }
 
-  private static Object activeNativeDatabase(SqliteBookSession store) throws Exception {
-    Object storeImplementation = invokePrivate("requireStoreImplementation", store);
-    Method method = storeImplementation.getClass().getDeclaredMethod("activeNativeDatabase");
-    method.setAccessible(true);
-    return method.invoke(storeImplementation);
-  }
+  @Test
+  void sqliteAssertions_rewrite_deterministic_key_file_when_secure_file_already_exists()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("entity.book-key");
 
-  private static Object invokePrivate(String methodName, Object... arguments) throws Exception {
-    Method method =
-        switch (methodName) {
-          case "assertQueryInt" ->
-              SqliteFuzzAssertions.class.getDeclaredMethod(
-                  methodName, arguments[0].getClass(), String.class, int.class);
-          case "assertQueryText" ->
-              SqliteFuzzAssertions.class.getDeclaredMethod(
-                  methodName, arguments[0].getClass(), String.class, String.class);
-          case "requireStoreImplementation" ->
-              SqliteFuzzAssertions.class.getDeclaredMethod(methodName, SqliteBookSession.class);
-          case "escapeSqlLiteral" ->
-              SqliteFuzzAssertions.class.getDeclaredMethod(methodName, String.class);
-          default ->
-              throw new IllegalArgumentException("Unsupported reflection target: " + methodName);
-        };
-    method.setAccessible(true);
-    try {
-      return method.invoke(null, arguments);
-    } catch (InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
+    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
+    String firstWrite = Files.readString(keyFile, UTF_8);
 
-  private static void injectActiveNativeDatabase(
-      SqlitePostingFactStore store, SqliteNativeDatabase database) throws Exception {
-    Field lifecycleField = SqliteStoreContext.class.getDeclaredField("lifecycle");
-    lifecycleField.setAccessible(true);
-    Object lifecycle = lifecycleField.get(store);
-    Field databaseField = lifecycle.getClass().getDeclaredField("database");
-    databaseField.setAccessible(true);
-    databaseField.set(lifecycle, database);
+    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
+    String secondWrite = Files.readString(keyFile, UTF_8);
+
+    assertEquals("fingrind-jazzer-book-key", firstWrite);
+    assertEquals(firstWrite, secondWrite);
   }
 
   private static String basicValidRequest() {

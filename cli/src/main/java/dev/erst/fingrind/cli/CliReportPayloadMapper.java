@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.DeclaredAccount;

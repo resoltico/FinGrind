@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.BookInspection;

@@ -35,8 +35,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     outputChannel.writeJson(new EnumPayload(OutputMode.JSON, NormalBalance.DEBIT));
 
     JsonNode json = readJson(outputStream);
-    assertEquals("json", json.path("outputMode").asText());
-    assertEquals("DEBIT", json.path("normalBalance").asText());
+    assertEquals("json", json.path("outputMode").stringValue());
+    assertEquals("DEBIT", json.path("normalBalance").stringValue());
   }
 
   @Test
@@ -47,7 +47,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     outputChannel.writeJson(new ExternalEnumPayload(Thread.State.RUNNABLE));
 
     JsonNode json = readJson(outputStream);
-    assertEquals("RUNNABLE", json.path("state").asText());
+    assertEquals("RUNNABLE", json.path("state").stringValue());
   }
 
   @Test
@@ -143,11 +143,11 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
-            "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"));
+            "Command-line double-entry bookkeeping with one encrypted book per business"));
 
     JsonNode json = readJson(outputStream);
-    assertEquals("ok", json.path("status").asString());
-    assertEquals("0.9.0", json.path("payload").path("version").asString());
+    assertEquals("ok", json.path("status").stringValue());
+    assertEquals("0.9.0", json.path("payload").path("version").stringValue());
   }
 
   @Test
@@ -157,7 +157,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
+                "Command-line double-entry bookkeeping with one encrypted book per business"),
             environmentDescriptor(
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -169,7 +169,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     CliResponseWriter jsonWriter = new CliResponseWriter(utf8PrintStream(jsonOutput));
 
     jsonWriter.writeHelp(helpDescriptor);
-    assertEquals("ok", readJson(jsonOutput).path("status").asText());
+    assertEquals("ok", readJson(jsonOutput).path("status").stringValue());
 
     ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
     CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
@@ -192,7 +192,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
+                "Command-line double-entry bookkeeping with one encrypted book per business"),
             environmentDescriptor(
                 FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
@@ -208,16 +208,16 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
 
     assertTrue(payload.has("preflight"));
     assertTrue(payload.has("currencyModel"));
-    assertEquals("advisory", payload.path("preflight").path("semantics").asString());
+    assertEquals("advisory", payload.path("preflight").path("semantics").stringValue());
     assertEquals(
         ProtocolCatalog.bookProtectionMode().wireValue(),
-        environment.path("storage").path("bookProtectionMode").asString());
+        environment.path("storage").path("bookProtectionMode").stringValue());
     assertEquals(
         FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
-        environment.path("distribution").path("runtimeDistribution").asString());
+        environment.path("distribution").path("runtimeDistribution").stringValue());
     assertEquals(
         ProtocolCatalog.publicCliDistribution().wireValue(),
-        environment.path("distribution").path("publicCliDistribution").asString());
+        environment.path("distribution").path("publicCliDistribution").stringValue());
     assertEquals(
         ProtocolCatalog.supportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
@@ -239,7 +239,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence"),
+                "Command-line double-entry bookkeeping with one encrypted book per business"),
             environmentDescriptor(
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -267,7 +267,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
-            "Finance-grade bookkeeping kernel with an agent-first CLI and SQLite-first persistence");
+            "Command-line double-entry bookkeeping with one encrypted book per business");
     ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
     CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
 
@@ -291,12 +291,12 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
 
     JsonNode json = readJson(outputStream);
-    assertEquals("ok", json.path("status").asString());
+    assertEquals("ok", json.path("status").stringValue());
     assertEquals(
         Path.of("secrets").resolve("entity.book-key").toAbsolutePath().normalize().toString(),
-        json.path("payload").path("bookKeyFile").asString());
-    assertEquals("base64url-no-padding", json.path("payload").path("encoding").asString());
+        json.path("payload").path("bookKeyFile").stringValue());
+    assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());
-    assertEquals("0600", json.path("payload").path("permissions").asString());
+    assertEquals("0600", json.path("payload").path("permissions").stringValue());
   }
 }

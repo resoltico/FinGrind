@@ -9,15 +9,13 @@ import org.junit.jupiter.api.Test;
 class SqliteBestEffortTest {
   @Test
   void reportCleanupFailure_preservesPrimaryOutcomeWhenReporterFails() throws Exception {
-    try (SqliteBestEffort.ReporterOverride ignored =
-        SqliteBestEffort.replaceReporterForTesting(
-            (action, exception) -> {
-              throw new IllegalStateException("boom");
-            })) {
-      assertDoesNotThrow(
-          () ->
-              SqliteBestEffort.reportCleanupFailure(
-                  "closing one SQLite database", new IOException("cleanup")));
-    }
+    assertDoesNotThrow(
+        () ->
+            SqliteBestEffort.reportCleanupFailure(
+                "closing one SQLite database",
+                new IOException("cleanup"),
+                (action, exception) -> {
+                  throw new IllegalStateException("boom");
+                }));
   }
 }

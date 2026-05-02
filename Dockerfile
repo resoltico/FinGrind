@@ -59,6 +59,7 @@ COPY --from=builder /opt/fingrind/runtime /opt/fingrind/runtime
 COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/libsqlite3.so.0
 COPY --from=builder /build/fingrind.jar /opt/fingrind/app/fingrind.jar
 COPY cli/build/docker/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh
+COPY LICENSE LICENSE-APACHE-2.0 LICENSE-SIL-OFL-1.1 LICENSE-SQLITE3MULTIPLECIPHERS NOTICE PATENTS.md /opt/fingrind/doc/
 
 RUN chmod +x /opt/fingrind/bin/docker-entrypoint.sh
 

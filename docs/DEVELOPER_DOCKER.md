@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -22,6 +22,9 @@ Supported workstation shape:
 - the `docker buildx` plugin is available in the current shell
 - the active Docker context targets the local Docker Desktop engine
 - the repository checkout lives on the Mac's local filesystem
+- the committed contributor environment is preferably entered through the Dev Container Spec path
+  documented in [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md), with raw `docker run`
+  reserved for lower-level targeted tasks such as the Docker-only Jazzer walkthrough
 
 ## Canonical Stance
 
@@ -44,6 +47,8 @@ This Docker runtime guidance is separate from the contributor devcontainer:
 - the devcontainer is a glibc-based contributor shell with a full Zulu 26 JDK and editor tooling
 - the published runtime container is the public execution artifact verified by Docker smoke and
   release publication checks
+- VS Code is only one client for that contributor environment; the repo also documents an official
+  tooling-agnostic `devcontainer` CLI path in [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md)
 
 The container image itself also stays on the same managed-runtime policy as the bundle archives:
 - it verifies the pinned vendored SQLite3MC source hash during image build before compiling the
@@ -123,7 +128,8 @@ Then the supported local gates are:
 - verifies `declare-account` and `list-accounts`
 - verifies `preflight-entry` and `post-entry` after the explicit Phase 2 lifecycle setup
 - verifies the containerized protected-book metadata surface:
-  `bookProtectionMode`, `defaultBookCipher`, `requiredSqlite3mcVersion`, and
+  `bookProtectionMode`, `defaultProtectedBookFormat.cipher`,
+  `defaultProtectedBookFormat.pageSize`, `requiredSqlite3mcVersion`, and
   `loadedSqlite3mcVersion`
 - verifies that reopening the same mounted book with the wrong key fails as the deterministic
   `book-authentication-failed` error rather than silently reading the file or leaking raw SQLite

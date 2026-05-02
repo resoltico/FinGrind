@@ -82,14 +82,19 @@ class JournalEntryTest {
                 JournalLine.EntrySide.DEBIT,
                 new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
 
-    IllegalArgumentException exception =
+    JournalEntryValidationException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            JournalEntryValidationException.class,
             () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
 
     assertEquals(
-        "Journal entry must contain at least one debit line and one credit line.",
+        "Journal entry is invalid: Journal entry must contain at least one debit line and one credit line. Journal entry must balance debits and credits.",
         exception.getMessage());
+    assertEquals(
+        List.of(
+            "Journal entry must contain at least one debit line and one credit line.",
+            "Journal entry must balance debits and credits."),
+        exception.violations());
   }
 
   @Test
@@ -101,14 +106,36 @@ class JournalEntryTest {
                 JournalLine.EntrySide.CREDIT,
                 new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
 
-    IllegalArgumentException exception =
+    JournalEntryValidationException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            JournalEntryValidationException.class,
             () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
 
     assertEquals(
-        "Journal entry must contain at least one debit line and one credit line.",
+        "Journal entry is invalid: Journal entry must contain at least one debit line and one credit line. Journal entry must balance debits and credits.",
         exception.getMessage());
+    assertEquals(
+        List.of(
+            "Journal entry must contain at least one debit line and one credit line.",
+            "Journal entry must balance debits and credits."),
+        exception.violations());
+  }
+
+  @Test
+  void journalEntryValidationException_rejectsEmptyViolations() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class, () -> new JournalEntryValidationException(List.of()));
+
+    assertEquals("violations must not be empty.", exception.getMessage());
+  }
+
+  @Test
+  void journalEntryValidationException_rejectsNullViolations() {
+    NullPointerException exception =
+        assertThrows(NullPointerException.class, () -> new JournalEntryValidationException(null));
+
+    assertEquals("violations", exception.getMessage());
   }
 
   private static List<JournalLine> balancedLines() {

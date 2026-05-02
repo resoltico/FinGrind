@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.JazzerTestProjectRoot;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -18,12 +19,15 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Verifies the structural contract for committed FinGrind regression-seed metadata. */
 class RegressionSeedMetadataTest {
+  private static final Path PROJECT_DIRECTORY = JazzerTestProjectRoot.projectDirectory();
+  private static final Path METADATA_ROOT =
+      PROJECT_DIRECTORY.resolve("src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata");
+
   @TempDir Path tempDirectory;
 
   @Test
   void committedMetadataInputPathsAreProjectRelative() throws IOException {
-    Path metadataRoot = Path.of("src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata");
-    try (Stream<Path> stream = Files.walk(metadataRoot)) {
+    try (Stream<Path> stream = Files.walk(METADATA_ROOT)) {
       for (Path metadataPath :
           stream
               .filter(path -> path.getFileName().toString().endsWith(".json"))
@@ -38,9 +42,7 @@ class RegressionSeedMetadataTest {
 
   @Test
   void committedMetadataInputPathsResolveWithinProjectDirectory() throws IOException {
-    Path projectDirectory = Path.of("").toAbsolutePath().normalize();
-    Path metadataRoot = Path.of("src/fuzz/resources/dev/erst/fingrind/jazzer/regression-metadata");
-    try (Stream<Path> stream = Files.walk(metadataRoot)) {
+    try (Stream<Path> stream = Files.walk(METADATA_ROOT)) {
       for (Path metadataPath :
           stream
               .filter(path -> path.getFileName().toString().endsWith(".json"))
@@ -49,7 +51,7 @@ class RegressionSeedMetadataTest {
         RegressionSeedMetadata metadata =
             JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
         assertTrue(
-            Files.exists(metadata.inputPath(projectDirectory)),
+            Files.exists(metadata.inputPath(PROJECT_DIRECTORY)),
             "committed regression input must exist for " + metadataPath.getFileName());
       }
     }
@@ -57,10 +59,9 @@ class RegressionSeedMetadataTest {
 
   @Test
   void everyInputFileHasRegressionMetadata() throws IOException {
-    Path projectDirectory = Path.of("").toAbsolutePath().normalize();
     List<JazzerHarness> replayableHarnesses =
         Arrays.stream(JazzerHarness.values())
-            .filter(harness -> Files.isDirectory(harness.inputDirectory(projectDirectory)))
+            .filter(harness -> Files.isDirectory(harness.inputDirectory(PROJECT_DIRECTORY)))
             .toList();
 
     List<Path> orphans =
@@ -68,7 +69,8 @@ class RegressionSeedMetadataTest {
             .flatMap(
                 harness -> {
                   try {
-                    return RegressionSeedCatalog.orphanedInputs(projectDirectory, harness).stream();
+                    return RegressionSeedCatalog.orphanedInputs(PROJECT_DIRECTORY, harness)
+                        .stream();
                   } catch (IOException exception) {
                     throw new UncheckedIOException(exception);
                   }

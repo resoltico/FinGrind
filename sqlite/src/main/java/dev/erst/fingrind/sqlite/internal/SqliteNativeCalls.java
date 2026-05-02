@@ -36,6 +36,22 @@ public final class SqliteNativeCalls {
     int invoke(MemorySegment value, MemorySegment bytes, int byteLength);
   }
 
+  /** Functional view of one {@code (address, address, address, int) -> int} native call. */
+  @FunctionalInterface
+  public interface AddressAddressAddressIntToIntCall {
+    /** Invokes the adapted native call. */
+    int invoke(
+        MemorySegment firstValue, MemorySegment secondValue, MemorySegment thirdValue, int value);
+  }
+
+  /** Functional view of one {@code (address, address, int, address) -> int} native call. */
+  @FunctionalInterface
+  public interface AddressAddressIntAddressToIntCall {
+    /** Invokes the adapted native call. */
+    int invoke(
+        MemorySegment firstValue, MemorySegment secondValue, int intValue, MemorySegment pointer);
+  }
+
   /** Functional view of {@code sqlite3_exec}. */
   @FunctionalInterface
   public interface ExecCall {
@@ -148,6 +164,22 @@ public final class SqliteNativeCalls {
   /** Adapts one raw method handle to the typed {@code (address, address, int) -> int} view. */
   public static AddressAddressIntToIntCall addressAddressIntToInt(MethodHandle handle) {
     return adapt(AddressAddressIntToIntCall.class, handle);
+  }
+
+  /**
+   * Adapts one raw method handle to the typed {@code (address, address, address, int) -> int} view.
+   */
+  public static AddressAddressAddressIntToIntCall addressAddressAddressIntToInt(
+      MethodHandle handle) {
+    return adapt(AddressAddressAddressIntToIntCall.class, handle);
+  }
+
+  /**
+   * Adapts one raw method handle to the typed {@code (address, address, int, address) -> int} view.
+   */
+  public static AddressAddressIntAddressToIntCall addressAddressIntAddressToInt(
+      MethodHandle handle) {
+    return adapt(AddressAddressIntAddressToIntCall.class, handle);
   }
 
   /** Adapts one raw method handle to the typed {@code sqlite3_exec} view. */

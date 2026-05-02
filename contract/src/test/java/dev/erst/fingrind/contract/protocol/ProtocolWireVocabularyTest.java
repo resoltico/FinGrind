@@ -25,8 +25,11 @@ class ProtocolWireVocabularyTest {
     assertEquals(List.of("halt-on-first-failure"), PlanFailurePolicy.wireValues());
     assertEquals("halt-on-first-failure", PlanFailurePolicy.HALT_ON_FIRST_FAILURE.toString());
     assertEquals(
-        List.of("bundle-managed", "environment-configured"), SqliteRuntimeProvenance.wireValues());
+        List.of("bundle-managed", "source-checkout-managed", "environment-configured"),
+        SqliteRuntimeProvenance.wireValues());
     assertEquals("bundle-managed", SqliteRuntimeProvenance.BUNDLE_MANAGED.wireValue());
+    assertEquals(
+        "source-checkout-managed", SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.toString());
     assertEquals(
         "environment-configured", SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED.toString());
     assertEquals(
@@ -54,6 +57,9 @@ class ProtocolWireVocabularyTest {
     assertEquals(
         SqliteRuntimeProvenance.BUNDLE_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("bundle-managed"));
+    assertEquals(
+        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+        SqliteRuntimeProvenance.fromWireValue("source-checkout-managed"));
     assertEquals(
         PublicCliBundleTarget.WINDOWS_AARCH64,
         PublicCliBundleTarget.fromWireValue("windows-aarch64"));

@@ -23,6 +23,7 @@ def load_contract_values(
         / "contract/src/main/resources/dev/erst/fingrind/contract/protocol/contract-schema-keys.json"
     )
     runtime_surface_schema = required_object(schema_keys, "runtimeSurface")
+    protected_book_format_schema = required_object(schema_keys, "protectedBookFormat")
     public_distribution_schema = required_object(schema_keys, "publicDistribution")
     managed_sqlite_schema = required_object(schema_keys, "managedSqlite")
     runtime_environment_schema = required_object(schema_keys, "runtimeEnvironment")
@@ -32,6 +33,10 @@ def load_contract_values(
     runtime_surface_document = read_json(
         repo_root
         / "contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json"
+    )
+    protected_book_format_document = read_json(
+        repo_root
+        / "contract/src/main/resources/dev/erst/fingrind/contract/protocol/protected-book-format-contract.json"
     )
     public_distribution_document = read_json(
         repo_root
@@ -111,6 +116,36 @@ def load_contract_values(
             "sqliteBundleHomeSystemProperty": required_value(
                 runtime_surface_document,
                 required_string(runtime_surface_schema, "sqliteBundleHomeSystemProperty"),
+            ),
+        },
+        "protectedBookFormat": {
+            "cipher": required_value(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "cipher"),
+            ),
+            "legacyMode": required_bool(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "legacyMode"),
+            ),
+            "pageSize": required_int(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "pageSize"),
+            ),
+            "reservedBytes": required_int(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "reservedBytes"),
+            ),
+            "legacyPageSize": required_int(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "legacyPageSize"),
+            ),
+            "kdfIter": required_int(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "kdfIter"),
+            ),
+            "plaintextHeaderSize": required_int(
+                protected_book_format_document,
+                required_string(protected_book_format_schema, "plaintextHeaderSize"),
             ),
         },
         "publicDistribution": public_distribution,
@@ -194,6 +229,20 @@ def required_value(document: dict[str, object], key: str) -> str:
     if not normalized:
         raise ValueError(f"missing required contract property: {key}")
     return normalized
+
+
+def required_bool(document: dict[str, object], key: str) -> bool:
+    value = document.get(key)
+    if not isinstance(value, bool):
+        raise ValueError(f"missing required boolean contract property: {key}")
+    return value
+
+
+def required_int(document: dict[str, object], key: str) -> int:
+    value = document.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"missing required integer contract property: {key}")
+    return value
 
 
 def required_object(document: dict[str, object], key: str) -> dict[str, object]:

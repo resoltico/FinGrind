@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.PublicCliDistribution;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.StorageDriver;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
@@ -81,14 +82,24 @@ class ContractProtocolVocabularyTest {
     assertEquals("chacha20", BookCipher.CHACHA20.toString());
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, SqliteLibraryMode.fromWireValue("managed-only"));
     assertEquals("managed-only", SqliteLibraryMode.MANAGED_ONLY.toString());
+    assertEquals(
+        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+        SqliteRuntimeProvenance.fromWireValue("source-checkout-managed"));
+    assertEquals(
+        "source-checkout-managed", SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.toString());
     assertEquals(SqliteRuntimeStatus.READY, SqliteRuntimeStatus.fromWireValue("ready"));
     assertEquals("ready", SqliteRuntimeStatus.READY.toString());
+    assertEquals(SqliteRuntimeStatus.FAILED, SqliteRuntimeStatus.fromWireValue("failed"));
+    assertEquals("failed", SqliteRuntimeStatus.FAILED.toString());
     assertEquals(
         List.of("required", "conditional", "optional", "forbidden"),
         RequestFieldPresence.wireValues());
 
     assertThrows(
         IllegalArgumentException.class, () -> RuntimeDistribution.fromWireValue("source-checkout"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SqliteRuntimeProvenance.fromWireValue("managed-source-checkout"));
     assertThrows(IllegalArgumentException.class, () -> SqliteRuntimeStatus.fromWireValue("loaded"));
   }
 
@@ -149,6 +160,8 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
             ContractTemplates.LedgerAssertionTemplateDescriptor.class),
         ContractTemplates.descriptorTypes());
+    assertEquals(
+        List.of(), new ContractResponse.ErrorDescriptor("code", "description").detailFields());
     assertEquals(List.of(), leafRejection.detailFields());
     assertEquals(List.of(), leafRejection.detailRejections());
   }

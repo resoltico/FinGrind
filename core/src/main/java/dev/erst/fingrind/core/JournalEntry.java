@@ -2,6 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -11,47 +12,45 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
   public JournalEntry {
     Objects.requireNonNull(effectiveDate, "effectiveDate");
     lines = lines == null ? List.of() : List.copyOf(lines);
+    List<String> violations = validate(lines);
+    if (!violations.isEmpty()) {
+      throw new JournalEntryValidationException(violations);
+    }
+  }
+
+  private static List<String> validate(List<JournalLine> lines) {
     if (lines.isEmpty()) {
-      throw new IllegalArgumentException("Journal entry must contain at least one line.");
+      return List.of("Journal entry must contain at least one line.");
     }
-    ensureSingleCurrency(lines);
-    ensureBothSidesPresent(lines);
-    ensureBalanced(lines);
-  }
-
-  private static void ensureSingleCurrency(List<JournalLine> lines) {
+    List<String> violations = new ArrayList<>();
     CurrencyCode expectedCurrency = lines.getFirst().amount().currencyCode();
-    boolean mixedCurrency =
-        lines.stream()
-            .map(line -> line.amount().currencyCode())
-            .anyMatch(currency -> !currency.equals(expectedCurrency));
+    boolean mixedCurrency = false;
+    boolean hasDebit = false;
+    boolean hasCredit = false;
+    BigDecimal debitTotal = BigDecimal.ZERO;
+    BigDecimal creditTotal = BigDecimal.ZERO;
+    for (JournalLine line : lines) {
+      CurrencyCode currency = line.amount().currencyCode();
+      if (!currency.equals(expectedCurrency)) {
+        mixedCurrency = true;
+      }
+      if (line.side() == JournalLine.EntrySide.DEBIT) {
+        hasDebit = true;
+        debitTotal = debitTotal.add(line.amount().amount());
+      } else {
+        hasCredit = true;
+        creditTotal = creditTotal.add(line.amount().amount());
+      }
+    }
     if (mixedCurrency) {
-      throw new IllegalArgumentException("Journal entry lines must share one currency.");
+      violations.add("Journal entry lines must share one currency.");
     }
-  }
-
-  private static void ensureBalanced(List<JournalLine> lines) {
-    BigDecimal debitTotal = totalFor(lines, JournalLine.EntrySide.DEBIT);
-    BigDecimal creditTotal = totalFor(lines, JournalLine.EntrySide.CREDIT);
-    if (debitTotal.compareTo(creditTotal) != 0) {
-      throw new IllegalArgumentException("Journal entry must balance debits and credits.");
-    }
-  }
-
-  private static void ensureBothSidesPresent(List<JournalLine> lines) {
-    boolean hasDebit = lines.stream().anyMatch(line -> line.side() == JournalLine.EntrySide.DEBIT);
-    boolean hasCredit =
-        lines.stream().anyMatch(line -> line.side() == JournalLine.EntrySide.CREDIT);
     if (!hasDebit || !hasCredit) {
-      throw new IllegalArgumentException(
-          "Journal entry must contain at least one debit line and one credit line.");
+      violations.add("Journal entry must contain at least one debit line and one credit line.");
     }
-  }
-
-  private static BigDecimal totalFor(List<JournalLine> lines, JournalLine.EntrySide side) {
-    return lines.stream()
-        .filter(line -> line.side() == side)
-        .map(line -> line.amount().amount())
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    if (debitTotal.compareTo(creditTotal) != 0) {
+      violations.add("Journal entry must balance debits and credits.");
+    }
+    return List.copyOf(violations);
   }
 }

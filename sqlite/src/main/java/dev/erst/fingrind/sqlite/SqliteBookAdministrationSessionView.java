@@ -9,15 +9,15 @@ import java.util.Objects;
 
 /** Narrow administration-session view over one SQLite-backed store. */
 final class SqliteBookAdministrationSessionView implements BookAdministrationSession {
-  private final SqliteStoreContext store;
+  private final SqliteStoreMutationOperations mutationOperations;
 
-  SqliteBookAdministrationSessionView(SqliteStoreContext store) {
-    this.store = Objects.requireNonNull(store, "store");
+  SqliteBookAdministrationSessionView(SqliteStoreMutationOperations mutationOperations) {
+    this.mutationOperations = Objects.requireNonNull(mutationOperations, "mutationOperations");
   }
 
   @Override
   public dev.erst.fingrind.contract.OpenBookResult openBook(Instant initializedAt) {
-    return store.openBook(initializedAt);
+    return mutationOperations.openBook(initializedAt);
   }
 
   @Override
@@ -26,6 +26,6 @@ final class SqliteBookAdministrationSessionView implements BookAdministrationSes
       AccountName accountName,
       NormalBalance normalBalance,
       Instant declaredAt) {
-    return store.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+    return mutationOperations.declareAccount(accountCode, accountName, normalBalance, declaredAt);
   }
 }

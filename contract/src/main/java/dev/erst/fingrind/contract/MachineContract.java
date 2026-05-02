@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
+import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
@@ -65,7 +66,9 @@ public final class MachineContract {
             : MachineContractDomainDescriptors.commandDescriptors().stream()
                 .filter(command -> command.name() == commandTopic)
                 .toList(),
-        selectedOperation == null ? canonicalQuickStart() : List.of(),
+        selectedOperation == null
+            ? canonicalQuickStart(environment.distribution().runtimeDistribution())
+            : List.of(),
         MachineContractDomainDescriptors.exitCodes(),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel(),
@@ -173,114 +176,140 @@ public final class MachineContract {
                 null)));
   }
 
-  private static List<WorkflowDescriptor> canonicalQuickStart() {
-    return List.of(
-        new WorkflowDescriptor(
-            WorkflowSurface.BUNDLE_POSIX_SHELL,
-            List.of(
-                WorkflowStepDescriptor.note(
-                    "Run commands from the extracted bundle root so the canonical launcher path resolves directly."),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-key-file ./acme.book-key"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.OPEN_BOOK))),
-                WorkflowStepDescriptor.edit(
-                    "./declare-account-cash.json", DECLARE_ACCOUNT_CASH_JSON),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-cash.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
-                WorkflowStepDescriptor.edit(
-                    "./declare-account-revenue.json", DECLARE_ACCOUNT_REVENUE_JSON),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./declare-account-revenue.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
-                WorkflowStepDescriptor.command(
-                    "%s %s > ./request.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))),
-                WorkflowStepDescriptor.note(
-                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in ./request.json before submitting the request."),
-                WorkflowStepDescriptor.note(
-                    "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --request-file ./request.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.POST_ENTRY))),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file ./acme.sqlite --book-key-file ./acme.book-key --output human"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_POSIX_SHELL),
-                            ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE))))),
-        new WorkflowDescriptor(
-            WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL,
-            List.of(
-                WorkflowStepDescriptor.note(
-                    "Run commands from the extracted bundle root so the canonical PowerShell launcher path resolves directly."),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-key-file .\\acme.book-key"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.OPEN_BOOK))),
-                WorkflowStepDescriptor.edit(
-                    ".\\declare-account-cash.json", DECLARE_ACCOUNT_CASH_JSON),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\declare-account-cash.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
-                WorkflowStepDescriptor.edit(
-                    ".\\declare-account-revenue.json", DECLARE_ACCOUNT_REVENUE_JSON),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\declare-account-revenue.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))),
-                WorkflowStepDescriptor.command(
-                    "%s %s > .\\request.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))),
-                WorkflowStepDescriptor.note(
-                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in .\\request.json before submitting the request."),
-                WorkflowStepDescriptor.note(
-                    "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\request.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --request-file .\\request.json"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.POST_ENTRY))),
-                WorkflowStepDescriptor.command(
-                    "%s %s --book-file .\\acme.sqlite --book-key-file .\\acme.book-key --output human"
-                        .formatted(
-                            launcherCommand(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL),
-                            ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE))))));
+  private static List<WorkflowDescriptor> canonicalQuickStart(
+      RuntimeDistribution runtimeDistribution) {
+    return switch (runtimeDistribution) {
+      case SELF_CONTAINED_BUNDLE ->
+          List.of(
+              workflow(WorkflowSurface.BUNDLE_POSIX_SHELL),
+              workflow(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL));
+      case SOURCE_CHECKOUT_GRADLE ->
+          List.of(
+              workflow(WorkflowSurface.SOURCE_CHECKOUT_POSIX_SHELL),
+              workflow(WorkflowSurface.SOURCE_CHECKOUT_WINDOWS_POWERSHELL));
+      case DIRECT_JAVA_INVOCATION ->
+          List.of(
+              workflow(WorkflowSurface.DIRECT_JAVA_POSIX_SHELL),
+              workflow(WorkflowSurface.DIRECT_JAVA_WINDOWS_POWERSHELL));
+      case CONTAINER_IMAGE -> List.of(workflow(WorkflowSurface.CONTAINER_DOCKER));
+    };
+  }
+
+  private static WorkflowDescriptor workflow(WorkflowSurface surface) {
+    QuickStartPaths paths = quickStartPaths(surface);
+    return new WorkflowDescriptor(
+        surface,
+        List.of(
+            WorkflowStepDescriptor.note(introNote(surface)),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-key-file %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
+                        paths.bookKeyFile())),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-file %s --book-key-file %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
+                        paths.bookFile(),
+                        paths.bookKeyFile())),
+            WorkflowStepDescriptor.edit(paths.declareCashFile(), DECLARE_ACCOUNT_CASH_JSON),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT),
+                        paths.bookFile(),
+                        paths.bookKeyFile(),
+                        paths.declareCashFile())),
+            WorkflowStepDescriptor.edit(paths.declareRevenueFile(), DECLARE_ACCOUNT_REVENUE_JSON),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT),
+                        paths.bookFile(),
+                        paths.bookKeyFile(),
+                        paths.declareRevenueFile())),
+            WorkflowStepDescriptor.command(
+                "%s %s > %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE),
+                        paths.requestFile())),
+            WorkflowStepDescriptor.note(
+                "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in "
+                    + paths.requestFile()
+                    + " before submitting the request."),
+            WorkflowStepDescriptor.note(
+                "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
+                        paths.bookFile(),
+                        paths.bookKeyFile(),
+                        paths.requestFile())),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.POST_ENTRY),
+                        paths.bookFile(),
+                        paths.bookKeyFile(),
+                        paths.requestFile())),
+            WorkflowStepDescriptor.command(
+                "%s %s --book-file %s --book-key-file %s --output human"
+                    .formatted(
+                        launcherCommand(surface),
+                        ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE),
+                        paths.bookFile(),
+                        paths.bookKeyFile()))));
+  }
+
+  private static String introNote(WorkflowSurface surface) {
+    return switch (surface) {
+      case BUNDLE_POSIX_SHELL ->
+          "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
+      case BUNDLE_WINDOWS_POWERSHELL ->
+          "Run commands from the extracted bundle root so the canonical PowerShell launcher path resolves directly.";
+      case SOURCE_CHECKOUT_POSIX_SHELL ->
+          "Run commands from the repository root after ./gradlew :cli:installShadowDist prepareManagedSqlite builds the local launcher and managed SQLite runtime.";
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
+          "Run commands from the repository root after .\\gradlew.bat :cli:installShadowDist prepareManagedSqlite builds the local launcher and managed SQLite runtime.";
+      case DIRECT_JAVA_POSIX_SHELL ->
+          "Run commands from the repository root after ./gradlew :cli:shadowJar prepareManagedSqlite builds the developer raw JAR and managed SQLite runtime.";
+      case DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          "Run commands from the repository root after .\\gradlew.bat :cli:shadowJar prepareManagedSqlite builds the developer raw JAR and managed SQLite runtime.";
+      case CONTAINER_DOCKER ->
+          "Replace <container-image> with the built or published FinGrind image reference and replace <host-workdir> with the host directory you want mounted at /workspace.";
+    };
+  }
+
+  private static QuickStartPaths quickStartPaths(WorkflowSurface surface) {
+    return switch (surface) {
+      case BUNDLE_POSIX_SHELL,
+          SOURCE_CHECKOUT_POSIX_SHELL,
+          DIRECT_JAVA_POSIX_SHELL,
+          CONTAINER_DOCKER ->
+          new QuickStartPaths(
+              "./acme.book-key",
+              "./acme.sqlite",
+              "./declare-account-cash.json",
+              "./declare-account-revenue.json",
+              "./request.json");
+      case BUNDLE_WINDOWS_POWERSHELL,
+          SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
+          DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          new QuickStartPaths(
+              ".\\acme.book-key",
+              ".\\acme.sqlite",
+              ".\\declare-account-cash.json",
+              ".\\declare-account-revenue.json",
+              ".\\request.json");
+    };
   }
 
   private static String launcherCommand(WorkflowSurface surface) {
@@ -289,6 +318,19 @@ public final class MachineContract {
           ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64);
       case BUNDLE_WINDOWS_POWERSHELL ->
           ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64);
+      case SOURCE_CHECKOUT_POSIX_SHELL -> "./cli/build/install/cli-shadow/bin/cli";
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL -> ".\\cli\\build\\install\\cli-shadow\\bin\\cli.bat";
+      case DIRECT_JAVA_POSIX_SHELL -> ProtocolCatalog.directJavaLauncherCommand(false);
+      case DIRECT_JAVA_WINDOWS_POWERSHELL -> ProtocolCatalog.directJavaLauncherCommand(true);
+      case CONTAINER_DOCKER ->
+          "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>";
     };
   }
+
+  private record QuickStartPaths(
+      String bookKeyFile,
+      String bookFile,
+      String declareCashFile,
+      String declareRevenueFile,
+      String requestFile) {}
 }

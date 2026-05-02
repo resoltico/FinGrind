@@ -2,27 +2,11 @@ package dev.erst.fingrind.cli;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.core.SourceChannel;
 
 /** Fuzzes FinGrind CLI request decoding from raw JSON payloads. */
 public class CliRequestFuzzTest {
   @FuzzTest
   void readPostEntryCommand(FuzzedDataProvider data) {
-    byte[] input = data.consumeRemainingAsBytes();
-    try {
-      PostEntryCommand command = CliFuzzFixtures.readPostEntryCommand(input);
-      if (command == null) {
-        throw new IllegalStateException("readPostEntryCommand returned null");
-      }
-      if (!command.sourceChannel().equals(SourceChannel.CLI)) {
-        throw new IllegalStateException("CLI request parsing must stamp the CLI source channel.");
-      }
-      if (command.requestProvenance().idempotencyKey().value().isBlank()) {
-        throw new IllegalStateException("Parsed request must retain a non-blank idempotency key.");
-      }
-    } catch (IllegalArgumentException expected) {
-      // Malformed JSON and invalid request/domain shapes are expected for many fuzz inputs.
-    }
+    CliRequestFuzzAssertions.readPostEntryCommand(data.consumeRemainingAsBytes());
   }
 }

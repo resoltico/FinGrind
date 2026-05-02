@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: ADAPTERS
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -173,9 +173,11 @@ public final class SqliteRuntime
   discovery probe surface
 - Surface: `probe()`, `sqliteVersion()`, `sqlite3MultipleCiphersVersion()`, and public constants
   such as `REQUIRED_MINIMUM_SQLITE_VERSION`
-- `SqliteRuntime.Probe`: machine-facing runtime snapshot carrying loaded versions, required minimums,
-  readiness status, and any issue detail
-- `SqliteRuntime.Status`: stable wire vocabulary with `ready`, `unavailable`, and `incompatible`
+- `SqliteRuntime.Probe`: machine-facing runtime snapshot carrying loaded versions, required
+  minimums, readiness status, and any issue detail; late probe failures preserve any already-known
+  library provenance and path facts instead of collapsing back to bare unavailability
+- `SqliteRuntime.Status`: stable wire vocabulary with `ready`, `unavailable`, `failed`, and
+  `incompatible`
 
 ## `SqliteFailureClassifier` And `SqliteFailureClassifier.Category`
 
@@ -239,7 +241,20 @@ public final class SqliteBookSessions
   and `rekeyBook(...)` helpers needed by CLI/tooling flows; rekeying now consumes a
   `BookAccess.PassphraseSource` plus `SqlitePassphraseResolver` so the same safe source-resolution
   policy applies to both open and rotate flows
-- Internal split: `SqlitePostingFactStore` is now a thin session wrapper over
-  `SqliteStoreContext`, while `SqliteStoreLifecycle`, `SqliteStoreReadOperations`,
-  `SqliteStoreMutationOperations`, `SqlitePostingReader`, and `SqliteReportReader` remain the
-  focused implementation collaborators behind the public session API
+- Internal split: `SqlitePostingFactStore` is now a thin session wrapper over one immutable
+  `SqliteStoreContext` dependency bundle plus one mutable `SqliteStoreLifecycle` state owner;
+  `SqliteSessionSecret` owns the reusable session secret, `SqliteStoreReadOperations` delegates
+  query/report reads through focused readers, and `SqliteStoreMutationOperations` owns durable
+  mutation and rekey flows behind the public session API
+
+## Protection Boundary
+
+- The encrypted-book boundary is the SQLite book plus encrypted journal/WAL bytes, not every
+  artifact around the session.
+- `BookAccess` keeps the durable book path coupled to one safe passphrase-source choice, but a
+  key file stored beside the selected `.sqlite` path is not protected by SQLite3MC.
+- `SqliteConnectionConfigurer` forces `temp_store=memory`; the documented protection boundary
+  assumes that policy stays in place.
+- Query results after decoding, in-process passphrase bytes before zeroization, crash dumps,
+  copied backups, and exported reports all live outside the encrypted-page boundary and need
+  separate operator controls.

@@ -43,7 +43,7 @@ public final class JazzerFindingSupport {
     }
   }
 
-  private static FindingArtifact findingArtifact(JazzerRunTarget target, Path rawArtifactPath) {
+  static FindingArtifact findingArtifact(JazzerRunTarget target, Path rawArtifactPath) {
     try {
       ReplayOutcome outcome =
           JazzerReplayRunner.replay(target.replayHarness(), Files.readAllBytes(rawArtifactPath));
@@ -76,7 +76,7 @@ public final class JazzerFindingSupport {
     return RAW_FINDING_PREFIXES.stream().anyMatch(fileName::startsWith);
   }
 
-  private static String rawArtifactKind(Path rawArtifactPath) {
+  static String rawArtifactKind(Path rawArtifactPath) {
     String fileName = rawArtifactPath.getFileName().toString();
     int separator = fileName.indexOf('-');
     return separator >= 0 ? fileName.substring(0, separator) : fileName;

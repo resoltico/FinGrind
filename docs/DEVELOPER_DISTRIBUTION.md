@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.29.0"
+version: "0.30.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -155,8 +155,9 @@ Bundle entrypoints:
 ```
 
 Local bundle restaging prunes older `cli/build/bundle/fingrind-*` trees before writing the
-current versioned root, so repeated source-checkout bundle builds no longer leave stale staged
-bundle directories behind.
+current versioned root, and `:cli:bundleCliArchive` also prunes obsolete
+`cli/build/distributions/fingrind-*` archives plus checksum files before emitting the current
+bundle artifact set.
 
 On Windows PowerShell, use:
 
@@ -165,6 +166,17 @@ On Windows PowerShell, use:
 .\scripts\bundle-smoke.ps1
 ```
 
+Source-checkout installed launcher entrypoint:
+
+```bash
+./gradlew :cli:installShadowDist prepareManagedSqlite
+./cli/build/install/cli-shadow/bin/cli help
+```
+
+That generated launcher now carries the same Java native-access flag as the bundle, reports the
+source-checkout runtime-distribution contract automatically, and resolves the managed SQLite
+library from the prepared checkout on its own.
+
 Developer-only raw JAR entrypoints:
 
 These example paths assume the project `build/` tree stays inside the checkout. On fragile mounted
@@ -172,16 +184,19 @@ filesystems, `./gradlew` may relocate that tree into the wrapper-owned local cac
 smoke scripts resolve that automatically.
 
 ```bash
-./gradlew :cli:shadowJar
-./gradlew prepareManagedSqlite
-export FINGRIND_SQLITE_LIBRARY="$(find "$PWD/build/managed-sqlite" -type f \( -name 'libsqlite3.dylib' -o -name 'libsqlite3.so.0' \) | head -n 1)"
-java --enable-native-access=ALL-UNNAMED -jar cli/build/libs/fingrind.jar help
+./gradlew :cli:shadowJar prepareManagedSqlite
+java -jar cli/build/libs/fingrind.jar help
 ```
 
 The raw JAR route remains useful for:
 - Docker image assembly
 - advanced contributor debugging
 - validating the application JAR directly during development
+
+When that JAR runs from the prepared checkout, it inherits the same native-access manifest
+contract and managed-SQLite auto-discovery path as the generated source-checkout launcher. Manual
+`FINGRIND_SQLITE_LIBRARY` export remains the escape hatch only for custom direct-Java launches
+that have been moved away from the prepared checkout layout.
 
 `./gradlew :cli:shadowJar` also stages the canonical runtime-module list that the Docker build
 reuses under `cli/build/docker/runtime-modules.txt`, so the public bundle and container image
@@ -209,6 +224,9 @@ PowerShell verifier no longer re-author dozens of per-path environment variables
 seam. The Windows entrypoint also keeps its Unicode workspace-path coverage alive through
 `workspace odd/Rīga büro/...`, while the shared Python scenario builder preserves the matching
 Unicode nested book/key paths across bundle and container acceptance.
+The Bash `release-smoke-*.sh` support files are source-only libraries, not runnable entrypoints:
+direct execution now fails fast with an explicit sourced-only error instead of returning a false
+green no-op.
 `cli/build.gradle.kts` also renders `bundle-manifest.json` through `BundleManifestRenderer` into
 `build/generated/bundle/root/` during staging instead of checking a pseudo-JSON source template
 into `cli/src/bundle/root/`, so the shipped manifest stays valid JSON derived from the same

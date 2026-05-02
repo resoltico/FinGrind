@@ -28,6 +28,10 @@ plugins {
 
 description = "CLI transport adapter for the FinGrind execution boundary"
 
+val repositoryRootDirectory = rootProject.projectDir.toPath()
+val sourceCheckoutRuntimeDistribution =
+    DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRootDirectory)
+
 dependencies {
     implementation(project(":contract"))
     implementation(project(":core"))
@@ -39,17 +43,20 @@ dependencies {
 
 application {
     mainClass = "dev.erst.fingrind.cli.App"
+    applicationDefaultJvmArgs =
+        listOf(
+            "--enable-native-access=ALL-UNNAMED",
+            "-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}",
+            "-Dfingrind.source-checkout.root=${repositoryRootDirectory}",
+        )
 }
 
 val buildMetadata = FinGrindBuildMetadata.load(project)
 val fingrindJavaVersion = buildMetadata.javaVersion
-val repositoryRootDirectory = rootProject.projectDir.toPath()
 val publicCliBundleTargets = DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
 val unsupportedPublicCliBundleTargets =
     DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
 val hostBundleTarget = DistributionContractReader.hostBundleTarget(repositoryRootDirectory)
-val sourceCheckoutRuntimeDistribution =
-    DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRootDirectory)
 val containerRuntimeDistribution =
     DistributionContractReader.containerRuntimeDistribution(repositoryRootDirectory)
 val bundleRuntimeDistribution =
@@ -152,7 +159,6 @@ if (bundleClassifierValue != hostBundleClassifier) {
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
-    jvmArgs("-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}")
 }
 
 tasks.named<ShadowJar>("shadowJar") {
@@ -179,10 +185,13 @@ tasks.named<ShadowJar>("shadowJar") {
     // LICENSE is the MIT license for FinGrind's own code.
     // LICENSE-APACHE-2.0 satisfies Apache License 2.0 Section 4(a) for bundled dependencies.
     // LICENSE-SIL-OFL-1.1 satisfies the bundled Noto Sans font license terms.
+    // LICENSE-SQLITE3MULTIPLECIPHERS satisfies the MIT license for the managed SQLite3MC
+    // native library that ships alongside this JAR in every distribution mode.
     from(rootProject.file("NOTICE")) { into("META-INF") }
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("LICENSE-APACHE-2.0")) { into("META-INF") }
     from(rootProject.file("LICENSE-SIL-OFL-1.1")) { into("META-INF") }
+    from(rootProject.file("LICENSE-SQLITE3MULTIPLECIPHERS")) { into("META-INF") }
 
     manifest {
         attributes(
@@ -190,6 +199,8 @@ tasks.named<ShadowJar>("shadowJar") {
             "Implementation-Version" to project.version,
             "Implementation-Vendor" to buildMetadata.implementationVendor,
             "Implementation-License" to buildMetadata.implementationLicense,
+            "Enable-Native-Access" to "ALL-UNNAMED",
+            "FinGrind-Source-Checkout-Root" to repositoryRootDirectory.toString(),
         )
     }
 }
@@ -305,15 +316,22 @@ val writeBundleManifest =
         outputFile.set(bundleManifestOutputFile)
     }
 
-val cleanBundleRoot =
-    tasks.register<Delete>("cleanBundleRoot") {
+val cleanBundleOutputs =
+    tasks.register<Delete>("cleanBundleOutputs") {
         group = "distribution"
         description =
-            "Deletes staged self-contained FinGrind CLI bundle directories for all prior versions."
+            "Deletes staged self-contained FinGrind CLI bundle directories plus prior bundle archives and checksum files."
         delete(
             bundleWorkspaceDirectory.map { bundleDirectory ->
                 bundleDirectory.asFile.listFiles()?.filter { candidate ->
                     candidate.isDirectory && candidate.name.startsWith("fingrind-")
+                } ?: emptyList()
+            },
+        )
+        delete(
+            distributionDirectory.map { distributionsDirectory ->
+                distributionsDirectory.asFile.listFiles()?.filter { candidate ->
+                    candidate.name.startsWith("fingrind-") && (candidate.isFile || candidate.isDirectory)
                 } ?: emptyList()
             },
         )
@@ -324,7 +342,7 @@ val stageCliBundle =
     tasks.register<Sync>("stageCliBundle") {
         group = "distribution"
         description = "Stages the self-contained FinGrind CLI bundle directory."
-        dependsOn(cleanBundleRoot)
+        dependsOn(cleanBundleOutputs)
         dependsOn(shadowJarTask)
         dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
         dependsOn(createRuntimeImage)
@@ -440,6 +458,10 @@ tasks.register("bundleCliArchive") {
 }
 
 tasks.named<Test>("test") {
+    jvmArgs(
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+        "--add-exports=java.base/jdk.internal.io=ALL-UNNAMED",
+    )
     inputs.file(rootProject.layout.projectDirectory.file("Dockerfile"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootProject.layout.projectDirectory.file(".gitignore"))

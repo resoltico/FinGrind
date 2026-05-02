@@ -6,7 +6,7 @@ readonly check_stage_ids=(
     jazzer-check
     cli-bundle
     bundle-smoke
-    shell-syntax
+    release-surface-scripts
     docker-smoke
 )
 
@@ -21,28 +21,33 @@ readonly check_stage_labels=(
 
 readonly check_stage5_executable_script_paths=(
     scripts/test-devcontainer-workflow.sh
-    scripts/test-ci-shell-syntax-workflow.sh
+    scripts/test-repo-verification-lock.sh
+    scripts/test-ci-release-surface-workflow.sh
     scripts/test-container-workflow-timeout.sh
     scripts/test-prepare-release-version.sh
     scripts/test-read-contract-values.sh
     scripts/test-bundle-smoke-powershell.sh
+    scripts/test-bundle-archive-pruning.sh
     scripts/test-release-smoke-workflow.sh
     scripts/test-release-protocol-pr-diff-fallback.sh
-    scripts/test-verify-jacoco-snapshot.sh
+    scripts/test-release-protocol-worktree-handoff.sh
     scripts/test-verify-release-candidate-tag.sh
     scripts/test-verify-release-merge-handoff.sh
     scripts/test-verify-public-container-surface.sh
     scripts/test-gradlew-bat-wrapper.sh
     scripts/test-gradle-wrapper-support.sh
+    scripts/test-jazzer-stale-class-pruning.sh
     scripts/test-check-process-support.sh
     scripts/test-check-stage-contract.sh
+    scripts/test-operator-help-surfaces.sh
     scripts/test-jazzer-fuzz-all-wrapper.sh
+    scripts/test-jazzer-replay-wrapper.sh
+    scripts/test-source-checkout-launcher.sh
     scripts/test-verify-github-release.sh
     scripts/test-verify-release-primary-checkout.sh
     scripts/test-verify-managed-sqlite-runtime.sh
     scripts/validate-devcontainer.sh
     scripts/verify-managed-sqlite-runtime.sh
-    scripts/verify-jacoco-snapshot.sh
 )
 
 readonly check_stage5_shell_only_script_paths=(
@@ -52,8 +57,8 @@ readonly check_stage5_shell_only_script_paths=(
 
 check_stage_usage_lines() {
     printf '%s\n' \
-        '  1. check coverage' \
-        '  2. jazzer check' \
+        '  1. scripts/run-quality-gates.sh (check coverage + included build-logic test)' \
+        '  2. jazzer/bin/check' \
         '  3. :cli:bundleCliArchive' \
         '  4. scripts/bundle-smoke.sh (bundle acceptance workflow)' \
         "  5. $(check_stage5_usage_command)" \
@@ -61,7 +66,7 @@ check_stage_usage_lines() {
 }
 
 check_stage5_usage_command() {
-    printf '%s\n' './scripts/check-shell-syntax.sh'
+    printf '%s\n' './scripts/check-release-surface-scripts.sh'
 }
 
 check_stage_execute() {
@@ -71,10 +76,14 @@ check_stage_execute() {
 
     case "${stage_id}" in
         quality-gates)
-            run_stage "${stage_id}" "${stage_label}" "${check_repo_root}" check coverage
+            run_quality_gate_stage "${stage_id}" "${stage_label}"
             ;;
         jazzer-check)
-            run_stage "${stage_id}" "${stage_label}" "${check_repo_root}/jazzer" check
+            run_shell_stage \
+                "${stage_id}" \
+                "${stage_label}" \
+                "${check_repo_root}/jazzer/bin/check" \
+                ${gradle_args[@]+"${gradle_args[@]}"}
             ;;
         cli-bundle)
             run_stage "${stage_id}" "${stage_label}" "${check_repo_root}" :cli:bundleCliArchive
@@ -82,9 +91,9 @@ check_stage_execute() {
         bundle-smoke)
             run_shell_stage "${stage_id}" "${stage_label}" "${check_repo_root}/scripts/bundle-smoke.sh"
             ;;
-        shell-syntax)
+        release-surface-scripts)
             run_shell_stage "${stage_id}" "${stage_label}" \
-                "${check_repo_root}/scripts/check-shell-syntax.sh"
+                "${check_repo_root}/scripts/check-release-surface-scripts.sh"
             ;;
         docker-smoke)
             run_shell_stage "${stage_id}" "${stage_label}" "${check_repo_root}/scripts/docker-smoke.sh"

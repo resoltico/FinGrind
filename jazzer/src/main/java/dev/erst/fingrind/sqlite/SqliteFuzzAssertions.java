@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -81,6 +82,16 @@ public final class SqliteFuzzAssertions {
         "jazzer deterministic book passphrase", TEST_BOOK_KEY.toCharArray());
   }
 
+  /** Writes one deterministic secure key file that resolves to the shared Jazzer passphrase. */
+  public static void writeDeterministicBookKeyFile(Path keyFilePath) throws java.io.IOException {
+    if (Files.notExists(keyFilePath)) {
+      SqliteBookKeyFileGenerator.generate(keyFilePath);
+    } else {
+      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyFilePath).requireAccepted();
+    }
+    Files.writeString(keyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+  }
+
   /** Opens one deterministic protected-book store for fuzz and replay flows. */
   public static SqliteBookSession openStore(Path bookPath) {
     return SqliteBookSessions.open(bookPath, bookPassphrase());
@@ -101,7 +112,7 @@ public final class SqliteFuzzAssertions {
     }
   }
 
-  private static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue) {
+  static void assertQueryInt(SqliteNativeDatabase database, String sql, int expectedValue) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
       if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
@@ -118,8 +129,7 @@ public final class SqliteFuzzAssertions {
     }
   }
 
-  private static void assertQueryText(
-      SqliteNativeDatabase database, String sql, String expectedValue) {
+  static void assertQueryText(SqliteNativeDatabase database, String sql, String expectedValue) {
     try (SqliteNativeStatement statement = SqliteNativeStatements.prepare(database, sql)) {
       if (statement.step() != SqliteNativeResultCodes.ROW) {
         throw new IllegalStateException("Expected one SQLite row for hardening assertion: " + sql);
@@ -136,11 +146,11 @@ public final class SqliteFuzzAssertions {
     }
   }
 
-  private static String escapeSqlLiteral(String text) {
+  static String escapeSqlLiteral(String text) {
     return text.replace("'", "''");
   }
 
-  private static SqlitePostingFactStore requireStoreImplementation(SqliteBookSession session) {
+  static SqlitePostingFactStore requireStoreImplementation(SqliteBookSession session) {
     if (session instanceof SqlitePostingFactStore store) {
       return store;
     }

@@ -1,5 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerFact;
@@ -92,13 +95,14 @@ final class CliPlanPayloadMapper {
   private static CliPlanJsonModels.LedgerFactPayload ledgerFactPayload(LedgerFact fact) {
     return switch (fact) {
       case LedgerFact.Text text ->
-          new CliPlanJsonModels.TextLedgerFactPayload(text.name(), text.value());
+          new CliPlanJsonModels.TextLedgerFactPayload("text", text.name(), text.value());
       case LedgerFact.Flag flag ->
-          new CliPlanJsonModels.FlagLedgerFactPayload(flag.name(), flag.value());
+          new CliPlanJsonModels.FlagLedgerFactPayload("flag", flag.name(), flag.value());
       case LedgerFact.Count count ->
-          new CliPlanJsonModels.CountLedgerFactPayload(count.name(), count.value());
+          new CliPlanJsonModels.CountLedgerFactPayload("count", count.name(), count.value());
       case LedgerFact.Group group ->
-          new CliPlanJsonModels.GroupLedgerFactPayload(group.name(), factPayloads(group.facts()));
+          new CliPlanJsonModels.GroupLedgerFactPayload(
+              "group", group.name(), factPayloads(group.facts()));
     };
   }
 }

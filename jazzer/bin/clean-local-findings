@@ -6,4 +6,13 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 . "${script_dir}/common.sh"
 
 fg_initialize_wrapper "$0"
-fg_run_passive_command "cleanLocalFindings" "$@"
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/clean-local-findings [supported Gradle options]
+
+Deletes local Jazzer finding artifacts under jazzer/.local/findings.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+fg_run_maintenance_command "cleanLocalFindings" "$@"

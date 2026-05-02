@@ -3,7 +3,7 @@
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_unbalanced.json",
   "expectation": {
     "outcomeKind": "expected-invalid",
-    "message": "Journal entry must balance debits and credits.",
+    "message": "Journal entry is invalid: Journal entry must balance debits and credits.",
     "details": {
       "type": "CLI_REQUEST_UNPARSED"
     }

@@ -2,9 +2,11 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -13,6 +15,8 @@ import java.nio.file.Path;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.TokenStreamLocation;
+import tools.jackson.core.io.ContentReference;
 
 /** Unit tests for {@link CliJsonRequestCodec}. */
 class CliJsonRequestCodecTest {
@@ -115,8 +119,68 @@ class CliJsonRequestCodecTest {
         CliJsonRequestCodec.requestReadFailure(
             Path.of("request.json"), parseFailure, "schema hint");
 
-    assertEquals("Failed to read request JSON.", exception.getMessage());
+    assertEquals(
+        "Failed to read request JSON at line "
+            + parseFailure.getLocation().getLineNr()
+            + ", column "
+            + parseFailure.getLocation().getColumnNr()
+            + ".",
+        exception.getMessage());
     assertEquals("schema hint", exception.failure().hint());
+    CliErrorJsonModels.InvalidJsonDetails details =
+        assertInstanceOf(
+            CliErrorJsonModels.InvalidJsonDetails.class, exception.failure().details());
+    assertEquals(parseFailure.getOriginalMessage(), details.parseMessage());
+    assertEquals(parseFailure.getLocation().getLineNr(), details.line());
+    assertEquals(parseFailure.getLocation().getColumnNr(), details.column());
+  }
+
+  @Test
+  void readFailureMessage_fallsBackForNonJacksonAndUnusableJacksonLocations() {
+    assertEquals(
+        "Failed to read request JSON.",
+        CliJsonRequestCodec.readFailureMessage(new RuntimeException("boom")));
+    assertEquals(
+        "Failed to read request JSON.",
+        CliJsonRequestCodec.readFailureMessage(new StubJacksonException("boom", null)));
+    assertEquals(
+        "Failed to read request JSON.",
+        CliJsonRequestCodec.readFailureMessage(
+            new StubJacksonException("boom", new FixedLocation(0, 7))));
+    assertEquals(
+        "Failed to read request JSON.",
+        CliJsonRequestCodec.readFailureMessage(
+            new StubJacksonException("boom", new FixedLocation(7, 0))));
+  }
+
+  @Test
+  void parseLocation_returnsOnlyUsablePositiveLocations() {
+    assertEquals(
+        new CliJsonRequestCodec.JsonParseLocation(4, 9),
+        CliJsonRequestCodec.parseLocation(
+            new StubJacksonException("boom", new FixedLocation(4, 9))));
+    assertEquals(null, CliJsonRequestCodec.parseLocation(new StubJacksonException("boom", null)));
+    assertEquals(
+        null,
+        CliJsonRequestCodec.parseLocation(
+            new StubJacksonException("boom", new FixedLocation(0, 9))));
+    assertEquals(
+        null,
+        CliJsonRequestCodec.parseLocation(
+            new StubJacksonException("boom", new FixedLocation(9, 0))));
+  }
+
+  @Test
+  void jsonParseLocation_requiresPositiveCoordinates() {
+    IllegalArgumentException lineFailure =
+        assertThrows(
+            IllegalArgumentException.class, () -> new CliJsonRequestCodec.JsonParseLocation(0, 1));
+    assertEquals("line must be positive", lineFailure.getMessage());
+
+    IllegalArgumentException columnFailure =
+        assertThrows(
+            IllegalArgumentException.class, () -> new CliJsonRequestCodec.JsonParseLocation(1, 0));
+    assertEquals("column must be positive", columnFailure.getMessage());
   }
 
   @Test
@@ -145,6 +209,47 @@ class CliJsonRequestCodecTest {
       } else {
         System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, priorDistribution);
       }
+    }
+  }
+
+  /** Minimal Jackson exception stub with caller-controlled location semantics. */
+  private static final class StubJacksonException extends JacksonException {
+    private static final long serialVersionUID = 1L;
+    private final @org.jspecify.annotations.Nullable TokenStreamLocation explicitLocation;
+
+    private StubJacksonException(
+        String message, @org.jspecify.annotations.Nullable TokenStreamLocation location) {
+      super(message, location, null);
+      this.explicitLocation = location;
+    }
+
+    @Override
+    public @org.jspecify.annotations.Nullable TokenStreamLocation getLocation() {
+      return explicitLocation;
+    }
+  }
+
+  /** Fixed token location for explicit line and column edge-case tests. */
+  private static final class FixedLocation extends TokenStreamLocation {
+    private static final long serialVersionUID = 1L;
+
+    private final int lineNumber;
+    private final int columnNumber;
+
+    private FixedLocation(int lineNumber, int columnNumber) {
+      super(ContentReference.rawReference("x"), 0L, 1, 1);
+      this.lineNumber = lineNumber;
+      this.columnNumber = columnNumber;
+    }
+
+    @Override
+    public int getLineNr() {
+      return lineNumber;
+    }
+
+    @Override
+    public int getColumnNr() {
+      return columnNumber;
     }
   }
 }

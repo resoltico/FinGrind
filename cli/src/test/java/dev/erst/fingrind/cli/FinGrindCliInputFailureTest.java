@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -77,10 +78,21 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(1, exitCode);
+    JsonNode failureEnvelope =
+        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals(
+        "Failed to read request JSON at line 1, column 2.",
+        failureEnvelope.path("message").stringValue());
     assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("Failed to read request JSON."));
+        failureEnvelope
+            .path("details")
+            .path("parseMessage")
+            .stringValue()
+            .startsWith("Unexpected end-of-input: expected close marker for Object"));
+    assertEquals(1, failureEnvelope.path("details").path("line").intValue());
+    assertEquals(2, failureEnvelope.path("details").path("column").intValue());
     assertFalse(workflow.workflowInvoked());
   }
 
@@ -131,15 +143,15 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
         CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("error", failureEnvelope.path("status").asText());
-    assertEquals("invalid-request", failureEnvelope.path("code").asText());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
         "Request file does not exist: " + requestFile.toAbsolutePath().normalize() + ".",
-        failureEnvelope.path("message").asText());
+        failureEnvelope.path("message").stringValue());
     assertTrue(
         failureEnvelope
             .path("hint")
-            .asText()
+            .stringValue()
             .contains("Verify that the selected --request-file exists and is readable"));
     assertFalse(workflow.workflowInvoked());
   }
@@ -193,7 +205,179 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertEquals(1, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("invalid-request"));
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("Failed to read request JSON at line 1, column 2."));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Parse message"));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Parse location"));
     assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\""));
+    assertFalse(workflow.workflowInvoked());
+  }
+
+  @Test
+  void run_emitsStructuredJournalViolationsForInvalidRequest() throws IOException {
+    Path requestFile =
+        writeNamedRequest(
+            "invalid-journal-request.json",
+            """
+            {
+              "effectiveDate": "2026-04-07",
+              "lines": [
+                {
+                  "accountCode": "1000",
+                  "side": "DEBIT",
+                  "currencyCode": "EUR",
+                  "amount": "10.00"
+                },
+                {
+                  "accountCode": "2000",
+                  "side": "DEBIT",
+                  "currencyCode": "USD",
+                  "amount": "5.00"
+                }
+              ],
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-1",
+                "causationId": "cause-1"
+              }
+            }
+            """);
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new DeclareAccountResult.Declared(
+                new DeclaredAccount(
+                    new AccountCode("1000"),
+                    new AccountName("Cash"),
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "preflight-entry",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              requestFile.toString()
+            });
+
+    assertEquals(1, exitCode);
+    JsonNode failureEnvelope =
+        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals(
+        List.of(
+            "Journal entry lines must share one currency.",
+            "Journal entry must contain at least one debit line and one credit line.",
+            "Journal entry must balance debits and credits."),
+        List.of(
+            failureEnvelope.path("details").path("violations").get(0).stringValue(),
+            failureEnvelope.path("details").path("violations").get(1).stringValue(),
+            failureEnvelope.path("details").path("violations").get(2).stringValue()));
+    assertFalse(workflow.workflowInvoked());
+  }
+
+  @Test
+  void run_guidesFlattenedLedgerPlanDeclareAccountStepsBackToTheCanonicalNestedShape()
+      throws IOException {
+    Path requestFile =
+        writeNamedRequest(
+            "invalid-ledger-plan-flattened-declare-account.json",
+            """
+            {
+              "planId": "plan-1",
+              "steps": [
+                {
+                  "stepId": "step-1",
+                  "kind": "declare-account",
+                  "accountCode": "1000",
+                  "accountName": "Cash",
+                  "normalBalance": "DEBIT"
+                }
+              ]
+            }
+            """);
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new DeclareAccountResult.Declared(
+                new DeclaredAccount(
+                    new AccountCode("1000"),
+                    new AccountName("Cash"),
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              requestFile.toString()
+            });
+
+    assertEquals(1, exitCode);
+    JsonNode failureEnvelope =
+        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals(
+        "Fields accountCode, accountName, normalBalance must be nested under declareAccount for declare-account ledger plan steps.",
+        failureEnvelope.path("message").stringValue());
+    assertTrue(
+        failureEnvelope
+            .path("hint")
+            .stringValue()
+            .contains(CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
     assertFalse(workflow.workflowInvoked());
   }
 

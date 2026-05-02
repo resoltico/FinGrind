@@ -39,7 +39,7 @@ class RequestProvenanceTest {
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
-                nullOptional()));
+                nullCorrelationIdOptional()));
   }
 
   @Test
@@ -56,7 +56,7 @@ class RequestProvenanceTest {
                 Optional.empty()));
   }
 
-  private static <T> Optional<T> nullOptional() {
-    return Optional.class.cast(null);
+  private static Optional<CorrelationId> nullCorrelationIdOptional() {
+    return null;
   }
 }

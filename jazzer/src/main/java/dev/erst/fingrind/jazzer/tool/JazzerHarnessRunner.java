@@ -11,23 +11,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 
 /** Launches one Jazzer harness class through the JUnit Platform outside Gradle's Test task. */
 public final class JazzerHarnessRunner {
   private static final String GITHUB_ACTIONS_BLOCK_MESSAGE =
       "Active Jazzer fuzzing is local-only and must not run on GitHub Actions. "
-          + "Use './gradlew -p jazzer check' for deterministic GitHub verification "
+          + "Use 'jazzer/bin/check' for deterministic GitHub verification "
           + "and 'jazzer/bin/*' for local active fuzzing.";
   private static final String PULSE_PREFIX = "[JAZZER-PULSE] ";
-  private static final Lock PRODUCTION_WIRING_LOCK = new ReentrantLock();
-  private static final AtomicReference<ProductionWiring> PRODUCTION_WIRING =
-      new AtomicReference<>(
-          new ProductionWiring(
-              OfficialHarnessExecutor.INSTANCE, JazzerHarnessRunner::runningOnGitHubActions));
   private final OutputStream outputStream;
   private final OutputStream errorStream;
   private final ExitHandler exitHandler;
@@ -40,18 +32,8 @@ public final class JazzerHarnessRunner {
         System.out,
         System.err,
         System::exit,
-        productionExecutor(),
-        productionGithubActionsDetector());
-  }
-
-  JazzerHarnessRunner(
-      OutputStream outputStream, OutputStream errorStream, ExitHandler exitHandler) {
-    this(
-        outputStream,
-        errorStream,
-        exitHandler,
-        productionExecutor(),
-        productionGithubActionsDetector());
+        OfficialHarnessExecutor.INSTANCE,
+        JazzerHarnessRunner::runningOnGitHubActions);
   }
 
   JazzerHarnessRunner(
@@ -73,25 +55,6 @@ public final class JazzerHarnessRunner {
    */
   public static void main(String[] args) {
     new JazzerHarnessRunner().run(args);
-  }
-
-  static void withProductionWiringForTesting(
-      HarnessExecutor executor, BooleanSupplier githubActionsDetector, Runnable action) {
-    Objects.requireNonNull(executor, "executor must not be null");
-    Objects.requireNonNull(githubActionsDetector, "githubActionsDetector must not be null");
-    Objects.requireNonNull(action, "action must not be null");
-    PRODUCTION_WIRING_LOCK.lock();
-    try {
-      ProductionWiring original = PRODUCTION_WIRING.get();
-      PRODUCTION_WIRING.set(new ProductionWiring(executor, githubActionsDetector));
-      try {
-        action.run();
-      } finally {
-        PRODUCTION_WIRING.set(original);
-      }
-    } finally {
-      PRODUCTION_WIRING_LOCK.unlock();
-    }
   }
 
   void run(String[] args) {
@@ -120,29 +83,6 @@ public final class JazzerHarnessRunner {
   }
 
   /** Executes one Jazzer harness class and returns a process-style exit code. */
-  static int run(String className, PrintWriter errorWriter) {
-    return run(className, standardWriter(System.out), errorWriter);
-  }
-
-  /** Executes one Jazzer harness class and returns a process-style exit code. */
-  static int run(String className, PrintWriter outputWriter, PrintWriter errorWriter) {
-    return run(
-        className,
-        outputWriter,
-        errorWriter,
-        productionExecutor(),
-        productionGithubActionsDetector());
-  }
-
-  /** Executes one Jazzer harness class and returns a process-style exit code. */
-  static int run(
-      String className,
-      PrintWriter outputWriter,
-      PrintWriter errorWriter,
-      HarnessExecutor executor) {
-    return run(className, outputWriter, errorWriter, executor, productionGithubActionsDetector());
-  }
-
   static int run(
       String className,
       PrintWriter outputWriter,
@@ -206,7 +146,7 @@ public final class JazzerHarnessRunner {
     return exitCode;
   }
 
-  private static boolean runningOnGitHubActions() {
+  static boolean runningOnGitHubActions() {
     return "true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS"));
   }
 
@@ -248,14 +188,6 @@ public final class JazzerHarnessRunner {
         new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)), true);
   }
 
-  private static HarnessExecutor productionExecutor() {
-    return PRODUCTION_WIRING.get().executor();
-  }
-
-  private static BooleanSupplier productionGithubActionsDetector() {
-    return PRODUCTION_WIRING.get().githubActionsDetector();
-  }
-
   /** Describes the single {@code @FuzzTest} method owned by one harness class. */
   record HarnessDescriptor(String className, String methodName) {
     HarnessDescriptor {
@@ -276,7 +208,7 @@ public final class JazzerHarnessRunner {
     private static final OfficialHarnessExecutor INSTANCE = new OfficialHarnessExecutor();
     private final JUnitRunnerFactory runnerFactory;
 
-    private OfficialHarnessExecutor() {
+    OfficialHarnessExecutor() {
       this(
           new JUnitRunnerFactory() {
             @Override
@@ -294,6 +226,10 @@ public final class JazzerHarnessRunner {
     /** Creates one official executor around the supplied Jazzer JUnit runner factory. */
     OfficialHarnessExecutor(JUnitRunnerFactory runnerFactory) {
       this.runnerFactory = Objects.requireNonNull(runnerFactory, "runnerFactory must not be null");
+    }
+
+    JUnitRunnerFactory runnerFactory() {
+      return runnerFactory;
     }
 
     @Override
@@ -334,13 +270,5 @@ public final class JazzerHarnessRunner {
 
     /** Creates one runner for the supplied harness class name when discovery succeeds. */
     java.util.Optional<JazzerRunner> create(String className);
-  }
-
-  /** Snapshot of the production-only collaborators that local tests may swap temporarily. */
-  private record ProductionWiring(HarnessExecutor executor, BooleanSupplier githubActionsDetector) {
-    private ProductionWiring {
-      Objects.requireNonNull(executor, "executor must not be null");
-      Objects.requireNonNull(githubActionsDetector, "githubActionsDetector must not be null");
-    }
   }
 }

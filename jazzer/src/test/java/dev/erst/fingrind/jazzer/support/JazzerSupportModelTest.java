@@ -6,11 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.UncheckedIOException;
-import java.lang.reflect.Constructor;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Covers constructor invariants and topology validation for Jazzer support models. */
@@ -69,8 +67,10 @@ class JazzerSupportModelTest {
   }
 
   @Test
-  void topologyDocumentModelsNormalizeNullCollectionsAndRejectBlankShapes() throws Exception {
-    JazzerTopology.Registry registry = registryWithNullCollections();
+  void topologyDocumentModelsNormalizeNullCollectionsAndRejectBlankShapes() {
+    JazzerTopology.Registry registry =
+        new JazzerTopology.Registry(
+            nullValue(), nullValue(), nullValue(), nullValue(), nullValue());
 
     assertEquals(List.of(), registry.harnesses());
     assertEquals(Map.of(), registry.harnessesByKey());
@@ -103,18 +103,25 @@ class JazzerSupportModelTest {
                 List.of(" ")));
     assertThrows(
         IllegalArgumentException.class,
-        () -> newTopologyDocumentWithNullHarnesses(List.of(validRunTargetDocument())));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> newTopologyDocumentWithNullRunTargets(List.of(validHarnessDocument("cli-request"))));
+        () -> new JazzerTopology.TopologyDocument(nullValue(), List.of(validRunTargetDocument())));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            newRunTargetDocumentWithNullHarnessKeys(
-                "cli-request", "CLI Request", "fuzzCliRequest", ".local/runs/cli-request", true));
+            new JazzerTopology.TopologyDocument(
+                List.of(validHarnessDocument("cli-request")), nullValue()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> newRunTargetWithNullHarnesses("key", "display", "task", "directory", false));
+        () ->
+            new JazzerTopology.RunTargetDocument(
+                "cli-request",
+                "CLI Request",
+                "fuzzCliRequest",
+                ".local/runs/cli-request",
+                true,
+                nullValue()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new JazzerRunTarget("key", "display", "task", "directory", false, nullValue()));
   }
 
   @Test
@@ -264,92 +271,8 @@ class JazzerSupportModelTest {
         List.of("cli-request"));
   }
 
-  private static JazzerTopology.Registry registryWithNullCollections() throws Exception {
-    Constructor<JazzerTopology.Registry> constructor =
-        JazzerTopology.Registry.class.getDeclaredConstructor(
-            List.class, Map.class, List.class, Map.class, Map.class);
-    constructor.setAccessible(true);
-    return constructor.newInstance(null, null, null, null, null);
-  }
-
-  private static JazzerTopology.TopologyDocument newTopologyDocumentWithNullHarnesses(
-      List<JazzerTopology.RunTargetDocument> runTargets) throws Exception {
-    return newTopologyDocumentReflectively((Object) null, runTargets);
-  }
-
-  private static JazzerTopology.TopologyDocument newTopologyDocumentWithNullRunTargets(
-      List<JazzerTopology.HarnessDocument> harnesses) throws Exception {
-    return newTopologyDocumentReflectively(harnesses, (Object) null);
-  }
-
-  private static JazzerTopology.RunTargetDocument newRunTargetDocumentWithNullHarnessKeys(
-      String key,
-      String displayName,
-      String taskName,
-      String workingDirectory,
-      boolean activeFuzzing)
-      throws Exception {
-    Constructor<JazzerTopology.RunTargetDocument> constructor =
-        JazzerTopology.RunTargetDocument.class.getDeclaredConstructor(
-            String.class, String.class, String.class, String.class, boolean.class, List.class);
-    constructor.setAccessible(true);
-    try {
-      return constructor.newInstance(
-          key, displayName, taskName, workingDirectory, activeFuzzing, null);
-    } catch (java.lang.reflect.InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static JazzerRunTarget newRunTargetWithNullHarnesses(
-      String key,
-      String displayName,
-      String taskName,
-      String workingDirectory,
-      boolean activeFuzzing)
-      throws Exception {
-    Constructor<JazzerRunTarget> constructor =
-        JazzerRunTarget.class.getDeclaredConstructor(
-            String.class, String.class, String.class, String.class, boolean.class, List.class);
-    constructor.setAccessible(true);
-    try {
-      return constructor.newInstance(
-          key, displayName, taskName, workingDirectory, activeFuzzing, null);
-    } catch (java.lang.reflect.InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
-  }
-
-  private static JazzerTopology.TopologyDocument newTopologyDocumentReflectively(
-      @Nullable Object... arguments) throws Exception {
-    Constructor<JazzerTopology.TopologyDocument> constructor =
-        JazzerTopology.TopologyDocument.class.getDeclaredConstructor(List.class, List.class);
-    constructor.setAccessible(true);
-    try {
-      return constructor.newInstance(arguments);
-    } catch (java.lang.reflect.InvocationTargetException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof Exception checkedException) {
-        throw checkedException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw exception;
-    }
+  @SuppressWarnings({"NullAway", "TypeParameterUnusedInFormals"})
+  private static <T> T nullValue() {
+    return null;
   }
 }

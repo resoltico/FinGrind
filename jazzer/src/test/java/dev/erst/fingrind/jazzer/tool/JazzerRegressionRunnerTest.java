@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.JazzerTestProjectRoot;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Covers direct committed-seed regression replay for one FinGrind harness. */
 class JazzerRegressionRunnerTest {
+  private static final Path PROJECT_DIRECTORY = JazzerTestProjectRoot.projectDirectory();
+
   @Nested
   class ParseHarness {
     @Test
@@ -47,6 +50,45 @@ class JazzerRegressionRunnerTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> JazzerRegressionRunner.parseHarness(new String[] {"--target", " "}));
+    }
+
+    @Test
+    void mainArguments_parse_rejects_invalid_shapes_and_normalizes_project_root() throws Exception {
+      JazzerRegressionRunner.MainArguments parsedArguments =
+          JazzerRegressionRunner.MainArguments.parse(
+              new String[] {
+                "--project-root", PROJECT_DIRECTORY.toString(), "--target", "cli-request"
+              });
+      assertEquals(
+          PROJECT_DIRECTORY.toAbsolutePath().normalize(), parsedArguments.projectDirectory());
+      assertEquals(
+          java.util.List.of("--target", "cli-request"), parsedArguments.commandArguments());
+
+      IllegalArgumentException usageError =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> JazzerRegressionRunner.MainArguments.parse(new String[] {"--target"}));
+      assertTrue(String.valueOf(usageError.getMessage()).contains("Usage: JazzerRegressionRunner"));
+
+      IllegalArgumentException wrongFlagError =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  JazzerRegressionRunner.MainArguments.parse(
+                      new String[] {
+                        "--bogus", PROJECT_DIRECTORY.toString(), "--target", "cli-request"
+                      }));
+      assertTrue(
+          String.valueOf(wrongFlagError.getMessage()).contains("Usage: JazzerRegressionRunner"));
+
+      IllegalArgumentException blankRootError =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  JazzerRegressionRunner.MainArguments.parse(
+                      new String[] {"--project-root", " ", "--target", "cli-request"}));
+      assertTrue(
+          String.valueOf(blankRootError.getMessage()).contains("--project-root must not be blank"));
     }
   }
 
@@ -296,7 +338,11 @@ class JazzerRegressionRunnerTest {
       IllegalArgumentException exception =
           assertThrows(
               IllegalArgumentException.class,
-              () -> JazzerRegressionRunner.main(new String[] {"--target", " "}));
+              () ->
+                  JazzerRegressionRunner.main(
+                      new String[] {
+                        "--project-root", PROJECT_DIRECTORY.toString(), "--target", " "
+                      }));
       assertTrue(String.valueOf(exception.getMessage()).contains("targetKey must not be blank"));
     }
 
@@ -340,18 +386,15 @@ class JazzerRegressionRunnerTest {
 
   @Test
   void main_replaysCommittedCliSeedsWithoutExiting() {
-    SystemStreams previousStreams = new SystemStreams(System.out, System.err);
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     ByteArrayOutputStream errors = new ByteArrayOutputStream();
-    try (var redirectedOut = new java.io.PrintStream(output, false, UTF_8);
-        var redirectedErr = new java.io.PrintStream(errors, false, UTF_8)) {
-      System.setOut(redirectedOut);
-      System.setErr(redirectedErr);
+    try (var ignored = new RedirectedSystemStreams(output, errors)) {
       assertDoesNotThrow(
-          () -> JazzerRegressionRunner.main(new String[] {"--target", "cli-request"}));
-    } finally {
-      System.setOut(previousStreams.out());
-      System.setErr(previousStreams.err());
+          () ->
+              JazzerRegressionRunner.main(
+                  new String[] {
+                    "--project-root", PROJECT_DIRECTORY.toString(), "--target", "cli-request"
+                  }));
     }
 
     assertTrue(output.toString(UTF_8).contains("phase=finish target=cli-request status=SUCCESS"));
@@ -365,5 +408,28 @@ class JazzerRegressionRunnerTest {
     assertFalse(errorText.contains("Regression metadata target mismatch"));
   }
 
-  private record SystemStreams(java.io.PrintStream out, java.io.PrintStream err) {}
+  private static final class RedirectedSystemStreams implements AutoCloseable {
+    private final java.io.PrintStream previousOut;
+    private final java.io.PrintStream previousErr;
+    private final java.io.PrintStream redirectedOut;
+    private final java.io.PrintStream redirectedErr;
+
+    private RedirectedSystemStreams(
+        ByteArrayOutputStream redirectedOutput, ByteArrayOutputStream redirectedErrors) {
+      previousOut = System.out;
+      previousErr = System.err;
+      redirectedOut = new java.io.PrintStream(redirectedOutput, false, UTF_8);
+      redirectedErr = new java.io.PrintStream(redirectedErrors, false, UTF_8);
+      System.setOut(redirectedOut);
+      System.setErr(redirectedErr);
+    }
+
+    @Override
+    public void close() {
+      System.setOut(previousOut);
+      System.setErr(previousErr);
+      redirectedOut.close();
+      redirectedErr.close();
+    }
+  }
 }

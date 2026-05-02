@@ -26,20 +26,22 @@ final class SqliteStoreQueryOperations {
     T run(SqliteNativeDatabase activeDatabase);
   }
 
-  private final SqliteStoreContext store;
+  private final SqliteStoreContext context;
+  private final SqliteStoreLifecycle lifecycle;
 
-  SqliteStoreQueryOperations(SqliteStoreContext store) {
-    this.store = Objects.requireNonNull(store, "store");
+  SqliteStoreQueryOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
+    this.context = Objects.requireNonNull(context, "context");
+    this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
   BookInspection inspectBook() {
-    store.ensureOpenSession();
-    if (Files.notExists(store.bookPath())) {
+    lifecycle.ensureOpenSession();
+    if (Files.notExists(context.bookPath())) {
       return new BookInspection.Missing(SqliteBookContract.FORMAT_VERSION);
     }
     try {
-      SqliteNativeDatabase activeDatabase = store.database();
-      SqliteBookStateSnapshot snapshot = store.stateSnapshot(activeDatabase);
+      SqliteNativeDatabase activeDatabase = lifecycle.database();
+      SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
       return switch (snapshot.state()) {
         case BLANK_SQLITE ->
             new BookInspection.Existing(
@@ -78,12 +80,12 @@ final class SqliteStoreQueryOperations {
   }
 
   boolean isInitialized() {
-    store.ensureOpenSession();
-    if (Files.notExists(store.bookPath())) {
+    lifecycle.ensureOpenSession();
+    if (Files.notExists(context.bookPath())) {
       return false;
     }
     try {
-      SqliteBookStateSnapshot snapshot = store.stateSnapshot(store.database());
+      SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(lifecycle.database());
       return switch (snapshot.state()) {
         case BLANK_SQLITE -> false;
         case INITIALIZED_FINGRIND -> true;
@@ -99,14 +101,14 @@ final class SqliteStoreQueryOperations {
   }
 
   Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> SqliteStatementQueries.findOneAccount(activeDatabase, accountCode));
   }
 
   Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     Set<AccountCode> requestedAccounts =
         new LinkedHashSet<>(Objects.requireNonNull(accountCodes, "accountCodes"));
     if (requestedAccounts.isEmpty()) {
@@ -118,18 +120,18 @@ final class SqliteStoreQueryOperations {
   }
 
   AccountPage listAccounts(ListAccountsQuery query) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> SqliteStatementQueries.loadAccountPage(activeDatabase, query));
   }
 
   Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
-            store
+            context
                 .postingReader()
                 .findOnePosting(
                     activeDatabase,
@@ -138,11 +140,11 @@ final class SqliteStoreQueryOperations {
   }
 
   Optional<PostingFact> findPosting(PostingId postingId) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
-            store
+            context
                 .postingReader()
                 .findOnePosting(
                     activeDatabase,
@@ -151,11 +153,11 @@ final class SqliteStoreQueryOperations {
   }
 
   Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
-            store
+            context
                 .postingReader()
                 .findOnePosting(
                     activeDatabase,
@@ -164,15 +166,15 @@ final class SqliteStoreQueryOperations {
   }
 
   PostingPage listPostings(ListPostingsQuery query) {
-    store.ensureOpenSession();
+    lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> store.postingReader().loadPostingPage(activeDatabase, query));
+        activeDatabase -> context.postingReader().loadPostingPage(activeDatabase, query));
   }
 
   private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {
     try {
-      return query.run(store.initializedQueryDatabase());
+      return query.run(lifecycle.initializedQueryDatabase());
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
     }

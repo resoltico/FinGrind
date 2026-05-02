@@ -209,7 +209,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               currentBookKeyFilePath.toString(),
-              "--new-book-key-file",
+              "--replacement-book-key-file",
               replacementBookKeyFilePath.toString()
             }));
 

@@ -1,5 +1,5 @@
 module dev.erst.fingrind.cli {
-  opens dev.erst.fingrind.cli to
+  opens dev.erst.fingrind.cli.json to
       tools.jackson.databind;
 
   requires dev.erst.fingrind.contract;

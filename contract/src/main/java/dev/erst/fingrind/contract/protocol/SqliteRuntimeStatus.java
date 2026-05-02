@@ -8,6 +8,7 @@ import java.util.Objects;
 public enum SqliteRuntimeStatus implements WireValue {
   READY("ready"),
   UNAVAILABLE("unavailable"),
+  FAILED("failed"),
   INCOMPATIBLE("incompatible");
 
   private final String wireValue;

@@ -38,6 +38,7 @@ def assert_capabilities_payload(
         if isinstance(descriptor, dict)
     }
     runtime_surface = required_mapping(contract, "runtimeSurface")
+    protected_book_format = required_mapping(contract, "protectedBookFormat")
     public_distribution = required_mapping(contract, "publicDistribution")
     managed_sqlite = required_mapping(contract, "managedSqlite")
     operation_ids = required_mapping(contract, "operationIds")
@@ -71,10 +72,23 @@ def assert_capabilities_payload(
         == require_string(runtime_surface, "bookProtectionMode"),
         f"{config.label} capabilities output did not report required book protection",
     )
+    storage_format = required_mapping(storage, "defaultProtectedBookFormat")
     require(
-        require_string(storage, "defaultBookCipher")
-        == require_string(runtime_surface, "defaultBookCipher"),
+        require_string(storage_format, "cipher")
+        == require_string(protected_book_format, "cipher"),
         f"{config.label} capabilities output did not report the canonical default book cipher",
+    )
+    require(
+        storage_format.get("legacyMode") == protected_book_format.get("legacyMode"),
+        f"{config.label} capabilities output did not report the canonical legacy-mode flag",
+    )
+    require(
+        storage_format.get("pageSize") == protected_book_format.get("pageSize"),
+        f"{config.label} capabilities output did not report the canonical protected-book page size",
+    )
+    require(
+        storage_format.get("reservedBytes") == protected_book_format.get("reservedBytes"),
+        f"{config.label} capabilities output did not report the canonical protected-book reserved bytes",
     )
     require(
         require_string(sqlite, "libraryMode")

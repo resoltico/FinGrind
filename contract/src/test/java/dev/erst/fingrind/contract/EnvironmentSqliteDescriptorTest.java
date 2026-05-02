@@ -239,6 +239,87 @@ class EnvironmentSqliteDescriptorTest {
   }
 
   @Test
+  void failedStatus_requiresResolvedRuntimeFactsAndRuntimeIssue() {
+    IllegalArgumentException failedWithVerifiedCompileOptions =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteCompileOptionsVerificationStatus.VERIFIED,
+                    SqliteRuntimeStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    "/tmp/libsqlite3.dylib",
+                    null,
+                    null,
+                    null,
+                    "native bridge failed"));
+    assertEquals(
+        "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is FAILED.",
+        failedWithVerifiedCompileOptions.getMessage());
+
+    IllegalArgumentException missingProvenance =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteRuntimeStatus.FAILED,
+                    null,
+                    "/tmp/libsqlite3.dylib",
+                    null,
+                    null,
+                    null,
+                    "native bridge failed"));
+    assertEquals(
+        "runtimeProvenance is required when SQLite runtime status is FAILED.",
+        missingProvenance.getMessage());
+
+    IllegalArgumentException missingLibraryPath =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteRuntimeStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "native bridge failed"));
+    assertEquals(
+        "loadedLibraryPath is required when SQLite runtime status is FAILED.",
+        missingLibraryPath.getMessage());
+
+    IllegalArgumentException missingRuntimeIssue =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteRuntimeStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    "/tmp/libsqlite3.dylib",
+                    null,
+                    null,
+                    null,
+                    null));
+    assertEquals(
+        "runtimeIssue is required when SQLite runtime status is FAILED.",
+        missingRuntimeIssue.getMessage());
+
+    EnvironmentSqliteDescriptor descriptor =
+        descriptor(
+            SqliteRuntimeStatus.FAILED,
+            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+            "/tmp/libsqlite3.dylib",
+            "3.53.0",
+            null,
+            null,
+            "native bridge failed");
+    assertEquals(SqliteRuntimeStatus.FAILED, descriptor.runtimeStatus());
+    assertEquals("3.53.0", descriptor.loadedSqliteVersion());
+    assertEquals("native bridge failed", descriptor.runtimeIssue());
+  }
+
+  @Test
   void incompatibleStatus_requiresProvenanceLoadedFieldsAndRuntimeIssue() {
     IllegalArgumentException incompatibleWithVerifiedCompileOptions =
         assertThrows(
@@ -379,7 +460,8 @@ class EnvironmentSqliteDescriptorTest {
     SqliteCompileOptionsVerificationStatus compileOptionsVerification =
         switch (runtimeStatus) {
           case READY -> SqliteCompileOptionsVerificationStatus.VERIFIED;
-          case UNAVAILABLE, INCOMPATIBLE -> SqliteCompileOptionsVerificationStatus.NOT_VERIFIED;
+          case UNAVAILABLE, FAILED, INCOMPATIBLE ->
+              SqliteCompileOptionsVerificationStatus.NOT_VERIFIED;
         };
     return descriptor(
         compileOptionsVerification,

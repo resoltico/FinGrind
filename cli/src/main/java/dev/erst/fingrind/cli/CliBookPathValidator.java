@@ -68,10 +68,10 @@ final class CliBookPathValidator {
             .toAbsolutePath()
             .equals(replacementKeyFilePath.orElseThrow().toAbsolutePath())) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.NEW_BOOK_KEY_FILE,
+          ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE,
           ProtocolOptions.BOOK_KEY_FILE
               + " and "
-              + ProtocolOptions.NEW_BOOK_KEY_FILE
+              + ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE
               + " must not point to the same path.");
     }
   }
@@ -81,7 +81,7 @@ final class CliBookPathValidator {
       BookAccess.PassphraseSource replacementPassphraseSource) {
     if (isStandardInput(currentPassphraseSource) && isStandardInput(replacementPassphraseSource)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN,
+          ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN,
           "Standard input cannot supply both the current and replacement book passphrases.");
     }
   }

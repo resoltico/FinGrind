@@ -259,12 +259,12 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
         SqlitePostingFactStore postingFactStore =
             new SqlitePostingFactStore(
                 databasePath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_CREATE)) {
-      setStoreBookPassphrase(postingFactStore, null);
+      clearStoreSessionSecret(postingFactStore);
 
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::beginLedgerPlanTransaction);
 
-      assertEquals("SQLite book passphrase is no longer available.", exception.getMessage());
+      assertEquals("SQLite book session secret is no longer available.", exception.getMessage());
       assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
       assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
     }

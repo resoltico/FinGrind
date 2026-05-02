@@ -54,9 +54,9 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
 
     JsonNode generatedKey =
         runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
-    assertEquals("ok", generatedKey.path("status").asText());
+    assertEquals("ok", generatedKey.path("status").stringValue());
     assertGeneratedKeyFileIsSecure(
-        bookKeyFile, generatedKey.path("payload").path("permissions").asText());
+        bookKeyFile, generatedKey.path("payload").path("permissions").stringValue());
 
     JsonNode openBook =
         runJsonCommand(
@@ -65,15 +65,16 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString());
-    assertEquals("ok", openBook.path("status").asText());
+    assertEquals("ok", openBook.path("status").stringValue());
 
     JsonNode requestTemplate = runRawJsonCommand("print-request-template");
     assertEquals(
-        "replace-before-commit-effective-date", requestTemplate.path("effectiveDate").asText());
-    assertEquals("AGENT", requestTemplate.path("provenance").path("actorType").asText());
+        "replace-before-commit-effective-date",
+        requestTemplate.path("effectiveDate").stringValue());
+    assertEquals("AGENT", requestTemplate.path("provenance").path("actorType").stringValue());
     assertEquals(
         "replace-before-commit-idempotency-key",
-        requestTemplate.path("provenance").path("idempotencyKey").asText());
+        requestTemplate.path("provenance").path("idempotencyKey").stringValue());
     Files.writeString(
         rawTemplateRequestFile, requestTemplate.toPrettyString(), StandardCharsets.UTF_8);
 
@@ -104,10 +105,10 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             rawTemplateRequestFile.toString());
-    assertEquals("error", rawTemplateFailure.path("status").asText());
-    assertEquals("invalid-request", rawTemplateFailure.path("code").asText());
-    assertTrue(rawTemplateFailure.path("message").asText().contains("effectiveDate"));
-    assertTrue(rawTemplateFailure.path("hint").asText().contains("print-request-template"));
+    assertEquals("error", rawTemplateFailure.path("status").stringValue());
+    assertEquals("invalid-request", rawTemplateFailure.path("code").stringValue());
+    assertTrue(rawTemplateFailure.path("message").stringValue().contains("effectiveDate"));
+    assertTrue(rawTemplateFailure.path("hint").stringValue().contains("print-request-template"));
 
     JsonNode preflight =
         runJsonCommand(
@@ -118,7 +119,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             requestFile.toString());
-    assertEquals("preflight-accepted", preflight.path("status").asText());
+    assertEquals("preflight-accepted", preflight.path("status").stringValue());
 
     JsonNode committed =
         runJsonCommand(
@@ -129,7 +130,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             requestFile.toString());
-    assertEquals("committed", committed.path("status").asText());
+    assertEquals("committed", committed.path("status").stringValue());
 
     String trialBalance =
         runPlainCommand(
@@ -204,7 +205,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             postingRequestFile.toString());
-    String postingId = committed.path("postingId").asText();
+    String postingId = committed.path("postingId").stringValue();
     assertFalse(postingId.isBlank());
 
     JsonNode listing =
@@ -217,7 +218,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             "--limit",
             "10");
     assertEquals(
-        postingId, listing.path("payload").path("postings").get(0).path("postingId").asText());
+        postingId, listing.path("payload").path("postings").get(0).path("postingId").stringValue());
 
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
     Files.writeString(
@@ -232,10 +233,10 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             rawPlanTemplateFile.toString());
-    assertEquals("error", rawPlanFailure.path("status").asText());
-    assertEquals("invalid-request", rawPlanFailure.path("code").asText());
-    assertTrue(rawPlanFailure.path("message").asText().contains("effectiveDate"));
-    assertTrue(rawPlanFailure.path("hint").asText().contains("print-plan-template"));
+    assertEquals("error", rawPlanFailure.path("status").stringValue());
+    assertEquals("invalid-request", rawPlanFailure.path("code").stringValue());
+    assertTrue(rawPlanFailure.path("message").stringValue().contains("effectiveDate"));
+    assertTrue(rawPlanFailure.path("hint").stringValue().contains("print-plan-template"));
 
     JsonNode planResult =
         runJsonCommand(
@@ -246,7 +247,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             planRequestFile.toString());
-    assertEquals("plan-committed", planResult.path("status").asText());
+    assertEquals("plan-committed", planResult.path("status").stringValue());
 
     JsonNode queryPlanResult =
         runJsonCommand(
@@ -257,10 +258,10 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             bookKeyFile.toString(),
             "--request-file",
             queryPlanRequestFile.toString());
-    assertEquals("plan-committed", queryPlanResult.path("status").asText());
+    assertEquals("plan-committed", queryPlanResult.path("status").stringValue());
     JsonNode queryFacts =
         queryPlanResult.path("payload").path("journal").path("steps").get(4).path("facts");
-    assertEquals("count", queryFacts.get(0).path("name").asText());
+    assertEquals("count", queryFacts.get(0).path("name").stringValue());
     assertEquals(1, queryFacts.get(0).path("value").asInt());
   }
 

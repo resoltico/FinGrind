@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -79,6 +80,7 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("invalid-request", exception.code());
     assertEquals("--wat", exception.argument());
     assertEquals("Unsupported argument: --wat", exception.getMessage());
+    assertEquals(CliInvocationText.helpSyntaxHint(OperationId.POST_ENTRY), exception.hint());
   }
 
   @Test
@@ -91,6 +93,7 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("invalid-request", exception.code());
     assertEquals("--wat", exception.argument());
     assertEquals("Unsupported argument: --wat", exception.getMessage());
+    assertEquals(CliInvocationText.helpSyntaxHint(OperationId.POST_ENTRY), exception.hint());
   }
 
   @Test
@@ -131,6 +134,8 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("invalid-request", exception.failure().code());
     assertEquals("--unexpected", exception.failure().argument());
     assertTrue(exception.failure().message().contains("does not accept additional arguments"));
+    assertEquals(
+        CliInvocationText.helpSyntaxHint(OperationId.PRINT_REQUEST_TEMPLATE), exception.hint());
   }
 
   @Test
@@ -163,6 +168,7 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("invalid-request", exception.code());
     assertEquals("--extra", exception.argument());
     assertEquals("Unsupported argument: --extra", exception.getMessage());
+    assertEquals(CliInvocationText.helpSyntaxHint(OperationId.CAPABILITIES), exception.hint());
   }
 
   @Test
@@ -173,7 +179,6 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("unknown-command", exception.code());
     assertEquals("wat", exception.argument());
     assertEquals("Unsupported command: wat", exception.getMessage());
-    assertEquals(
-        "Run 'fingrind help' to inspect the supported commands and examples.", exception.hint());
+    assertEquals(CliInvocationText.helpExamplesHint(), exception.hint());
   }
 }

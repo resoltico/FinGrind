@@ -41,12 +41,12 @@ jobs:
           # On PRs, only read from the cache to avoid cache poisoning from untrusted code.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Check and enforce coverage
+      - name: Run root quality gates and included build-logic tests
         # Active Jazzer fuzzing is intentionally local-only and hard-fails under GITHUB_ACTIONS.
-        run: ./gradlew check --no-daemon
+        run: ./scripts/run-quality-gates.sh --no-daemon --console=plain
 
       - name: Run deterministic Jazzer regression coverage
-        run: ./gradlew -p jazzer check --no-daemon --console=plain
+        run: ./jazzer/bin/check --no-daemon --console=plain
 
       - name: Verify managed SQLite CLI runtime
         run: ./scripts/verify-managed-sqlite-runtime.sh
@@ -58,7 +58,7 @@ jobs:
         run: ./scripts/bundle-smoke.sh
 
       - name: Verify release-surface shell scripts
-        run: ./scripts/check-shell-syntax.sh
+        run: ./scripts/check-release-surface-scripts.sh
 
   windows-bundle-smoke:
     name: Windows bundle smoke
@@ -94,9 +94,11 @@ jobs:
         with:
           arch: x64
 
-      - name: Check and enforce coverage on Windows
+      - name: Run root quality gates and included build-logic tests on Windows
         shell: pwsh
-        run: .\gradlew.bat check --no-daemon --console=plain
+        run: |
+          .\gradlew.bat check --no-daemon --console=plain
+          .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
 
       - name: Verify managed SQLite CLI runtime on Windows
         shell: pwsh

@@ -30,7 +30,7 @@ def verify_rekey_and_wrong_key_semantics(
         config.book.argument,
         "--book-key-file",
         config.book_key.argument,
-        "--new-book-key-file",
+        "--replacement-book-key-file",
         config.replacement_book_key.argument,
     )
     require_match(

@@ -87,22 +87,22 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
   @Test
   void sqliteNativeApi_rejectsBlankLoadedVersions() {
     Object[] blankLoadedVersionArguments = defaultSqliteApiArguments();
-    blankLoadedVersionArguments[22] = " ";
+    blankLoadedVersionArguments[SQLITE_API_ARGUMENT_LOADED_VERSION] = " ";
 
     assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankLoadedVersionArguments));
 
     Object[] blankSqlite3mcArguments = defaultSqliteApiArguments();
-    blankSqlite3mcArguments[23] = " ";
+    blankSqlite3mcArguments[SQLITE_API_ARGUMENT_LOADED_SQLITE3MC_VERSION] = " ";
 
     assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankSqlite3mcArguments));
 
     Object[] blankSourceIdArguments = defaultSqliteApiArguments();
-    blankSourceIdArguments[24] = " ";
+    blankSourceIdArguments[SQLITE_API_ARGUMENT_LOADED_SOURCE_ID] = " ";
 
     assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankSourceIdArguments));
 
     Object[] blankLibraryPathArguments = defaultSqliteApiArguments();
-    blankLibraryPathArguments[26] = " ";
+    blankLibraryPathArguments[SQLITE_API_ARGUMENT_LOADED_LIBRARY_PATH] = " ";
 
     assertThrows(IllegalArgumentException.class, () -> buildSqliteApi(blankLibraryPathArguments));
   }

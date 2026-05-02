@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -79,10 +79,34 @@ real or stale. Real work that is not part of this release must move onto a named
 exported patch before closeout. Stale work must be dropped. Never leave the primary checkout on
 stale `main` plus unpublished overlays.
 
+If the primary checkout contains the real release payload but release verification must happen from
+the clean release worktree, bootstrap that payload explicitly before you run any release build in
+the worktree:
+
+- preferred: move the unpublished release payload onto a local bootstrap branch, then create the
+  release worktree from that branch
+- acceptable: export one explicit patch from the primary checkout and apply it inside the clean
+  release worktree before running checks
+
+For example:
+
+```bash
+PRIMARY_CHECKOUT=$(git rev-parse --show-toplevel)
+git diff --binary > /tmp/fingrind-release-bootstrap.patch
+RELEASE_WORKTREE="$(mktemp -d -t fingrind-release-XXXXXX)"
+git worktree add -b release/X.Y.Z "$RELEASE_WORKTREE" origin/main
+cd "$RELEASE_WORKTREE"
+git apply --index /tmp/fingrind-release-bootstrap.patch
+```
+
+If the unpublished payload includes new untracked release files, move them explicitly too — either
+by committing them on the bootstrap branch or copying them into the release worktree before the
+Step 2 staging checkpoint. Never fall back to running release verification from the dirty or
+problematic primary checkout just because the unpublished release payload currently lives there.
+
 Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
-That gate now includes `scripts/verify-jacoco-snapshot.sh`, so a release that still depends on the
-current JaCoCo snapshot line must prove the mutable Maven alias has not drifted away from the
-repository's pinned exact snapshot build identity.
+That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves
+through the normal Gradle verification path; there is no mutable alias-verifier sidecar anymore.
 
 Then verify every non-version item in this checklist. These repository and runtime conditions must
 be true before any release commit or tag:
@@ -231,11 +255,13 @@ verification steps below still treat that job as release-blocking.
 Merge PR and verify the merge handoff.
 
 ```bash
-gh pr merge <N> --merge --admin --delete-branch --subject "release: bump version to X.Y.Z (#N)"
-git checkout main
-git pull
-gh pr view <N> --json number,state,mergedAt,headRefName,baseRefName,url
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh pr merge <N> --repo "$REPO" --merge --admin --delete-branch \
+  --subject "release: bump version to X.Y.Z (#N)"
+git fetch origin main
+git switch --detach origin/main
 ./scripts/verify-release-merge-handoff.sh
+gh pr view <N> --repo "$REPO" --json number,state,mergedAt,headRefName,baseRefName,url
 ```
 
 The `--admin` flag uses administrator privileges to bypass branch-protection requirements,
@@ -248,7 +274,8 @@ Requirements before continuing:
 
 - PR state is `MERGED`.
 - `mergedAt` is populated.
-- Local `main` contains the merge commit you expect.
+- The checked-out verifier commit contains the merge commit you expect.
+- The checkout used for `./scripts/verify-release-merge-handoff.sh` exactly matches `origin/main`.
 - The remote release branch is deleted by the merge step.
 - `./scripts/verify-release-merge-handoff.sh` succeeds on the merged `main` commit, which means
   the release-blocking CI set `Check`, `Windows bundle smoke`, `Docker smoke`, and
@@ -257,6 +284,33 @@ Requirements before continuing:
 GitHub auto-delete on merge should also be enabled at the repository level. `--delete-branch`
 remains mandatory here so the release handoff stays self-contained even if the repo setting is
 misconfigured or temporarily changed.
+
+If the release is being driven from a dedicated worktree while the primary checkout already has
+`main` checked out, do not rely on `gh pr merge` or `git checkout main` in the auxiliary
+worktree without an explicit repository and detached-head plan. In that topology `gh pr merge`
+can invoke local git operations that fail with:
+
+```text
+fatal: 'main' is already checked out at '/path/to/primary-checkout'
+```
+
+In worktree mode, prefer `gh pr merge --repo "$REPO"` so the GitHub-side merge is independent
+of the local branch-checkout topology, then verify the merge handoff from any checkout whose
+`HEAD` exactly matches `origin/main`. A detached `origin/main` checkout in the release worktree
+is acceptable for Step 4. Step 11 remains the place where the primary checkout itself must be
+returned to a truthful `main`.
+
+Also, do not treat a non-zero `gh pr merge` exit as proof that the merge failed. The server-side
+merge can succeed before `gh` trips over a local git follow-up step. After any merge-command
+error, immediately inspect the PR directly:
+
+```bash
+gh pr view <N> --repo "$REPO" --json number,state,mergedAt,headRefName,baseRefName,url
+```
+
+If the PR already shows `state=MERGED` with `mergedAt` populated, treat GitHub's merged state as
+authoritative, do not retry the merge, and continue with the post-merge verification and branch
+hygiene steps.
 
 The release branch must not be left behind. If the local `release/X.Y.Z` branch still exists
 after the merge, delete it manually with:
@@ -520,7 +574,8 @@ Rules:
   immediately and delete its branch:
 
 ```bash
-gh pr merge <N> --merge --admin --delete-branch --subject "<title> (#<N>)"
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+gh pr merge <N> --repo "$REPO" --merge --admin --delete-branch --subject "<title> (#<N>)"
 ```
 
 - If the PR is stale, superseded by `main`, intentionally rejected, or replaced by a different
@@ -546,8 +601,8 @@ gh pr close <N> --comment "Superseded or intentionally rejected during release h
 After each merge or close, resync and re-check GitHub branch state:
 
 ```bash
-git checkout main
-git pull
+git fetch origin --prune
+git switch --detach origin/main
 git remote prune origin
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 gh api "repos/$REPO/branches" --paginate --jq '.[].name'

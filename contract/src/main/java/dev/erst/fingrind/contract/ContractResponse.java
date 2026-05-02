@@ -115,11 +115,18 @@ public final class ContractResponse {
   }
 
   /** One stable machine error descriptor. */
-  public record ErrorDescriptor(String code, String description) implements ResponseDescriptorType {
+  public record ErrorDescriptor(String code, String description, List<FieldDescriptor> detailFields)
+      implements ResponseDescriptorType {
+    /** Creates one error descriptor with no structured detail payload. */
+    public ErrorDescriptor(String code, String description) {
+      this(code, description, List.of());
+    }
+
     /** Validates the structured error descriptor payload. */
     public ErrorDescriptor {
       code = ContractDescriptorValidation.requireText(code, "code");
       description = ContractDescriptorValidation.requireText(description, "description");
+      detailFields = ContractDescriptorValidation.copyList(detailFields, "detailFields");
     }
   }
 

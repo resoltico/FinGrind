@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import java.util.Objects;
 
 /** One explicitly owned passphrase that callers must close through the owning workflow. */
-final class SqliteOwnedPassphrase {
+final class SqliteOwnedPassphrase implements AutoCloseable {
   private final SqliteBookPassphrase nativePassphrase;
 
   SqliteOwnedPassphrase(SqliteBookPassphrase nativePassphrase) {
@@ -14,7 +14,8 @@ final class SqliteOwnedPassphrase {
     return nativePassphrase;
   }
 
-  void close() {
+  @Override
+  public void close() {
     nativePassphrase.close();
   }
 }

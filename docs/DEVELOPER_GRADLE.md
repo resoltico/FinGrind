@@ -1,8 +1,8 @@
 ---
-afad: "3.5"
-version: "0.29.0"
+afad: "4.0"
+version: "0.30.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-04-29"
+updated: "2026-05-02"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -130,9 +130,12 @@ The current setup replaces `buildSrc` with one explicit included build under `gr
 That gives the repository one home for shared plugins, one review surface for Gradle behavior, and
 one place to fix infrastructure concerns such as test pulses or managed-SQLite provisioning.
 
-The included build now relies on Gradle's normal up-to-date and incremental compilation behavior.
-It no longer force-disables Kotlin incremental compilation or wipes compile output directories
-before every build.
+The included build now relies on Gradle's normal up-to-date and incremental Kotlin compilation
+behavior. It no longer force-disables Kotlin incremental compilation or wipes its own compile
+output directories before every build. The nested Jazzer build is the one deliberate exception on
+the Java side: its `compileJava` task prunes the cached main source-set destination directory
+before recompiling so removed helper types cannot linger as orphaned `.class` files in the
+wrapper-owned project cache and poison coverage verification.
 Its own Kotlin compiler is now pinned explicitly in
 `gradle/build-logic/build.gradle.kts` at `2.4.0-Beta2` so the shared build logic can compile
 against Gradle's Kotlin DSL APIs while still emitting JVM 26 bytecode.
@@ -164,11 +167,10 @@ avoids silent version skew between the main product modules and Jazzer support c
 
 The shared repository owner now also lives in `gradle/build-logic`: FinGrind uses Maven Central as
 the default repository and scopes the Sonatype Maven snapshots repository to `org.jacoco` only.
-JaCoCo's published "snapshot build" label 0.8.15.202604281210 is not a literal Maven version; the
-build resolves through the mutable Maven coordinate 0.8.15-SNAPSHOT, which currently maps to the
-pinned timestamped artifact 0.8.15-20260428.121054-96. `scripts/verify-jacoco-snapshot.sh` is
-therefore part of the release surface and fails when the alias drifts away from that exact
-published snapshot build.
+FinGrind pins JaCoCo directly to the exact Java-26-ready snapshot artifact
+`0.8.15-20260429.155228-97` in the version catalog instead of resolving through the mutable
+`0.8.15-SNAPSHOT` alias. That keeps the catalog, the effective build, IDE resolution, and CI on one
+deterministic coordinate.
 
 ### One managed-SQLite contract
 
@@ -199,6 +201,11 @@ The Jazzer harness and run-target inventory lives in
 build logic consumes that file for task registration, and Jazzer runtime support classes consume
 the same file for stable key lookup and topology assertions. That removes the old duplicated manual
 registry split between build logic and runtime code.
+
+That same build logic now also owns the canonical `jazzerActiveTargets` and
+`jazzerReplayableTargets` query tasks. Shell wrappers, shell regressions, and Java operator
+entrypoints use those tasks instead of carrying their own topology parsers or cwd-derived
+project-root guesses.
 
 ### Thin consumer build scripts
 
@@ -240,7 +247,7 @@ Repository-specific note:
 - even so, FinGrind now collects all local `build/jacoco/*.exec` files in both the per-module
   and aggregated coverage surfaces so a future second `Test` task cannot bypass the quality gate
 - the nested Jazzer build remains intentionally separate from root product-module coverage; its own
-  `./gradlew -p jazzer check` is the authoritative Jazzer coverage gate
+  `jazzer/bin/check` is the authoritative Jazzer coverage gate
 
 ### Contract lint protocol
 
@@ -358,6 +365,9 @@ These are the Gradle-level invariants worth preserving:
 - active Jazzer fuzzing remains a wrapper-owned local operator flow through `jazzer/bin/*`
 - root `./check.sh` remains the supported whole-repo gate that sequences root verification, Jazzer
   verification, packaging, and Docker smoke checks
+- root `./check.sh`, `scripts/docker-smoke.sh`, `scripts/validate-devcontainer.sh`, and
+  `jazzer/bin/*` continue to share one repo-wide verification lock plus repo-scoped
+  `GRADLE_USER_HOME` isolation
 
 If a proposed change breaks one of those invariants, document the reason in code comments and in
 the changelog instead of letting the system drift silently.
@@ -372,7 +382,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Is the Gradle wrapper still on the current verified stable `9.5.x` line?
 - Is the build-logic Kotlin pin still `2.4.0-Beta2`, and can it move to the matching stable 2.4.x line yet?
 - Has anyone reintroduced manual output wiping or disabled incremental compilation in
-  `gradle/build-logic`?
+  `gradle/build-logic`, beyond the deliberate Jazzer source-set pruning that prevents orphaned
+  cached classfiles?
 - Is any dependency version duplicated outside `gradle/libs.versions.toml`?
 - Has any typed logic crept back into a leaf `.gradle.kts` script?
 - Are root and nested verification scopes still cleanly separated?
@@ -406,7 +417,7 @@ For structural Gradle changes, the normal bar is:
 
 ```bash
 ./gradlew check
-./gradlew -p jazzer check
+jazzer/bin/check --console=plain
 ./check.sh
 ```
 

@@ -290,6 +290,24 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
+  void inspectBook_reloadsStateAfterExplicitCacheClear() throws Exception {
+    Path initializedBookPath = tempDirectory.resolve("inspect-cache-clear.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(initializedBookPath))) {
+      assertEquals(BookInspection.Status.INITIALIZED, postingFactStore.inspectBook().status());
+
+      setStoreCachedBookState(
+          postingFactStore, new SqliteBookStateSnapshot(0, 0, SqliteBookState.BLANK_SQLITE));
+      assertEquals(BookInspection.Status.BLANK_SQLITE, postingFactStore.inspectBook().status());
+
+      setStoreCachedBookState(postingFactStore, null);
+      assertEquals(BookInspection.Status.INITIALIZED, postingFactStore.inspectBook().status());
+    }
+  }
+
+  @Test
   void openBook_wrapsInitializationFailureFromStaleDatabaseHandle() throws Exception {
     Path bookPath = tempDirectory.resolve("schema-native-failure.sqlite");
     try (SqlitePostingFactStore postingFactStore =

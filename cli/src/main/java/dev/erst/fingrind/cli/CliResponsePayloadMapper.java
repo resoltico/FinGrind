@@ -1,5 +1,10 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
@@ -29,12 +34,14 @@ final class CliResponsePayloadMapper {
   }
 
   static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
+    CliErrorJsonModels.@org.jspecify.annotations.Nullable ErrorDetails details = failure.details();
     return new CliEnvelopeJsonModels.FailureEnvelope(
         ProtocolFailureStatus.ERROR,
         failure.code(),
         failure.message(),
         failure.hint(),
-        failure.argument());
+        failure.argument(),
+        details);
   }
 
   static CliEnvelopeJsonModels.PreflightAcceptedEnvelope preflightEnvelope(

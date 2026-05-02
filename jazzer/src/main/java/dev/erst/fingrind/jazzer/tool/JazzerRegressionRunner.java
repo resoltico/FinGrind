@@ -12,17 +12,11 @@ import java.util.Objects;
 /** Replays one harness's committed seeds directly against FinGrind's replay engine. */
 public final class JazzerRegressionRunner {
   private static final String PULSE_PREFIX = "[JAZZER-PULSE] ";
+  private static final String PROJECT_ROOT_OPTION = "--project-root";
   private final Path projectDirectory;
   private final OutputStream outputStream;
   private final OutputStream errorStream;
   private final ExitHandler exitHandler;
-
-  /**
-   * Creates the production regression runner backed by process streams and {@code System::exit}.
-   */
-  public JazzerRegressionRunner() {
-    this(Path.of("").toAbsolutePath().normalize(), System.out, System.err, System::exit);
-  }
 
   JazzerRegressionRunner(
       Path projectDirectory,
@@ -38,13 +32,20 @@ public final class JazzerRegressionRunner {
 
   /** Replays the selected harness's committed seeds and exits non-zero on any mismatch. */
   public static void main(String[] args) throws IOException {
-    new JazzerRegressionRunner().run(args);
+    MainArguments mainArguments = MainArguments.parse(args);
+    new JazzerRegressionRunner(
+            mainArguments.projectDirectory(), System.out, System.err, System::exit)
+        .runHarness(parseHarness(mainArguments.commandArguments().toArray(String[]::new)));
   }
 
   void run(String[] args) throws IOException {
+    runHarness(parseHarness(args));
+  }
+
+  private void runHarness(JazzerHarness harness) throws IOException {
     try (PrintWriter outputWriter = new TerminalPrintWriter(outputStream);
         PrintWriter errorWriter = new TerminalPrintWriter(errorStream)) {
-      int exitCode = run(projectDirectory, parseHarness(args), outputWriter, errorWriter);
+      int exitCode = run(projectDirectory, harness, outputWriter, errorWriter);
       if (exitCode != 0) {
         exitHandler.exit(exitCode);
       }
@@ -176,5 +177,35 @@ public final class JazzerRegressionRunner {
   interface ReplayExecutor {
     /** Replays one harness/input pair and returns the resulting replay outcome. */
     ReplayOutcome replay(JazzerHarness harness, byte[] input);
+  }
+
+  record MainArguments(Path projectDirectory, List<String> commandArguments) {
+    static MainArguments parse(String[] args) {
+      Objects.requireNonNull(args, "args must not be null");
+      requireProjectRootInvocation(args);
+      String projectRoot = Objects.requireNonNull(args[1], "projectRoot must not be null");
+      if (projectRoot.isBlank()) {
+        throw new IllegalArgumentException(PROJECT_ROOT_OPTION + " must not be blank");
+      }
+      return new MainArguments(
+          Path.of(projectRoot).toAbsolutePath().normalize(),
+          List.of(java.util.Arrays.copyOfRange(args, 2, args.length)));
+    }
+
+    private static void requireProjectRootInvocation(String[] args) {
+      if (args.length < 4) {
+        throw usageException();
+      }
+      if (!PROJECT_ROOT_OPTION.equals(args[0])) {
+        throw usageException();
+      }
+    }
+
+    private static IllegalArgumentException usageException() {
+      return new IllegalArgumentException(
+          "Usage: JazzerRegressionRunner "
+              + PROJECT_ROOT_OPTION
+              + " <jazzer-project-dir> --target <harness-key>");
+    }
   }
 }

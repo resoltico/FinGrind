@@ -1,0 +1,9 @@
+{
+  "cipher": "chacha20",
+  "legacyMode": false,
+  "pageSize": 4096,
+  "reservedBytes": 32,
+  "legacyPageSize": 4096,
+  "kdfIter": 64007,
+  "plaintextHeaderSize": 0
+}
