@@ -18,7 +18,7 @@ concurrency:
 jobs:
   prepare-release:
     name: Prepare GitHub release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     permissions:
@@ -102,7 +102,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-latest
+          - runner: ubuntu-24.04
             classifier: linux-x86_64
             archive_extension: tar.gz
             expected_os: Linux
@@ -112,7 +112,7 @@ jobs:
             archive_extension: tar.gz
             expected_os: Linux
             expected_arch: aarch64
-          - runner: macos-latest
+          - runner: macos-15
             classifier: macos-aarch64
             archive_extension: tar.gz
             expected_os: Darwin
@@ -122,7 +122,7 @@ jobs:
             archive_extension: tar.gz
             expected_os: Darwin
             expected_arch: x86_64
-          - runner: windows-latest
+          - runner: windows-2022
             classifier: windows-x86_64
             archive_extension: zip
             expected_os: Windows
@@ -227,7 +227,7 @@ jobs:
     needs:
       - prepare-release
       - build-bundles
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     permissions:

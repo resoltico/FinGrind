@@ -392,7 +392,6 @@ val bundleArchiveTask: org.gradle.api.tasks.TaskProvider<out AbstractArchiveTask
             dependsOn(stageCliBundle)
             destinationDirectory.set(distributionDirectory)
             archiveFileName.set(bundleArchiveFileName)
-            isPreserveFileTimestamps = false
             isReproducibleFileOrder = true
             dirPermissions {
                 unix(493)
@@ -419,7 +418,6 @@ val bundleArchiveTask: org.gradle.api.tasks.TaskProvider<out AbstractArchiveTask
             destinationDirectory.set(distributionDirectory)
             archiveFileName.set(bundleArchiveFileName)
             compression = Compression.GZIP
-            isPreserveFileTimestamps = false
             isReproducibleFileOrder = true
             dirPermissions {
                 unix(493)

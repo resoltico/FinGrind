@@ -420,6 +420,8 @@ class ProtocolContractLintSupport {
                 "timeout-minutes",
                 "unknown-account",
                 "unknown-command",
+                "macos-15",
+                "macos-latest",
                 "ubuntu-latest",
                 "unexpected-failure",
                 "windows-bundle-smoke",
