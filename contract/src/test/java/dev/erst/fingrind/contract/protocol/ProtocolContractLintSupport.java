@@ -390,7 +390,9 @@ class ProtocolContractLintSupport {
                 "class-start",
                 "cli-request",
                 "desktop-linux",
+                "devcontainer-changes",
                 "docker-buildx",
+                "docker-smoke",
                 "duplicate-idempotency-key",
                 "expected-invalid",
                 "export-ignore",
@@ -418,6 +420,8 @@ class ProtocolContractLintSupport {
                 "unknown-account",
                 "unknown-command",
                 "unexpected-failure",
+                "windows-bundle-smoke",
+                "windows-2022",
                 "report-pdf"));
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(

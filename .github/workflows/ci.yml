@@ -17,7 +17,7 @@ concurrency:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     steps:
@@ -121,7 +121,7 @@ jobs:
 
   docker-smoke:
     name: Docker smoke
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: check
     timeout-minutes: 15
 
@@ -154,7 +154,7 @@ jobs:
 
   devcontainer-changes:
     name: Detect devcontainer changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       changed: ${{ steps.filter.outputs.changed }}
@@ -190,7 +190,7 @@ jobs:
     name: Contributor devcontainer
     needs: [devcontainer-changes]
     if: needs.devcontainer-changes.outputs.changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
 
     steps:
@@ -210,7 +210,7 @@ jobs:
       - docker-smoke
       - devcontainer-changes
       - devcontainer
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
 
     steps:

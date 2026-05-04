@@ -370,11 +370,11 @@ The repository ships four workflow files and six named CI jobs:
 
 1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
-   Runs on `ubuntu-24.04`.
+   Runs on `ubuntu-26.04`.
 2. `windows-bundle-smoke` — builds and smokes the Windows bundle on `windows-2022` after `check`
    passes. Excludes the workspace and Gradle user home from Windows Defender before any Gradle
    operations begin, removing antivirus scan overhead from file writes during compilation.
-3. `docker-smoke` — builds the application JAR and smokes the Docker image on `ubuntu-24.04`
+3. `docker-smoke` — builds the application JAR and smokes the Docker image on `ubuntu-26.04`
    after `check` passes.
 4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
@@ -404,7 +404,7 @@ A `devcontainer-changes` detection job computes the diff before the gate is eval
 relevant files changed, `devcontainer` is skipped. A skipped result is a correct, intended
 outcome, not a coverage gap.
 
-All CI runners use pinned runner images (`ubuntu-24.04`, `windows-2022`) rather than the floating
+All CI runners use pinned runner images (`ubuntu-26.04`, `windows-2022`) rather than the floating
 `ubuntu-latest` / `windows-latest` labels, so runner image updates cannot silently change the
 build environment between runs. The `workflow_dispatch:` trigger also lets maintainers manually
 rerun the full aggregate `Gate` against a branch when GitHub fails to attach the `pull_request`
