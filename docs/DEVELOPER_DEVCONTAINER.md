@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-05-02"
+updated: "2026-05-04"
 route:
   keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, contributor container, local repo mount, tooling agnostic]
   questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode"]
@@ -298,6 +298,42 @@ reduces toolchain drift and isolates host-side interference.
 
 If you stay host-native, follow [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) and
 [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md) exactly.
+
+## CI Gate Behavior
+
+The `devcontainer` CI job fires only when devcontainer-relevant files change. The path set that
+triggers it:
+
+- `.devcontainer/` — the Dockerfile and `devcontainer.json`
+- `scripts/validate-devcontainer.sh`
+- `scripts/devcontainer-prepare-user-home.sh`
+- `scripts/repo-verification-lock-support.sh`
+- `scripts/python-runtime-support.sh`
+
+PRs that touch only application code, documentation, or tests do not trigger the devcontainer
+gate. The `check`, `windows-bundle-smoke`, and `docker-smoke` jobs already prove the code builds
+and tests pass; the devcontainer gate proves the contributor environment. Running the full Docker
+build-and-validate cycle for a change that cannot affect the environment wastes 15-20 minutes per
+run.
+
+The `devcontainer` job no longer depends on `check`. The devcontainer environment is orthogonal to
+code correctness: it should be proven whenever its files change regardless of whether the
+application gate passes.
+
+When the gate is skipped, the aggregate `Gate` required-status job still succeeds — a skipped
+devcontainer gate is a correct, intended outcome, not a coverage gap. Only a *failed* or
+*cancelled* gate prevents merge. `Gate` uses `if: always()` with explicit
+`${{ toJSON(needs.*.result) }}` inspection so a skipped job does not block it from being reported.
+
+When the gate fires, CI runs `./scripts/validate-devcontainer.sh` for the full image and contract
+proof.
+
+If you change any of the files in the trigger path above, run the validator from the host before
+pushing:
+
+```bash
+./scripts/validate-devcontainer.sh
+```
 
 ## Troubleshooting
 

@@ -5,6 +5,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Path-gated the `devcontainer` CI job so it fires only when devcontainer-relevant files actually change (`.devcontainer/`, `scripts/validate-devcontainer.sh`, `scripts/devcontainer-prepare-user-home.sh`, `scripts/repo-verification-lock-support.sh`, `scripts/python-runtime-support.sh`); non-devcontainer PRs skip the full Docker build-and-validate cycle, reducing typical PR wall-clock time by 15-20 minutes.
+- Added a `devcontainer-changes` detection job that computes a git diff of the PR's changed files against the devcontainer trigger paths before the gate is evaluated. The `devcontainer` job no longer depends on `check` — the contributor environment is orthogonal to code correctness and should be proven whenever its files change regardless of whether the application gate passes.
+- Added a `gate` aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge — only a failed or cancelled job prevents success. Configure branch protection to require `Gate` as the single required check.
+- Added `workflow_dispatch:` to the CI trigger so maintainers can manually rerun the aggregate `Gate` against a branch when GitHub fails to attach the `pull_request` workflow on initial PR open.
+- Pinned CI runners to `ubuntu-24.04` and `windows-2022` instead of the floating `ubuntu-latest` and `windows-latest` labels so runner image updates cannot silently change the build environment between runs.
+- Added Windows Defender exclusions for the workspace and Gradle user home in `windows-bundle-smoke` before any Gradle operations begin, eliminating antivirus scan overhead that otherwise scans every `.class`, native library, and JAR file written during compilation.
+- Promoted top-level `permissions: contents: read` to the workflow level and removed the redundant per-job declarations.
+- Raised `check` job `timeout-minutes` from 15 to 40 to accommodate the Docker build inside the release-surface scripts verification step on days when apt mirrors respond slowly; the step consistently completes in under 5 minutes on fast days but has been observed to take over 23 minutes when mirrors are degraded.
+- Added §7.11 "In-progress work awareness" to `AGENTS.md` — a standing norm requiring agents to inspect open PRs before starting non-trivial work so existing in-flight theory is not destroyed by starting fresh; also fixed the §7.10 heading level and bumped the document version to 2.4.0.
+
 ## [0.30.0] - 2026-05-02
 
 ### Changed

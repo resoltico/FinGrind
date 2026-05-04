@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: DEVELOPER
-updated: "2026-05-02"
+updated: "2026-05-04"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -357,16 +357,58 @@ root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 
-The repository currently ships four workflow files and five named automation surfaces:
-- `CI` runs on pushes and pull requests to `main`, and publishes the protected checks `Check`,
-  `Windows bundle smoke`, and `Docker smoke`, plus the committed `Contributor devcontainer` job
-  that the release protocol treats as release-blocking even though branch protection does not
-  require it.
+The repository ships four workflow files and six named CI jobs:
+
+- `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
+  aggregate `Gate` required-status job plus the individual `Check`, `Windows bundle smoke`,
+  `Docker smoke`, `Contributor devcontainer`, and `Detect devcontainer changes` jobs.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
-- `Contributor devcontainer` is the CI-visible owner of the committed contributor-container
-  contract through `./scripts/validate-devcontainer.sh`.
+
+**CI job structure:**
+
+1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
+   regression, SQLite verification, bundle build and smoke, and release-surface script checks.
+   Runs on `ubuntu-24.04`.
+2. `windows-bundle-smoke` — builds and smokes the Windows bundle on `windows-2022` after `check`
+   passes. Excludes the workspace and Gradle user home from Windows Defender before any Gradle
+   operations begin, removing antivirus scan overhead from file writes during compilation.
+3. `docker-smoke` — builds the application JAR and smokes the Docker image on `ubuntu-24.04`
+   after `check` passes.
+4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
+   against the devcontainer trigger paths. Runs independently; no upstream dependency.
+5. `devcontainer` — validates the committed contributor devcontainer surface through
+   `./scripts/validate-devcontainer.sh`. Fires only when `devcontainer-changes` reports that a
+   relevant file changed; skipped otherwise. No longer depends on `check` — the devcontainer
+   environment is orthogonal to code correctness and should be proven whenever its files change
+   regardless of whether the application gate passes.
+6. `gate` — aggregate required-status job using `if: always()` with explicit
+   `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate
+   does not prevent `Gate` from being reported or block merge; only a failed or cancelled job
+   prevents success. Configure branch protection to require `Gate` as the single required check.
+
+**Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
+*environment*, not application code. Application code changes are already proven by `check`,
+`windows-bundle-smoke`, and `docker-smoke`. Running the full Docker build-and-validate cycle on
+every PR regardless of what changed wastes 15-20 minutes per run. The gate therefore fires only
+when the environment itself changes — specifically when any of these paths are touched:
+
+- `.devcontainer/` — the Dockerfile and `devcontainer.json`
+- `scripts/validate-devcontainer.sh`
+- `scripts/devcontainer-prepare-user-home.sh`
+- `scripts/repo-verification-lock-support.sh`
+- `scripts/python-runtime-support.sh`
+
+A `devcontainer-changes` detection job computes the diff before the gate is evaluated. When no
+relevant files changed, `devcontainer` is skipped. A skipped result is a correct, intended
+outcome, not a coverage gap.
+
+All CI runners use pinned runner images (`ubuntu-24.04`, `windows-2022`) rather than the floating
+`ubuntu-latest` / `windows-latest` labels, so runner image updates cannot silently change the
+build environment between runs. The `workflow_dispatch:` trigger also lets maintainers manually
+rerun the full aggregate `Gate` against a branch when GitHub fails to attach the `pull_request`
+workflow on initial PR open.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
 the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.0, SQLite3 Multiple

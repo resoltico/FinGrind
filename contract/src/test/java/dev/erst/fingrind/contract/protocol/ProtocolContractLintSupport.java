@@ -390,7 +390,9 @@ class ProtocolContractLintSupport {
                 "class-start",
                 "cli-request",
                 "desktop-linux",
+                "devcontainer-changes",
                 "docker-buildx",
+                "docker-smoke",
                 "duplicate-idempotency-key",
                 "expected-invalid",
                 "export-ignore",
@@ -415,9 +417,14 @@ class ProtocolContractLintSupport {
                 "sqlite-jdbc",
                 "test-complete",
                 "test-progress",
+                "timeout-minutes",
                 "unknown-account",
                 "unknown-command",
+                "ubuntu-latest",
                 "unexpected-failure",
+                "windows-bundle-smoke",
+                "windows-2022",
+                "windows-latest",
                 "report-pdf"));
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(
