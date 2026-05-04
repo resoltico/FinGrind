@@ -417,6 +417,7 @@ class ProtocolContractLintSupport {
                 "sqlite-jdbc",
                 "test-complete",
                 "test-progress",
+                "timeout-minutes",
                 "unknown-account",
                 "unknown-command",
                 "ubuntu-latest",
