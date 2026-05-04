@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pinned CI runners to `ubuntu-24.04` and `windows-2022` instead of the floating `ubuntu-latest` and `windows-latest` labels so runner image updates cannot silently change the build environment between runs.
 - Added Windows Defender exclusions for the workspace and Gradle user home in `windows-bundle-smoke` before any Gradle operations begin, eliminating antivirus scan overhead that otherwise scans every `.class`, native library, and JAR file written during compilation.
 - Promoted top-level `permissions: contents: read` to the workflow level and removed the redundant per-job declarations.
+- Raised `check` job `timeout-minutes` from 15 to 25 to accommodate the Docker build inside the release-surface scripts verification step, which was causing PR runs to be cancelled before reporting a real pass or fail.
 - Added §7.11 "In-progress work awareness" to `AGENTS.md` — a standing norm requiring agents to inspect open PRs before starting non-trivial work so existing in-flight theory is not destroyed by starting fresh; also fixed the §7.10 heading level and bumped the document version to 2.4.0.
 
 ## [0.30.0] - 2026-05-02
