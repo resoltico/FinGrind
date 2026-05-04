@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -13,11 +17,8 @@ concurrency:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
-
-    permissions:
-      contents: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -62,12 +63,9 @@ jobs:
 
   windows-bundle-smoke:
     name: Windows bundle smoke
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: check
     timeout-minutes: 25
-
-    permissions:
-      contents: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -94,6 +92,12 @@ jobs:
         with:
           arch: x64
 
+      - name: Exclude build directories from Windows Defender
+        shell: powershell
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.gradle"
+
       - name: Run root quality gates and included build-logic tests on Windows
         shell: pwsh
         run: |
@@ -117,12 +121,9 @@ jobs:
 
   docker-smoke:
     name: Docker smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     timeout-minutes: 15
-
-    permissions:
-      contents: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -151,14 +152,46 @@ jobs:
       - name: Smoke test the Docker image
         run: ./scripts/docker-smoke.sh
 
+  devcontainer-changes:
+    name: Detect devcontainer changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect devcontainer-relevant changes
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [[ -z "$base" || "$base" == "0000000000000000000000000000000000000000" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" "${{ github.sha }}" -- \
+            '.devcontainer' \
+            'scripts/validate-devcontainer.sh' \
+            'scripts/devcontainer-prepare-user-home.sh' \
+            'scripts/repo-verification-lock-support.sh' \
+            'scripts/python-runtime-support.sh')
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   devcontainer:
     name: Contributor devcontainer
-    runs-on: ubuntu-latest
-    needs: check
+    needs: [devcontainer-changes]
+    if: needs.devcontainer-changes.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
-
-    permissions:
-      contents: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -167,3 +200,32 @@ jobs:
 
       - name: Validate the committed contributor devcontainer surface
         run: ./scripts/validate-devcontainer.sh
+
+  gate:
+    name: Gate
+    if: always()
+    needs:
+      - check
+      - windows-bundle-smoke
+      - docker-smoke
+      - devcontainer-changes
+      - devcontainer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Confirm aggregate gate success
+        shell: bash
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          set -euo pipefail
+          if echo "$RESULTS" | grep -q '"failure"'; then
+            echo "A required job failed."
+            exit 1
+          fi
+          if echo "$RESULTS" | grep -q '"cancelled"'; then
+            echo "A required job was cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed or were skipped."
