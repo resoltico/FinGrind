@@ -419,9 +419,11 @@ class ProtocolContractLintSupport {
                 "test-progress",
                 "unknown-account",
                 "unknown-command",
+                "ubuntu-latest",
                 "unexpected-failure",
                 "windows-bundle-smoke",
                 "windows-2022",
+                "windows-latest",
                 "report-pdf"));
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(
