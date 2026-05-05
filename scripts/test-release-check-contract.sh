@@ -48,6 +48,10 @@ grep -Fq "required checks remain exactly \`${expected_check_name}\`" "${bootstra
     "bootstrap protocol no longer documents Gate as the sole required check"
 grep -Fq "required status checks are exactly \`${expected_check_name}\`" "${release_protocol}" || die \
     "release protocol no longer documents Gate as the sole required status check"
+grep -Fq "Step 10 must close the superseded PR and delete its branch" "${release_protocol}" || die \
+    "release protocol no longer closes superseded release-starting PRs"
+grep -Fq "No superseded ordinary PR may remain open after release hygiene." "${release_protocol}" || die \
+    "release protocol no longer forbids superseded ordinary PR leftovers"
 if grep -Fq 'Check`, `Windows bundle smoke`, and `Docker smoke`' "${bootstrap_protocol}"; then
     die "bootstrap protocol reintroduced the obsolete three-check branch-protection contract"
 fi

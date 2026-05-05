@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: RELEASE_PROTOCOL
 updated: "2026-05-05"
 route:
@@ -136,6 +136,12 @@ that decision forward and complete Step 10 before ending the release session.
 If you merge or close one release-critical PR, re-enumerate the remaining open PRs before acting
 on the next one. A changed `main` branch can invalidate sibling merge state or required-check
 evaluations.
+
+If the primary checkout is currently on an open PR branch and that branch's payload is being
+absorbed into `release/X.Y.Z`, do not keep driving the release from the PR branch name. Branch to
+`release/X.Y.Z` immediately and treat the original PR as provisional theory only. If the release
+PR later ships the same payload, Step 10 must close the superseded PR and delete its branch unless
+it still contains material that is not in `main`.
 
 If Step 1 merges a release-critical PR and the primary checkout already contains the intended
 release payload as uncommitted local changes, do **not** try to `git pull` that dirty `main`
@@ -545,10 +551,11 @@ availability, not workflow success, is the authoritative state.
 
 ### Step 10
 
-Triage Dependabot PRs and clear dependency-automation leftovers.
+Triage leftover PRs and clear dependency-automation leftovers.
 
-After the public release is verified, do not end the release session while open Dependabot PRs are
-still sitting untriaged. Release hygiene includes dependency-automation hygiene.
+After the public release is verified, do not end the release session while open PRs that were
+reviewed during the release are left in an ambiguous state. Release hygiene includes both
+dependency-automation hygiene and cleanup of ordinary PRs that the release branch superseded.
 
 Re-enumerate all open PRs and identify Dependabot-owned entries directly from GitHub metadata:
 
@@ -599,6 +606,21 @@ gh pr close <N> --comment "Superseded or intentionally rejected during release h
   - closed and branch deleted
   - consciously kept open with an explicit still-valid reason
 
+After the Dependabot pass, inspect any remaining open non-Dependabot PR that overlaps the shipped
+release. This includes the common case where an earlier release-critical PR branch was used as the
+starting theory for the final `release/X.Y.Z` branch. For each such PR:
+
+- If `main` now contains the PR payload and the open PR no longer carries material beyond the
+  shipped release, close it explicitly and delete its branch:
+
+```bash
+gh pr close <N> --comment "Superseded by the published release branch and now present in main." --delete-branch
+```
+
+- If the PR remains open, verify that it still differs materially from `main` and record the
+  keep-open reason in a PR comment. A branch that is only a stale precursor to the shipped release
+  must not remain open.
+
 After each merge or close, resync and re-check GitHub branch state:
 
 ```bash
@@ -612,7 +634,8 @@ gh api "repos/$REPO/branches" --paginate --jq '.[].name'
 Requirements before declaring the release session complete:
 
 - No stale Dependabot PR may remain open without an explicit keep-open decision.
-- No merged or closed Dependabot branch may remain on GitHub.
+- No superseded ordinary PR may remain open after release hygiene.
+- No merged or closed branch handled in this step may remain on GitHub.
 - Any remaining non-`main` branch on GitHub must correspond to an intentional still-open PR that
   was reviewed during this step and deliberately kept alive.
 

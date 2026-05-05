@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-05-05
+
 ### Fixed
 
 - Pinned `container.yml` runners to `ubuntu-24.04` (both the `container` and `cleanup` jobs used the floating `ubuntu-latest` label — the most security-sensitive workflow was the least pinned).
@@ -14,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pinned `gradle-wrapper-validation.yml` runner to `ubuntu-24.04`; it was the only remaining workflow using the floating `ubuntu-latest` label.
 - Hardcoded the release-blocking check list in `verify-release-candidate-tag.sh` to `Gate` (the single aggregate CI check) and removed the `FINGRIND_RELEASE_BLOCKING_CHECKS` env-var override; the previous default included `Contributor devcontainer` which is legitimately skipped on commits that do not touch devcontainer files, causing the script to false-fail on any such release commit.
 - Updated the branch protection reference in `RELEASE_PROTOCOL.md` §Step 1 to reflect the current single required status check (`Gate`) instead of the former three-check list (`Check`, `Windows bundle smoke`, `Docker smoke`).
+- Tightened `RELEASE_PROTOCOL.md` so release hygiene now also closes any ordinary open PR that was superseded by the shipped release branch, instead of only triaging Dependabot leftovers.
 - Raised `verify-github-release.sh` default retry count from 1 to 3 and default inter-retry delay from 0 to 5 seconds so release asset availability checks are resilient to brief GitHub API propagation lag when run outside the container workflow's explicit override values.
-- Added a dedicated Dependabot Approval Strategy section to `RELEASE_PROTOCOL.md` documenting triage tiers (security within 7 days, regular before next release, major version bumps as considered upgrades), required CI gates before any merge, and explicit prohibitions (no auto-merge, no merging on a failing Gate, no retroactive release amendments).
 - Removed `isPreserveFileTimestamps = false` from the `bundleCliZip` and `bundleCliTarGz` archive tasks; the setting zeroed every file's modification time to the MS-DOS epoch minimum (1980-02-01 for ZIP) or the Unix epoch (1970-01-02 for TAR), making all files in every release package appear frozen in 1970 or 1980 in file managers and `ls -l` output. Retaining `isReproducibleFileOrder = true` keeps entries in a stable alphabetical order for auditing without clobbering timestamps.
 - Pinned release workflow runners to `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, and `windows-2022` instead of the floating `ubuntu-latest`, `macos-latest`, and `windows-latest` labels so runner image updates cannot silently change the native build environment across releases.
 - Path-gated the `devcontainer` CI job so it fires only when devcontainer-relevant files actually change (`.devcontainer/`, `scripts/validate-devcontainer.sh`, `scripts/devcontainer-prepare-user-home.sh`, `scripts/repo-verification-lock-support.sh`, `scripts/python-runtime-support.sh`); non-devcontainer PRs skip the full Docker build-and-validate cycle, reducing typical PR wall-clock time by 15-20 minutes.
@@ -42,7 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced release-numbered extracted-bundle launcher paths in the public CLI guides with archive-derived launcher examples, and moved shared bundle-archive verification onto one Python owner used by both Bash and PowerShell bundle smoke.
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
 - Split the internal bookkeeping and workflow models away from the public contract DTOs, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
-- Added §7.11 "In-progress work awareness" to `AGENTS.md` — a standing norm requiring agents to inspect open PRs before starting non-trivial work so existing in-flight theory is not destroyed by starting fresh; also fixed the §7.10 heading level and bumped the document version to 2.4.0.
 
 ## [0.30.0] - 2026-05-02
 
@@ -1357,7 +1358,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.31.0...HEAD
+[0.31.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.31.0
 [0.30.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.30.0
 [0.29.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.29.0
 [0.28.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.28.0
