@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced release-numbered extracted-bundle launcher paths in the public CLI guides with archive-derived launcher examples, and moved shared bundle-archive verification onto one Python owner used by both Bash and PowerShell bundle smoke.
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
 - Split the internal bookkeeping and workflow models away from the public contract DTOs, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
+- Added §7.11 "In-progress work awareness" to `AGENTS.md` — a standing norm requiring agents to inspect open PRs before starting non-trivial work so existing in-flight theory is not destroyed by starting fresh; also fixed the §7.10 heading level and bumped the document version to 2.4.0.
 
 ## [0.30.0] - 2026-05-02
 
