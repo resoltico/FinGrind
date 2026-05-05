@@ -27,7 +27,7 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly script_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly tag_name="${1:-${RELEASE_TAG:-${GITHUB_REF_NAME:-}}}"
-readonly blocking_checks_csv="${FINGRIND_RELEASE_BLOCKING_CHECKS:-Check,Windows bundle smoke,Docker smoke,Contributor devcontainer}"
+readonly blocking_checks_csv="Gate"
 
 [[ -n "${tag_name}" ]] || die "release tag is required"
 [[ "${tag_name}" == v* ]] || die "release tag must start with v"

@@ -117,9 +117,7 @@ be true before any release commit or tag:
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
   - `main` is protected with admin enforcement
-  - required status checks are exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
-  - the CI workflow also publishes `Contributor devcontainer`, and later release-handoff steps
-    treat it as release-blocking even though branch protection does not
+  - required status checks are exactly `Gate` (the single aggregate check that subsumes all CI jobs)
 
 Before cutting the release branch, enumerate open PRs so dependency-automation work is never
 surprise-discovered after publication:
@@ -661,3 +659,33 @@ If a disposable release worktree was created and is no longer needed:
 ```bash
 git worktree remove "$RELEASE_WORKTREE"
 ```
+
+---
+
+## Dependabot Approval Strategy
+
+FinGrind is a financial application. **No Dependabot PR may be auto-merged.** Every update —
+regardless of ecosystem, scope, or whether it is flagged as a security fix — requires a human
+decision before landing on `main`.
+
+### Triage tiers
+
+| Tier | Trigger | Deadline | Action |
+|:-----|:--------|:---------|:-------|
+| **Security** | Dependabot security advisory on any direct or transitive dependency | Within 7 calendar days of PR open | Review, verify CI passes, merge or reject with documented reason |
+| **Regular** | Non-security weekly update | Before the next release | Review during Step 10 Dependabot hygiene; merge or close |
+| **Major version bump** | `semver-major` update on any ecosystem | Before the next release | Treat as a considered upgrade, not a routine bump; verify API compatibility explicitly |
+
+### Required gates before any Dependabot merge
+
+1. The full CI `Gate` check passes on the Dependabot PR head commit (i.e., all jobs in `ci.yml` succeeded or were correctly skipped).
+2. For Docker base image updates: `docker-smoke` specifically passes, confirming the new base image does not break the containerized runtime.
+3. For Gradle dependency updates that touch `sqlite` or `sqlite3mc`: the `Verify managed SQLite CLI runtime` step in `check` passes and the managed SQLite hash in `gradle.properties` is still consistent.
+4. For GitHub Actions updates: the pinned commit SHA in the workflow file matches the SHA of the tagged release being adopted — verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`.
+
+### What to never do
+
+- Never merge a Dependabot PR that has a failing or missing `Gate` check.
+- Never merge a Dependabot PR that changes the SQLite native library without verifying the managed runtime still initializes correctly.
+- Never retag or amend a published release to absorb a post-release Dependabot merge.
+- Never leave a Dependabot PR open indefinitely without an explicit keep-open reason documented in a PR comment.

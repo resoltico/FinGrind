@@ -407,6 +407,7 @@ class ProtocolContractLintSupport {
                 "posting-workflow",
                 "replace-before-commit-effective-date",
                 "regression-input",
+                "semver-major",
                 "raw-json",
                 "replay-clean",
                 "reversal-already-exists",
