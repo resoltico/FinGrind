@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: DEVELOPER
-updated: "2026-05-04"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -25,6 +25,7 @@ the documented default.
 
 Companion documents:
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md)
+- [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md)
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md)
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md)
@@ -33,6 +34,7 @@ Companion documents:
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
+- [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md)
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md)
@@ -57,7 +59,9 @@ contract/     Public request, result, metadata, and machine-contract surface:
               committed facts, ledger plans, assertions, and plan journals.
 
 executor/     Execution services plus storage seams:
-              BookAdministrationService, DeclareAccountCommand, DeclaredAccount,
+              BookAdministrationService, application seams, and context translators:
+              public published language enters here and is translated into the internal
+              bookkeeping and workflow contexts before execution,
               BookReadService, BookInspection, paged account and posting query/report models,
               PostingDraft, PostingIdGenerator, UuidV7PostingIdGenerator,
               PostingApplicationService, LedgerPlanService,
@@ -65,7 +69,8 @@ executor/     Execution services plus storage seams:
               PostingValidationBook, LedgerPlanSession, PostingCommitResult.
 
 sqlite/       Durable single-book adapter:
-              one protected SQLite file per entity book, persisted through an in-process SQLite
+              one protected SQLite file per accounting-entity book, persisted through an
+              in-process SQLite
               adapter backed by Java 26 FFM and a managed SQLite 3.53.0 / SQLite3 Multiple
               Ciphers 2.3.3 runtime on controlled surfaces, implementing the executor-owned
               administration, posting, query, and ledger-plan seams over the canonical strict-table
@@ -103,6 +108,13 @@ pagination limits, hard book-model facts, preflight facts, currency facts, and p
 kinds. Executor code assembles and executes typed workflows from that registry, and CLI code
 renders or routes those DTOs without reauthoring operation names.
 
+For the named bounded contexts and translation rules behind that module graph, use
+[DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md). The short version is:
+- `contract` owns the published language
+- `executor.bookkeeping` owns the local bookkeeping model
+- `executor.workflow` owns plan orchestration semantics
+- `cli` and `sqlite` are host/adaptor layers that translate at the boundary
+
 Repo-owned JSON contract snapshots back that typed public surface:
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/contract-schema-keys.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json`
@@ -123,7 +135,7 @@ The AI-agent-first workflow is now first-class:
 - every plan returns a durable per-step journal for agent continuation
 
 FinGrind's current public model is:
-- one SQLite file is one book for one entity
+- one SQLite file is one book for one accounting entity
 - every book-bound command requires exactly one explicit passphrase source:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
 - book files are protected at rest with SQLite3 Multiple Ciphers 2.3.3 using the upstream default
@@ -154,7 +166,7 @@ FinGrind's current public model is:
 | Kotlin build logic | 2.4.0-Beta2 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 in public bundles, generated source-checkout launchers, root Gradle, nested Jazzer, CI, and Docker; developer-only raw `java -jar` auto-discovers that managed runtime when it runs from a prepared checkout and only needs explicit `FINGRIND_SQLITE_LIBRARY` when launched outside that checkout layout |
-| Jackson Databind | 3.1.2 |
+| Jackson Databind | 3.1.3 |
 | JUnit Jupiter | 6.1.0-RC1 |
 | Jazzer | 0.30.0 |
 | JaCoCo | pinned snapshot artifact 0.8.15-20260429.155228-97 |
@@ -273,14 +285,16 @@ Public release verification now centers on the self-contained bundle archive, no
 `./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` on
 macOS/Linux or `./scripts/bundle-smoke.ps1` on Windows proves that the extracted bundle runs
 without ambient Java or a preconfigured `FINGRIND_SQLITE_LIBRARY`. That smoke gate also verifies
-the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract.
+the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract. The bundle
+task prints the exact archive path and checksum path it produced under the active build directory
+so operators and agents can pick up the right artifact without guessing where Gradle placed it.
 
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
 Java surface. If you want that JAR to run from the checkout, prepare the managed runtime first:
 
 ```bash
 ./gradlew :cli:shadowJar prepareManagedSqlite
-java -jar cli/build/libs/fingrind.jar capabilities
+./scripts/direct-java-cli.sh capabilities
 ```
 
 When that JAR is moved outside the prepared checkout layout, provide `FINGRIND_SQLITE_LIBRARY`
@@ -331,7 +345,8 @@ Those wrappers serialize FinGrind verification through the shared repo lock and 
 and active-fuzz launch contract. Active fuzz runs force `--no-daemon` and own interrupt cleanup.
 Raw `./gradlew -p jazzer ...` task names remain nested-build internals and are not the supported
 Jazzer operator entrypoint. Wrapper target discovery is owned by `jazzerActiveTargets` plus
-`jazzerReplayableTargets` instead of shell-local JSON parsing.
+`jazzerReplayableTargets` only as derived Gradle projections; the committed Jazzer topology JSON is
+the owner consumed by wrapper discovery, runtime support, and build logic.
 The documented shell operator surface, including `./check.sh` and `jazzer/bin/*`, must also remain
 compatible with stock macOS `/bin/bash` 3.2 under `set -u`; in particular, do not assume
 empty-array `"${array[@]}"` expansion is safe there.
@@ -339,12 +354,14 @@ If wrapper shell logic or Jazzer topology changes, run at least one live `jazzer
 addition to deterministic nested `check`.
 
 Root `./check.sh`, `./scripts/docker-smoke.sh`, `./scripts/validate-devcontainer.sh`, and the
-Jazzer wrappers now also share one repo-scoped `GRADLE_USER_HOME` plus the repo-wide verification
-lock under the user cache root (`${XDG_CACHE_HOME:-$HOME/.cache}/fingrind/repo-verification-locks`
-by default, keyed by repository path). That isolation keeps full verification from sharing daemon
-or cache state accidentally with sibling commands without perturbing Gradle's observed repository
-inputs. Descendant shell processes reenter that lock through published owner metadata in the lock
-directory, so monitored shell shapes such as `bash ... > >(tee ...)` do not break wrapper reentry.
+Jazzer wrappers now also share one repo-keyed cache-root `GRADLE_USER_HOME` plus the repo-wide
+verification lock under the user cache root
+(`${XDG_CACHE_HOME:-$HOME/.cache}/fingrind/repo-verification-locks` by default, keyed by
+repository path). That isolation keeps full verification from sharing daemon or cache state
+accidentally with sibling commands without perturbing Gradle's observed repository inputs or
+forcing wrapper-owned lock files back into the checkout. Descendant shell processes reenter that
+lock through published owner metadata in the lock directory, so monitored shell shapes such as
+`bash ... > >(tee ...)` do not break wrapper reentry.
 
 Shared Gradle plugins, managed-SQLite task types, and pulse listeners now live under
 `gradle/build-logic`, and the nested Jazzer build imports both that included build and the root
@@ -430,7 +447,7 @@ Operational protocols for those surfaces live in:
 
 FinGrind deliberately keeps several boundaries sharp:
 - SQLite is the only durable backend currently planned.
-- One SQLite file is one book for one entity.
+- One SQLite file is one book for one accounting entity.
 - Every book is protected at rest through SQLite3 Multiple Ciphers and exactly one explicit
   passphrase source.
 - Rekeying preserves one rollback copy until the replacement secret is verified, so verification

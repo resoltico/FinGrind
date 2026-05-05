@@ -5,16 +5,19 @@ import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerJournalStep;
-import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RejectionNarrative;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Shared fact and failure mapping for ledger-plan execution steps. */
@@ -23,6 +26,10 @@ final class LedgerPlanOutcomeMapper {
 
   static LedgerPlanStepOutcome balanceFacts(AccountBalanceSnapshot snapshot) {
     return stepSucceeded(LedgerPlanFactMapper.balanceFacts(snapshot));
+  }
+
+  static List<LedgerFact> postingFacts(CommittedPosting postingFact) {
+    return LedgerPlanFactMapper.postingFacts(postingFact);
   }
 
   static List<LedgerFact> postingFacts(PostingFact postingFact) {
@@ -58,14 +65,17 @@ final class LedgerPlanOutcomeMapper {
             LedgerStepStatus.ASSERTION_FAILED.wireValue(), message, List.of(facts)));
   }
 
-  static String missingBookCode(LedgerStep firstStep) {
-    return switch (firstStep.kind()) {
-      case OPEN_BOOK, DECLARE_ACCOUNT ->
-          dev.erst.fingrind.contract.BookAdministrationRejection.bookNotInitializedCode();
-      case PREFLIGHT_ENTRY, POST_ENTRY -> PostingRejection.bookNotInitializedCode();
-      case INSPECT_BOOK, LIST_ACCOUNTS, GET_POSTING, LIST_POSTINGS, ACCOUNT_BALANCE, ASSERT ->
-          dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode();
-    };
+  static String missingBookCode(BookWorkflowStep firstStep) {
+    Objects.requireNonNull(firstStep, "firstStep");
+    if (firstStep instanceof BookWorkflowStep.OpenBook
+        || firstStep instanceof BookWorkflowStep.DeclareAccount) {
+      return dev.erst.fingrind.contract.BookAdministrationRejection.bookNotInitializedCode();
+    }
+    if (firstStep instanceof BookWorkflowStep.PreflightEntry
+        || firstStep instanceof BookWorkflowStep.PostEntry) {
+      return PostingRejection.bookNotInitializedCode();
+    }
+    return dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode();
   }
 
   static LedgerPlanStepOutcome stepSucceeded(LedgerFact... facts) {
@@ -81,10 +91,10 @@ final class LedgerPlanOutcomeMapper {
   }
 
   static LedgerJournalEntry.Rejected unexpectedExecutionFailure(
-      LedgerStep step, Instant startedAt, Instant finishedAt, RuntimeException failure) {
+      BookWorkflowStep step, Instant startedAt, Instant finishedAt, RuntimeException failure) {
     return new LedgerJournalEntry.Rejected(
-        step.stepId(),
-        step.journalStep(),
+        BookWorkflowPublishedLanguageTranslator.toPublishedStepId(step.stepId()),
+        BookWorkflowPublishedLanguageTranslator.toPublishedJournalStep(step),
         startedAt,
         finishedAt,
         List.of(LedgerFact.text("exceptionType", failure.getClass().getName())),
@@ -143,14 +153,13 @@ final class LedgerPlanOutcomeMapper {
   }
 
   private static String unexpectedExecutionFailureMessage(
-      LedgerStep step, RuntimeException failure) {
+      BookWorkflowStep step, RuntimeException failure) {
     String detail = String.valueOf(failure.getMessage()).strip();
     if (detail.isEmpty() || "null".equals(detail)) {
-      return "Ledger plan execution failed unexpectedly during step '%s'."
-          .formatted(step.stepId().value());
+      return "Ledger plan execution failed unexpectedly during step '%s'.".formatted(step.stepId());
     }
     return "Ledger plan execution failed unexpectedly during step '%s': %s"
-        .formatted(step.stepId().value(), detail);
+        .formatted(step.stepId(), detail);
   }
 
   private static String unexpectedPlanFailureMessage(

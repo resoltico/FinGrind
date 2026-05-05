@@ -58,9 +58,7 @@ final class CliInvocationText {
               dev.erst.fingrind.contract.protocol.PublicCliBundleTarget.MACOS_AARCH64);
     }
     if (FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
-      return isWindows(osName)
-          ? ".\\cli\\build\\install\\cli-shadow\\bin\\cli.bat"
-          : "./cli/build/install/cli-shadow/bin/cli";
+      return ProtocolCatalog.sourceCheckoutLauncherCommand(isWindows(osName));
     }
     if (FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
       return "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>";

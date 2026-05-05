@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: ADAPTERS
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -11,8 +11,8 @@ route:
 # Book Session And Adapter API Reference
 
 This file documents the public seam and adapter layer around the contract/executor core: explicit
-book-access tuples, committed facts crossing session boundaries, executor-owned sessions, and the
-durable SQLite runtime and store.
+book-access tuples, local bookkeeping records that cross session boundaries, executor-owned
+sessions, and the durable SQLite runtime and store.
 
 ## `BookAccess` And `BookAccess.PassphraseSource`
 
@@ -42,6 +42,42 @@ public record PostingFact(
 - Purpose: represent one committed posting independently of any concrete storage adapter
 - Surface: `reversalReference()` and `reversalReason()` delegate to the typed `PostingLineage`
 - Validation: rejects `null` posting id, journal entry, posting lineage, and provenance
+
+## `CommittedPosting`
+
+`CommittedPosting` is the local bookkeeping committed-posting record used inside executor and
+storage seams before the public `PostingFact` projection is rendered.
+
+```java
+public record CommittedPosting(
+    PostingId postingId,
+    JournalEntry journalEntry,
+    PostingLineageModel postingLineage,
+    CommittedProvenance provenance)
+```
+
+- Purpose: preserve bookkeeping-local lineage typing and provenance while one write is being
+  stored, queried, or journaled
+- Boundary: projected to `PostingFact` only at the public published-language edge
+
+## `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount`
+
+These local bookkeeping administration types carry one translated account declaration, its outcome,
+book-opening results, and one registry snapshot across session and store seams.
+
+```java
+public record AccountDeclaration(AccountCode accountCode, AccountName accountName, NormalBalance normalBalance)
+public sealed interface AccountDeclarationOutcome
+public sealed interface BookOpeningOutcome
+public record RegisteredAccount(...)
+```
+
+- `AccountDeclaration`: bookkeeping-local declaration request after the public command crosses the
+  translator boundary
+- `AccountDeclarationOutcome`: closed family of accepted-versus-rejected declaration outcomes
+- `BookOpeningOutcome`: closed family of accepted-versus-rejected initialization outcomes
+- `RegisteredAccount`: local registry snapshot that owns redeclare/reactivate semantics and
+  preserves declared-at time
 
 ## `BookAdministrationSession`
 
@@ -77,7 +113,7 @@ public interface PostingValidationBook
 public interface PostingBookSession extends PostingValidationBook
 ```
 
-- Surface: `commit(PostingDraft, PostingIdGenerator)`, fixture-oriented `commit(PostingFact)`
+- Surface: `commit(PostingDraft, PostingIdGenerator)`, fixture-oriented `commit(CommittedPosting)`
 - Purpose: keep durable commit explicit and allow the store to allocate `postingId` only after
   acceptance
 - Lifecycle: the outer workflow or store owns `close()`, not the narrowed session view
@@ -121,18 +157,6 @@ public sealed interface PostingCommitResult
 
 - Variants: `Committed`, `Rejected`
 - Purpose: distinguish accepted durable writes from ordinary domain rejections without throwing
-
-## `PostingValidation`
-
-`PostingValidation` owns the shared deterministic posting-rule pass used by both preflight and
-transactional commit flows.
-
-```java
-public final class PostingValidation
-```
-
-- Surface: `rejectionFor(PostingRequest, PostingValidationBook)`
-- Purpose: keep idempotency, account-state, and reversal validation in one executor-owned helper
 
 ## `SqliteBookPassphrase`
 

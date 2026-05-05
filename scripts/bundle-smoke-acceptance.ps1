@@ -8,6 +8,7 @@ function Invoke-BundleSmoke {
 
     $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
     $script:ContractValues = Read-ContractValues
+    $bundleContractVerifier = Join-Path $script:RepoRoot "scripts/verify-bundle-archive-contract.py"
     $hostBundleTarget = $script:ContractValues.bundleLayout.hostBundleTarget
     $expectedArchiveName =
         "fingrind-$(ProjectVersion)-$($hostBundleTarget.classifier).$($hostBundleTarget.archiveFormat)"
@@ -20,6 +21,9 @@ function Invoke-BundleSmoke {
     $bundleArchivePath = if ($Arguments.Count -gt 0) { $Arguments[0] } else { Join-Path $cliBuildDir "distributions/$expectedArchiveName" }
     $bundleArchivePath = [System.IO.Path]::GetFullPath($bundleArchivePath)
     $bundleChecksumPath = "$bundleArchivePath.sha256"
+    if (-not (Test-Path -LiteralPath $bundleContractVerifier -PathType Leaf)) {
+        Fail "missing bundle contract verifier at $bundleContractVerifier"
+    }
 
     if (-not (Test-Path -LiteralPath $bundleArchivePath -PathType Leaf)) {
         Fail "missing bundle archive at $bundleArchivePath"
@@ -62,7 +66,10 @@ function Invoke-BundleSmoke {
         $bundleRoot = $extractedRoots[0].FullName
         $script:BundleLauncher = Join-Path $bundleRoot $hostBundleTarget.launcherPath
 
-        Assert-BundleArchiveContract -BundleRoot $bundleRoot -HostBundleTarget $hostBundleTarget
+        & python3 $bundleContractVerifier --repo-root $script:RepoRoot --bundle-root $bundleRoot
+        if ($LASTEXITCODE -ne 0) {
+            Fail "bundle contract verifier failed"
+        }
         Invoke-SharedBundleOfficeWorkerWorkflow -WorkRoot $workRoot
 
         Write-Host "Bundle acceptance: success"

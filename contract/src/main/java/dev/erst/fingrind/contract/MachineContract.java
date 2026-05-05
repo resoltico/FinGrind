@@ -318,8 +318,9 @@ public final class MachineContract {
           ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64);
       case BUNDLE_WINDOWS_POWERSHELL ->
           ProtocolCatalog.bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64);
-      case SOURCE_CHECKOUT_POSIX_SHELL -> "./cli/build/install/cli-shadow/bin/cli";
-      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL -> ".\\cli\\build\\install\\cli-shadow\\bin\\cli.bat";
+      case SOURCE_CHECKOUT_POSIX_SHELL -> ProtocolCatalog.sourceCheckoutLauncherCommand(false);
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
+          ProtocolCatalog.sourceCheckoutLauncherCommand(true);
       case DIRECT_JAVA_POSIX_SHELL -> ProtocolCatalog.directJavaLauncherCommand(false);
       case DIRECT_JAVA_WINDOWS_POWERSHELL -> ProtocolCatalog.directJavaLauncherCommand(true);
       case CONTAINER_DOCKER ->

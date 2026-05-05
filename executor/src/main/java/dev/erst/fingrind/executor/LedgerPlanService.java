@@ -4,13 +4,14 @@ import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerJournalStep;
-import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanId;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.LedgerStepId;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ import org.jspecify.annotations.Nullable;
 public final class LedgerPlanService {
   /** Immutable context for one plan-boundary failure that must produce a terminal journal entry. */
   private record BoundaryFailureContext(
-      LedgerPlanId planId,
+      String planId,
       Instant planStartedAt,
       List<LedgerJournalEntry> entries,
       LedgerBoundaryPhase phase,
@@ -38,25 +39,31 @@ public final class LedgerPlanService {
     }
 
     private static BoundaryFailureContext begin(
-        LedgerPlanId planId, Instant planStartedAt, List<LedgerJournalEntry> entries) {
+        String planId, Instant planStartedAt, List<LedgerJournalEntry> entries) {
       return new BoundaryFailureContext(
           planId, planStartedAt, entries, LedgerBoundaryPhase.BEGIN, planStartedAt, null, null);
     }
 
     private static BoundaryFailureContext beforeStep(
-        LedgerPlanId planId,
+        String planId,
         Instant planStartedAt,
         List<LedgerJournalEntry> entries,
         LedgerBoundaryPhase phase,
-        LedgerStep step,
+        BookWorkflowStep step,
         Instant phaseStartedAt) {
       Objects.requireNonNull(step, "step");
       return new BoundaryFailureContext(
-          planId, planStartedAt, entries, phase, phaseStartedAt, step.stepId(), step.journalStep());
+          planId,
+          planStartedAt,
+          entries,
+          phase,
+          phaseStartedAt,
+          BookWorkflowPublishedLanguageTranslator.toPublishedStepId(step.stepId()),
+          BookWorkflowPublishedLanguageTranslator.toPublishedJournalStep(step));
     }
 
     private static BoundaryFailureContext afterJournalEntry(
-        LedgerPlanId planId,
+        String planId,
         Instant planStartedAt,
         List<LedgerJournalEntry> entries,
         LedgerBoundaryPhase phase,
@@ -88,12 +95,12 @@ public final class LedgerPlanService {
   }
 
   /** Executes one plan atomically, committing only when every step succeeds. */
-  public LedgerPlanResult execute(LedgerPlan plan) {
+  public LedgerPlanResult execute(BookWorkflowPlan plan) {
     Objects.requireNonNull(plan, "plan");
     Instant startedAt = Instant.now(clock);
     List<LedgerJournalEntry> entries = new ArrayList<>();
-    List<LedgerStep> steps = plan.steps();
-    LedgerStep firstStep = steps.getFirst();
+    List<BookWorkflowStep> steps = plan.steps();
+    BookWorkflowStep firstStep = steps.getFirst();
 
     try {
       planSession.beginLedgerPlanTransaction();
@@ -126,7 +133,7 @@ public final class LedgerPlanService {
     }
 
     LedgerJournalEntry.Succeeded pendingSuccessfulStep = null;
-    for (LedgerStep step : steps) {
+    for (BookWorkflowStep step : steps) {
       Instant stepStartedAt = Instant.now(clock);
       LedgerJournalEntry stepEntry;
       try {
@@ -196,7 +203,7 @@ public final class LedgerPlanService {
   }
 
   private LedgerPlanResult failedResultWithRollback(
-      LedgerPlanId planId,
+      String planId,
       Instant startedAt,
       List<LedgerJournalEntry> entries,
       LedgerJournalEntry.Failed failed) {
@@ -259,16 +266,15 @@ public final class LedgerPlanService {
   }
 
   private LedgerPlanResult result(
-      LedgerPlanId planId,
-      LedgerPlanStatus status,
-      Instant startedAt,
-      List<LedgerJournalEntry> entries) {
+      String planId, LedgerPlanStatus status, Instant startedAt, List<LedgerJournalEntry> entries) {
     LedgerExecutionJournal journal =
         new LedgerExecutionJournal(startedAt, Instant.now(clock), List.copyOf(entries));
+    LedgerPlanId publishedPlanId =
+        BookWorkflowPublishedLanguageTranslator.toPublishedPlanId(planId);
     return switch (status) {
-      case SUCCEEDED -> new LedgerPlanResult.Succeeded(planId, journal);
-      case REJECTED -> new LedgerPlanResult.Rejected(planId, journal);
-      case ASSERTION_FAILED -> new LedgerPlanResult.AssertionFailed(planId, journal);
+      case SUCCEEDED -> new LedgerPlanResult.Succeeded(publishedPlanId, journal);
+      case REJECTED -> new LedgerPlanResult.Rejected(publishedPlanId, journal);
+      case ASSERTION_FAILED -> new LedgerPlanResult.AssertionFailed(publishedPlanId, journal);
     };
   }
 }

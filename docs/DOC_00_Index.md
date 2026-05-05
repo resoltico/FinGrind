@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: INDEX
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers BookReadSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -213,11 +213,20 @@ route:
 | `CommitEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
 | `PostingRequest` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRequest` |
 | `PostingDraft` | `DOC_02_PostingAndLedgerPlans.md` | `PostingDraft` |
+| `PostingCommand` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel` |
+| `PostingLineageModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel` |
+| `PostingRequestModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel` |
+| `PostingAcceptancePolicy` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy` And `BookkeepingPublishedLanguageTranslator` |
+| `BookkeepingPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy` And `BookkeepingPublishedLanguageTranslator` |
 | `LedgerPlanId` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerPlanId` And `LedgerStepId` |
 | `LedgerStepId` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerPlanId` And `LedgerStepId` |
 | `LedgerPlan` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerPlan` |
 | `LedgerStep` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerStep` |
 | `LedgerAssertion` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerAssertion` |
+| `BookWorkflowPlan` | `DOC_02_PostingAndLedgerPlans.md` | `BookWorkflowPlan`, `BookWorkflowStep`, And `BookWorkflowAssertion` |
+| `BookWorkflowStep` | `DOC_02_PostingAndLedgerPlans.md` | `BookWorkflowPlan`, `BookWorkflowStep`, And `BookWorkflowAssertion` |
+| `BookWorkflowAssertion` | `DOC_02_PostingAndLedgerPlans.md` | `BookWorkflowPlan`, `BookWorkflowStep`, And `BookWorkflowAssertion` |
+| `BookWorkflowPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `BookWorkflowPublishedLanguageTranslator` |
 | `LedgerFact` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerFact` |
 | `LedgerStepKind` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus` |
 | `LedgerJournalKind` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus` |
@@ -238,13 +247,17 @@ route:
 | `BookAccess` | `DOC_03_BookSessionsAndAdapters.md` | `BookAccess` And `BookAccess.PassphraseSource` |
 | `BookAccess.PassphraseSource` | `DOC_03_BookSessionsAndAdapters.md` | `BookAccess` And `BookAccess.PassphraseSource` |
 | `PostingFact` | `DOC_03_BookSessionsAndAdapters.md` | `PostingFact` |
+| `CommittedPosting` | `DOC_03_BookSessionsAndAdapters.md` | `CommittedPosting` |
+| `AccountDeclaration` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
+| `AccountDeclarationOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
+| `BookOpeningOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
+| `RegisteredAccount` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `BookAdministrationSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookAdministrationSession` |
 | `PostingValidationBook` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidationBook` |
 | `PostingBookSession` | `DOC_03_BookSessionsAndAdapters.md` | `PostingBookSession` |
 | `BookReadSession` | `DOC_03_BookSessionsAndAdapters.md` | `BookReadSession` |
 | `LedgerPlanSession` | `DOC_03_BookSessionsAndAdapters.md` | `LedgerPlanSession` |
 | `PostingCommitResult` | `DOC_03_BookSessionsAndAdapters.md` | `PostingCommitResult` |
-| `PostingValidation` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidation` |
 | `SqliteBookPassphrase` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookPassphrase` |
 | `SqliteBookKeyFile` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookKeyFile`, `SqliteBookKeyFileGenerator`, And `SqliteBookKeyFileGenerator.GeneratedKeyFile` |
 | `SqliteBookKeyFileGenerator` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookKeyFile`, `SqliteBookKeyFileGenerator`, And `SqliteBookKeyFileGenerator.GeneratedKeyFile` |

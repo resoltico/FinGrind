@@ -29,10 +29,10 @@ readonly gradlew="${repo_root}/gradlew"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
+readonly docker_context_verifier="${repo_root}/scripts/verify-docker-build-context.py"
 readonly image_tag="fingrind-docker-acceptance:$$"
 readonly smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-acceptance.XXXXXX")"
 readonly docker_run_user="$(id -u):$(id -g)"
-readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-${repo_root}/tmp/gradle-user-home}"
 anonymous_docker_config=''
 docker_endpoint=''
 is_darwin=false
@@ -43,6 +43,8 @@ esac
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
 [[ -f "${repo_lock_support}" ]] || die "missing repo verification lock helper at ${repo_lock_support}"
 [[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
+[[ -f "${docker_context_verifier}" ]] || die \
+    "missing Docker build-context verifier at ${docker_context_verifier}"
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
 # shellcheck source=/dev/null
@@ -50,9 +52,13 @@ source "${repo_lock_support}"
 # shellcheck source=/dev/null
 source "${python_runtime_support}"
 
+readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_dir "${repo_root}" "${is_darwin}")}"
+
 prepare_python_runtime_env
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
 readonly repo_cli_build_dir="${repo_root}/cli/build"
+readonly cli_docker_context_dir="${cli_build_dir}/docker-context"
+readonly repo_cli_docker_context_dir="${repo_cli_build_dir}/docker-context"
 
 resolve_docker_buildx_plugin() {
     local docker_binary=''
@@ -135,23 +141,19 @@ docker buildx version >/dev/null 2>&1 || die "docker buildx is required for the 
 mkdir -p "${gradle_user_home}"
 acquire_lock
 
-printf 'Docker acceptance: refreshing internal container build inputs\n'
+printf 'Docker acceptance: refreshing staged Docker build context\n'
 env GRADLE_USER_HOME="${gradle_user_home}" \
-    "${gradlew}" :cli:shadowJar --console=plain --no-daemon
+    "${gradlew}" :cli:stageDockerBuildContext --console=plain --no-daemon
 
-[[ -f "${cli_build_dir}/libs/fingrind.jar" ]] || die \
-    "missing internal application JAR at ${cli_build_dir}/libs/fingrind.jar after :cli:shadowJar"
-[[ -f "${cli_build_dir}/docker/runtime-modules.txt" ]] || die \
-    "missing Docker runtime module list at ${cli_build_dir}/docker/runtime-modules.txt after :cli:shadowJar"
-[[ -f "${cli_build_dir}/docker/docker-entrypoint.sh" ]] || die \
-    "missing Docker entrypoint script at ${cli_build_dir}/docker/docker-entrypoint.sh after :cli:shadowJar"
+[[ -d "${cli_docker_context_dir}" ]] || die \
+    "missing staged Docker build context at ${cli_docker_context_dir} after :cli:stageDockerBuildContext"
+python3 "${docker_context_verifier}" --context-dir "${cli_docker_context_dir}"
 
 if [[ "${cli_build_dir}" != "${repo_cli_build_dir}" ]]; then
-    printf 'Docker acceptance: staging relocated Docker build inputs into repository context\n'
-    mkdir -p "${repo_cli_build_dir}/libs" "${repo_cli_build_dir}/docker"
-    cp -f "${cli_build_dir}/libs/fingrind.jar" "${repo_cli_build_dir}/libs/fingrind.jar"
-    cp -f "${cli_build_dir}/docker/runtime-modules.txt" "${repo_cli_build_dir}/docker/runtime-modules.txt"
-    cp -f "${cli_build_dir}/docker/docker-entrypoint.sh" "${repo_cli_build_dir}/docker/docker-entrypoint.sh"
+    printf 'Docker acceptance: staging relocated Docker build context into repository context\n'
+    mkdir -p "${repo_cli_build_dir}"
+    rm -rf "${repo_cli_docker_context_dir}"
+    cp -R "${cli_docker_context_dir}" "${repo_cli_docker_context_dir}"
 fi
 
 docker_endpoint="${DOCKER_HOST:-}"

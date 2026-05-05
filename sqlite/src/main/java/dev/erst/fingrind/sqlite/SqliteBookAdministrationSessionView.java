@@ -4,6 +4,8 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.BookAdministrationSession;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -16,12 +18,12 @@ final class SqliteBookAdministrationSessionView implements BookAdministrationSes
   }
 
   @Override
-  public dev.erst.fingrind.contract.OpenBookResult openBook(Instant initializedAt) {
+  public BookOpeningOutcome openBook(Instant initializedAt) {
     return mutationOperations.openBook(initializedAt);
   }
 
   @Override
-  public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+  public AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       NormalBalance normalBalance,

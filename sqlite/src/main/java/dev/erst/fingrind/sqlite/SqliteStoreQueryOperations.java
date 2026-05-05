@@ -2,14 +2,14 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -100,14 +100,14 @@ final class SqliteStoreQueryOperations {
     }
   }
 
-  Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> SqliteStatementQueries.findOneAccount(activeDatabase, accountCode));
   }
 
-  Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     lifecycle.ensureOpenSession();
     Set<AccountCode> requestedAccounts =
         new LinkedHashSet<>(Objects.requireNonNull(accountCodes, "accountCodes"));
@@ -126,40 +126,40 @@ final class SqliteStoreQueryOperations {
         activeDatabase -> SqliteStatementQueries.loadAccountPage(activeDatabase, query));
   }
 
-  Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
             context
                 .postingReader()
-                .findOnePosting(
+                .findOneCommittedPosting(
                     activeDatabase,
                     SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
                     statement -> statement.bindText(1, idempotencyKey.value())));
   }
 
-  Optional<PostingFact> findPosting(PostingId postingId) {
+  Optional<CommittedPosting> findPosting(PostingId postingId) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
             context
                 .postingReader()
-                .findOnePosting(
+                .findOneCommittedPosting(
                     activeDatabase,
                     SqlitePostingSql.FIND_POSTING_BY_ID,
                     statement -> statement.bindText(1, postingId.value())));
   }
 
-  Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
             context
                 .postingReader()
-                .findOnePosting(
+                .findOneCommittedPosting(
                     activeDatabase,
                     SqlitePostingSql.FIND_REVERSAL_FOR,
                     statement -> statement.bindText(1, priorPostingId.value())));

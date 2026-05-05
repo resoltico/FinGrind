@@ -37,12 +37,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.NullUnmarked;
 
 /** Minimal ACL-capable filesystem for exercising platform-specific security code. */
 @NullUnmarked
 final class AclFixtureFileSystem extends FileSystem {
   private final FileSystemProvider provider;
+  private final Map<String, AclFixturePath> paths = new ConcurrentHashMap<>();
   private final Set<String> views;
   final UserPrincipal owner = new AclFixturePrincipal("owner");
   final GroupPrincipal group = new AclFixtureGroup("group");
@@ -58,7 +60,7 @@ final class AclFixtureFileSystem extends FileSystem {
   }
 
   AclFixturePath path(String value) {
-    return new AclFixturePath(this, value);
+    return paths.computeIfAbsent(value, key -> new AclFixturePath(this, key));
   }
 
   @Override
@@ -194,11 +196,23 @@ final class AclFixtureFileSystem extends FileSystem {
 
     @Override
     public void delete(Path path) throws IOException {
+      if (!deleteIfExists(path)) {
+        throw new NoSuchFileException(path.toString());
+      }
+    }
+
+    @Override
+    public boolean deleteIfExists(Path path) throws IOException {
       AclFixturePath testPath = testPath(path);
+      IOException deleteFailure = testPath.deleteIfExistsFailure();
+      if (deleteFailure != null) {
+        throw deleteFailure;
+      }
       if (!testPath.exists) {
-        throw new NoSuchFileException(testPath.toString());
+        return false;
       }
       testPath.exists = false;
+      return true;
     }
 
     @Override

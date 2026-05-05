@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -14,9 +14,13 @@ route:
 **Schema references**:
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
 
+The canonical security model, threat boundary, secret-transport rules, and protected-book
+verification semantics now live in [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md). This
+reference keeps the SQLite-specific architecture, runtime, and schema details.
+
 ## Hard-Break Storage Stance
 
-FinGrind currently treats one protected SQLite file as one book for one entity.
+FinGrind currently treats one protected SQLite file as one book for one accounting entity.
 
 That means:
 - the selected SQLite file path is the durable book identity
@@ -121,7 +125,9 @@ License and attribution stance:
   `FINGRIND_SQLITE_LIBRARY`
 - the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
   regression replay do not drift away from the managed runtime contract
-- the Docker image compiles the same vendored SQLite3MC source during image build
+- the Docker image compiles the same vendored SQLite3MC source during image build and now derives
+  its compiler flags from the same canonical managed-SQLite contract instead of repeating
+  handwritten `SQLITE_*` defines
 - the Docker image verifies the vendored SQLite3MC source hash before compile, mirroring the
   managed-source integrity contract used in Gradle
 - public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
@@ -219,9 +225,11 @@ The SQLite adapter is split into focused collaborators:
 - read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
   `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, and `preflight-entry`)
   open SQLite through `SQLITE_OPEN_READONLY` and then enforce `pragma query_only = on`
-- opening an existing plaintext SQLite file or using the wrong passphrase source fails during key
-  validation, but the public CLI classifies those cases as the deterministic
-  `book-authentication-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`
+- opening an existing plaintext SQLite file, loading a damaged or truncated protected book, or
+  using the wrong passphrase source fails during key validation, but the public CLI classifies
+  those cases as the deterministic
+  `protected-book-verification-failed` error instead of leaking raw SQLite symptoms such as
+  `SQLITE_NOTADB`
 - initialized FinGrind books are stamped with a fixed `pragma application_id` and
   `pragma user_version`, and foreign or unsupported SQLite files are rejected before ordinary book
   reads proceed
@@ -273,7 +281,7 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - accepted commits return `PostingCommitResult.Committed`
 - ordinary write refusals return `PostingCommitResult.Rejected(...)`
 - deterministic passphrase and key-file policy failures are translated into contract-owned CLI
-  errors such as `book-authentication-failed`, `invalid-book-key-file`, or
+  errors such as `protected-book-verification-failed`, `invalid-book-key-file`, or
   `interactive-prompt-unavailable`
 - other SQLite-native, bridge, or filesystem failures stay `IllegalStateException` and become CLI
   `storage-runtime-failure`, while managed runtime bootstrap failures become
@@ -311,31 +319,24 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
   passphrase transport because those routes expose secrets too broadly in shells, process tables,
   logs, and child-process environments
 - encrypted-book regression tests now write recognizable sentinel values and assert those strings
-  do not appear in the raw database bytes, so wrong-key coverage is paired with an obvious
+  do not appear in the raw database bytes, so mismatched-key coverage is paired with an obvious
   plaintext-leak check
 - committed compatibility fixtures under
   [`sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/`](../sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/)
   now record the canonical protected-book format facts directly in fixture metadata and prove that
-  the current default protected-book format reopens across test runs, rejects the wrong key
-  deterministically, and remains restorable from one closed-book encrypted copy without exposing
-  plaintext
+  the current default protected-book format reopens across test runs, rejects mismatched
+  verification deterministically, and remains restorable from one closed-book encrypted copy
+  without exposing plaintext
 
 ### Protection Boundary
 
-- The protected-book contract covers the encrypted SQLite database pages plus the encrypted
-  rollback-journal or WAL bytes that SQLite3MC writes for that book.
+The repository's canonical threat boundary is documented in
+[DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md). SQLite-specific consequences remain:
+- the protected-book contract covers the encrypted SQLite database pages plus the encrypted
+  rollback-journal or WAL bytes that SQLite3MC writes for that book
 - FinGrind forces `temp_store=MEMORY`; if that policy is weakened, temporary spill artifacts fall
-  outside the documented at-rest protection boundary.
-- Process memory, passphrase bytes before zeroization, query results after they are decoded into
-  Java objects, and any crash dump or live debugger view are outside the SQLite3MC at-rest
-  boundary.
-- Exported JSON, CSV, PDF, copied backups, and any other derived files are not encrypted unless
-  the operator protects those outputs separately.
-- Key files stored beside the database are outside the encrypted-book boundary; proximity to the
-  `.sqlite` file does not make the key file protected.
-- The canonical protected-book format currently uses `plaintextHeaderSize=0`; if that ever
-  changes, those plaintext header bytes are outside the encrypted-page boundary and must not be
-  treated as a secret-bearing surface.
+  outside the documented at-rest protection boundary
+- `plaintextHeaderSize=0` means the current format does not expose a plaintext SQLite header
 
 ## Transaction Model
 

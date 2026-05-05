@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountPageCursor;
+import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
@@ -9,6 +10,8 @@ import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -18,7 +21,13 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.BookReadSession;
+import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.PostingIdGenerator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -48,6 +57,11 @@ public final class CliFuzzFixtures {
     return new CliRequestReader(new ByteArrayInputStream(input)).readLedgerPlan(Path.of("-"));
   }
 
+  /** Parses one ledger-plan payload and translates it into the internal workflow model. */
+  public static BookWorkflowPlan readBookWorkflowPlan(byte[] input) {
+    return BookWorkflowPublishedLanguageTranslator.fromPublished(readLedgerPlan(input));
+  }
+
   /** Returns a deterministic posting-id generator for one fuzz iteration. */
   public static PostingIdGenerator postingIdGenerator(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
@@ -70,7 +84,8 @@ public final class CliFuzzFixtures {
   /** Opens one book and fails fast if lifecycle setup drifts unexpectedly. */
   public static void openBook(BookAdministrationService administrationService) {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
-    OpenBookResult result = administrationService.openBook();
+    OpenBookResult result =
+        BookkeepingPublishedLanguageTranslator.toPublished(administrationService.openBook());
     OpenBookResult.Opened opened =
         switch (result) {
           case OpenBookResult.Opened accepted -> accepted;
@@ -90,7 +105,7 @@ public final class CliFuzzFixtures {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
     Objects.requireNonNull(command, "command must not be null");
     return declarePostingAccountCommands(command).stream()
-        .map(administrationService::declareAccount)
+        .map(declareAccountCommand -> declareAccount(administrationService, declareAccountCommand))
         .map(CliFuzzFixtures::requireDeclaredAccount)
         .toList();
   }
@@ -118,7 +133,8 @@ public final class CliFuzzFixtures {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
     Objects.requireNonNull(account, "account must not be null");
     DeclareAccountResult result =
-        administrationService.declareAccount(
+        declareAccount(
+            administrationService,
             new DeclareAccountCommand(
                 account.accountCode(),
                 new AccountName(account.accountName().value() + " restored"),
@@ -132,6 +148,42 @@ public final class CliFuzzFixtures {
           "Account reactivation changed the original declared-at timestamp.");
     }
     return restoredAccount;
+  }
+
+  /** Runs one posting preflight through the internal bookkeeping translation boundary. */
+  public static PreflightEntryResult preflight(
+      PostingApplicationService applicationService, PostEntryCommand command) {
+    Objects.requireNonNull(applicationService, "applicationService must not be null");
+    Objects.requireNonNull(command, "command must not be null");
+    return applicationService.preflight(
+        BookkeepingPublishedLanguageTranslator.fromPublished(command));
+  }
+
+  /** Runs one posting commit through the internal bookkeeping translation boundary. */
+  public static CommitEntryResult commit(
+      PostingApplicationService applicationService, PostEntryCommand command) {
+    Objects.requireNonNull(applicationService, "applicationService must not be null");
+    Objects.requireNonNull(command, "command must not be null");
+    return applicationService.commit(BookkeepingPublishedLanguageTranslator.fromPublished(command));
+  }
+
+  /**
+   * Translates an optional stored posting from the bookkeeping model into the public fact shape.
+   */
+  public static Optional<PostingFact> publishedStoredPosting(
+      Optional<CommittedPosting> storedPosting) {
+    Objects.requireNonNull(storedPosting, "storedPosting must not be null");
+    return storedPosting.map(BookkeepingPublishedLanguageTranslator::toPublished);
+  }
+
+  /**
+   * Loads one stored posting from a posting session and translates it into the public fact shape.
+   */
+  public static Optional<PostingFact> publishedStoredPosting(
+      PostingBookSession bookSession, dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
+    Objects.requireNonNull(bookSession, "bookSession must not be null");
+    Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
+    return publishedStoredPosting(bookSession.findExistingPosting(idempotencyKey));
   }
 
   /** Lists accounts and fails fast if the registry surface is not in the expected state. */
@@ -168,6 +220,13 @@ public final class CliFuzzFixtures {
       case DeclareAccountResult.Rejected _ ->
           throw new IllegalStateException("Lifecycle setup failed to declare an account.");
     };
+  }
+
+  private static DeclareAccountResult declareAccount(
+      BookAdministrationService administrationService, DeclareAccountCommand command) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(
+        administrationService.declareAccount(
+            BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
   private static AccountName syntheticAccountName(AccountCode accountCode) {

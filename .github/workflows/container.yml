@@ -108,11 +108,13 @@ jobs:
             "fingrind-${{ steps.target-tag.outputs.version }}-windows-x86_64.zip" \
             "fingrind-${{ steps.target-tag.outputs.version }}-windows-x86_64.zip.sha256"
 
-      - name: Build internal application JAR for the Docker image
-        run: ./gradlew :cli:shadowJar --no-daemon
+      - name: Stage the Docker build context
+        run: ./gradlew :cli:stageDockerBuildContext --no-daemon
 
-      - name: Verify managed SQLite CLI runtime
-        run: ./scripts/verify-managed-sqlite-runtime.sh
+      - name: Verify managed SQLite CLI runtimes
+        run: |
+          ./scripts/verify-source-checkout-sqlite-runtime.sh
+          ./scripts/verify-environment-configured-sqlite-runtime.sh
 
       - name: Smoke test the Docker image before publishing
         run: ./scripts/docker-smoke.sh

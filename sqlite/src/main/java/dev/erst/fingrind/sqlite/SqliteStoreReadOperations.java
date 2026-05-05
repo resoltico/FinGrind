@@ -6,18 +6,18 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,11 +43,11 @@ final class SqliteStoreReadOperations {
     return queryOperations.isInitialized();
   }
 
-  Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     return queryOperations.findAccount(accountCode);
   }
 
-  Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     return queryOperations.findAccounts(accountCodes);
   }
 
@@ -55,15 +55,15 @@ final class SqliteStoreReadOperations {
     return queryOperations.listAccounts(query);
   }
 
-  Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     return queryOperations.findExistingPosting(idempotencyKey);
   }
 
-  Optional<PostingFact> findPosting(PostingId postingId) {
+  Optional<CommittedPosting> findPosting(PostingId postingId) {
     return queryOperations.findPosting(postingId);
   }
 
-  Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return queryOperations.findReversalFor(priorPostingId);
   }
 
@@ -79,7 +79,7 @@ final class SqliteStoreReadOperations {
     return reportOperations.trialBalance(query);
   }
 
-  AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+  AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
     return reportOperations.accountLedger(query, account);
   }
 

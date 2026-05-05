@@ -25,19 +25,30 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly verifier="${repo_root}/scripts/verify-release-merge-handoff.sh"
+readonly release_check_support="${repo_root}/scripts/release-check-support.sh"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
 
 [[ -x "${verifier}" ]] || die "missing executable merge-handoff verifier at ${verifier}"
+[[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
+
+# shellcheck source=/dev/null
+source "${release_check_support}"
+readonly expected_check_name="$(fingrind_required_ci_check_name)"
 
 grep -Fq 'scripts/test-verify-release-merge-handoff.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the merge-handoff verifier regression"
 grep -Fq './scripts/verify-release-merge-handoff.sh' "${release_protocol}" || die \
     "release protocol no longer requires the merge-handoff verifier"
-grep -Fq 'Contributor devcontainer' "${verifier}" || die \
-    "merge-handoff verifier no longer treats the contributor devcontainer job as release-blocking"
+grep -Fq 'release-check-support.sh' "${verifier}" || die \
+    "merge-handoff verifier no longer sources the canonical release-check owner"
+grep -Fq "${expected_check_name}" "${release_protocol}" || die \
+    "release protocol no longer documents the canonical Gate merge-handoff check"
+if grep -Fq 'FINGRIND_RELEASE_BLOCKING_CHECKS' "${verifier}"; then
+    die "merge-handoff verifier reintroduced the removed release-blocking-check override"
+fi
 grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS' "${release_protocol}" || die \
     "release protocol no longer documents the merge-handoff verifier timeout override"
 

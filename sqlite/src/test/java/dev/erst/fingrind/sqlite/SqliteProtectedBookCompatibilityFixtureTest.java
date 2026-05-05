@@ -82,7 +82,7 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
       IllegalStateException exception =
           org.junit.jupiter.api.Assertions.assertThrows(
               IllegalStateException.class, wrongKeyStore::isInitialized);
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 
@@ -129,7 +129,7 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
       IllegalStateException exception =
           org.junit.jupiter.api.Assertions.assertThrows(
               IllegalStateException.class, wrongKeyStore::isInitialized);
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 
@@ -160,7 +160,7 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
           Objects.requireNonNull(JSON_MAPPER.readTree(resourceStream), "fixture metadata");
       JsonNode formatNode = document.path("protectedBookFormat");
       return new ProtectedBookFormatContract(
-          BookCipher.fromWireValue(formatNode.path("cipher").textValue()),
+          BookCipher.fromWireValue(requiredTextField(formatNode, "cipher")),
           formatNode.path("legacyMode").booleanValue(),
           formatNode.path("pageSize").intValue(),
           formatNode.path("reservedBytes").intValue(),
@@ -168,5 +168,14 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
           formatNode.path("kdfIter").intValue(),
           formatNode.path("plaintextHeaderSize").intValue());
     }
+  }
+
+  private static String requiredTextField(JsonNode node, String fieldName) throws IOException {
+    JsonNode fieldNode = node.path(fieldName);
+    if (!fieldNode.isString()) {
+      throw new IOException("Fixture metadata field `" + fieldName + "` must be a JSON string.");
+    }
+    return Objects.requireNonNull(
+        fieldNode.stringValue(), "fixture metadata field `" + fieldName + "`");
   }
 }

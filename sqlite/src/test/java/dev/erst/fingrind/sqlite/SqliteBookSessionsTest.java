@@ -79,7 +79,8 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
         }
       }
       case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
-          assertEquals(ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(), failure.code());
+          assertEquals(
+              ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(), failure.code());
     }
   }
 

@@ -9,7 +9,7 @@ final class ProtocolCatalogFacts {
   private static final BookModelFacts BOOK_MODEL =
       new BookModelFacts(
           "one SQLite file equals one book",
-          "one book belongs to one entity",
+          "one book belongs to one accounting entity",
           ProtocolOptions.BOOK_FILE + " may point anywhere on the OS filesystem",
           "every book-bound command requires exactly one explicit passphrase source via "
               + ProtocolOptions.BOOK_KEY_FILE

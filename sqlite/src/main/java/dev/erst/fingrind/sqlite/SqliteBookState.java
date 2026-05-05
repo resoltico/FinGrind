@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.util.Optional;
 
 /** Stable on-disk lifecycle state derived from one selected SQLite book file. */
@@ -14,9 +14,10 @@ enum SqliteBookState {
   },
   INITIALIZED_FINGRIND {
     @Override
-    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+    Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
       return Optional.of(
-          new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()));
+          new BookOpeningOutcome.Rejected(
+              new BookAdministrationRejection.BookAlreadyInitialized()));
     }
   },
   FOREIGN_SQLITE {
@@ -26,9 +27,9 @@ enum SqliteBookState {
     }
 
     @Override
-    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+    Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
       return Optional.of(
-          new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema()));
+          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookContainsSchema()));
     }
   },
   UNSUPPORTED_FINGRIND_VERSION {
@@ -43,7 +44,7 @@ enum SqliteBookState {
     }
 
     @Override
-    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+    Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
       throw new IllegalStateException(
           "The selected FinGrind book format version "
               + loadedUserVersion
@@ -60,7 +61,7 @@ enum SqliteBookState {
     }
 
     @Override
-    Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+    Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
       throw new IllegalStateException(
           "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
     }
@@ -71,7 +72,7 @@ enum SqliteBookState {
     // Initialized books satisfy this precondition without further action.
   }
 
-  Optional<OpenBookResult> openBookResult(int loadedUserVersion) {
+  Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
     return Optional.empty();
   }
 

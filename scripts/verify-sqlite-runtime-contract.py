@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Verify the managed SQLite runtime contract from a FinGrind capabilities payload."""
+"""Verify one FinGrind SQLite runtime contract from a capabilities payload."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import sys
@@ -22,7 +23,24 @@ def require_mapping(value: Any, label: str) -> dict[str, Any]:
     return value
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--expected-runtime-distribution-key",
+        choices=("directJavaRuntimeDistribution", "sourceCheckoutRuntimeDistribution"),
+        required=True,
+    )
+    parser.add_argument(
+        "--expected-runtime-provenance",
+        choices=("environment-configured", "source-checkout-managed"),
+        required=True,
+    )
+    parser.add_argument("--label", required=True)
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     document = json.load(sys.stdin)
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     contract = load_contract_values(repo_root)
@@ -30,56 +48,70 @@ def main() -> None:
     managed_sqlite = require_mapping(contract.get("managedSqlite"), "managedSqlite")
     payload = require_mapping(document.get("payload"), "payload")
     environment = require_mapping(payload.get("environment"), "payload.environment")
+    distribution = require_mapping(
+        environment.get("distribution"), "payload.environment.distribution"
+    )
     sqlite = require_mapping(environment.get("sqlite"), "payload.environment.sqlite")
+
+    expected_runtime_distribution = runtime_surface.get(
+        args.expected_runtime_distribution_key
+    )
 
     checks = [
         (
+            distribution.get("runtimeDistribution") == expected_runtime_distribution,
+            f"{args.label} runtime distribution drifted from the canonical contract",
+        ),
+        (
             sqlite.get("libraryMode") == runtime_surface.get("sqliteLibraryMode"),
-            "missing managed-only sqlite library mode",
+            f"{args.label} missing managed-only sqlite library mode",
         ),
         (
             sqlite.get("requiredMinimumSqliteVersion")
             == managed_sqlite.get("requiredMinimumSqliteVersion"),
-            "missing required minimum SQLite version",
+            f"{args.label} missing required minimum SQLite version",
         ),
-        (sqlite.get("runtimeStatus") == "ready", "missing ready SQLite runtime status"),
+        (
+            sqlite.get("runtimeStatus") == "ready",
+            f"{args.label} missing ready SQLite runtime status",
+        ),
         (
             sqlite.get("loadedSqliteVersion")
             == managed_sqlite.get("requiredMinimumSqliteVersion"),
-            "missing loaded SQLite version",
+            f"{args.label} missing loaded SQLite version",
         ),
         (
             sqlite.get("loadedSqlite3mcVersion")
             == managed_sqlite.get("requiredSqlite3mcVersion"),
-            "missing loaded SQLite3 Multiple Ciphers version",
+            f"{args.label} missing loaded SQLite3 Multiple Ciphers version",
         ),
         (
             sqlite.get("requiredSqliteSourceId")
             == managed_sqlite.get("requiredSqliteSourceId"),
-            "missing required SQLite source id",
+            f"{args.label} missing required SQLite source id",
         ),
         (
             sqlite.get("loadedSqliteSourceId")
             == managed_sqlite.get("requiredSqliteSourceId"),
-            "missing loaded SQLite source id",
+            f"{args.label} missing loaded SQLite source id",
         ),
         (
             sqlite.get("requiredCompileOptions")
             == managed_sqlite.get("requiredCompileOptions"),
-            "missing canonical SQLite compile options",
+            f"{args.label} missing canonical SQLite compile options",
         ),
         (
             sqlite.get("compileOptionsVerification") == "verified",
-            "missing verified SQLite compile-options status",
+            f"{args.label} missing verified SQLite compile-options status",
         ),
         (
-            sqlite.get("runtimeProvenance") == "environment-configured",
-            "missing source-checkout SQLite runtime provenance",
+            sqlite.get("runtimeProvenance") == args.expected_runtime_provenance,
+            f"{args.label} missing expected SQLite runtime provenance",
         ),
         (
             isinstance(sqlite.get("loadedLibraryPath"), str)
             and bool(sqlite.get("loadedLibraryPath").strip()),
-            "missing loaded SQLite library path",
+            f"{args.label} missing loaded SQLite library path",
         ),
     ]
 
@@ -87,7 +119,7 @@ def main() -> None:
     if failures:
         fail("; ".join(failures))
 
-    print("managed SQLite runtime verification: success")
+    print(f"{args.label}: success")
 
 
 if __name__ == "__main__":

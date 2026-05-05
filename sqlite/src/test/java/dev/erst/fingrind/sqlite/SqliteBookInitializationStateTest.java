@@ -7,14 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -42,7 +42,8 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           () -> postingFactStore.findPosting(new PostingId("posting-1")),
           () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
       assertEquals(
-          new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+          new AccountDeclarationOutcome.Rejected(
+              new BookAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -68,7 +69,8 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           () -> postingFactStore.findPosting(new PostingId("posting-1")),
           () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
       assertEquals(
-          new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+          new AccountDeclarationOutcome.Rejected(
+              new BookAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -91,7 +93,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -100,7 +102,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               IllegalStateException.class,
               () -> postingFactStore.findAccount(new AccountCode("1000")));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -114,7 +116,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
                       NormalBalance.DEBIT,
                       Instant.parse("2026-04-07T10:15:30Z")));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -122,7 +124,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           assertThrows(
               IllegalStateException.class, () -> postingFactStore.listAccounts(firstAccountPage()));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -131,7 +133,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -140,7 +142,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               IllegalStateException.class,
               () -> postingFactStore.findPosting(new PostingId("posting-1")));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -149,7 +151,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               IllegalStateException.class,
               () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 
@@ -160,10 +162,10 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
-          new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
+          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
           postingFactStore.openBook(Instant.parse("2026-04-08T10:15:30Z")));
     }
   }
@@ -176,7 +178,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertTrue(postingFactStore.isInitialized());
     }

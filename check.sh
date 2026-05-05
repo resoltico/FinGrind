@@ -11,10 +11,11 @@
 # The script is location-independent: it always targets the repository that contains this file,
 # even when invoked from another working directory or through a symlink.
 #
-# Full verification always uses --no-daemon plus one repo-scoped GRADLE_USER_HOME so root
-# verification, nested Jazzer checks, and direct Docker or devcontainer verification do not share
-# daemon or cache state accidentally. Non-interactive runs use --console=plain unless the caller
-# already selected a console mode.
+# Full verification always uses --no-daemon plus one repo-keyed cache-root GRADLE_USER_HOME so
+# root verification, nested Jazzer checks, and direct Docker or devcontainer verification do not
+# share daemon or cache state accidentally while wrapper lock files remain outside mounted
+# checkouts. Non-interactive runs use --console=plain unless the caller already selected a console
+# mode.
 #
 # Local shell resolution must already provide Java 26. FinGrind's product modules, CLI fat JAR,
 # and release flow all rely on the ambient `java` and `javac` commands, not only Gradle
@@ -136,13 +137,17 @@ resolve_script_dir() {
 
 readonly repo_root="$(resolve_script_dir)"
 readonly gradlew="${repo_root}/gradlew"
+readonly gradle_wrapper_support_script="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly process_support_script="${repo_root}/scripts/check-process-support.sh"
 readonly monitor_support_script="${repo_root}/scripts/check-monitor-support.sh"
 readonly repo_lock_support_script="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly python_runtime_support_script="${repo_root}/scripts/python-runtime-support.sh"
 readonly quality_gate_script="${repo_root}/scripts/run-quality-gates.sh"
-readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-${repo_root}/tmp/gradle-user-home}"
+is_darwin=false
+case "$(uname -s)" in
+    Darwin) is_darwin=true ;;
+esac
 current_stage_id='startup'
 current_stage_label='starting'
 current_stage_log_path=''
@@ -155,12 +160,15 @@ readonly diagnostics_command_timeout_seconds=5
 readonly diagnostics_process_capture_limit=6
 readonly stall_exit_code=124
 
+[[ -f "${gradle_wrapper_support_script}" ]] || die "missing Gradle wrapper support helper at ${gradle_wrapper_support_script}"
 [[ -f "${process_support_script}" ]] || die "missing process support helper at ${process_support_script}"
 [[ -f "${monitor_support_script}" ]] || die "missing check monitor helper at ${monitor_support_script}"
 [[ -f "${repo_lock_support_script}" ]] || die "missing repo verification lock helper at ${repo_lock_support_script}"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${python_runtime_support_script}" ]] || die "missing Python runtime support helper at ${python_runtime_support_script}"
 [[ -f "${quality_gate_script}" ]] || die "missing quality gate helper at ${quality_gate_script}"
+# shellcheck source=/dev/null
+source "${gradle_wrapper_support_script}"
 # shellcheck source=/dev/null
 source "${process_support_script}"
 # shellcheck source=/dev/null
@@ -171,6 +179,8 @@ source "${repo_lock_support_script}"
 source "${stage_contract_script}"
 # shellcheck source=/dev/null
 source "${python_runtime_support_script}"
+
+readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_dir "${repo_root}" "${is_darwin}")}"
 
 prepare_python_runtime_env
 

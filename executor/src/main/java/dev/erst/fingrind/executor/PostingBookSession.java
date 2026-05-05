@@ -1,6 +1,6 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.util.Objects;
 
 /** Posting-only seam over an already-open book boundary; lifecycle stays with the owner. */
@@ -15,7 +15,7 @@ public interface PostingBookSession extends PostingValidationBook {
    * Production callers should prefer the draft-based overload so stores can allocate postingId only
    * after commit acceptance.
    */
-  default PostingCommitResult commit(PostingFact postingFact) {
+  default PostingCommitResult commit(CommittedPosting postingFact) {
     Objects.requireNonNull(postingFact, "postingFact");
     return commit(
         new PostingDraft(

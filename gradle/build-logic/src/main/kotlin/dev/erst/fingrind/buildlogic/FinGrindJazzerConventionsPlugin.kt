@@ -26,12 +26,12 @@ private const val jazzerTestProjectRootProperty = "fingrind.jazzer.test-project-
 class FinGrindJazzerConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
+            pluginManager.apply("java")
+            pluginManager.apply("dev.erst.fingrind.java-conventions")
+
             gradle.startParameter.projectCacheDir?.let { projectCacheDir ->
                 layout.buildDirectory.set(file(projectCacheDir.resolve("jazzer-build")))
             }
-
-            pluginManager.apply("java")
-            pluginManager.apply("dev.erst.fingrind.java-conventions")
 
             description = "Local-only Jazzer fuzzing layer for FinGrind"
 

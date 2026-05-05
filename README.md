@@ -7,18 +7,18 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/resoltico/FinGrind/releases)
 [![Encrypted](https://img.shields.io/badge/storage-encrypted%20SQLite-blueviolet.svg)](https://utelle.github.io/SQLite3MultipleCiphers/)
 
-# FinGrind — command-line double-entry bookkeeping with one protected book per business
+# FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
 
-FinGrind is a command-line bookkeeping tool. Each business gets one encrypted SQLite file. Every
-entry is validated before it commits. Balances, ledgers, and period summaries come back as tables,
-JSON, CSV, or PDF.
+FinGrind is a command-line bookkeeping tool. Each accounting entity gets one encrypted SQLite
+file. Every entry is validated before it commits. Balances, ledgers, and period summaries come
+back as tables, JSON, CSV, or PDF.
 
 Every bookkeeping setup hits the same morning problem: you need to know where things stand and the
 answer is spread across notes, tabs, and half-finished checks. With FinGrind the daily grind stays
 clean — one protected file, one command to read it back, and bad entries rejected before they
 ever reach the book.
 
-- Open one encrypted book per business, protected by a generated key file
+- Open one encrypted book per accounting entity, protected by a generated key file
 - Declare accounts before posting; unbalanced entries and undeclared accounts are rejected at commit
 - Post double-entry journal entries with provenance and idempotency keys
 - Read back account balances, trial balances, account ledgers, and period summaries
@@ -59,7 +59,7 @@ duplicate idempotency keys — all rejected at the point where they happen.
 ## Where It Fits
 
 Finance-minded owners, small teams, and operators who want explicit bookkeeping without a
-spreadsheet. One book per business, one tool to post and read back.
+spreadsheet. One book per accounting entity, one tool to post and read back.
 
 ## Get It
 

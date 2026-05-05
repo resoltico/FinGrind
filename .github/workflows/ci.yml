@@ -49,8 +49,10 @@ jobs:
       - name: Run deterministic Jazzer regression coverage
         run: ./jazzer/bin/check --no-daemon --console=plain
 
-      - name: Verify managed SQLite CLI runtime
-        run: ./scripts/verify-managed-sqlite-runtime.sh
+      - name: Verify managed SQLite CLI runtimes
+        run: |
+          ./scripts/verify-source-checkout-sqlite-runtime.sh
+          ./scripts/verify-environment-configured-sqlite-runtime.sh
 
       - name: Build self-contained CLI bundle
         run: ./gradlew :cli:bundleCliArchive --no-daemon --console=plain
@@ -104,12 +106,20 @@ jobs:
           .\gradlew.bat check --no-daemon --console=plain
           .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
 
-      - name: Verify managed SQLite CLI runtime on Windows
+      - name: Verify environment-configured SQLite CLI runtime on Windows
         shell: pwsh
         run: |
           $output = .\gradlew.bat -q :cli:run "--args=capabilities --output json" --no-daemon --console=plain | Out-String
           Write-Host $output
-          $output | python .\scripts\verify-managed-sqlite-runtime.py
+          $output | python .\scripts\verify-sqlite-runtime-contract.py --expected-runtime-distribution-key directJavaRuntimeDistribution --expected-runtime-provenance environment-configured --label windows-environment-configured-runtime
+
+      - name: Verify source-checkout SQLite CLI runtime on Windows
+        shell: pwsh
+        run: |
+          .\gradlew.bat :cli:installShadowDist prepareManagedSqlite --no-daemon --console=plain | Out-Null
+          $output = .\scripts\source-checkout-cli.ps1 capabilities --output json | Out-String
+          Write-Host $output
+          $output | python .\scripts\verify-sqlite-runtime-contract.py --expected-runtime-distribution-key sourceCheckoutRuntimeDistribution --expected-runtime-provenance source-checkout-managed --label windows-source-checkout-runtime
 
       - name: Build self-contained Windows CLI bundle
         shell: pwsh
@@ -146,8 +156,8 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Build internal application JAR for the Docker image
-        run: ./gradlew :cli:shadowJar --no-daemon
+      - name: Stage the Docker build context
+        run: ./gradlew :cli:stageDockerBuildContext --no-daemon
 
       - name: Smoke test the Docker image
         run: ./scripts/docker-smoke.sh

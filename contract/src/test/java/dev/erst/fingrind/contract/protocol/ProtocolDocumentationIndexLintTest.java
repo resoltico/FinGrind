@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test;
 class ProtocolDocumentationIndexLintTest extends ProtocolContractLintSupport {
   private static final Pattern RELATIVE_DOC_LINK_PATTERN =
       Pattern.compile("\\]\\(\\./([^)]+\\.md)\\)");
+  private static final Pattern VERSION_FRONTMATTER_PATTERN =
+      Pattern.compile("^---\\Rafad: \"4\\.0\"\\Rversion: \"([^\"]+)\"", Pattern.MULTILINE);
 
   @Test
   void documentationIndexListsAllReferenceAtoms() throws IOException {
@@ -110,6 +113,43 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractLintSupport {
     }
 
     assertTrue(violations.isEmpty(), () -> "AFAD protocol metadata drift:\n" + sorted(violations));
+  }
+
+  @Test
+  void afadManagedDocumentsDeclareCurrentProjectVersion() throws IOException {
+    String expectedVersion = projectVersion();
+    Set<String> violations = new LinkedHashSet<>();
+    for (Path document : actualDocumentationPaths()) {
+      String text = Files.readString(document);
+      Matcher matcher = VERSION_FRONTMATTER_PATTERN.matcher(text);
+      if (!matcher.find()) {
+        violations.add(
+            relativeDocumentationPath(document)
+                + " must declare one AFAD frontmatter version matching gradle.properties.");
+        continue;
+      }
+      String actualVersion = matcher.group(1);
+      if (!expectedVersion.equals(actualVersion)) {
+        violations.add(
+            relativeDocumentationPath(document)
+                + " declares version "
+                + actualVersion
+                + " but gradle.properties declares "
+                + expectedVersion
+                + ".");
+      }
+    }
+
+    assertTrue(violations.isEmpty(), () -> "AFAD document version drift:\n" + sorted(violations));
+  }
+
+  private String projectVersion() throws IOException {
+    return Files.readAllLines(repositoryRoot().resolve("gradle.properties")).stream()
+        .filter(line -> line.startsWith("version="))
+        .map(line -> line.substring("version=".length()).trim())
+        .filter(version -> !version.isEmpty())
+        .findFirst()
+        .orElseThrow(() -> new IOException("Missing version in gradle.properties."));
   }
 
   private Set<String> linkedDocumentationFiles(Path document) throws IOException {

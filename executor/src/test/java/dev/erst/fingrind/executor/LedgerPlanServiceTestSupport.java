@@ -14,10 +14,8 @@ import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -34,6 +32,13 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -80,13 +85,14 @@ final class LedgerPlanServiceTestSupport {
         FIXED_CLOCK.instant());
     PostEntryResult committed =
         new PostingApplicationService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
-            .commit(postEntryCommand("idem-setup"));
+            .commit(postingCommand("idem-setup"));
     assertEquals(PostEntryResult.Committed.class, committed.getClass());
     return bookSession;
   }
 
-  static LedgerPlanService service(LedgerPlanSession bookSession) {
-    return new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+  static PublishedLedgerPlanService service(LedgerPlanSession bookSession) {
+    return new PublishedLedgerPlanService(
+        new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK));
   }
 
   static LedgerPlanId planId(String value) {
@@ -147,7 +153,7 @@ final class LedgerPlanServiceTestSupport {
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
                     new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))))),
-        PostingLineage.direct(),
+        dev.erst.fingrind.contract.PostingLineage.direct(),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,
@@ -158,18 +164,35 @@ final class LedgerPlanServiceTestSupport {
         SourceChannel.CLI);
   }
 
+  static PostingCommand postingCommand(String idempotencyKey) {
+    return BookkeepingPublishedLanguageTranslator.fromPublished(postEntryCommand(idempotencyKey));
+  }
+
+  /** Test-only adapter that accepts published plan fixtures while the service stays internal. */
+  static final class PublishedLedgerPlanService {
+    private final LedgerPlanService delegate;
+
+    private PublishedLedgerPlanService(LedgerPlanService delegate) {
+      this.delegate = delegate;
+    }
+
+    LedgerPlanResult execute(LedgerPlan plan) {
+      return delegate.execute(BookWorkflowPublishedLanguageTranslator.fromPublished(plan));
+    }
+  }
+
   /** In-memory session that throws during open-book to exercise rollback-on-runtime-failure. */
   static final class ThrowingLedgerPlanSession implements LedgerPlanSession, AutoCloseable {
     private final InMemoryBookSession delegate = new InMemoryBookSession();
     private final BookAdministrationSession throwingAdministrationSession =
         new BookAdministrationSession() {
           @Override
-          public OpenBookResult openBook(Instant initializedAt) {
+          public BookOpeningOutcome openBook(Instant initializedAt) {
             throw new IllegalStateException("boom");
           }
 
           @Override
-          public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+          public AccountDeclarationOutcome declareAccount(
               AccountCode accountCode,
               AccountName accountName,
               NormalBalance normalBalance,
@@ -227,12 +250,12 @@ final class LedgerPlanServiceTestSupport {
     private final BookAdministrationSession throwingAdministrationSession =
         new BookAdministrationSession() {
           @Override
-          public OpenBookResult openBook(Instant initializedAt) {
+          public BookOpeningOutcome openBook(Instant initializedAt) {
             return delegate.openBook(initializedAt);
           }
 
           @Override
-          public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+          public AccountDeclarationOutcome declareAccount(
               AccountCode accountCode,
               AccountName accountName,
               NormalBalance normalBalance,
@@ -345,13 +368,12 @@ final class LedgerPlanServiceTestSupport {
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.DeclaredAccount> findAccount(
-              AccountCode accountCode) {
+          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
             return delegate.findAccount(accountCode);
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.PostingFact> findPosting(PostingId postingId) {
+          public Optional<CommittedPosting> findPosting(PostingId postingId) {
             return delegate.findPosting(postingId);
           }
 
@@ -374,8 +396,7 @@ final class LedgerPlanServiceTestSupport {
 
           @Override
           public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
-              dev.erst.fingrind.contract.AccountLedgerQuery query,
-              dev.erst.fingrind.contract.DeclaredAccount account) {
+              dev.erst.fingrind.contract.AccountLedgerQuery query, RegisteredAccount account) {
             return delegate.accountLedger(query, account);
           }
 
@@ -450,13 +471,12 @@ final class LedgerPlanServiceTestSupport {
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.DeclaredAccount> findAccount(
-              AccountCode accountCode) {
+          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
             return delegate.findAccount(accountCode);
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.PostingFact> findPosting(PostingId postingId) {
+          public Optional<CommittedPosting> findPosting(PostingId postingId) {
             return delegate.findPosting(postingId);
           }
 
@@ -479,8 +499,7 @@ final class LedgerPlanServiceTestSupport {
 
           @Override
           public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
-              dev.erst.fingrind.contract.AccountLedgerQuery query,
-              dev.erst.fingrind.contract.DeclaredAccount account) {
+              dev.erst.fingrind.contract.AccountLedgerQuery query, RegisteredAccount account) {
             return delegate.accountLedger(query, account);
           }
 
@@ -622,12 +641,12 @@ final class LedgerPlanServiceTestSupport {
     private final BookAdministrationSession throwingAdministrationSession =
         new BookAdministrationSession() {
           @Override
-          public OpenBookResult openBook(Instant initializedAt) {
+          public BookOpeningOutcome openBook(Instant initializedAt) {
             throw new IllegalStateException("boom");
           }
 
           @Override
-          public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+          public AccountDeclarationOutcome declareAccount(
               AccountCode accountCode,
               AccountName accountName,
               NormalBalance normalBalance,

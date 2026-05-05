@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: CONTRACT_EXECUTOR_INDEX
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, contract, executor, api, overview, routing, protocol, reports, ledger-plan]
   questions: ["where is the split contract and executor api reference in fingrind", "which doc covers protocol discovery versus reports in fingrind", "where should I look for posting and ledger plan contract types"]
@@ -13,6 +13,12 @@ route:
 This file is the routing overview for the split `contract` and `executor` reference spine.
 The detailed entries now live in smaller AFAD reference files so protocol/discovery, read/report,
 and write/ledger-plan surfaces can evolve without recreating one retrieval-hostile god-file.
+
+The public reference spine documents the published language and exported service surfaces. The
+named bounded contexts behind those surfaces are documented in
+[DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md): `contract` owns the published language,
+`executor.bookkeeping` owns the local bookkeeping model, and `executor.workflow` owns
+plan-orchestration semantics.
 
 Use these files:
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md): contract-owned protocol metadata, discovery descriptors, request/response shapes, and deterministic contract errors

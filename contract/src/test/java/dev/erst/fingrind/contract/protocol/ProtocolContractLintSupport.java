@@ -445,6 +445,7 @@ class ProtocolContractLintSupport {
     ids.addAll(BookProtectionMode.wireValues());
     ids.addAll(BookCipher.wireValues());
     ids.addAll(SqliteLibraryMode.wireValues());
+    ids.addAll(SqliteRuntimeProvenance.wireValues());
     ids.addAll(SqliteRuntimeStatus.wireValues());
     ids.addAll(WorkflowSurface.wireValues());
     ids.addAll(ProtocolSuccessStatus.wireValues());

@@ -6,12 +6,12 @@ import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.EffectiveDateRange;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,7 +26,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void accountLedger_computesOpeningRunningAndClosingBalances() {
     Path databasePath = tempDirectory.resolve("account-ledger-report.sqlite");
-    PostingFact postingOne =
+    CommittedPosting postingOne =
         postingFact(
             "posting-1",
             "idem-1",
@@ -35,7 +35,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact postingTwo =
+    CommittedPosting postingTwo =
         postingFact(
             "posting-2",
             "idem-2",
@@ -44,7 +44,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "4.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "4.00")));
-    PostingFact postingThree =
+    CommittedPosting postingThree =
         postingFact(
             "posting-3",
             "idem-3",
@@ -61,12 +61,12 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
       postingFactStore.commit(postingTwo);
       postingFactStore.commit(postingThree);
 
-      DeclaredAccount cashAccount =
+      RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
 
       assertEquals(
           new AccountLedgerReport(
-              cashAccount,
+              publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09")),
               List.of(
                   new CurrencyBalance(
@@ -76,7 +76,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       BalanceSide.DEBIT)),
               List.of(
                   new AccountLedgerEntry(
-                      postingTwo,
+                      publishedPostingFact(postingTwo),
                       new CurrencyBalance(
                           money("EUR", "0.00"),
                           money("EUR", "4.00"),
@@ -85,7 +85,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       money("EUR", "6.00"),
                       BalanceSide.DEBIT),
                   new AccountLedgerEntry(
-                      postingThree,
+                      publishedPostingFact(postingThree),
                       new CurrencyBalance(
                           money("USD", "8.00"),
                           money("USD", "0.00"),
@@ -116,7 +116,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void accountLedger_allowsMinimumLowerBoundWithoutOpeningBalanceLookback() {
     Path databasePath = tempDirectory.resolve("account-ledger-min-lower-bound.sqlite");
-    PostingFact posting =
+    CommittedPosting posting =
         postingFact(
             "posting-1",
             "idem-1",
@@ -131,17 +131,17 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
       initializeBookWithDefaultAccounts(postingFactStore);
       postingFactStore.commit(posting);
 
-      DeclaredAccount cashAccount =
+      RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
 
       assertEquals(
           new AccountLedgerReport(
-              cashAccount,
+              publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.MIN, null),
               List.of(),
               List.of(
                   new AccountLedgerEntry(
-                      posting,
+                      publishedPostingFact(posting),
                       new CurrencyBalance(
                           money("EUR", "10.00"),
                           money("EUR", "0.00"),
@@ -163,7 +163,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void accountLedger_supportsCreditOpeningBalances() {
     Path databasePath = tempDirectory.resolve("account-ledger-credit-opening.sqlite");
-    PostingFact openingPosting =
+    CommittedPosting openingPosting =
         postingFact(
             "posting-1",
             "idem-1",
@@ -172,7 +172,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact inRangePosting =
+    CommittedPosting inRangePosting =
         postingFact(
             "posting-2",
             "idem-2",
@@ -188,12 +188,12 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
       postingFactStore.commit(openingPosting);
       postingFactStore.commit(inRangePosting);
 
-      DeclaredAccount revenueAccount =
+      RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
 
       assertEquals(
           new AccountLedgerReport(
-              revenueAccount,
+              publishedAccount(revenueAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-08")),
               List.of(
                   new CurrencyBalance(
@@ -203,7 +203,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       BalanceSide.CREDIT)),
               List.of(
                   new AccountLedgerEntry(
-                      inRangePosting,
+                      publishedPostingFact(inRangePosting),
                       new CurrencyBalance(
                           money("EUR", "10.00"),
                           money("EUR", "0.00"),
@@ -229,7 +229,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void accountLedger_sortsMultipleOpeningCurrenciesBeforeRunningBalances() {
     Path databasePath = tempDirectory.resolve("account-ledger-multi-opening.sqlite");
-    PostingFact eurOpeningPosting =
+    CommittedPosting eurOpeningPosting =
         postingFact(
             "posting-1",
             "idem-1",
@@ -238,7 +238,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact usdOpeningPosting =
+    CommittedPosting usdOpeningPosting =
         postingFact(
             "posting-2",
             "idem-2",
@@ -254,12 +254,12 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
       postingFactStore.commit(eurOpeningPosting);
       postingFactStore.commit(usdOpeningPosting);
 
-      DeclaredAccount cashAccount =
+      RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
 
       assertEquals(
           new AccountLedgerReport(
-              cashAccount,
+              publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
               List.of(
                   new CurrencyBalance(

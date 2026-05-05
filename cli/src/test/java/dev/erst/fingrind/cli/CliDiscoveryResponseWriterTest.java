@@ -143,7 +143,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
-            "Command-line double-entry bookkeeping with one encrypted book per business"));
+            "Command-line double-entry bookkeeping with one protected book per accounting entity"));
 
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());
@@ -157,7 +157,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one encrypted book per business"),
+                "Command-line double-entry bookkeeping with one protected book per accounting entity"),
             environmentDescriptor(
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -192,7 +192,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one encrypted book per business"),
+                "Command-line double-entry bookkeeping with one protected book per accounting entity"),
             environmentDescriptor(
                 FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
@@ -239,7 +239,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one encrypted book per business"),
+                "Command-line double-entry bookkeeping with one protected book per accounting entity"),
             environmentDescriptor(
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -267,7 +267,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
-            "Command-line double-entry bookkeeping with one encrypted book per business");
+            "Command-line double-entry bookkeeping with one protected book per accounting entity");
     ByteArrayOutputStream humanOutput = new ByteArrayOutputStream();
     CliResponseWriter humanWriter = new CliResponseWriter(utf8PrintStream(humanOutput));
 

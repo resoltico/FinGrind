@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -13,6 +12,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -57,7 +57,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commitAndFinders_roundTripPostingWithoutReversal() {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
-    PostingFact postingFact =
+    CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
 
     try (SqlitePostingFactStore postingFactStore =
@@ -77,9 +77,9 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commitAndFindByIdempotency_preservesReversalReference() {
     Path databasePath = tempDirectory.resolve("nested").resolve("entity-b.sqlite");
-    PostingFact originalFact =
+    CommittedPosting originalFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-    PostingFact reversalFact =
+    CommittedPosting reversalFact =
         postingFact(
             "posting-2",
             "idem-2",
@@ -101,7 +101,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commit_returnsDuplicateIdempotencyOutcome() {
     Path databasePath = tempDirectory.resolve("fingrind.sqlite");
-    PostingFact postingFact =
+    CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
 
     try (SqlitePostingFactStore postingFactStore =
@@ -119,15 +119,15 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commit_returnsDuplicateReversalTargetOutcome() {
     Path databasePath = tempDirectory.resolve("reversal.sqlite");
-    PostingFact originalFact =
+    CommittedPosting originalFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-    PostingFact firstReversal =
+    CommittedPosting firstReversal =
         postingFact(
             "posting-2",
             "idem-2",
             Optional.of(new ReversalReference(new PostingId("posting-1"))),
             Optional.of(new ReversalReason("full reversal")));
-    PostingFact secondReversal =
+    CommittedPosting secondReversal =
         postingFact(
             "posting-3",
             "idem-3",
@@ -173,7 +173,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commit_rejectsMissingReversalTargetBeforeAnyForeignKeyWrite() {
     Path databasePath = tempDirectory.resolve("unexpected.sqlite");
-    PostingFact invalidReversalFact =
+    CommittedPosting invalidReversalFact =
         postingFact(
             "posting-2",
             "idem-2",
@@ -223,7 +223,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
 
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 

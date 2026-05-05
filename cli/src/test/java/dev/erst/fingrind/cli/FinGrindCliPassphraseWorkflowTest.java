@@ -162,7 +162,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     String outputText = listOutput.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
-        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
         failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains(wrongSecret));
   }

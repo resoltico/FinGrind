@@ -49,7 +49,7 @@ public record BookModelFacts(
     return boundaryFact.value();
   }
 
-  /** Returns the canonical entity-scope wording for this book model. */
+  /** Returns the canonical accounting-entity-scope wording for this book model. */
   public String entityScope() {
     return entityScopeFact.value();
   }

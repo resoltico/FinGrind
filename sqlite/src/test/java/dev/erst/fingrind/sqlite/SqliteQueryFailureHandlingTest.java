@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
@@ -14,6 +13,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -33,8 +33,8 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
   void queryMethods_wrapFailuresForInvalidBookFiles() throws IOException {
     Path invalidBookPath = tempDirectory.resolve("query-not-a-sqlite-file.sqlite");
     Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
-    DeclaredAccount cashAccount =
-        new DeclaredAccount(
+    RegisteredAccount cashAccount =
+        new RegisteredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
             NormalBalance.DEBIT,
@@ -45,7 +45,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -55,7 +55,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               () ->
                   postingFactStore.listPostings(
                       new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty())));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -65,7 +65,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               () ->
                   postingFactStore.accountBalance(
                       new AccountBalanceQuery(new AccountCode("1000"), null, null)));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -73,7 +73,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -83,7 +83,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               () ->
                   postingFactStore.accountLedger(
                       new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(invalidBookPath))) {
@@ -94,7 +94,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
                   postingFactStore.periodSummary(
                       new PeriodSummaryQuery(
                           LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 
@@ -105,8 +105,8 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
-      DeclaredAccount cashAccount =
-          new DeclaredAccount(
+      RegisteredAccount cashAccount =
+          new RegisteredAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
               NormalBalance.DEBIT,

@@ -72,7 +72,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             }));
     JsonNode oldKeyFailureEnvelope = new ObjectMapper().readTree(oldKeyOutput.toByteArray());
     assertEquals(
-        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
         oldKeyFailureEnvelope.path("code").stringValue());
     assertFalse(oldKeyFailureEnvelope.path("message").stringValue().contains("SQLITE_NOTADB"));
 
@@ -90,6 +90,54 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               replacementBookKeyFilePath.toString()
             }));
     assertTrue(newKeyOutput.toString(StandardCharsets.UTF_8).contains("\"status\":\"ok\""));
+  }
+
+  @Test
+  void run_inspectBookOnCorruptedProtectedBook_reportsProtectedBookVerificationFailure()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("corrupted-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    assertEquals(
+        0,
+        openCli.run(
+            new String[] {
+              "open-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
+
+    Path corruptedBookPath =
+        tempDirectory.resolve("corrupted-books").resolve("entity-corrupted.sqlite");
+    byte[] corruptedBytes = Files.readAllBytes(bookFilePath);
+    corruptedBytes[Math.min(200, corruptedBytes.length - 1)] ^= 0x5A;
+    Files.write(corruptedBookPath, corruptedBytes);
+
+    ByteArrayOutputStream inspectOutput = new ByteArrayOutputStream();
+    FinGrindCli inspectCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock());
+    assertEquals(
+        2,
+        inspectCli.run(
+            new String[] {
+              "inspect-book",
+              "--book-file",
+              corruptedBookPath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
+
+    JsonNode failureEnvelope = new ObjectMapper().readTree(inspectOutput.toByteArray());
+    assertEquals(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+        failureEnvelope.path("code").stringValue());
+    assertTrue(failureEnvelope.path("message").stringValue().contains("verify"));
+    assertTrue(failureEnvelope.path("hint").stringValue().contains("damaged or truncated"));
   }
 
   @Test
@@ -258,7 +306,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     String outputText = rekeyOutput.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
-        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(),
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
         failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains("wrong-current-secret"));
     assertFalse(outputText.contains("replacement-secret"));

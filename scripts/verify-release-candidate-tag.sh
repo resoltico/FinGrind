@@ -26,8 +26,14 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly script_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly release_check_support="${script_repo_root}/scripts/release-check-support.sh"
 readonly tag_name="${1:-${RELEASE_TAG:-${GITHUB_REF_NAME:-}}}"
-readonly blocking_checks_csv="Gate"
+
+[[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
+# shellcheck source=/dev/null
+source "${release_check_support}"
+
+readonly blocking_checks_csv="$(fingrind_required_ci_checks_csv)"
 
 [[ -n "${tag_name}" ]] || die "release tag is required"
 [[ "${tag_name}" == v* ]] || die "release tag must start with v"

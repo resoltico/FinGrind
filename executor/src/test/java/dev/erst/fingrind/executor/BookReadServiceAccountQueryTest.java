@@ -24,6 +24,7 @@ import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
@@ -117,17 +118,18 @@ class BookReadServiceAccountQueryTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       var postingFact = postingFact("posting-1", "idem-1");
+      var publishedPostingFact = BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
       bookSession.commit(postingFact);
       BookReadService service = new BookReadService(bookSession);
 
       assertEquals(
           new ListPostingsResult.Listed(
-              new PostingPage(List.of(postingFact), 20, Optional.empty())),
+              new PostingPage(List.of(publishedPostingFact), 20, Optional.empty())),
           service.listPostings(
               new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
       assertEquals(
           new ListPostingsResult.Listed(
-              new PostingPage(List.of(postingFact), 20, Optional.empty())),
+              new PostingPage(List.of(publishedPostingFact), 20, Optional.empty())),
           service.listPostings(
               new ListPostingsQuery(
                   Optional.of(CASH_ACCOUNT.accountCode()), null, null, 20, Optional.empty())));
@@ -145,7 +147,8 @@ class BookReadServiceAccountQueryTest {
     BookReadService service = new BookReadService(bookSession);
 
     assertEquals(
-        new GetPostingResult.Found(postingFact), service.getPosting(new PostingId("posting-1")));
+        new GetPostingResult.Found(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
+        service.getPosting(new PostingId("posting-1")));
     assertEquals(
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
@@ -168,7 +171,9 @@ class BookReadServiceAccountQueryTest {
       bookSession.commit(postingFact);
       BookReadService service = new BookReadService(bookSession);
 
-      assertEquals(Optional.of(CASH_ACCOUNT), service.findAccount(CASH_ACCOUNT.accountCode()));
+      assertEquals(
+          Optional.of(BookReadServiceTestSupport.REGISTERED_CASH_ACCOUNT),
+          service.findAccount(CASH_ACCOUNT.accountCode()));
       assertEquals(Optional.of(postingFact), service.findPosting(new PostingId("posting-1")));
     }
   }

@@ -1,12 +1,13 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
+import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,9 +27,10 @@ public final class PostingApplicationService {
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
-  public PreflightEntryResult preflight(PostEntryCommand command) {
+  public PreflightEntryResult preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<PostingRejection> rejection = PostingValidation.rejectionFor(command, bookSession);
+    Optional<PostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(command, bookSession);
     if (rejection.isPresent()) {
       return rejectedPreflight(command, rejection.orElseThrow());
     }
@@ -37,7 +39,7 @@ public final class PostingApplicationService {
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
-  public CommitEntryResult commit(PostEntryCommand command) {
+  public CommitEntryResult commit(PostingCommand command) {
     Objects.requireNonNull(command, "command");
     PostingDraft postingDraft =
         new PostingDraft(
@@ -52,7 +54,7 @@ public final class PostingApplicationService {
     };
   }
 
-  private static PostEntryResult.Committed committedResult(PostingFact committedPosting) {
+  private static PostEntryResult.Committed committedResult(CommittedPosting committedPosting) {
     return new PostEntryResult.Committed(
         committedPosting.postingId(),
         committedPosting.provenance().requestProvenance().idempotencyKey(),
@@ -61,13 +63,13 @@ public final class PostingApplicationService {
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(
-      PostEntryCommand command, PostingRejection rejection) {
+      PostingCommand command, PostingRejection rejection) {
     return new PostEntryResult.PreflightRejected(
         command.requestProvenance().idempotencyKey(), rejection);
   }
 
   private static PostEntryResult.CommitRejected rejectedCommit(
-      PostEntryCommand command, PostingRejection rejection) {
+      PostingCommand command, PostingRejection rejection) {
     return new PostEntryResult.CommitRejected(
         command.requestProvenance().idempotencyKey(), rejection);
   }

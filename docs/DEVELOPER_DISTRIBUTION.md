@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -154,10 +154,13 @@ Bundle entrypoints:
 ./scripts/bundle-smoke.sh
 ```
 
-Local bundle restaging prunes older `cli/build/bundle/fingrind-*` trees before writing the
-current versioned root, and `:cli:bundleCliArchive` also prunes obsolete
-`cli/build/distributions/fingrind-*` archives plus checksum files before emitting the current
-bundle artifact set.
+Local bundle restaging prunes older `fingrind-*` staging roots under the active CLI Gradle build
+directory before writing the current versioned root, and `:cli:bundleCliArchive` also prunes
+obsolete `fingrind-*` archives plus checksum files from both the active distribution directory and
+any legacy in-checkout `cli/build/distributions/` leftovers before emitting the current bundle
+artifact set. The task now prints the exact archive path and checksum path that it produced under
+the active CLI Gradle build directory, so relocated build roots no longer require manual
+filesystem searching before the bundle can be inspected or handed to `./scripts/bundle-smoke.sh`.
 
 On Windows PowerShell, use:
 
@@ -170,39 +173,38 @@ Source-checkout installed launcher entrypoint:
 
 ```bash
 ./gradlew :cli:installShadowDist prepareManagedSqlite
-./cli/build/install/cli-shadow/bin/cli help
+./scripts/source-checkout-cli.sh help
 ```
 
-That generated launcher now carries the same Java native-access flag as the bundle, reports the
-source-checkout runtime-distribution contract automatically, and resolves the managed SQLite
-library from the prepared checkout on its own.
+That wrapper resolves the active CLI build directory, then invokes the generated launcher with the
+same Java native-access flag as the bundle, the source-checkout runtime-distribution contract, and
+managed-SQLite checkout lookup already baked in.
 
 Developer-only raw JAR entrypoints:
 
-These example paths assume the project `build/` tree stays inside the checkout. On fragile mounted
-filesystems, `./gradlew` may relocate that tree into the wrapper-owned local cache; the bundled
-smoke scripts resolve that automatically.
-
 ```bash
 ./gradlew :cli:shadowJar prepareManagedSqlite
-java -jar cli/build/libs/fingrind.jar help
+./scripts/direct-java-cli.sh help
 ```
 
 The raw JAR route remains useful for:
-- Docker image assembly
 - advanced contributor debugging
 - validating the application JAR directly during development
 
-When that JAR runs from the prepared checkout, it inherits the same native-access manifest
-contract and managed-SQLite auto-discovery path as the generated source-checkout launcher. Manual
-`FINGRIND_SQLITE_LIBRARY` export remains the escape hatch only for custom direct-Java launches
-that have been moved away from the prepared checkout layout.
+That wrapper resolves the active CLI build directory and then runs the prepared raw JAR. The JAR
+inherits the same native-access manifest contract and managed-SQLite auto-discovery path as the
+generated source-checkout launcher. Manual `FINGRIND_SQLITE_LIBRARY` export remains the escape
+hatch only for custom direct-Java launches that have been moved away from the prepared checkout
+layout.
 
-`./gradlew :cli:shadowJar` also stages the canonical runtime-module list that the Docker build
-reuses under `cli/build/docker/runtime-modules.txt`, so the public bundle and container image
-consume the same trimmed Java runtime closure instead of deriving competing module sets.
-The same build path now also resolves runtime-distribution, public-distribution, storage, and
-managed-SQLite facts from the protocol-owned contract resources through
+The dedicated Docker assembly entrypoint is `./gradlew :cli:stageDockerBuildContext`. It stages
+one canonical `cli/build/docker-context/` directory containing the internal application JAR, the
+runtime-module list, the rendered Docker entrypoint, the managed-SQLite contract, and a generated
+`docker-build-context-manifest.json`, so the public bundle and container image consume one trimmed
+Java runtime closure and one compile-option owner instead of deriving competing module sets or
+private Docker-only contract copies. That same build path resolves runtime-distribution,
+public-distribution, storage, and managed-SQLite facts from the protocol-owned contract resources
+through
 `DistributionContractReader`, which now stays a small facade over dedicated path, JSON, schema,
 bundle-layout, host-platform, and text-rendering collaborators, while the shell verifiers read
 that same contract through

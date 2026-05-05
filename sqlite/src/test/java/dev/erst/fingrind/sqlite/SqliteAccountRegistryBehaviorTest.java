@@ -7,12 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -32,7 +33,8 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+          new AccountDeclarationOutcome.Rejected(
+              new BookAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -50,8 +52,8 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   NormalBalance.DEBIT,
@@ -66,8 +68,8 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
       deactivateAccount(databasePath, "1000");
 
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
                   NormalBalance.DEBIT,
@@ -100,7 +102,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
 
       assertEquals(
           Optional.of(
-              new DeclaredAccount(
+              new RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   NormalBalance.DEBIT,
@@ -124,7 +126,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
           Instant.parse("2026-04-07T10:15:30Z"));
 
       assertEquals(
-          new DeclareAccountResult.Rejected(
+          new AccountDeclarationOutcome.Rejected(
               new BookAdministrationRejection.NormalBalanceConflict(
                   new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
           postingFactStore.declareAccount(
@@ -197,7 +199,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                   SqliteBookSchemaBootstrap.initializeBook(database);
                   SqliteMutationWriter.upsertAccount(
                       database,
-                      new DeclaredAccount(
+                      new RegisteredAccount(
                           new AccountCode("1000"),
                           new AccountName("Cash"),
                           NormalBalance.DEBIT,
@@ -205,7 +207,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           Instant.parse("2026-04-07T10:15:30Z")));
                   SqliteMutationWriter.upsertAccount(
                       database,
-                      new DeclaredAccount(
+                      new RegisteredAccount(
                           new AccountCode("1000"),
                           new AccountName("Cash Renamed"),
                           NormalBalance.CREDIT,

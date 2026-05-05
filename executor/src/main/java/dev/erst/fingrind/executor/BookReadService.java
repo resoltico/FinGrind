@@ -6,7 +6,6 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerResult;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.GetPostingResult;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListAccountsResult;
@@ -14,11 +13,13 @@ import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.ListPostingsResult;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -56,6 +57,7 @@ public final class BookReadService {
         () ->
             bookReadSession
                 .findPosting(postingId)
+                .map(BookkeepingPublishedLanguageTranslator::toPublished)
                 .<GetPostingResult>map(GetPostingResult.Found::new)
                 .orElseGet(
                     () ->
@@ -65,7 +67,7 @@ public final class BookReadService {
   }
 
   /** Looks up one declared account once the selected book is known to be initialized. */
-  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     Objects.requireNonNull(accountCode, "accountCode");
     if (!bookReadSession.isInitialized()) {
       return Optional.empty();
@@ -74,7 +76,7 @@ public final class BookReadService {
   }
 
   /** Looks up one committed posting once the selected book is known to be initialized. */
-  public Optional<PostingFact> findPosting(PostingId postingId) {
+  public Optional<CommittedPosting> findPosting(PostingId postingId) {
     Objects.requireNonNull(postingId, "postingId");
     if (!bookReadSession.isInitialized()) {
       return Optional.empty();
@@ -124,7 +126,7 @@ public final class BookReadService {
     Objects.requireNonNull(query, "query");
     return ifInitialized(
         () -> {
-          Optional<DeclaredAccount> account = bookReadSession.findAccount(query.accountCode());
+          Optional<RegisteredAccount> account = bookReadSession.findAccount(query.accountCode());
           if (account.isEmpty()) {
             return new AccountLedgerResult.Rejected(
                 new BookQueryRejection.UnknownAccount(query.accountCode()));

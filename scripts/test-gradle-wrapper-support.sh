@@ -135,6 +135,23 @@ actual_project_build_root="$(
 [[ "${actual_project_build_root}" == "${expected_linux_dir}/project-build" ]] || die \
     "unexpected project build root: ${actual_project_build_root}"
 
+actual_gradle_user_home="$(
+    HOME='/tmp/fingrind-home' \
+        XDG_CACHE_HOME='/cache-root' \
+        TMPDIR='/tmp/fingrind-tmp' \
+        FINGRIND_GRADLE_USER_HOME='' \
+        fg_gradle_user_home_dir "${sample_network_repo_root}" false
+)"
+[[ "${actual_gradle_user_home}" == "${expected_linux_dir}/gradle-user-home" ]] || die \
+    "unexpected Gradle user home directory: ${actual_gradle_user_home}"
+
+actual_override_gradle_user_home="$(
+    FINGRIND_GRADLE_USER_HOME='/override/gradle-user-home' \
+        fg_gradle_user_home_dir "${sample_network_repo_root}" false
+)"
+[[ "${actual_override_gradle_user_home}" == '/override/gradle-user-home' ]] || die \
+    "Gradle user home override was not honored"
+
 actual_local_cli_build_dir="$(
     FINGRIND_GRADLE_PROJECT_BUILD_ROOT='' \
         fg_gradle_project_build_dir "${sample_local_repo_root}" 'cli' false

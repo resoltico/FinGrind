@@ -129,7 +129,7 @@ def assert_capabilities_payload(
     for error_code in (
         "invalid-page-cursor",
         "interactive-prompt-unavailable",
-        "book-authentication-failed",
+        "protected-book-verification-failed",
     ):
         require(
             error_code in error_codes,

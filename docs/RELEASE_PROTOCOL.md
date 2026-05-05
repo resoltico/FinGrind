@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -239,14 +239,10 @@ Treat the PR itself as a second scope-verification checkpoint:
 - Every new commit pushed to the release branch reopens both the Step 2 staging checkpoint and
   this PR diff checkpoint. Re-verify both after each fix commit.
 
-Do not proceed until **every** required job in workflow `CI` has `"conclusion": "SUCCESS"`.
-At the time of writing that means `Check`, `Windows bundle smoke`, and `Docker smoke`.
-If any required job fails, fix the failure, push to the release branch, and wait again — do not
+Do not proceed until the required `Gate` check in workflow `CI` has `"conclusion": "SUCCESS"` on
+the release PR head commit. `Gate` is the single authoritative required check for release
+promotion. If `Gate` fails, fix the failure, push to the release branch, and wait again — do not
 merge a red PR.
-
-If the visible `Contributor devcontainer` job fails on the release branch, fix it before merging
-even though GitHub branch protection does not require it directly. The post-merge handoff and tag
-verification steps below still treat that job as release-blocking.
 
 ### Step 4
 
@@ -276,8 +272,7 @@ Requirements before continuing:
 - The checkout used for `./scripts/verify-release-merge-handoff.sh` exactly matches `origin/main`.
 - The remote release branch is deleted by the merge step.
 - `./scripts/verify-release-merge-handoff.sh` succeeds on the merged `main` commit, which means
-  the release-blocking CI set `Check`, `Windows bundle smoke`, `Docker smoke`, and
-  `Contributor devcontainer` are all green on the exact commit that will be tagged.
+  the canonical `Gate` check is green on the exact commit that will be tagged.
 
 The verifier's default wait is intentionally long enough to cover the normal post-merge CI
 fan-out where `Windows bundle smoke` does not start until `Check` finishes. If GitHub Actions

@@ -8,14 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -124,8 +124,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("9000"),
                   new AccountName(sentinelAccountName),
                   NormalBalance.DEBIT,
@@ -217,7 +217,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertTrue(postingFactStore.isInitialized());
     }
@@ -255,7 +255,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
     }
 
@@ -280,7 +280,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
     }
 

@@ -1,31 +1,29 @@
-package dev.erst.fingrind.executor;
+package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.PostingRequest;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.PostingValidationBook;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/** Validates reversal lineage rules before a posting reaches the durable store. */
-final class ReversalPolicy {
-  private ReversalPolicy() {}
+/** Bookkeeping policy for validating reversal lineage before commit acceptance. */
+final class ReversalAcceptancePolicy {
+  private ReversalAcceptancePolicy() {}
 
-  /** Returns the first deterministic reversal rejection for the supplied command, if any. */
+  /** Returns the first deterministic reversal rejection for the supplied attempt, if any. */
   static Optional<PostingRejection> rejectionFor(
-      PostingRequest postingRequest, PostingValidationBook book) {
+      PostingRequestModel postingRequest, PostingValidationBook book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
     return switch (postingRequest.postingLineage()) {
-      case PostingLineage.Direct _ -> Optional.empty();
-      case PostingLineage.Reversal reversal -> {
+      case PostingLineageModel.Direct _ -> Optional.empty();
+      case PostingLineageModel.Reversal reversal -> {
         PostingId priorPostingId = reversal.reference().priorPostingId();
-        Optional<PostingFact> priorPosting = book.findPosting(priorPostingId);
+        Optional<CommittedPosting> priorPosting = book.findPosting(priorPostingId);
         if (priorPosting.isEmpty()) {
           yield Optional.of(new PostingRejection.ReversalTargetNotFound(priorPostingId));
         }
@@ -35,7 +33,7 @@ final class ReversalPolicy {
   }
 
   private static Optional<PostingRejection> reversalRejection(
-      JournalEntry candidateReversal, PostingFact priorPosting, PostingValidationBook book) {
+      JournalEntry candidateReversal, CommittedPosting priorPosting, PostingValidationBook book) {
     PostingId priorPostingId = priorPosting.postingId();
     if (book.findReversalFor(priorPostingId).isPresent()) {
       return Optional.of(new PostingRejection.ReversalAlreadyExists(priorPostingId));

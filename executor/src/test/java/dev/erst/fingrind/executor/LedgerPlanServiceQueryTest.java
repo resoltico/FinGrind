@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -111,9 +112,12 @@ class LedgerPlanServiceQueryTest {
                                           child,
                                           "postingId",
                                           PostingPageCursor.fromPosting(
-                                                  bookSession
-                                                      .findPosting(new PostingId("posting-1"))
-                                                      .orElseThrow())
+                                                  BookkeepingPublishedLanguageTranslator
+                                                      .toPublished(
+                                                          bookSession
+                                                              .findPosting(
+                                                                  new PostingId("posting-1"))
+                                                              .orElseThrow()))
                                               .postingId()
                                               .value()))));
 
@@ -215,7 +219,7 @@ class LedgerPlanServiceQueryTest {
     try (var bookSession =
         new LedgerPlanServiceTestSupport.ListAccountsRejectingLedgerPlanSession()) {
       var result =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
+          service(bookSession)
               .execute(
                   new LedgerPlan(
                       planId("plan-list-accounts"),

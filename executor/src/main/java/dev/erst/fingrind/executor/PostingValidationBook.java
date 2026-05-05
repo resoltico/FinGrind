@@ -1,10 +1,10 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -16,10 +16,10 @@ public interface PostingValidationBook {
   boolean isInitialized();
 
   /** Looks up one declared account in the selected book. */
-  Optional<DeclaredAccount> findAccount(AccountCode accountCode);
+  Optional<RegisteredAccount> findAccount(AccountCode accountCode);
 
   /** Looks up the supplied declared accounts in one batch when the store can do so efficiently. */
-  default Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  default Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     return accountCodes.stream()
         .map(accountCode -> Map.entry(accountCode, findAccount(accountCode)))
         .flatMap(
@@ -28,11 +28,11 @@ public interface PostingValidationBook {
   }
 
   /** Looks up one existing posting fact by book-local idempotency identity. */
-  Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey);
+  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey);
 
   /** Looks up one existing posting fact by durable posting identity. */
-  Optional<PostingFact> findPosting(PostingId postingId);
+  Optional<CommittedPosting> findPosting(PostingId postingId);
 
   /** Looks up an existing full reversal for one prior posting, if such a reversal exists. */
-  Optional<PostingFact> findReversalFor(PostingId priorPostingId);
+  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId);
 }

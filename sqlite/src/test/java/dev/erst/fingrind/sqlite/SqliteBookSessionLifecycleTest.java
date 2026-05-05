@@ -55,7 +55,8 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
             throw new AssertionError("Expected lifecycle priming to be rejected.");
         case ContractDecision.Rejected<SqlitePostingFactStore>(var failure) ->
             assertEquals(
-                ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(), failure.code());
+                ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+                failure.code());
       }
     }
   }

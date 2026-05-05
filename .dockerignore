@@ -1,17 +1,15 @@
-# Exclude everything. The Docker image consumes only the pre-built internal application JAR,
-# the staged JDeps support jars produced alongside it, the vendored SQLite amalgamation source,
-# and the Docker smoke helper scripts.
-# Build the assembly inputs first: ./gradlew :cli:shadowJar
+# Exclude everything. The Docker image consumes only the staged internal Docker build context,
+# the vendored SQLite amalgamation source, and the Docker smoke helper scripts.
+# Build the assembly inputs first: ./gradlew :cli:stageDockerBuildContext
 **
 
 # Allow the Docker build inputs staged by the CLI assembly flow.
 !gradle.properties
 !scripts/
-!cli/build/libs/
-!cli/build/libs/*.jar
-!cli/build/docker/
-!cli/build/docker/jdeps/
-!cli/build/docker/jdeps/*.jar
+!cli/
+!cli/build/
+!cli/build/docker-context/
+!cli/build/docker-context/**
 
 # Allow the vendored SQLite3 Multiple Ciphers amalgamation source compiled inside the builder.
 !third_party/

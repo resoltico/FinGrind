@@ -2,10 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -25,6 +22,11 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -34,12 +36,12 @@ import org.jspecify.annotations.NullUnmarked;
 /** Shared SQLite posting/book fixtures and native-handle doubles for split store tests. */
 @NullUnmarked
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
-  static PostingFact postingFact(
+  static CommittedPosting postingFact(
       String postingId,
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason) {
-    return new PostingFact(
+    return new CommittedPosting(
         new PostingId(postingId),
         journalEntry(reversalReference),
         postingLineage(reversalReference, reason),
@@ -55,16 +57,16 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             SourceChannel.CLI));
   }
 
-  static PostingFact postingFact(
+  static CommittedPosting postingFact(
       String postingId,
       String idempotencyKey,
       LocalDate effectiveDate,
       Instant recordedAt,
       List<JournalLine> lines) {
-    return new PostingFact(
+    return new CommittedPosting(
         new PostingId(postingId),
         new JournalEntry(effectiveDate, lines),
-        PostingLineage.direct(),
+        PostingLineageModel.direct(),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -77,12 +79,20 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             SourceChannel.CLI));
   }
 
-  static PostingLineage postingLineage(
+  static PostingLineageModel postingLineage(
       Optional<ReversalReference> reversalReference, Optional<ReversalReason> reason) {
     if (reversalReference.isEmpty()) {
-      return PostingLineage.direct();
+      return PostingLineageModel.direct();
     }
-    return PostingLineage.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
+    return PostingLineageModel.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
+  }
+
+  static dev.erst.fingrind.contract.PostingFact publishedPostingFact(CommittedPosting postingFact) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
+  }
+
+  static DeclaredAccount publishedAccount(RegisteredAccount account) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(account);
   }
 
   static void initializeBookWithDefaultAccounts(SqlitePostingFactStore postingFactStore) {
@@ -92,8 +102,8 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static void declareDefaultAccounts(SqlitePostingFactStore postingFactStore) {
     assertEquals(
-        new DeclareAccountResult.Declared(
-            new DeclaredAccount(
+        new AccountDeclarationOutcome.Declared(
+            new RegisteredAccount(
                 new AccountCode("1000"),
                 new AccountName("Cash"),
                 NormalBalance.DEBIT,
@@ -105,8 +115,8 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             NormalBalance.DEBIT,
             Instant.parse("2026-04-07T10:15:30Z")));
     assertEquals(
-        new DeclareAccountResult.Declared(
-            new DeclaredAccount(
+        new AccountDeclarationOutcome.Declared(
+            new RegisteredAccount(
                 new AccountCode("2000"),
                 new AccountName("Revenue"),
                 NormalBalance.CREDIT,

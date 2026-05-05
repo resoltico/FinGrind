@@ -2,6 +2,9 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import dev.erst.fingrind.buildlogic.CreateRuntimeImageTask
 import dev.erst.fingrind.buildlogic.DistributionContractReader
 import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
+import dev.erst.fingrind.buildlogic.PruneBundleOutputsTask
+import dev.erst.fingrind.buildlogic.ReportBundleArchiveOutputsTask
+import dev.erst.fingrind.buildlogic.WriteDockerBuildContextManifestTask
 import dev.erst.fingrind.buildlogic.WriteBundleManifestTask
 import dev.erst.fingrind.buildlogic.WriteRuntimeModuleListTask
 import dev.erst.fingrind.buildlogic.WriteSha256FileTask
@@ -10,7 +13,6 @@ import org.gradle.api.GradleException
 import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.attributes.Usage
 import org.gradle.api.tasks.Copy
-import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.application.CreateStartScripts
@@ -95,8 +97,9 @@ val managedSqliteLibraryPath =
             "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}"
         },
     )
-val dockerRuntimeModuleListOutputFile = layout.buildDirectory.file("docker/runtime-modules.txt")
-val dockerEntryPointOutputFile = layout.buildDirectory.file("docker/docker-entrypoint.sh")
+val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
+val dockerBuildContextManifestOutputFile =
+    layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleWorkspaceDirectory = layout.buildDirectory.dir("bundle")
@@ -104,6 +107,20 @@ val bundleRootDirectory = bundleName.flatMap { name -> layout.buildDirectory.dir
 val bundleManifestOutputFile =
     layout.buildDirectory.file("generated/bundle/root/bundle-manifest.json")
 val distributionDirectory = layout.buildDirectory.dir("distributions")
+val dockerBuildContextFiles =
+    listOf(
+        "docker-build-context-manifest.json",
+        "docker-entrypoint.sh",
+        "fingrind.jar",
+        "managed-sqlite-contract.json",
+        "runtime-modules.txt",
+    )
+val dockerManagedSqliteContractSource =
+    providers.provider {
+        DistributionContractReader.requiredContractFiles(repositoryRootDirectory).single {
+            it.fileName.toString() == "managed-sqlite-contract.json"
+        }
+    }
 val bundleClassifierValue = bundleClassifier.get()
 val bundleTarget = DistributionContractReader.bundleTarget(repositoryRootDirectory, bundleClassifierValue)
 val bundleOperatingSystemId = bundleTarget.operatingSystemId
@@ -253,22 +270,35 @@ val writeRuntimeModuleList =
         outputFile.set(runtimeModuleListOutputFile)
     }
 
-val stageDockerRuntimeModuleList =
-    tasks.register<Copy>("stageDockerRuntimeModuleList") {
+val writeDockerBuildContextManifest =
+    tasks.register<WriteDockerBuildContextManifestTask>("writeDockerBuildContextManifest") {
         group = "distribution"
-        description =
-            "Stages the precomputed runtime module list used by the Docker image build."
-        dependsOn(writeRuntimeModuleList)
-        from(runtimeModuleListOutputFile)
-        into(dockerRuntimeModuleListOutputFile.map { it.asFile.parentFile })
-        rename { "runtime-modules.txt" }
+        description = "Writes the manifest for the staged Docker build context."
+        ownerTaskName.set("stageDockerBuildContext")
+        fileNames.set(dockerBuildContextFiles)
+        outputFile.set(dockerBuildContextManifestOutputFile)
     }
 
-val stageDockerEntryPoint =
-    tasks.register<Copy>("stageDockerEntryPoint") {
+val stageDockerBuildContext =
+    tasks.register<Sync>("stageDockerBuildContext") {
         group = "distribution"
-        description = "Stages the canonical Docker entrypoint script for the container image build."
+        description = "Stages the complete Docker build context consumed by the container image build."
+        dependsOn(shadowJarTask)
+        dependsOn(writeRuntimeModuleList)
+        dependsOn(writeDockerBuildContextManifest)
+        into(dockerBuildContextDirectory)
+
+        from(writeDockerBuildContextManifest) {
+            rename { "docker-build-context-manifest.json" }
+        }
+        from(shadowJarArchiveFile) {
+            rename { "fingrind.jar" }
+        }
+        from(runtimeModuleListOutputFile) {
+            rename { "runtime-modules.txt" }
+        }
         from(layout.projectDirectory.dir("src/docker")) {
+            include("docker-entrypoint.sh")
             filter<ReplaceTokens>(
                 "tokens" to
                     mapOf(
@@ -278,21 +308,10 @@ val stageDockerEntryPoint =
                 "endToken" to "}}",
             )
         }
-        into(dockerEntryPointOutputFile.map { it.asFile.parentFile })
+        from(dockerManagedSqliteContractSource) {
+            rename { "managed-sqlite-contract.json" }
+        }
     }
-
-val stageDockerRuntimeInputs =
-    tasks.register("stageDockerRuntimeInputs") {
-        group = "distribution"
-        description =
-            "Stages the shared Docker runtime inputs required by the container image build."
-        dependsOn(stageDockerRuntimeModuleList)
-        dependsOn(stageDockerEntryPoint)
-    }
-
-tasks.named<ShadowJar>("shadowJar") {
-    finalizedBy(stageDockerRuntimeInputs)
-}
 
 val createRuntimeImage =
     tasks.register<CreateRuntimeImageTask>("createRuntimeImage") {
@@ -317,25 +336,16 @@ val writeBundleManifest =
     }
 
 val cleanBundleOutputs =
-    tasks.register<Delete>("cleanBundleOutputs") {
+    tasks.register<PruneBundleOutputsTask>("cleanBundleOutputs") {
         group = "distribution"
         description =
             "Deletes staged self-contained FinGrind CLI bundle directories plus prior bundle archives and checksum files."
-        delete(
-            bundleWorkspaceDirectory.map { bundleDirectory ->
-                bundleDirectory.asFile.listFiles()?.filter { candidate ->
-                    candidate.isDirectory && candidate.name.startsWith("fingrind-")
-                } ?: emptyList()
-            },
-        )
-        delete(
-            distributionDirectory.map { distributionsDirectory ->
-                distributionsDirectory.asFile.listFiles()?.filter { candidate ->
-                    candidate.name.startsWith("fingrind-") && (candidate.isFile || candidate.isDirectory)
-                } ?: emptyList()
-            },
-        )
-        delete(bundleRootDirectory)
+        artifactPrefix.set("fingrind-")
+        bundleWorkspaceDirectory.set(layout.buildDirectory.dir("bundle"))
+        bundleRootDirectory.set(layout.buildDirectory.dir(bundleName.map { name -> "bundle/$name" }))
+        distributionDirectory.set(layout.buildDirectory.dir("distributions"))
+        legacyBundleWorkspaceDirectory.set(layout.projectDirectory.dir("build/bundle"))
+        legacyDistributionDirectory.set(layout.projectDirectory.dir("build/distributions"))
     }
 
 val stageCliBundle =
@@ -447,12 +457,14 @@ val bundleCliSha256 =
         outputFile.set(bundleSha256File)
     }
 
-tasks.register("bundleCliArchive") {
+tasks.register<ReportBundleArchiveOutputsTask>("bundleCliArchive") {
     group = "distribution"
     description =
         "Builds the self-contained FinGrind CLI bundle archive together with its SHA-256 checksum."
     dependsOn(bundleArchiveTask)
     dependsOn(bundleCliSha256)
+    archiveFile.set(bundleArchiveTask.flatMap { it.archiveFile })
+    checksumFile.set(bundleCliSha256.flatMap { it.outputFile })
 }
 
 tasks.named<Test>("test") {

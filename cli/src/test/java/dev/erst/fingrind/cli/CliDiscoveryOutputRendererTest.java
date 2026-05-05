@@ -350,7 +350,7 @@ class CliDiscoveryOutputRendererTest {
     return new ApplicationIdentity(
         "FinGrind",
         "0.30.0",
-        "Command-line double-entry bookkeeping with one encrypted book per business");
+        "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
   private static EnvironmentDescriptor environment() {

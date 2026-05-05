@@ -1,10 +1,6 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -25,6 +21,10 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -64,7 +64,7 @@ final class PostingApplicationServiceTestSupport {
         bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
   }
 
-  static PostEntryCommand command(String idempotencyKey) {
+  static PostingCommand command(String idempotencyKey) {
     return command(idempotencyKey, Optional.empty(), Optional.empty(), journalEntry());
   }
 
@@ -78,19 +78,19 @@ final class PostingApplicationServiceTestSupport {
     return new PostEntryResult.CommitRejected(idempotencyKey, rejection);
   }
 
-  static PostEntryCommand command(
+  static PostingCommand command(
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason) {
     return command(idempotencyKey, reversalReference, reason, journalEntry());
   }
 
-  static PostEntryCommand command(
+  static PostingCommand command(
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason,
       JournalEntry journalEntry) {
-    return new PostEntryCommand(
+    return new PostingCommand(
         journalEntry,
         postingLineage(reversalReference, reason),
         requestProvenance(idempotencyKey),
@@ -101,11 +101,11 @@ final class PostingApplicationServiceTestSupport {
     return Optional.of(new ReversalReference(new PostingId(priorPostingId)));
   }
 
-  static PostingFact existingPosting(String postingId, String idempotencyKey) {
-    return new PostingFact(
+  static CommittedPosting existingPosting(String postingId, String idempotencyKey) {
+    return new CommittedPosting(
         new PostingId(postingId),
         journalEntry(),
-        PostingLineage.direct(),
+        PostingLineageModel.direct(),
         committedProvenance(idempotencyKey));
   }
 
@@ -124,12 +124,12 @@ final class PostingApplicationServiceTestSupport {
         Optional.of(new CorrelationId("corr-1")));
   }
 
-  static PostingLineage postingLineage(
+  static PostingLineageModel postingLineage(
       Optional<ReversalReference> reversalReference, Optional<ReversalReason> reason) {
     if (reversalReference.isEmpty()) {
-      return PostingLineage.direct();
+      return PostingLineageModel.direct();
     }
-    return PostingLineage.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
+    return PostingLineageModel.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
   }
 
   static JournalEntry journalEntry() {
@@ -171,9 +171,9 @@ final class PostingApplicationServiceTestSupport {
       }
 
       @Override
-      public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+      public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
         return Optional.of(
-            new DeclaredAccount(
+            new RegisteredAccount(
                 accountCode,
                 new AccountName("Synthetic"),
                 "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
@@ -182,12 +182,12 @@ final class PostingApplicationServiceTestSupport {
       }
 
       @Override
-      public Optional<PostingFact> findPosting(PostingId postingId) {
+      public Optional<CommittedPosting> findPosting(PostingId postingId) {
         return Optional.of(existingPosting(postingId.value(), "idem-existing"));
       }
 
       @Override
-      public PostingCommitResult commit(PostingFact postingFact) {
+      public PostingCommitResult commit(CommittedPosting postingFact) {
         String idempotencyKey =
             postingFact.provenance().requestProvenance().idempotencyKey().value();
         return switch (idempotencyKey) {
@@ -220,22 +220,22 @@ final class PostingApplicationServiceTestSupport {
     }
 
     @Override
-    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
       throw new AssertionError("findAccount should not be called in this test");
     }
 
     @Override
-    public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return Optional.empty();
     }
 
     @Override
-    public Optional<PostingFact> findPosting(PostingId postingId) {
+    public Optional<CommittedPosting> findPosting(PostingId postingId) {
       return Optional.empty();
     }
 
     @Override
-    public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
       return Optional.empty();
     }
 

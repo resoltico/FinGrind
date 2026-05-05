@@ -39,19 +39,17 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly bundle_smoke_ps1="${repo_root}/scripts/bundle-smoke.ps1"
 readonly bundle_smoke_support_ps1="${repo_root}/scripts/bundle-smoke-support.ps1"
 readonly bundle_smoke_common_ps1="${repo_root}/scripts/bundle-smoke-common.ps1"
-readonly bundle_smoke_contract_ps1="${repo_root}/scripts/bundle-smoke-contract.ps1"
 readonly bundle_smoke_acceptance_ps1="${repo_root}/scripts/bundle-smoke-acceptance.ps1"
 readonly bundle_smoke_office_worker_ps1="${repo_root}/scripts/bundle-smoke-office-worker.ps1"
 readonly bundle_smoke_command_bridge_ps1="${repo_root}/scripts/bundle-smoke-command-bridge.ps1"
 readonly bundle_launcher_ps1="${repo_root}/cli/src/bundle/bin/fingrind.ps1"
+readonly bundle_contract_verifier_py="${repo_root}/scripts/verify-bundle-archive-contract.py"
 
 [[ -f "${bundle_smoke_ps1}" ]] || die "missing PowerShell bundle smoke script at ${bundle_smoke_ps1}"
 [[ -f "${bundle_smoke_support_ps1}" ]] || die \
     "missing PowerShell bundle smoke support script at ${bundle_smoke_support_ps1}"
 [[ -f "${bundle_smoke_common_ps1}" ]] || die \
     "missing PowerShell bundle smoke common script at ${bundle_smoke_common_ps1}"
-[[ -f "${bundle_smoke_contract_ps1}" ]] || die \
-    "missing PowerShell bundle smoke contract script at ${bundle_smoke_contract_ps1}"
 [[ -f "${bundle_smoke_acceptance_ps1}" ]] || die \
     "missing PowerShell bundle smoke acceptance script at ${bundle_smoke_acceptance_ps1}"
 [[ -f "${bundle_smoke_office_worker_ps1}" ]] || die \
@@ -60,20 +58,25 @@ readonly bundle_launcher_ps1="${repo_root}/cli/src/bundle/bin/fingrind.ps1"
     "missing PowerShell bundle smoke command bridge at ${bundle_smoke_command_bridge_ps1}"
 [[ -f "${bundle_launcher_ps1}" ]] || die \
     "missing PowerShell bundle launcher template at ${bundle_launcher_ps1}"
+[[ -f "${bundle_contract_verifier_py}" ]] || die \
+    "missing bundle contract verifier at ${bundle_contract_verifier_py}"
 grep -Fq 'bundle-smoke-support.ps1' "${bundle_smoke_ps1}" || die \
     "bundle-smoke.ps1 no longer delegates to the PowerShell support script"
 grep -Fq 'bundle-smoke-common.ps1' "${bundle_smoke_support_ps1}" || die \
     "bundle-smoke-support.ps1 no longer delegates to the common helper owner"
-grep -Fq 'bundle-smoke-contract.ps1' "${bundle_smoke_support_ps1}" || die \
-    "bundle-smoke-support.ps1 no longer delegates to the contract helper owner"
 grep -Fq 'bundle-smoke-acceptance.ps1' "${bundle_smoke_support_ps1}" || die \
     "bundle-smoke-support.ps1 no longer delegates to the acceptance helper owner"
 grep -Fq 'bundle-smoke-office-worker.ps1' "${bundle_smoke_support_ps1}" || die \
     "bundle-smoke-support.ps1 no longer delegates to the office-worker helper owner"
+if grep -Fq 'bundle-smoke-contract.ps1' "${bundle_smoke_support_ps1}"; then
+    die "bundle-smoke-support.ps1 should no longer source the retired PowerShell contract helper"
+fi
 grep -Fq 'function Test-SameSequence' "${bundle_smoke_common_ps1}" || die \
     "bundle-smoke-common.ps1 no longer defines the sequence-comparison helper"
 [[ "$(grep -Fo 'Compare-Object' "${bundle_smoke_common_ps1}" | wc -l | tr -d '[:space:]')" == "1" ]] || die \
     "bundle-smoke-common.ps1 should keep Compare-Object usage isolated to the helper"
+grep -Fq 'verify-bundle-archive-contract.py' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer delegates bundle archive verification to the Python owner"
 grep -Fq 'release-smoke-workflow.py' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer delegates to the shared release smoke workflow owner"
 grep -Fq 'Rīga büro' "${bundle_smoke_acceptance_ps1}" || die \

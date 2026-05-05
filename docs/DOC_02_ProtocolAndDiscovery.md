@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.30.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -451,7 +451,7 @@ public final class ContractFailureException extends IllegalStateException
 
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
-  `invalid-page-cursor`, `book-authentication-failed`, `managed-runtime-failure`,
+  `invalid-page-cursor`, `protected-book-verification-failed`, `managed-runtime-failure`,
   `storage-runtime-failure`, `pdf-export-failure`, and `interactive-prompt-unavailable`
 - `invalid-request` now advertises structured `detailFields` when the malformed request reaches
   aggregated journal grammar validation, with `details.violations[]` carrying the full ordered

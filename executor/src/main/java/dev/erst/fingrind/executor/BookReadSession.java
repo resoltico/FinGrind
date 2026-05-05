@@ -6,17 +6,17 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.Optional;
 
 /** Unified read-only seam over an already-open book boundary; lifecycle stays with the owner. */
@@ -31,10 +31,10 @@ public interface BookReadSession {
   AccountPage listAccounts(ListAccountsQuery query);
 
   /** Looks up one declared account in one initialized book. */
-  Optional<DeclaredAccount> findAccount(AccountCode accountCode);
+  Optional<RegisteredAccount> findAccount(AccountCode accountCode);
 
   /** Looks up one committed posting fact by durable posting identity in one initialized book. */
-  Optional<PostingFact> findPosting(PostingId postingId);
+  Optional<CommittedPosting> findPosting(PostingId postingId);
 
   /** Returns one filtered page of postings in a stable order from one initialized book. */
   PostingPage listPostings(ListPostingsQuery query);
@@ -46,7 +46,7 @@ public interface BookReadSession {
   TrialBalanceReport trialBalance(TrialBalanceQuery query);
 
   /** Computes one canonical account-ledger report for one declared account. */
-  AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account);
+  AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account);
 
   /** Computes one canonical bounded period summary report. */
   PeriodSummaryReport periodSummary(PeriodSummaryQuery query);

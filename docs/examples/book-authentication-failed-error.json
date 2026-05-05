@@ -1,1 +1,0 @@
-{"status":"error","code":"book-authentication-failed","message":"FinGrind could not authenticate the selected protected book with the supplied passphrase source.","hint":"Inspect the selected book file and passphrase source, then rerun with the correct secret or use inspect-book/open-book against the intended FinGrind book file."}

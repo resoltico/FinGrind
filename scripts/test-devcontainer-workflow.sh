@@ -27,14 +27,12 @@ readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
 readonly developer_devcontainer_doc="${repo_root}/docs/DEVELOPER_DEVCONTAINER.md"
 readonly developer_docker_doc="${repo_root}/docs/DEVELOPER_DOCKER.md"
 readonly developer_jazzer_doc="${repo_root}/docs/DEVELOPER_JAZZER_OPERATIONS.md"
-readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
 
 [[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
 [[ -f "${developer_devcontainer_doc}" ]] || die \
     "missing contributor devcontainer doc at ${developer_devcontainer_doc}"
 [[ -f "${developer_docker_doc}" ]] || die "missing Docker doc at ${developer_docker_doc}"
 [[ -f "${developer_jazzer_doc}" ]] || die "missing Jazzer operations doc at ${developer_jazzer_doc}"
-[[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
 
 grep -Fq 'name: Contributor devcontainer' "${workflow_file}" || die \
     "CI workflow no longer advertises the contributor devcontainer job"
@@ -52,7 +50,7 @@ grep -Fq 'Run One Docker-Only Fuzz Session From A Fresh Terminal' "${developer_j
     "Jazzer operations doc no longer keeps the Docker-only fuzz workflow"
 grep -Fq 'docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .devcontainer' "${developer_jazzer_doc}" || die \
     "Jazzer operations doc no longer documents the Docker-only contributor-image build step"
-grep -Fq 'Contributor devcontainer' "${release_protocol}" || die \
-    "release protocol no longer treats the contributor devcontainer surface as release-blocking"
+grep -Fq 'When the gate is skipped' "${developer_devcontainer_doc}" || die \
+    "developer devcontainer doc no longer explains the Gate skip contract"
 
 printf 'devcontainer workflow regression: success\n'

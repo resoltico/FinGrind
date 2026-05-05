@@ -6,18 +6,18 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookReadSession;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -45,12 +45,12 @@ final class SqliteBookReadSessionView implements BookReadSession {
   }
 
   @Override
-  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     return readOperations.findAccount(accountCode);
   }
 
   @Override
-  public Optional<PostingFact> findPosting(PostingId postingId) {
+  public Optional<CommittedPosting> findPosting(PostingId postingId) {
     return readOperations.findPosting(postingId);
   }
 
@@ -70,7 +70,7 @@ final class SqliteBookReadSessionView implements BookReadSession {
   }
 
   @Override
-  public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+  public AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
     return readOperations.accountLedger(query, account);
   }
 

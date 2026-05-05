@@ -23,25 +23,48 @@ class CliDistributionBuildContractTest {
   void dockerBuild_reusesTheStagedRuntimeModuleList() throws IOException {
     String dockerfile = Files.readString(repositoryRoot().resolve("Dockerfile"));
 
-    assertTrue(
-        dockerfile.contains("COPY cli/build/docker/runtime-modules.txt runtime-modules.txt"));
+    assertTrue(dockerfile.contains("COPY cli/build/docker-context/ /build/docker-context/"));
     assertTrue(
         dockerfile.contains(
-            "COPY cli/build/docker/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
-    assertFalse(dockerfile.contains("COPY cli/build/docker/jdeps/ jdeps/"));
+            "python3 scripts/verify-docker-build-context.py --context-dir /build/docker-context"));
+    assertTrue(
+        dockerfile.contains(
+            "python3 scripts/render-managed-sqlite-compiler-flags.py /build/docker-context/managed-sqlite-contract.json"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/docker-context/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
+    assertFalse(
+        dockerfile.contains("COPY cli/build/docker/runtime-modules.txt runtime-modules.txt"));
+    assertFalse(dockerfile.contains("COPY cli/build/docker/managed-sqlite-contract.json \\"));
     assertFalse(dockerfile.contains("RUN jdeps "));
+  }
+
+  @Test
+  void dockerBuildContext_isExposedToDockerThroughDockerignore() throws IOException {
+    String dockerignore = Files.readString(repositoryRoot().resolve(".dockerignore"));
+
+    assertTrue(
+        dockerignore.contains(
+            "# Build the assembly inputs first: ./gradlew :cli:stageDockerBuildContext"));
+    assertTrue(dockerignore.contains("!cli/build/docker-context/"));
+    assertTrue(dockerignore.contains("!cli/build/docker-context/**"));
+    assertFalse(dockerignore.contains("!cli/build/docker/"));
+    assertFalse(dockerignore.contains("!cli/build/docker/jdeps/"));
   }
 
   @Test
   void cliBuild_stagesSharedRuntimeModulesAndRetainsPdfboxSupportModule() throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
 
-    assertTrue(buildScript.contains("docker/runtime-modules.txt"));
-    assertTrue(buildScript.contains("docker/docker-entrypoint.sh"));
+    assertTrue(buildScript.contains("stageDockerBuildContext"));
+    assertTrue(buildScript.contains("docker-context"));
+    assertTrue(buildScript.contains("docker-build-context-manifest.json"));
+    assertTrue(buildScript.contains("dockerManagedSqliteContractSource"));
     assertTrue(buildScript.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
     assertTrue(
         buildScript.contains(
             "DistributionContractReader.hostBundleTarget(repositoryRootDirectory)"));
+    assertFalse(buildScript.contains("stageDockerRuntimeInputs"));
     assertFalse(buildScript.contains("docker/jdeps"));
     assertFalse(buildScript.contains("archiveExtensionForOperatingSystemId"));
     assertFalse(buildScript.contains("launcherPathForOperatingSystemId"));
@@ -96,18 +119,48 @@ class CliDistributionBuildContractTest {
   @Test
   void cliBuild_prunesStaleVersionedBundleRootsArchivesAndChecksumsBeforeStagingTheCurrentBundle()
       throws IOException {
-    String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+    Path repositoryRoot = repositoryRoot();
+    String buildScript = Files.readString(repositoryRoot.resolve("cli/build.gradle.kts"));
+    String pruneTask =
+        Files.readString(
+            repositoryRoot.resolve(
+                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/PruneBundleOutputsTask.kt"));
+    String reportTask =
+        Files.readString(
+            repositoryRoot.resolve(
+                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ReportBundleArchiveOutputsTask.kt"));
 
-    assertTrue(buildScript.contains("tasks.register<Delete>(\"cleanBundleOutputs\")"));
+    assertTrue(
+        buildScript.contains("tasks.register<PruneBundleOutputsTask>(\"cleanBundleOutputs\")"));
     assertTrue(
         buildScript.contains(
             "Deletes staged self-contained FinGrind CLI bundle directories plus prior bundle archives and checksum files."));
-    assertTrue(
-        buildScript.contains("candidate.isDirectory && candidate.name.startsWith(\"fingrind-\")"));
+    assertTrue(buildScript.contains("artifactPrefix.set(\"fingrind-\")"));
     assertTrue(
         buildScript.contains(
-            "candidate.name.startsWith(\"fingrind-\") && (candidate.isFile || candidate.isDirectory)"));
+            "legacyBundleWorkspaceDirectory.set(layout.projectDirectory.dir(\"build/bundle\"))"));
+    assertTrue(
+        buildScript.contains(
+            "legacyDistributionDirectory.set(layout.projectDirectory.dir(\"build/distributions\"))"));
+    assertTrue(
+        pruneTask.contains(
+            "deletePrefixedEntries(bundleWorkspaceDirectory.asFile.orNull, prefix)"));
+    assertTrue(
+        pruneTask.contains("deletePrefixedEntries(distributionDirectory.asFile.orNull, prefix)"));
+    assertTrue(
+        pruneTask.contains(
+            "deletePrefixedEntries(legacyBundleWorkspaceDirectory.asFile.orNull, prefix)"));
+    assertTrue(
+        pruneTask.contains(
+            "deletePrefixedEntries(legacyDistributionDirectory.asFile.orNull, prefix)"));
+    assertTrue(
+        pruneTask.contains(".filter { entry -> entry.fileName.toString().startsWith(prefix) }"));
     assertTrue(buildScript.contains("dependsOn(cleanBundleOutputs)"));
+    assertTrue(
+        buildScript.contains(
+            "tasks.register<ReportBundleArchiveOutputsTask>(\"bundleCliArchive\")"));
+    assertTrue(reportTask.contains("FinGrind bundle archive:"));
+    assertTrue(reportTask.contains("FinGrind bundle checksum:"));
     assertFalse(buildScript.contains("cleanBundleRoot"));
   }
 
@@ -208,20 +261,16 @@ class CliDistributionBuildContractTest {
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-support.ps1"));
     String powerShellAcceptance =
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-acceptance.ps1"));
-    String powerShellContract =
-        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-contract.ps1"));
 
     assertTrue(bashScript.contains("bundleLayout"));
     assertFalse(bashScript.contains("expected_native_library_name()"));
     assertFalse(bashScript.contains("host_bundle_classifier()"));
 
     assertTrue(powerShellScript.contains("bundle-smoke-support.ps1"));
-    assertTrue(powerShellSupport.contains("bundle-smoke-contract.ps1"));
+    assertFalse(powerShellSupport.contains("bundle-smoke-contract.ps1"));
     assertTrue(powerShellAcceptance.contains("bundleLayout.hostBundleTarget"));
-    assertFalse(powerShellContract.contains("windows-x86_64.zip"));
-    assertFalse(powerShellContract.contains("sqlite3.dll"));
-    assertTrue(bashScript.contains("requiredMinimumSqliteVersion"));
-    assertTrue(powerShellContract.contains("requiredSqlite3mcVersion"));
+    assertTrue(bashScript.contains("verify-bundle-archive-contract.py"));
+    assertTrue(powerShellAcceptance.contains("verify-bundle-archive-contract.py"));
   }
 
   @Test
@@ -249,11 +298,15 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
     assertTrue(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));
     assertTrue(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_SCENARIO_ID"));
+    assertTrue(bundleSmokeScript.contains("verify-bundle-archive-contract.py"));
     assertTrue(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_WORK_ROOT"));
     assertTrue(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE"));
     assertTrue(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_SCENARIO_ID"));
+    assertTrue(dockerSmokeScript.contains("verify-docker-build-context.py"));
+    assertTrue(dockerSmokeScript.contains(":cli:stageDockerBuildContext"));
     assertFalse(bundleSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
     assertFalse(dockerSmokeScript.contains("FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG"));
+    assertFalse(dockerSmokeScript.contains(":cli:shadowJar"));
     assertTrue(releaseSmokeSupport.contains("release-smoke-common.sh"));
     assertTrue(releaseSmokeSupport.contains("release-smoke-workflow-support.sh"));
     assertFalse(releaseSmokeSupport.contains("release-smoke-fixtures.sh"));

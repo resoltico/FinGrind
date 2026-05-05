@@ -136,12 +136,7 @@ while IFS= read -r target_key; do
     assert_wrapper_help "Usage: jazzer/bin/fuzz-${target_key} [supported Gradle options]" \
         "${repo_root}/jazzer/bin/fuzz-${target_key}" --help
 done < <(
-    "${repo_root}/gradlew" \
-        -p "${repo_root}/jazzer" \
-        --no-daemon \
-        --no-configuration-cache \
-        -q \
-        jazzerActiveTargets
+    python3 "${repo_root}/scripts/read-jazzer-topology.py" active-target-keys
 )
 
 printf 'operator help surface regression: success\n'
