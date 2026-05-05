@@ -257,8 +257,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_rollsBackAndJournalsUnexpectedRuntimeFailures() {
     try (LedgerPlanServiceTestSupport.ThrowingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.ThrowingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(
@@ -287,8 +286,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_preservesPriorSuccessfulStepsBeforeUnexpectedRuntimeFailure() {
     try (LedgerPlanServiceTestSupport.DeclareRuntimeFailingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.DeclareRuntimeFailingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(
@@ -314,8 +312,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_returnsStructuredRejectionWhenTransactionBeginFails() {
     try (LedgerPlanServiceTestSupport.BeginFailingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.BeginFailingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(
@@ -338,8 +335,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_returnsStructuredRejectionWhenInitializationCheckThrows() {
     try (LedgerPlanServiceTestSupport.InitializationCheckFailingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.InitializationCheckFailingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(
@@ -375,8 +371,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_returnsStructuredRejectionWhenCommitFailsAfterSuccessfulSteps() {
     try (LedgerPlanServiceTestSupport.CommitFailingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.CommitFailingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(
@@ -406,8 +401,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_returnsStructuredRejectionWhenRollbackFailsAfterDeterministicStepFailure() {
     try (LedgerPlanServiceTestSupport.RollbackFailingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.RollbackFailingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(
@@ -448,8 +442,7 @@ class LedgerPlanServiceWorkflowTest {
   void execute_returnsStructuredRejectionWhenRollbackFailsAfterUnexpectedStepFailure() {
     try (LedgerPlanServiceTestSupport.RuntimeRollbackFailingLedgerPlanSession bookSession =
         new LedgerPlanServiceTestSupport.RuntimeRollbackFailingLedgerPlanSession()) {
-      LedgerPlanService service =
-          new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
+      var service = service(bookSession);
 
       var result =
           service.execute(

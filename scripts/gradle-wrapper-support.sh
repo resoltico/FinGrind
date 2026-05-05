@@ -122,6 +122,18 @@ fg_gradle_project_build_root() {
     printf '%s/%s/project-build\n' "${fg_gradle_cache_root}" "${fg_gradle_repo_key}"
 }
 
+fg_gradle_user_home_dir() {
+    if [ -n "${FINGRIND_GRADLE_USER_HOME:-}" ]; then
+        printf '%s\n' "${FINGRIND_GRADLE_USER_HOME}"
+        return
+    fi
+    fg_gradle_repo_root=${1:-}
+    fg_gradle_is_darwin=${2:-false}
+    fg_gradle_cache_root=$(fg_gradle_project_cache_root "${fg_gradle_is_darwin}")
+    fg_gradle_repo_key=$(fg_gradle_cache_key "${fg_gradle_repo_root}")
+    printf '%s/%s/gradle-user-home\n' "${fg_gradle_cache_root}" "${fg_gradle_repo_key}"
+}
+
 fg_gradle_filesystem_type() {
     fg_gradle_repo_root=${1:-}
     if [ -n "${FINGRIND_GRADLE_FILESYSTEM_TYPE:-}" ]; then

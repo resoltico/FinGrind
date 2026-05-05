@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -53,14 +53,18 @@ This Docker runtime guidance is separate from the contributor devcontainer:
 The container image itself also stays on the same managed-runtime policy as the bundle archives:
 - it verifies the pinned vendored SQLite3MC source hash during image build before compiling the
   native library
+- it derives the SQLite compiler flags from the canonical managed-SQLite contract through
+  `scripts/render-managed-sqlite-compiler-flags.py`, so Docker does not carry a private handwritten
+  compile-option surface
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
-- it reuses the repository-built runtime module list staged at
-  `cli/build/docker/runtime-modules.txt` when the project build tree stays in-checkout, or the
-  wrapper-resolved relocated CLI build directory on fragile mounted filesystems and then syncs the
-  canonical Docker build-context files back under `cli/build/` before `docker buildx` runs, so
-  Docker and bundle publication cannot drift onto competing private-runtime closures or stale
-  in-checkout leftovers
+- it consumes one repository-built `cli/build/docker-context/` directory produced by
+  `:cli:stageDockerBuildContext`; that staged directory carries the internal application JAR, the
+  runtime-module list, the rendered entrypoint, the managed-SQLite contract, and
+  `docker-build-context-manifest.json`, and `scripts/docker-smoke.sh` verifies that manifest
+  before mirroring a relocated build tree back under `cli/build/`, so Docker and bundle
+  publication cannot drift onto competing private-runtime closures, private compile-option inputs,
+  or stale in-checkout leftovers
 - it generates the Docker entrypoint and verifies the image's runtime-surface disclosure from the
   same protocol-owned contract resources that drive bundle metadata, so the container does not
   carry a parallel handwritten runtime-distribution or storage contract
@@ -110,9 +114,9 @@ Then the supported local gates are:
 
 `./check.sh` Stage 6 invokes `scripts/docker-smoke.sh`, which:
 - builds the local image from the repository root through `docker buildx build --load`
-- refreshes `:cli:shadowJar` first and, on fragile mounted filesystems, syncs the fresh
-  relocated `fingrind.jar` and `runtime-modules.txt` back into the repository-visible Docker
-  build context before image build
+- refreshes `:cli:stageDockerBuildContext` first and, on fragile mounted filesystems, syncs the
+  fresh relocated `docker-context/` directory back into the repository-visible Docker build
+  context before image build
 - stages its mounted-workspace scratch tree under system temp instead of the repository root so
   SMB/WebDAV tombstones left behind by container cleanup cannot break later source-checkout gates
 - verifies that the image's private runtime stays trimmed and does not drag in `jdk.jdeps`,
@@ -132,8 +136,8 @@ Then the supported local gates are:
   `defaultProtectedBookFormat.pageSize`, `requiredSqlite3mcVersion`, and
   `loadedSqlite3mcVersion`
 - verifies that reopening the same mounted book with the wrong key fails as the deterministic
-  `book-authentication-failed` error rather than silently reading the file or leaking raw SQLite
-  storage symptoms
+  `protected-book-verification-failed` error rather than silently reading the file or leaking raw
+  SQLite storage symptoms
 
 The tag-driven public container workflow also waits for the complete GitHub release asset set
 before image publication, so the public image cannot race ahead of an incomplete bundle release.

@@ -21,17 +21,18 @@ env:
 jobs:
   container:
     name: Build and push container image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # This job intentionally includes release-asset gating, JAR build, SQLite verification,
     # Docker smoke, multi-arch push, and post-publish tag verification. The former 20-minute
     # ceiling allowed public publication to succeed while canceling the final verification step on
     # slower GitHub-hosted runners, which left the release surface red despite a correct registry
     # state. Keep enough budget for the verifier to run after the image push finishes.
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -107,11 +108,13 @@ jobs:
             "fingrind-${{ steps.target-tag.outputs.version }}-windows-x86_64.zip" \
             "fingrind-${{ steps.target-tag.outputs.version }}-windows-x86_64.zip.sha256"
 
-      - name: Build internal application JAR for the Docker image
-        run: ./gradlew :cli:shadowJar --no-daemon
+      - name: Stage the Docker build context
+        run: ./gradlew :cli:stageDockerBuildContext --no-daemon
 
-      - name: Verify managed SQLite CLI runtime
-        run: ./scripts/verify-managed-sqlite-runtime.sh
+      - name: Verify managed SQLite CLI runtimes
+        run: |
+          ./scripts/verify-source-checkout-sqlite-runtime.sh
+          ./scripts/verify-environment-configured-sqlite-runtime.sh
 
       - name: Smoke test the Docker image before publishing
         run: ./scripts/docker-smoke.sh
@@ -135,6 +138,7 @@ jobs:
             type=raw,value=latest
 
       - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        id: build
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -143,13 +147,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
 
       - name: Verify published version and latest container tags
         run: ./scripts/verify-container-publication.sh "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" "${{ steps.target-tag.outputs.version }}"
 
   cleanup:
     name: Prune old container versions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: container
     timeout-minutes: 5
 

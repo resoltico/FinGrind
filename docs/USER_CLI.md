@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: USER_CLI
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -145,9 +145,12 @@ version pins that the source checkout, release automation, and shell acceptance 
 One public Unix bundle flow:
 
 ```bash
-tar -xzf fingrind-0.30.0-macos-aarch64.tar.gz
-./fingrind-0.30.0-macos-aarch64/bin/fingrind help
-./fingrind-0.30.0-macos-aarch64/bin/fingrind \
+bundle_archive="$(printf '%s\n' ./fingrind-*-macos-aarch64.tar.gz | head -n 1)"
+bundle_root="${bundle_archive#./}"
+bundle_root="${bundle_root%.tar.gz}"
+tar -xzf "${bundle_archive}"
+"./${bundle_root}/bin/fingrind" help
+"./${bundle_root}/bin/fingrind" \
   print-request-template > ./request.json
 ```
 
@@ -158,9 +161,11 @@ Edit `./request.json` and replace `replace-before-commit-effective-date` plus ev
 One public Windows bundle flow:
 
 ```powershell
-Expand-Archive fingrind-0.30.0-windows-x86_64.zip -DestinationPath .
-.\fingrind-0.30.0-windows-x86_64\bin\fingrind.ps1 help
-.\fingrind-0.30.0-windows-x86_64\bin\fingrind.ps1 `
+$bundleArchive = (Get-ChildItem -LiteralPath . -Filter 'fingrind-*-windows-x86_64.zip' | Select-Object -First 1).FullName
+$bundleRoot = Join-Path . ([System.IO.Path]::GetFileNameWithoutExtension($bundleArchive))
+Expand-Archive $bundleArchive -DestinationPath . -Force
+& (Join-Path $bundleRoot 'bin\fingrind.ps1') help
+& (Join-Path $bundleRoot 'bin\fingrind.ps1') `
   print-request-template > .\request.json
 ```
 
@@ -182,11 +187,12 @@ For a source-checkout launcher that behaves like a local installed executable:
 
 ```bash
 ./gradlew :cli:installShadowDist prepareManagedSqlite
-./cli/build/install/cli-shadow/bin/cli help
+./scripts/source-checkout-cli.sh help
 ```
 
-That generated launcher already carries the native-access flag, the source-checkout
-runtime-distribution marker, and the managed-SQLite checkout lookup.
+That wrapper resolves the active CLI build directory, then invokes the generated launcher with the
+native-access flag, the source-checkout runtime-distribution marker, and the managed-SQLite
+checkout lookup already baked in.
 
 For local bundle verification from a source checkout:
 
@@ -196,23 +202,25 @@ For local bundle verification from a source checkout:
 ```
 
 If you restage a local bundle repeatedly from a source checkout, FinGrind prunes older
-`cli/build/bundle/fingrind-*` staging roots before writing the current versioned bundle tree, and
-`./gradlew :cli:bundleCliArchive` removes obsolete `cli/build/distributions/fingrind-*` archives
-and checksum files before writing the current host bundle artifact.
+`fingrind-*` staging roots under the active CLI Gradle build directory before writing the current
+versioned bundle tree, and `./gradlew :cli:bundleCliArchive` removes obsolete `fingrind-*`
+archives and checksum files from both the active distribution directory and any legacy in-checkout
+`cli/build/distributions/` leftovers before writing the current host bundle artifact. After a
+successful run, the task prints the exact archive path and checksum path it produced so the bundle
+can be inspected or passed straight to `./scripts/bundle-smoke.sh` even when the active build
+directory lives outside the checkout.
 
 The raw `java -jar` path is still available for advanced contributor work, but it is not the
 public FinGrind download contract:
 
-These example paths assume the project `build/` tree stays inside the checkout. On fragile mounted
-filesystems, `./gradlew` may relocate that tree into the wrapper-owned local cache.
-
 ```bash
 ./gradlew :cli:shadowJar prepareManagedSqlite
-java -jar cli/build/libs/fingrind.jar help
+./scripts/direct-java-cli.sh help
 ```
 
-When that JAR stays under the prepared checkout layout, it auto-discovers the managed SQLite
-library and reads the required native-access permission from the JAR manifest. Manual
+That wrapper resolves the active CLI build directory and then runs the prepared raw JAR. When the
+JAR stays under the prepared checkout layout, it auto-discovers the managed SQLite library and
+reads the required native-access permission from the JAR manifest. Manual
 `FINGRIND_SQLITE_LIBRARY` export remains relevant only for custom direct-Java launches outside the
 prepared checkout.
 
@@ -253,7 +261,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
 | posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
-| wrong book key or plaintext legacy book | `2` | `book-authentication-failed` | `FinGrind could not authenticate the selected protected book with the supplied passphrase source.` |
+| wrong book key, damaged/truncated protected book, or unsupported protected SQLite variant | `2` | `protected-book-verification-failed` | `FinGrind could not verify the selected protected book with the supplied passphrase source.` |
 | invalid key-file contents or permissions | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.` |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
@@ -402,7 +410,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`
 - posting-side account failures are reported as `account-state-violations` with one or more
   structured issue objects in `details.violations`
-- Wrong passphrases and non-FinGrind plaintext SQLite files are reported as the deterministic
-  `book-authentication-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`.
+- Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite files
+  are reported as the deterministic `protected-book-verification-failed` error instead of leaking
+  raw SQLite symptoms such as `SQLITE_NOTADB`.
 - In a source checkout, example payloads live under [docs/examples/](./examples/).
   Public release bundles do not ship those repository fixture paths.

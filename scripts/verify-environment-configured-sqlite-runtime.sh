@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify the source-checkout managed SQLite runtime contract against the live CLI capabilities.
+# Verify the environment-configured SQLite runtime contract against Gradle JavaExec.
 
 set -euo pipefail
 
@@ -23,16 +23,20 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
-readonly verifier="${script_dir}/verify-managed-sqlite-runtime.py"
+readonly verifier="${script_dir}/verify-sqlite-runtime-contract.py"
 
-[[ -f "${verifier}" ]] || die "missing managed SQLite runtime verifier at ${verifier}"
+[[ -f "${verifier}" ]] || die "missing SQLite runtime verifier at ${verifier}"
 
 capabilities_output="$(
     cd "${repo_root}" &&
         ./gradlew -q :cli:run --args='capabilities --output json' --no-daemon --console=plain
 )"
 if ! verifier_output="$(
-    printf '%s\n' "${capabilities_output}" | python3 "${verifier}" 2>&1
+    printf '%s\n' "${capabilities_output}" |
+        python3 "${verifier}" \
+            --expected-runtime-distribution-key directJavaRuntimeDistribution \
+            --expected-runtime-provenance environment-configured \
+            --label environment-configured-runtime 2>&1
 )"; then
     printf '%s\n' "${capabilities_output}"
     printf '%s\n' "${verifier_output}" >&2

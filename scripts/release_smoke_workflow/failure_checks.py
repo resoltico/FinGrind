@@ -64,8 +64,8 @@ def verify_rekey_and_wrong_key_semantics(
     )
     require_match(
         wrong_key_output,
-        r'"code"[[:space:]]*:[[:space:]]*"book-authentication-failed"',
-        f"{config.label} wrong-key listing did not report book-authentication-failed",
+        r'"code"[[:space:]]*:[[:space:]]*"protected-book-verification-failed"',
+        f"{config.label} wrong-key listing did not report protected-book-verification-failed",
     )
     require_no_match(
         wrong_key_output,
@@ -153,4 +153,3 @@ def verify_deterministic_nonsense_workflows(
         r"Unexpected fields: nonsenseOne, nonsenseTwo",
         f"{config.label} invalid request did not report all unexpected fields together",
     )
-

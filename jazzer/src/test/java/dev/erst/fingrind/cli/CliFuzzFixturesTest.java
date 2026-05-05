@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
@@ -17,6 +16,10 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +42,12 @@ class CliFuzzFixturesTest {
     assertEquals(
         "plan-1",
         CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8)).planId().value());
+    assertEquals(
+        "plan-1",
+        CliFuzzFixtures.readBookWorkflowPlan(basicValidLedgerPlan().getBytes(UTF_8)).planId());
+    assertTrue(
+        CliFuzzFixtures.readBookWorkflowPlan(basicValidLedgerPlan().getBytes(UTF_8))
+            .beginsWithOpenBook());
     assertEquals(
         CliFuzzFixtures.postingIdGenerator(requestBytes).nextPostingId().value(),
         CliFuzzFixtures.postingIdGenerator(requestBytes).nextPostingId().value());
@@ -117,12 +126,12 @@ class CliFuzzFixturesTest {
         new BookAdministrationService(
             new BookAdministrationSession() {
               @Override
-              public OpenBookResult openBook(Instant initializedAt) {
-                return new OpenBookResult.Opened(initializedAt.plusSeconds(1));
+              public BookOpeningOutcome openBook(Instant initializedAt) {
+                return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1));
               }
 
               @Override
-              public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+              public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
                   AccountName accountName,
                   NormalBalance normalBalance,
@@ -135,18 +144,18 @@ class CliFuzzFixturesTest {
         new BookAdministrationService(
             new BookAdministrationSession() {
               @Override
-              public OpenBookResult openBook(Instant initializedAt) {
+              public BookOpeningOutcome openBook(Instant initializedAt) {
                 throw new UnsupportedOperationException("not used");
               }
 
               @Override
-              public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+              public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
                   AccountName accountName,
                   NormalBalance normalBalance,
                   Instant declaredAt) {
-                return new dev.erst.fingrind.contract.DeclareAccountResult.Declared(
-                    new DeclaredAccount(
+                return new AccountDeclarationOutcome.Declared(
+                    new RegisteredAccount(
                         accountCode, accountName, normalBalance, false, declaredAt));
               }
             },
@@ -155,18 +164,18 @@ class CliFuzzFixturesTest {
         new BookAdministrationService(
             new BookAdministrationSession() {
               @Override
-              public OpenBookResult openBook(Instant initializedAt) {
+              public BookOpeningOutcome openBook(Instant initializedAt) {
                 throw new UnsupportedOperationException("not used");
               }
 
               @Override
-              public dev.erst.fingrind.contract.DeclareAccountResult declareAccount(
+              public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
                   AccountName accountName,
                   NormalBalance normalBalance,
                   Instant declaredAt) {
-                return new dev.erst.fingrind.contract.DeclareAccountResult.Declared(
-                    new DeclaredAccount(
+                return new AccountDeclarationOutcome.Declared(
+                    new RegisteredAccount(
                         accountCode, accountName, normalBalance, true, declaredAt.plusSeconds(1)));
               }
             },
@@ -223,12 +232,12 @@ class CliFuzzFixturesTest {
           }
 
           @Override
-          public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
             throw new UnsupportedOperationException("not used");
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.PostingFact> findPosting(
+          public Optional<CommittedPosting> findPosting(
               dev.erst.fingrind.core.PostingId postingId) {
             throw new UnsupportedOperationException("not used");
           }
@@ -253,7 +262,7 @@ class CliFuzzFixturesTest {
 
           @Override
           public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
-              dev.erst.fingrind.contract.AccountLedgerQuery query, DeclaredAccount account) {
+              dev.erst.fingrind.contract.AccountLedgerQuery query, RegisteredAccount account) {
             throw new UnsupportedOperationException("not used");
           }
 

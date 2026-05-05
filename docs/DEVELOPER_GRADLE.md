@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -185,10 +185,14 @@ That contract now has a few explicit rules:
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, and `SQLITE_SECURE_DELETE=1`
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
-  private Java runtime image, managed native library, launcher, and checksum
-- `:cli:shadowJar` remains an internal assembly input for Docker and advanced contributor
-  debugging; it does not build a native library, but it does stage the shared Docker runtime
-  module list under `cli/build/docker/runtime-modules.txt`
+  private Java runtime image, managed native library, launcher, and checksum, then prints the
+  exact archive/checksum paths it produced under the active CLI build directory
+- `:cli:stageDockerBuildContext` is the Docker assembly entrypoint; it stages one
+  `cli/build/docker-context/` directory containing `fingrind.jar`, `runtime-modules.txt`,
+  `docker-entrypoint.sh`, `managed-sqlite-contract.json`, and
+  `docker-build-context-manifest.json`
+- `:cli:shadowJar` remains an internal assembly input for `:cli:stageDockerBuildContext` and
+  advanced contributor debugging; it does not build a native library on its own
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
   `build/managed-sqlite/`
 - local developer-only `java -jar` verification that wants the managed runtime must therefore run
@@ -202,10 +206,10 @@ build logic consumes that file for task registration, and Jazzer runtime support
 the same file for stable key lookup and topology assertions. That removes the old duplicated manual
 registry split between build logic and runtime code.
 
-That same build logic now also owns the canonical `jazzerActiveTargets` and
-`jazzerReplayableTargets` query tasks. Shell wrappers, shell regressions, and Java operator
-entrypoints use those tasks instead of carrying their own topology parsers or cwd-derived
-project-root guesses.
+That same committed topology now feeds the nested Gradle `jazzerActiveTargets` and
+`jazzerReplayableTargets` query tasks, the repo-owned shell topology reader, and the Java operator
+entrypoints. The JSON document is the owner; Gradle, shell wrappers, and runtime support are
+projections over that one file rather than separate registries.
 
 ### Thin consumer build scripts
 
@@ -366,7 +370,7 @@ These are the Gradle-level invariants worth preserving:
 - root `./check.sh` remains the supported whole-repo gate that sequences root verification, Jazzer
   verification, packaging, and Docker smoke checks
 - root `./check.sh`, `scripts/docker-smoke.sh`, `scripts/validate-devcontainer.sh`, and
-  `jazzer/bin/*` continue to share one repo-wide verification lock plus repo-scoped
+  `jazzer/bin/*` continue to share one repo-wide verification lock plus repo-keyed cache-root
   `GRADLE_USER_HOME` isolation
 
 If a proposed change breaks one of those invariants, document the reason in code comments and in

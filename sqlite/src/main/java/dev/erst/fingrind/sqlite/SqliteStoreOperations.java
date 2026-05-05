@@ -4,8 +4,6 @@ import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailure;
-import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -54,16 +52,13 @@ final class SqliteStoreOperations {
         message + " " + exception.resultName() + ": " + detail, exception);
   }
 
-  static Optional<ContractFailure> authenticationFailure(SqliteNativeException exception) {
+  static Optional<ContractFailure> protectedBookVerificationFailure(
+      SqliteNativeException exception) {
     if (exception.resultCode() == SqliteNativeResultCodes.NOTADB) {
       return Optional.of(
-          ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.failure(
-              "FinGrind could not authenticate the selected protected book with the supplied passphrase source.",
-              "Inspect the selected book file and passphrase source, then rerun with the correct secret or use "
-                  + ProtocolCatalog.operationName(OperationId.INSPECT_BOOK)
-                  + "/"
-                  + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
-                  + " against the intended FinGrind book file.",
+          ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
+              "FinGrind could not verify the selected protected book with the supplied passphrase source.",
+              "Possible causes include the wrong secret, a damaged or truncated book file, or a protected SQLite file outside the supported FinGrind format. Confirm the intended book file and passphrase source, then rerun the intended command against that same protected book.",
               null));
     }
     return Optional.empty();

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -89,16 +89,10 @@ gh api \
 
 ## Step 5
 
-Enable branch protection on `main` only after the required CI status-check names exist.
-For FinGrind, the required checks are:
-- `Check`
-- `Windows bundle smoke`
-- `Docker smoke`
-
-The committed `Contributor devcontainer` job is intentionally **not** part of the protected branch
-check set. FinGrind follows the same stance as the sibling project: the job stays CI-visible and
-the release protocol treats it as release-blocking later, but GitHub branch protection itself keeps
-the protected context set to the three public-product checks above.
+Enable branch protection on `main` only after the required CI status-check name exists.
+For FinGrind, the single required check is `Gate`. That aggregate check is the canonical owner of
+the release-blocking CI contract and already covers the current public-product jobs plus the
+path-gated contributor-devcontainer surface.
 
 Apply protection:
 
@@ -110,7 +104,7 @@ gh api \
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Check", "Windows bundle smoke", "Docker smoke"]
+    "contexts": ["Gate"]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": null,
@@ -128,9 +122,8 @@ Recommended repository settings alignment:
 - branch auto-delete on merge is enabled
 - Actions workflow permissions default to write
 - `main` protection enforces admins
-- required checks remain exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
-- the separate `Contributor devcontainer` CI job exists and remains release-blocking even though
-  it is not a protected branch-check context
+- required checks remain exactly `Gate`
+- the separate `Contributor devcontainer` CI job remains visible under that aggregate Gate contract
 
 ## Step 7
 

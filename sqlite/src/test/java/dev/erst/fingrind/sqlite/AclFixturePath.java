@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 
 /** Minimal path implementation for the test ACL filesystem. */
 @NullUnmarked
@@ -22,11 +24,21 @@ final class AclFixturePath implements Path {
   boolean regularFile;
   AclFixtureView aclView;
   Set<PosixFilePermission> posixPermissions = Set.of();
+  private @Nullable IOException deleteIfExistsFailure;
 
   AclFixturePath(AclFixtureFileSystem fileSystem, String value) {
     this.fileSystem = fileSystem;
     this.value = value;
     this.aclView = new AclFixtureView(fileSystem.owner);
+  }
+
+  AclFixturePath failDeleteIfExistsWith(IOException exception) {
+    deleteIfExistsFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException deleteIfExistsFailure() {
+    return deleteIfExistsFailure;
   }
 
   @Override

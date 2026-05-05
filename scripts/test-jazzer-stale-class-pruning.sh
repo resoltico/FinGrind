@@ -42,12 +42,33 @@ readonly stale_executor_class="${main_classes_dir}/SqliteRoundTripWorkflowConcur
 readonly stale_classifier_class="${main_classes_dir}/SqliteRoundTripWorkflowConcurrencyCoverage\$ConcurrentDecisionClass.class"
 readonly live_owner_class="${main_classes_dir}/SqliteRoundTripWorkflowConcurrencyCoverage.class"
 readonly live_task_class="${main_classes_dir}/SqliteRoundTripWorkflowConcurrencyCoverage\$ConcurrentCommitTask.class"
+readonly compile_log="$(mktemp "${TMPDIR:-/tmp}/fingrind-jazzer-compile.XXXXXX.log")"
+
+cleanup() {
+    rm -f "${compile_log}"
+}
+
+trap cleanup EXIT
 
 mkdir -p "${main_classes_dir}"
 printf 'orphaned cached class\n' > "${stale_executor_class}"
 printf 'orphaned cached class\n' > "${stale_classifier_class}"
 
-./gradlew --project-dir jazzer compileJava --rerun-tasks --no-daemon --no-configuration-cache --console=plain >/dev/null
+if ! ./gradlew \
+    --project-dir jazzer \
+    compileJava \
+    --rerun-tasks \
+    --no-daemon \
+    --no-configuration-cache \
+    --console=plain >"${compile_log}"; then
+    cat "${compile_log}" >&2
+    exit 1
+fi
+
+if grep -F 'warning: [module]' "${compile_log}" >/dev/null; then
+    cat "${compile_log}" >&2
+    die "jazzer compileJava emitted JPMS module warnings"
+fi
 
 [[ ! -e "${stale_executor_class}" ]] || die \
     "jazzer compileJava left the seeded orphaned executor helper behind"

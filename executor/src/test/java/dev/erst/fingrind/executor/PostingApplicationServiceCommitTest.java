@@ -13,9 +13,7 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.re
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -23,6 +21,8 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -140,9 +140,9 @@ class PostingApplicationServiceCommitTest {
           }
 
           @Override
-          public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
             return Optional.of(
-                new DeclaredAccount(
+                new RegisteredAccount(
                     accountCode,
                     new AccountName("Synthetic"),
                     "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
@@ -151,7 +151,7 @@ class PostingApplicationServiceCommitTest {
           }
 
           @Override
-          public PostingCommitResult commit(PostingFact postingFact) {
+          public PostingCommitResult commit(CommittedPosting postingFact) {
             throw new IllegalStateException("boom");
           }
         };

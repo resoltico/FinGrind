@@ -103,7 +103,7 @@ class MachineContractTest {
     assertEquals(rejectionCodes.size(), rejectionCodes.stream().distinct().count());
     assertTrue(errorCodes.contains("invalid-page-cursor"));
     assertTrue(errorCodes.contains("interactive-prompt-unavailable"));
-    assertTrue(errorCodes.contains("book-authentication-failed"));
+    assertTrue(errorCodes.contains("protected-book-verification-failed"));
     assertTrue(errorCodes.contains("managed-runtime-failure"));
     assertTrue(errorCodes.contains("storage-runtime-failure"));
     assertTrue(errorCodes.contains("pdf-export-failure"));

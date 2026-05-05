@@ -37,9 +37,11 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly source_wrapper="${repo_root}/jazzer/bin/fuzz-all"
 readonly source_common="${repo_root}/jazzer/bin/common.sh"
+readonly topology_reader="${repo_root}/scripts/read-jazzer-topology.py"
 
 [[ -f "${source_wrapper}" ]] || die "missing fuzz-all wrapper"
 [[ -f "${source_common}" ]] || die "missing common.sh wrapper library"
+[[ -f "${topology_reader}" ]] || die "missing Jazzer topology reader"
 
 tmp_dir="$(mktemp -d)"
 cleanup() {
@@ -59,7 +61,7 @@ declare -a active_target_keys=()
 while IFS= read -r target_key; do
     active_target_keys+=("${target_key}")
 done < <(
-    "${repo_root}/gradlew" -p "${repo_root}/jazzer" --no-daemon --no-configuration-cache -q jazzerActiveTargets
+    python3 "${topology_reader}" active-target-keys
 )
 
 [[ "${#active_target_keys[@]}" -ge 2 ]] || die "expected at least two active Jazzer targets"

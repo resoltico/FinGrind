@@ -4,10 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.AccountCode;
@@ -17,6 +14,9 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -51,7 +51,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void listPostings_filtersAndPaginatesCommittedPostings() {
     Path databasePath = tempDirectory.resolve("list-postings.sqlite");
-    PostingFact postingOne =
+    CommittedPosting postingOne =
         postingFact(
             "posting-1",
             "idem-1",
@@ -60,7 +60,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact postingTwo =
+    CommittedPosting postingTwo =
         postingFact(
             "posting-2",
             "idem-2",
@@ -69,7 +69,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("3000", JournalLine.EntrySide.DEBIT, "EUR", "20.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "20.00")));
-    PostingFact postingThree =
+    CommittedPosting postingThree =
         postingFact(
             "posting-3",
             "idem-3",
@@ -83,8 +83,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("3000"),
                   new AccountName("Receivable"),
                   NormalBalance.DEBIT,
@@ -104,22 +104,22 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
 
       assertEquals(
           new PostingPage(
-              List.of(postingThree, postingTwo),
+              List.of(publishedPostingFact(postingThree), publishedPostingFact(postingTwo)),
               2,
-              Optional.of(PostingPageCursor.fromPosting(postingTwo))),
+              Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo)))),
           postingFactStore.listPostings(
               new ListPostingsQuery(Optional.empty(), null, null, 2, Optional.empty())));
       assertEquals(
-          new PostingPage(List.of(postingOne), 2, Optional.empty()),
+          new PostingPage(List.of(publishedPostingFact(postingOne)), 2, Optional.empty()),
           postingFactStore.listPostings(
               new ListPostingsQuery(
                   Optional.empty(),
                   null,
                   null,
                   2,
-                  Optional.of(PostingPageCursor.fromPosting(postingTwo)))));
+                  Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo))))));
       assertEquals(
-          new PostingPage(List.of(postingOne), 50, Optional.empty()),
+          new PostingPage(List.of(publishedPostingFact(postingOne)), 50, Optional.empty()),
           postingFactStore.listPostings(
               new ListPostingsQuery(
                   Optional.of(new AccountCode("1000")),
@@ -133,7 +133,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByPostingId_returnsEmptyWhenExistingBookHasNoMatchingPosting() {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
-    PostingFact postingFact =
+    CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
 
     try (SqlitePostingFactStore postingFactStore =
@@ -174,7 +174,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                   assertThrows(
                       NullPointerException.class,
                       () ->
-                          SqliteStatementQueries.findOnePosting(
+                          SqliteStatementQueries.findOneCommittedPosting(
                               database,
                               "select null as posting_id",
                               statement -> {},

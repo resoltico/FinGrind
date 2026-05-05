@@ -5,8 +5,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-05-05
+
 ### Fixed
 
+- Pinned `container.yml` runners to `ubuntu-24.04` (both the `container` and `cleanup` jobs used the floating `ubuntu-latest` label — the most security-sensitive workflow was the least pinned).
+- Raised `container` job `timeout-minutes` from 35 to 45 to provide a clear margin between multi-arch image build time and the post-push verification step; the former 35-minute ceiling was tight enough that slow runners could cancel verification after a successful push.
+- Added OCI build provenance (`provenance: mode=max`) and SBOM (`sbom: true`) attestations to the `docker/build-push-action` step; both are stored as OCI attestations attached to the published GHCR image digest, enabling supply-chain verification via `docker buildx imagetools inspect`.
+- Added `id-token: write` permission to the `container` job to allow the OIDC token flow required for keyless provenance attestation signing.
+- Pinned `gradle-wrapper-validation.yml` runner to `ubuntu-24.04`; it was the only remaining workflow using the floating `ubuntu-latest` label.
+- Hardcoded the release-blocking check list in `verify-release-candidate-tag.sh` to `Gate` (the single aggregate CI check) and removed the `FINGRIND_RELEASE_BLOCKING_CHECKS` env-var override; the previous default included `Contributor devcontainer` which is legitimately skipped on commits that do not touch devcontainer files, causing the script to false-fail on any such release commit.
+- Updated the branch protection reference in `RELEASE_PROTOCOL.md` §Step 1 to reflect the current single required status check (`Gate`) instead of the former three-check list (`Check`, `Windows bundle smoke`, `Docker smoke`).
+- Tightened `RELEASE_PROTOCOL.md` so release hygiene now also closes any ordinary open PR that was superseded by the shipped release branch, instead of only triaging Dependabot leftovers.
+- Raised `verify-github-release.sh` default retry count from 1 to 3 and default inter-retry delay from 0 to 5 seconds so release asset availability checks are resilient to brief GitHub API propagation lag when run outside the container workflow's explicit override values.
+- Removed `isPreserveFileTimestamps = false` from the `bundleCliZip` and `bundleCliTarGz` archive tasks; the setting zeroed every file's modification time to the MS-DOS epoch minimum (1980-02-01 for ZIP) or the Unix epoch (1970-01-02 for TAR), making all files in every release package appear frozen in 1970 or 1980 in file managers and `ls -l` output. Retaining `isReproducibleFileOrder = true` keeps entries in a stable alphabetical order for auditing without clobbering timestamps.
+- Pinned release workflow runners to `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`, and `windows-2022` instead of the floating `ubuntu-latest`, `macos-latest`, and `windows-latest` labels so runner image updates cannot silently change the native build environment across releases.
 - Path-gated the `devcontainer` CI job so it fires only when devcontainer-relevant files actually change (`.devcontainer/`, `scripts/validate-devcontainer.sh`, `scripts/devcontainer-prepare-user-home.sh`, `scripts/repo-verification-lock-support.sh`, `scripts/python-runtime-support.sh`); non-devcontainer PRs skip the full Docker build-and-validate cycle, reducing typical PR wall-clock time by 15-20 minutes.
 - Added a `devcontainer-changes` detection job that computes a git diff of the PR's changed files against the devcontainer trigger paths before the gate is evaluated. The `devcontainer` job no longer depends on `check` — the contributor environment is orthogonal to code correctness and should be proven whenever its files change regardless of whether the application gate passes.
 - Added a `gate` aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge — only a failed or cancelled job prevents success. Configure branch protection to require `Gate` as the single required check.
@@ -15,7 +28,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Windows Defender exclusions for the workspace and Gradle user home in `windows-bundle-smoke` before any Gradle operations begin, eliminating antivirus scan overhead that otherwise scans every `.class`, native library, and JAR file written during compilation.
 - Promoted top-level `permissions: contents: read` to the workflow level and removed the redundant per-job declarations.
 - Raised `check` job `timeout-minutes` from 15 to 40 to accommodate the Docker build inside the release-surface scripts verification step on days when apt mirrors respond slowly; the step consistently completes in under 5 minutes on fast days but has been observed to take over 23 minutes when mirrors are degraded.
-- Added §7.11 "In-progress work awareness" to `AGENTS.md` — a standing norm requiring agents to inspect open PRs before starting non-trivial work so existing in-flight theory is not destroyed by starting fresh; also fixed the §7.10 heading level and bumped the document version to 2.4.0.
+- Unified the release and branch-protection check contract on the single `Gate` status across the release verifiers, bootstrap protocol, release protocol, and shell regressions so the path-gated contributor-devcontainer job can skip without false-failing post-merge or tag verification.
+- Moved script-managed `GRADLE_USER_HOME` defaults for `./check.sh` and `./scripts/docker-smoke.sh` out of the checkout and into the same repo-keyed user-cache root used by the wrapper support helpers, restoring the documented mounted-checkout verification path.
+- Fixed `cleanBundleOutputs` so `:cli:bundleCliArchive` removes obsolete `fingrind-*` bundle artifacts from the active distribution directory and legacy in-checkout leftovers before writing the current host bundle artifact.
+- Replaced hardcoded `cli/build/...` local launcher commands with `scripts/source-checkout-cli.*` and `scripts/direct-java-cli.*` wrappers that resolve the active Gradle build directory, so CLI help, docs, and developer commands remain truthful when wrapper-owned build output is relocated out of the checkout.
+- Restored the dedicated nested Jazzer build output root so the shared Java conventions no longer override it on relocated-checkout runs and stale-class pruning targets the real Jazzer compile output.
+- Replaced the misleading former book-authentication-failed public error with `protected-book-verification-failed`, which truthfully covers wrong secrets, damaged or truncated protected books, and unsupported protected SQLite variants without pretending every verification failure is a passphrase mistake.
+- Fixed atomic SQLite ledger-plan rollback for newly created books so assertion failures and other rejected plans remove the transient protected-book file and any empty parent directories they created instead of leaving a blank SQLite shell behind.
+- Removed fragile qualified JPMS exports from the `executor` module, taught the Java source-policy gate to reject future `exports ... to` seams in repository modules, and hardened the Jazzer stale-class regression so nested compile runs fail on module-target warnings instead of printing them as benign noise.
+- Split SQLite runtime verification by real provenance path so source-checkout launcher verification and environment-configured Gradle JavaExec verification are checked independently instead of one script claiming both.
+- Replaced the ad-hoc Docker assembly inputs with one staged `:cli:stageDockerBuildContext` directory plus `docker-build-context-manifest.json`, updated Docker smoke and CI/container workflows to consume that single staged context, and kept Docker's SQLite compiler flags derived from the canonical managed-SQLite contract through `scripts/render-managed-sqlite-compiler-flags.py`.
+- Added `DEVELOPER_SECURITY.md` plus a contract gate for the security model, consolidating the protected-book threat boundary, secret transport rules, runtime provenance model, and verification-failure semantics into one canonical theory surface.
+- Upgraded `tools.jackson.core:jackson-databind` from `3.1.2` to `3.1.3`.
+- Aligned every AFAD-managed documentation page with the current project version from `gradle.properties` and added a contract-lint gate so documentation frontmatter cannot drift onto a future or mixed release version.
+- Replaced release-numbered extracted-bundle launcher paths in the public CLI guides with archive-derived launcher examples, and moved shared bundle-archive verification onto one Python owner used by both Bash and PowerShell bundle smoke.
+- Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
+- Split the internal bookkeeping and workflow models away from the public contract DTOs, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
 
 ## [0.30.0] - 2026-05-02
 
@@ -101,12 +129,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   violations structurally under `details.violations`.
 - Hardened the Jazzer operator surface so deterministic local and CI-safe verification now runs
   through `jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check` instead of raw
-  nested-Gradle commands, the wrapper/regression surfaces derive active target keys from the
-  canonical `jazzerActiveTargets` task instead of an embedded Python JSON parser, and the Java
-  replay/list-findings/regression entrypoints require an explicit `--project-root` contract rather
-  than inferring the project from caller cwd. Those deterministic wrapper entrypoints now also
-  start from a clean relocated nested-build output so removed inner classes cannot survive across
-  sessions and poison JaCoCo verification.
+  nested-Gradle commands, the wrapper/regression surfaces derive target keys from the committed
+  Jazzer topology document instead of booting the nested build just to enumerate wrappers, and the
+  Java replay/list-findings/regression entrypoints require an explicit `--project-root` contract
+  rather than inferring the project from caller cwd. Those deterministic wrapper entrypoints now
+  also start from a clean relocated nested-build output so removed inner classes cannot survive
+  across sessions and poison JaCoCo verification.
 - Hardened the nested Jazzer Gradle build so `compileJava` prunes its cached main source-set
   output directory before recompiling. Direct `./gradlew --project-dir jazzer ...` runs no longer
   carry orphaned helper classfiles forward into JaCoCo or deterministic replay after a source file
@@ -137,9 +165,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tightened the remaining SQLite/Jazzer/operator ownership seams so SQLite book sessions and native
   handles now reject cross-thread access explicitly instead of only documenting thread confinement,
   Bash release-smoke support files now fail fast when executed directly instead of returning a
-  false-green no-op, and Jazzer wrapper replay/list-findings target validation now comes from
-  Gradle-owned `jazzerActiveTargets` plus `jazzerReplayableTargets` query tasks instead of
-  shell-local topology scraping.
+  false-green no-op, and Jazzer wrapper target discovery plus replay/list-findings validation now
+  project directly from the committed topology document instead of spawning the nested Gradle build
+  for target enumeration.
 - Expanded the committed `sqlite-book-roundtrip` Jazzer surface so parsed SQLite seeds now also
   drive executed read/report response rendering, corrupt pre-schema book-path failures,
   concurrent contender behavior, and derived reversal near misses and duplicate reversals, and
@@ -794,7 +822,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refusals, and invalid key-file contract violations now exit `2` instead of surfacing as generic
   `runtime-failure`.
 - Stopped wrong-passphrase failures from leaking raw SQLite storage symptoms such as
-  `SQLITE_NOTADB`; the public surface now returns `book-authentication-failed` with repair hints.
+  `SQLITE_NOTADB`; the public surface now returns `protected-book-verification-failed` with repair
+  hints.
 - Normalized report JSON payloads onto explicit wire shapes so report commands no longer leak
   internal value-object structure such as nested `.value` wrappers into the machine contract.
 - Unified the bundle and container private-runtime build paths around one staged module list and
@@ -1329,7 +1358,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.31.0...HEAD
+[0.31.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.31.0
 [0.30.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.30.0
 [0.29.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.29.0
 [0.28.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.28.0

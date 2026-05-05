@@ -407,6 +407,7 @@ class ProtocolContractLintSupport {
                 "posting-workflow",
                 "replace-before-commit-effective-date",
                 "regression-input",
+                "semver-major",
                 "raw-json",
                 "replay-clean",
                 "reversal-already-exists",
@@ -420,6 +421,8 @@ class ProtocolContractLintSupport {
                 "timeout-minutes",
                 "unknown-account",
                 "unknown-command",
+                "macos-15",
+                "macos-latest",
                 "ubuntu-latest",
                 "unexpected-failure",
                 "windows-bundle-smoke",
@@ -442,6 +445,7 @@ class ProtocolContractLintSupport {
     ids.addAll(BookProtectionMode.wireValues());
     ids.addAll(BookCipher.wireValues());
     ids.addAll(SqliteLibraryMode.wireValues());
+    ids.addAll(SqliteRuntimeProvenance.wireValues());
     ids.addAll(SqliteRuntimeStatus.wireValues());
     ids.addAll(WorkflowSurface.wireValues());
     ids.addAll(ProtocolSuccessStatus.wireValues());

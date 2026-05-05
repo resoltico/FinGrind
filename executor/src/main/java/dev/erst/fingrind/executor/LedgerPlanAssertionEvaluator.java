@@ -3,9 +3,9 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.AccountBalanceResult;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerFact;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
 import java.util.Optional;
 
 /** Assertion evaluation support for first-class ledger-plan assert steps. */
@@ -13,21 +13,21 @@ final class LedgerPlanAssertionEvaluator {
   private LedgerPlanAssertionEvaluator() {}
 
   static LedgerPlanStepOutcome evaluate(
-      BookReadService bookReadService, LedgerAssertion assertion) {
+      BookReadService bookReadService, BookWorkflowAssertion assertion) {
     return switch (assertion) {
-      case LedgerAssertion.AccountDeclared accountDeclared ->
+      case BookWorkflowAssertion.AccountDeclared accountDeclared ->
           assertAccountDeclared(bookReadService, accountDeclared);
-      case LedgerAssertion.AccountActive accountActive ->
+      case BookWorkflowAssertion.AccountActive accountActive ->
           assertAccountActive(bookReadService, accountActive);
-      case LedgerAssertion.PostingExists postingExists ->
+      case BookWorkflowAssertion.PostingExists postingExists ->
           assertPostingExists(bookReadService, postingExists);
-      case LedgerAssertion.AccountBalanceEquals balanceEquals ->
+      case BookWorkflowAssertion.AccountBalanceEquals balanceEquals ->
           assertAccountBalance(bookReadService, balanceEquals);
     };
   }
 
   private static LedgerPlanStepOutcome assertAccountDeclared(
-      BookReadService bookReadService, LedgerAssertion.AccountDeclared assertion) {
+      BookReadService bookReadService, BookWorkflowAssertion.AccountDeclared assertion) {
     boolean present = bookReadService.findAccount(assertion.accountCode()).isPresent();
     return present
         ? LedgerPlanOutcomeMapper.stepSucceeded(
@@ -38,8 +38,8 @@ final class LedgerPlanAssertionEvaluator {
   }
 
   private static LedgerPlanStepOutcome assertAccountActive(
-      BookReadService bookReadService, LedgerAssertion.AccountActive assertion) {
-    Optional<DeclaredAccount> account = bookReadService.findAccount(assertion.accountCode());
+      BookReadService bookReadService, BookWorkflowAssertion.AccountActive assertion) {
+    Optional<RegisteredAccount> account = bookReadService.findAccount(assertion.accountCode());
     if (account.isEmpty()) {
       return LedgerPlanOutcomeMapper.assertionFailure(
           "Account is not declared.",
@@ -54,7 +54,7 @@ final class LedgerPlanAssertionEvaluator {
   }
 
   private static LedgerPlanStepOutcome assertPostingExists(
-      BookReadService bookReadService, LedgerAssertion.PostingExists assertion) {
+      BookReadService bookReadService, BookWorkflowAssertion.PostingExists assertion) {
     boolean present = bookReadService.findPosting(assertion.postingId()).isPresent();
     return present
         ? LedgerPlanOutcomeMapper.stepSucceeded(
@@ -64,7 +64,7 @@ final class LedgerPlanAssertionEvaluator {
   }
 
   private static LedgerPlanStepOutcome assertAccountBalance(
-      BookReadService bookReadService, LedgerAssertion.AccountBalanceEquals assertion) {
+      BookReadService bookReadService, BookWorkflowAssertion.AccountBalanceEquals assertion) {
     return switch (bookReadService.accountBalance(assertion.query())) {
       case AccountBalanceResult.Reported reported ->
           assertAccountBalance(assertion, reported.snapshot());
@@ -74,7 +74,7 @@ final class LedgerPlanAssertionEvaluator {
   }
 
   private static LedgerPlanStepOutcome assertAccountBalance(
-      LedgerAssertion.AccountBalanceEquals assertion, AccountBalanceSnapshot snapshot) {
+      BookWorkflowAssertion.AccountBalanceEquals assertion, AccountBalanceSnapshot snapshot) {
     Optional<CurrencyBalance> matchingBalance =
         snapshot.balances().stream()
             .filter(

@@ -8,19 +8,20 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.PostingValidation;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicReference;
@@ -165,9 +166,28 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
               IllegalStateException.class,
               () -> postingFactStore.findAccount(new AccountCode("1000")));
 
-      assertInvalidPlaintextBookFailure(firstFailure);
+      assertProtectedBookVerificationFailure(firstFailure);
       assertSame(firstFailure, secondFailure);
     }
+  }
+
+  @Test
+  void protectedBookVerificationFailure_coversCorruptedAndTruncatedProtectedBooks()
+      throws Exception {
+    Path intactBookPath = tempDirectory.resolve("intact-protected.sqlite");
+    initializeBookOnDisk(intactBookPath);
+    byte[] intactBytes = Files.readAllBytes(intactBookPath);
+
+    Path corruptedBookPath = tempDirectory.resolve("corrupted-protected.sqlite");
+    byte[] corruptedBytes = intactBytes.clone();
+    corruptedBytes[Math.min(200, corruptedBytes.length - 1)] ^= 0x5A;
+    Files.write(corruptedBookPath, corruptedBytes);
+
+    Path truncatedBookPath = tempDirectory.resolve("truncated-protected.sqlite");
+    Files.write(truncatedBookPath, Arrays.copyOf(intactBytes, 128));
+
+    assertProtectedBookVerificationFailure(corruptedBookPath);
+    assertProtectedBookVerificationFailure(truncatedBookPath);
   }
 
   @Test
@@ -205,8 +225,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
             new SqlitePostingFactStore(
                 existingBookPath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("3000"),
                   new AccountName("Equity"),
                   NormalBalance.CREDIT,
@@ -236,6 +256,15 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
       assertEquals(
           "This FinGrind SQLite session cannot initialize or create a book file.",
           exception.getMessage());
+    }
+  }
+
+  private void assertProtectedBookVerificationFailure(Path bookPath) {
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(bookPath))) {
+      IllegalStateException exception =
+          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 
@@ -354,7 +383,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
       setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(blankBookPath)));
       assertEquals(
           Optional.of(new PostingRejection.BookNotInitialized()),
-          PostingValidation.rejectionFor(
+          PostingAcceptancePolicy.rejectionFor(
               postingDraft("posting-helper", "idem-helper", Optional.empty(), Optional.empty()),
               new SqliteTransactionValidationBook(
                   storeDatabase(postingFactStore), postingFactStore.postingReader())));

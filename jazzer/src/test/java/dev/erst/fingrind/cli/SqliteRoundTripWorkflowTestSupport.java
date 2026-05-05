@@ -21,6 +21,8 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.PostingBookSession;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
 import java.util.Objects;
@@ -197,10 +199,12 @@ final class SqliteRoundTripWorkflowTestSupport {
   }
 
   static final class StubSqliteBookSession implements SqliteBookSession {
-    private final Optional<DeclaredAccount> account;
+    private final Optional<RegisteredAccount> account;
 
     StubSqliteBookSession(Optional<DeclaredAccount> account) {
-      this.account = account;
+      this.account =
+          Objects.requireNonNull(account, "account")
+              .map(SqliteRoundTripWorkflowTestSupport::registeredAccount);
     }
 
     @Override
@@ -219,12 +223,12 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
-    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
       return account;
     }
 
     @Override
-    public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       throw new UnsupportedOperationException();
     }
 
@@ -253,5 +257,14 @@ final class SqliteRoundTripWorkflowTestSupport {
     public void rollbackLedgerPlanTransaction() {
       throw new UnsupportedOperationException();
     }
+  }
+
+  private static RegisteredAccount registeredAccount(DeclaredAccount account) {
+    return new RegisteredAccount(
+        account.accountCode(),
+        account.accountName(),
+        account.normalBalance(),
+        account.active(),
+        account.declaredAt());
   }
 }

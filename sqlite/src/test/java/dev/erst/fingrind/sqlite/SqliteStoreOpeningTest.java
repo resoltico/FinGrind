@@ -49,7 +49,7 @@ class SqliteStoreOpeningTest extends SqlitePostingFactStoreTestSupport {
     @Override
     ContractDecision<SqlitePostingFactStore> prime() {
       return ContractDecision.rejected(
-          ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.failure(
+          ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
               "Simulated priming rejection.", null, null));
     }
 

@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.time.Clock;
 import java.util.Objects;
 
@@ -18,12 +18,12 @@ public final class BookAdministrationService {
   }
 
   /** Explicitly initializes a new book. */
-  public OpenBookResult openBook() {
+  public BookOpeningOutcome openBook() {
     return bookSession.openBook(clock.instant());
   }
 
   /** Declares or reactivates one account in the selected book. */
-  public DeclareAccountResult declareAccount(DeclareAccountCommand command) {
+  public AccountDeclarationOutcome declareAccount(AccountDeclaration command) {
     Objects.requireNonNull(command, "command");
     return bookSession.declareAccount(
         command.accountCode(), command.accountName(), command.normalBalance(), clock.instant());

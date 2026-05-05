@@ -3,10 +3,6 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -24,6 +20,11 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
+import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,15 +35,16 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for shared posting validation rules. */
-class PostingValidationTest {
+/** Unit tests for shared bookkeeping posting acceptance rules. */
+class PostingAcceptancePolicyTest {
   @Test
   void rejectionFor_reportsDuplicateIdempotencyBeforeAccountViolations() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
     book.existingPosting = Optional.of(existingPosting("posting-1", "idem-1"));
 
-    Optional<PostingRejection> rejection = PostingValidation.rejectionFor(command("idem-1"), book);
+    Optional<PostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(command("idem-1"), book);
 
     assertEquals(Optional.of(new PostingRejection.DuplicateIdempotencyKey()), rejection);
     assertEquals(0, book.findAccountsCalls);
@@ -54,7 +56,7 @@ class PostingValidationTest {
     book.initialized = true;
     book.accounts.put(
         new AccountCode("1000"),
-        new DeclaredAccount(
+        new RegisteredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
             NormalBalance.DEBIT,
@@ -62,7 +64,7 @@ class PostingValidationTest {
             Instant.parse("2026-04-07T10:15:30Z")));
 
     Optional<PostingRejection> rejection =
-        PostingValidation.rejectionFor(
+        PostingAcceptancePolicy.rejectionFor(
             command(
                 "idem-2",
                 List.of(
@@ -88,8 +90,8 @@ class PostingValidationTest {
     FallbackValidationBook book = new FallbackValidationBook();
     AccountCode cash = new AccountCode("1000");
     AccountCode revenue = new AccountCode("2000");
-    DeclaredAccount cashAccount =
-        new DeclaredAccount(
+    RegisteredAccount cashAccount =
+        new RegisteredAccount(
             cash,
             new AccountName("Cash"),
             NormalBalance.DEBIT,
@@ -103,7 +105,7 @@ class PostingValidationTest {
     assertEquals(List.of(cash, revenue), book.requestedAccounts);
   }
 
-  private static PostEntryCommand command(String idempotencyKey) {
+  private static PostingCommand command(String idempotencyKey) {
     return command(
         idempotencyKey,
         List.of(
@@ -111,10 +113,10 @@ class PostingValidationTest {
             line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
   }
 
-  private static PostEntryCommand command(String idempotencyKey, List<JournalLine> lines) {
-    return new PostEntryCommand(
+  private static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
+    return new PostingCommand(
         new JournalEntry(LocalDate.parse("2026-04-07"), lines),
-        PostingLineage.direct(),
+        PostingLineageModel.direct(),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,
@@ -125,15 +127,15 @@ class PostingValidationTest {
         SourceChannel.CLI);
   }
 
-  private static PostingFact existingPosting(String postingId, String idempotencyKey) {
-    return new PostingFact(
+  private static CommittedPosting existingPosting(String postingId, String idempotencyKey) {
+    return new CommittedPosting(
         new PostingId(postingId),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
-        PostingLineage.direct(),
+        PostingLineageModel.direct(),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -155,9 +157,9 @@ class PostingValidationTest {
 
   /** Validation-book double that exposes the batch account lookup path explicitly. */
   private static final class RecordingValidationBook implements PostingValidationBook {
-    private final Map<AccountCode, DeclaredAccount> accounts = new ConcurrentHashMap<>();
+    private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
     private boolean initialized;
-    private Optional<PostingFact> existingPosting = Optional.empty();
+    private Optional<CommittedPosting> existingPosting = Optional.empty();
     private int findAccountsCalls;
     private List<AccountCode> requestedAccounts = List.of();
 
@@ -167,18 +169,18 @@ class PostingValidationTest {
     }
 
     @Override
-    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
       throw new AssertionError("findAccount should not be used when batch lookup is available");
     }
 
     @Override
-    public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+    public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
       findAccountsCalls++;
       requestedAccounts = List.copyOf(accountCodes);
-      Map<AccountCode, DeclaredAccount> matchedAccounts =
+      Map<AccountCode, RegisteredAccount> matchedAccounts =
           new java.util.concurrent.ConcurrentHashMap<>();
       for (AccountCode accountCode : accountCodes) {
-        DeclaredAccount account = accounts.get(accountCode);
+        RegisteredAccount account = accounts.get(accountCode);
         if (account != null) {
           matchedAccounts.put(accountCode, account);
         }
@@ -187,24 +189,24 @@ class PostingValidationTest {
     }
 
     @Override
-    public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return existingPosting;
     }
 
     @Override
-    public Optional<PostingFact> findPosting(PostingId postingId) {
+    public Optional<CommittedPosting> findPosting(PostingId postingId) {
       return Optional.empty();
     }
 
     @Override
-    public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
       return Optional.empty();
     }
   }
 
   /** Validation-book double that exercises the default single-account fallback lookup path. */
   private static final class FallbackValidationBook implements PostingValidationBook {
-    private final Map<AccountCode, DeclaredAccount> accounts = new ConcurrentHashMap<>();
+    private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
     private List<AccountCode> requestedAccounts = List.of();
 
     @Override
@@ -213,7 +215,7 @@ class PostingValidationTest {
     }
 
     @Override
-    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
       requestedAccounts =
           java.util.stream.Stream.concat(
                   requestedAccounts.stream(), java.util.stream.Stream.of(accountCode))
@@ -222,17 +224,17 @@ class PostingValidationTest {
     }
 
     @Override
-    public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return Optional.empty();
     }
 
     @Override
-    public Optional<PostingFact> findPosting(PostingId postingId) {
+    public Optional<CommittedPosting> findPosting(PostingId postingId) {
       return Optional.empty();
     }
 
     @Override
-    public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
       return Optional.empty();
     }
   }

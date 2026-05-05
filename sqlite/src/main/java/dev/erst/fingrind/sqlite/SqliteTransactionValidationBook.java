@@ -1,11 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingValidationBook;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -33,12 +33,12 @@ final class SqliteTransactionValidationBook implements PostingValidationBook {
   }
 
   @Override
-  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     return Optional.ofNullable(findAccounts(Set.of(accountCode)).get(accountCode));
   }
 
   @Override
-  public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     try {
       return SqliteStatementQueries.findAccounts(activeDatabase, accountCodes);
     } catch (SqliteNativeException exception) {
@@ -47,29 +47,29 @@ final class SqliteTransactionValidationBook implements PostingValidationBook {
   }
 
   @Override
-  public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+  public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     return findPostingWithBinder(
         SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
         statement -> statement.bindText(1, idempotencyKey.value()));
   }
 
   @Override
-  public Optional<PostingFact> findPosting(PostingId postingId) {
+  public Optional<CommittedPosting> findPosting(PostingId postingId) {
     return findPostingWithBinder(
         SqlitePostingSql.FIND_POSTING_BY_ID, statement -> statement.bindText(1, postingId.value()));
   }
 
   @Override
-  public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+  public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return findPostingWithBinder(
         SqlitePostingSql.FIND_REVERSAL_FOR,
         statement -> statement.bindText(1, priorPostingId.value()));
   }
 
-  private Optional<PostingFact> findPostingWithBinder(
+  private Optional<CommittedPosting> findPostingWithBinder(
       String sql, SqliteStatementQueries.Binder binder) {
     try {
-      return postingReader.findOnePosting(activeDatabase, sql, binder);
+      return postingReader.findOneCommittedPosting(activeDatabase, sql, binder);
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }

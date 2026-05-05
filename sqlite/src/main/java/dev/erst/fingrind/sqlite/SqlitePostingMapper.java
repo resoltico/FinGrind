@@ -1,8 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -22,6 +19,10 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,8 +35,8 @@ import java.util.Optional;
 final class SqlitePostingMapper {
   private SqlitePostingMapper() {}
 
-  static DeclaredAccount declaredAccount(SqliteNativeStatement accountRow) {
-    return new DeclaredAccount(
+  static RegisteredAccount registeredAccount(SqliteNativeStatement accountRow) {
+    return new RegisteredAccount(
         new AccountCode(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_CODE)),
         new AccountName(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NAME)),
         NormalBalance.fromWireValue(
@@ -44,7 +45,13 @@ final class SqlitePostingMapper {
         Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
   }
 
-  static PostingFact postingFact(SqliteNativeStatement postingRow, List<JournalLine> lines) {
+  static dev.erst.fingrind.contract.DeclaredAccount declaredAccount(
+      SqliteNativeStatement accountRow) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(registeredAccount(accountRow));
+  }
+
+  static CommittedPosting committedPosting(
+      SqliteNativeStatement postingRow, List<JournalLine> lines) {
     PostingId postingId = new PostingId(requiredText(postingRow, SqlitePostingSql.COL_POSTING_ID));
     JournalEntry journalEntry =
         new JournalEntry(
@@ -63,7 +70,13 @@ final class SqlitePostingMapper {
             Instant.parse(requiredText(postingRow, SqlitePostingSql.COL_RECORDED_AT)),
             SourceChannel.fromWireValue(
                 requiredText(postingRow, SqlitePostingSql.COL_SOURCE_CHANNEL)));
-    return new PostingFact(postingId, journalEntry, readPostingLineage(postingRow), provenance);
+    return new CommittedPosting(
+        postingId, journalEntry, readPostingLineageModel(postingRow), provenance);
+  }
+
+  static dev.erst.fingrind.contract.PostingFact postingFact(
+      SqliteNativeStatement postingRow, List<JournalLine> lines) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(committedPosting(postingRow, lines));
   }
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
@@ -81,24 +94,29 @@ final class SqlitePostingMapper {
     return lines;
   }
 
-  static PostingLineage readPostingLineage(SqliteNativeStatement postingRow) {
+  static PostingLineageModel readPostingLineageModel(SqliteNativeStatement postingRow) {
     Optional<String> priorPostingId =
         optionalText(postingRow, SqlitePostingSql.COL_PRIOR_POSTING_ID);
     Optional<String> reason = optionalText(postingRow, SqlitePostingSql.COL_REASON);
     if (priorPostingId.isEmpty() && reason.isEmpty()) {
-      return PostingLineage.direct();
+      return PostingLineageModel.direct();
     }
     if (priorPostingId.isEmpty() || reason.isEmpty()) {
       throw new IllegalStateException(
           "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.");
     }
-    return PostingLineage.reversal(
+    return PostingLineageModel.reversal(
         new ReversalReference(new PostingId(priorPostingId.orElseThrow())),
         new ReversalReason(reason.orElseThrow()));
   }
 
+  static dev.erst.fingrind.contract.PostingLineage readPostingLineage(
+      SqliteNativeStatement postingRow) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(readPostingLineageModel(postingRow));
+  }
+
   static Optional<ReversalReference> readReversalReference(SqliteNativeStatement postingRow) {
-    return readPostingLineage(postingRow).reversalReference();
+    return readPostingLineageModel(postingRow).reversalReference();
   }
 
   static String requiredText(SqliteNativeStatement row, int columnIndex) {

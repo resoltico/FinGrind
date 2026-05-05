@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do i clean local jazzer state in fingrind", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
@@ -63,9 +63,10 @@ verification command should run at a time.
   `set -u`, including zero-argument cleanup scripts such as `jazzer/bin/clean-local-findings`
 - wrapper arguments are forwarded through to Gradle tasks under `jazzer/`, so think of this
   surface as "project-owned launcher plus Gradle arguments", not as a bespoke standalone CLI
-- wrapper target discovery is contract-owned by the nested Gradle tasks `jazzerActiveTargets` and
-  `jazzerReplayableTargets`; the wrapper surface no longer depends on shell-local topology scraping
-  or an external `python3` JSON parser to discover active or replay-capable targets
+- wrapper target discovery is contract-owned by the committed
+  `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json` document;
+  nested Gradle query tasks, the shell topology reader, and Java runtime support all project from
+  that one file in canonical order
 
 Do not run Jazzer workflows through raw `./gradlew -p jazzer ...` tasks. Those task names are an
 implementation detail under the wrapper, not a supported operator interface.

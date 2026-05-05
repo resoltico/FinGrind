@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookFormatContract;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListAccountsQuery;
@@ -18,7 +17,6 @@ import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
@@ -33,6 +31,13 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
@@ -54,10 +59,10 @@ public final class InMemoryBookSession
         BookReadSession,
         AutoCloseable {
   private final ReentrantLock lock = new ReentrantLock();
-  private final Map<AccountCode, DeclaredAccount> accountsByCode = mutableMap();
-  private final Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey = mutableMap();
-  private final Map<PostingId, PostingFact> postingsByPostingId = mutableMap();
-  private final Map<PostingId, PostingFact> reversalsByPriorPostingId = mutableMap();
+  private final Map<AccountCode, RegisteredAccount> accountsByCode = mutableMap();
+  private final Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey = mutableMap();
+  private final Map<PostingId, CommittedPosting> postingsByPostingId = mutableMap();
+  private final Map<PostingId, CommittedPosting> reversalsByPriorPostingId = mutableMap();
   private @Nullable Snapshot transactionSnapshot;
   private boolean initialized;
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
@@ -98,26 +103,26 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public dev.erst.fingrind.contract.OpenBookResult openBook(Instant initializedAt) {
+  public BookOpeningOutcome openBook(Instant initializedAt) {
     return withLock(
         () -> {
           if (initialized) {
-            return new dev.erst.fingrind.contract.OpenBookResult.Rejected(
+            return new BookOpeningOutcome.Rejected(
                 new BookAdministrationRejection.BookAlreadyInitialized());
           }
           initialized = true;
           this.initializedAt = initializedAt;
-          return new dev.erst.fingrind.contract.OpenBookResult.Opened(initializedAt);
+          return new BookOpeningOutcome.Opened(initializedAt);
         });
   }
 
   @Override
-  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     return withLock(() -> Optional.ofNullable(accountsByCode.get(accountCode)));
   }
 
   @Override
-  public Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     return withLock(
         () ->
             accountCodes.stream()
@@ -128,7 +133,7 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public DeclareAccountResult declareAccount(
+  public AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       NormalBalance normalBalance,
@@ -136,24 +141,18 @@ public final class InMemoryBookSession
     return withLock(
         () -> {
           if (!initialized) {
-            return new DeclareAccountResult.Rejected(
+            return new AccountDeclarationOutcome.Rejected(
                 new BookAdministrationRejection.BookNotInitialized());
           }
-          DeclaredAccount existingAccount = accountsByCode.get(accountCode);
-          if (existingAccount != null && existingAccount.normalBalance() != normalBalance) {
-            return new DeclareAccountResult.Rejected(
-                new BookAdministrationRejection.NormalBalanceConflict(
-                    accountCode, existingAccount.normalBalance(), normalBalance));
-          }
-          DeclaredAccount declaredAccount =
-              new DeclaredAccount(
-                  accountCode,
-                  accountName,
-                  existingAccount == null ? normalBalance : existingAccount.normalBalance(),
-                  true,
+          AccountDeclarationOutcome declarationOutcome =
+              RegisteredAccount.declare(
+                  accountsByCode.get(accountCode),
+                  new AccountDeclaration(accountCode, accountName, normalBalance),
                   declaredAt);
-          accountsByCode.put(accountCode, declaredAccount);
-          return new DeclareAccountResult.Declared(declaredAccount);
+          if (declarationOutcome instanceof AccountDeclarationOutcome.Declared declared) {
+            accountsByCode.put(accountCode, declared.account());
+          }
+          return declarationOutcome;
         });
   }
 
@@ -161,13 +160,16 @@ public final class InMemoryBookSession
   public dev.erst.fingrind.contract.AccountPage listAccounts(ListAccountsQuery query) {
     return withLock(
         () -> {
-          List<DeclaredAccount> accounts =
+          List<RegisteredAccount> accounts =
               accountsByCode.values().stream()
                   .sorted(Comparator.comparing(account -> account.accountCode().value()))
                   .filter(account -> matchesAccountCursor(account, query.cursor()))
                   .toList();
           int end = Math.min(query.limit(), accounts.size());
-          List<DeclaredAccount> pageItems = accounts.subList(0, end);
+          List<DeclaredAccount> pageItems =
+              accounts.subList(0, end).stream()
+                  .map(BookkeepingPublishedLanguageTranslator::toPublished)
+                  .toList();
           return new dev.erst.fingrind.contract.AccountPage(
               pageItems,
               query.limit(),
@@ -178,17 +180,17 @@ public final class InMemoryBookSession
   }
 
   @Override
-  public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+  public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     return withLock(() -> Optional.ofNullable(postingsByIdempotencyKey.get(idempotencyKey)));
   }
 
   @Override
-  public Optional<PostingFact> findPosting(PostingId postingId) {
+  public Optional<CommittedPosting> findPosting(PostingId postingId) {
     return withLock(() -> Optional.ofNullable(postingsByPostingId.get(postingId)));
   }
 
   @Override
-  public Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+  public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return withLock(() -> Optional.ofNullable(reversalsByPriorPostingId.get(priorPostingId)));
   }
 
@@ -197,14 +199,16 @@ public final class InMemoryBookSession
       PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
     return withLock(
         () -> {
-          Optional<PostingRejection> rejection = PostingValidation.rejectionFor(postingDraft, this);
+          Optional<PostingRejection> rejection =
+              PostingAcceptancePolicy.rejectionFor(postingDraft, this);
           if (rejection.isPresent()) {
             return new PostingCommitResult.Rejected(rejection.orElseThrow());
           }
-          PostingFact postingFact = postingDraft.materialize(postingIdGenerator.nextPostingId());
+          CommittedPosting postingFact =
+              postingDraft.materialize(postingIdGenerator.nextPostingId());
           IdempotencyKey idempotencyKey =
               postingFact.provenance().requestProvenance().idempotencyKey();
-          PostingFact existingPosting =
+          CommittedPosting existingPosting =
               postingsByIdempotencyKey.putIfAbsent(idempotencyKey, postingFact);
           if (existingPosting != null) {
             return new PostingCommitResult.Rejected(new PostingRejection.DuplicateIdempotencyKey());
@@ -217,7 +221,7 @@ public final class InMemoryBookSession
             dev.erst.fingrind.core.ReversalReference postedReversal =
                 reversalReference.orElseThrow();
             PostingId priorPostingId = postedReversal.priorPostingId();
-            PostingFact existingReversal =
+            CommittedPosting existingReversal =
                 reversalsByPriorPostingId.putIfAbsent(priorPostingId, postingFact);
             if (existingReversal != null) {
               postingsByIdempotencyKey.remove(idempotencyKey, postingFact);
@@ -234,7 +238,7 @@ public final class InMemoryBookSession
   public PostingPage listPostings(ListPostingsQuery query) {
     return withLock(
         () -> {
-          List<PostingFact> matchingPostings =
+          List<CommittedPosting> matchingPostings =
               postingsByPostingId.values().stream()
                   .filter(posting -> matchesAccountFilter(posting, query.accountCode()))
                   .filter(
@@ -244,7 +248,7 @@ public final class InMemoryBookSession
                   .filter(posting -> matchesCursor(posting, query.cursor()))
                   .sorted(
                       Comparator.comparing(
-                              (PostingFact posting) -> posting.journalEntry().effectiveDate())
+                              (CommittedPosting posting) -> posting.journalEntry().effectiveDate())
                           .reversed()
                           .thenComparing(
                               posting -> posting.provenance().recordedAt(),
@@ -253,7 +257,11 @@ public final class InMemoryBookSession
                               posting -> posting.postingId().value(), Comparator.reverseOrder()))
                   .toList();
           int end = Math.min(query.limit(), matchingPostings.size());
-          List<PostingFact> pageItems = matchingPostings.subList(0, end);
+          List<CommittedPosting> internalPageItems = matchingPostings.subList(0, end);
+          List<dev.erst.fingrind.contract.PostingFact> pageItems =
+              internalPageItems.stream()
+                  .map(BookkeepingPublishedLanguageTranslator::toPublished)
+                  .toList();
           return new PostingPage(
               pageItems,
               query.limit(),
@@ -269,7 +277,7 @@ public final class InMemoryBookSession
       AccountBalanceQuery query) {
     return withLock(
         () -> {
-          DeclaredAccount account = accountsByCode.get(query.accountCode());
+          RegisteredAccount account = accountsByCode.get(query.accountCode());
           if (account == null) {
             return Optional.empty();
           }
@@ -288,7 +296,10 @@ public final class InMemoryBookSession
                   .toList();
           return Optional.of(
               new dev.erst.fingrind.contract.AccountBalanceSnapshot(
-                  account, query.effectiveDateFrom(), query.effectiveDateTo(), balances));
+                  BookkeepingPublishedLanguageTranslator.toPublished(account),
+                  query.effectiveDateFrom(),
+                  query.effectiveDateTo(),
+                  balances));
         });
   }
 
@@ -316,22 +327,27 @@ public final class InMemoryBookSession
                                                                 .isAfter(date)))
                                         .toList())
                                 .stream()
-                                .map(balance -> new TrialBalanceRow(account, balance)))
+                                .map(
+                                    balance ->
+                                        new TrialBalanceRow(
+                                            BookkeepingPublishedLanguageTranslator.toPublished(
+                                                account),
+                                            balance)))
                     .toList()));
   }
 
   @Override
-  public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+  public AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
     return withLock(
         () -> {
           EffectiveDateRange range =
               EffectiveDateRange.of(
                   query.effectiveDateFrom().orElse(null), query.effectiveDateTo().orElse(null));
-          List<PostingFact> orderedPostings =
+          List<CommittedPosting> orderedPostings =
               postingsByPostingId.values().stream()
                   .sorted(
                       Comparator.comparing(
-                              (PostingFact posting) -> posting.journalEntry().effectiveDate())
+                              (CommittedPosting posting) -> posting.journalEntry().effectiveDate())
                           .thenComparing(posting -> posting.provenance().recordedAt())
                           .thenComparing(posting -> posting.postingId().value()))
                   .filter(
@@ -369,13 +385,18 @@ public final class InMemoryBookSession
                         balance(movement.netAmount().currencyCode(), totals);
                     entries.add(
                         new AccountLedgerEntry(
-                            posting,
+                            BookkeepingPublishedLanguageTranslator.toPublished(posting),
                             movement,
                             runningBalance.netAmount(),
                             runningBalance.balanceSide()));
                   });
           List<CurrencyBalance> closingBalances = balancesFromTotals(runningTotals);
-          return new AccountLedgerReport(account, range, openingBalances, entries, closingBalances);
+          return new AccountLedgerReport(
+              BookkeepingPublishedLanguageTranslator.toPublished(account),
+              range,
+              openingBalances,
+              entries,
+              closingBalances);
         });
   }
 
@@ -383,7 +404,7 @@ public final class InMemoryBookSession
   public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
     return withLock(
         () -> {
-          List<PostingFact> postings =
+          List<CommittedPosting> postings =
               postingsByPostingId.values().stream()
                   .filter(
                       posting ->
@@ -419,14 +440,14 @@ public final class InMemoryBookSession
                   .sorted(Comparator.comparing(entry -> entry.getKey().value()))
                   .flatMap(
                       entry -> {
-                        DeclaredAccount account =
+                        RegisteredAccount account =
                             Objects.requireNonNull(accountsByCode.get(entry.getKey()), "account");
                         return entry.getValue().entrySet().stream()
                             .sorted(Comparator.comparing(currency -> currency.getKey().value()))
                             .map(
                                 currencyEntry ->
                                     new PeriodAccountActivityRow(
-                                        account,
+                                        BookkeepingPublishedLanguageTranslator.toPublished(account),
                                         balance(currencyEntry.getKey(), currencyEntry.getValue())));
                       })
                   .toList();
@@ -509,13 +530,13 @@ public final class InMemoryBookSession
   public void deactivateAccount(AccountCode accountCode) {
     withLock(
         () -> {
-          DeclaredAccount existingAccount = accountsByCode.get(accountCode);
+          RegisteredAccount existingAccount = accountsByCode.get(accountCode);
           if (existingAccount == null) {
             throw new IllegalArgumentException("Account is not declared: " + accountCode.value());
           }
           accountsByCode.put(
               accountCode,
-              new DeclaredAccount(
+              new RegisteredAccount(
                   existingAccount.accountCode(),
                   existingAccount.accountName(),
                   existingAccount.normalBalance(),
@@ -525,14 +546,14 @@ public final class InMemoryBookSession
   }
 
   private static boolean matchesAccountFilter(
-      PostingFact postingFact, Optional<AccountCode> accountCode) {
+      CommittedPosting postingFact, Optional<AccountCode> accountCode) {
     return accountCode.isEmpty()
         || postingFact.journalEntry().lines().stream()
             .anyMatch(line -> line.accountCode().equals(accountCode.orElseThrow()));
   }
 
   private static boolean matchesDateRange(
-      PostingFact postingFact,
+      CommittedPosting postingFact,
       Optional<java.time.LocalDate> effectiveDateFrom,
       Optional<java.time.LocalDate> effectiveDateTo) {
     java.time.LocalDate effectiveDate = postingFact.journalEntry().effectiveDate();
@@ -541,13 +562,13 @@ public final class InMemoryBookSession
   }
 
   private static boolean matchesAccountCursor(
-      DeclaredAccount account, Optional<AccountPageCursor> cursor) {
+      RegisteredAccount account, Optional<AccountPageCursor> cursor) {
     return cursor.isEmpty()
         || account.accountCode().value().compareTo(cursor.orElseThrow().accountCode().value()) > 0;
   }
 
   private static boolean matchesCursor(
-      PostingFact postingFact, Optional<dev.erst.fingrind.contract.PostingPageCursor> cursor) {
+      CommittedPosting postingFact, Optional<dev.erst.fingrind.contract.PostingPageCursor> cursor) {
     if (cursor.isEmpty()) {
       return true;
     }
@@ -590,7 +611,7 @@ public final class InMemoryBookSession
   }
 
   private static List<dev.erst.fingrind.contract.CurrencyBalance> balancesFor(
-      DeclaredAccount account, List<PostingFact> postings) {
+      RegisteredAccount account, List<CommittedPosting> postings) {
     Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
     postings.stream()
         .flatMap(posting -> posting.journalEntry().lines().stream())
@@ -624,7 +645,7 @@ public final class InMemoryBookSession
   }
 
   private static dev.erst.fingrind.contract.CurrencyBalance movementFor(
-      DeclaredAccount account, PostingFact postingFact) {
+      RegisteredAccount account, CommittedPosting postingFact) {
     Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
     postingFact.journalEntry().lines().stream()
         .filter(line -> line.accountCode().equals(account.accountCode()))
@@ -666,8 +687,8 @@ public final class InMemoryBookSession
   private record Snapshot(
       boolean initialized,
       Instant initializedAt,
-      Map<AccountCode, DeclaredAccount> accountsByCode,
-      Map<IdempotencyKey, PostingFact> postingsByIdempotencyKey,
-      Map<PostingId, PostingFact> postingsByPostingId,
-      Map<PostingId, PostingFact> reversalsByPriorPostingId) {}
+      Map<AccountCode, RegisteredAccount> accountsByCode,
+      Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey,
+      Map<PostingId, CommittedPosting> postingsByPostingId,
+      Map<PostingId, CommittedPosting> reversalsByPriorPostingId) {}
 }

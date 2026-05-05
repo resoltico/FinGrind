@@ -11,6 +11,9 @@ import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,7 +26,7 @@ import java.util.Optional;
 final class SqlitePostingReader {
   Optional<AccountBalanceSnapshot> accountBalance(
       SqliteNativeDatabase activeDatabase, AccountBalanceQuery query) {
-    Optional<DeclaredAccount> account =
+    Optional<RegisteredAccount> account =
         SqliteStatementQueries.findOneAccount(activeDatabase, query.accountCode());
     if (account.isEmpty()) {
       return Optional.empty();
@@ -34,16 +37,31 @@ final class SqlitePostingReader {
   AccountBalanceSnapshot accountBalance(
       SqliteNativeDatabase activeDatabase,
       AccountBalanceQuery query,
-      DeclaredAccount declaredAccount) {
+      RegisteredAccount declaredAccount) {
     return new AccountBalanceSnapshot(
-        declaredAccount,
+        BookkeepingPublishedLanguageTranslator.toPublished(declaredAccount),
         query.effectiveDateFrom(),
         query.effectiveDateTo(),
         loadCurrencyBalances(activeDatabase, query));
   }
 
+  AccountBalanceSnapshot accountBalance(
+      SqliteNativeDatabase activeDatabase,
+      AccountBalanceQuery query,
+      DeclaredAccount declaredAccount) {
+    return accountBalance(
+        activeDatabase,
+        query,
+        new RegisteredAccount(
+            declaredAccount.accountCode(),
+            declaredAccount.accountName(),
+            declaredAccount.normalBalance(),
+            declaredAccount.active(),
+            declaredAccount.declaredAt()));
+  }
+
   PostingPage loadPostingPage(SqliteNativeDatabase activeDatabase, ListPostingsQuery query) {
-    List<PostingFact> postings = new ArrayList<>();
+    List<CommittedPosting> postings = new ArrayList<>();
     String sql = SqlitePostingSql.listPostings(query);
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindPostingPageQuery(statement, query);
@@ -52,23 +70,28 @@ final class SqlitePostingReader {
       }
     }
     boolean hasMore = postings.size() > query.limit();
-    List<PostingFact> pageItems = hasMore ? postings.subList(0, query.limit()) : postings;
+    List<CommittedPosting> pageItems = hasMore ? postings.subList(0, query.limit()) : postings;
     Optional<PostingPageCursor> nextCursor =
         hasMore
-            ? Optional.of(PostingPageCursor.fromPosting(pageItems.getLast()))
+            ? Optional.of(
+                PostingPageCursor.fromPosting(
+                    BookkeepingPublishedLanguageTranslator.toPublished(pageItems.getLast())))
             : Optional.empty();
-    return new PostingPage(pageItems, query.limit(), nextCursor);
+    return new PostingPage(
+        pageItems.stream().map(BookkeepingPublishedLanguageTranslator::toPublished).toList(),
+        query.limit(),
+        nextCursor);
   }
 
-  Optional<PostingFact> findOnePosting(
+  Optional<CommittedPosting> findOneCommittedPosting(
       SqliteNativeDatabase activeDatabase, String sql, SqliteStatementQueries.Binder binder) {
-    return SqliteStatementQueries.findOnePosting(
+    return SqliteStatementQueries.findOneCommittedPosting(
         activeDatabase, sql, binder, postingId -> loadLines(activeDatabase, postingId));
   }
 
-  List<PostingFact> loadPostingFacts(
+  List<CommittedPosting> loadCommittedPostings(
       SqliteNativeDatabase activeDatabase, String sql, SqliteStatementQueries.Binder binder) {
-    List<PostingFact> postings = new ArrayList<>();
+    List<CommittedPosting> postings = new ArrayList<>();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       binder.bind(statement);
       while (statement.step() == SqliteNativeResultCodes.ROW) {
@@ -78,11 +101,18 @@ final class SqlitePostingReader {
     return List.copyOf(postings);
   }
 
-  private PostingFact loadPostingRow(
+  List<PostingFact> loadPostingFacts(
+      SqliteNativeDatabase activeDatabase, String sql, SqliteStatementQueries.Binder binder) {
+    return loadCommittedPostings(activeDatabase, sql, binder).stream()
+        .map(BookkeepingPublishedLanguageTranslator::toPublished)
+        .toList();
+  }
+
+  private CommittedPosting loadPostingRow(
       SqliteNativeDatabase activeDatabase, SqliteNativeStatement statement) {
     PostingId postingId =
         new PostingId(SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
-    return SqlitePostingMapper.postingFact(statement, loadLines(activeDatabase, postingId));
+    return SqlitePostingMapper.committedPosting(statement, loadLines(activeDatabase, postingId));
   }
 
   private List<JournalLine> loadLines(SqliteNativeDatabase activeDatabase, PostingId postingId) {

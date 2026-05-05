@@ -10,6 +10,7 @@ readonly FG_JAZZER_DIR="${FG_JAZZER_DIR:-$(cd "${FG_JAZZER_BIN_DIR}/.." && pwd)}
 readonly FG_REPO_ROOT="${FG_REPO_ROOT:-$(cd "${FG_JAZZER_DIR}/.." && pwd)}"
 readonly FG_GRADLEW="${FG_GRADLEW:-${FG_REPO_ROOT}/gradlew}"
 readonly FG_RUN_LOCK_SUPPORT="${FG_REPO_ROOT}/jazzer/bin/_run-lock-support"
+readonly FG_TOPOLOGY_READER="${FG_REPO_ROOT}/scripts/read-jazzer-topology.py"
 readonly FG_TIMEOUT_GRACE_SECONDS=15
 
 fg_active_pid=""
@@ -18,6 +19,10 @@ fg_wrapper_name=""
 
 [[ -f "${FG_RUN_LOCK_SUPPORT}" ]] || {
     printf '%s\n' "Missing Jazzer run-lock support helper: ${FG_RUN_LOCK_SUPPORT}" >&2
+    exit 1
+}
+[[ -f "${FG_TOPOLOGY_READER}" ]] || {
+    printf '%s\n' "Missing Jazzer topology reader: ${FG_TOPOLOGY_READER}" >&2
     exit 1
 }
 
@@ -68,12 +73,12 @@ fg_restore_errexit() {
 
 fg_active_target_keys() {
     acquire_lock
-    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache -q jazzerActiveTargets
+    python3 "${FG_TOPOLOGY_READER}" active-target-keys
 }
 
 fg_replayable_target_keys() {
     acquire_lock
-    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache -q jazzerReplayableTargets
+    python3 "${FG_TOPOLOGY_READER}" replayable-target-keys
 }
 
 fg_require_replayable_target_key() {

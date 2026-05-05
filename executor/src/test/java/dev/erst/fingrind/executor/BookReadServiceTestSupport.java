@@ -12,8 +12,6 @@ import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
@@ -34,6 +32,9 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -58,6 +59,20 @@ final class BookReadServiceTestSupport {
           NormalBalance.CREDIT,
           true,
           FIXED_INSTANT);
+  static final RegisteredAccount REGISTERED_CASH_ACCOUNT =
+      new RegisteredAccount(
+          CASH_ACCOUNT.accountCode(),
+          CASH_ACCOUNT.accountName(),
+          CASH_ACCOUNT.normalBalance(),
+          CASH_ACCOUNT.active(),
+          CASH_ACCOUNT.declaredAt());
+  static final RegisteredAccount REGISTERED_REVENUE_ACCOUNT =
+      new RegisteredAccount(
+          REVENUE_ACCOUNT.accountCode(),
+          REVENUE_ACCOUNT.accountName(),
+          REVENUE_ACCOUNT.normalBalance(),
+          REVENUE_ACCOUNT.active(),
+          REVENUE_ACCOUNT.declaredAt());
   static final CurrencyBalance EUR_DEBIT_BALANCE =
       currencyBalance("10.00", "0", "10.00", BalanceSide.DEBIT);
   static final CurrencyBalance EUR_CREDIT_BALANCE =
@@ -92,8 +107,8 @@ final class BookReadServiceTestSupport {
         FIXED_INSTANT);
   }
 
-  static PostingFact postingFact(String postingId, String idempotencyKey) {
-    return new PostingFact(
+  static CommittedPosting postingFact(String postingId, String idempotencyKey) {
+    return new CommittedPosting(
         new PostingId(postingId),
         new JournalEntry(
             EFFECTIVE_DATE,
@@ -101,7 +116,7 @@ final class BookReadServiceTestSupport {
                 line(CASH_ACCOUNT.accountCode().value(), JournalLine.EntrySide.DEBIT, "10.00"),
                 line(
                     REVENUE_ACCOUNT.accountCode().value(), JournalLine.EntrySide.CREDIT, "10.00"))),
-        PostingLineage.direct(),
+        PostingLineageModel.direct(),
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -140,7 +155,7 @@ final class BookReadServiceTestSupport {
       delegate.openBook(initializedAt);
     }
 
-    void commit(PostingFact postingFact) {
+    void commit(CommittedPosting postingFact) {
       delegate.commit(postingFact);
     }
 
@@ -164,13 +179,13 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
-    public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
       findAccountCalls++;
       return delegate.findAccount(accountCode);
     }
 
     @Override
-    public Optional<PostingFact> findPosting(PostingId postingId) {
+    public Optional<CommittedPosting> findPosting(PostingId postingId) {
       return delegate.findPosting(postingId);
     }
 
@@ -190,7 +205,7 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
-    public AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+    public AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
       return delegate.accountLedger(query, account);
     }
 

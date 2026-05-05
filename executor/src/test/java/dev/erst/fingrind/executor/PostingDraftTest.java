@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -20,6 +18,8 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,8 +34,9 @@ class PostingDraftTest {
   @Test
   void postingDraft_keepsExplicitMissingReversalAndMaterializesPostingFacts() {
     PostingDraft postingDraft =
-        new PostingDraft(journalEntry(), PostingLineage.direct(), committedProvenance("idem-1"));
-    PostingFact postingFact = postingDraft.materialize(new PostingId("posting-1"));
+        new PostingDraft(
+            journalEntry(), PostingLineageModel.direct(), committedProvenance("idem-1"));
+    CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
 
     assertTrue(postingDraft.reversalReference().isEmpty());
     assertEquals(postingDraft.provenance().requestProvenance(), postingDraft.requestProvenance());

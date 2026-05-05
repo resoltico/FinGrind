@@ -15,13 +15,9 @@ import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.core.AccountCode;
@@ -32,6 +28,10 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -118,7 +118,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new OpenBookResult.Rejected(new BookAdministrationRejection.BookContainsSchema()),
+          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookContainsSchema()),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
     }
   }
@@ -181,7 +181,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         }
         case ContractDecision.Rejected<SqlitePostingFactStore>(var failure) ->
             assertEquals(
-                ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.code(), failure.code());
+                ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+                failure.code());
       }
     }
 
@@ -199,11 +200,11 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       var administrationView = postingFactStore.administrationSession();
       assertEquals(
-          new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")),
+          new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           administrationView.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   NormalBalance.DEBIT,
@@ -299,7 +300,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void reportView_delegatesReportsWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("report-view.sqlite");
-    PostingFact openingPosting =
+    CommittedPosting openingPosting =
         postingFact(
             "posting-1",
             "idem-1",
@@ -308,7 +309,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact zeroingPosting =
+    CommittedPosting zeroingPosting =
         postingFact(
             "posting-2",
             "idem-2",
@@ -324,9 +325,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       postingFactStore.commit(openingPosting);
       postingFactStore.commit(zeroingPosting);
 
-      DeclaredAccount revenueAccount =
+      RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
-      DeclaredAccount cashAccount =
+      RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
 
       var reportView = postingFactStore.readSession();
@@ -337,12 +338,12 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           reportView.trialBalance(new TrialBalanceQuery(Optional.empty())));
       assertEquals(
           new AccountLedgerReport(
-              revenueAccount,
+              publishedAccount(revenueAccount),
               EffectiveDateRange.unbounded(),
               List.of(),
               List.of(
                   new AccountLedgerEntry(
-                      openingPosting,
+                      publishedPostingFact(openingPosting),
                       new CurrencyBalance(
                           money("EUR", "0.00"),
                           money("EUR", "10.00"),
@@ -351,7 +352,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                       money("EUR", "10.00"),
                       BalanceSide.CREDIT),
                   new AccountLedgerEntry(
-                      zeroingPosting,
+                      publishedPostingFact(zeroingPosting),
                       new CurrencyBalance(
                           money("EUR", "10.00"),
                           money("EUR", "0.00"),
@@ -381,8 +382,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void reportMethods_throwBookNotInitializedWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("missing-report-book.sqlite");
-    DeclaredAccount cashAccount =
-        new DeclaredAccount(
+    RegisteredAccount cashAccount =
+        new RegisteredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
             NormalBalance.DEBIT,

@@ -2,13 +2,13 @@ package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -33,7 +33,7 @@ class BookAdministrationServiceTest {
       BookAdministrationService service = new BookAdministrationService(bookSession, FIXED_CLOCK);
 
       org.junit.jupiter.api.Assertions.assertEquals(
-          new OpenBookResult.Opened(FIXED_CLOCK.instant()), service.openBook());
+          new BookOpeningOutcome.Opened(FIXED_CLOCK.instant()), service.openBook());
     }
   }
 
@@ -43,14 +43,14 @@ class BookAdministrationServiceTest {
       BookAdministrationService service = new BookAdministrationService(bookSession, FIXED_CLOCK);
       service.openBook();
 
-      DeclareAccountResult result =
+      AccountDeclarationOutcome result =
           service.declareAccount(
-              new DeclareAccountCommand(
+              new AccountDeclaration(
                   new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT));
 
       org.junit.jupiter.api.Assertions.assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   NormalBalance.DEBIT,

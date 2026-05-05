@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -117,9 +117,7 @@ be true before any release commit or tag:
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
   - `main` is protected with admin enforcement
-  - required status checks are exactly `Check`, `Windows bundle smoke`, and `Docker smoke`
-  - the CI workflow also publishes `Contributor devcontainer`, and later release-handoff steps
-    treat it as release-blocking even though branch protection does not
+  - required status checks are exactly `Gate` (the single aggregate check that subsumes all CI jobs)
 
 Before cutting the release branch, enumerate open PRs so dependency-automation work is never
 surprise-discovered after publication:
@@ -138,6 +136,12 @@ that decision forward and complete Step 10 before ending the release session.
 If you merge or close one release-critical PR, re-enumerate the remaining open PRs before acting
 on the next one. A changed `main` branch can invalidate sibling merge state or required-check
 evaluations.
+
+If the primary checkout is currently on an open PR branch and that branch's payload is being
+absorbed into `release/X.Y.Z`, do not keep driving the release from the PR branch name. Branch to
+`release/X.Y.Z` immediately and treat the original PR as provisional theory only. If the release
+PR later ships the same payload, Step 10 must close the superseded PR and delete its branch unless
+it still contains material that is not in `main`.
 
 If Step 1 merges a release-critical PR and the primary checkout already contains the intended
 release payload as uncommitted local changes, do **not** try to `git pull` that dirty `main`
@@ -241,14 +245,10 @@ Treat the PR itself as a second scope-verification checkpoint:
 - Every new commit pushed to the release branch reopens both the Step 2 staging checkpoint and
   this PR diff checkpoint. Re-verify both after each fix commit.
 
-Do not proceed until **every** required job in workflow `CI` has `"conclusion": "SUCCESS"`.
-At the time of writing that means `Check`, `Windows bundle smoke`, and `Docker smoke`.
-If any required job fails, fix the failure, push to the release branch, and wait again — do not
+Do not proceed until the required `Gate` check in workflow `CI` has `"conclusion": "SUCCESS"` on
+the release PR head commit. `Gate` is the single authoritative required check for release
+promotion. If `Gate` fails, fix the failure, push to the release branch, and wait again — do not
 merge a red PR.
-
-If the visible `Contributor devcontainer` job fails on the release branch, fix it before merging
-even though GitHub branch protection does not require it directly. The post-merge handoff and tag
-verification steps below still treat that job as release-blocking.
 
 ### Step 4
 
@@ -278,8 +278,7 @@ Requirements before continuing:
 - The checkout used for `./scripts/verify-release-merge-handoff.sh` exactly matches `origin/main`.
 - The remote release branch is deleted by the merge step.
 - `./scripts/verify-release-merge-handoff.sh` succeeds on the merged `main` commit, which means
-  the release-blocking CI set `Check`, `Windows bundle smoke`, `Docker smoke`, and
-  `Contributor devcontainer` are all green on the exact commit that will be tagged.
+  the canonical `Gate` check is green on the exact commit that will be tagged.
 
 The verifier's default wait is intentionally long enough to cover the normal post-merge CI
 fan-out where `Windows bundle smoke` does not start until `Check` finishes. If GitHub Actions
@@ -552,10 +551,11 @@ availability, not workflow success, is the authoritative state.
 
 ### Step 10
 
-Triage Dependabot PRs and clear dependency-automation leftovers.
+Triage leftover PRs and clear dependency-automation leftovers.
 
-After the public release is verified, do not end the release session while open Dependabot PRs are
-still sitting untriaged. Release hygiene includes dependency-automation hygiene.
+After the public release is verified, do not end the release session while open PRs that were
+reviewed during the release are left in an ambiguous state. Release hygiene includes both
+dependency-automation hygiene and cleanup of ordinary PRs that the release branch superseded.
 
 Re-enumerate all open PRs and identify Dependabot-owned entries directly from GitHub metadata:
 
@@ -606,6 +606,21 @@ gh pr close <N> --comment "Superseded or intentionally rejected during release h
   - closed and branch deleted
   - consciously kept open with an explicit still-valid reason
 
+After the Dependabot pass, inspect any remaining open non-Dependabot PR that overlaps the shipped
+release. This includes the common case where an earlier release-critical PR branch was used as the
+starting theory for the final `release/X.Y.Z` branch. For each such PR:
+
+- If `main` now contains the PR payload and the open PR no longer carries material beyond the
+  shipped release, close it explicitly and delete its branch:
+
+```bash
+gh pr close <N> --comment "Superseded by the published release branch and now present in main." --delete-branch
+```
+
+- If the PR remains open, verify that it still differs materially from `main` and record the
+  keep-open reason in a PR comment. A branch that is only a stale precursor to the shipped release
+  must not remain open.
+
 After each merge or close, resync and re-check GitHub branch state:
 
 ```bash
@@ -619,7 +634,8 @@ gh api "repos/$REPO/branches" --paginate --jq '.[].name'
 Requirements before declaring the release session complete:
 
 - No stale Dependabot PR may remain open without an explicit keep-open decision.
-- No merged or closed Dependabot branch may remain on GitHub.
+- No superseded ordinary PR may remain open after release hygiene.
+- No merged or closed branch handled in this step may remain on GitHub.
 - Any remaining non-`main` branch on GitHub must correspond to an intentional still-open PR that
   was reviewed during this step and deliberately kept alive.
 
@@ -661,3 +677,33 @@ If a disposable release worktree was created and is no longer needed:
 ```bash
 git worktree remove "$RELEASE_WORKTREE"
 ```
+
+---
+
+## Dependabot Approval Strategy
+
+FinGrind is a financial application. **No Dependabot PR may be auto-merged.** Every update —
+regardless of ecosystem, scope, or whether it is flagged as a security fix — requires a human
+decision before landing on `main`.
+
+### Triage tiers
+
+| Tier | Trigger | Deadline | Action |
+|:-----|:--------|:---------|:-------|
+| **Security** | Dependabot security advisory on any direct or transitive dependency | Within 7 calendar days of PR open | Review, verify CI passes, merge or reject with documented reason |
+| **Regular** | Non-security weekly update | Before the next release | Review during Step 10 Dependabot hygiene; merge or close |
+| **Major version bump** | `semver-major` update on any ecosystem | Before the next release | Treat as a considered upgrade, not a routine bump; verify API compatibility explicitly |
+
+### Required gates before any Dependabot merge
+
+1. The full CI `Gate` check passes on the Dependabot PR head commit (i.e., all jobs in `ci.yml` succeeded or were correctly skipped).
+2. For Docker base image updates: `docker-smoke` specifically passes, confirming the new base image does not break the containerized runtime.
+3. For Gradle dependency updates that touch `sqlite` or `sqlite3mc`: the `Verify managed SQLite CLI runtime` step in `check` passes and the managed SQLite hash in `gradle.properties` is still consistent.
+4. For GitHub Actions updates: the pinned commit SHA in the workflow file matches the SHA of the tagged release being adopted — verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`.
+
+### What to never do
+
+- Never merge a Dependabot PR that has a failing or missing `Gate` check.
+- Never merge a Dependabot PR that changes the SQLite native library without verifying the managed runtime still initializes correctly.
+- Never retag or amend a published release to absorb a post-release Dependabot merge.
+- Never leave a Dependabot PR open indefinitely without an explicit keep-open reason documented in a PR comment.

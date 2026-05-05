@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -50,7 +50,7 @@ Public release bundles do not include the repository's `docs/examples/` tree.
 Report PDF artifacts are intentionally not checked in under `docs/examples`; the release and smoke
 workflows verify `--pdf-out` directly against real CLI, bundle, and container surfaces.
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
-- [examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json): deterministic wrong-passphrase error example
+- [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): exact `print-plan-template` scaffold capture
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
@@ -65,6 +65,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 
 - [DEVELOPER.md](./DEVELOPER.md): contributor architecture, quality gates, build entrypoints, and cross-module ownership
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md): preferred contributor container workflow and editor-agnostic container use
+- [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md): canonical bounded contexts, context map, and accounting-entity vocabulary
 - [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md): bundle layout, public artifact rules, and release-asset expectations
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md): documentation placement, maintenance, and reference-spine rules
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md): contributor Docker posture, smoke workflow, and runtime-container boundaries
@@ -73,6 +74,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md): Jazzer purpose, boundaries, and local-only fuzzing stance
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md): supported Jazzer wrapper commands, findings workflow, and operator recovery paths
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): committed harness coverage and remaining hostile-input focus areas
+- [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md): canonical security model, threat boundary, secret transport, and runtime-identity rules
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag verification, and public artifact publication flow

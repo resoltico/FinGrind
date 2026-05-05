@@ -79,7 +79,8 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
               TimeUnit.SECONDS,
               "Concurrent writer start gate timed out.");
           return new ConcurrentCommitDecision(
-              ContractDecision.accepted(applicationService.commit(concurrentCommand)));
+              ContractDecision.accepted(
+                  CliFuzzFixtures.commit(applicationService, concurrentCommand)));
         }
       } catch (InterruptedException exception) {
         throw concurrentWriterInterrupted(exception);

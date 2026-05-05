@@ -121,6 +121,56 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_assertionFailedPlanLeavesMissingBookMissingThroughDefaultSqliteWorkflow()
+      throws IOException {
+    Path planFile = writeNamedRequest("assertion-plan.json", openThenFailAssertionPlanJson());
+    Path bookFilePath =
+        tempDirectory.resolve("plans").resolve("rollback").resolve("assertion-failure.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream planOutputStream = new ByteArrayOutputStream();
+    FinGrindCli executeCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(planOutputStream), fixedClock());
+
+    int exitCode =
+        executeCli.run(
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              planFile.toString()
+            });
+
+    assertEquals(3, exitCode);
+    JsonNode planResult = new ObjectMapper().readTree(planOutputStream.toByteArray());
+    assertEquals("plan-assertion-failed", planResult.path("status").stringValue());
+    assertFalse(Files.exists(bookFilePath));
+
+    ByteArrayOutputStream inspectOutputStream = new ByteArrayOutputStream();
+    FinGrindCli inspectCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(inspectOutputStream),
+            fixedClock());
+
+    assertEquals(
+        0,
+        inspectCli.run(
+            new String[] {
+              "inspect-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString()
+            }));
+
+    JsonNode inspectionResult = new ObjectMapper().readTree(inspectOutputStream.toByteArray());
+    assertEquals("missing", inspectionResult.path("payload").path("state").stringValue());
+  }
+
+  @Test
   void run_rejectsPreflightAgainstMissingBookThroughDefaultSqliteWorkflow() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
     Path bookFilePath = tempDirectory.resolve("live-books").resolve("entity.sqlite");
@@ -242,5 +292,36 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     assertEquals("1000", facts.get(4).path("facts").get(0).path("value").stringValue());
     assertEquals("Cash", facts.get(4).path("facts").get(1).path("value").stringValue());
     assertEquals("DEBIT", facts.get(4).path("facts").get(2).path("value").stringValue());
+  }
+
+  private static String openThenFailAssertionPlanJson() {
+    return """
+            {
+              "planId": "plan-assertion-failure",
+              "steps": [
+                {
+                  "stepId": "open",
+                  "kind": "open-book"
+                },
+                {
+                  "stepId": "declare-cash",
+                  "kind": "declare-account",
+                  "declareAccount": {
+                    "accountCode": "1000",
+                    "accountName": "Cash",
+                    "normalBalance": "DEBIT"
+                  }
+                },
+                {
+                  "stepId": "assert-missing-posting",
+                  "kind": "assert",
+                  "assertion": {
+                    "kind": "assert-posting-exists",
+                    "postingId": "posting-missing"
+                  }
+                }
+              ]
+            }
+            """;
   }
 }

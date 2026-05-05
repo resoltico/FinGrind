@@ -18,11 +18,11 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandFor(
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        "./cli/build/install/cli-shadow/bin/cli",
+        ProtocolCatalog.sourceCheckoutLauncherCommand(false),
         CliInvocationText.launcherCommandFor(
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, "Mac OS X"));
     assertEquals(
-        ".\\cli\\build\\install\\cli-shadow\\bin\\cli.bat",
+        ProtocolCatalog.sourceCheckoutLauncherCommand(true),
         CliInvocationText.launcherCommandFor(
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(

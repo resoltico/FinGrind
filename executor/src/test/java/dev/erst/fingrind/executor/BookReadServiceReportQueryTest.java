@@ -29,6 +29,7 @@ import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -91,6 +92,7 @@ class BookReadServiceReportQueryTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       var postingFact = postingFact("posting-1", "idem-1");
+      var publishedPostingFact = BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
       bookSession.commit(postingFact);
       BookReadService service = new BookReadService(bookSession);
 
@@ -102,7 +104,7 @@ class BookReadServiceReportQueryTest {
                   List.of(),
                   List.of(
                       new AccountLedgerEntry(
-                          postingFact,
+                          publishedPostingFact,
                           EUR_DEBIT_BALANCE,
                           new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
                           BalanceSide.DEBIT)),

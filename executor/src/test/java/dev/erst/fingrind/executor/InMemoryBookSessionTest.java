@@ -7,12 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -32,6 +28,10 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -48,10 +48,11 @@ class InMemoryBookSessionTest {
   void openBook_marksSessionInitializedAndRejectsSecondOpen() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertFalse(bookSession.isInitialized());
-      assertEquals(new OpenBookResult.Opened(FIXED_INSTANT), bookSession.openBook(FIXED_INSTANT));
+      assertEquals(
+          new BookOpeningOutcome.Opened(FIXED_INSTANT), bookSession.openBook(FIXED_INSTANT));
       assertTrue(bookSession.isInitialized());
       assertEquals(
-          new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
+          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
           bookSession.openBook(FIXED_INSTANT));
     }
   }
@@ -60,7 +61,8 @@ class InMemoryBookSessionTest {
   void declareAccount_requiresInitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertEquals(
-          new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+          new AccountDeclarationOutcome.Rejected(
+              new BookAdministrationRejection.BookNotInitialized()),
           bookSession.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -74,13 +76,13 @@ class InMemoryBookSessionTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT);
 
-      DeclareAccountResult result =
+      AccountDeclarationOutcome result =
           bookSession.declareAccount(
               new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
 
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   NormalBalance.DEBIT,
@@ -110,7 +112,7 @@ class InMemoryBookSessionTest {
           new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
       bookSession.deactivateAccount(new AccountCode("1000"));
 
-      DeclareAccountResult result =
+      AccountDeclarationOutcome result =
           bookSession.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash main"),
@@ -118,8 +120,8 @@ class InMemoryBookSessionTest {
               Instant.parse("2026-04-08T11:00:00Z"));
 
       assertEquals(
-          new DeclareAccountResult.Declared(
-              new DeclaredAccount(
+          new AccountDeclarationOutcome.Declared(
+              new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
                   NormalBalance.DEBIT,
@@ -136,7 +138,7 @@ class InMemoryBookSessionTest {
       bookSession.declareAccount(
           new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
 
-      DeclareAccountResult result =
+      AccountDeclarationOutcome result =
           bookSession.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -144,7 +146,7 @@ class InMemoryBookSessionTest {
               FIXED_INSTANT);
 
       assertEquals(
-          new DeclareAccountResult.Rejected(
+          new AccountDeclarationOutcome.Rejected(
               new BookAdministrationRejection.NormalBalanceConflict(
                   new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
           result);
@@ -188,9 +190,9 @@ class InMemoryBookSessionTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT);
       declareDefaultAccounts(bookSession);
-      PostingFact originalPosting = postingFact("idem-original");
-      PostingFact firstReversal = reversalFact("idem-reversal-1", "posting-idem-original");
-      PostingFact secondReversal = reversalFact("idem-reversal-2", "posting-idem-original");
+      CommittedPosting originalPosting = postingFact("idem-original");
+      CommittedPosting firstReversal = reversalFact("idem-reversal-1", "posting-idem-original");
+      CommittedPosting secondReversal = reversalFact("idem-reversal-2", "posting-idem-original");
 
       assertEquals(
           new PostingCommitResult.Committed(originalPosting), bookSession.commit(originalPosting));
@@ -244,19 +246,19 @@ class InMemoryBookSessionTest {
         new AccountCode("2000"), new AccountName("Revenue"), NormalBalance.CREDIT, FIXED_INSTANT);
   }
 
-  private static PostingFact postingFact(String idempotencyKey) {
-    return new PostingFact(
+  private static CommittedPosting postingFact(String idempotencyKey) {
+    return new CommittedPosting(
         new PostingId("posting-" + idempotencyKey),
         journalEntry(),
-        PostingLineage.direct(),
+        PostingLineageModel.direct(),
         committedProvenance(idempotencyKey));
   }
 
-  private static PostingFact reversalFact(String idempotencyKey, String priorPostingId) {
-    return new PostingFact(
+  private static CommittedPosting reversalFact(String idempotencyKey, String priorPostingId) {
+    return new CommittedPosting(
         new PostingId("posting-" + idempotencyKey),
         reversalJournalEntry(),
-        PostingLineage.reversal(
+        PostingLineageModel.reversal(
             new ReversalReference(new PostingId(priorPostingId)),
             new ReversalReason("historical full reversal")),
         committedProvenance(idempotencyKey));

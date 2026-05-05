@@ -26,7 +26,7 @@ public final class ContractErrors {
     INVALID_BOOK_PASSPHRASE_SOURCE,
     INTERACTIVE_PROMPT_UNAVAILABLE,
     INTERACTIVE_PROMPT_FAILED,
-    BOOK_AUTHENTICATION_FAILED;
+    PROTECTED_BOOK_VERIFICATION_FAILED;
 
     /** Returns the stable wire code for this deterministic error descriptor. */
     public String code() {
@@ -43,7 +43,7 @@ public final class ContractErrors {
         case INVALID_BOOK_PASSPHRASE_SOURCE -> "invalid-book-passphrase-source";
         case INTERACTIVE_PROMPT_UNAVAILABLE -> "interactive-prompt-unavailable";
         case INTERACTIVE_PROMPT_FAILED -> "interactive-prompt-failed";
-        case BOOK_AUTHENTICATION_FAILED -> "book-authentication-failed";
+        case PROTECTED_BOOK_VERIFICATION_FAILED -> "protected-book-verification-failed";
       };
     }
 
@@ -74,8 +74,8 @@ public final class ContractErrors {
             "Interactive passphrase entry refused because no supported controlling terminal is available.";
         case INTERACTIVE_PROMPT_FAILED ->
             "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console.";
-        case BOOK_AUTHENTICATION_FAILED ->
-            "Book access refused because FinGrind could not authenticate the selected protected book with the supplied passphrase source.";
+        case PROTECTED_BOOK_VERIFICATION_FAILED ->
+            "Book access refused because FinGrind could not verify the selected protected book with the supplied passphrase source.";
       };
     }
 

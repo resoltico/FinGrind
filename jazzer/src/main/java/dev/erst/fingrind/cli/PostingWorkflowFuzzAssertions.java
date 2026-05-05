@@ -34,8 +34,8 @@ final class PostingWorkflowFuzzAssertions {
 
       driveLifecycleToReadyBook(command, bookSession, administrationService, applicationService);
 
-      PreflightEntryResult preflight = applicationService.preflight(command);
-      CommitEntryResult committedResult = applicationService.commit(command);
+      PreflightEntryResult preflight = CliFuzzFixtures.preflight(applicationService, command);
+      CommitEntryResult committedResult = CliFuzzFixtures.commit(applicationService, command);
       switch (preflight) {
         case PreflightAccepted accepted -> {
           PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(accepted, command);
@@ -44,16 +44,18 @@ final class PostingWorkflowFuzzAssertions {
                   committedResult);
           var postingFact =
               PostingWorkflowInvariantAssertions.requireStoredPosting(
-                  bookSession.findExistingPosting(command.requestProvenance().idempotencyKey()));
+                  CliFuzzFixtures.publishedStoredPosting(
+                      bookSession, command.requestProvenance().idempotencyKey()));
           PostingWorkflowInvariantAssertions.verifyStoredPosting(postingFact, committed, command);
           PostingWorkflowInvariantAssertions.requireDuplicateRejection(
-              applicationService.commit(command));
+              CliFuzzFixtures.commit(applicationService, command));
         }
         case PreflightRejected preflightRejected -> {
           PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
               preflightRejected, committedResult);
           PostingWorkflowInvariantAssertions.assertRejectedStateDidNotPersistPosting(
-              bookSession.findExistingPosting(command.requestProvenance().idempotencyKey()));
+              CliFuzzFixtures.publishedStoredPosting(
+                  bookSession, command.requestProvenance().idempotencyKey()));
         }
       }
     }
@@ -65,16 +67,19 @@ final class PostingWorkflowFuzzAssertions {
       BookAdministrationService administrationService,
       PostingApplicationService applicationService) {
     PostingWorkflowInvariantAssertions.assertRejected(
-        applicationService.preflight(command), PostingRejection.BookNotInitialized.class);
+        CliFuzzFixtures.preflight(applicationService, command),
+        PostingRejection.BookNotInitialized.class);
     PostingWorkflowInvariantAssertions.assertRejected(
-        applicationService.commit(command), PostingRejection.BookNotInitialized.class);
+        CliFuzzFixtures.commit(applicationService, command),
+        PostingRejection.BookNotInitialized.class);
 
     CliFuzzFixtures.openBook(administrationService);
 
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        applicationService.preflight(command), PostingRejection.UnknownAccount.class);
+        CliFuzzFixtures.preflight(applicationService, command),
+        PostingRejection.UnknownAccount.class);
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        applicationService.commit(command), PostingRejection.UnknownAccount.class);
+        CliFuzzFixtures.commit(applicationService, command), PostingRejection.UnknownAccount.class);
 
     var declaredAccounts = CliFuzzFixtures.declarePostingAccounts(administrationService, command);
     PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
@@ -83,9 +88,11 @@ final class PostingWorkflowFuzzAssertions {
     bookSession.deactivateAccount(primaryAccount.accountCode());
 
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        applicationService.preflight(command), PostingRejection.InactiveAccount.class);
+        CliFuzzFixtures.preflight(applicationService, command),
+        PostingRejection.InactiveAccount.class);
     PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        applicationService.commit(command), PostingRejection.InactiveAccount.class);
+        CliFuzzFixtures.commit(applicationService, command),
+        PostingRejection.InactiveAccount.class);
 
     CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
     PostingWorkflowInvariantAssertions.assertAccountReactivationPersisted(

@@ -1,10 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
@@ -13,7 +9,12 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.PostingDraft;
 import dev.erst.fingrind.executor.PostingIdGenerator;
-import dev.erst.fingrind.executor.PostingValidation;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Objects;
@@ -37,7 +38,7 @@ final class SqliteStoreMutationOperations {
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
-  OpenBookResult openBook(Instant initializedAt) {
+  BookOpeningOutcome openBook(Instant initializedAt) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableInitialization();
     SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
@@ -46,7 +47,7 @@ final class SqliteStoreMutationOperations {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
             SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
-            Optional<OpenBookResult> preexistingOutcome =
+            Optional<BookOpeningOutcome> preexistingOutcome =
                 snapshot.state().openBookResult(snapshot.userVersion());
             if (preexistingOutcome.isPresent()) {
               return preexistingOutcome.orElseThrow();
@@ -61,7 +62,7 @@ final class SqliteStoreMutationOperations {
                     SqliteBookContract.APPLICATION_ID,
                     SqliteBookContract.FORMAT_VERSION,
                     SqliteBookState.INITIALIZED_FINGRIND));
-            return new OpenBookResult.Opened(initializedAt);
+            return new BookOpeningOutcome.Opened(initializedAt);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -70,7 +71,7 @@ final class SqliteStoreMutationOperations {
         });
   }
 
-  DeclareAccountResult declareAccount(
+  AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       NormalBalance normalBalance,
@@ -78,7 +79,7 @@ final class SqliteStoreMutationOperations {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     if (Files.notExists(context.bookPath())) {
-      return new DeclareAccountResult.Rejected(
+      return new AccountDeclarationOutcome.Rejected(
           new BookAdministrationRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
@@ -86,38 +87,27 @@ final class SqliteStoreMutationOperations {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
             if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new DeclareAccountResult.Rejected(
+              return new AccountDeclarationOutcome.Rejected(
                   new BookAdministrationRejection.BookNotInitialized());
             }
 
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
-            Optional<DeclaredAccount> existingAccount =
+            Optional<RegisteredAccount> existingAccount =
                 SqliteStatementQueries.findOneAccount(activeDatabase, accountCode);
-            if (existingAccount.isPresent()
-                && existingAccount.orElseThrow().normalBalance() != normalBalance) {
+            AccountDeclarationOutcome declarationOutcome =
+                RegisteredAccount.declare(
+                    existingAccount.orElse(null),
+                    new AccountDeclaration(accountCode, accountName, normalBalance),
+                    declaredAt);
+            if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new DeclareAccountResult.Rejected(
-                  new BookAdministrationRejection.NormalBalanceConflict(
-                      accountCode, existingAccount.orElseThrow().normalBalance(), normalBalance));
+              return rejected;
             }
-
-            DeclaredAccount declaredAccount =
-                existingAccount
-                    .map(
-                        account ->
-                            new DeclaredAccount(
-                                account.accountCode(),
-                                accountName,
-                                account.normalBalance(),
-                                true,
-                                declaredAt))
-                    .orElseGet(
-                        () ->
-                            new DeclaredAccount(
-                                accountCode, accountName, normalBalance, true, declaredAt));
+            RegisteredAccount declaredAccount =
+                ((AccountDeclarationOutcome.Declared) declarationOutcome).account();
             SqliteMutationWriter.upsertAccount(activeDatabase, declaredAccount);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return new DeclareAccountResult.Declared(declaredAccount);
+            return new AccountDeclarationOutcome.Declared(declaredAccount);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -138,14 +128,14 @@ final class SqliteStoreMutationOperations {
           try {
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
             Optional<PostingRejection> ordinaryOutcome =
-                PostingValidation.rejectionFor(
+                PostingAcceptancePolicy.rejectionFor(
                     postingDraft,
                     new SqliteTransactionValidationBook(activeDatabase, context.postingReader()));
             if (ordinaryOutcome.isPresent()) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
               return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
             }
-            PostingFact postingFact =
+            CommittedPosting postingFact =
                 postingDraft.materialize(
                     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator")
                         .nextPostingId());

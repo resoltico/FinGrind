@@ -1,10 +1,9 @@
-package dev.erst.fingrind.executor;
+package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.PostingRequest;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.PostingValidationBook;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -12,13 +11,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-/** Shared posting validation rules used by both preflight and durable commit paths. */
-public final class PostingValidation {
-  private PostingValidation() {}
+/** Bookkeeping acceptance policy shared by preflight and durable commit paths. */
+public final class PostingAcceptancePolicy {
+  private PostingAcceptancePolicy() {}
 
-  /** Returns the first deterministic posting rejection for the supplied attempt, if any. */
+  /** Returns the first deterministic rejection for the supplied posting attempt, if any. */
   public static Optional<PostingRejection> rejectionFor(
-      PostingRequest postingRequest, PostingValidationBook book) {
+      PostingRequestModel postingRequest, PostingValidationBook book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
     if (!book.isInitialized()) {
@@ -31,19 +30,19 @@ public final class PostingValidation {
     if (accountRejection.isPresent()) {
       return accountRejection;
     }
-    return ReversalPolicy.rejectionFor(postingRequest, book);
+    return ReversalAcceptancePolicy.rejectionFor(postingRequest, book);
   }
 
   private static Optional<PostingRejection> accountRejection(
-      PostingRequest postingRequest, PostingValidationBook book) {
+      PostingRequestModel postingRequest, PostingValidationBook book) {
     Set<AccountCode> requestedAccounts = new LinkedHashSet<>();
     for (JournalLine line : postingRequest.journalEntry().lines()) {
       requestedAccounts.add(line.accountCode());
     }
-    Map<AccountCode, DeclaredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
+    Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
     Set<PostingRejection.AccountStateViolation> violations = new LinkedHashSet<>();
     for (AccountCode accountCode : requestedAccounts) {
-      DeclaredAccount account = declaredAccounts.get(accountCode);
+      RegisteredAccount account = declaredAccounts.get(accountCode);
       if (account == null) {
         violations.add(new PostingRejection.UnknownAccount(accountCode));
         continue;

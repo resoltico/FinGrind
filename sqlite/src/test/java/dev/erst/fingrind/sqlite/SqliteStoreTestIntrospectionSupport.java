@@ -1,18 +1,21 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.PostingDraft;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -91,17 +94,18 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     };
   }
 
-  static void assertInvalidPlaintextBookFailure(IllegalStateException exception) {
+  static void assertProtectedBookVerificationFailure(IllegalStateException exception) {
+    assertTrue(exception instanceof ContractFailureException);
+    ContractFailureException contractFailureException = (ContractFailureException) exception;
+    assertEquals(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED,
+        contractFailureException.failure().descriptor());
+    assertEquals(
+        "FinGrind could not verify the selected protected book with the supplied passphrase source.",
+        contractFailureException.failure().message());
+    assertTrue(contractFailureException.failure().hint().contains("wrong secret"));
     assertTrue(
-        exception
-            .getMessage()
-            .contains(
-                "FinGrind could not authenticate the selected protected book with the supplied passphrase source."));
-    assertTrue(
-        exception
-            .getMessage()
-            .contains(
-                "FinGrind could not authenticate the selected protected book with the supplied passphrase source."));
+        contractFailureException.failure().hint().contains("damaged or truncated book file"));
     assertFalse(exception.getMessage().contains("SQLITE_NOTADB"));
   }
 
@@ -114,7 +118,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
       String idempotencyKey,
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason) {
-    PostingFact postingFact = postingFact(postingId, idempotencyKey, reversalReference, reason);
+    CommittedPosting postingFact =
+        postingFact(postingId, idempotencyKey, reversalReference, reason);
     return new PostingDraft(
         postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance());
   }

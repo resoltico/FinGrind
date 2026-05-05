@@ -31,6 +31,8 @@ import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
@@ -56,7 +58,10 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_WRITE_CREATE,
         SqlitePassphraseIntent.NEW_SECRET,
         bookSession ->
-            new BookAdministrationService(bookSession.administrationSession(), clock).openBook());
+            dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
+                .toPublished(
+                    new BookAdministrationService(bookSession.administrationSession(), clock)
+                        .openBook()));
   }
 
   @Override
@@ -77,8 +82,10 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_WRITE_EXISTING,
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
-            new BookAdministrationService(bookSession.administrationSession(), clock)
-                .declareAccount(command));
+            BookkeepingPublishedLanguageTranslator.toPublished(
+                new BookAdministrationService(bookSession.administrationSession(), clock)
+                    .declareAccount(
+                        BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override
@@ -171,7 +178,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
             : SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
             new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
-                .execute(plan));
+                .execute(BookWorkflowPublishedLanguageTranslator.fromPublished(plan)));
   }
 
   @Override
@@ -182,7 +189,8 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
-            postingApplicationService(bookSession.postingSession(), clock).preflight(command));
+            postingApplicationService(bookSession.postingSession(), clock)
+                .preflight(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
   @Override
@@ -193,7 +201,8 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_WRITE_EXISTING,
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
-            postingApplicationService(bookSession.postingSession(), clock).commit(command));
+            postingApplicationService(bookSession.postingSession(), clock)
+                .commit(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
   private ContractDecision<SqliteBookSession> openBookSession(

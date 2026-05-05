@@ -4,10 +4,11 @@ import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ final class SqliteStatementQueries {
 
   private SqliteStatementQueries() {}
 
-  static Optional<PostingFact> findOnePosting(
+  static Optional<CommittedPosting> findOneCommittedPosting(
       SqliteNativeDatabase activeDatabase, String sql, Binder binder, PostingLineLoader loadLines) {
     return withStatement(
         activeDatabase,
@@ -57,11 +58,12 @@ final class SqliteStatementQueries {
           PostingId postingId =
               new PostingId(
                   SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
-          return Optional.of(SqlitePostingMapper.postingFact(statement, loadLines.load(postingId)));
+          return Optional.of(
+              SqlitePostingMapper.committedPosting(statement, loadLines.load(postingId)));
         });
   }
 
-  static Optional<DeclaredAccount> findOneAccount(
+  static Optional<RegisteredAccount> findOneAccount(
       SqliteNativeDatabase activeDatabase, AccountCode accountCode) {
     return withStatement(
         activeDatabase,
@@ -71,11 +73,11 @@ final class SqliteStatementQueries {
           if (statement.step() == SqliteNativeResultCodes.DONE) {
             return Optional.empty();
           }
-          return Optional.of(SqlitePostingMapper.declaredAccount(statement));
+          return Optional.of(SqlitePostingMapper.registeredAccount(statement));
         });
   }
 
-  static Map<AccountCode, DeclaredAccount> findAccounts(
+  static Map<AccountCode, RegisteredAccount> findAccounts(
       SqliteNativeDatabase activeDatabase, Set<AccountCode> accountCodes) {
     List<AccountCode> orderedCodes = List.copyOf(accountCodes);
     return withStatement(
@@ -87,13 +89,14 @@ final class SqliteStatementQueries {
             statement.bindText(bindIndex, accountCode.value());
             bindIndex++;
           }
-          List<DeclaredAccount> accounts = new ArrayList<>();
+          List<RegisteredAccount> accounts = new ArrayList<>();
           while (statement.step() == SqliteNativeResultCodes.ROW) {
-            accounts.add(SqlitePostingMapper.declaredAccount(statement));
+            accounts.add(SqlitePostingMapper.registeredAccount(statement));
           }
           return accounts.stream()
               .collect(
-                  Collectors.toUnmodifiableMap(DeclaredAccount::accountCode, Function.identity()));
+                  Collectors.toUnmodifiableMap(
+                      RegisteredAccount::accountCode, Function.identity()));
         });
   }
 

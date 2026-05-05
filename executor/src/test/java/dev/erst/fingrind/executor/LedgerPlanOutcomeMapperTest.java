@@ -8,8 +8,42 @@ import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.ActorId;
+import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CausationId;
+import dev.erst.fingrind.core.CommandId;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.JournalEntry;
+import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
+import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Direct coverage for unexpected ledger-plan failure mapping branches. */
@@ -22,7 +56,7 @@ class LedgerPlanOutcomeMapperTest {
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
-            step, FIXED_INSTANT, FIXED_INSTANT, new IllegalStateException("   "));
+            workflowStep(step), FIXED_INSTANT, FIXED_INSTANT, new IllegalStateException("   "));
 
     assertEquals(
         "Ledger plan execution failed unexpectedly during step 'open'.",
@@ -35,7 +69,7 @@ class LedgerPlanOutcomeMapperTest {
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
-            step, FIXED_INSTANT, FIXED_INSTANT, new IllegalStateException());
+            workflowStep(step), FIXED_INSTANT, FIXED_INSTANT, new IllegalStateException());
 
     assertEquals(
         "Ledger plan execution failed unexpectedly during step 'open'.",
@@ -211,5 +245,124 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         "Ledger plan execution failed unexpectedly during rollback: rollback boom",
         rollback.failure().message());
+  }
+
+  @Test
+  void postingFacts_forCommittedPostingMatchesPublishedFactMapping() {
+    CommittedPosting posting = committedPosting();
+
+    assertEquals(
+        LedgerPlanOutcomeMapper.postingFacts(
+            BookkeepingPublishedLanguageTranslator.toPublished(posting)),
+        LedgerPlanOutcomeMapper.postingFacts(posting));
+  }
+
+  @Test
+  void missingBookCode_usesTheBoundaryOwnedRejectionFamilyForEachWorkflowStep() {
+    assertEquals(
+        BookAdministrationRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(new BookWorkflowStep.OpenBook("open")));
+    assertEquals(
+        BookAdministrationRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.DeclareAccount("declare", accountDeclaration())));
+    assertEquals(
+        PostingRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.PreflightEntry("preflight", postingCommand("idem-1"))));
+    assertEquals(
+        PostingRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.PostEntry("post", postingCommand("idem-2"))));
+    assertEquals(
+        dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(new BookWorkflowStep.InspectBook("inspect")));
+    assertEquals(
+        dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.ListAccounts(
+                "accounts", new ListAccountsQuery(1, Optional.empty()))));
+    assertEquals(
+        dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.GetPosting("posting", new PostingId("posting-1"))));
+    assertEquals(
+        dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.ListPostings(
+                "postings",
+                new ListPostingsQuery(Optional.empty(), null, null, 1, Optional.empty()))));
+    assertEquals(
+        dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.AccountBalance(
+                "balance",
+                new dev.erst.fingrind.contract.AccountBalanceQuery(
+                    new AccountCode("1000"), null, null))));
+    assertEquals(
+        dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
+        LedgerPlanOutcomeMapper.missingBookCode(
+            new BookWorkflowStep.Assert(
+                "assert",
+                new BookWorkflowAssertion.AccountBalanceEquals(
+                    new AccountCode("1000"),
+                    null,
+                    null,
+                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+                    BalanceSide.DEBIT))));
+  }
+
+  private static BookWorkflowStep workflowStep(LedgerStep step) {
+    BookWorkflowPlan plan =
+        BookWorkflowPublishedLanguageTranslator.fromPublished(
+            new dev.erst.fingrind.contract.LedgerPlan(
+                LedgerPlanServiceTestSupport.planId("plan"), java.util.List.of(step)));
+    return plan.steps().getFirst();
+  }
+
+  private static AccountDeclaration accountDeclaration() {
+    return new AccountDeclaration(
+        new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT);
+  }
+
+  private static PostingCommand postingCommand(String idempotencyKey) {
+    return new PostingCommand(
+        new JournalEntry(
+            LocalDate.parse("2026-05-05"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))))),
+        PostingLineageModel.direct(),
+        new RequestProvenance(
+            new ActorId("actor-1"),
+            ActorType.AGENT,
+            new CommandId("command-1"),
+            new IdempotencyKey(idempotencyKey),
+            new CausationId("cause-1"),
+            Optional.of(new CorrelationId("corr-1"))),
+        SourceChannel.CLI);
+  }
+
+  private static CommittedPosting committedPosting() {
+    return new CommittedPosting(
+        new PostingId("posting-1"),
+        postingCommand("idem-3").journalEntry(),
+        PostingLineageModel.direct(),
+        new CommittedProvenance(
+            new RequestProvenance(
+                new ActorId("actor-1"),
+                ActorType.AGENT,
+                new CommandId("command-1"),
+                new IdempotencyKey("idem-3"),
+                new CausationId("cause-1"),
+                Optional.of(new CorrelationId("corr-1"))),
+            FIXED_INSTANT,
+            SourceChannel.CLI));
   }
 }

@@ -6,6 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -13,8 +17,10 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -211,6 +217,50 @@ class SqliteNativeInteropTest {
         assertEquals(
             "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.",
             exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void mapper_postingFactWrapperMatchesTheCommittedPostingTranslation() throws Exception {
+    try (SqliteNativeDatabase database =
+        SqliteNativeConnections.open(
+            bookAccess(tempDirectory.resolve("posting-fact-wrapper.sqlite")))) {
+      try (SqliteNativeStatement postingRow =
+          SqliteNativeStatements.prepare(
+              database,
+              """
+              select
+                  'posting-1',
+                  '2026-05-05',
+                  '2026-05-05T09:15:30Z',
+                  'actor-1',
+                  'AGENT',
+                  'command-1',
+                  'idem-1',
+                  'cause-1',
+                  'corr-1',
+                  null,
+                  'CLI',
+                  null
+              """)) {
+        assertEquals(SqliteNativeResultCodes.ROW, postingRow.step());
+
+        List<JournalLine> lines =
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
+
+        assertEquals(
+            dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
+                .toPublished(SqlitePostingMapper.committedPosting(postingRow, lines)),
+            SqlitePostingMapper.postingFact(postingRow, lines));
       }
     }
   }

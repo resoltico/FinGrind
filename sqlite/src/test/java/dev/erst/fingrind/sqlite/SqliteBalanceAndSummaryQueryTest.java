@@ -6,20 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -66,7 +64,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
     }
 
     Path databasePath = tempDirectory.resolve("account-balance.sqlite");
-    PostingFact postingOne =
+    CommittedPosting postingOne =
         postingFact(
             "posting-1",
             "idem-1",
@@ -75,7 +73,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact postingTwo =
+    CommittedPosting postingTwo =
         postingFact(
             "posting-2",
             "idem-2",
@@ -84,7 +82,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "4.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "4.00")));
-    PostingFact postingThree =
+    CommittedPosting postingThree =
         postingFact(
             "posting-3",
             "idem-3",
@@ -93,7 +91,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "8.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "8.00")));
-    PostingFact postingFour =
+    CommittedPosting postingFour =
         postingFact(
             "posting-4",
             "idem-4",
@@ -102,7 +100,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "USD", "7.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "USD", "7.00")));
-    PostingFact postingFive =
+    CommittedPosting postingFive =
         postingFact(
             "posting-5",
             "idem-5",
@@ -120,6 +118,8 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       postingFactStore.commit(postingThree);
       postingFactStore.commit(postingFour);
       postingFactStore.commit(postingFive);
+      RegisteredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
 
       assertEquals(
           Optional.empty(),
@@ -129,12 +129,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
-                  new DeclaredAccount(
-                      new AccountCode("1000"),
-                      new AccountName("Cash"),
-                      NormalBalance.DEBIT,
-                      true,
-                      Instant.parse("2026-04-07T10:15:30Z")),
+                  publishedAccount(cashAccount),
                   Optional.empty(),
                   Optional.empty(),
                   List.of(
@@ -153,12 +148,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
-                  new DeclaredAccount(
-                      new AccountCode("1000"),
-                      new AccountName("Cash"),
-                      NormalBalance.DEBIT,
-                      true,
-                      Instant.parse("2026-04-07T10:15:30Z")),
+                  publishedAccount(cashAccount),
                   Optional.empty(),
                   Optional.of(LocalDate.parse("2026-04-08")),
                   List.of(
@@ -173,12 +163,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
-                  new DeclaredAccount(
-                      new AccountCode("1000"),
-                      new AccountName("Cash"),
-                      NormalBalance.DEBIT,
-                      true,
-                      Instant.parse("2026-04-07T10:15:30Z")),
+                  publishedAccount(cashAccount),
                   Optional.of(LocalDate.parse("2026-04-10")),
                   Optional.of(LocalDate.parse("2026-04-11")),
                   List.of(
@@ -198,7 +183,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
   @Test
   void trialBalance_andPeriodSummary_computeOfficeReportModels() {
     Path databasePath = tempDirectory.resolve("office-reports.sqlite");
-    PostingFact postingOne =
+    CommittedPosting postingOne =
         postingFact(
             "posting-1",
             "idem-1",
@@ -207,7 +192,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-    PostingFact postingTwo =
+    CommittedPosting postingTwo =
         postingFact(
             "posting-2",
             "idem-2",
@@ -216,7 +201,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "4.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "4.00")));
-    PostingFact postingThree =
+    CommittedPosting postingThree =
         postingFact(
             "posting-3",
             "idem-3",
@@ -233,9 +218,9 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       postingFactStore.commit(postingTwo);
       postingFactStore.commit(postingThree);
 
-      DeclaredAccount cashAccount =
+      RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
-      DeclaredAccount revenueAccount =
+      RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
 
       assertEquals(
@@ -243,14 +228,14 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               Optional.of(LocalDate.parse("2026-04-08")),
               List.of(
                   new TrialBalanceRow(
-                      cashAccount,
+                      publishedAccount(cashAccount),
                       new CurrencyBalance(
                           money("EUR", "10.00"),
                           money("EUR", "4.00"),
                           money("EUR", "6.00"),
                           BalanceSide.DEBIT)),
                   new TrialBalanceRow(
-                      revenueAccount,
+                      publishedAccount(revenueAccount),
                       new CurrencyBalance(
                           money("EUR", "4.00"),
                           money("EUR", "10.00"),
@@ -275,14 +260,14 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                           BalanceSide.ZERO))),
               List.of(
                   new PeriodAccountActivityRow(
-                      cashAccount,
+                      publishedAccount(cashAccount),
                       new CurrencyBalance(
                           money("EUR", "10.00"),
                           money("EUR", "4.00"),
                           money("EUR", "6.00"),
                           BalanceSide.DEBIT)),
                   new PeriodAccountActivityRow(
-                      revenueAccount,
+                      publishedAccount(revenueAccount),
                       new CurrencyBalance(
                           money("EUR", "4.00"),
                           money("EUR", "10.00"),

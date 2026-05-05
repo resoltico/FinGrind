@@ -19,8 +19,8 @@ if [[ -z "${tag_name}" ]]; then
 fi
 readonly tag_name
 readonly asset_names=("$@")
-readonly retry_count="${FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:-1}"
-readonly retry_delay_seconds="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-0}"
+readonly retry_count="${FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:-3}"
+readonly retry_delay_seconds="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-5}"
 readonly script_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly archive_verifier="${script_dir}/verify-source-archive.py"
 

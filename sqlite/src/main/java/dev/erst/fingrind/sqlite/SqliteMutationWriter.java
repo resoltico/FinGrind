@@ -1,9 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -21,7 +21,7 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void upsertAccount(SqliteNativeDatabase activeDatabase, DeclaredAccount account) {
+  static void upsertAccount(SqliteNativeDatabase activeDatabase, RegisteredAccount account) {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.UPSERT_ACCOUNT)) {
       statement.bindText(1, account.accountCode().value());
@@ -33,7 +33,7 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void insertPostingFact(SqliteNativeDatabase activeDatabase, PostingFact postingFact) {
+  static void insertPostingFact(SqliteNativeDatabase activeDatabase, CommittedPosting postingFact) {
     RequestProvenance requestProvenance = postingFact.provenance().requestProvenance();
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
@@ -64,7 +64,8 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void insertJournalLines(SqliteNativeDatabase activeDatabase, PostingFact postingFact) {
+  static void insertJournalLines(
+      SqliteNativeDatabase activeDatabase, CommittedPosting postingFact) {
     List<JournalLine> lines = postingFact.journalEntry().lines();
     for (int index = 0; index < lines.size(); index++) {
       JournalLine line = lines.get(index);

@@ -281,7 +281,7 @@ class ReportingContractTypesTest {
         ContractErrors.Descriptor.INVALID_PAGE_CURSOR.failure(
             "Bad cursor", "Retry without --cursor.", "--cursor");
     ContractFailure withCause =
-        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED.failure(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
             "Wrong key", "Use the correct key file.", "--book-key-file");
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
@@ -302,9 +302,9 @@ class ReportingContractTypesTest {
             .anyMatch(descriptor -> "pdf-export-failure".equals(descriptor.code())));
     assertEquals("invalid-page-cursor", ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code());
     assertTrue(
-        ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
             .description()
-            .contains("authenticate"));
+            .contains("verify"));
 
     assertSame(ContractErrors.Descriptor.INVALID_PAGE_CURSOR, withoutCause.descriptor());
     assertEquals("invalid-page-cursor", withoutCause.code());
@@ -312,8 +312,9 @@ class ReportingContractTypesTest {
     assertEquals("--cursor", withoutCause.argument());
     assertEquals("Bad cursor", withoutCause.message());
 
-    assertSame(ContractErrors.Descriptor.BOOK_AUTHENTICATION_FAILED, withCause.descriptor());
-    assertEquals("book-authentication-failed", withCause.code());
+    assertSame(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED, withCause.descriptor());
+    assertEquals("protected-book-verification-failed", withCause.code());
     assertEquals("Use the correct key file.", withCause.hint());
     assertEquals("--book-key-file", withCause.argument());
     assertEquals("accepted:ok", accepted.fold(value -> "accepted:" + value, ignored -> "rejected"));

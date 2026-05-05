@@ -520,7 +520,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             .path("responseModel")
             .path("errorDescriptors")
             .toString()
-            .contains("book-authentication-failed"));
+            .contains("protected-book-verification-failed"));
     assertTrue(
         payload
             .path("responseModel")

@@ -9,14 +9,10 @@ import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractFailureException;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
@@ -32,6 +28,10 @@ import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.PostingDraft;
 import dev.erst.fingrind.executor.PostingIdGenerator;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
@@ -153,12 +153,12 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   @Override
-  public Optional<DeclaredAccount> findAccount(AccountCode accountCode) {
+  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     threadOwner.requireOwnerThread();
     return readOperations.findAccount(accountCode);
   }
 
-  Map<AccountCode, DeclaredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     threadOwner.requireOwnerThread();
     return readOperations.findAccounts(accountCodes);
   }
@@ -169,17 +169,17 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   @Override
-  public Optional<PostingFact> findExistingPosting(IdempotencyKey idempotencyKey) {
+  public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     threadOwner.requireOwnerThread();
     return readOperations.findExistingPosting(idempotencyKey);
   }
 
-  Optional<PostingFact> findPosting(PostingId postingId) {
+  Optional<CommittedPosting> findPosting(PostingId postingId) {
     threadOwner.requireOwnerThread();
     return readOperations.findPosting(postingId);
   }
 
-  Optional<PostingFact> findReversalFor(PostingId priorPostingId) {
+  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     threadOwner.requireOwnerThread();
     return readOperations.findReversalFor(priorPostingId);
   }
@@ -199,7 +199,7 @@ class SqlitePostingFactStore implements SqliteBookSession {
     return readOperations.trialBalance(query);
   }
 
-  AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+  AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
     threadOwner.requireOwnerThread();
     return readOperations.accountLedger(query, account);
   }
@@ -209,12 +209,12 @@ class SqlitePostingFactStore implements SqliteBookSession {
     return readOperations.periodSummary(query);
   }
 
-  OpenBookResult openBook(Instant initializedAt) {
+  BookOpeningOutcome openBook(Instant initializedAt) {
     threadOwner.requireOwnerThread();
     return mutationOperations.openBook(initializedAt);
   }
 
-  DeclareAccountResult declareAccount(
+  AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       NormalBalance normalBalance,
@@ -305,7 +305,7 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   /** Commits one fully materialized posting fact for fixture-oriented callers. */
-  PostingCommitResult commit(PostingFact postingFact) {
+  PostingCommitResult commit(CommittedPosting postingFact) {
     threadOwner.requireOwnerThread();
     Objects.requireNonNull(postingFact, "postingFact");
     return commit(

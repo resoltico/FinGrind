@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -10,8 +10,9 @@ route:
 
 # Posting And Ledger Plan Reference
 
-This file documents the exported write-side `contract` models and the exported `executor` services
-that own posting preflight, posting commit, and atomic ledger-plan execution.
+This file documents the exported write-side `contract` models, the exported local
+bookkeeping/workflow context types that support them, and the exported `executor` services that
+own posting preflight, posting commit, and atomic ledger-plan execution.
 
 ## `PostingLineage`
 
@@ -77,7 +78,43 @@ public record PostingDraft(
 ```
 
 - Purpose: separate accepted commit metadata from durable id assignment
-- Surface: `materialize(PostingId)` creates the final `PostingFact`
+- Surface: `materialize(PostingId)` creates the final internal committed posting fact
+- Boundary: this is an executor bookkeeping model, not the public published language
+
+## `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel`
+
+These records and sealed interfaces are the local bookkeeping write model used after published
+requests cross the translator boundary.
+
+```java
+public record PostingCommand(...)
+public sealed interface PostingLineageModel
+public interface PostingRequestModel
+```
+
+- `PostingCommand`: one translated bookkeeping write request with journal entry, lineage,
+  provenance, and source channel
+- `PostingLineageModel`: the local direct-versus-reversal lineage family used by bookkeeping
+  policies and stores
+- `PostingRequestModel`: the shared local shape consumed by bookkeeping validation and materialized
+  posting facts
+
+## `PostingAcceptancePolicy` And `BookkeepingPublishedLanguageTranslator`
+
+`PostingAcceptancePolicy` owns bookkeeping-side admission rules, while
+`BookkeepingPublishedLanguageTranslator` forms the anti-corruption layer between the published
+language and the local bookkeeping context.
+
+```java
+public final class PostingAcceptancePolicy
+public final class BookkeepingPublishedLanguageTranslator
+```
+
+- `PostingAcceptancePolicy`: validates initialization, account state, duplicate idempotency,
+  reversal admissibility, and related bookkeeping rules against one `PostingValidationBook`
+- `BookkeepingPublishedLanguageTranslator`: translates `DeclareAccountCommand`,
+  `PostEntryCommand`, `PostingFact`, and bookkeeping outcomes at the host boundary instead of
+  letting transport DTOs become the local working model
 
 ## `LedgerPlanId` And `LedgerStepId`
 
@@ -92,7 +129,7 @@ public record LedgerStepId(String value)
 
 ## `LedgerPlan`
 
-`LedgerPlan` is the canonical AI-authored workflow document executed by `execute-plan`.
+`LedgerPlan` is the canonical published workflow document accepted by `execute-plan`.
 
 ```java
 public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
@@ -101,6 +138,8 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
 - Purpose: bundle one ordered workflow with stable per-step ids
 - Validation: rejects blank plan ids, empty step lists, duplicate step ids, and `open-book` outside
   the first step
+- Boundary: executor translates this published plan into the internal workflow context before any
+  bookkeeping step executes
 
 ## `LedgerStep`
 
@@ -115,6 +154,7 @@ public sealed interface LedgerStep
 - Purpose: keep plan execution exhaustively typed instead of routing through maps
 - Scope: current ledger plans intentionally stop at book inspection, listings, posting lookup, and
   account-balance queries; office-worker report commands stay on the standalone CLI surface
+- Boundary: these step DTOs are published-language workflow inputs, not bookkeeping aggregates
 
 ## `LedgerAssertion`
 
@@ -126,6 +166,36 @@ public sealed interface LedgerAssertion
 
 - Families: `AccountDeclared`, `AccountActive`, `PostingExists`, `AccountBalanceEquals`
 - Purpose: let one plan assert intended outcomes without inventing CLI-local test commands
+- Boundary: executor evaluates assertions inside the internal workflow context after translating
+  the published DTO family
+
+## `BookWorkflowPlan`, `BookWorkflowStep`, And `BookWorkflowAssertion`
+
+These types are the local workflow context consumed by `LedgerPlanService` after the public plan
+schema crosses the translator edge.
+
+```java
+public record BookWorkflowPlan(String planId, List<BookWorkflowStep> steps)
+public sealed interface BookWorkflowStep
+public sealed interface BookWorkflowAssertion
+```
+
+- `BookWorkflowPlan`: local ordered workflow model with plain-string plan identity
+- `BookWorkflowStep`: local executable step family used during plan execution and journaling
+- `BookWorkflowAssertion`: local assertion family evaluated against bookkeeping/read outcomes
+
+## `BookWorkflowPublishedLanguageTranslator`
+
+`BookWorkflowPublishedLanguageTranslator` maps the public `LedgerPlan` family onto the local
+workflow context and projects local workflow metadata back into the public execution journal.
+
+```java
+public final class BookWorkflowPublishedLanguageTranslator
+```
+
+- Purpose: keep plan orchestration semantics and published workflow DTOs decoupled
+- Boundary: translates plan ids, step ids, step kinds, and assertion kinds between the public and
+  local workflow contexts
 
 ## `LedgerFact`
 
@@ -183,6 +253,8 @@ public final class PostingApplicationService
 
 - Constructor: requires `PostingBookSession`, `PostingIdGenerator`, and `Clock`
 - Surface: `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
+- Boundary: the service translates the published `PostEntryCommand` into the internal bookkeeping
+  model before acceptance or commit
 
 ## `LedgerPlanService`
 
@@ -195,6 +267,8 @@ public final class LedgerPlanService
 - Constructor: requires `LedgerPlanSession`, `PostingIdGenerator`, and `Clock`
 - Policy: runs the whole plan inside one durable transaction and rolls back on the first rejected
   step or failed assertion
+- Boundary: the service executes the local workflow model after the published `LedgerPlan` has
+  crossed the translator boundary
 
 ## `PostingIdGenerator`
 

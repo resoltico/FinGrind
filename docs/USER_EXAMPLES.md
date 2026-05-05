@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: USER_EXAMPLES
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -12,10 +12,9 @@ route:
 
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
-below, `fingrind` means that launcher, for example
-`./fingrind-0.30.0-macos-aarch64/bin/fingrind` on macOS/Linux or
-`.\fingrind-0.30.0-windows-x86_64\bin\fingrind.ps1` on Windows. For source-driven local work,
-the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
+below, `fingrind` means that launcher, for example the script under
+`./<bundle-root>/bin/fingrind` on macOS/Linux or `.\<bundle-root>\bin\fingrind.ps1` on Windows.
+For source-driven local work, the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
 The public release bundle does not include `docs/examples/`. The runnable commands below therefore
@@ -537,7 +536,7 @@ fingrind \
 One deterministic error example is checked in at
 [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json).
 
-## Wrong Key Fails Deterministically
+## Protected-Book Verification Fails Deterministically
 
 ```bash
 fingrind generate-book-key-file --book-key-file ./wrong.book-key
@@ -548,9 +547,10 @@ fingrind \
 ```
 
 One deterministic error example is checked in at
-[examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json).
-Wrong passphrases now return `book-authentication-failed` with exit `2`; SQLite storage symptoms
-such as `SQLITE_NOTADB` do not leak to callers.
+[examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json).
+Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite variants
+now return `protected-book-verification-failed` with exit `2`; SQLite storage symptoms such as
+`SQLITE_NOTADB` do not leak to callers.
 
 ## Prompt Mode Requires A Supported Interactive Terminal
 

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.30.0"
+version: "0.31.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-02"
+updated: "2026-05-05"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -217,7 +217,7 @@ rendered:
 - `responseModel.rejections` is an array of deterministic business rejections rendered from the
   administration, query, and posting rejection families
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
-  descriptors such as `invalid-page-cursor`, `book-authentication-failed`,
+  descriptors such as `invalid-page-cursor`, `protected-book-verification-failed`,
   `managed-runtime-failure`, `storage-runtime-failure`, `pdf-export-failure`, and
   `interactive-prompt-unavailable`
 - `preflight.semantics` carries the short machine hint and `preflight.commitGuarantee`
@@ -369,5 +369,5 @@ callers can repair the whole request before retrying without scraping prose.
 
 Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)
-- [examples/book-authentication-failed-error.json](./examples/book-authentication-failed-error.json)
+- [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json)
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json)

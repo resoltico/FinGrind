@@ -19,6 +19,7 @@ import org.gradle.kotlin.dsl.named
 private val wildcardImportPattern = Regex("""^import\s+(static\s+)?[\w.]+\.\*;$""")
 private val catchThrowablePattern = Regex("""\bcatch\s*\(\s*Throwable(?:\s+\w+)?\s*\)""")
 private val suppressWarningsPattern = Regex("""@SuppressWarnings\s*\(""")
+private val qualifiedExportPattern = Regex("""^exports\s+[\w.]+\s+to(?:\s.*)?$""")
 private const val JACKSON_DATABIND_GROUP = "tools.jackson.core"
 private const val JACKSON_DATABIND_MODULE = "jackson-databind"
 private const val LEGACY_JACKSON_GROUP = "com.fasterxml.jackson.core"
@@ -99,6 +100,13 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                             if (suppressWarningsPattern.containsMatchIn(line)) {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: @SuppressWarnings is forbidden in production sources; fix the root cause instead."
+                            }
+                            if (
+                                file.name == "module-info.java" &&
+                                qualifiedExportPattern.matches(line.trim())
+                            ) {
+                                violations +=
+                                    "${file.displayPath(projectDirectory)}:${index + 1}: qualified JPMS exports are forbidden; Gradle compiles repository modules independently, so `exports ... to` emits unresolved-target warnings. Export the package unqualified or move it into its own module."
                             }
                         }
                     }

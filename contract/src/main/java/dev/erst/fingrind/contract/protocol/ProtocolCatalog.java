@@ -139,6 +139,11 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.bundleLayoutContract().bundleTarget(target).launcherPath();
   }
 
+  /** Returns the canonical source-checkout launcher command for one host shell family. */
+  public static String sourceCheckoutLauncherCommand(boolean windows) {
+    return windows ? ".\\scripts\\source-checkout-cli.ps1" : "./scripts/source-checkout-cli.sh";
+  }
+
   /** Returns the canonical minimum Java line for source-checkout execution. */
   public static String sourceCheckoutJava() {
     return ProtocolCatalogFacts.runtimeEnvironmentContract().sourceCheckoutJava();
@@ -146,9 +151,7 @@ public final class ProtocolCatalog {
 
   /** Returns the canonical direct-Java launcher command for one host shell family. */
   public static String directJavaLauncherCommand(boolean windows) {
-    return windows
-        ? "java -jar .\\cli\\build\\libs\\fingrind.jar"
-        : "java -jar ./cli/build/libs/fingrind.jar";
+    return windows ? ".\\scripts\\direct-java-cli.ps1" : "./scripts/direct-java-cli.sh";
   }
 
   /** Returns the canonical storage-driver identifier. */

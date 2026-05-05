@@ -10,6 +10,9 @@ import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,13 +20,23 @@ import java.util.List;
 final class LedgerPlanFactMapper {
   private LedgerPlanFactMapper() {}
 
-  static List<LedgerFact> declaredAccountFacts(DeclaredAccount account) {
+  static List<LedgerFact> declaredAccountFacts(RegisteredAccount account) {
     return List.of(
         LedgerFact.text("accountCode", account.accountCode().value()),
         LedgerFact.text("accountName", account.accountName().value()),
         LedgerFact.text("normalBalance", account.normalBalance().wireValue()),
         LedgerFact.flag("active", account.active()),
         LedgerFact.text("declaredAt", account.declaredAt().toString()));
+  }
+
+  static List<LedgerFact> declaredAccountFacts(DeclaredAccount account) {
+    return declaredAccountFacts(
+        new RegisteredAccount(
+            account.accountCode(),
+            account.accountName(),
+            account.normalBalance(),
+            account.active(),
+            account.declaredAt()));
   }
 
   static List<LedgerFact> accountPageFacts(AccountPage page) {
@@ -46,7 +59,7 @@ final class LedgerPlanFactMapper {
     return List.copyOf(facts);
   }
 
-  static List<LedgerFact> postingFacts(PostingFact postingFact) {
+  static List<LedgerFact> postingFacts(CommittedPosting postingFact) {
     List<LedgerFact> facts = new ArrayList<>();
     facts.add(LedgerFact.text("postingId", postingFact.postingId().value()));
     facts.add(
@@ -75,6 +88,10 @@ final class LedgerPlanFactMapper {
               facts.add(LedgerFact.group("reversal", List.copyOf(reversalFacts)));
             });
     return List.copyOf(facts);
+  }
+
+  static List<LedgerFact> postingFacts(PostingFact postingFact) {
+    return postingFacts(BookkeepingPublishedLanguageTranslator.fromPublished(postingFact));
   }
 
   static List<LedgerFact> balanceFacts(AccountBalanceSnapshot snapshot) {

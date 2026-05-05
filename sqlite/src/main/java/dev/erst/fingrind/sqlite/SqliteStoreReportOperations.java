@@ -4,11 +4,12 @@ import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Optional;
@@ -44,11 +45,17 @@ final class SqliteStoreReportOperations {
         activeDatabase -> context.reportReader().trialBalance(activeDatabase, query));
   }
 
-  AccountLedgerReport accountLedger(AccountLedgerQuery query, DeclaredAccount account) {
+  AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
     lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase -> context.reportReader().accountLedger(activeDatabase, query, account));
+        activeDatabase ->
+            context
+                .reportReader()
+                .accountLedger(
+                    activeDatabase,
+                    query,
+                    BookkeepingPublishedLanguageTranslator.toPublished(account)));
   }
 
   PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {

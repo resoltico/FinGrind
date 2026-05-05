@@ -23,12 +23,38 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
-readonly launcher="${repo_root}/cli/build/install/cli-shadow/bin/cli"
-readonly raw_jar="${repo_root}/cli/build/libs/fingrind.jar"
 readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
+readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly launcher_wrapper="${repo_root}/scripts/source-checkout-cli.sh"
+readonly launcher_wrapper_ps1="${repo_root}/scripts/source-checkout-cli.ps1"
+readonly raw_java_wrapper="${repo_root}/scripts/direct-java-cli.sh"
+readonly raw_java_wrapper_ps1="${repo_root}/scripts/direct-java-cli.ps1"
+readonly gradle_wrapper_support_ps1="${repo_root}/scripts/gradle-wrapper-support.ps1"
 readonly repo_tmp_dir="${repo_root}/tmp"
 
 [[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
+[[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper"
+[[ -x "${launcher_wrapper}" ]] || die "missing POSIX source-checkout launcher wrapper"
+[[ -f "${launcher_wrapper_ps1}" ]] || die "missing PowerShell source-checkout launcher wrapper"
+[[ -x "${raw_java_wrapper}" ]] || die "missing POSIX direct-Java wrapper"
+[[ -f "${raw_java_wrapper_ps1}" ]] || die "missing PowerShell direct-Java wrapper"
+[[ -f "${gradle_wrapper_support_ps1}" ]] || die "missing PowerShell Gradle wrapper support helper"
+grep -Fq 'gradle-wrapper-support.ps1' "${launcher_wrapper_ps1}" || die \
+    "PowerShell source-checkout launcher wrapper no longer sources the shared Gradle wrapper helper"
+grep -Fq 'gradle-wrapper-support.ps1' "${raw_java_wrapper_ps1}" || die \
+    "PowerShell direct-Java wrapper no longer sources the shared Gradle wrapper helper"
+
+# shellcheck source=/dev/null
+source "${gradle_wrapper_support}"
+
+is_darwin=false
+case "$(uname -s)" in
+    Darwin) is_darwin=true ;;
+esac
+
+readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
+readonly launcher="${cli_build_dir}/install/cli-shadow/bin/cli"
+readonly raw_jar="${cli_build_dir}/libs/fingrind.jar"
 
 mkdir -p "${repo_tmp_dir}"
 tmp_dir="$(mktemp -d "${repo_tmp_dir}/source-checkout-launcher.XXXXXX")"
@@ -50,6 +76,15 @@ contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
 print(contract["runtimeSurface"]["sourceCheckoutRuntimeDistribution"])
 PY
 )"
+readonly expected_direct_java_runtime_distribution="$(
+    FINGRIND_CONTRACT_VALUES_JSON="$(python3 "${contract_values_reader}")" python3 - <<'PY'
+import json
+import os
+
+contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
+print(contract["runtimeSurface"]["directJavaRuntimeDistribution"])
+PY
+)"
 
 help_stdout="${tmp_dir}/help.out"
 help_stderr="${tmp_dir}/help.err"
@@ -61,6 +96,8 @@ open_stdout="${tmp_dir}/open.out"
 open_stderr="${tmp_dir}/open.err"
 raw_help_stdout="${tmp_dir}/raw-help.out"
 raw_help_stderr="${tmp_dir}/raw-help.err"
+raw_capabilities_stdout="${tmp_dir}/raw-capabilities.out"
+raw_capabilities_stderr="${tmp_dir}/raw-capabilities.err"
 raw_open_stdout="${tmp_dir}/raw-open.out"
 raw_open_stderr="${tmp_dir}/raw-open.err"
 
@@ -68,7 +105,7 @@ readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
 mkdir -p "$(dirname "${book_file}")" "$(dirname "${key_file}")"
 
-"${launcher}" help >"${help_stdout}" 2>"${help_stderr}" ||
+"${launcher_wrapper}" help >"${help_stdout}" 2>"${help_stderr}" ||
     die "source-checkout launcher help failed"
 
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
@@ -80,7 +117,7 @@ if grep -Fq 'A restricted method in java.lang.foreign.SymbolLookup has been call
     die "source-checkout launcher help leaked the Java native-access warning"
 fi
 
-"${launcher}" capabilities --output json >"${capabilities_stdout}" 2>"${capabilities_stderr}" ||
+"${launcher_wrapper}" capabilities --output json >"${capabilities_stdout}" 2>"${capabilities_stderr}" ||
     die "source-checkout launcher capabilities failed"
 
 [[ ! -s "${capabilities_stderr}" ]] || die "source-checkout launcher capabilities wrote diagnostics"
@@ -91,6 +128,7 @@ import sys
 
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_runtime_distribution = sys.argv[2]
+sqlite = document["payload"]["environment"]["sqlite"]
 actual_runtime_distribution = (
     document["payload"]["environment"]["distribution"]["runtimeDistribution"]
 )
@@ -101,15 +139,21 @@ if actual_runtime_distribution != expected_runtime_distribution:
         + " != "
         + expected_runtime_distribution
     )
+if sqlite["runtimeProvenance"] != "source-checkout-managed":
+    raise SystemExit(
+        "unexpected runtime provenance: "
+        + sqlite["runtimeProvenance"]
+        + " != source-checkout-managed"
+    )
 PY
 
-"${launcher}" generate-book-key-file --book-key-file "${key_file}" >"${key_stdout}" 2>"${key_stderr}" ||
+"${launcher_wrapper}" generate-book-key-file --book-key-file "${key_file}" >"${key_stdout}" 2>"${key_stderr}" ||
     die "source-checkout launcher key generation failed"
 
 [[ ! -s "${key_stderr}" ]] || die "source-checkout launcher key generation wrote diagnostics"
 grep -Fq '"status":"ok"' "${key_stdout}" || die "source-checkout launcher key generation did not return ok"
 
-"${launcher}" open-book --book-file "${book_file}" --book-key-file "${key_file}" >"${open_stdout}" 2>"${open_stderr}" ||
+"${launcher_wrapper}" open-book --book-file "${book_file}" --book-key-file "${key_file}" >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
 [[ ! -s "${open_stderr}" ]] || die "source-checkout launcher open-book wrote diagnostics"
@@ -123,13 +167,41 @@ java -jar "${raw_jar}" help >"${raw_help_stdout}" 2>"${raw_help_stderr}" ||
 [[ ! -s "${raw_help_stderr}" ]] || die "developer raw JAR help wrote diagnostics"
 grep -Fq 'Developer Raw JAR' "${raw_help_stdout}" ||
     die "developer raw JAR help did not render the direct-Java quick start"
-grep -Fq 'java -jar ./cli/build/libs/fingrind.jar' "${raw_help_stdout}" ||
+grep -Fq './scripts/direct-java-cli.sh' "${raw_help_stdout}" ||
     die "developer raw JAR help did not publish the direct Java launcher command"
 if grep -Fq 'A restricted method in java.lang.foreign.SymbolLookup has been called' "${raw_help_stderr}"; then
     die "developer raw JAR help leaked the Java native-access warning"
 fi
 
-java -jar "${raw_jar}" \
+"${raw_java_wrapper}" capabilities --output json >"${raw_capabilities_stdout}" 2>"${raw_capabilities_stderr}" ||
+    die "developer raw JAR capabilities failed"
+
+[[ ! -s "${raw_capabilities_stderr}" ]] || die "developer raw JAR capabilities wrote diagnostics"
+python3 - "${raw_capabilities_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
+import json
+import pathlib
+import sys
+
+document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+expected_distribution = sys.argv[2]
+distribution = document["payload"]["environment"]["distribution"]["runtimeDistribution"]
+provenance = document["payload"]["environment"]["sqlite"]["runtimeProvenance"]
+if distribution != expected_distribution:
+    raise SystemExit(
+        "unexpected direct-Java runtime distribution: "
+        + distribution
+        + " != "
+        + expected_distribution
+    )
+if provenance != "source-checkout-managed":
+    raise SystemExit(
+        "unexpected direct-Java runtime provenance: "
+        + provenance
+        + " != source-checkout-managed"
+    )
+PY
+
+"${raw_java_wrapper}" \
     open-book \
     --book-file "${tmp_dir}/raw-jar.sqlite" \
     --book-key-file "${key_file}" >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||

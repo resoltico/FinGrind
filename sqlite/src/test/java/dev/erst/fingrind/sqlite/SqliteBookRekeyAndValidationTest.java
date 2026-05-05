@@ -101,7 +101,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class, () -> oldKeyStore.listAccounts(firstAccountPage()));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
 
     try (SqliteBookPassphrase replacementPassphrase =
@@ -291,7 +291,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
           assertThrows(
               IllegalStateException.class,
               () -> replacementKeyStore.listAccounts(firstAccountPage()));
-      assertInvalidPlaintextBookFailure(exception);
+      assertProtectedBookVerificationFailure(exception);
     }
   }
 

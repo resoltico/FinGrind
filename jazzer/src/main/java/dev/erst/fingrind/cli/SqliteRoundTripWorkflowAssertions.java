@@ -85,7 +85,7 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus uninitializedCommitStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
               SqliteRoundTripWorkflowLifecycleAssertions.requiredCommitRejected(
-                      applicationService.commit(command))
+                      CliFuzzFixtures.commit(applicationService, command))
                   .rejection());
 
       CliFuzzFixtures.openBook(administrationService);
@@ -93,7 +93,7 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus undeclaredCommitStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
               SqliteRoundTripWorkflowLifecycleAssertions.requiredCommitRejected(
-                      applicationService.commit(command))
+                      CliFuzzFixtures.commit(applicationService, command))
                   .rejection());
 
       var declaredAccounts = CliFuzzFixtures.declarePostingAccounts(administrationService, command);
@@ -106,14 +106,14 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus inactiveCommitStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
               SqliteRoundTripWorkflowLifecycleAssertions.requiredCommitRejected(
-                      applicationService.commit(command))
+                      CliFuzzFixtures.commit(applicationService, command))
                   .rejection());
 
       CliFuzzFixtures.reactivateAccount(administrationService, primaryAccount);
       SqliteRoundTripWorkflowLifecycleAssertions.assertAccountReactivationPersisted(
           postingFactStore, primaryAccount.accountCode());
 
-      CommitEntryResult committedResult = applicationService.commit(command);
+      CommitEntryResult committedResult = CliFuzzFixtures.commit(applicationService, command);
       return switch (committedResult) {
         case Committed committed ->
             committedState(
@@ -150,7 +150,8 @@ public final class SqliteRoundTripWorkflowAssertions {
     try (SqliteBookSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
       PostingFact postingFact =
           SqliteRoundTripWorkflowLifecycleAssertions.requireStoredPosting(
-              reloadedStore.findExistingPosting(command.requestProvenance().idempotencyKey()));
+              CliFuzzFixtures.publishedStoredPosting(
+                  reloadedStore.postingSession(), command.requestProvenance().idempotencyKey()));
       SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);
       SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
           postingFact, committed, command);
@@ -162,7 +163,7 @@ public final class SqliteRoundTripWorkflowAssertions {
               CliFuzzFixtures.fixedClock());
       PostingLifecycleStatus duplicateStatus =
           SqliteRoundTripWorkflowLifecycleAssertions.requireDuplicateRejection(
-              duplicateService.commit(command));
+              CliFuzzFixtures.commit(duplicateService, command));
       return new DirectRoundTripState(
           new SqliteRoundTripWorkflowSnapshot(
               uninitializedCommitStatus,
@@ -185,10 +186,11 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus undeclaredCommitStatus,
       PostingLifecycleStatus inactiveCommitStatus) {
     SqliteRoundTripWorkflowLifecycleAssertions.assertRejectedStateDidNotPersistPosting(
-        postingFactStore.findExistingPosting(command.requestProvenance().idempotencyKey()));
+        CliFuzzFixtures.publishedStoredPosting(
+            postingFactStore.postingSession(), command.requestProvenance().idempotencyKey()));
     PostingLifecycleStatus duplicateStatus =
         SqliteRoundTripWorkflowLifecycleAssertions.verifyRejectedCommitConsistency(
-            rejected, applicationService.commit(command));
+            rejected, CliFuzzFixtures.commit(applicationService, command));
     return new DirectRoundTripState(
         new SqliteRoundTripWorkflowSnapshot(
             uninitializedCommitStatus,
