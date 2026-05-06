@@ -44,10 +44,30 @@ grep -Fq 'gh attestation verify' "${verifier}" || die \
     "release verifier no longer verifies published bundle attestations"
 grep -Fq 'actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb' "${release_workflow}" || die \
     "release workflow no longer pins the published bundle attestation action"
-grep -Fq 'attestations: write' "${release_workflow}" || die \
-    "release workflow no longer grants attestation write permission for bundle publication"
-grep -Fq 'id-token: write' "${release_workflow}" || die \
-    "release workflow no longer grants OIDC signing permission for bundle publication"
+python3 - <<'PY' "${release_workflow}" || die \
+    "release workflow build-bundles job no longer grants the exact attestation permissions required by actions/attest"
+from pathlib import Path
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+job_start = workflow.find("  build-bundles:\n")
+if job_start < 0:
+    raise SystemExit("missing build-bundles job")
+job_end = workflow.find("\n  verify-release:\n", job_start)
+if job_end < 0:
+    raise SystemExit("missing verify-release job delimiter")
+job_text = workflow[job_start:job_end]
+required_lines = (
+    "    permissions:\n",
+    "      contents: write\n",
+    "      attestations: write\n",
+    "      id-token: write\n",
+    "      artifact-metadata: write\n",
+)
+missing = [line.strip() for line in required_lines if line not in job_text]
+if missing:
+    raise SystemExit("missing build-bundles permission lines: " + ", ".join(missing))
+PY
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-github-release.XXXXXX")"
 cleanup() {

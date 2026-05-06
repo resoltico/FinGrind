@@ -365,6 +365,13 @@ gh workflow run release.yml -f release_tag=vX.Y.Z
 gh workflow run container.yml -f release_tag=vX.Y.Z
 ```
 
+If the tag-triggered `Release` or `Container` workflow fails because the workflow definition
+itself is wrong — for example a missing permission, broken verifier wiring, or an incorrect
+publication timeout — do **not** move the tag and do **not** cut a second release tag. Fix the
+workflow on `main`, merge that fix, and then use the `workflow_dispatch` rerun commands above
+against the existing `vX.Y.Z` tag so the rebuilt assets and container are produced from the same
+verified release commit.
+
 Never create a second tag or move an existing release tag just to retry CI.
 
 The `Release` and `Container` workflows also run `./scripts/verify-release-candidate-tag.sh`
