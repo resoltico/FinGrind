@@ -23,9 +23,13 @@ readonly retry_count="${FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:-3}"
 readonly retry_delay_seconds="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-5}"
 readonly script_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly archive_verifier="${script_dir}/verify-source-archive.py"
+readonly security_policy_verifier="${script_dir}/verify-security-policy-surface.sh"
+readonly release_signer_workflow_path='.github/workflows/release.yml'
 
 [[ -n "${tag_name}" ]] || die "tag name is required"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier at ${archive_verifier}"
+[[ -x "${security_policy_verifier}" ]] || die \
+    "missing executable security-policy verifier at ${security_policy_verifier}"
 
 resolve_repository_slug() {
     if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
@@ -66,6 +70,32 @@ verify_source_archives() {
     rm -rf "${work_dir}"
 }
 
+verify_release_attestations() {
+    local repository_slug=$1
+    local work_dir asset_name asset_path signer_workflow
+
+    work_dir="$(mktemp -d)"
+    signer_workflow="${repository_slug}/${release_signer_workflow_path}"
+    for asset_name in "${asset_names[@]}"; do
+        gh release download "${tag_name}" --pattern "${asset_name}" --dir "${work_dir}" >/dev/null 2>&1 || {
+            rm -rf "${work_dir}"
+            return 1
+        }
+        asset_path="${work_dir}/${asset_name}"
+        [[ -f "${asset_path}" ]] || {
+            rm -rf "${work_dir}"
+            return 1
+        }
+        gh attestation verify "${asset_path}" \
+            --repo "${repository_slug}" \
+            --signer-workflow "${signer_workflow}" >/dev/null 2>&1 || {
+            rm -rf "${work_dir}"
+            return 1
+        }
+    done
+    rm -rf "${work_dir}"
+}
+
 verify_release_once() {
     local release_tag is_draft is_prerelease has_asset asset_name repository_slug
 
@@ -86,6 +116,8 @@ verify_release_once() {
 
     repository_slug="$(resolve_repository_slug)" || return 1
     [[ -n "${repository_slug}" ]] || return 1
+    "${security_policy_verifier}" "${repository_slug}" >/dev/null || return 1
+    verify_release_attestations "${repository_slug}" || return 1
     verify_source_archives "${repository_slug}" || return 1
 
     return 0

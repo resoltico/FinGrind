@@ -104,12 +104,19 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
     launcher_path = joined_path(bundle_root, str(host_bundle_target["launcherPath"]))
     application_jar = bundle_root / "lib" / "app" / "fingrind.jar"
     native_library = bundle_root / "lib" / "native" / str(host_bundle_target["sqliteLibraryFileName"])
+    native_library_checksum = (
+        bundle_root
+        / "lib"
+        / "native"
+        / (str(host_bundle_target["sqliteLibraryFileName"]) + ".sha256")
+    )
     java_command = bundled_java_command(bundle_root)
 
     required_files = [
         launcher_path,
         application_jar,
         native_library,
+        native_library_checksum,
         bundle_root / "LICENSE",
         bundle_root / "LICENSE-APACHE-2.0",
         bundle_root / "LICENSE-SIL-OFL-1.1",

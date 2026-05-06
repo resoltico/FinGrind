@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -239,6 +240,79 @@ class EnvironmentSqliteDescriptorTest {
   }
 
   @Test
+  void runtimeTrustBasis_followsRuntimeProvenanceContract() {
+    IllegalArgumentException trustBasisWithoutProvenance =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new EnvironmentSqliteDescriptor(
+                    SqliteLibraryMode.MANAGED_ONLY,
+                    "FINGRIND_SQLITE_LIBRARY",
+                    "fingrind.sqlite.bundle.home",
+                    List.of("THREADSAFE=1", "SECURE_DELETE"),
+                    SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                    "3.53.0",
+                    "2.3.3",
+                    ProtocolCatalog.requiredSqliteSourceId(),
+                    SqliteRuntimeStatus.UNAVAILABLE,
+                    null,
+                    SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "missing native library"));
+    assertEquals(
+        "runtimeTrustBasis must be absent when runtimeProvenance is absent.",
+        trustBasisWithoutProvenance.getMessage());
+
+    IllegalArgumentException mismatchedTrustBasis =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new EnvironmentSqliteDescriptor(
+                    SqliteLibraryMode.MANAGED_ONLY,
+                    "FINGRIND_SQLITE_LIBRARY",
+                    "fingrind.sqlite.bundle.home",
+                    List.of("THREADSAFE=1", "SECURE_DELETE"),
+                    SqliteCompileOptionsVerificationStatus.VERIFIED,
+                    "3.53.0",
+                    "2.3.3",
+                    ProtocolCatalog.requiredSqliteSourceId(),
+                    SqliteRuntimeStatus.READY,
+                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                    SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+                    "/tmp/libsqlite3.dylib",
+                    "3.53.0",
+                    "2.3.3",
+                    ProtocolCatalog.requiredSqliteSourceId(),
+                    null));
+    assertEquals(
+        "runtimeTrustBasis must match runtimeProvenance source-checkout-managed.",
+        mismatchedTrustBasis.getMessage());
+
+    EnvironmentSqliteDescriptor descriptor =
+        new EnvironmentSqliteDescriptor(
+            SqliteLibraryMode.MANAGED_ONLY,
+            "FINGRIND_SQLITE_LIBRARY",
+            "fingrind.sqlite.bundle.home",
+            List.of("THREADSAFE=1", "SECURE_DELETE"),
+            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            "3.53.0",
+            "2.3.3",
+            ProtocolCatalog.requiredSqliteSourceId(),
+            SqliteRuntimeStatus.READY,
+            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+            null,
+            "/tmp/libsqlite3.dylib",
+            "3.53.0",
+            "2.3.3",
+            ProtocolCatalog.requiredSqliteSourceId(),
+            null);
+    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, descriptor.runtimeTrustBasis());
+  }
+
+  @Test
   void failedStatus_requiresResolvedRuntimeFactsAndRuntimeIssue() {
     IllegalArgumentException failedWithVerifiedCompileOptions =
         assertThrows(
@@ -315,6 +389,7 @@ class EnvironmentSqliteDescriptorTest {
             null,
             "native bridge failed");
     assertEquals(SqliteRuntimeStatus.FAILED, descriptor.runtimeStatus());
+    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, descriptor.runtimeTrustBasis());
     assertEquals("3.53.0", descriptor.loadedSqliteVersion());
     assertEquals("native bridge failed", descriptor.runtimeIssue());
   }
@@ -445,6 +520,7 @@ class EnvironmentSqliteDescriptorTest {
             "source id mismatch");
     assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, descriptor.runtimeStatus());
     assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, descriptor.runtimeProvenance());
+    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, descriptor.runtimeTrustBasis());
     assertEquals("different-source-id", descriptor.loadedSqliteSourceId());
     assertEquals("source id mismatch", descriptor.runtimeIssue());
   }
@@ -494,6 +570,9 @@ class EnvironmentSqliteDescriptorTest {
         ProtocolCatalog.requiredSqliteSourceId(),
         runtimeStatus,
         runtimeProvenance,
+        runtimeProvenance == null
+            ? null
+            : SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
         loadedLibraryPath,
         loadedSqliteVersion,
         loadedSqlite3mcVersion,

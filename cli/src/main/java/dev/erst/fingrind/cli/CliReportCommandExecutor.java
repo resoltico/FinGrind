@@ -90,7 +90,8 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case AccountBalanceResult.Reported reported ->
-          exportPdfWarningTolerant(
+          exportPdfWithDiagnostics(
+              outputPath,
               () ->
                   pdfReportExporter.exportAccountBalance(
                       outputPath, bookFilePath, reported.snapshot()));
@@ -105,7 +106,8 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case TrialBalanceResult.Reported reported ->
-          exportPdfWarningTolerant(
+          exportPdfWithDiagnostics(
+              outputPath,
               () ->
                   pdfReportExporter.exportTrialBalance(
                       outputPath, bookFilePath, reported.report()));
@@ -120,7 +122,8 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case AccountLedgerResult.Reported reported ->
-          exportPdfWarningTolerant(
+          exportPdfWithDiagnostics(
+              outputPath,
               () ->
                   pdfReportExporter.exportAccountLedger(
                       outputPath, bookFilePath, reported.report()));
@@ -135,7 +138,8 @@ final class CliReportCommandExecutor {
     }
     switch (result) {
       case PeriodSummaryResult.Reported reported ->
-          exportPdfWarningTolerant(
+          exportPdfWithDiagnostics(
+              outputPath,
               () ->
                   pdfReportExporter.exportPeriodSummary(
                       outputPath, bookFilePath, reported.report()));
@@ -143,9 +147,10 @@ final class CliReportCommandExecutor {
     }
   }
 
-  private void exportPdfWarningTolerant(Runnable pdfExport) {
+  private void exportPdfWithDiagnostics(Path outputPath, Runnable pdfExport) {
     try {
       pdfExport.run();
+      diagnosticsWriter.writePdfExportInfo(outputPath);
     } catch (RuntimeException exception) {
       diagnosticsWriter.writePdfExportWarning(exception);
     }

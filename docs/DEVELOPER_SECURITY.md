@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -20,8 +20,10 @@ runtime-identity rules, and protected-book failure semantics in one canonical de
 FinGrind's current security model is built from four contract owners:
 - one explicit `BookAccess` tuple: durable book path plus one selected passphrase source
 - one managed SQLite runtime contract: SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 plus the
-  required compile options `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`, and
-  `SECURE_DELETE`
+  required compile options `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`,
+  `SECURE_DELETE`, and `SQLITE3MC_SECURE_MEMORY=1`
+- one connection-hardening contract: `secure_delete=on`, `temp_store=memory`, and
+  `memory_security=fill` on every opened SQLite handle
 - one persisted protected-book format contract: `cipher=chacha20`, `legacyMode=false`,
   `pageSize=4096`, `reservedBytes=32`, `legacyPageSize=4096`, `kdfIter=64007`, and
   `plaintextHeaderSize=0`
@@ -41,9 +43,16 @@ What FinGrind protects at rest:
   in memory
 
 What FinGrind does not protect automatically:
-- decoded query results or passphrase bytes in process memory before zeroization
+- decoded query results in process memory
+- the durable session-scoped passphrase copy that remains in memory until the owning SQLite
+  session closes or rotates to a replacement secret
+- short-lived working passphrase copies between native handoff and best-effort heap overwrite
+- any heap-resident secret copies the JVM GC, heap dump tooling, or crash handling may preserve
+  beyond the specific arrays FinGrind overwrites
 - crash dumps, live debuggers, or host-level memory inspection
 - copied backups, exported JSON, CSV, or PDF artifacts
+- stale `*.rekey-rollback-*.sqlite` artifacts left behind by an interrupted rekey before the next
+  operator review
 - key files stored beside the book file
 - any operator-modified runtime that weakens the canonical temp-store or compile-option contract
 
@@ -68,11 +77,24 @@ Rejected passphrase routes:
 
 Current lifecycle rules:
 - FinGrind normalizes one trailing line ending away from key-file or stdin passphrase input,
-  validates UTF-8, and rejects empty secrets
+  validates UTF-8, rejects empty secrets, and rejects key-file, standard-input, or interactive
+  prompt payloads larger than 4096 bytes after UTF-8 normalization
 - the SQLite adapter applies secrets through native `sqlite3_key()` and `sqlite3_rekey()`, not
   SQL text
-- transient passphrase copies are zeroized after native handoff
-- key files must remain owner-only (`0400` or `0600` on POSIX hosts, owner-only ACL on Windows)
+- `SqliteSessionSecret` owns one durable session-scoped passphrase copy so the store can reopen
+  or rekey without asking the caller to re-resolve the secret on every operation
+- each native open or rekey call borrows one working passphrase copy from that durable session
+  secret and best-effort overwrites the working copy immediately after native handoff
+- the durable session copy is best-effort overwritten when the owning session closes or rotates to
+  a new secret
+- key files must remain owner-only (`0400` or `0600` on POSIX hosts, owner-only ACL on Windows),
+  and the owner-only parent directory must also remain owner-only so another principal cannot
+  browse, replace, or remove the secret path through directory access alone
+- the public quick-start and example docs keep key files under a separate `./secrets/` tree and
+  encrypted books under `./books/` so ordinary book-copy workflows do not automatically copy the
+  unlocking secret too
+- Java heap overwrite is best-effort only: FinGrind overwrites the arrays and direct buffers it
+  owns, but the JVM does not promise elimination of GC-relocated copies or heap-dump visibility
 
 ## Protected-Book Format Rationale
 
@@ -100,6 +122,24 @@ three runtime-provenance values:
 - `environment-configured`: the current process received the managed library path through the
   canonical environment-variable route
 
+Runtime identity rules:
+- publisher-owned managed runtimes (`bundle-managed` and `source-checkout-managed`) are
+  authenticated against one trusted FinGrind managed SQLite digest resource embedded in the
+  sqlite runtime artifact, copied into one private verification snapshot, and also checked against
+  the sibling `.sha256` file beside the extracted library before that verified snapshot is loaded
+- `environment-configured` is an operator-trusted escape hatch: FinGrind requires the selected
+  library to match its sibling `.sha256` file for local consistency, copies that pair into one
+  private verification snapshot before load, but does not claim publisher-authenticated identity
+  for the operator-supplied binary
+- machine consumers read `environment.sqlite.runtimeProvenance` together with
+  `environment.sqlite.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field reports
+  `publisher-authenticated` for `bundle-managed` and `source-checkout-managed`, while
+  `operator-trusted` is the trust basis for `environment-configured`
+- capabilities.environment.sqlite.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes without requiring agents to infer that downgrade from prose alone
+- the source-checkout launcher and developer raw-JAR wrapper publish both the source-checkout root
+  and the active root-project build directory, so relocated Gradle build roots resolve the same
+  managed library tree that Gradle actually prepared instead of guessing at `repo/build/...`
+
 Current verification paths:
 - `scripts/verify-source-checkout-sqlite-runtime.sh` proves the generated source-checkout launcher
   reports the canonical source-checkout runtime distribution with `source-checkout-managed`
@@ -112,6 +152,26 @@ Current verification paths:
 - `scripts/render-managed-sqlite-compiler-flags.py` makes Docker compile the native library from
   the same canonical compile-option contract used elsewhere, and
   `scripts/test-render-managed-sqlite-compiler-flags.sh` guards that renderer
+- `./scripts/verify-security-policy-surface.sh` is the live GitHub verifier for the repository's
+  private vulnerability reporting surface, and `./scripts/verify-github-release.sh` calls it
+  during public release verification
+
+## Release Integrity And Disclosure
+
+Public release integrity rules:
+- every published CLI archive and every published archive checksum file receives one GitHub artifact attestation from `.github/workflows/release.yml`
+- `./scripts/verify-github-release.sh` verifies the release object, downloads the published
+  assets, verifies their attestations with `gh attestation verify`, and rejects releases whose
+  source archives leak repo-owned agent metadata
+- `.sha256` files remain convenience digests for operators; publisher authenticity comes from the
+  GitHub attestation, not from storing a checksum beside the artifact in the same release object
+
+Disclosure rules:
+- `SECURITY.md` is the canonical public security-policy surface
+- GitHub private vulnerability reporting is enabled for this repository, so reporters should use
+  the repository's private advisory/reporting flow instead of a public issue
+- `./scripts/verify-security-policy-surface.sh` is the executable evidence owner for that GitHub
+  repository setting
 
 ## Failure Semantics
 
@@ -124,9 +184,10 @@ Publicly reported causes include:
 - a protected SQLite file outside the supported FinGrind protected-book format
 
 FinGrind intentionally does not invent false precision at this boundary. The encrypted-header
-validation path can converge on the same `SQLITE_NOTADB` storage symptom for wrong-key, damaged
-ciphertext, and unsupported protected-file variants. The public contract therefore reports one
-truthful verification failure instead of pretending every such failure is a passphrase mistake.
+validation path can converge on storage verification families such as `SQLITE_NOTADB`,
+`SQLITE_IOERR_BADKEY`, and `SQLITE_IOERR_CODEC` for wrong-key, damaged ciphertext, and
+unsupported protected-file variants. The public contract therefore reports one truthful
+verification failure instead of pretending every such failure is a passphrase mistake.
 
 ## Evidence
 
@@ -134,13 +195,26 @@ Current evidence that this model is implemented:
 - `verifyManagedSqliteSource` pins the vendored SQLite3MC source hash before the managed runtime
   is built
 - the Docker image verifies that same vendored source before compile
+- `SqliteConnectionConfigurer` rejects any opened handle that cannot prove `secure_delete=on`,
+  `temp_store=memory`, and `memory_security=fill`
 - `SqliteProtectedBookCompatibilityFixtureTest` proves the committed protected-book fixture reopens,
   rejects mismatched verification, and restores from a closed-book encrypted copy
 - the CLI and store tests cover wrong-key, corrupted-book, and truncated-book failures through the
   deterministic `protected-book-verification-failed` contract
+- `SqliteManagedLibraryIdentityTest` proves publisher-owned managed runtimes require the trusted
+  embedded digest contract, while `environment-configured` runtimes require a matching sibling
+  `.sha256` sidecar for local consistency
+- `SqliteRekeyRollbackFileTest` proves stale rollback-artifact discovery only matches the
+  same-book rollback naming contract before one warning is reported
+- `scripts/test-verify-github-release.sh` proves release verification now requires attested
+  published bundle assets instead of metadata-only checks
+- `scripts/test-verify-security-policy-surface.sh` proves the live GitHub security-policy verifier
+  rejects repositories whose private reporting surface is disabled
 - `capabilities` publishes the runtime distribution, runtime provenance, compile-option
-  verification, loaded library path, and canonical protected-book format facts for machine checks
+  verification, runtime trust basis, loaded library path, and canonical protected-book format
+  facts for machine checks
 
 For storage architecture details, see [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md). For container
 runtime specifics, see [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). For user-facing CLI behavior,
-see [USER_CLI.md](./USER_CLI.md).
+see [USER_CLI.md](./USER_CLI.md). For coordinated disclosure, see
+[../SECURITY.md](../SECURITY.md).

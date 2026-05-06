@@ -1,12 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
@@ -100,8 +99,9 @@ final class SqliteStatementQueries {
         });
   }
 
-  static AccountPage loadAccountPage(SqliteNativeDatabase activeDatabase, ListAccountsQuery query) {
-    List<DeclaredAccount> accounts = new ArrayList<>();
+  static AccountRegistryPage loadAccountPage(
+      SqliteNativeDatabase activeDatabase, AccountRegistryQuery query) {
+    List<RegisteredAccount> accounts = new ArrayList<>();
     withStatement(
         activeDatabase,
         SqlitePostingSql.listAccounts(),
@@ -109,24 +109,24 @@ final class SqliteStatementQueries {
           String cursorAccountCode =
               query
                   .cursor()
-                  .map(AccountPageCursor::accountCode)
+                  .map(AccountRegistryCursor::accountCode)
                   .map(AccountCode::value)
                   .orElse(null);
           statement.bindText(1, cursorAccountCode);
           statement.bindText(2, cursorAccountCode);
           statement.bindInt(3, query.limit() + 1);
           while (statement.step() == SqliteNativeResultCodes.ROW) {
-            accounts.add(SqlitePostingMapper.declaredAccount(statement));
+            accounts.add(SqlitePostingMapper.registeredAccount(statement));
           }
           return Boolean.TRUE;
         });
     boolean hasMore = accounts.size() > query.limit();
-    List<DeclaredAccount> pageItems = hasMore ? accounts.subList(0, query.limit()) : accounts;
-    return new AccountPage(
+    List<RegisteredAccount> pageItems = hasMore ? accounts.subList(0, query.limit()) : accounts;
+    return new AccountRegistryPage(
         pageItems,
         query.limit(),
         hasMore
-            ? Optional.of(AccountPageCursor.fromAccount(pageItems.getLast()))
+            ? Optional.of(new AccountRegistryCursor(pageItems.getLast().accountCode()))
             : Optional.empty());
   }
 

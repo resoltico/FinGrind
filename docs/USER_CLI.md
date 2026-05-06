@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: USER_CLI
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -74,11 +74,12 @@ Commands that advertise `--output` keep JSON as the default machine surface. Dis
 administration, write, and query/report commands can render operator-facing `--output human`,
 and the tabular read/report commands also accept `--output csv`. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
-one PDF artifact through `--pdf-out <path>`. If the report itself succeeds but the PDF write later
-fails, FinGrind still returns the primary report on stdout and emits a repair warning on the
-diagnostics stream instead of changing the command exit to `runtime-failure`. Commands that do not
-advertise `--output` still publish one fixed stdout contract, either one raw JSON document or one
-fixed JSON envelope.
+one PDF artifact through `--pdf-out <path>`. Successful exports keep the main stdout result
+unchanged and emit the normalized artifact path on the diagnostics stream. If the report itself
+succeeds but the PDF write later fails, FinGrind still returns the primary report on stdout and
+emits a repair warning on the diagnostics stream instead of changing the command exit to
+`runtime-failure`. Commands that do not advertise `--output` still publish one fixed stdout
+contract, either one raw JSON document or one fixed JSON envelope.
 
 ## Commands
 
@@ -141,6 +142,10 @@ Each extracted archive also contains:
 
 Those bundle metadata surfaces disclose the same canonical target matrix and managed-SQLite
 version pins that the source checkout, release automation, and shell acceptance verifiers use.
+Each published bundle archive also ships with one sibling `.sha256` digest file on the GitHub
+Release and one GitHub artifact attestation. Use `gh attestation verify --repo resoltico/FinGrind
+<downloaded-archive>` when you need publisher-authenticated provenance, and treat the `.sha256`
+file as a convenience integrity digest rather than the only trust anchor.
 
 One public Unix bundle flow:
 
@@ -176,6 +181,16 @@ Edit `.\request.json` and replace `replace-before-commit-effective-date` plus ev
 In the examples below, `fingrind` means the extracted bundle launcher.
 Command-scoped help and repair hints emitted from a self-contained bundle use that same launcher
 path, such as `./bin/fingrind` on POSIX bundles or `.\bin\fingrind.ps1` on Windows bundles.
+
+For copy-paste use from one extracted bundle session, define `fingrind` once first.
+
+```bash
+fingrind() { "./<bundle-root>/bin/fingrind" "$@"; }
+```
+
+```powershell
+function fingrind { & .\<bundle-root>\bin\fingrind.ps1 @args }
+```
 
 For source-driven local use, prefer:
 
@@ -262,8 +277,10 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
 | wrong book key, damaged/truncated protected book, or unsupported protected SQLite variant | `2` | `protected-book-verification-failed` | `FinGrind could not verify the selected protected book with the supplied passphrase source.` |
-| invalid key-file contents or permissions | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.` |
+| invalid key-file contents, file permissions, parent-directory permissions, or unreadable key-file path | `2` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, parent directory, or contents do not satisfy the protected-book contract.` |
+| unreadable, oversized, malformed, empty, or control-character passphrase payload on stdin or another selected passphrase route | `2` | `invalid-book-passphrase-source` | `Failed to read the FinGrind book passphrase from standard input.`, `The FinGrind book passphrase source exceeded the 4096-byte UTF-8 limit: ...`, or UTF-8/single-line passphrase validation text |
 | unsupported prompt environment | `2` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
+| requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout and diagnostics report the normalized written PDF path |
 | requested PDF artifact cannot be written after a successful report result | `0` | diagnostics warning pdf-export-warning | primary report remains on stdout and the warning explains how to repair the `--pdf-out` path |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `4` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
@@ -279,14 +296,19 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `generate-book-key-file` creates one new owner-only UTF-8 key file and refuses to overwrite an
   existing path. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
   Windows.
-- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file; one trailing LF
-  or CRLF is tolerated and stripped, but embedded control characters are rejected.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than
+  4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
+  are rejected.
 - Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
-  Windows owner-only ACL on Windows, or the runtime rejects them.
+  Windows owner-only ACL on Windows, their containing directory must also remain owner-only, and
+  the public examples keep those files under a separate `./secrets/` tree instead of beside the
+  book.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore
-  cannot be paired with `--request-file -`. Feed that stdin route from a file or secret-fetching
-  process rather than embedding the passphrase literal in shell history.
-- `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo.
+  cannot be paired with `--request-file -`. The accepted stdin payload is capped at 4096 bytes.
+  Feed that stdin route from a file or secret-fetching process rather than embedding the
+  passphrase literal in shell history.
+- `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo, and
+  the accepted prompt payload is also capped at 4096 UTF-8 bytes after normalization.
 - `rekey-book` requires one current passphrase source plus one replacement passphrase source.
   The replacement options are `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, and
   `--replacement-book-passphrase-prompt`.
@@ -297,9 +319,13 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   entries.
 - `rekey-book` rejects using the same key-file path for both current and replacement secrets, and
   standard input cannot supply both current and replacement secrets in the same invocation.
+- `rekey-book` uses one same-directory encrypted rollback copy while rotation is in progress. If a
+  crash or forced stop interrupts cleanup, that stale `*.rekey-rollback-*.sqlite` file remains in
+  the book directory until you inspect or delete it, and later opens warn when they detect it.
 - The supported backup/restore workflow is one encrypted closed-book copy plus later file
   replacement. Do not copy a book while FinGrind is actively mutating it, and keep the copied
-  `.sqlite` file under the same protected filesystem stance as the live book.
+  `.sqlite` file under the same protected filesystem stance as the live book while storing key
+  material separately from the copied book tree.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /
@@ -318,6 +344,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 - `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or
   `post-entry`, because it reports initialization state, detected book-format version, supported
   book-format version, and compatibility with the current binary.
+- Read-oriented commands do not repair book-file permissions as a side effect. Permission repair
+  happens on mutation-capable opens such as `open-book` and `rekey-book`.
 - `list-accounts` returns paginated payloads with `limit`, `accounts`, and an optional opaque
   `nextCursor` that can be passed back through `--cursor`.
 - `list-postings` returns paginated payloads with `limit`, `postings`, and an optional opaque
@@ -327,8 +355,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   commands except `inspect-book` and `get-posting` also accept `--output csv`.
 - `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can also write one
   PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout
-  output mode. If the primary report succeeds but the PDF artifact fails, stdout still carries the
-  report result and diagnostics emit a human warning with code pdf-export-warning.
+  output mode. If the primary report succeeds, diagnostics emit a human info block with code
+  `pdf-exported` and the normalized written path. If the PDF artifact fails, stdout still carries
+  the report result and diagnostics emit a human warning with code `pdf-export-warning`.
 - JSON amount fields remain canonical decimal strings without forced display scale, while
   `--output human` and `--output csv` render accounting-grade currency scale for operators and
   spreadsheet import.
@@ -356,6 +385,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.sqlite.compileOptionsVerification`,
   `environment.sqlite.runtimeStatus`,
   `environment.sqlite.runtimeProvenance`,
+  `environment.sqlite.runtimeTrustBasis`,
   `environment.sqlite.loadedLibraryPath`,
   `environment.sqlite.loadedSqliteVersion`,
   `environment.sqlite.loadedSqlite3mcVersion`,
@@ -379,7 +409,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library.
 - The developer-only `java -jar` path auto-discovers that managed SQLite3MC library and native
   access when it runs from a prepared checkout. Custom direct-Java launches outside that checkout
-  shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly.
+  shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly; that `environment-configured`
+  provenance reports `runtimeTrustBasis: "operator-trusted"` and is only checked for local
+  library-plus-sidecar consistency, not publisher-authenticated bundle provenance.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while
   `capabilities.commands.<group>[]` publishes the authoritative per-command stdout and artifact

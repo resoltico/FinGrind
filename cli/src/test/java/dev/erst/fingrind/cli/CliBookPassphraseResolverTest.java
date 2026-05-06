@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.ByteArrayInputStream;
@@ -84,6 +85,30 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void resolve_rejectsOversizedStandardInputPassphrases() {
+    byte[] oversizedPassphrase =
+        "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1).getBytes(StandardCharsets.UTF_8);
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(oversizedPassphrase), prompt -> failPrompt(prompt));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                    .requireAccepted());
+
+    assertEquals(
+        "FinGrind book passphrase input from standard input exceeded the 4096-byte limit.",
+        exception.getMessage());
+  }
+
+  @Test
   void resolve_readsPromptPassphraseFromTerminal() throws Exception {
     CliBookPassphraseResolver resolver =
         new CliBookPassphraseResolver(
@@ -111,6 +136,32 @@ class CliBookPassphraseResolverTest {
                   .toArray(java.lang.foreign.ValueLayout.JAVA_BYTE),
               StandardCharsets.UTF_8));
     }
+  }
+
+  @Test
+  void resolve_rejectsOversizedPromptPassphrases() {
+    char[] enteredPassword =
+        "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1).toCharArray();
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            prompt -> ContractDecision.accepted(enteredPassword));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                    .requireAccepted());
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("exceeded the 4096-byte UTF-8 limit"));
+    assertArrayEquals(new char[enteredPassword.length], enteredPassword);
   }
 
   @Test
@@ -292,9 +343,9 @@ class CliBookPassphraseResolverTest {
             },
             prompt -> failPrompt(prompt));
 
-    IllegalStateException exception =
+    ContractFailureException exception =
         assertThrows(
-            IllegalStateException.class,
+            ContractFailureException.class,
             () ->
                 resolver
                     .resolve(
@@ -305,6 +356,9 @@ class CliBookPassphraseResolverTest {
 
     assertEquals(
         "Failed to read the FinGrind book passphrase from standard input.", exception.getMessage());
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
+        exception.failure().code());
     assertFalse(Objects.requireNonNull(exception.getMessage()).contains("boom"));
   }
 

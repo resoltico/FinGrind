@@ -1,17 +1,17 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerJournalStep;
-import dev.erst.fingrind.contract.LedgerStepFailure;
-import dev.erst.fingrind.contract.LedgerStepId;
-import dev.erst.fingrind.contract.LedgerStepStatus;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RejectionNarrative;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryPhase;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
+import dev.erst.fingrind.executor.workflow.BookWorkflowJournalDescriptor;
+import dev.erst.fingrind.executor.workflow.BookWorkflowJournalEntry;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
 import java.time.Instant;
@@ -24,24 +24,22 @@ import org.jspecify.annotations.Nullable;
 final class LedgerPlanOutcomeMapper {
   private LedgerPlanOutcomeMapper() {}
 
-  static LedgerPlanStepOutcome balanceFacts(AccountBalanceSnapshot snapshot) {
-    return stepSucceeded(LedgerPlanFactMapper.balanceFacts(snapshot));
+  static LedgerPlanStepOutcome balanceFacts(AccountBalanceView view) {
+    return stepSucceeded(LedgerPlanFactMapper.balanceFacts(view));
   }
 
   static List<LedgerFact> postingFacts(CommittedPosting postingFact) {
     return LedgerPlanFactMapper.postingFacts(postingFact);
   }
 
-  static List<LedgerFact> postingFacts(PostingFact postingFact) {
-    return LedgerPlanFactMapper.postingFacts(postingFact);
-  }
-
   static LedgerPlanStepOutcome administrationRejection(
-      dev.erst.fingrind.contract.BookAdministrationRejection rejection) {
+      BookkeepingAdministrationRejection rejection) {
+    dev.erst.fingrind.contract.BookAdministrationRejection publishedRejection =
+        BookkeepingPublishedLanguageTranslator.toPublished(rejection);
     return stepRejected(
-        dev.erst.fingrind.contract.BookAdministrationRejection.wireCode(rejection),
-        RejectionNarrative.message(rejection),
-        RejectionNarrative.facts(rejection));
+        dev.erst.fingrind.contract.BookAdministrationRejection.wireCode(publishedRejection),
+        RejectionNarrative.message(publishedRejection),
+        RejectionNarrative.facts(publishedRejection));
   }
 
   static LedgerPlanStepOutcome queryRejection(
@@ -61,8 +59,7 @@ final class LedgerPlanOutcomeMapper {
 
   static LedgerPlanStepOutcome assertionFailure(String message, LedgerFact... facts) {
     return new LedgerPlanStepOutcome.AssertionFailed(
-        new LedgerStepFailure(
-            LedgerStepStatus.ASSERTION_FAILED.wireValue(), message, List.of(facts)));
+        new BookWorkflowFailure("assertion-failed", message, List.of(facts)));
   }
 
   static String missingBookCode(BookWorkflowStep firstStep) {
@@ -87,44 +84,40 @@ final class LedgerPlanOutcomeMapper {
   }
 
   static LedgerPlanStepOutcome stepRejected(String code, String message, List<LedgerFact> facts) {
-    return new LedgerPlanStepOutcome.Rejected(new LedgerStepFailure(code, message, facts));
+    return new LedgerPlanStepOutcome.Rejected(new BookWorkflowFailure(code, message, facts));
   }
 
-  static LedgerJournalEntry.Rejected unexpectedExecutionFailure(
+  static BookWorkflowJournalEntry.Rejected unexpectedExecutionFailure(
       BookWorkflowStep step, Instant startedAt, Instant finishedAt, RuntimeException failure) {
-    return new LedgerJournalEntry.Rejected(
-        BookWorkflowPublishedLanguageTranslator.toPublishedStepId(step.stepId()),
-        BookWorkflowPublishedLanguageTranslator.toPublishedJournalStep(step),
+    return new BookWorkflowJournalEntry.Rejected(
+        step.stepId(),
+        new BookWorkflowJournalDescriptor.Step(step),
         startedAt,
         finishedAt,
         List.of(LedgerFact.text("exceptionType", failure.getClass().getName())),
-        new LedgerStepFailure(
+        new BookWorkflowFailure(
             "unexpected-step-failure",
             unexpectedExecutionFailureMessage(step, failure),
             List.of(LedgerFact.text("exceptionType", failure.getClass().getName()))));
   }
 
-  static LedgerJournalEntry.Rejected unexpectedPlanFailure(
-      LedgerBoundaryPhase phase,
+  static BookWorkflowJournalEntry.Rejected unexpectedPlanFailure(
+      BookWorkflowBoundaryPhase phase,
       Instant startedAt,
       Instant finishedAt,
-      @Nullable LedgerStepId triggerStepId,
-      @Nullable LedgerJournalStep triggerJournalStep,
+      @Nullable String triggerStepId,
+      @Nullable BookWorkflowJournalDescriptor triggerDescriptor,
       RuntimeException failure,
       @Nullable RuntimeException cleanupFailure,
-      @Nullable LedgerStepFailure priorFailure) {
+      @Nullable BookWorkflowFailure priorFailure) {
     List<LedgerFact> failureFacts = new ArrayList<>();
     failureFacts.add(LedgerFact.text("phase", phase.wireValue()));
     failureFacts.add(LedgerFact.text("exceptionType", failure.getClass().getName()));
     if (triggerStepId != null) {
-      failureFacts.add(LedgerFact.text("triggerStepId", triggerStepId.value()));
+      failureFacts.add(LedgerFact.text("triggerStepId", triggerStepId));
     }
-    if (triggerJournalStep != null) {
-      failureFacts.add(LedgerFact.text("triggerStepKind", triggerJournalStep.kind().wireValue()));
-      if (triggerJournalStep.detailKind() != null) {
-        failureFacts.add(
-            LedgerFact.text("triggerDetailKind", triggerJournalStep.detailKind().wireValue()));
-      }
+    if (triggerDescriptor != null) {
+      appendTriggerDescriptorFacts(failureFacts, triggerDescriptor);
     }
     if (cleanupFailure != null) {
       failureFacts.add(
@@ -140,13 +133,13 @@ final class LedgerPlanOutcomeMapper {
                   LedgerFact.text("code", priorFailure.code()),
                   LedgerFact.text("message", priorFailure.message()))));
     }
-    return new LedgerJournalEntry.Rejected(
+    return new BookWorkflowJournalEntry.Rejected(
         boundaryStepId(phase),
-        LedgerJournalStep.boundary(phase),
+        new BookWorkflowJournalDescriptor.Boundary(phase),
         startedAt,
         finishedAt,
         List.of(),
-        new LedgerStepFailure(
+        new BookWorkflowFailure(
             "unexpected-plan-failure",
             unexpectedPlanFailureMessage(phase, triggerStepId, failure),
             failureFacts));
@@ -163,7 +156,7 @@ final class LedgerPlanOutcomeMapper {
   }
 
   private static String unexpectedPlanFailureMessage(
-      LedgerBoundaryPhase phase, @Nullable LedgerStepId triggerStepId, RuntimeException failure) {
+      BookWorkflowBoundaryPhase phase, @Nullable String triggerStepId, RuntimeException failure) {
     String detail = String.valueOf(failure.getMessage()).strip();
     String phaseContext =
         switch (phase) {
@@ -171,15 +164,15 @@ final class LedgerPlanOutcomeMapper {
           case INITIALIZATION_CHECK ->
               triggerStepId == null
                   ? "during initialization-check"
-                  : "during initialization-check before step '%s'".formatted(triggerStepId.value());
+                  : "during initialization-check before step '%s'".formatted(triggerStepId);
           case COMMIT ->
               triggerStepId == null
                   ? "during commit"
-                  : "during commit after step '%s'".formatted(triggerStepId.value());
+                  : "during commit after step '%s'".formatted(triggerStepId);
           case ROLLBACK ->
               triggerStepId == null
                   ? "during rollback"
-                  : "during rollback after step '%s'".formatted(triggerStepId.value());
+                  : "during rollback after step '%s'".formatted(triggerStepId);
         };
     if (detail.isEmpty() || "null".equals(detail)) {
       return "Ledger plan execution failed unexpectedly %s.".formatted(phaseContext);
@@ -187,7 +180,20 @@ final class LedgerPlanOutcomeMapper {
     return "Ledger plan execution failed unexpectedly %s: %s".formatted(phaseContext, detail);
   }
 
-  private static LedgerStepId boundaryStepId(LedgerBoundaryPhase phase) {
-    return new LedgerStepId("@plan-boundary:" + phase.wireValue());
+  private static void appendTriggerDescriptorFacts(
+      List<LedgerFact> facts, BookWorkflowJournalDescriptor descriptor) {
+    LedgerJournalStep journalStep =
+        BookWorkflowPublishedLanguageTranslator.toPublishedJournalStep(descriptor);
+    facts.add(LedgerFact.text("triggerStepKind", journalStep.kind().wireValue()));
+    if (journalStep.detailKind() != null) {
+      facts.add(LedgerFact.text("triggerDetailKind", journalStep.detailKind().wireValue()));
+    }
+    if (descriptor instanceof BookWorkflowJournalDescriptor.Boundary boundary) {
+      facts.add(LedgerFact.text("triggerBoundaryPhase", boundary.phase().wireValue()));
+    }
+  }
+
+  private static String boundaryStepId(BookWorkflowBoundaryPhase phase) {
+    return "@plan-boundary:" + phase.wireValue();
   }
 }

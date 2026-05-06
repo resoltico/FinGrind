@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.CurrencyBalance;
 import java.util.Objects;
 
 /** One flattened account-and-currency row inside a trial balance report. */

@@ -19,6 +19,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.31.0",
+                "0.32.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -95,7 +96,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.31.0",
+                "0.32.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -144,7 +145,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.31.0",
+                "0.32.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -193,7 +194,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.31.0",
+                "0.32.0",
                 "desc",
                 List.of("fingrind post-entry --book-file <path>"),
                 new ContractResponse.BookModelDescriptor(
@@ -239,7 +240,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.31.0",
+                "0.32.0",
                 "desc",
                 List.of(),
                 new ContractResponse.BookModelDescriptor(
@@ -282,7 +283,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.31.0",
+                "0.32.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -343,13 +344,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.31.0"));
+    assertTrue(rendered.contains("0.32.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.31.0",
+        "0.32.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -377,6 +378,7 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.requiredSqliteSourceId(),
             SqliteRuntimeStatus.READY,
             SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
             "/tmp/libsqlite3.dylib",
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),

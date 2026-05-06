@@ -3,13 +3,13 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Path;
@@ -104,12 +104,13 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       money("USD", "0.00"),
                       money("USD", "8.00"),
                       BalanceSide.DEBIT))),
-          postingFactStore.accountLedger(
-              new AccountLedgerQuery(
-                  new AccountCode("1000"),
-                  LocalDate.parse("2026-04-08"),
-                  LocalDate.parse("2026-04-09")),
-              cashAccount));
+          published(
+              postingFactStore.accountLedger(
+                  new AccountLedgerCriteria(
+                      new AccountCode("1000"),
+                      LocalDate.parse("2026-04-08"),
+                      LocalDate.parse("2026-04-09")),
+                  cashAccount)));
     }
   }
 
@@ -155,8 +156,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       money("EUR", "0.00"),
                       money("EUR", "10.00"),
                       BalanceSide.DEBIT))),
-          postingFactStore.accountLedger(
-              new AccountLedgerQuery(new AccountCode("1000"), LocalDate.MIN, null), cashAccount));
+          published(
+              postingFactStore.accountLedger(
+                  new AccountLedgerCriteria(new AccountCode("1000"), LocalDate.MIN, null),
+                  cashAccount)));
     }
   }
 
@@ -217,12 +220,13 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       money("EUR", "10.00"),
                       money("EUR", "0.00"),
                       BalanceSide.ZERO))),
-          postingFactStore.accountLedger(
-              new AccountLedgerQuery(
-                  new AccountCode("2000"),
-                  LocalDate.parse("2026-04-08"),
-                  LocalDate.parse("2026-04-08")),
-              revenueAccount));
+          published(
+              postingFactStore.accountLedger(
+                  new AccountLedgerCriteria(
+                      new AccountCode("2000"),
+                      LocalDate.parse("2026-04-08"),
+                      LocalDate.parse("2026-04-08")),
+                  revenueAccount)));
     }
   }
 
@@ -284,12 +288,13 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       money("USD", "0.00"),
                       money("USD", "7.00"),
                       BalanceSide.DEBIT))),
-          postingFactStore.accountLedger(
-              new AccountLedgerQuery(
-                  new AccountCode("1000"),
-                  LocalDate.parse("2026-04-09"),
-                  LocalDate.parse("2026-04-09")),
-              cashAccount));
+          published(
+              postingFactStore.accountLedger(
+                  new AccountLedgerCriteria(
+                      new AccountCode("1000"),
+                      LocalDate.parse("2026-04-09"),
+                      LocalDate.parse("2026-04-09")),
+                  cashAccount)));
     }
   }
 }

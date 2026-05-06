@@ -22,10 +22,17 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
                 "accounting entity",
                 "Bounded Contexts",
                 "Context Map",
-                "published language",
+                "Public Bookkeeping Protocol Context",
+                "Public Workflow Protocol Context",
+                "Runtime And Discovery Contract Context",
+                "shared kernel",
+                "CurrencyBalance",
+                "EffectiveDateRange",
                 "anti-corruption layer",
                 "executor.bookkeeping",
                 "executor.workflow",
+                "BookWorkflowJournalEntry",
+                "BookWorkflowExecutionJournal",
                 "execute-plan",
                 "SQLite adapter"));
 
@@ -81,25 +88,55 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
     Set<String> violations = new LinkedHashSet<>();
     assertOnlyTranslatorImportsPublishedLanguage(
         repositoryRoot().resolve("executor/src/main/java/dev/erst/fingrind/executor/bookkeeping"),
-        "BookkeepingPublishedLanguageTranslator.java",
         Set.of(
+            "BookkeepingPublishedLanguageTranslator.java",
+            "BookkeepingReadPublishedLanguageTranslator.java"),
+        Set.of(
+            "import dev.erst.fingrind.contract.AccountBalanceQuery;",
+            "import dev.erst.fingrind.contract.AccountBalanceSnapshot;",
+            "import dev.erst.fingrind.contract.AccountLedgerEntry;",
+            "import dev.erst.fingrind.contract.AccountLedgerQuery;",
+            "import dev.erst.fingrind.contract.AccountLedgerReport;",
+            "import dev.erst.fingrind.contract.AccountPage;",
+            "import dev.erst.fingrind.contract.AccountPageCursor;",
             "import dev.erst.fingrind.contract.DeclareAccountCommand;",
             "import dev.erst.fingrind.contract.DeclareAccountResult;",
             "import dev.erst.fingrind.contract.DeclaredAccount;",
+            "import dev.erst.fingrind.contract.ListAccountsQuery;",
+            "import dev.erst.fingrind.contract.ListPostingsQuery;",
             "import dev.erst.fingrind.contract.OpenBookResult;",
+            "import dev.erst.fingrind.contract.PeriodAccountActivityRow;",
+            "import dev.erst.fingrind.contract.PeriodCurrencySummary;",
+            "import dev.erst.fingrind.contract.PeriodSummaryQuery;",
+            "import dev.erst.fingrind.contract.PeriodSummaryReport;",
             "import dev.erst.fingrind.contract.PostEntryCommand;",
             "import dev.erst.fingrind.contract.PostingFact;",
-            "import dev.erst.fingrind.contract.PostingLineage;"),
+            "import dev.erst.fingrind.contract.PostingLineage;",
+            "import dev.erst.fingrind.contract.PostingPage;",
+            "import dev.erst.fingrind.contract.PostingPageCursor;",
+            "import dev.erst.fingrind.contract.TrialBalanceQuery;",
+            "import dev.erst.fingrind.contract.TrialBalanceReport;",
+            "import dev.erst.fingrind.contract.TrialBalanceRow;"),
         violations);
     assertOnlyTranslatorImportsPublishedLanguage(
         repositoryRoot().resolve("executor/src/main/java/dev/erst/fingrind/executor/workflow"),
-        "BookWorkflowPublishedLanguageTranslator.java",
+        Set.of("BookWorkflowPublishedLanguageTranslator.java"),
         Set.of(
+            "import dev.erst.fingrind.contract.AccountBalanceQuery;",
+            "import dev.erst.fingrind.contract.LedgerBoundaryPhase;",
             "import dev.erst.fingrind.contract.LedgerAssertion;",
+            "import dev.erst.fingrind.contract.LedgerExecutionJournal;",
+            "import dev.erst.fingrind.contract.LedgerJournalEntry;",
+            "import dev.erst.fingrind.contract.LedgerJournalStep;",
             "import dev.erst.fingrind.contract.LedgerPlan;",
             "import dev.erst.fingrind.contract.LedgerPlanId;",
+            "import dev.erst.fingrind.contract.LedgerPlanResult;",
+            "import dev.erst.fingrind.contract.LedgerPlanStatus;",
+            "import dev.erst.fingrind.contract.LedgerStepFailure;",
             "import dev.erst.fingrind.contract.LedgerStep;",
-            "import dev.erst.fingrind.contract.LedgerStepId;"),
+            "import dev.erst.fingrind.contract.LedgerStepId;",
+            "import dev.erst.fingrind.contract.ListAccountsQuery;",
+            "import dev.erst.fingrind.contract.ListPostingsQuery;"),
         violations);
 
     assertTrue(
@@ -108,14 +145,34 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
   }
 
   @Test
-  void sqliteWritePath_avoidsPublicWriteAndWorkflowDtos() throws IOException {
+  void sqliteAdapter_avoidsPublishedBookkeepingAndWorkflowDtos() throws IOException {
     Set<String> forbiddenImports =
         Set.of(
+            "import dev.erst.fingrind.contract.AccountBalanceQuery;",
+            "import dev.erst.fingrind.contract.AccountBalanceSnapshot;",
+            "import dev.erst.fingrind.contract.AccountLedgerEntry;",
+            "import dev.erst.fingrind.contract.AccountLedgerQuery;",
+            "import dev.erst.fingrind.contract.AccountLedgerReport;",
+            "import dev.erst.fingrind.contract.AccountPage;",
+            "import dev.erst.fingrind.contract.AccountPageCursor;",
             "import dev.erst.fingrind.contract.DeclareAccountCommand;",
             "import dev.erst.fingrind.contract.PostEntryCommand;",
+            "import dev.erst.fingrind.contract.DeclaredAccount;",
             "import dev.erst.fingrind.contract.LedgerPlan;",
+            "import dev.erst.fingrind.contract.LedgerAssertion;",
             "import dev.erst.fingrind.contract.LedgerStep;",
-            "import dev.erst.fingrind.contract.LedgerAssertion;");
+            "import dev.erst.fingrind.contract.ListAccountsQuery;",
+            "import dev.erst.fingrind.contract.ListPostingsQuery;",
+            "import dev.erst.fingrind.contract.PeriodAccountActivityRow;",
+            "import dev.erst.fingrind.contract.PeriodCurrencySummary;",
+            "import dev.erst.fingrind.contract.PeriodSummaryQuery;",
+            "import dev.erst.fingrind.contract.PeriodSummaryReport;",
+            "import dev.erst.fingrind.contract.PostingFact;",
+            "import dev.erst.fingrind.contract.PostingPage;",
+            "import dev.erst.fingrind.contract.PostingPageCursor;",
+            "import dev.erst.fingrind.contract.TrialBalanceQuery;",
+            "import dev.erst.fingrind.contract.TrialBalanceReport;",
+            "import dev.erst.fingrind.contract.TrialBalanceRow;");
     Set<String> violations = new LinkedHashSet<>();
 
     try (Stream<Path> files = Files.walk(repositoryRoot().resolve("sqlite/src/main/java"))) {
@@ -132,7 +189,7 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
 
     assertTrue(
         violations.isEmpty(),
-        () -> "SQLite write-path published-language leakage:\n" + sorted(violations));
+        () -> "SQLite adapter published-language leakage:\n" + sorted(violations));
   }
 
   @Test
@@ -159,14 +216,14 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
 
   private void assertOnlyTranslatorImportsPublishedLanguage(
       Path sourceRoot,
-      String translatorFileName,
+      Set<String> translatorFileNames,
       Set<String> forbiddenImports,
       Set<String> violations)
       throws IOException {
     try (Stream<Path> files = Files.walk(sourceRoot)) {
       for (Path file : files.filter(path -> path.toString().endsWith(".java")).toList()) {
         String fileName = file.getFileName().toString();
-        if ("package-info.java".equals(fileName) || translatorFileName.equals(fileName)) {
+        if ("package-info.java".equals(fileName) || translatorFileNames.contains(fileName)) {
           continue;
         }
         String source = Files.readString(file);

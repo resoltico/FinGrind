@@ -31,7 +31,7 @@ readonly contract_path="${script_dir}/../contract/src/main/resources/dev/erst/fi
 
 actual="$(python3 "${renderer}")"
 actual_from_explicit_contract="$(python3 "${renderer}" "${contract_path}")"
-expected='-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1'
+expected='-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1 -DSQLITE3MC_SECURE_MEMORY=1'
 if [[ "${actual}" != "${expected}" ]]; then
     printf 'error: managed SQLite compiler flags drifted\nexpected: %s\nactual:   %s\n' \
         "${expected}" "${actual}" >&2

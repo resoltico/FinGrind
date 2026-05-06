@@ -1,7 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,7 +21,7 @@ sealed interface LedgerPlanStepOutcome
   }
 
   /** Rejected step outcome carrying the failure that will be written to the journal. */
-  record Rejected(LedgerStepFailure failure) implements LedgerPlanStepOutcome {
+  record Rejected(BookWorkflowFailure failure) implements LedgerPlanStepOutcome {
     public Rejected {
       Objects.requireNonNull(failure, "failure");
     }
@@ -33,7 +33,7 @@ sealed interface LedgerPlanStepOutcome
   }
 
   /** Assertion-failed step outcome carrying the assertion failure payload. */
-  record AssertionFailed(LedgerStepFailure failure) implements LedgerPlanStepOutcome {
+  record AssertionFailed(BookWorkflowFailure failure) implements LedgerPlanStepOutcome {
     public AssertionFailed {
       Objects.requireNonNull(failure, "failure");
     }

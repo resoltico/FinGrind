@@ -102,6 +102,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
 
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code(), exception.failure().code());
+    assertTrue(exception.getMessage().contains("does not exist"));
   }
 
   @Test
@@ -317,22 +318,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         assertFalse(exception.getMessage().contains("rotated-key"));
       }
     }
-  }
-
-  @Test
-  void open_propagatesBookKeyReadFailureBeforeNativeBridgeOpen() {
-    Path bookPath = tempDirectory.resolve("missing-key.sqlite");
-    Path missingKeyPath = tempDirectory.resolve("missing.key");
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteNativeConnections.open(
-                    new BookAccess(
-                        bookPath, new BookAccess.PassphraseSource.KeyFile(missingKeyPath))));
-
-    assertTrue(exception.getMessage().contains("Failed to read the FinGrind book key file"));
   }
 
   @Test

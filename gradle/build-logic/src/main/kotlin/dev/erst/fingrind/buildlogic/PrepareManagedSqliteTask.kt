@@ -1,5 +1,7 @@
 package dev.erst.fingrind.buildlogic
 
+import java.security.MessageDigest
+import java.util.HexFormat
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
@@ -22,6 +24,12 @@ abstract class PrepareManagedSqliteTask
     constructor(
         private val execOperations: ExecOperations,
     ) : DefaultTask() {
+        init {
+            outputs.upToDateWhen {
+                outputFile.orNull?.asFile?.isFile == true && checksumFile.orNull?.asFile?.isFile == true
+            }
+        }
+
         @get:InputFile
         @get:PathSensitive(PathSensitivity.RELATIVE)
         abstract val sourceFile: RegularFileProperty
@@ -44,6 +52,9 @@ abstract class PrepareManagedSqliteTask
 
         @get:OutputFile
         abstract val outputFile: RegularFileProperty
+
+        @get:OutputFile
+        abstract val checksumFile: RegularFileProperty
 
         @TaskAction
         fun compile() {
@@ -71,6 +82,7 @@ abstract class PrepareManagedSqliteTask
                     ),
                 )
             }
+            writeChecksumFile(outputLibraryFile, checksumFile.get().asFile)
         }
 
         private fun compileWindowsLibrary(
@@ -97,6 +109,7 @@ abstract class PrepareManagedSqliteTask
                 )
             }
             compiledLibraryFile.copyTo(outputLibraryFile, overwrite = true)
+            writeChecksumFile(outputLibraryFile, checksumFile.get().asFile)
         }
 
         private fun buildUnixCommandLine(
@@ -177,5 +190,13 @@ abstract class PrepareManagedSqliteTask
                         "$normalized=1"
                     }
                 flagBuilder("SQLITE_$sqliteOption")
-            }
+            } + flagBuilder("SQLITE3MC_SECURE_MEMORY=1")
+
+        private fun writeChecksumFile(outputLibraryFile: java.io.File, checksumOutputFile: java.io.File) {
+            val digest = MessageDigest.getInstance("SHA-256").digest(outputLibraryFile.readBytes())
+            checksumOutputFile.parentFile.mkdirs()
+            checksumOutputFile.writeText(
+                HexFormat.of().formatHex(digest) + "  " + outputLibraryFile.name + System.lineSeparator(),
+            )
+        }
     }

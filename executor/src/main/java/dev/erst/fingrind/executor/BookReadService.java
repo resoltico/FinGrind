@@ -17,9 +17,22 @@ import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -44,26 +57,25 @@ public final class BookReadService {
 
   /** Lists one paginated slice of the current account registry for the selected book. */
   public ListAccountsResult listAccounts(ListAccountsQuery query) {
-    Objects.requireNonNull(query, "query");
-    return ifInitialized(
-        () -> new ListAccountsResult.Listed(bookReadSession.listAccounts(query)),
-        ListAccountsResult.Rejected::new);
+    return switch (listAccountsOutcome(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookReadOutcome.Reported<AccountRegistryPage> reported ->
+          new ListAccountsResult.Listed(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<AccountRegistryPage> rejected ->
+          new ListAccountsResult.Rejected(rejected.rejection());
+    };
   }
 
   /** Returns one committed posting by durable posting identity. */
   public GetPostingResult getPosting(PostingId postingId) {
-    Objects.requireNonNull(postingId, "postingId");
-    return ifInitialized(
-        () ->
-            bookReadSession
-                .findPosting(postingId)
-                .map(BookkeepingPublishedLanguageTranslator::toPublished)
-                .<GetPostingResult>map(GetPostingResult.Found::new)
-                .orElseGet(
-                    () ->
-                        new GetPostingResult.Rejected(
-                            new BookQueryRejection.PostingNotFound(postingId))),
-        GetPostingResult.Rejected::new);
+    return switch (getPostingOutcome(postingId)) {
+      case BookReadOutcome.Reported<CommittedPosting> reported ->
+          new GetPostingResult.Found(
+              BookkeepingPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<CommittedPosting> rejected ->
+          new GetPostingResult.Rejected(rejected.rejection());
+    };
   }
 
   /** Looks up one declared account once the selected book is known to be initialized. */
@@ -86,63 +98,132 @@ public final class BookReadService {
 
   /** Returns one filtered page of committed postings. */
   public ListPostingsResult listPostings(ListPostingsQuery query) {
-    Objects.requireNonNull(query, "query");
-    return ifInitialized(
-        () -> {
-          Optional<BookQueryRejection> accountRejection = accountRejection(query.accountCode());
-          if (accountRejection.isPresent()) {
-            return new ListPostingsResult.Rejected(accountRejection.orElseThrow());
-          }
-          return new ListPostingsResult.Listed(bookReadSession.listPostings(query));
-        },
-        ListPostingsResult.Rejected::new);
+    return switch (listPostingsOutcome(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookReadOutcome.Reported<PostingHistoryPage> reported ->
+          new ListPostingsResult.Listed(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<PostingHistoryPage> rejected ->
+          new ListPostingsResult.Rejected(rejected.rejection());
+    };
   }
 
   /** Computes one grouped per-currency balance snapshot for the selected declared account. */
   public AccountBalanceResult accountBalance(AccountBalanceQuery query) {
-    Objects.requireNonNull(query, "query");
-    return ifInitialized(
-        () ->
-            bookReadSession
-                .accountBalance(query)
-                .<AccountBalanceResult>map(AccountBalanceResult.Reported::new)
-                .orElseGet(
-                    () ->
-                        new AccountBalanceResult.Rejected(
-                            new BookQueryRejection.UnknownAccount(query.accountCode()))),
-        AccountBalanceResult.Rejected::new);
+    return switch (accountBalanceOutcome(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookReadOutcome.Reported<AccountBalanceView> reported ->
+          new AccountBalanceResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<AccountBalanceView> rejected ->
+          new AccountBalanceResult.Rejected(rejected.rejection());
+    };
   }
 
   /** Computes one book-wide trial balance. */
   public TrialBalanceResult trialBalance(TrialBalanceQuery query) {
-    Objects.requireNonNull(query, "query");
-    return ifInitialized(
-        () -> new TrialBalanceResult.Reported(bookReadSession.trialBalance(query)),
-        TrialBalanceResult.Rejected::new);
+    return switch (trialBalanceOutcome(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookReadOutcome.Reported<TrialBalanceView> reported ->
+          new TrialBalanceResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<TrialBalanceView> rejected ->
+          new TrialBalanceResult.Rejected(rejected.rejection());
+    };
   }
 
   /** Computes one running ledger for the selected declared account. */
   public AccountLedgerResult accountLedger(AccountLedgerQuery query) {
-    Objects.requireNonNull(query, "query");
-    return ifInitialized(
-        () -> {
-          Optional<RegisteredAccount> account = bookReadSession.findAccount(query.accountCode());
-          if (account.isEmpty()) {
-            return new AccountLedgerResult.Rejected(
-                new BookQueryRejection.UnknownAccount(query.accountCode()));
-          }
-          return new AccountLedgerResult.Reported(
-              bookReadSession.accountLedger(query, account.orElseThrow()));
-        },
-        AccountLedgerResult.Rejected::new);
+    return switch (accountLedgerOutcome(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookReadOutcome.Reported<AccountLedgerView> reported ->
+          new AccountLedgerResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<AccountLedgerView> rejected ->
+          new AccountLedgerResult.Rejected(rejected.rejection());
+    };
   }
 
   /** Computes one bounded period summary for the selected book. */
   public PeriodSummaryResult periodSummary(PeriodSummaryQuery query) {
+    return switch (periodSummaryOutcome(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookReadOutcome.Reported<PeriodSummaryView> reported ->
+          new PeriodSummaryResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookReadOutcome.Rejected<PeriodSummaryView> rejected ->
+          new PeriodSummaryResult.Rejected(rejected.rejection());
+    };
+  }
+
+  BookReadOutcome<AccountRegistryPage> listAccountsOutcome(AccountRegistryQuery query) {
     Objects.requireNonNull(query, "query");
-    return ifInitialized(
-        () -> new PeriodSummaryResult.Reported(bookReadSession.periodSummary(query)),
-        PeriodSummaryResult.Rejected::new);
+    return ifInitializedOutcome(
+        () -> new BookReadOutcome.Reported<>(bookReadSession.listAccounts(query)));
+  }
+
+  BookReadOutcome<CommittedPosting> getPostingOutcome(PostingId postingId) {
+    Objects.requireNonNull(postingId, "postingId");
+    return ifInitializedOutcome(
+        () ->
+            bookReadSession
+                .findPosting(postingId)
+                .<BookReadOutcome<CommittedPosting>>map(BookReadOutcome.Reported::new)
+                .orElseGet(
+                    () ->
+                        new BookReadOutcome.Rejected<>(
+                            new BookQueryRejection.PostingNotFound(postingId))));
+  }
+
+  BookReadOutcome<PostingHistoryPage> listPostingsOutcome(PostingHistoryQuery query) {
+    Objects.requireNonNull(query, "query");
+    return ifInitializedOutcome(
+        () -> {
+          Optional<BookQueryRejection> accountRejection = accountRejection(query.accountCode());
+          if (accountRejection.isPresent()) {
+            return new BookReadOutcome.Rejected<PostingHistoryPage>(accountRejection.orElseThrow());
+          }
+          return new BookReadOutcome.Reported<>(bookReadSession.listPostings(query));
+        });
+  }
+
+  BookReadOutcome<AccountBalanceView> accountBalanceOutcome(AccountBalanceCriteria query) {
+    Objects.requireNonNull(query, "query");
+    return ifInitializedOutcome(
+        () ->
+            bookReadSession
+                .accountBalance(query)
+                .<BookReadOutcome<AccountBalanceView>>map(BookReadOutcome.Reported::new)
+                .orElseGet(
+                    () ->
+                        new BookReadOutcome.Rejected<>(
+                            new BookQueryRejection.UnknownAccount(query.accountCode()))));
+  }
+
+  BookReadOutcome<TrialBalanceView> trialBalanceOutcome(TrialBalanceCriteria query) {
+    Objects.requireNonNull(query, "query");
+    return ifInitializedOutcome(
+        () -> new BookReadOutcome.Reported<>(bookReadSession.trialBalance(query)));
+  }
+
+  BookReadOutcome<AccountLedgerView> accountLedgerOutcome(AccountLedgerCriteria query) {
+    Objects.requireNonNull(query, "query");
+    return ifInitializedOutcome(
+        () -> {
+          Optional<RegisteredAccount> account = bookReadSession.findAccount(query.accountCode());
+          if (account.isEmpty()) {
+            return new BookReadOutcome.Rejected<AccountLedgerView>(
+                new BookQueryRejection.UnknownAccount(query.accountCode()));
+          }
+          return new BookReadOutcome.Reported<>(
+              bookReadSession.accountLedger(query, account.orElseThrow()));
+        });
+  }
+
+  BookReadOutcome<PeriodSummaryView> periodSummaryOutcome(PeriodSummaryCriteria query) {
+    Objects.requireNonNull(query, "query");
+    return ifInitializedOutcome(
+        () -> new BookReadOutcome.Reported<>(bookReadSession.periodSummary(query)));
   }
 
   private Optional<BookQueryRejection> accountRejection(Optional<AccountCode> accountCode) {
@@ -153,11 +234,10 @@ public final class BookReadService {
     return Optional.empty();
   }
 
-  private <R> R ifInitialized(
-      java.util.function.Supplier<R> initializedAction,
-      java.util.function.Function<BookQueryRejection, R> rejectionFactory) {
+  private <T> BookReadOutcome<T> ifInitializedOutcome(
+      java.util.function.Supplier<BookReadOutcome<T>> initializedAction) {
     if (!bookReadSession.isInitialized()) {
-      return rejectionFactory.apply(new BookQueryRejection.BookNotInitialized());
+      return new BookReadOutcome.Rejected<>(new BookQueryRejection.BookNotInitialized());
     }
     return initializedAction.get();
   }

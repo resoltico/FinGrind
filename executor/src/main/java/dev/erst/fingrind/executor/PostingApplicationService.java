@@ -5,6 +5,8 @@ import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
@@ -29,10 +31,11 @@ public final class PostingApplicationService {
   /** Validates a request and reports whether a later commit attempt is admissible. */
   public PreflightEntryResult preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<PostingRejection> rejection =
+    Optional<BookkeepingPostingRejection> rejection =
         PostingAcceptancePolicy.rejectionFor(command, bookSession);
     if (rejection.isPresent()) {
-      return rejectedPreflight(command, rejection.orElseThrow());
+      return rejectedPreflight(
+          command, BookkeepingPublishedLanguageTranslator.toPublished(rejection.orElseThrow()));
     }
     return new PostEntryResult.PreflightAccepted(
         command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());

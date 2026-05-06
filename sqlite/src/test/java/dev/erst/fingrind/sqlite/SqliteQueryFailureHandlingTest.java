@@ -3,17 +3,17 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -54,7 +54,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.listPostings(
-                      new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty())));
+                      new PostingHistoryQuery(Optional.empty(), null, null, 10, Optional.empty())));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -64,7 +64,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
+                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -72,7 +72,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
+              () -> postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -82,7 +82,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
+                      new AccountLedgerCriteria(new AccountCode("1000"), null, null), cashAccount));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore =
@@ -92,7 +92,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.periodSummary(
-                      new PeriodSummaryQuery(
+                      new PeriodSummaryCriteria(
                           LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
       assertProtectedBookVerificationFailure(exception);
     }
@@ -122,7 +122,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.listPostings(
-                      new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty())));
+                      new PostingHistoryQuery(Optional.empty(), null, null, 10, Optional.empty())));
       assertTrue(listFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException balanceFailure =
@@ -130,13 +130,13 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
+                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
       assertTrue(balanceFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException trialBalanceFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
+              () -> postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())));
       assertTrue(trialBalanceFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException accountLedgerFailure =
@@ -144,7 +144,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
+                      new AccountLedgerCriteria(new AccountCode("1000"), null, null), cashAccount));
       assertTrue(accountLedgerFailure.getMessage().contains("Failed to query SQLite book."));
 
       IllegalStateException periodSummaryFailure =
@@ -152,7 +152,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.periodSummary(
-                      new PeriodSummaryQuery(
+                      new PeriodSummaryCriteria(
                           LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
       assertTrue(periodSummaryFailure.getMessage().contains("Failed to query SQLite book."));
 
@@ -161,7 +161,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
         IllegalStateException readTrialBalanceFailure =
             assertThrows(
                 IllegalStateException.class,
-                () -> readView.trialBalance(new TrialBalanceQuery(Optional.empty())));
+                () -> readView.trialBalance(new TrialBalanceCriteria(Optional.empty())));
         assertTrue(readTrialBalanceFailure.getMessage().contains("Failed to query SQLite book."));
 
         IllegalStateException readAccountLedgerFailure =
@@ -169,7 +169,8 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
                 IllegalStateException.class,
                 () ->
                     readView.accountLedger(
-                        new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
+                        new AccountLedgerCriteria(new AccountCode("1000"), null, null),
+                        cashAccount));
         assertTrue(readAccountLedgerFailure.getMessage().contains("Failed to query SQLite book."));
 
         IllegalStateException readPeriodSummaryFailure =
@@ -177,7 +178,7 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
                 IllegalStateException.class,
                 () ->
                     readView.periodSummary(
-                        new PeriodSummaryQuery(
+                        new PeriodSummaryCriteria(
                             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
         assertTrue(readPeriodSummaryFailure.getMessage().contains("Failed to query SQLite book."));
         setStoreDatabase(postingFactStore, null);

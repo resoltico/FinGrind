@@ -1,7 +1,7 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import java.math.BigDecimal;
 import java.nio.file.Path;

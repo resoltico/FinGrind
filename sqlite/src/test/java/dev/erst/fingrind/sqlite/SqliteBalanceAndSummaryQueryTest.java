@@ -3,21 +3,21 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,7 +40,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
+                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
 
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
@@ -56,7 +56,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               IllegalStateException.class,
               () ->
                   postingFactStore.accountBalance(
-                      new AccountBalanceQuery(new AccountCode("1000"), null, null)));
+                      new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
 
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
@@ -124,7 +124,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
       assertEquals(
           Optional.empty(),
           postingFactStore.accountBalance(
-              new AccountBalanceQuery(new AccountCode("9999"), null, null)));
+              new AccountBalanceCriteria(new AccountCode("9999"), null, null)));
 
       assertEquals(
           Optional.of(
@@ -143,8 +143,9 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                           money("USD", "7.00"),
                           money("USD", "0.00"),
                           BalanceSide.ZERO)))),
-          postingFactStore.accountBalance(
-              new AccountBalanceQuery(new AccountCode("1000"), null, null)));
+          postingFactStore
+              .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null))
+              .map(SqliteStoreTestIntrospectionSupport::published));
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
@@ -157,9 +158,11 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                           money("EUR", "4.00"),
                           money("EUR", "6.00"),
                           BalanceSide.DEBIT)))),
-          postingFactStore.accountBalance(
-              new AccountBalanceQuery(
-                  new AccountCode("1000"), null, LocalDate.parse("2026-04-08"))));
+          postingFactStore
+              .accountBalance(
+                  new AccountBalanceCriteria(
+                      new AccountCode("1000"), null, LocalDate.parse("2026-04-08")))
+              .map(SqliteStoreTestIntrospectionSupport::published));
       assertEquals(
           Optional.of(
               new AccountBalanceSnapshot(
@@ -172,11 +175,13 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                           money("USD", "7.00"),
                           money("USD", "0.00"),
                           BalanceSide.ZERO)))),
-          postingFactStore.accountBalance(
-              new AccountBalanceQuery(
-                  new AccountCode("1000"),
-                  LocalDate.parse("2026-04-10"),
-                  LocalDate.parse("2026-04-11"))));
+          postingFactStore
+              .accountBalance(
+                  new AccountBalanceCriteria(
+                      new AccountCode("1000"),
+                      LocalDate.parse("2026-04-10"),
+                      LocalDate.parse("2026-04-11")))
+              .map(SqliteStoreTestIntrospectionSupport::published));
     }
   }
 
@@ -241,8 +246,9 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                           money("EUR", "10.00"),
                           money("EUR", "6.00"),
                           BalanceSide.CREDIT)))),
-          postingFactStore.trialBalance(
-              new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-08")))));
+          published(
+              postingFactStore.trialBalance(
+                  new TrialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-08"))))));
 
       assertEquals(
           new PeriodSummaryReport(
@@ -273,9 +279,10 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                           money("EUR", "10.00"),
                           money("EUR", "6.00"),
                           BalanceSide.CREDIT)))),
-          postingFactStore.periodSummary(
-              new PeriodSummaryQuery(
-                  LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))));
+          published(
+              postingFactStore.periodSummary(
+                  new PeriodSummaryCriteria(
+                      LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08")))));
     }
   }
 }

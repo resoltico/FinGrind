@@ -1,11 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import java.math.BigDecimal;

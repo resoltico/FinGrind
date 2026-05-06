@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
@@ -46,7 +45,7 @@ public record RegisteredAccount(
     }
     if (existingAccount.normalBalance() != declaration.normalBalance()) {
       return new AccountDeclarationOutcome.Rejected(
-          new BookAdministrationRejection.NormalBalanceConflict(
+          new BookkeepingAdministrationRejection.NormalBalanceConflict(
               declaration.accountCode(),
               existingAccount.normalBalance(),
               declaration.normalBalance()));

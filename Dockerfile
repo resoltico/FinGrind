@@ -40,6 +40,8 @@ RUN python3 scripts/verify-docker-build-context.py --context-dir /build/docker-c
 RUN cc -O2 -fPIC $(python3 scripts/render-managed-sqlite-compiler-flags.py /build/docker-context/managed-sqlite-contract.json) -shared \
     -Wl,-soname,libsqlite3.so.0 -o libsqlite3.so.0 sqlite3mc_amalgamation.c -ldl -lpthread
 
+RUN sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256
+
 RUN jlink \
     --module-path "${JAVA_HOME}/jmods" \
     --add-modules "$(cat /build/docker-context/runtime-modules.txt)" \
@@ -59,6 +61,7 @@ ENV FINGRIND_SQLITE_LIBRARY=/opt/fingrind/lib/libsqlite3.so.0
 
 COPY --from=builder /opt/fingrind/runtime /opt/fingrind/runtime
 COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/libsqlite3.so.0
+COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/libsqlite3.so.0.sha256
 COPY --from=builder /build/docker-context/fingrind.jar /opt/fingrind/app/fingrind.jar
 COPY --from=builder /build/docker-context/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh
 COPY LICENSE LICENSE-APACHE-2.0 LICENSE-SIL-OFL-1.1 LICENSE-SQLITE3MULTIPLECIPHERS NOTICE PATENTS.md /opt/fingrind/doc/

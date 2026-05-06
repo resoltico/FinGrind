@@ -9,15 +9,20 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.BiFunction;
 
 /**
- * UTF-8 book passphrase bytes that can be copied into native memory exactly once and then zeroized.
+ * UTF-8 book passphrase bytes that can be copied into native memory exactly once and then
+ * best-effort zeroized on the Java heap.
  */
 public final class SqliteBookPassphrase implements AutoCloseable {
+  public static final int MAX_UTF8_SOURCE_BYTES = 4096;
+
   private final String sourceDescription;
   private final byte[] utf8Bytes;
 
@@ -26,35 +31,55 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     this.utf8Bytes = utf8Bytes;
   }
 
-  /** Normalizes one raw UTF-8 passphrase payload and zeroizes the supplied source bytes. */
+  /**
+   * Normalizes one raw UTF-8 passphrase payload.
+   *
+   * <p>The accepted instance takes ownership of the supplied bytes after normalization, so callers
+   * must not retain or reuse the input array after calling this method.
+   */
   public static SqliteBookPassphrase fromUtf8Bytes(String sourceDescription, byte[] loadedBytes) {
     return fromUtf8BytesDecision(sourceDescription, loadedBytes).requireAccepted();
   }
 
   /**
    * Normalizes one raw UTF-8 passphrase payload and returns the explicit accepted/rejected form.
+   *
+   * <p>The accepted instance takes ownership of the supplied bytes after normalization, so callers
+   * must not retain or reuse the input array after calling this method. Rejected paths overwrite
+   * the supplied bytes before returning.
    */
   public static ContractDecision<SqliteBookPassphrase> fromUtf8BytesDecision(
       String sourceDescription, byte[] loadedBytes) {
+    return fromUtf8BytesDecision(
+        sourceDescription, loadedBytes, SqliteBookPassphrase::normalizeLoadedBytesDecision);
+  }
+
+  static ContractDecision<SqliteBookPassphrase> fromUtf8BytesDecision(
+      String sourceDescription,
+      byte[] loadedBytes,
+      BiFunction<byte[], String, ContractDecision<byte[]>> normalizer) {
     String normalizedSource = normalizeSourceDescription(sourceDescription);
     Objects.requireNonNull(loadedBytes, "loadedBytes");
+    Objects.requireNonNull(normalizer, "normalizer");
     try {
-      return stripTrailingLineEnding(loadedBytes, normalizedSource)
-          .fold(
-              normalizedBytes ->
-                  validateTextPassphrase(normalizedBytes, normalizedSource)
-                      .fold(
-                          ignored ->
-                              ContractDecision.accepted(
-                                  new SqliteBookPassphrase(normalizedSource, normalizedBytes)),
-                          ContractDecision::rejected),
-              ContractDecision::rejected);
-    } finally {
+      ContractDecision<byte[]> normalizedBytesDecision =
+          normalizer.apply(loadedBytes, normalizedSource);
+      switch (normalizedBytesDecision) {
+        case ContractDecision.Accepted<byte[]>(byte[] normalizedBytes) -> {
+          return ContractDecision.accepted(
+              new SqliteBookPassphrase(normalizedSource, normalizedBytes));
+        }
+        case ContractDecision.Rejected<byte[]>(var failure) -> {
+          return rejectedAfterZeroizing(loadedBytes, failure);
+        }
+      }
+    } catch (RuntimeException | Error exception) {
       Arrays.fill(loadedBytes, (byte) 0);
+      throw exception;
     }
   }
 
-  /** Encodes one in-memory passphrase to UTF-8 and zeroizes the supplied characters. */
+  /** Encodes one in-memory passphrase to UTF-8 and overwrites the supplied characters. */
   public static SqliteBookPassphrase fromCharacters(String sourceDescription, char[] characters) {
     return fromCharactersDecision(sourceDescription, characters).requireAccepted();
   }
@@ -62,27 +87,39 @@ public final class SqliteBookPassphrase implements AutoCloseable {
   /** Encodes one in-memory passphrase to UTF-8 and returns the explicit accepted/rejected form. */
   public static ContractDecision<SqliteBookPassphrase> fromCharactersDecision(
       String sourceDescription, char[] characters) {
+    return fromCharactersDecision(sourceDescription, characters, utf8Encoder());
+  }
+
+  static ContractDecision<SqliteBookPassphrase> fromCharactersDecision(
+      String sourceDescription, char[] characters, CharsetEncoder encoder) {
     String normalizedSource = normalizeSourceDescription(sourceDescription);
     Objects.requireNonNull(characters, "characters");
-    CharsetEncoder encoder =
-        StandardCharsets.UTF_8
-            .newEncoder()
-            .onMalformedInput(CodingErrorAction.REPORT)
-            .onUnmappableCharacter(CodingErrorAction.REPORT);
-    ByteBuffer encodedBytes = null;
+    Objects.requireNonNull(encoder, "encoder");
+    ByteBuffer encodedBytes = ByteBuffer.allocate(MAX_UTF8_SOURCE_BYTES + 1);
     try {
-      encodedBytes = encoder.encode(CharBuffer.wrap(characters));
+      CoderResult encodeResult = encoder.encode(CharBuffer.wrap(characters), encodedBytes, true);
+      if (encodeResult.isOverflow()) {
+        return ContractDecision.rejected(oversizedPassphraseSourceFailure(normalizedSource));
+      }
+      if (encodeResult.isError()) {
+        return ContractDecision.rejected(invalidUtf8PassphraseSourceFailure(normalizedSource));
+      }
+      encoder.flush(encodedBytes);
+      encodedBytes.flip();
       byte[] copiedBytes = new byte[encodedBytes.remaining()];
       encodedBytes.get(copiedBytes);
       return fromUtf8BytesDecision(normalizedSource, copiedBytes);
-    } catch (CharacterCodingException exception) {
-      return ContractDecision.rejected(invalidUtf8PassphraseSourceFailure(normalizedSource));
     } finally {
-      if (encodedBytes != null) {
-        zeroize(encodedBytes);
-      }
+      zeroize(encodedBytes);
       Arrays.fill(characters, '\0');
     }
+  }
+
+  private static CharsetEncoder utf8Encoder() {
+    return StandardCharsets.UTF_8
+        .newEncoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT);
   }
 
   /** Describes where the passphrase came from for diagnostics. */
@@ -122,7 +159,59 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return normalized;
   }
 
-  private static ContractDecision<byte[]> stripTrailingLineEnding(
+  private static byte[] ownedBytes(byte[] loadedBytes, int normalizedLength) {
+    if (normalizedLength == loadedBytes.length) {
+      return loadedBytes;
+    }
+    byte[] trimmedBytes = Arrays.copyOf(loadedBytes, normalizedLength);
+    Arrays.fill(loadedBytes, (byte) 0);
+    return trimmedBytes;
+  }
+
+  private static ContractDecision<byte[]> normalizeLoadedBytesDecision(
+      byte[] loadedBytes, String sourceDescription) {
+    if (loadedBytes.length > MAX_UTF8_SOURCE_BYTES) {
+      return ContractDecision.rejected(oversizedPassphraseSourceFailure(sourceDescription));
+    }
+    ContractDecision<Integer> normalizedLengthDecision =
+        normalizedPassphraseLength(loadedBytes, sourceDescription);
+    switch (normalizedLengthDecision) {
+      case ContractDecision.Accepted<Integer>(Integer normalizedLengthBoxed) -> {
+        int normalizedLength = normalizedLengthBoxed.intValue();
+        ContractDecision<String> validationDecision =
+            validateTextPassphrase(loadedBytes, normalizedLength, sourceDescription);
+        switch (validationDecision) {
+          case ContractDecision.Accepted<String> _ -> {
+            return ContractDecision.accepted(ownedBytes(loadedBytes, normalizedLength));
+          }
+          case ContractDecision.Rejected<String>(var failure) -> {
+            return ContractDecision.rejected(failure);
+          }
+        }
+      }
+      case ContractDecision.Rejected<Integer>(var failure) -> {
+        return ContractDecision.rejected(failure);
+      }
+    }
+  }
+
+  private static ContractDecision<SqliteBookPassphrase> rejectedAfterZeroizing(
+      byte[] loadedBytes, dev.erst.fingrind.contract.ContractFailure failure) {
+    Arrays.fill(loadedBytes, (byte) 0);
+    return ContractDecision.rejected(failure);
+  }
+
+  private static dev.erst.fingrind.contract.ContractFailure oversizedPassphraseSourceFailure(
+      String sourceDescription) {
+    return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+        "The FinGrind book passphrase source exceeded the %d-byte UTF-8 limit: %s"
+            .formatted(MAX_UTF8_SOURCE_BYTES, sourceDescription),
+        "Provide one non-empty single-line UTF-8 passphrase within the %d-byte limit through the selected passphrase source and rerun the command."
+            .formatted(MAX_UTF8_SOURCE_BYTES),
+        null);
+  }
+
+  private static ContractDecision<Integer> normalizedPassphraseLength(
       byte[] loadedBytes, String sourceDescription) {
     int endIndex = loadedBytes.length;
     if (endIndex > 0 && loadedBytes[endIndex - 1] == '\n') {
@@ -139,11 +228,11 @@ public final class SqliteBookPassphrase implements AutoCloseable {
               "Provide one non-empty UTF-8 passphrase through the selected key file, standard input, or interactive prompt route.",
               null));
     }
-    return ContractDecision.accepted(Arrays.copyOf(loadedBytes, endIndex));
+    return ContractDecision.accepted(endIndex);
   }
 
   private static ContractDecision<String> validateTextPassphrase(
-      byte[] keyBytes, String sourceDescription) {
+      byte[] keyBytes, int keyLength, String sourceDescription) {
     CharBuffer decoded;
     try {
       decoded =
@@ -151,7 +240,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
               .newDecoder()
               .onMalformedInput(CodingErrorAction.REPORT)
               .onUnmappableCharacter(CodingErrorAction.REPORT)
-              .decode(ByteBuffer.wrap(keyBytes));
+              .decode(ByteBuffer.wrap(keyBytes, 0, keyLength));
     } catch (CharacterCodingException exception) {
       return ContractDecision.rejected(invalidUtf8PassphraseSourceFailure(sourceDescription));
     }

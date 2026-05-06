@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -489,6 +489,9 @@ Requirements:
   `capabilities.environment.distribution.unsupportedPublicCliBundleTargets` such as the current
   `windows-aarch64` entry must not appear as release assets unless the public-distribution
   contract changes first.
+- Every published archive and published checksum file verifies through `gh attestation verify`
+  against the repository's `.github/workflows/release.yml` signer workflow. The helper script
+  downloads the published assets and performs that verification for you.
 - The generated GitHub source archives do not include repo-owned agent metadata such as
   `AGENTS.md` or `.codex/**`.
 
@@ -497,7 +500,11 @@ duplicate release workflow run failed after the release was already created.
 
 The release workflow is expected to perform this same verification internally after publication.
 The operator-side `gh release view` plus `./scripts/verify-github-release.sh` checks remain
-mandatory because workflow success is still not the authoritative state.
+mandatory because workflow success is still not the authoritative state. They now prove both the
+release object and the published attestation-backed provenance of the shipped bundle assets.
+`./scripts/verify-github-release.sh` also runs `./scripts/verify-security-policy-surface.sh`, so
+public release verification fails if the repository's private vulnerability reporting surface no
+longer matches the checked-in security policy.
 
 The container workflow is also expected to wait for this complete GitHub release asset set before
 it publishes the public image. If container publication succeeds while the release asset set is

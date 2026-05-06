@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
@@ -15,6 +14,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -43,7 +43,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookAdministrationRejection.BookNotInitialized()),
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -70,7 +70,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           () -> postingFactStore.findReversalFor(new PostingId("posting-1")));
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookAdministrationRejection.BookNotInitialized()),
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -165,7 +165,8 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
-          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
+          new BookOpeningOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookAlreadyInitialized()),
           postingFactStore.openBook(Instant.parse("2026-04-08T10:15:30Z")));
     }
   }

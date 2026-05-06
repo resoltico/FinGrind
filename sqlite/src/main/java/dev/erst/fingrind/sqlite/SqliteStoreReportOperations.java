@@ -1,15 +1,14 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Optional;
@@ -31,34 +30,28 @@ final class SqliteStoreReportOperations {
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
-  Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
+  Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
     lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
         activeDatabase -> context.postingReader().accountBalance(activeDatabase, query));
   }
 
-  TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+  TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
         activeDatabase -> context.reportReader().trialBalance(activeDatabase, query));
   }
 
-  AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
+  AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
     lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",
-        activeDatabase ->
-            context
-                .reportReader()
-                .accountLedger(
-                    activeDatabase,
-                    query,
-                    BookkeepingPublishedLanguageTranslator.toPublished(account)));
+        activeDatabase -> context.reportReader().accountLedger(activeDatabase, query, account));
   }
 
-  PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+  PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
     lifecycle.ensureOpenSession();
     return queryReport(
         "Failed to query SQLite book.",

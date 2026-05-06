@@ -2,10 +2,21 @@ package dev.erst.fingrind.contract.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.ApplicationIdentity;
+import dev.erst.fingrind.contract.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.MachineContract;
+import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Guards the canonical security-model reference against contract drift. */
@@ -13,35 +24,234 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
   @Test
   void developerSecurityReference_coversCanonicalSecurityFacts() throws IOException {
     String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_SECURITY.md"));
+    CapabilitiesDescriptor capabilities = capabilitiesDescriptor();
     ProtectedBookFormatContract protectedBookFormat = ProtocolCatalog.protectedBookFormat();
+
+    Set<String> violations = new LinkedHashSet<>();
+    requireContains(
+        document,
+        violations,
+        "protected-book-verification-failed",
+        "the public protected-book verification failure contract");
+    requireContains(
+        document,
+        violations,
+        sharedPassphraseByteLimit(capabilities) + " bytes",
+        "the shared passphrase byte limit");
+    requireContains(
+        document,
+        violations,
+        "owner-only parent directory",
+        "the key-file parent-directory security requirement");
+    requireContains(
+        document, violations, "memory_security=fill", "the required memory-hardening pragma");
+    requireContains(
+        document,
+        violations,
+        "durable session-scoped passphrase copy",
+        "the true session-secret lifetime");
+    requireContains(
+        document,
+        violations,
+        "best-effort overwritten",
+        "the heap-overwrite caveat for passphrase handling");
+    requireContains(
+        document,
+        violations,
+        "heap-resident secret copies the JVM GC",
+        "the JVM heap caveat for passphrase handling");
+    requireContains(document, violations, ".sha256", "the sibling digest sidecar rule");
+    requireContains(
+        document, violations, ".rekey-rollback-", "the stale rekey rollback artifact disclosure");
+    requireContains(
+        document, violations, "GitHub artifact attestation", "the release-attestation contract");
+    requireContains(
+        document,
+        violations,
+        "GitHub private vulnerability reporting",
+        "the disclosure-channel contract");
+    requireContains(
+        document,
+        violations,
+        "./scripts/verify-security-policy-surface.sh",
+        "the live GitHub security-policy verifier");
+    requireContains(
+        document,
+        violations,
+        "SqliteManagedLibraryIdentityTest",
+        "the runtime-identity evidence owner");
+
+    for (String passphraseOption : capabilities.requestInput().bookPassphraseOptions()) {
+      requireContains(
+          document,
+          violations,
+          passphraseOption,
+          "documented supported passphrase route " + passphraseOption);
+    }
+    for (String compileOption : capabilities.environment().sqlite().requiredCompileOptions()) {
+      requireContains(
+          document,
+          violations,
+          compileOption,
+          "documented required SQLite compile option " + compileOption);
+    }
+    for (String runtimeFact :
+        java.util.List.of(
+            capabilities.environment().sqlite().requiredMinimumSqliteVersion(),
+            capabilities.environment().sqlite().requiredSqlite3mcVersion(),
+            protectedBookFormat.cipher().wireValue(),
+            Integer.toString(protectedBookFormat.pageSize()),
+            Integer.toString(protectedBookFormat.reservedBytes()),
+            Integer.toString(protectedBookFormat.kdfIter()),
+            Integer.toString(protectedBookFormat.plaintextHeaderSize()))) {
+      requireContains(
+          document,
+          violations,
+          runtimeFact,
+          "documented managed-runtime/security fact " + runtimeFact);
+    }
+    for (SqliteRuntimeProvenance provenance : SqliteRuntimeProvenance.values()) {
+      requireContains(
+          document,
+          violations,
+          provenance.wireValue(),
+          "documented runtime provenance " + provenance.wireValue());
+      requireContains(
+          document,
+          violations,
+          SqliteRuntimeTrustBasis.fromProvenance(provenance).wireValue(),
+          "documented runtime trust basis for " + provenance.wireValue());
+    }
+
+    assertTrue(violations.isEmpty(), () -> "Security documentation drift:\n" + sorted(violations));
+  }
+
+  @Test
+  void developerSecurityReference_matchesMachineReadableRuntimeTrustSurface() throws IOException {
+    String document = Files.readString(repositoryRoot().resolve("docs/DEVELOPER_SECURITY.md"));
+    CapabilitiesDescriptor capabilities = capabilitiesDescriptor();
+    EnvironmentSqliteDescriptor sqlite = capabilities.environment().sqlite();
+
+    assertTrue(
+        document.contains(
+            "publisher-owned managed runtimes (`bundle-managed` and `source-checkout-managed`)"),
+        "docs/DEVELOPER_SECURITY.md must describe the trusted managed-runtime identity boundary explicitly.");
+    assertTrue(
+        document.contains("`environment-configured` is an operator-trusted escape hatch"),
+        "docs/DEVELOPER_SECURITY.md must describe environment-configured as operator-trusted rather than publisher-authenticated.");
+    assertTrue(
+        document.contains("`runtimeTrustBasis`"),
+        "docs/DEVELOPER_SECURITY.md must describe the machine-readable runtimeTrustBasis field.");
+    assertTrue(
+        document.contains(
+            "capabilities.environment.sqlite.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes"),
+        "docs/DEVELOPER_SECURITY.md must explain how machine consumers distinguish runtime trust classes.");
+    assertTrue(
+        document.contains(Objects.requireNonNull(sqlite.runtimeTrustBasis()).wireValue()),
+        "docs/DEVELOPER_SECURITY.md must include the ready managed-runtime trust-basis wire value.");
+    assertTrue(
+        document.contains("public quick-start and example docs keep key files under a separate"),
+        "docs/DEVELOPER_SECURITY.md must explain the separate book-versus-secret example layout.");
+    assertTrue(
+        document.contains("stale `*.rekey-rollback-*.sqlite` artifacts"),
+        "docs/DEVELOPER_SECURITY.md must disclose crash-persisted rekey rollback artifacts.");
+  }
+
+  @Test
+  void repositorySecurityPolicy_existsAndDocumentsPrivateReporting() throws IOException {
+    java.nio.file.Path securityPolicy = repositoryRoot().resolve("SECURITY.md");
+    java.nio.file.Path liveVerifier =
+        repositoryRoot().resolve("scripts/verify-security-policy-surface.sh");
+    String document = Files.readString(securityPolicy);
+    String verifierScript = Files.readString(liveVerifier);
     Set<String> requiredFragments =
         new LinkedHashSet<>(
             java.util.List.of(
-                "protected-book-verification-failed",
-                ProtocolCatalog.requiredMinimumSqliteVersion(),
-                ProtocolCatalog.requiredSqlite3mcVersion(),
-                protectedBookFormat.cipher().wireValue(),
-                Integer.toString(protectedBookFormat.pageSize()),
-                Integer.toString(protectedBookFormat.reservedBytes()),
-                Integer.toString(protectedBookFormat.kdfIter()),
-                Integer.toString(protectedBookFormat.plaintextHeaderSize()),
-                SqliteRuntimeProvenance.BUNDLE_MANAGED.wireValue(),
-                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.wireValue(),
-                SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED.wireValue(),
-                "plaintext CLI passphrase arguments",
-                "environment-variable passphrase transport",
-                "THREADSAFE=1",
-                "OMIT_LOAD_EXTENSION",
-                "TEMP_STORE=3",
-                "SECURE_DELETE"));
+                "Security Policy",
+                "Supported Versions",
+                "Report a vulnerability",
+                "Do not open a public issue",
+                "GitHub private vulnerability reporting",
+                "./scripts/verify-security-policy-surface.sh",
+                "5 business days",
+                "10 business days"));
 
     Set<String> violations = new LinkedHashSet<>();
     for (String fragment : requiredFragments) {
       if (!document.contains(fragment)) {
-        violations.add("docs/DEVELOPER_SECURITY.md is missing `" + fragment + "`");
+        violations.add("SECURITY.md is missing `" + fragment + "`");
       }
     }
 
-    assertTrue(violations.isEmpty(), () -> "Security documentation drift:\n" + sorted(violations));
+    assertTrue(
+        violations.isEmpty(), () -> "Repository security-policy drift:\n" + sorted(violations));
+    assertTrue(
+        verifierScript.contains("/private-vulnerability-reporting"),
+        "scripts/verify-security-policy-surface.sh must query the live GitHub private vulnerability reporting surface.");
+    assertTrue(
+        verifierScript.contains("GitHub private vulnerability reporting is disabled"),
+        "scripts/verify-security-policy-surface.sh must fail explicitly when private reporting is disabled.");
+  }
+
+  private static void requireContains(
+      String document, Set<String> violations, String expected, String explanation) {
+    if (!document.contains(expected)) {
+      violations.add(
+          "docs/DEVELOPER_SECURITY.md is missing `" + expected + "` for " + explanation + ".");
+    }
+  }
+
+  private static CapabilitiesDescriptor capabilitiesDescriptor() {
+    return MachineContract.capabilities(
+        new ApplicationIdentity("FinGrind", "0.32.0", "desc"),
+        readyEnvironmentDescriptor(),
+        Instant.parse("2026-05-06T00:00:00Z"));
+  }
+
+  private static EnvironmentDescriptor readyEnvironmentDescriptor() {
+    return new EnvironmentDescriptor(
+        new EnvironmentDistributionDescriptor(
+            ProtocolCatalog.bundleRuntimeDistribution(),
+            ProtocolCatalog.publicCliDistribution(),
+            ProtocolCatalog.supportedPublicCliBundleTargets(),
+            ProtocolCatalog.unsupportedPublicCliBundleTargets(),
+            ProtocolCatalog.sourceCheckoutJava()),
+        new EnvironmentStorageDescriptor(
+            ProtocolCatalog.storageDriver(),
+            ProtocolCatalog.storageEngine(),
+            ProtocolCatalog.bookProtectionMode(),
+            ProtocolCatalog.protectedBookFormat()),
+        new EnvironmentSqliteDescriptor(
+            ProtocolCatalog.sqliteLibraryMode(),
+            ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
+            ProtocolCatalog.sqliteBundleHomeSystemProperty(),
+            ProtocolCatalog.requiredSqliteCompileOptions(),
+            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
+            SqliteRuntimeStatus.READY,
+            SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+            "/tmp/libsqlite3.dylib",
+            ProtocolCatalog.requiredMinimumSqliteVersion(),
+            ProtocolCatalog.requiredSqlite3mcVersion(),
+            ProtocolCatalog.requiredSqliteSourceId(),
+            null));
+  }
+
+  private static String sharedPassphraseByteLimit(CapabilitiesDescriptor capabilities) {
+    String semantics = String.join("\n", capabilities.requestInput().bookPassphraseSemantics());
+    java.util.regex.Matcher utf8LimitMatcher =
+        Pattern.compile("(\\d+)-byte UTF-8 limit").matcher(semantics);
+    if (utf8LimitMatcher.find()) {
+      return utf8LimitMatcher.group(1);
+    }
+    java.util.regex.Matcher byteMatcher = Pattern.compile("(\\d+) bytes").matcher(semantics);
+    if (byteMatcher.find()) {
+      return byteMatcher.group(1);
+    }
+    throw new IllegalStateException(
+        "Could not derive the shared passphrase byte limit from MachineContract request input semantics.");
   }
 }

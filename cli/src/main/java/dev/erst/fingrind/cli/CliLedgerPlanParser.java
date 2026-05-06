@@ -24,10 +24,10 @@ import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
@@ -228,13 +228,13 @@ final class CliLedgerPlanParser {
 
   private static ListAccountsQuery readListAccountsQuery(Optional<ObjectNode> queryNode) {
     if (queryNode.isEmpty()) {
-      return new ListAccountsQuery(ProtocolLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
+      return new ListAccountsQuery(InteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
     rejectUnexpectedFields(queryObject, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
     return new ListAccountsQuery(
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
-            .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
+            .orElse(InteractionLimits.DEFAULT_PAGE_LIMIT),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
             .map(AccountPageCursor::fromWireValue));
   }
@@ -242,7 +242,7 @@ final class CliLedgerPlanParser {
   private static ListPostingsQuery readListPostingsQuery(Optional<ObjectNode> queryNode) {
     if (queryNode.isEmpty()) {
       return new ListPostingsQuery(
-          Optional.empty(), null, null, ProtocolLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
+          Optional.empty(), null, null, InteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
     rejectUnexpectedFields(queryObject, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
@@ -256,7 +256,7 @@ final class CliLedgerPlanParser {
             .map(LocalDate::parse)
             .orElse(null),
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
-            .orElse(ProtocolLimits.DEFAULT_PAGE_LIMIT),
+            .orElse(InteractionLimits.DEFAULT_PAGE_LIMIT),
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.CURSOR)
             .map(PostingPageCursor::fromWireValue));
   }

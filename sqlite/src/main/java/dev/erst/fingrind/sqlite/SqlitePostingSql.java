@@ -1,9 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.util.Collections;
 
 /** Canonical SQL statements for the SQLite posting adapter. */
@@ -217,7 +217,7 @@ final class SqlitePostingSql {
         + ")";
   }
 
-  static String listPostings(ListPostingsQuery query) {
+  static String listPostings(PostingHistoryQuery query) {
     StringBuilder sql =
         new StringBuilder(BASE_POSTING_SELECT.length() + 256)
             .append(BASE_POSTING_SELECT)
@@ -233,10 +233,10 @@ final class SqlitePostingSql {
            )
           """);
     }
-    if (query.effectiveDateFrom().isPresent()) {
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and effective_date >= ?");
     }
-    if (query.effectiveDateTo().isPresent()) {
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
       sql.append(" and effective_date <= ?");
     }
     if (query.cursor().isPresent()) {
@@ -253,14 +253,14 @@ final class SqlitePostingSql {
     return sql.toString();
   }
 
-  static String loadAccountLinesForBalance(AccountBalanceQuery query) {
+  static String loadAccountLinesForBalance(AccountBalanceCriteria query) {
     StringBuilder sql =
         new StringBuilder(LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
             .append(LOAD_ACCOUNT_LINES_FOR_BALANCE);
-    if (query.effectiveDateFrom().isPresent()) {
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and posting_fact.effective_date >= ?");
     }
-    if (query.effectiveDateTo().isPresent()) {
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
     }
     sql.append(
@@ -268,7 +268,7 @@ final class SqlitePostingSql {
     return sql.toString();
   }
 
-  static String loadTrialBalanceLines(TrialBalanceQuery query) {
+  static String loadTrialBalanceLines(TrialBalanceCriteria query) {
     StringBuilder sql =
         new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 96)
             .append(BASE_REPORT_LINE_SELECT)
@@ -290,7 +290,7 @@ final class SqlitePostingSql {
            """;
   }
 
-  static String listPostingsForAccountLedger(AccountLedgerQuery query) {
+  static String listPostingsForAccountLedger(AccountLedgerCriteria query) {
     StringBuilder sql =
         new StringBuilder(BASE_POSTING_SELECT.length() + 192)
             .append(BASE_POSTING_SELECT)
@@ -303,10 +303,10 @@ final class SqlitePostingSql {
                        and journal_line.account_code = ?
                  )
                 """);
-    if (query.effectiveDateFrom().isPresent()) {
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and effective_date >= ?");
     }
-    if (query.effectiveDateTo().isPresent()) {
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
       sql.append(" and effective_date <= ?");
     }
     sql.append(" order by effective_date, recorded_at, posting_id");

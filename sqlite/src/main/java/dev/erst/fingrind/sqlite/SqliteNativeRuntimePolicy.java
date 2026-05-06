@@ -23,8 +23,12 @@ import org.jspecify.annotations.Nullable;
 final class SqliteNativeRuntimePolicy {
   private static final String SOURCE_CHECKOUT_ROOT_SYSTEM_PROPERTY =
       "fingrind.source-checkout.root";
+  private static final String SOURCE_CHECKOUT_BUILD_ROOT_SYSTEM_PROPERTY =
+      "fingrind.source-checkout.build-root";
   private static final String SOURCE_CHECKOUT_ROOT_MANIFEST_ATTRIBUTE =
       "FinGrind-Source-Checkout-Root";
+  private static final String SOURCE_CHECKOUT_BUILD_ROOT_MANIFEST_ATTRIBUTE =
+      "FinGrind-Source-Checkout-Build-Root";
 
   private SqliteNativeRuntimePolicy() {}
 
@@ -184,13 +188,17 @@ final class SqliteNativeRuntimePolicy {
   static SqliteLibraryTarget configuredLibraryTarget(
       @Nullable String configuredLibraryPath, @Nullable String bundleHomePath) {
     return configuredLibraryTarget(
-        configuredLibraryPath, bundleHomePath, SqliteNativeRuntimePolicy::sourceCheckoutRoots);
+        configuredLibraryPath,
+        bundleHomePath,
+        SqliteNativeRuntimePolicy::sourceCheckoutRoots,
+        SqliteNativeRuntimePolicy::sourceCheckoutBuildRoot);
   }
 
   static SqliteLibraryTarget configuredLibraryTarget(
       @Nullable String configuredLibraryPath,
       @Nullable String bundleHomePath,
-      Supplier<List<Path>> sourceCheckoutRootsSupplier) {
+      Supplier<List<Path>> sourceCheckoutRootsSupplier,
+      Supplier<Path> sourceCheckoutBuildRootSupplier) {
     String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
     if (normalizedConfiguredPath != null) {
       return new SqliteLibraryTarget(
@@ -203,7 +211,7 @@ final class SqliteNativeRuntimePolicy {
       return bundledLibraryTarget(normalizedBundleHomePath);
     }
     SqliteLibraryTarget sourceCheckoutLibraryTarget =
-        sourceCheckoutLibraryTarget(sourceCheckoutRootsSupplier);
+        sourceCheckoutLibraryTarget(sourceCheckoutRootsSupplier, sourceCheckoutBuildRootSupplier);
     if (sourceCheckoutLibraryTarget != null) {
       return sourceCheckoutLibraryTarget;
     }
@@ -279,10 +287,13 @@ final class SqliteNativeRuntimePolicy {
   }
 
   private static @Nullable SqliteLibraryTarget sourceCheckoutLibraryTarget(
-      Supplier<List<Path>> sourceCheckoutRootsSupplier) {
+      Supplier<List<Path>> sourceCheckoutRootsSupplier,
+      Supplier<Path> sourceCheckoutBuildRootSupplier) {
     Objects.requireNonNull(sourceCheckoutRootsSupplier, "sourceCheckoutRootsSupplier");
+    Path sourceCheckoutBuildRoot = sourceCheckoutBuildRootSupplier.get();
     for (Path sourceCheckoutRoot : sourceCheckoutRootsSupplier.get()) {
-      Path managedLibraryPath = sourceCheckoutManagedLibraryPath(sourceCheckoutRoot);
+      Path managedLibraryPath =
+          sourceCheckoutManagedLibraryPath(sourceCheckoutRoot, sourceCheckoutBuildRoot);
       if (managedLibraryPath != null) {
         return new SqliteLibraryTarget(
             SqliteRuntime.LIBRARY_MODE,
@@ -299,6 +310,14 @@ final class SqliteNativeRuntimePolicy {
         normalizeNullablePath(System.getProperty(SOURCE_CHECKOUT_ROOT_SYSTEM_PROPERTY)),
         sourceCheckoutRootFromManifest(codeSourcePath, SqliteNativeRuntimePolicy::manifestFromJar),
         sourceCheckoutRootFromCodeSource(codeSourcePath));
+  }
+
+  private static @Nullable Path sourceCheckoutBuildRoot() {
+    Path codeSourcePath = codeSourcePath();
+    return sourceCheckoutBuildRoot(
+        normalizeNullablePath(System.getProperty(SOURCE_CHECKOUT_BUILD_ROOT_SYSTEM_PROPERTY)),
+        sourceCheckoutBuildRootFromManifest(
+            codeSourcePath, SqliteNativeRuntimePolicy::manifestFromJar));
   }
 
   static List<Path> sourceCheckoutRoots(
@@ -350,6 +369,23 @@ final class SqliteNativeRuntimePolicy {
     }
   }
 
+  static @Nullable String sourceCheckoutBuildRootFromManifest(
+      @Nullable Path codeSourcePath, ManifestReader manifestReader) {
+    if (codeSourcePath == null || !Files.isRegularFile(codeSourcePath)) {
+      return null;
+    }
+    try {
+      Manifest manifest = manifestReader.read(codeSourcePath);
+      if (manifest == null) {
+        return null;
+      }
+      return normalizeNullablePath(
+          manifest.getMainAttributes().getValue(SOURCE_CHECKOUT_BUILD_ROOT_MANIFEST_ATTRIBUTE));
+    } catch (IOException exception) {
+      return null;
+    }
+  }
+
   static @Nullable String sourceCheckoutRootFromCodeSource(@Nullable Path codeSourcePath) {
     if (codeSourcePath == null) {
       return null;
@@ -385,23 +421,49 @@ final class SqliteNativeRuntimePolicy {
     }
   }
 
-  private static @Nullable Path sourceCheckoutManagedLibraryPath(Path sourceCheckoutRoot) {
+  private static @Nullable Path sourceCheckoutManagedLibraryPath(
+      Path sourceCheckoutRoot, @Nullable Path sourceCheckoutBuildRoot) {
     return sourceCheckoutManagedLibraryPath(
-        sourceCheckoutRoot, SqliteNativeRuntimePolicy::findManagedLibrary);
+        sourceCheckoutRoot, sourceCheckoutBuildRoot, SqliteNativeRuntimePolicy::findManagedLibrary);
   }
 
   static @Nullable Path sourceCheckoutManagedLibraryPath(
       Path sourceCheckoutRoot, ManagedLibraryFinder managedLibraryFinder) {
-    Path managedSqliteRoot = sourceCheckoutRoot.resolve("build").resolve("managed-sqlite");
-    if (!Files.isDirectory(managedSqliteRoot)) {
-      return null;
-    }
+    return sourceCheckoutManagedLibraryPath(sourceCheckoutRoot, null, managedLibraryFinder);
+  }
+
+  static @Nullable Path sourceCheckoutManagedLibraryPath(
+      Path sourceCheckoutRoot,
+      @Nullable Path sourceCheckoutBuildRoot,
+      ManagedLibraryFinder managedLibraryFinder) {
     String expectedFileName = supportedNativeLibraryFileName();
-    try {
-      return managedLibraryFinder.find(managedSqliteRoot, expectedFileName);
-    } catch (IOException exception) {
-      return null;
+    for (Path managedSqliteRoot :
+        sourceCheckoutManagedLibraryRoots(sourceCheckoutRoot, sourceCheckoutBuildRoot)) {
+      if (!Files.isDirectory(managedSqliteRoot)) {
+        continue;
+      }
+      try {
+        Path managedLibraryPath = managedLibraryFinder.find(managedSqliteRoot, expectedFileName);
+        if (managedLibraryPath != null) {
+          return managedLibraryPath;
+        }
+      } catch (IOException exception) {
+        return null;
+      }
     }
+    return null;
+  }
+
+  private static List<Path> sourceCheckoutManagedLibraryRoots(
+      Path sourceCheckoutRoot, @Nullable Path sourceCheckoutBuildRoot) {
+    Set<Path> candidates = new LinkedHashSet<>();
+    if (sourceCheckoutBuildRoot != null) {
+      candidates.add(
+          sourceCheckoutBuildRoot.resolve("managed-sqlite").toAbsolutePath().normalize());
+    }
+    candidates.add(
+        sourceCheckoutRoot.resolve("build").resolve("managed-sqlite").toAbsolutePath().normalize());
+    return List.copyOf(candidates);
   }
 
   private static @Nullable Path findManagedLibrary(Path managedSqliteRoot, String expectedFileName)
@@ -421,6 +483,16 @@ final class SqliteNativeRuntimePolicy {
     try (JarFile jarFile = new JarFile(codeSourcePath.toFile())) {
       return jarFile.getManifest();
     }
+  }
+
+  static @Nullable Path sourceCheckoutBuildRoot(
+      @Nullable String configuredBuildRootPath, @Nullable String manifestBuildRootPath) {
+    String normalizedBuildRootPath =
+        configuredBuildRootPath != null ? configuredBuildRootPath : manifestBuildRootPath;
+    if (normalizedBuildRootPath == null) {
+      return null;
+    }
+    return Path.of(normalizedBuildRootPath).toAbsolutePath().normalize();
   }
 
   private static String managedSqliteVersionLabel() {

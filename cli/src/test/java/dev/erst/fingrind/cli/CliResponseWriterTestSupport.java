@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
@@ -22,6 +21,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -31,6 +31,7 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -127,6 +128,10 @@ class CliResponseWriterTestSupport {
         runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE
             ? null
             : SqliteRuntimeProvenance.BUNDLE_MANAGED;
+    SqliteRuntimeTrustBasis runtimeTrustBasis =
+        runtimeProvenance == null
+            ? null
+            : SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance);
     String loadedLibraryPath =
         runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE ? null : "/tmp/libsqlite3.dylib";
     String loadedSqliteSourceId =
@@ -156,6 +161,7 @@ class CliResponseWriterTestSupport {
             SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
             runtimeStatus,
             runtimeProvenance,
+            runtimeTrustBasis,
             loadedLibraryPath,
             loadedSqliteVersion,
             loadedSqlite3mcVersion,

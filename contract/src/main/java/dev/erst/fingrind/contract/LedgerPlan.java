@@ -2,7 +2,7 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 import java.util.Objects;
 
@@ -15,10 +15,10 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps) {
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Ledger plan must contain at least one step.");
     }
-    if (steps.size() > ProtocolLimits.LEDGER_PLAN_STEP_MAX) {
+    if (steps.size() > InteractionLimits.LEDGER_PLAN_STEP_MAX) {
       throw new IllegalArgumentException(
           "Ledger plan must not contain more than "
-              + ProtocolLimits.LEDGER_PLAN_STEP_MAX
+              + InteractionLimits.LEDGER_PLAN_STEP_MAX
               + " steps.");
     }
     if (steps.stream().map(LedgerStep::stepId).distinct().count() != steps.size()) {

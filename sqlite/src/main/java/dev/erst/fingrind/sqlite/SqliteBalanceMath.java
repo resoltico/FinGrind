@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
 import java.math.BigDecimal;

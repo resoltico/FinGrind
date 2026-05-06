@@ -45,11 +45,6 @@ final class SqlitePostingMapper {
         Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
   }
 
-  static dev.erst.fingrind.contract.DeclaredAccount declaredAccount(
-      SqliteNativeStatement accountRow) {
-    return BookkeepingPublishedLanguageTranslator.toPublished(registeredAccount(accountRow));
-  }
-
   static CommittedPosting committedPosting(
       SqliteNativeStatement postingRow, List<JournalLine> lines) {
     PostingId postingId = new PostingId(requiredText(postingRow, SqlitePostingSql.COL_POSTING_ID));

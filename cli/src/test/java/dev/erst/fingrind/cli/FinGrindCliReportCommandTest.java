@@ -26,10 +26,12 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     Path pdfOutputPath =
         tempDirectory.resolve("reports odd").resolve("trial balance [office copy].pdf");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
             fixedClock(),
             reportingWorkflow(new TrialBalanceResult.Reported(sampleTrialBalanceReport())));
 
@@ -52,6 +54,11 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     assertTrue(Files.exists(pdfOutputPath));
     assertEquals(
         "%PDF-", new String(Files.readAllBytes(pdfOutputPath), 0, 5, StandardCharsets.ISO_8859_1));
+    assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("pdf-exported"));
+    assertTrue(
+        diagnosticsStream
+            .toString(StandardCharsets.UTF_8)
+            .contains(pdfOutputPath.toAbsolutePath().normalize().toString()));
   }
 
   @Test

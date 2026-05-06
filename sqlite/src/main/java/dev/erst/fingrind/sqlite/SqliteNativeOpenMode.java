@@ -16,4 +16,8 @@ enum SqliteNativeOpenMode {
   int flags() {
     return flags;
   }
+
+  boolean hardensBookArtifactsOnOpen() {
+    return this != READ_ONLY;
+  }
 }

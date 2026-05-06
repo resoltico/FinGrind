@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;

@@ -20,6 +20,9 @@ class ProtocolWireVocabularyTest {
     assertEquals("plan-rejected", ProtocolRejectionStatus.PLAN_REJECTED.toString());
     assertEquals(List.of("error"), ProtocolFailureStatus.wireValues());
     assertEquals("error", ProtocolFailureStatus.ERROR.toString());
+    assertEquals(
+        List.of("pdf-exported", "pdf-export-warning"), ProtocolDiagnosticCode.wireValues());
+    assertEquals("pdf-export-warning", ProtocolDiagnosticCode.PDF_EXPORT_WARNING.toString());
     assertEquals(List.of("atomic"), PlanTransactionMode.wireValues());
     assertEquals("atomic", PlanTransactionMode.ATOMIC.toString());
     assertEquals(List.of("halt-on-first-failure"), PlanFailurePolicy.wireValues());
@@ -32,6 +35,12 @@ class ProtocolWireVocabularyTest {
         "source-checkout-managed", SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.toString());
     assertEquals(
         "environment-configured", SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED.toString());
+    assertEquals(
+        List.of("publisher-authenticated", "operator-trusted"),
+        SqliteRuntimeTrustBasis.wireValues());
+    assertEquals(
+        "publisher-authenticated", SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED.wireValue());
+    assertEquals("operator-trusted", SqliteRuntimeTrustBasis.OPERATOR_TRUSTED.toString());
     assertEquals(
         List.of(
             "macos-aarch64",
@@ -50,6 +59,8 @@ class ProtocolWireVocabularyTest {
         ProtocolRejectionStatus.PLAN_REJECTED,
         ProtocolRejectionStatus.fromWireValue("plan-rejected"));
     assertEquals(ProtocolFailureStatus.ERROR, ProtocolFailureStatus.fromWireValue("error"));
+    assertEquals(
+        ProtocolDiagnosticCode.PDF_EXPORTED, ProtocolDiagnosticCode.fromWireValue("pdf-exported"));
     assertEquals(PlanTransactionMode.ATOMIC, PlanTransactionMode.fromWireValue("atomic"));
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
@@ -61,6 +72,18 @@ class ProtocolWireVocabularyTest {
         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("source-checkout-managed"));
     assertEquals(
+        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        SqliteRuntimeTrustBasis.fromWireValue("publisher-authenticated"));
+    assertEquals(
+        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.BUNDLE_MANAGED));
+    assertEquals(
+        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED));
+    assertEquals(
+        SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+        SqliteRuntimeTrustBasis.fromProvenance(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED));
+    assertEquals(
         PublicCliBundleTarget.WINDOWS_AARCH64,
         PublicCliBundleTarget.fromWireValue("windows-aarch64"));
 
@@ -71,12 +94,18 @@ class ProtocolWireVocabularyTest {
     assertThrows(
         IllegalArgumentException.class, () -> ProtocolFailureStatus.fromWireValue("bad-news"));
     assertThrows(
+        IllegalArgumentException.class,
+        () -> ProtocolDiagnosticCode.fromWireValue("pdf-export-pending"));
+    assertThrows(
         IllegalArgumentException.class, () -> PlanTransactionMode.fromWireValue("best-effort"));
     assertThrows(
         IllegalArgumentException.class, () -> PlanFailurePolicy.fromWireValue("collect-all"));
     assertThrows(
         IllegalArgumentException.class,
         () -> SqliteRuntimeProvenance.fromWireValue("maybe-managed"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SqliteRuntimeTrustBasis.fromWireValue("unsigned-trust"));
     assertThrows(
         IllegalArgumentException.class, () -> PublicCliBundleTarget.fromWireValue("plan9-x86"));
   }

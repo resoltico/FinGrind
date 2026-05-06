@@ -5,14 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,7 +34,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookAdministrationRejection.BookNotInitialized()),
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
@@ -127,7 +127,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
 
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookAdministrationRejection.NormalBalanceConflict(
+              new BookkeepingAdministrationRejection.NormalBalanceConflict(
                   new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
           postingFactStore.declareAccount(
               new AccountCode("1000"),
@@ -163,26 +163,26 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           List.of(new AccountCode("1000"), new AccountCode("2000")),
           postingFactStore
-              .listAccounts(new ListAccountsQuery(2, Optional.empty()))
+              .listAccounts(new AccountRegistryQuery(2, Optional.empty()))
               .accounts()
               .stream()
-              .map(DeclaredAccount::accountCode)
+              .map(RegisteredAccount::accountCode)
               .toList());
-      var firstPage = postingFactStore.listAccounts(new ListAccountsQuery(2, Optional.empty()));
+      var firstPage = postingFactStore.listAccounts(new AccountRegistryQuery(2, Optional.empty()));
       assertTrue(firstPage.hasMore());
       assertEquals(
-          Optional.of(new AccountPageCursor(new AccountCode("2000"))), firstPage.nextCursor());
+          Optional.of(new AccountRegistryCursor(new AccountCode("2000"))), firstPage.nextCursor());
       assertEquals(
           List.of(new AccountCode("3000")),
           postingFactStore
-              .listAccounts(new ListAccountsQuery(2, firstPage.nextCursor()))
+              .listAccounts(new AccountRegistryQuery(2, firstPage.nextCursor()))
               .accounts()
               .stream()
-              .map(DeclaredAccount::accountCode)
+              .map(RegisteredAccount::accountCode)
               .toList());
       assertFalse(
           postingFactStore
-              .listAccounts(new ListAccountsQuery(2, firstPage.nextCursor()))
+              .listAccounts(new AccountRegistryQuery(2, firstPage.nextCursor()))
               .hasMore());
     }
   }

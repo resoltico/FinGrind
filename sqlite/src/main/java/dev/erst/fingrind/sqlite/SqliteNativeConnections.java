@@ -59,6 +59,7 @@ final class SqliteNativeConnections {
     Objects.requireNonNull(openMode, "openMode");
     Objects.requireNonNull(sqliteApi, "sqliteApi");
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
+    SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(normalizedBookPath);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
@@ -71,7 +72,9 @@ final class SqliteNativeConnections {
       }
       SqliteNativeDatabase openedDatabase =
           configureOpenedDatabase(databaseHandle, bookPassphrase, sqliteApi, arena);
-      enforceBookFilePermissions(normalizedBookPath, SqliteBookFileSecurity::hardenBookArtifacts);
+      if (openMode.hardensBookArtifactsOnOpen()) {
+        enforceBookFilePermissions(normalizedBookPath, SqliteBookFileSecurity::hardenBookArtifacts);
+      }
       return openedDatabase;
     }
   }

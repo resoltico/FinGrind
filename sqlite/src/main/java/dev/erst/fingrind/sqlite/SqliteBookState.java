@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import java.util.Optional;
 
 /** Stable on-disk lifecycle state derived from one selected SQLite book file. */
@@ -17,7 +17,7 @@ enum SqliteBookState {
     Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
       return Optional.of(
           new BookOpeningOutcome.Rejected(
-              new BookAdministrationRejection.BookAlreadyInitialized()));
+              new BookkeepingAdministrationRejection.BookAlreadyInitialized()));
     }
   },
   FOREIGN_SQLITE {
@@ -29,7 +29,8 @@ enum SqliteBookState {
     @Override
     Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
       return Optional.of(
-          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookContainsSchema()));
+          new BookOpeningOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookContainsSchema()));
     }
   },
   UNSUPPORTED_FINGRIND_VERSION {

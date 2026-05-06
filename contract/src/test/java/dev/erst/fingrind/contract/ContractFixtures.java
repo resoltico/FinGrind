@@ -76,6 +76,7 @@ final class ContractFixtures {
             null,
             null,
             null,
+            null,
             "test fixture"));
   }
 }

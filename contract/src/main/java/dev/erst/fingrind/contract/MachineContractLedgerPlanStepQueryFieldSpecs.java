@@ -3,7 +3,7 @@ package dev.erst.fingrind.contract;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.Map;
 
 /** Step-level and query-level field specifications for executable ledger plans. */
@@ -27,7 +27,7 @@ final class MachineContractLedgerPlanStepQueryFieldSpecs {
             description,
             MachineContractLedgerPlanVariantSchemas.stepSchema(),
             1,
-            ProtocolLimits.LEDGER_PLAN_STEP_MAX));
+            InteractionLimits.LEDGER_PLAN_STEP_MAX));
   }
 
   static MachineContractFieldSpec stepIdField() {

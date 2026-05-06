@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -90,30 +90,21 @@ public enum OutputMode implements WireValue
 - Purpose: keep output-mode parsing and rendering enum-owned instead of switch-local
 - Surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and branch-owning `run(...)`
 
-## `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, And `ProtocolFailureStatus`
+## `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode`
 
-These enums are the canonical owners of public envelope status tokens.
+These enums are the canonical owners of public envelope status and diagnostics tokens.
 
 ```java
 public enum ProtocolSuccessStatus implements WireValue
 public enum ProtocolRejectionStatus implements WireValue
 public enum ProtocolFailureStatus implements WireValue
+public enum ProtocolDiagnosticCode implements WireValue
 ```
 
 - Purpose: distinguish success, deterministic rejection, and runtime failure statuses with
-  compile-time subset boundaries instead of one open string bucket
+  compile-time subset boundaries instead of one open string bucket, and keep post-success
+  diagnostics codes typed instead of renderer-local string literals
 - Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
-
-## `ProtocolLimits`
-
-`ProtocolLimits` owns shared public paging bounds.
-
-```java
-public final class ProtocolLimits
-```
-
-- Purpose: keep pagination defaults and hard limits out of parser-local literals
-- Current contract: `DEFAULT_PAGE_LIMIT = 50`, `PAGE_LIMIT_MAX = 200`
 
 ## `ProtocolOptions`
 
@@ -247,7 +238,7 @@ public enum PlanFailurePolicy implements WireValue
 
 - Purpose: keep the plan execution contract typed through the public discovery/model surface
 
-## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, And `SqliteRuntimeStatus`
+## `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator`
 
 These enums are the public runtime-surface vocabularies shared by discovery payloads, CLI
 rendering, shell verifiers, and build/distribution checks.
@@ -261,15 +252,22 @@ public enum BookProtectionMode implements WireValue
 public enum BookCipher implements WireValue
 public enum SqliteLibraryMode implements WireValue
 public enum SqliteRuntimeProvenance implements WireValue
+public enum SqliteRuntimeTrustBasis implements WireValue
 public enum SqliteRuntimeStatus implements WireValue
+public final class SqliteRuntimeStateValidator
 ```
 
 - Purpose: keep runtime distribution, public bundle identity, storage backend, protected-book
-  defaults, managed SQLite loading mode, runtime provenance, and runtime readiness in enum-owned
-  wire vocabularies
+  defaults, managed SQLite loading mode, runtime provenance, runtime trust basis, and runtime
+  readiness in enum-owned wire vocabularies
+- `SqliteRuntimeTrustBasis`: publishes whether the selected runtime is
+  `publisher-authenticated` or `operator-trusted`, so machine consumers can distinguish bundle or
+  source-checkout authenticity from operator-managed configured paths
 - `SqliteRuntimeStatus`: distinguishes `ready`, `unavailable`, `failed`, and `incompatible`, so
   discovery can separate missing-runtime failures from late probe failures after one concrete
   library target was already resolved
+- `SqliteRuntimeStateValidator`: canonical owner for the valid runtime-state matrix shared by the
+  public descriptor layer and the SQLite runtime probe surface
 - Validation surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and typed discovery
   records such as `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`, and
   `EnvironmentSqliteDescriptor`
@@ -391,6 +389,9 @@ public final class ContractTemplates
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
+- `EnvironmentSqliteDescriptor.runtimeTrustBasis` publishes the machine-readable trust downgrade
+  between publisher-authenticated managed runtimes and operator-trusted configured runtimes,
+  rather than forcing consumers to infer that distinction from `runtimeProvenance` alone
 - `EnvironmentStorageDescriptor.defaultProtectedBookFormat` publishes the canonical protected-book
   cipher, page-size, reserve-byte, and KDF facts as one typed contract record instead of leaking
   those defaults through loosely related scalar fields

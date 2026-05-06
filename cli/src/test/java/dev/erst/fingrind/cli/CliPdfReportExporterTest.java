@@ -6,9 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
@@ -24,7 +22,9 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -76,7 +76,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportMethodsWritePdfArtifacts() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.31.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK));
 
     Path accountBalancePdf = tempDirectory.resolve("balance.pdf");
     Path trialBalancePdf = tempDirectory.resolve("trial.pdf");
@@ -97,7 +97,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportWrapsFilesystemFailuresInCliPdfExportException() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.31.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK));
     Path blockedParent = tempDirectory.resolve("not-a-directory");
     Files.writeString(blockedParent, "nope", StandardCharsets.UTF_8);
     Path outputPath = blockedParent.resolve("trial-balance.pdf");
@@ -114,7 +114,7 @@ class CliPdfReportExporterTest {
   void exportFallsBackToNonAtomicMoveWhenAtomicMoveIsUnsupported() {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.31.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK), fileOperations);
 
     exporter.exportTrialBalance(Path.of("trial-balance.pdf"), BOOK_PATH, trialBalanceReport());
 
@@ -128,7 +128,7 @@ class CliPdfReportExporterTest {
     fileOperations.failDuringMove = true;
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.31.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK), fileOperations);
 
     CliPdfExportException exception =
         assertThrows(
@@ -151,7 +151,7 @@ class CliPdfReportExporterTest {
   @Test
   void deleteIfPresentRemovesExistingTemporaryFiles() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.31.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK));
     Path temporaryFile = Files.createTempFile(tempDirectory, "delete-me", ".tmp");
 
     exporter.deleteIfPresent(temporaryFile);
@@ -164,7 +164,7 @@ class CliPdfReportExporterTest {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.31.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK), fileOperations);
 
     exporter.deleteIfPresent(Path.of("temporary.pdf"));
 

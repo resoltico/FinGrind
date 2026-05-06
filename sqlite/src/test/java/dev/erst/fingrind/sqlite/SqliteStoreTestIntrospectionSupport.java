@@ -6,19 +6,39 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsQuery;
+import dev.erst.fingrind.contract.PeriodSummaryReport;
+import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.PostingDraft;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullUnmarked;
@@ -107,6 +127,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     assertTrue(
         contractFailureException.failure().hint().contains("damaged or truncated book file"));
     assertFalse(exception.getMessage().contains("SQLITE_NOTADB"));
+    assertFalse(exception.getMessage().contains("SQLITE_IOERR_BADKEY"));
+    assertFalse(exception.getMessage().contains("SQLITE_IOERR_CODEC"));
   }
 
   static PostingCommitResult rejected(PostingRejection rejection) {
@@ -129,8 +151,40 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     return new PostingRejection.AccountStateViolations(List.of(violations));
   }
 
-  static ListAccountsQuery firstAccountPage() {
-    return new ListAccountsQuery(50, Optional.empty());
+  static AccountRegistryQuery firstAccountPage() {
+    return new AccountRegistryQuery(50, Optional.empty());
+  }
+
+  static PostingHistoryQuery postingHistoryQuery(
+      Optional<AccountCode> accountCode,
+      @org.jspecify.annotations.Nullable LocalDate effectiveDateFrom,
+      @org.jspecify.annotations.Nullable LocalDate effectiveDateTo,
+      int limit,
+      Optional<dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor> cursor) {
+    return new PostingHistoryQuery(accountCode, effectiveDateFrom, effectiveDateTo, limit, cursor);
+  }
+
+  static AccountBalanceCriteria accountBalanceCriteria(
+      AccountCode accountCode,
+      @org.jspecify.annotations.Nullable LocalDate effectiveDateFrom,
+      @org.jspecify.annotations.Nullable LocalDate effectiveDateTo) {
+    return new AccountBalanceCriteria(accountCode, effectiveDateFrom, effectiveDateTo);
+  }
+
+  static TrialBalanceCriteria trialBalanceCriteria(Optional<LocalDate> effectiveDateTo) {
+    return new TrialBalanceCriteria(effectiveDateTo);
+  }
+
+  static AccountLedgerCriteria accountLedgerCriteria(
+      AccountCode accountCode,
+      @org.jspecify.annotations.Nullable LocalDate effectiveDateFrom,
+      @org.jspecify.annotations.Nullable LocalDate effectiveDateTo) {
+    return new AccountLedgerCriteria(accountCode, effectiveDateFrom, effectiveDateTo);
+  }
+
+  static PeriodSummaryCriteria periodSummaryCriteria(
+      LocalDate effectiveDateFrom, LocalDate effectiveDateTo) {
+    return new PeriodSummaryCriteria(effectiveDateFrom, effectiveDateTo);
   }
 
   @SafeVarargs
@@ -153,7 +207,35 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static List<DeclaredAccount> listAccounts(SqlitePostingFactStore postingFactStore) {
-    return postingFactStore.listAccounts(firstAccountPage()).accounts();
+    return postingFactStore.listAccounts(firstAccountPage()).accounts().stream()
+        .map(BookkeepingPublishedLanguageTranslator::toPublished)
+        .toList();
+  }
+
+  static PostingPage published(PostingHistoryPage page) {
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(page);
+  }
+
+  static AccountBalanceSnapshot published(AccountBalanceView view) {
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+  }
+
+  static TrialBalanceReport published(TrialBalanceView view) {
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+  }
+
+  static AccountLedgerReport published(AccountLedgerView view) {
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+  }
+
+  static PeriodSummaryReport published(PeriodSummaryView view) {
+    return BookkeepingReadPublishedLanguageTranslator.toPublished(view);
+  }
+
+  static List<DeclaredAccount> publishedAccounts(AccountRegistryPage page) {
+    return page.accounts().stream()
+        .map(BookkeepingPublishedLanguageTranslator::toPublished)
+        .toList();
   }
 
   /** Assertion helper call that may surface reflective or native checked failures. */

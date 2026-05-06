@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Canonical query-operation registry for the public FinGrind protocol catalog. */
@@ -48,7 +49,7 @@ final class ProtocolQueryOperations {
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.LIMIT,
-                        ProtocolLimits.DEFAULT_PAGE_LIMIT))),
+                        InteractionLimits.DEFAULT_PAGE_LIMIT))),
         ProtocolOperationDefinitions.operation(
             OperationId.GET_POSTING,
             OperationCategory.QUERY,

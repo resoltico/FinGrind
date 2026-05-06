@@ -34,7 +34,7 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandFor(
             FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>",
+        "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>",
         CliInvocationText.launcherCommandFor(FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION, "Linux"));
   }
 
@@ -54,6 +54,12 @@ class CliInvocationTextTest {
       assertEquals(
           expectedBundleLauncher + " help",
           CliInvocationText.rewriteInvocationPrefix("fingrind help"));
+      assertEquals(
+          "cat ./secrets/acme.book-key | "
+              + expectedBundleLauncher
+              + " open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+          CliInvocationText.rewriteInvocationPrefix(
+              "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin"));
     } finally {
       System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, originalDistribution);
     }

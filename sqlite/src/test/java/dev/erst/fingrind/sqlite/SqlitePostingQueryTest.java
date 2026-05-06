@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.AccountCode;
@@ -16,6 +15,8 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -31,8 +32,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
   void listPostings_requiresInitializedBookForMissingAndBlankBooks() throws Exception {
-    ListPostingsQuery firstPage =
-        new ListPostingsQuery(Optional.empty(), null, null, 2, Optional.empty());
+    PostingHistoryQuery firstPage =
+        new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
 
     Path missingBookPath = tempDirectory.resolve("list-postings-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
@@ -107,26 +108,29 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               List.of(publishedPostingFact(postingThree), publishedPostingFact(postingTwo)),
               2,
               Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo)))),
-          postingFactStore.listPostings(
-              new ListPostingsQuery(Optional.empty(), null, null, 2, Optional.empty())));
+          published(
+              postingFactStore.listPostings(
+                  new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty()))));
       assertEquals(
           new PostingPage(List.of(publishedPostingFact(postingOne)), 2, Optional.empty()),
-          postingFactStore.listPostings(
-              new ListPostingsQuery(
-                  Optional.empty(),
-                  null,
-                  null,
-                  2,
-                  Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo))))));
+          published(
+              postingFactStore.listPostings(
+                  new PostingHistoryQuery(
+                      Optional.empty(),
+                      null,
+                      null,
+                      2,
+                      Optional.of(PostingHistoryCursor.fromPosting(postingTwo))))));
       assertEquals(
           new PostingPage(List.of(publishedPostingFact(postingOne)), 50, Optional.empty()),
-          postingFactStore.listPostings(
-              new ListPostingsQuery(
-                  Optional.of(new AccountCode("1000")),
-                  LocalDate.parse("2026-04-07"),
-                  LocalDate.parse("2026-04-08"),
-                  50,
-                  Optional.empty())));
+          published(
+              postingFactStore.listPostings(
+                  new PostingHistoryQuery(
+                      Optional.of(new AccountCode("1000")),
+                      LocalDate.parse("2026-04-07"),
+                      LocalDate.parse("2026-04-08"),
+                      50,
+                      Optional.empty()))));
     }
   }
 

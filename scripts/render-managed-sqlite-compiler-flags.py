@@ -32,6 +32,7 @@ def main() -> int:
         if "=" not in macro:
             macro += "=1"
         flags.append("-D" + macro)
+    flags.append("-DSQLITE3MC_SECURE_MEMORY=1")
 
     print(" ".join(flags))
     return 0

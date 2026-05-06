@@ -2,7 +2,7 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -112,9 +112,9 @@ final class MachineContractSchemaSupport {
         "description",
         "Requested page size for list operations.",
         "minimum",
-        ProtocolLimits.PAGE_LIMIT_MIN,
+        InteractionLimits.PAGE_LIMIT_MIN,
         "maximum",
-        ProtocolLimits.PAGE_LIMIT_MAX);
+        InteractionLimits.PAGE_LIMIT_MAX);
   }
 
   static Map<String, Object> stripDialect(Map<String, Object> schema) {

@@ -2,10 +2,10 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;

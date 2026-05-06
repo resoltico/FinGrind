@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -12,6 +10,9 @@ import dev.erst.fingrind.executor.PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -80,7 +81,7 @@ final class SqliteStoreMutationOperations {
     context.accessMode().requireWritableMutation();
     if (Files.notExists(context.bookPath())) {
       return new AccountDeclarationOutcome.Rejected(
-          new BookAdministrationRejection.BookNotInitialized());
+          new BookkeepingAdministrationRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
         activeDatabase -> {
@@ -88,7 +89,7 @@ final class SqliteStoreMutationOperations {
           try {
             if (!lifecycle.isInitializedBook(activeDatabase)) {
               return new AccountDeclarationOutcome.Rejected(
-                  new BookAdministrationRejection.BookNotInitialized());
+                  new BookkeepingAdministrationRejection.BookNotInitialized());
             }
 
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
@@ -120,20 +121,23 @@ final class SqliteStoreMutationOperations {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     if (Files.notExists(context.bookPath())) {
-      return new PostingCommitResult.Rejected(new PostingRejection.BookNotInitialized());
+      return new PostingCommitResult.Rejected(
+          new dev.erst.fingrind.contract.PostingRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
         activeDatabase -> {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
-            Optional<PostingRejection> ordinaryOutcome =
+            Optional<BookkeepingPostingRejection> ordinaryOutcome =
                 PostingAcceptancePolicy.rejectionFor(
                     postingDraft,
                     new SqliteTransactionValidationBook(activeDatabase, context.postingReader()));
             if (ordinaryOutcome.isPresent()) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
+              return new PostingCommitResult.Rejected(
+                  BookkeepingPublishedLanguageTranslator.toPublished(
+                      ordinaryOutcome.orElseThrow()));
             }
             CommittedPosting postingFact =
                 postingDraft.materialize(
@@ -158,13 +162,14 @@ final class SqliteStoreMutationOperations {
         new SqliteOwnedPassphrase(
             Objects.requireNonNull(replacementPassphrase, "replacementPassphrase"))) {
       if (Files.notExists(context.bookPath())) {
-        return new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
+        return new RekeyBookResult.Rejected(
+            new dev.erst.fingrind.contract.BookAdministrationRejection.BookNotInitialized());
       }
       return withBorrowedDatabase(
           activeDatabase -> {
             if (!lifecycle.isInitializedBook(activeDatabase)) {
               return new RekeyBookResult.Rejected(
-                  new BookAdministrationRejection.BookNotInitialized());
+                  new dev.erst.fingrind.contract.BookAdministrationRejection.BookNotInitialized());
             }
             SqliteRekeyRollbackFile rollbackFile =
                 SqliteRekeyRollbackFile.create(context.bookPath());

@@ -109,6 +109,11 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.runtimeSurfaceContract().containerRuntimeDistribution();
   }
 
+  /** Returns the canonical container launcher command for host-mounted execution. */
+  public static String containerLauncherCommand() {
+    return "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>";
+  }
+
   /** Returns the canonical bundle runtime-distribution identifier. */
   public static RuntimeDistribution bundleRuntimeDistribution() {
     return ProtocolCatalogFacts.runtimeSurfaceContract().bundleRuntimeDistribution();

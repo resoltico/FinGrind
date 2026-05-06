@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.CurrencyBalance;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;

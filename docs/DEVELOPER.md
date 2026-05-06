@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: DEVELOPER
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -40,6 +40,23 @@ Companion documents:
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
 
+## Context-First Map
+
+Before the module graph, the system is easiest to reason about through its semantic boundaries:
+- Public bookkeeping protocol in `contract`: published commands, read/report DTOs, and
+  deterministic rejection vocabulary
+- Public workflow protocol in `contract`: published `LedgerPlan` requests plus public
+  `LedgerJournal*` and `LedgerPlanResult` outputs
+- Runtime/discovery contract in `contract`: machine-contract descriptors, runtime/distribution
+  facts, and discovery/catalog metadata
+- Local bookkeeping context in `core` + `executor.bookkeeping`: working model for declarations,
+  committed postings, read criteria, and report views
+- Local workflow context in `executor.workflow`: ordered steps, assertions, internal journals, and
+  boundary-failure semantics
+- Host/adaptor contexts in `cli`, `sqlite`, and `report-pdf`
+
+The module graph below is the implementation projection of those contexts.
+
 ## Architecture
 
 FinGrind is a six-module Gradle project with a narrow accounting center, a contract-owned public
@@ -48,15 +65,17 @@ surface, executor-owned services, and explicit adapter seams:
 ```text
 core/         Accounting vocabulary and invariants:
               money, positive journal-line money, journal lines, journal entries, reversal linkage,
-              request provenance, committed provenance, posting identity.
+              request provenance, committed provenance, posting identity,
+              CurrencyBalance, EffectiveDateRange, and InteractionLimits.
 
-contract/     Public request, result, metadata, and machine-contract surface:
-              ProtocolCatalog, OperationId, ProtocolOperation, ProtocolLimits, ProtocolOptions,
+contract/     Public contract module hosting multiple public protocol subcontexts:
+              bookkeeping protocol DTOs, workflow protocol DTOs,
+              ProtocolCatalog, OperationId, ProtocolOperation, ProtocolOptions,
               ProtocolPostEntryFields, ProtocolDeclareAccountFields,
               MachineContract plus ContractDiscovery / ContractTemplates /
               ContractRequestShapes / ContractResponse descriptor namespaces,
-              administration/query/write DTOs, reporting DTOs, deterministic error vocabularies,
-              committed facts, ledger plans, assertions, and plan journals.
+              deterministic error vocabularies, runtime/distribution/storage descriptors, and
+              machine-readable public facts.
 
 executor/     Execution services plus storage seams:
               BookAdministrationService, application seams, and context translators:
@@ -110,7 +129,8 @@ renders or routes those DTOs without reauthoring operation names.
 
 For the named bounded contexts and translation rules behind that module graph, use
 [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md). The short version is:
-- `contract` owns the published language
+- `contract` hosts the published bookkeeping protocol, the published workflow protocol, and the
+  runtime/discovery contract
 - `executor.bookkeeping` owns the local bookkeeping model
 - `executor.workflow` owns plan orchestration semantics
 - `cli` and `sqlite` are host/adaptor layers that translate at the boundary
@@ -141,7 +161,8 @@ FinGrind's current public model is:
 - book files are protected at rest with SQLite3 Multiple Ciphers 2.3.3 using the upstream default
   `chacha20` cipher
 - protected book files and same-directory SQLite sidecars are hardened to owner-only filesystem
-  permissions when the host platform exposes a supported security model
+  permissions during mutation-capable opens when the host platform exposes a supported security
+  model
 - one canonical current schema defines new books
 - books are initialized explicitly before any posting
 - preflight is advisory and not a durable commit guarantee
@@ -452,7 +473,8 @@ FinGrind deliberately keeps several boundaries sharp:
   passphrase source.
 - Rekeying preserves one rollback copy until the replacement secret is verified, so verification
   failures restore the pre-rekey file automatically instead of leaving an unverified rotation on
-  disk.
+  disk; a crash can leave that encrypted rollback artifact behind until an operator reviews the
+  warning emitted on the next open.
 - FinGrind supports key files, stdin, and interactive terminal prompts; it intentionally rejects
   plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
   `key=` / `hexkey=` secret transport.

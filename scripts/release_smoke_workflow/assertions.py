@@ -260,8 +260,28 @@ def assert_operator_queries_and_reports(
         f"{config.label} trial-balance PDF artifact did not start with %PDF-",
     )
     require(
-        not pdf_stderr.strip(),
-        f"{config.label} PDF export wrote unexpected stderr: {pdf_stderr}",
+        pdf_stdout == trial_balance_human_output,
+        f"{config.label} PDF export changed stdout instead of preserving the human report surface",
+    )
+    require_match(
+        pdf_stderr,
+        r"^Info$",
+        f"{config.label} PDF export did not emit the canonical diagnostics heading",
+    )
+    require_match(
+        pdf_stderr,
+        r"^Code[[:space:]]+:[[:space:]]+pdf-exported$",
+        f"{config.label} PDF export did not emit the canonical pdf-exported diagnostics code",
+    )
+    require_match(
+        pdf_stderr,
+        r"^Argument[[:space:]]+:[[:space:]]+--pdf-out$",
+        f"{config.label} PDF export did not attribute diagnostics to --pdf-out",
+    )
+    require_match(
+        pdf_stderr,
+        re.escape(config.trial_balance_pdf.argument),
+        f"{config.label} PDF export diagnostics did not report the normalized written artifact path",
     )
     require_match(
         account_ledger_csv_output,

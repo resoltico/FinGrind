@@ -5,11 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.core.AccountCode;
@@ -22,6 +19,7 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -30,12 +28,17 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
+import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryPhase;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
+import dev.erst.fingrind.executor.workflow.BookWorkflowJournalDescriptor;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
@@ -78,26 +81,28 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_recordsPhaseCleanupAndPriorFailureFacts() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    BookWorkflowStep step = workflowStep(new LedgerStep.OpenBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
-            step.journalStep(),
+            new BookWorkflowJournalDescriptor.Step(step),
             new IllegalStateException("commit boom"),
             new IllegalStateException("rollback boom"),
-            new dev.erst.fingrind.contract.LedgerStepFailure(
+            new BookWorkflowFailure(
                 BookAdministrationRejection.wireCode(
                     new BookAdministrationRejection.BookAlreadyInitialized()),
                 "already initialized",
                 java.util.List.of()));
+    var publishedEntry = BookWorkflowPublishedLanguageTranslator.toPublished(journalEntry);
 
     assertEquals("unexpected-plan-failure", journalEntry.failure().code());
-    assertEquals(LedgerJournalKind.PLAN_BOUNDARY, journalEntry.kind());
-    assertEquals(LedgerBoundaryPhase.COMMIT, journalEntry.boundaryPhase());
+    assertEquals(LedgerJournalKind.PLAN_BOUNDARY, publishedEntry.kind());
+    assertEquals(
+        dev.erst.fingrind.contract.LedgerBoundaryPhase.COMMIT, publishedEntry.boundaryPhase());
     assertTrue(journalEntry.failure().message().contains("during commit after step 'open'"));
     assertTrue(
         journalEntry.failure().facts().stream()
@@ -129,15 +134,15 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_omitsDetailWhenMessageIsBlank() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    BookWorkflowStep step = workflowStep(new LedgerStep.OpenBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
-            step.journalStep(),
+            new BookWorkflowJournalDescriptor.Step(step),
             new IllegalStateException("   "),
             null,
             null);
@@ -149,15 +154,15 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_omitsDetailWhenMessageIsNull() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
+    BookWorkflowStep step = workflowStep(new LedgerStep.OpenBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
-            step.journalStep(),
+            new BookWorkflowJournalDescriptor.Step(step),
             new IllegalStateException(),
             null,
             null);
@@ -169,25 +174,26 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_recordsAssertionDetailKindWhenTriggerWasAssertion() {
-    LedgerStep step =
-        new LedgerStep.Assert(
-            stepId("assert-balance"),
-            new dev.erst.fingrind.contract.LedgerAssertion.AccountBalanceEquals(
-                new dev.erst.fingrind.core.AccountCode("1000"),
-                null,
-                null,
-                new dev.erst.fingrind.core.Money(
-                    new dev.erst.fingrind.core.CurrencyCode("EUR"),
-                    new java.math.BigDecimal("10.00")),
-                dev.erst.fingrind.core.BalanceSide.DEBIT));
+    BookWorkflowStep step =
+        workflowStep(
+            new LedgerStep.Assert(
+                stepId("assert-balance"),
+                new dev.erst.fingrind.contract.LedgerAssertion.AccountBalanceEquals(
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    null,
+                    null,
+                    new dev.erst.fingrind.core.Money(
+                        new dev.erst.fingrind.core.CurrencyCode("EUR"),
+                        new java.math.BigDecimal("10.00")),
+                    dev.erst.fingrind.core.BalanceSide.DEBIT)));
 
     var journalEntry =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.ROLLBACK,
+            BookWorkflowBoundaryPhase.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
-            step.journalStep(),
+            new BookWorkflowJournalDescriptor.Step(step),
             new IllegalStateException("rollback boom"),
             null,
             null);
@@ -204,10 +210,32 @@ class LedgerPlanOutcomeMapperTest {
   }
 
   @Test
+  void unexpectedPlanFailure_recordsBoundaryTriggerFactsWhenDescriptorIsBoundary() {
+    var journalEntry =
+        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+            BookWorkflowBoundaryPhase.ROLLBACK,
+            FIXED_INSTANT,
+            FIXED_INSTANT,
+            "@plan-boundary:commit",
+            new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryPhase.COMMIT),
+            new IllegalStateException("rollback boom"),
+            null,
+            null);
+
+    assertTrue(
+        journalEntry.failure().facts().stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof dev.erst.fingrind.contract.LedgerFact.Text text
+                        && "triggerBoundaryPhase".equals(text.name())
+                        && BookWorkflowBoundaryPhase.COMMIT.wireValue().equals(text.value())));
+  }
+
+  @Test
   void unexpectedPlanFailure_withoutTriggerStepUsesPlainBoundaryMessages() {
     var initializationCheck =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.INITIALIZATION_CHECK,
+            BookWorkflowBoundaryPhase.INITIALIZATION_CHECK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -217,7 +245,7 @@ class LedgerPlanOutcomeMapperTest {
             null);
     var commit =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -227,7 +255,7 @@ class LedgerPlanOutcomeMapperTest {
             null);
     var rollback =
         LedgerPlanOutcomeMapper.unexpectedPlanFailure(
-            LedgerBoundaryPhase.ROLLBACK,
+            BookWorkflowBoundaryPhase.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -252,9 +280,7 @@ class LedgerPlanOutcomeMapperTest {
     CommittedPosting posting = committedPosting();
 
     assertEquals(
-        LedgerPlanOutcomeMapper.postingFacts(
-            BookkeepingPublishedLanguageTranslator.toPublished(posting)),
-        LedgerPlanOutcomeMapper.postingFacts(posting));
+        LedgerPlanFactMapper.postingFacts(posting), LedgerPlanOutcomeMapper.postingFacts(posting));
   }
 
   @Test
@@ -281,7 +307,7 @@ class LedgerPlanOutcomeMapperTest {
         dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.ListAccounts(
-                "accounts", new ListAccountsQuery(1, Optional.empty()))));
+                "accounts", new AccountRegistryQuery(1, Optional.empty()))));
     assertEquals(
         dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
@@ -291,14 +317,15 @@ class LedgerPlanOutcomeMapperTest {
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.ListPostings(
                 "postings",
-                new ListPostingsQuery(Optional.empty(), null, null, 1, Optional.empty()))));
+                new PostingHistoryQuery(
+                    Optional.empty(), EffectiveDateRange.unbounded(), 1, Optional.empty()))));
     assertEquals(
         dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(
             new BookWorkflowStep.AccountBalance(
                 "balance",
-                new dev.erst.fingrind.contract.AccountBalanceQuery(
-                    new AccountCode("1000"), null, null))));
+                new AccountBalanceCriteria(
+                    new AccountCode("1000"), EffectiveDateRange.unbounded()))));
     assertEquals(
         dev.erst.fingrind.contract.BookQueryRejection.bookNotInitializedCode(),
         LedgerPlanOutcomeMapper.missingBookCode(

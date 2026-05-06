@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import java.util.Objects;
 
 /** Closed family of bookkeeping outcomes for one account declaration attempt. */
@@ -15,7 +14,8 @@ public sealed interface AccountDeclarationOutcome
   }
 
   /** Deterministic bookkeeping rejection for account declaration. */
-  record Rejected(BookAdministrationRejection rejection) implements AccountDeclarationOutcome {
+  record Rejected(BookkeepingAdministrationRejection rejection)
+      implements AccountDeclarationOutcome {
     /** Validates one account-declaration rejection. */
     public Rejected {
       Objects.requireNonNull(rejection, "rejection");

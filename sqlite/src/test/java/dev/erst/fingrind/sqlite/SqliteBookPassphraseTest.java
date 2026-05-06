@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -60,6 +64,95 @@ class SqliteBookPassphraseTest {
   }
 
   @Test
+  void fromCharactersDecision_rejectsEncoderReportedMalformedInputAndZeroizesSourceCharacters() {
+    char[] sourceCharacters = new char[] {'s', 'e', 'c', 'r', 'e', 't'};
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookPassphrase.fromCharactersDecision(
+                        "interactive prompt", sourceCharacters, new MalformedUtf8Encoder())
+                    .requireAccepted());
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage()).contains("must contain a UTF-8 passphrase"));
+    assertArrayEquals(new char[sourceCharacters.length], sourceCharacters);
+  }
+
+  @Test
+  void fromCharactersDecision_rejectsEncoderOverflowInputAndZeroizesSourceCharacters() {
+    char[] sourceCharacters = "€".repeat(2049).toCharArray();
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookPassphrase.fromCharactersDecision("interactive prompt", sourceCharacters)
+                    .requireAccepted());
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("exceeded the 4096-byte UTF-8 limit"));
+    assertArrayEquals(new char[sourceCharacters.length], sourceCharacters);
+  }
+
+  @Test
+  void fromCharactersDecision_rejectsBoundarySizedUtf8InputAndZeroizesSourceCharacters() {
+    char[] sourceCharacters =
+        "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1).toCharArray();
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookPassphrase.fromCharactersDecision("interactive prompt", sourceCharacters)
+                    .requireAccepted());
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("exceeded the 4096-byte UTF-8 limit"));
+    assertArrayEquals(new char[sourceCharacters.length], sourceCharacters);
+  }
+
+  @Test
+  void fromUtf8BytesDecision_rejectsOversizedSourceBytesAndZeroizesSourceBytes() {
+    byte[] sourceBytes = new byte[SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1];
+    java.util.Arrays.fill(sourceBytes, (byte) 'x');
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookPassphrase.fromUtf8BytesDecision("fixture", sourceBytes)
+                    .requireAccepted());
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("exceeded the 4096-byte UTF-8 limit"));
+    assertArrayEquals(new byte[sourceBytes.length], sourceBytes);
+  }
+
+  @Test
+  void fromUtf8BytesDecision_zeroizesSourceBytesWhenNormalizationThrows() {
+    byte[] sourceBytes = "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookPassphrase.fromUtf8BytesDecision(
+                    "fixture",
+                    sourceBytes,
+                    (ignoredBytes, ignoredSource) -> {
+                      throw new IllegalStateException("boom");
+                    }));
+
+    assertEquals("boom", exception.getMessage());
+    assertArrayEquals(new byte[sourceBytes.length], sourceBytes);
+  }
+
+  @Test
   void zeroize_overwritesArrayBackedBuffers() {
     ByteBuffer heapBytes = ByteBuffer.wrap(new byte[] {7, 8, 9, 10});
 
@@ -100,5 +193,24 @@ class SqliteBookPassphraseTest {
       actual[index] = directCharacters.get(index);
     }
     assertArrayEquals(new char[4], actual);
+  }
+
+  /** Encoder fixture that reports one malformed result without writing any output bytes. */
+  private static final class MalformedUtf8Encoder extends CharsetEncoder {
+    private MalformedUtf8Encoder() {
+      super(StandardCharsets.UTF_8, 1, 4);
+      onMalformedInput(CodingErrorAction.REPORT);
+      onUnmappableCharacter(CodingErrorAction.REPORT);
+    }
+
+    @Override
+    protected CoderResult encodeLoop(CharBuffer in, ByteBuffer out) {
+      return CoderResult.malformedForLength(1);
+    }
+
+    @Override
+    protected CoderResult implFlush(ByteBuffer out) {
+      return CoderResult.UNDERFLOW;
+    }
   }
 }

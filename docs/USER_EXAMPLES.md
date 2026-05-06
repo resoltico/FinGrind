@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: USER_EXAMPLES
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -12,9 +12,10 @@ route:
 
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
 **Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
-below, `fingrind` means that launcher, for example the script under
-`./<bundle-root>/bin/fingrind` on macOS/Linux or `.\<bundle-root>\bin\fingrind.ps1` on Windows.
-For source-driven local work, the equivalent developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
+below, `fingrind` means a session-local shell function backed by that launcher, for example the
+script under `./<bundle-root>/bin/fingrind` on macOS/Linux or
+`.\<bundle-root>\bin\fingrind.ps1` on Windows. For source-driven local work, the equivalent
+developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
 The public release bundle does not include `docs/examples/`. The runnable commands below therefore
@@ -24,6 +25,16 @@ fixtures under [examples/](./examples/). The command blocks below use POSIX shel
 for readability; on Windows PowerShell, keep the same launcher, local file names, and command
 order, but use PowerShell line continuation or one-line invocations.
 
+For copy-paste use from one extracted bundle session, define `fingrind` once first.
+
+```bash
+fingrind() { "./<bundle-root>/bin/fingrind" "$@"; }
+```
+
+```powershell
+function fingrind { & .\<bundle-root>\bin\fingrind.ps1 @args }
+```
+
 ## Choose A Book Passphrase Source
 
 For humans, the best non-persistent route is the interactive prompt:
@@ -31,7 +42,7 @@ For humans, the best non-persistent route is the interactive prompt:
 ```bash
 fingrind \
   open-book \
-  --book-file ./acme.sqlite \
+  --book-file ./books/acme.sqlite \
   --book-passphrase-prompt
 ```
 
@@ -40,31 +51,38 @@ For automation, generate a dedicated key file:
 ```bash
 fingrind \
   generate-book-key-file \
-  --book-key-file ./acme.book-key
+  --book-key-file ./secrets/acme.book-key
 ```
+
+Keep that key outside the book directory. The examples below use `./secrets/` for passphrase
+material and `./books/` for encrypted books so ordinary book copies do not also copy the key.
 
 The generated key file contains one non-empty single-line UTF-8 passphrase.
 One trailing newline is tolerated and stripped when loading an existing file.
 Embedded control characters are rejected.
 The key file must be protected with POSIX owner-only permissions (`0400` or `0600`) on
-macOS/Linux, or a Windows owner-only ACL on Windows.
+macOS/Linux, or a Windows owner-only ACL on Windows, and its containing directory must also
+remain owner-only.
+
+The interactive prompt route and the stdin route both enforce the same 4096-byte UTF-8 limit as
+the key-file route.
 
 For pipeline automation when a passphrase must flow over stdin, feed it from an existing
 protected file or another non-history-bearing secret source instead of embedding the passphrase
-literal on the shell command line:
+literal on the shell command line. FinGrind accepts up to 4096 bytes on that stdin route:
 
 ```bash
-cat ./acme.book-key | \
+cat ./secrets/acme.book-key | \
   fingrind \
     open-book \
-    --book-file ./acme.sqlite \
+    --book-file ./books/acme.sqlite \
     --book-passphrase-stdin
 ```
 
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\acme.book-key | fingrind open-book --book-file .\acme.sqlite --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -72,8 +90,8 @@ Get-Content -Raw .\acme.book-key | fingrind open-book --book-file .\acme.sqlite 
 ```bash
 fingrind \
   open-book \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key
 ```
 
 One successful response:
@@ -87,8 +105,8 @@ One successful response:
 ```bash
 fingrind \
   inspect-book \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key
 ```
 
 One successful response is checked in at
@@ -103,15 +121,15 @@ Generate the replacement key file before you ask `rekey-book` to use it:
 ```bash
 fingrind \
   generate-book-key-file \
-  --book-key-file ./acme.rotated.book-key
+  --book-key-file ./secrets/acme.rotated.book-key
 ```
 
 ```bash
 fingrind \
   rekey-book \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
-  --replacement-book-key-file ./acme.rotated.book-key
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --replacement-book-key-file ./secrets/acme.rotated.book-key
 ```
 
 `--replacement-book-key-file` must point to an existing generated or operator-supplied secret
@@ -119,15 +137,17 @@ file. `rekey-book` also accepts `--replacement-book-passphrase-stdin` and
 `--replacement-book-passphrase-prompt` for the replacement secret. The interactive replacement
 prompt asks for the new passphrase twice and rejects mismatched entries. FinGrind creates one
 same-directory rollback copy before rotating the book and restores the pre-rekey file
-automatically if replacement-passphrase verification fails.
+automatically if replacement-passphrase verification fails. If a crash or forced stop interrupts
+that cleanup, the rollback artifact remains in the book directory under the old ciphertext until
+you inspect or delete it; later opens warn when they detect that stale copy.
 
 If you prefer the interactive replacement prompt instead of an existing file:
 
 ```bash
 fingrind \
   rekey-book \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --replacement-book-passphrase-prompt
 ```
 
@@ -140,30 +160,31 @@ One successful response:
 ## Back Up And Restore One Closed Protected Book
 
 The supported backup path is a closed-book encrypted file copy. Stop using the book first, then
-copy the `.sqlite` file to protected storage and keep the key file protected separately.
+copy the `.sqlite` file to protected storage and keep the key file protected separately through
+your normal secret-storage path.
 
 ```bash
-cp ./acme.sqlite ./backup/acme.sqlite
-cp ./acme.book-key ./backup/acme.book-key
+mkdir -p ./backup/books
+cp ./books/acme.sqlite ./backup/books/acme.sqlite
 ```
 
 To restore, replace the closed live book with the encrypted copy before reopening it:
 
 ```bash
-cp ./backup/acme.sqlite ./acme.sqlite
+cp ./backup/books/acme.sqlite ./books/acme.sqlite
 fingrind \
   inspect-book \
-  --book-file ./acme.sqlite \
-  --book-key-file ./backup/acme.book-key
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key
 ```
 
 On Windows PowerShell, the same closed-book copy/restore flow is:
 
 ```powershell
-Copy-Item .\acme.sqlite .\backup\acme.sqlite
-Copy-Item .\acme.book-key .\backup\acme.book-key
-Copy-Item .\backup\acme.sqlite .\acme.sqlite -Force
-fingrind inspect-book --book-file .\acme.sqlite --book-key-file .\backup\acme.book-key
+New-Item -ItemType Directory -Force -Path .\backup\books | Out-Null
+Copy-Item .\books\acme.sqlite .\backup\books\acme.sqlite
+Copy-Item .\backup\books\acme.sqlite .\books\acme.sqlite -Force
+fingrind inspect-book --book-file .\books\acme.sqlite --book-key-file .\secrets\acme.book-key
 ```
 
 ## Declare Accounts And Page The Registry
@@ -175,20 +196,20 @@ Create these local files first:
 ```bash
 fingrind \
   declare-account \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./declare-account-cash.json
 
 fingrind \
   declare-account \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./declare-account-revenue.json
 
 fingrind \
   list-accounts \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --limit 1
 ```
 
@@ -200,8 +221,8 @@ continue from the prior page without offset scans:
 ```bash
 fingrind \
   list-accounts \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --limit 1 \
   --cursor "<nextCursor-from-the-prior-page>"
 ```
@@ -229,14 +250,14 @@ For the concrete walkthrough below, reuse the checked-in example request:
 ```bash
 fingrind \
   preflight-entry \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
 
 fingrind \
   post-entry \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
 ```
 
@@ -285,7 +306,7 @@ Or execute the checked-in runnable example plan directly against a fresh book:
 fingrind \
   execute-plan \
   --book-file ./acme-plan.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./ledger-plan-request.json
 ```
 
@@ -312,7 +333,7 @@ query example:
 fingrind \
   execute-plan \
   --book-file ./acme-plan.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./ledger-plan-query-request.json
 ```
 
@@ -325,21 +346,21 @@ That committed journal keeps `count`, `pageLimit`, optional `nextCursor`, `hasMo
 ```bash
 fingrind \
   get-posting \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --posting-id 01963c70-8d65-7b56-8a64-3c92745d8f72
 
 fingrind \
   list-postings \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --account-code 1000 \
   --limit 25
 
 fingrind \
   account-balance \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --account-code 1000
 ```
 
@@ -354,8 +375,8 @@ If the posting-history response includes `payload.nextCursor`, pass that opaque 
 ```bash
 fingrind \
   list-postings \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --account-code 1000 \
   --limit 25 \
   --cursor "<nextCursor-from-the-prior-page>"
@@ -366,15 +387,15 @@ fingrind \
 ```bash
 fingrind \
   trial-balance \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --effective-date-to 2026-04-08 \
   --output human
 
 fingrind \
   account-ledger \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --account-code 1000 \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-08 \
@@ -382,16 +403,16 @@ fingrind \
 
 fingrind \
   period-summary \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-08 \
   --output human
 
 fingrind \
   trial-balance \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --effective-date-to 2026-04-08 \
   --output human \
   --pdf-out ./acme-trial-balance.pdf
@@ -408,6 +429,7 @@ Checked-in report examples:
 These report commands keep JSON as the default machine surface, while `--output human` and
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds but that
+artifact write succeeds, diagnostics emit an info message with the normalized written path. If the
 artifact write fails, FinGrind still returns the report on stdout and emits a warning on the
 diagnostics stream for the PDF path. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.
@@ -418,7 +440,7 @@ the checked-in text and CSV examples remain the canonical review fixtures.
 fingrind \
   preflight-entry \
   --book-file ./missing.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
 ```
 
@@ -436,8 +458,8 @@ Create this local file first:
 ```bash
 fingrind \
   preflight-entry \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./unknown-account-request.json
 ```
 
@@ -451,8 +473,8 @@ repair every reported account issue before retrying.
 ```bash
 fingrind \
   post-entry \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
 ```
 
@@ -468,15 +490,15 @@ One repeat commit response:
 cat ./basic-posting-request.json | \
   fingrind \
     preflight-entry \
-    --book-file ./stdin.sqlite \
-    --book-key-file ./acme.book-key \
+    --book-file ./books/stdin.sqlite \
+    --book-key-file ./secrets/acme.book-key \
     --request-file -
 ```
 
 On Windows PowerShell, the same stdin flow is:
 
 ```powershell
-Get-Content .\basic-posting-request.json -Raw | fingrind preflight-entry --book-file .\stdin.sqlite --book-key-file .\acme.book-key --request-file -
+Get-Content .\basic-posting-request.json -Raw | fingrind preflight-entry --book-file .\books\stdin.sqlite --book-key-file .\secrets\acme.book-key --request-file -
 ```
 
 Remember that the selected book must already be initialized and the referenced accounts must
@@ -500,7 +522,7 @@ earlier commit in the same book, then preflight or commit it:
 fingrind \
   preflight-entry \
   --book-file ./reversals.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./reversal-request.json
 ```
 
@@ -513,7 +535,7 @@ Create this local file first:
 fingrind \
   preflight-entry \
   --book-file ./errors.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-key-file ./secrets/acme.book-key \
   --request-file ./invalid-empty-lines-request.json
 ```
 
@@ -528,8 +550,8 @@ One invalid-request response:
 ```bash
 fingrind \
   list-postings \
-  --book-file ./acme.sqlite \
-  --book-key-file ./acme.book-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
   --cursor definitely-not-a-valid-cursor
 ```
 
@@ -539,11 +561,11 @@ One deterministic error example is checked in at
 ## Protected-Book Verification Fails Deterministically
 
 ```bash
-fingrind generate-book-key-file --book-key-file ./wrong.book-key
+fingrind generate-book-key-file --book-key-file ./secrets/wrong.book-key
 fingrind \
   list-accounts \
-  --book-file ./acme.sqlite \
-  --book-key-file ./wrong.book-key
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/wrong.book-key
 ```
 
 One deterministic error example is checked in at

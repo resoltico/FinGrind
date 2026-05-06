@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -178,7 +178,9 @@ Source-checkout installed launcher entrypoint:
 
 That wrapper resolves the active CLI build directory, then invokes the generated launcher with the
 same Java native-access flag as the bundle, the source-checkout runtime-distribution contract, and
-managed-SQLite checkout lookup already baked in.
+managed-SQLite checkout lookup already baked in. The launcher also carries the active root-project
+build directory so relocated Gradle build roots resolve the prepared managed SQLite library tree
+instead of guessing at `repo/build/...`.
 
 Developer-only raw JAR entrypoints:
 
@@ -245,6 +247,7 @@ It is not the public release artifact.
 Every GitHub release must publish:
 - one archive per supported target (`.tar.gz` for macOS and Linux, `.zip` for Windows)
 - one `.sha256` checksum file per supported target archive
+- one GitHub artifact attestation per published archive and checksum file
 
 Every release must verify:
 - the extracted bundle runs without ambient Java
@@ -256,6 +259,8 @@ Every release must verify:
   reauthoring static command-group arrays
 - `capabilities` reports the expected managed runtime contract
 - the GitHub release object contains the complete bundle-and-checksum set
+- the published archive and checksum assets verify through `gh attestation verify` against
+  `.github/workflows/release.yml`
 - the container workflow waits for the complete GitHub release asset set before it publishes the
   public image, so Docker publication cannot outrun an incomplete release handoff
 - the container workflow keeps enough timeout budget for post-publish verification of both the

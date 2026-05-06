@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerFact;
@@ -12,8 +11,6 @@ import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepId;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.core.AccountCode;
@@ -32,12 +29,24 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -363,7 +372,7 @@ final class LedgerPlanServiceTestSupport {
           }
 
           @Override
-          public dev.erst.fingrind.contract.AccountPage listAccounts(ListAccountsQuery query) {
+          public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
             return delegate.listAccounts(query);
           }
 
@@ -378,31 +387,28 @@ final class LedgerPlanServiceTestSupport {
           }
 
           @Override
-          public dev.erst.fingrind.contract.PostingPage listPostings(ListPostingsQuery query) {
+          public PostingHistoryPage listPostings(PostingHistoryQuery query) {
             return delegate.listPostings(query);
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.AccountBalanceSnapshot> accountBalance(
-              AccountBalanceQuery query) {
+          public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
             return delegate.accountBalance(query);
           }
 
           @Override
-          public dev.erst.fingrind.contract.TrialBalanceReport trialBalance(
-              dev.erst.fingrind.contract.TrialBalanceQuery query) {
+          public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
             return delegate.trialBalance(query);
           }
 
           @Override
-          public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
-              dev.erst.fingrind.contract.AccountLedgerQuery query, RegisteredAccount account) {
+          public AccountLedgerView accountLedger(
+              AccountLedgerCriteria query, RegisteredAccount account) {
             return delegate.accountLedger(query, account);
           }
 
           @Override
-          public dev.erst.fingrind.contract.PeriodSummaryReport periodSummary(
-              dev.erst.fingrind.contract.PeriodSummaryQuery query) {
+          public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
             return delegate.periodSummary(query);
           }
         };
@@ -466,7 +472,7 @@ final class LedgerPlanServiceTestSupport {
           }
 
           @Override
-          public dev.erst.fingrind.contract.AccountPage listAccounts(ListAccountsQuery query) {
+          public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
             return delegate.listAccounts(query);
           }
 
@@ -481,31 +487,28 @@ final class LedgerPlanServiceTestSupport {
           }
 
           @Override
-          public dev.erst.fingrind.contract.PostingPage listPostings(ListPostingsQuery query) {
+          public PostingHistoryPage listPostings(PostingHistoryQuery query) {
             return delegate.listPostings(query);
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.AccountBalanceSnapshot> accountBalance(
-              AccountBalanceQuery query) {
+          public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
             return delegate.accountBalance(query);
           }
 
           @Override
-          public dev.erst.fingrind.contract.TrialBalanceReport trialBalance(
-              dev.erst.fingrind.contract.TrialBalanceQuery query) {
+          public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
             return delegate.trialBalance(query);
           }
 
           @Override
-          public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
-              dev.erst.fingrind.contract.AccountLedgerQuery query, RegisteredAccount account) {
+          public AccountLedgerView accountLedger(
+              AccountLedgerCriteria query, RegisteredAccount account) {
             return delegate.accountLedger(query, account);
           }
 
           @Override
-          public dev.erst.fingrind.contract.PeriodSummaryReport periodSummary(
-              dev.erst.fingrind.contract.PeriodSummaryQuery query) {
+          public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
             return delegate.periodSummary(query);
           }
         };

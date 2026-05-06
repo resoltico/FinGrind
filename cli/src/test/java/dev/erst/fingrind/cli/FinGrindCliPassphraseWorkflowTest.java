@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.ContractErrors;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import org.jspecify.annotations.NullUnmarked;
@@ -165,5 +166,46 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
         failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains(wrongSecret));
+  }
+
+  @Test
+  void run_openBookWithUnreadableStandardInput_reportsInvalidPassphraseSource() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("broken-stdin-books").resolve("entity.sqlite");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new InputStream() {
+              @Override
+              public int read() throws IOException {
+                throw new IOException("boom");
+              }
+
+              @Override
+              public int read(byte[] buffer, int offset, int length) throws IOException {
+                throw new IOException("boom");
+              }
+            },
+            utf8PrintStream(outputStream),
+            fixedClock());
+
+    assertEquals(
+        2,
+        cli.run(
+            new String[] {
+              "open-book", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
+            }));
+
+    String outputText = outputStream.toString(StandardCharsets.UTF_8);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
+        failureEnvelope.path("code").stringValue());
+    assertTrue(
+        failureEnvelope
+            .path("message")
+            .stringValue()
+            .contains("Failed to read the FinGrind book passphrase from standard input."));
+    assertFalse(outputText.contains("runtime-failure"));
+    assertFalse(outputText.contains("boom"));
   }
 }

@@ -1,7 +1,8 @@
 package dev.erst.fingrind.contract;
 
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
@@ -18,12 +19,12 @@ public record ListPostingsQuery(
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
     Objects.requireNonNull(cursor, "cursor");
-    if (limit < ProtocolLimits.PAGE_LIMIT_MIN || limit > ProtocolLimits.PAGE_LIMIT_MAX) {
+    if (limit < InteractionLimits.PAGE_LIMIT_MIN || limit > InteractionLimits.PAGE_LIMIT_MAX) {
       throw new IllegalArgumentException(
           "Posting list limit must be between "
-              + ProtocolLimits.PAGE_LIMIT_MIN
+              + InteractionLimits.PAGE_LIMIT_MIN
               + " and "
-              + ProtocolLimits.PAGE_LIMIT_MAX
+              + InteractionLimits.PAGE_LIMIT_MAX
               + ".");
     }
   }
@@ -50,6 +51,6 @@ public record ListPostingsQuery(
 
   /** Returns the maximum supported posting-list page size. */
   public static int maxLimit() {
-    return ProtocolLimits.PAGE_LIMIT_MAX;
+    return InteractionLimits.PAGE_LIMIT_MAX;
   }
 }

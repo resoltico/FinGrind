@@ -1,6 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,10 +16,10 @@ public record BookWorkflowPlan(String planId, List<BookWorkflowStep> steps) {
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Workflow plan must contain at least one step.");
     }
-    if (steps.size() > ProtocolLimits.LEDGER_PLAN_STEP_MAX) {
+    if (steps.size() > InteractionLimits.LEDGER_PLAN_STEP_MAX) {
       throw new IllegalArgumentException(
           "Workflow plan must not contain more than "
-              + ProtocolLimits.LEDGER_PLAN_STEP_MAX
+              + InteractionLimits.LEDGER_PLAN_STEP_MAX
               + " steps.");
     }
     if (steps.stream().map(BookWorkflowStep::stepId).distinct().count() != steps.size()) {

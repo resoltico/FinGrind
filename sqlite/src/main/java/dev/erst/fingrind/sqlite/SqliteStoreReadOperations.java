@@ -1,23 +1,23 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -51,7 +51,7 @@ final class SqliteStoreReadOperations {
     return queryOperations.findAccounts(accountCodes);
   }
 
-  AccountPage listAccounts(ListAccountsQuery query) {
+  AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     return queryOperations.listAccounts(query);
   }
 
@@ -67,23 +67,23 @@ final class SqliteStoreReadOperations {
     return queryOperations.findReversalFor(priorPostingId);
   }
 
-  PostingPage listPostings(ListPostingsQuery query) {
+  PostingHistoryPage listPostings(PostingHistoryQuery query) {
     return queryOperations.listPostings(query);
   }
 
-  Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
+  Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
     return reportOperations.accountBalance(query);
   }
 
-  TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+  TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     return reportOperations.trialBalance(query);
   }
 
-  AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
+  AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
     return reportOperations.accountLedger(query, account);
   }
 
-  PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+  PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
     return reportOperations.periodSummary(query);
   }
 }

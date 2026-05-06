@@ -1,14 +1,14 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.util.LinkedHashSet;
@@ -119,7 +119,7 @@ final class SqliteStoreQueryOperations {
         activeDatabase -> SqliteStatementQueries.findAccounts(activeDatabase, requestedAccounts));
   }
 
-  AccountPage listAccounts(ListAccountsQuery query) {
+  AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
@@ -165,7 +165,7 @@ final class SqliteStoreQueryOperations {
                     statement -> statement.bindText(1, priorPostingId.value())));
   }
 
-  PostingPage listPostings(ListPostingsQuery query) {
+  PostingHistoryPage listPostings(PostingHistoryQuery query) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",

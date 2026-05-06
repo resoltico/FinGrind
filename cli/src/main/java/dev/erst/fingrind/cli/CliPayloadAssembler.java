@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
-import dev.erst.fingrind.contract.CurrencyBalance;
+import dev.erst.fingrind.core.CurrencyBalance;
 
 /** Shared leaf payload builders reused by multiple CLI JSON mappers. */
 final class CliPayloadAssembler {

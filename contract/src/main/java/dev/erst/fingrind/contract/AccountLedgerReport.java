@@ -1,5 +1,7 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;

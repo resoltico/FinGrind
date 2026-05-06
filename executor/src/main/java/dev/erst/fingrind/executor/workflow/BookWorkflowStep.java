@@ -1,11 +1,11 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import java.util.Objects;
 
 /** Internal workflow step family for executing ordered book plans. */
@@ -67,7 +67,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Lists declared accounts. */
-  record ListAccounts(String stepId, ListAccountsQuery query) implements BookWorkflowStep {
+  record ListAccounts(String stepId, AccountRegistryQuery query) implements BookWorkflowStep {
     /** Validates the step. */
     public ListAccounts {
       requireStepId(stepId);
@@ -85,7 +85,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Lists committed postings. */
-  record ListPostings(String stepId, ListPostingsQuery query) implements BookWorkflowStep {
+  record ListPostings(String stepId, PostingHistoryQuery query) implements BookWorkflowStep {
     /** Validates the step. */
     public ListPostings {
       requireStepId(stepId);
@@ -94,7 +94,7 @@ public sealed interface BookWorkflowStep
   }
 
   /** Computes one account balance. */
-  record AccountBalance(String stepId, AccountBalanceQuery query) implements BookWorkflowStep {
+  record AccountBalance(String stepId, AccountBalanceCriteria query) implements BookWorkflowStep {
     /** Validates the step. */
     public AccountBalance {
       requireStepId(stepId);

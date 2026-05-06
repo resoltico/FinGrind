@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Matcher;
 
 /** User-facing command-text helpers that keep hints aligned with the active launcher surface. */
 final class CliInvocationText {
@@ -16,10 +17,11 @@ final class CliInvocationText {
   static String rewriteInvocationPrefix(String text) {
     Objects.requireNonNull(text, "text");
     String launcherCommand = launcherCommand();
-    if ("fingrind".equals(launcherCommand) || !text.startsWith("fingrind ")) {
+    if ("fingrind".equals(launcherCommand)) {
       return text;
     }
-    return launcherCommand + text.substring("fingrind".length());
+    String rewritten = rewriteLauncherToken(text, "^fingrind(?=\\s)", launcherCommand);
+    return rewriteLauncherToken(rewritten, "(?<=\\|\\s)fingrind(?=\\s)", launcherCommand);
   }
 
   static String helpSyntaxHint() {
@@ -61,12 +63,16 @@ final class CliInvocationText {
       return ProtocolCatalog.sourceCheckoutLauncherCommand(isWindows(osName));
     }
     if (FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
-      return "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>";
+      return ProtocolCatalog.containerLauncherCommand();
     }
     if (FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
       return ProtocolCatalog.directJavaLauncherCommand(isWindows(osName));
     }
     return "fingrind";
+  }
+
+  private static String rewriteLauncherToken(String text, String pattern, String launcherCommand) {
+    return text.replaceAll(pattern, Matcher.quoteReplacement(launcherCommand));
   }
 
   private static boolean isWindows(String osName) {

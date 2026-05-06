@@ -54,7 +54,7 @@ final class SqliteStoreOperations {
 
   static Optional<ContractFailure> protectedBookVerificationFailure(
       SqliteNativeException exception) {
-    if (exception.resultCode() == SqliteNativeResultCodes.NOTADB) {
+    if (isProtectedBookVerificationResultCode(exception.resultCode())) {
       return Optional.of(
           ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
               "FinGrind could not verify the selected protected book with the supplied passphrase source.",
@@ -62,6 +62,16 @@ final class SqliteStoreOperations {
               null));
     }
     return Optional.empty();
+  }
+
+  private static boolean isProtectedBookVerificationResultCode(int resultCode) {
+    return switch (resultCode) {
+      case SqliteNativeResultCodes.NOTADB,
+          SqliteNativeResultCodes.IOERR_BADKEY,
+          SqliteNativeResultCodes.IOERR_CODEC ->
+          true;
+      default -> false;
+    };
   }
 
   static IllegalStateException openRuntimeFailure(SqliteNativeException exception) {

@@ -1,13 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +15,8 @@ import java.util.Set;
 
 /** Loads bounded period-summary rows from SQLite. */
 final class SqlitePeriodSummaryReader {
-  PeriodSummaryReport periodSummary(SqliteNativeDatabase activeDatabase, PeriodSummaryQuery query) {
+  PeriodSummaryView periodSummary(
+      SqliteNativeDatabase activeDatabase, PeriodSummaryCriteria query) {
     Map<AccountCode, SqliteReportRowValues.AccountTotals> accountActivity =
         SqliteReportRowValues.insertionOrderedMap();
     Map<CurrencyCode, SqliteReportRowValues.Totals> currencyTotals =
@@ -30,7 +31,7 @@ final class SqlitePeriodSummaryReader {
         postingIds.add(
             SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_POSTING_ID));
         postingLineCount++;
-        DeclaredAccount account = SqlitePostingMapper.declaredAccount(statement);
+        RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);
         CurrencyCode currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
         BigDecimal amount = SqliteReportRowValues.reportAmount(statement);
         JournalLine.EntrySide entrySide =
@@ -42,21 +43,21 @@ final class SqlitePeriodSummaryReader {
         SqliteReportRowValues.totalsFor(currencyTotals, currencyCode).add(entrySide, amount);
       }
     }
-    List<PeriodCurrencySummary> currencySummaryRows =
+    List<PeriodCurrencySummaryView> currencySummaryRows =
         currencyTotals.entrySet().stream()
             .sorted(Map.Entry.comparingByKey(SqliteReportRowValues.CURRENCY_CODE_ORDER))
             .map(
                 entry ->
-                    new PeriodCurrencySummary(
+                    new PeriodCurrencySummaryView(
                         SqliteBalanceMath.currencyBalance(
                             entry.getKey(), entry.getValue().debit(), entry.getValue().credit())))
             .toList();
-    List<PeriodAccountActivityRow> activityRows =
+    List<PeriodAccountActivityView> activityRows =
         accountActivity.entrySet().stream()
             .sorted(Map.Entry.comparingByKey(SqliteReportRowValues.ACCOUNT_CODE_ORDER))
             .flatMap(entry -> entry.getValue().periodActivityRows().stream())
             .toList();
-    return new PeriodSummaryReport(
+    return new PeriodSummaryView(
         query.effectiveDateFrom(),
         query.effectiveDateTo(),
         postingIds.size(),

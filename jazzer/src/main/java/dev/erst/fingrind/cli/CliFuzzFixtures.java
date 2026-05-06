@@ -12,9 +12,9 @@ import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PreflightEntryResult;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationService;
@@ -211,7 +211,8 @@ public final class CliFuzzFixtures {
 
   private static ListAccountsResult listAccountsPage(
       BookReadService readService, Optional<AccountPageCursor> cursor) {
-    return readService.listAccounts(new ListAccountsQuery(ProtocolLimits.PAGE_LIMIT_MAX, cursor));
+    return readService.listAccounts(
+        new ListAccountsQuery(InteractionLimits.PAGE_LIMIT_MAX, cursor));
   }
 
   private static DeclaredAccount requireDeclaredAccount(DeclareAccountResult result) {

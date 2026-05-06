@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -19,6 +20,7 @@ public record EnvironmentSqliteDescriptor(
     String requiredSqliteSourceId,
     SqliteRuntimeStatus runtimeStatus,
     @Nullable SqliteRuntimeProvenance runtimeProvenance,
+    @Nullable SqliteRuntimeTrustBasis runtimeTrustBasis,
     @Nullable String loadedLibraryPath,
     @Nullable String loadedSqliteVersion,
     @Nullable String loadedSqlite3mcVersion,
@@ -60,80 +62,16 @@ public record EnvironmentSqliteDescriptor(
         ContractDescriptorValidation.requireOptionalText(
             loadedSqliteSourceId, "loadedSqliteSourceId");
     runtimeIssue = ContractDescriptorValidation.requireOptionalText(runtimeIssue, "runtimeIssue");
-    if (runtimeStatus == SqliteRuntimeStatus.READY) {
-      if (compileOptionsVerification != SqliteCompileOptionsVerificationStatus.VERIFIED) {
-        throw new IllegalArgumentException(
-            "compileOptionsVerification must be VERIFIED when SQLite runtime status is READY.");
-      }
-      if (runtimeProvenance == null) {
-        throw new IllegalArgumentException(
-            "runtimeProvenance is required when SQLite runtime status is READY.");
-      }
-      if (loadedLibraryPath == null) {
-        throw new IllegalArgumentException(
-            "loadedLibraryPath is required when SQLite runtime status is READY.");
-      }
-      if (loadedSqliteVersion == null
-          || loadedSqlite3mcVersion == null
-          || loadedSqliteSourceId == null) {
-        throw new IllegalArgumentException(
-            "Loaded SQLite version, SQLite3MC version, and source id are required when SQLite runtime status is READY.");
-      }
-      if (runtimeIssue != null) {
-        throw new IllegalArgumentException(
-            "runtimeIssue must be absent when SQLite runtime status is READY.");
-      }
-    } else if (runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE) {
-      if (compileOptionsVerification != SqliteCompileOptionsVerificationStatus.NOT_VERIFIED) {
-        throw new IllegalArgumentException(
-            "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is UNAVAILABLE.");
-      }
-      if (runtimeProvenance != null
-          || loadedLibraryPath != null
-          || loadedSqliteVersion != null
-          || loadedSqlite3mcVersion != null
-          || loadedSqliteSourceId != null) {
-        throw new IllegalArgumentException(
-            "Loaded SQLite provenance and version fields must be absent when SQLite runtime status is UNAVAILABLE.");
-      }
-      if (runtimeIssue == null) {
-        throw new IllegalArgumentException(
-            "runtimeIssue is required when SQLite runtime status is UNAVAILABLE.");
-      }
-    } else if (runtimeStatus == SqliteRuntimeStatus.FAILED) {
-      if (compileOptionsVerification != SqliteCompileOptionsVerificationStatus.NOT_VERIFIED) {
-        throw new IllegalArgumentException(
-            "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is FAILED.");
-      }
-      if (runtimeProvenance == null) {
-        throw new IllegalArgumentException(
-            "runtimeProvenance is required when SQLite runtime status is FAILED.");
-      }
-      if (loadedLibraryPath == null) {
-        throw new IllegalArgumentException(
-            "loadedLibraryPath is required when SQLite runtime status is FAILED.");
-      }
-      if (runtimeIssue == null) {
-        throw new IllegalArgumentException(
-            "runtimeIssue is required when SQLite runtime status is FAILED.");
-      }
-    } else {
-      if (compileOptionsVerification == SqliteCompileOptionsVerificationStatus.VERIFIED) {
-        throw new IllegalArgumentException(
-            "compileOptionsVerification must not be VERIFIED when SQLite runtime status is INCOMPATIBLE.");
-      }
-      if (runtimeProvenance == null) {
-        throw new IllegalArgumentException(
-            "runtimeProvenance is required when SQLite runtime status is INCOMPATIBLE.");
-      }
-      if (loadedLibraryPath == null
-          || loadedSqliteVersion == null
-          || loadedSqlite3mcVersion == null
-          || loadedSqliteSourceId == null
-          || runtimeIssue == null) {
-        throw new IllegalArgumentException(
-            "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.");
-      }
-    }
+    runtimeTrustBasis =
+        SqliteRuntimeStateValidator.validate(
+            compileOptionsVerification,
+            runtimeStatus,
+            runtimeProvenance,
+            runtimeTrustBasis,
+            loadedLibraryPath,
+            loadedSqliteVersion,
+            loadedSqlite3mcVersion,
+            loadedSqliteSourceId,
+            runtimeIssue);
   }
 }
