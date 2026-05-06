@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.core.InteractionLimits;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -221,9 +222,9 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         ProtocolOptions.bookPassphraseOptions());
-    assertEquals(50, ProtocolLimits.DEFAULT_PAGE_LIMIT);
-    assertEquals(200, ProtocolLimits.PAGE_LIMIT_MAX);
-    assertEquals(100, ProtocolLimits.LEDGER_PLAN_STEP_MAX);
+    assertEquals(50, InteractionLimits.DEFAULT_PAGE_LIMIT);
+    assertEquals(200, InteractionLimits.PAGE_LIMIT_MAX);
+    assertEquals(100, InteractionLimits.LEDGER_PLAN_STEP_MAX);
     assertTrue(listAccounts.options().contains("[--limit <1-200>]"));
     assertTrue(listAccounts.usage().contains("[--book-key-file <path> | --book-passphrase-stdin"));
     assertTrue(listAccounts.examples().getFirst().contains("--limit 50"));

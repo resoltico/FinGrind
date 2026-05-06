@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.DeclareAccountResult;
@@ -12,6 +13,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -20,8 +22,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesBookOpeningOutcomes() {
     Instant initializedAt = Instant.parse("2026-05-05T09:15:30Z");
-    BookAdministrationRejection rejection =
-        new BookAdministrationRejection.BookAlreadyInitialized();
+    BookkeepingAdministrationRejection rejection =
+        new BookkeepingAdministrationRejection.BookAlreadyInitialized();
 
     OpenBookResult opened =
         BookkeepingPublishedLanguageTranslator.toPublished(
@@ -32,7 +34,9 @@ class BookkeepingPublishedLanguageTranslatorTest {
 
     assertEquals(
         initializedAt, assertInstanceOf(OpenBookResult.Opened.class, opened).initializedAt());
-    assertEquals(rejection, assertInstanceOf(OpenBookResult.Rejected.class, rejected).rejection());
+    assertEquals(
+        new BookAdministrationRejection.BookAlreadyInitialized(),
+        assertInstanceOf(OpenBookResult.Rejected.class, rejected).rejection());
   }
 
   @Test
@@ -44,8 +48,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-05-05T09:15:30Z"));
-    BookAdministrationRejection rejection =
-        new BookAdministrationRejection.NormalBalanceConflict(
+    BookkeepingAdministrationRejection rejection =
+        new BookkeepingAdministrationRejection.NormalBalanceConflict(
             account.accountCode(), NormalBalance.DEBIT, NormalBalance.CREDIT);
 
     DeclareAccountResult declared =
@@ -59,7 +63,40 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(account),
         assertInstanceOf(DeclareAccountResult.Declared.class, declared).account());
     assertEquals(
-        rejection, assertInstanceOf(DeclareAccountResult.Rejected.class, rejected).rejection());
+        new BookAdministrationRejection.NormalBalanceConflict(
+            account.accountCode(), NormalBalance.DEBIT, NormalBalance.CREDIT),
+        assertInstanceOf(DeclareAccountResult.Rejected.class, rejected).rejection());
+  }
+
+  @Test
+  void
+      bookkeepingPublishedLanguageTranslator_translatesBookContainsSchemaAndGuardsEmptyViolations() {
+    OpenBookResult notInitialized =
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookOpeningOutcome.Rejected(
+                new BookkeepingAdministrationRejection.BookNotInitialized()));
+    OpenBookResult rejected =
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookOpeningOutcome.Rejected(
+                new BookkeepingAdministrationRejection.BookContainsSchema()));
+
+    assertEquals(
+        new BookAdministrationRejection.BookNotInitialized(),
+        assertInstanceOf(OpenBookResult.Rejected.class, notInitialized).rejection());
+    assertEquals(
+        new BookAdministrationRejection.BookContainsSchema(),
+        assertInstanceOf(OpenBookResult.Rejected.class, rejected).rejection());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new BookkeepingPostingRejection.AccountStateViolations(java.util.List.of()));
+    InvocationTargetException invocationTargetException =
+        assertThrows(
+            InvocationTargetException.class,
+            () ->
+                BookkeepingPostingRejection.AccountStateViolations.class
+                    .getDeclaredConstructor(java.util.List.class)
+                    .newInstance((Object) null));
+    assertInstanceOf(IllegalArgumentException.class, invocationTargetException.getCause());
   }
 
   @Test

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.BookAdministrationRejection;
@@ -19,9 +20,12 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -188,6 +192,42 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
             exception.getMessage());
       }
     }
+  }
+
+  @Test
+  void readOnlySessions_preserveExistingBookPermissionsWhileWritableSessionsRepairThem()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("permissions-on-open.sqlite");
+    initializeBookOnDisk(bookPath);
+    assumeTrue(bookPath.getFileSystem().supportedFileAttributeViews().contains("posix"));
+
+    Set<PosixFilePermission> relaxedPermissions =
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.GROUP_READ);
+    Set<PosixFilePermission> hardenedPermissions =
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+
+    Files.setPosixFilePermissions(bookPath, relaxedPermissions);
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "read-only permissions open", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(bookPath, bookPassphrase, SqliteStoreAccessMode.READ_ONLY)) {
+      listAccounts(postingFactStore);
+    }
+    assertEquals(relaxedPermissions, Files.getPosixFilePermissions(bookPath));
+
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "writable permissions open", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                bookPath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
+      listAccounts(postingFactStore);
+    }
+    assertEquals(hardenedPermissions, Files.getPosixFilePermissions(bookPath));
   }
 
   @Test

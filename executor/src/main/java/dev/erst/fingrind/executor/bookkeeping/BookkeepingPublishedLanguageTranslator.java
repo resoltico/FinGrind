@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
@@ -7,6 +8,7 @@ import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.contract.PostingRejection;
 import java.util.Objects;
 
 /** Translates between the public published language and the local bookkeeping model. */
@@ -77,7 +79,7 @@ public final class BookkeepingPublishedLanguageTranslator {
     return switch (outcome) {
       case BookOpeningOutcome.Opened opened -> new OpenBookResult.Opened(opened.initializedAt());
       case BookOpeningOutcome.Rejected rejected ->
-          new OpenBookResult.Rejected(rejected.rejection());
+          new OpenBookResult.Rejected(toPublished(rejected.rejection()));
     };
   }
 
@@ -88,7 +90,59 @@ public final class BookkeepingPublishedLanguageTranslator {
       case AccountDeclarationOutcome.Declared declared ->
           new DeclareAccountResult.Declared(toPublished(declared.account()));
       case AccountDeclarationOutcome.Rejected rejected ->
-          new DeclareAccountResult.Rejected(rejected.rejection());
+          new DeclareAccountResult.Rejected(toPublished(rejected.rejection()));
+    };
+  }
+
+  /** Translates one bookkeeping administration rejection into the public rejection contract. */
+  public static BookAdministrationRejection toPublished(
+      BookkeepingAdministrationRejection rejection) {
+    Objects.requireNonNull(rejection, "rejection");
+    return switch (rejection) {
+      case BookkeepingAdministrationRejection.BookAlreadyInitialized _ ->
+          new BookAdministrationRejection.BookAlreadyInitialized();
+      case BookkeepingAdministrationRejection.BookNotInitialized _ ->
+          new BookAdministrationRejection.BookNotInitialized();
+      case BookkeepingAdministrationRejection.BookContainsSchema _ ->
+          new BookAdministrationRejection.BookContainsSchema();
+      case BookkeepingAdministrationRejection.NormalBalanceConflict conflict ->
+          new BookAdministrationRejection.NormalBalanceConflict(
+              conflict.accountCode(),
+              conflict.existingNormalBalance(),
+              conflict.requestedNormalBalance());
+    };
+  }
+
+  /** Translates one bookkeeping posting rejection into the public rejection contract. */
+  public static PostingRejection toPublished(BookkeepingPostingRejection rejection) {
+    Objects.requireNonNull(rejection, "rejection");
+    return switch (rejection) {
+      case BookkeepingPostingRejection.BookNotInitialized _ ->
+          new PostingRejection.BookNotInitialized();
+      case BookkeepingPostingRejection.AccountStateViolations violations ->
+          new PostingRejection.AccountStateViolations(
+              violations.violations().stream()
+                  .map(BookkeepingPublishedLanguageTranslator::toPublished)
+                  .toList());
+      case BookkeepingPostingRejection.DuplicateIdempotencyKey _ ->
+          new PostingRejection.DuplicateIdempotencyKey();
+      case BookkeepingPostingRejection.ReversalTargetNotFound rejectionTarget ->
+          new PostingRejection.ReversalTargetNotFound(rejectionTarget.priorPostingId());
+      case BookkeepingPostingRejection.ReversalAlreadyExists rejectionExists ->
+          new PostingRejection.ReversalAlreadyExists(rejectionExists.priorPostingId());
+      case BookkeepingPostingRejection.ReversalDoesNotNegateTarget rejectionMismatch ->
+          new PostingRejection.ReversalDoesNotNegateTarget(rejectionMismatch.priorPostingId());
+    };
+  }
+
+  private static PostingRejection.AccountStateViolation toPublished(
+      BookkeepingPostingRejection.AccountStateViolation violation) {
+    Objects.requireNonNull(violation, "violation");
+    return switch (violation) {
+      case BookkeepingPostingRejection.UnknownAccount unknownAccount ->
+          new PostingRejection.UnknownAccount(unknownAccount.accountCode());
+      case BookkeepingPostingRejection.InactiveAccount inactiveAccount ->
+          new PostingRejection.InactiveAccount(inactiveAccount.accountCode());
     };
   }
 

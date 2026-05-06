@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.protocol.StorageDriver;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
 import dev.erst.fingrind.core.ActorType;
@@ -87,6 +88,10 @@ class ContractProtocolVocabularyTest {
         SqliteRuntimeProvenance.fromWireValue("source-checkout-managed"));
     assertEquals(
         "source-checkout-managed", SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED.toString());
+    assertEquals(
+        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        SqliteRuntimeTrustBasis.fromWireValue("publisher-authenticated"));
+    assertEquals("operator-trusted", SqliteRuntimeTrustBasis.OPERATOR_TRUSTED.toString());
     assertEquals(SqliteRuntimeStatus.READY, SqliteRuntimeStatus.fromWireValue("ready"));
     assertEquals("ready", SqliteRuntimeStatus.READY.toString());
     assertEquals(SqliteRuntimeStatus.FAILED, SqliteRuntimeStatus.fromWireValue("failed"));
@@ -100,6 +105,9 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> SqliteRuntimeProvenance.fromWireValue("managed-source-checkout"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SqliteRuntimeTrustBasis.fromWireValue("operator-trust"));
     assertThrows(IllegalArgumentException.class, () -> SqliteRuntimeStatus.fromWireValue("loaded"));
   }
 

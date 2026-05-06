@@ -6,6 +6,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class SmokePath:
+    relative_path: Path
     local_path: Path
     argument: str
 
@@ -17,6 +18,7 @@ class ReleaseSmokeConfig:
     command_prefix: list[str]
     command_bridge_prefix: list[str]
     command_cwd: Path | None
+    reported_work_root: Path | None
     command_env_drop: list[str]
     command_env_set: dict[str, str]
     runtime_distribution_key: str

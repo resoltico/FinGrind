@@ -3,8 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .models import ReleaseSmokeConfig
+from .models import ReleaseSmokeConfig, SmokePath
 from .support import (
+    extract_pdf_exported_path,
+    normalize_reported_path,
+    normalized_path_components,
     require,
     require_match,
     require_no_match,
@@ -260,8 +263,28 @@ def assert_operator_queries_and_reports(
         f"{config.label} trial-balance PDF artifact did not start with %PDF-",
     )
     require(
-        not pdf_stderr.strip(),
-        f"{config.label} PDF export wrote unexpected stderr: {pdf_stderr}",
+        pdf_stdout == trial_balance_human_output,
+        f"{config.label} PDF export changed stdout instead of preserving the human report surface",
+    )
+    require_match(
+        pdf_stderr,
+        r"^Info$",
+        f"{config.label} PDF export did not emit the canonical diagnostics heading",
+    )
+    require_match(
+        pdf_stderr,
+        r"^Code[[:space:]]+:[[:space:]]+pdf-exported$",
+        f"{config.label} PDF export did not emit the canonical pdf-exported diagnostics code",
+    )
+    require_match(
+        pdf_stderr,
+        r"^Argument[[:space:]]+:[[:space:]]+--pdf-out$",
+        f"{config.label} PDF export did not attribute diagnostics to --pdf-out",
+    )
+    reported_pdf_path = extract_pdf_exported_path(pdf_stderr)
+    require(
+        reported_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
+        f"{config.label} PDF export diagnostics did not report the normalized written artifact path",
     )
     require_match(
         account_ledger_csv_output,
@@ -292,4 +315,26 @@ def assert_operator_queries_and_reports(
         period_summary_human_output,
         r"2",
         f"{config.label} period-summary output did not render the expected posting count",
+    )
+
+
+def expected_reported_artifact_path(config: ReleaseSmokeConfig, smoke_path: SmokePath) -> str:
+    if config.reported_work_root is not None and smoke_path.argument != str(smoke_path.local_path):
+        return str(config.reported_work_root / smoke_path.relative_path)
+    return str(smoke_path.local_path)
+
+
+def reported_artifact_path_matches(
+    config: ReleaseSmokeConfig,
+    smoke_path: SmokePath,
+    reported_path: str,
+) -> bool:
+    expected_path = expected_reported_artifact_path(config, smoke_path)
+    if normalize_reported_path(reported_path) == normalize_reported_path(expected_path):
+        return True
+    reported_components = normalized_path_components(reported_path)
+    relative_components = normalized_path_components(smoke_path.relative_path.as_posix())
+    return (
+        len(reported_components) >= len(relative_components)
+        and reported_components[-len(relative_components) :] == relative_components
     )

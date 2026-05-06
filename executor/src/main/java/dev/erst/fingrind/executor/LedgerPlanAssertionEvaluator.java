@@ -1,9 +1,8 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.LedgerFact;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
 import java.util.Optional;
@@ -65,18 +64,18 @@ final class LedgerPlanAssertionEvaluator {
 
   private static LedgerPlanStepOutcome assertAccountBalance(
       BookReadService bookReadService, BookWorkflowAssertion.AccountBalanceEquals assertion) {
-    return switch (bookReadService.accountBalance(assertion.query())) {
-      case AccountBalanceResult.Reported reported ->
-          assertAccountBalance(assertion, reported.snapshot());
-      case AccountBalanceResult.Rejected rejected ->
+    return switch (bookReadService.accountBalanceOutcome(assertion.query())) {
+      case BookReadOutcome.Reported<AccountBalanceView> reported ->
+          assertAccountBalance(assertion, reported.value());
+      case BookReadOutcome.Rejected<AccountBalanceView> rejected ->
           LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
     };
   }
 
   private static LedgerPlanStepOutcome assertAccountBalance(
-      BookWorkflowAssertion.AccountBalanceEquals assertion, AccountBalanceSnapshot snapshot) {
+      BookWorkflowAssertion.AccountBalanceEquals assertion, AccountBalanceView view) {
     Optional<CurrencyBalance> matchingBalance =
-        snapshot.balances().stream()
+        view.balances().stream()
             .filter(
                 balance ->
                     balance.netAmount().currencyCode().equals(assertion.netAmount().currencyCode()))
@@ -91,7 +90,7 @@ final class LedgerPlanAssertionEvaluator {
     boolean matchesAmount = balance.netAmount().equals(assertion.netAmount());
     boolean matchesSide = balance.balanceSide() == assertion.balanceSide();
     if (matchesAmount && matchesSide) {
-      return LedgerPlanOutcomeMapper.balanceFacts(snapshot);
+      return LedgerPlanOutcomeMapper.balanceFacts(view);
     }
     return LedgerPlanOutcomeMapper.assertionFailure(
         "Account balance does not match expected value.",

@@ -3,14 +3,9 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -19,7 +14,9 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -30,6 +27,11 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,10 +45,17 @@ class LedgerPlanFactMapperTest {
 
   @Test
   void postingPageFacts_includeNextCursorAndStructuredReversalFacts() {
-    PostingFact postingFact = reversalPostingFact();
-    PostingPage page =
-        new PostingPage(
-            List.of(postingFact), 25, Optional.of(PostingPageCursor.fromPosting(postingFact)));
+    dev.erst.fingrind.executor.bookkeeping.CommittedPosting reversalPosting =
+        BookkeepingPublishedLanguageTranslator.fromPublished(reversalPostingFact());
+    PostingHistoryPage page =
+        new PostingHistoryPage(
+            List.of(reversalPosting),
+            25,
+            Optional.of(
+                new PostingHistoryCursor(
+                    reversalPosting.journalEntry().effectiveDate(),
+                    reversalPosting.provenance().recordedAt(),
+                    reversalPosting.postingId())));
 
     List<LedgerFact> facts = LedgerPlanFactMapper.postingPageFacts(page);
 
@@ -56,9 +65,7 @@ class LedgerPlanFactMapperTest {
                 fact ->
                     fact instanceof LedgerFact.Text text
                         && "nextCursor".equals(text.name())
-                        && PostingPageCursor.fromPosting(postingFact)
-                            .wireValue()
-                            .equals(text.value())));
+                        && page.nextCursor().orElseThrow().wireValue().equals(text.value())));
     assertTrue(
         facts.stream()
             .anyMatch(
@@ -81,18 +88,17 @@ class LedgerPlanFactMapperTest {
 
   @Test
   void balanceFacts_includeOptionalDateBoundsWhenPresent() {
-    DeclaredAccount account =
-        new DeclaredAccount(
+    RegisteredAccount account =
+        new RegisteredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
             NormalBalance.DEBIT,
             true,
             FIXED_INSTANT);
-    AccountBalanceSnapshot snapshot =
-        new AccountBalanceSnapshot(
+    AccountBalanceView snapshot =
+        new AccountBalanceView(
             account,
-            Optional.of(LocalDate.parse("2026-04-01")),
-            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             List.of(
                 new CurrencyBalance(
                     money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));

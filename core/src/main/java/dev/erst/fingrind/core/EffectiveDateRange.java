@@ -1,4 +1,4 @@
-package dev.erst.fingrind.contract;
+package dev.erst.fingrind.core;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
-/** Structurally typed effective-date filter shared by read models and ledger assertions. */
+/** Structurally typed effective-date filter shared by bookkeeping reads and assertions. */
 public sealed interface EffectiveDateRange
     permits EffectiveDateRange.Unbounded,
         EffectiveDateRange.From,

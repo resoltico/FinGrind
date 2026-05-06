@@ -23,6 +23,9 @@ jobs:
 
     permissions:
       contents: write
+      attestations: write
+      id-token: write
+      artifact-metadata: write
 
     outputs:
       tag: ${{ steps.target-tag.outputs.tag }}
@@ -221,6 +224,13 @@ jobs:
           bash ./scripts/publish-github-release.sh \
             "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}" \
             "cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}.sha256"
+
+      - name: Attest published bundle assets
+        uses: actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb # v4
+        with:
+          subject-path: |
+            cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}
+            cli/build/distributions/fingrind-${{ needs.prepare-release.outputs.version }}-${{ matrix.classifier }}.${{ matrix.archive_extension }}.sha256
 
   verify-release:
     name: Verify GitHub release assets

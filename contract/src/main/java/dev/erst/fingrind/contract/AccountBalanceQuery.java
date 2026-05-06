@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;

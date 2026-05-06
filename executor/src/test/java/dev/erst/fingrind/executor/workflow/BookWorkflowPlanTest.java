@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.jspecify.annotations.NullUnmarked;
@@ -31,7 +31,7 @@ class BookWorkflowPlanTest {
   @Test
   void bookWorkflowPlan_rejectsOversizedStepCollections() {
     List<BookWorkflowStep> oversizedSteps =
-        IntStream.range(0, ProtocolLimits.LEDGER_PLAN_STEP_MAX + 1)
+        IntStream.range(0, InteractionLimits.LEDGER_PLAN_STEP_MAX + 1)
             .<BookWorkflowStep>mapToObj(index -> new BookWorkflowStep.InspectBook("step-" + index))
             .toList();
 

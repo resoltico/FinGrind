@@ -36,9 +36,13 @@ esac
 source "${gradle_wrapper_support}"
 
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
+readonly root_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'root' "${is_darwin}")"
 readonly raw_jar="${cli_build_dir}/libs/fingrind.jar"
 
 [[ -f "${raw_jar}" ]] || die \
     "missing developer raw JAR at ${raw_jar}; run ./gradlew :cli:shadowJar prepareManagedSqlite"
 
-exec java -jar "${raw_jar}" "$@"
+exec java \
+    -Dfingrind.source-checkout.root="${repo_root}" \
+    -Dfingrind.source-checkout.build-root="${root_build_dir}" \
+    -jar "${raw_jar}" "$@"

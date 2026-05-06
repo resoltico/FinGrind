@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
@@ -188,6 +187,28 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
 
     assertProtectedBookVerificationFailure(corruptedBookPath);
     assertProtectedBookVerificationFailure(truncatedBookPath);
+  }
+
+  @Test
+  void protectedBookVerificationFailure_coversAllCanonicalVerificationResultCodes() {
+    assertTrue(
+        SqliteStoreOperations.protectedBookVerificationFailure(
+                new SqliteNativeException(SqliteNativeResultCodes.NOTADB, "not a database"))
+            .isPresent());
+    assertTrue(
+        SqliteStoreOperations.protectedBookVerificationFailure(
+                new SqliteNativeException(
+                    SqliteNativeResultCodes.IOERR_BADKEY, "cipher verification failed"))
+            .isPresent());
+    assertTrue(
+        SqliteStoreOperations.protectedBookVerificationFailure(
+                new SqliteNativeException(
+                    SqliteNativeResultCodes.IOERR_CODEC, "codec verification failed"))
+            .isPresent());
+    assertEquals(
+        Optional.empty(),
+        SqliteStoreOperations.protectedBookVerificationFailure(
+            new SqliteNativeException(SqliteNativeResultCodes.ERROR, "ordinary runtime failure")));
   }
 
   @Test
@@ -382,7 +403,9 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         new SqlitePostingFactStore(bookAccess(blankBookPath))) {
       setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(blankBookPath)));
       assertEquals(
-          Optional.of(new PostingRejection.BookNotInitialized()),
+          Optional.of(
+              new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                  .BookNotInitialized()),
           PostingAcceptancePolicy.rejectionFor(
               postingDraft("posting-helper", "idem-helper", Optional.empty(), Optional.empty()),
               new SqliteTransactionValidationBook(

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Canonical public CLI option spellings used by the protocol catalog and parser. */
@@ -82,7 +83,9 @@ public final class ProtocolOptions {
   public static String optionalLimitSyntax() {
     return "[%s <%d-%d>]"
         .formatted(
-            ProtocolOptions.LIMIT, ProtocolLimits.PAGE_LIMIT_MIN, ProtocolLimits.PAGE_LIMIT_MAX);
+            ProtocolOptions.LIMIT,
+            InteractionLimits.PAGE_LIMIT_MIN,
+            InteractionLimits.PAGE_LIMIT_MAX);
   }
 
   /** Returns the rendered optional page-cursor syntax. */

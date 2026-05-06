@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -99,19 +99,26 @@ public interface PostingRequestModel
 - `PostingRequestModel`: the shared local shape consumed by bookkeeping validation and materialized
   posting facts
 
-## `PostingAcceptancePolicy` And `BookkeepingPublishedLanguageTranslator`
+## `PostingAcceptancePolicy`, `BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, And `BookkeepingPublishedLanguageTranslator`
 
 `PostingAcceptancePolicy` owns bookkeeping-side admission rules, while
-`BookkeepingPublishedLanguageTranslator` forms the anti-corruption layer between the published
-language and the local bookkeeping context.
+`BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, and
+`BookkeepingPublishedLanguageTranslator` keep local bookkeeping refusals and boundary translation
+out of the published protocol surface.
 
 ```java
 public final class PostingAcceptancePolicy
+public sealed interface BookkeepingAdministrationRejection
+public sealed interface BookkeepingPostingRejection
 public final class BookkeepingPublishedLanguageTranslator
 ```
 
 - `PostingAcceptancePolicy`: validates initialization, account state, duplicate idempotency,
   reversal admissibility, and related bookkeeping rules against one `PostingValidationBook`
+- `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
+  account-declaration rules before translation into public `BookAdministrationRejection`
+- `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
+  admissibility before translation into public `PostingRejection`
 - `BookkeepingPublishedLanguageTranslator`: translates `DeclareAccountCommand`,
   `PostEntryCommand`, `PostingFact`, and bookkeeping outcomes at the host boundary instead of
   letting transport DTOs become the local working model
@@ -181,21 +188,47 @@ public sealed interface BookWorkflowAssertion
 ```
 
 - `BookWorkflowPlan`: local ordered workflow model with plain-string plan identity
-- `BookWorkflowStep`: local executable step family used during plan execution and journaling
-- `BookWorkflowAssertion`: local assertion family evaluated against bookkeeping/read outcomes
+- `BookWorkflowStep`: local executable step family that holds translated bookkeeping write
+  commands, translated bookkeeping read criteria, and local assertion steps instead of public
+  query DTOs
+- `BookWorkflowAssertion`: local assertion family evaluated against bookkeeping/read outcomes and
+  local balance criteria
+
+## `BookWorkflowBoundaryPhase`, `BookWorkflowFailure`, `BookWorkflowJournalDescriptor`, `BookWorkflowJournalEntry`, And `BookWorkflowExecutionJournal`
+
+These types are the internal workflow execution record used while `LedgerPlanService` is running
+and deciding whether to commit or roll back.
+
+```java
+public enum BookWorkflowBoundaryPhase
+public record BookWorkflowFailure(...)
+public sealed interface BookWorkflowJournalDescriptor
+public sealed interface BookWorkflowJournalEntry
+public enum BookWorkflowExecutionStatus
+public record BookWorkflowExecutionJournal(...)
+```
+
+- `BookWorkflowBoundaryPhase`: local begin/initialization-check/commit/rollback failure phases
+- `BookWorkflowFailure`: local failure payload with stable code, message, and machine facts
+- `BookWorkflowJournalDescriptor`: local executed-step-or-boundary descriptor
+- `BookWorkflowJournalEntry`: local per-step journal entry emitted before public projection
+- `BookWorkflowExecutionStatus`: local execution outcome derived before public journal/result
+  projection
+- `BookWorkflowExecutionJournal`: local full-run journal used to derive the final execution status
 
 ## `BookWorkflowPublishedLanguageTranslator`
 
 `BookWorkflowPublishedLanguageTranslator` maps the public `LedgerPlan` family onto the local
-workflow context and projects local workflow metadata back into the public execution journal.
+workflow context and projects local workflow metadata back into the public execution journal and
+plan result surface.
 
 ```java
 public final class BookWorkflowPublishedLanguageTranslator
 ```
 
 - Purpose: keep plan orchestration semantics and published workflow DTOs decoupled
-- Boundary: translates plan ids, step ids, step kinds, and assertion kinds between the public and
-  local workflow contexts
+- Boundary: translates request plans into local steps/assertions at ingress, and translates local
+  workflow journals/failures back into `LedgerJournal*` and `LedgerPlanResult` at egress
 
 ## `LedgerFact`
 
@@ -242,6 +275,8 @@ public sealed interface LedgerPlanResult
   `detailKind`, while unexpected begin, initialization-check, commit, or rollback failures use the
   dedicated `plan-boundary` kind plus a `boundaryPhase`
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
+- Boundary: these are published workflow protocol outputs; executor keeps a separate local
+  workflow journal model while the plan is actually executing
 
 ## `PostingApplicationService`
 

@@ -5,6 +5,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-05-06
+
+### Fixed
+
+- Hardened protected-book verification so the public `protected-book-verification-failed` contract now covers the SQLite verification families surfaced as `SQLITE_NOTADB`, `SQLITE_IOERR_BADKEY`, and `SQLITE_IOERR_CODEC` instead of letting some wrong-key or damaged-book cases escape as generic runtime crashes.
+- Enforced `memory_security=fill` on every opened SQLite handle, enabled secure SQLite3MC memory support in the managed native build and Docker compiler-flag renderer, and tightened the managed-runtime identity contract so publisher-owned bundle and source-checkout runtimes are authenticated against both an embedded trusted digest and the extracted sibling `.sha256` sidecar before native symbol lookup while custom `environment-configured` direct-Java paths remain explicitly operator-managed.
+- Fixed source-checkout managed-runtime discovery for relocated Gradle build roots by carrying the active root-project build directory through the generated launcher, developer raw-JAR wrapper, and JAR manifest instead of guessing at `repo/build/managed-sqlite`.
+- Rejected missing key-file paths in the key-file security seam, capped both key-file and `--book-passphrase-stdin` passphrase payloads at 4096 bytes, hardened Windows key-file parent directories to owner-only ACLs, converted unreadable stdin failures into deterministic `invalid-book-passphrase-source` errors, and rewrote the public quick-start/help/examples to keep encrypted books under `./books/` and secrets under `./secrets/`.
+- Added a public `SECURITY.md`, enabled GitHub private vulnerability reporting for the repository, and updated the security-model reference to describe the real session-scoped passphrase lifetime, checksum-backed runtime identity, attested release assets, and coordinated disclosure path.
+- Added GitHub artifact attestations for every published CLI archive and checksum in `release.yml`, and tightened `verify-github-release.sh` so release verification now downloads the published assets and proves their provenance with `gh attestation verify` before treating the release handoff as complete.
+- Field-tested the bundle, source-checkout, raw-JAR, and container launcher surfaces so command help now rewrites piped stdin examples to the active launcher instead of leaving `| fingrind ...` fragments behind, container launcher guidance now keeps stdin open with `docker run -i`, and successful `--pdf-out` exports now report the normalized artifact path on the diagnostics stream without changing the primary stdout contract.
+- Exposed the managed SQLite runtime trust class as machine-readable `runtimeTrustBasis`, hardened key-file acceptance to require owner-only parent directories as well as owner-only files, enforced the same 4096-byte UTF-8 passphrase cap on interactive prompts as on key files and stdin, and tightened the security-reference gate so it derives trust and secret-handling facts from the live machine contract instead of only checking for documentation keywords.
+- Moved the canonical paging and ledger-plan limits into shared-kernel `InteractionLimits`, replaced bookkeeping-owned public rejection imports with local rejection types plus boundary translation, and tightened managed SQLite loading so FinGrind authenticates and loads one private verified runtime snapshot instead of hashing one path and mapping another later.
+- Added `./scripts/verify-security-policy-surface.sh` to verify GitHub private vulnerability reporting as part of public release verification, and updated the security reference to point at that executable evidence owner.
+- Stopped read-oriented SQLite opens from rewriting book-file permissions as a side effect, added stale `*.rekey-rollback-*.sqlite` warning detection for interrupted rekeys, and clarified the security/docs contract so passphrase buffer overwrite is described as best-effort under the Java heap model rather than as guaranteed erasure.
+- Tightened the public release protocol so release promotion now waits on the aggregate `Gate` check via `./scripts/verify-release-pr-gate.sh` instead of inferring merge-readiness from an earlier green `Check` job while downstream Windows and Docker fan-out is still running.
+- Fixed the shared release-smoke workflow so bundle and Docker acceptance now compare the `pdf-exported` diagnostics path by normalized artifact identity instead of raw `--pdf-out` argument text, removing a Windows-only false failure when the CLI reports the canonical normalized path form.
+
 ## [0.31.0] - 2026-05-05
 
 ### Fixed
@@ -43,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Aligned every AFAD-managed documentation page with the current project version from `gradle.properties` and added a contract-lint gate so documentation frontmatter cannot drift onto a future or mixed release version.
 - Replaced release-numbered extracted-bundle launcher paths in the public CLI guides with archive-derived launcher examples, and moved shared bundle-archive verification onto one Python owner used by both Bash and PowerShell bundle smoke.
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
-- Split the internal bookkeeping and workflow models away from the public contract DTOs, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
+- Split the internal bookkeeping and workflow models away from the public contract DTOs, moved shared `CurrencyBalance` and `EffectiveDateRange` ownership into the `core` shared kernel, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
 
 ## [0.30.0] - 2026-05-02
 
@@ -1358,7 +1376,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.32.0...HEAD
+[0.32.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.32.0
 [0.31.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.31.0
 [0.30.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.30.0
 [0.29.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.29.0

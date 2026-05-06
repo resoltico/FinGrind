@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -16,7 +15,7 @@ public sealed interface BookOpeningOutcome
   }
 
   /** Deterministic rejection for explicit book initialization. */
-  record Rejected(BookAdministrationRejection rejection) implements BookOpeningOutcome {
+  record Rejected(BookkeepingAdministrationRejection rejection) implements BookOpeningOutcome {
     /** Validates one open-book rejection. */
     public Rejected {
       Objects.requireNonNull(rejection, "rejection");

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -33,16 +33,37 @@ Retired wording:
 
 ## Bounded Contexts
 
-### Public Protocol Context
+### Public Bookkeeping Protocol Context
 
-The `contract` module owns the **published language**:
-- command ids, help/catalog metadata, machine-contract descriptors, request/response DTOs, error
-  vocabulary, and public workflow schemas
-- public write DTOs such as `DeclareAccountCommand`, `PostEntryCommand`, and `LedgerPlan`
+The `contract` module hosts one published bookkeeping protocol context:
+- public write DTOs such as `DeclareAccountCommand` and `PostEntryCommand`
 - public read/report DTOs such as `DeclaredAccount`, `PostingFact`, `PostingPage`, and the report
   result families
+- deterministic administration, query, and posting rejection vocabulary
 
-This context is the external contract. It is not the working bookkeeping model.
+This context is the external bookkeeping contract. It is not the working bookkeeping model.
+
+### Public Workflow Protocol Context
+
+The same `contract` module also hosts one published workflow protocol context:
+- `LedgerPlan`, `LedgerStep`, and `LedgerAssertion` as the accepted workflow request language
+- `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, and
+  `LedgerPlanResult` as the returned public execution record
+- the stable wire vocabularies that describe public workflow/journal kinds and statuses
+
+This context is the external workflow contract. It is not the internal workflow step or journal
+model used during execution.
+
+### Runtime And Discovery Contract Context
+
+The same `contract` module also hosts one runtime/discovery contract context:
+- protocol metadata, help/catalog descriptors, machine-contract descriptors, and discovery
+  namespaces
+- runtime/distribution/storage descriptors and environment facts
+- public workflow scaffolds and template descriptors
+
+This context is public and machine-facing, but it is not bookkeeping meaning and not workflow
+execution state.
 
 ### Bookkeeping Context
 
@@ -62,6 +83,11 @@ The bookkeeping context uses `RegisteredAccount`, `PostingCommand`, `CommittedPo
 `PostingLineageModel`, `BookOpeningOutcome`, and `AccountDeclarationOutcome` as its local
 language.
 
+The shared kernel in `core/` also owns `CurrencyBalance`, `EffectiveDateRange`, and
+`InteractionLimits`. Those concepts are shared by the public bookkeeping protocol, the public
+workflow protocol, and the local bookkeeping/workflow contexts without making `contract` the owner
+of the internal read model.
+
 ### Workflow Context
 
 The workflow context lives in
@@ -70,6 +96,8 @@ The workflow context lives in
 This context owns orchestration semantics for AI-authored or automation-authored plans:
 - ordered steps
 - assertions
+- local workflow journal descriptors, failures, entries, and execution journals such as
+  `BookWorkflowJournalEntry` and `BookWorkflowExecutionJournal`
 - workflow-local plan ids and step ids
 - translation from public `LedgerPlan` payloads into executable internal workflow steps
 
@@ -89,7 +117,10 @@ They do not redefine bookkeeping rules or public workflow vocabulary.
 CLI / bundle / container
         |
         v
-Public protocol context (`contract`)
+Published contract subcontexts (`contract`)
+  - bookkeeping protocol
+  - workflow protocol
+  - runtime/discovery contract
         |  published-language translators
         |  / anti-corruption layer
         v
@@ -104,19 +135,25 @@ SQLite adapter (`sqlite`)
 
 Interpretation:
 - the CLI speaks the public protocol context
-- translator classes are the anti-corruption layer between the published language and the internal
-  bookkeeping/workflow contexts
+- translator classes are the anti-corruption layer between the published bookkeeping/workflow
+  languages and the internal bookkeeping/workflow contexts
+- `BookReadService` translates public read/report DTOs into local bookkeeping criteria and views
 - `execute-plan` enters through the public workflow schema, then runs as internal workflow steps
-  that call bookkeeping services and read seams
-- SQLite persists bookkeeping state and projects public read models back out through translators
+  and internal workflow journal entries before the public journal/result surface is projected back
+  out
+- SQLite persists bookkeeping state and serves the executor-owned local read/write models rather
+  than public report DTOs directly
 
 ## Ownership Rules
 
-- Public contract DTOs are not the internal working model of bookkeeping or workflow code.
+- Public bookkeeping and workflow DTOs are not the internal working model of bookkeeping or
+  workflow code.
 - Bookkeeping invariants must live with bookkeeping aggregates or bookkeeping policies, not inside
   the SQLite adapter.
 - Workflow semantics must live with workflow types and services, not inside bookkeeping value
   objects.
+- Public read/report DTOs and public workflow journal/result DTOs belong only at boundary
+  translators and exported application services.
 - New transport layers or tools must translate at the boundary instead of importing protocol DTOs
   as their local model.
 

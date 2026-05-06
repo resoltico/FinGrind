@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented"]
@@ -36,6 +36,10 @@ public final class BookReadService
 - Constructor: requires `BookReadSession`
 - Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`,
   `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`
+- Boundary: this is the anti-corruption layer between public read/report DTOs and the local
+  bookkeeping read criteria/view model served by `BookReadSession`
+- Translator: `BookkeepingReadPublishedLanguageTranslator` owns the projection between public
+  report/query DTOs and the local bookkeeping read model
 
 ## `DeclareAccountCommand`
 
@@ -166,14 +170,16 @@ public sealed interface GetPostingResult
 
 ## `EffectiveDateRange`
 
-`EffectiveDateRange` is the sealed effective-date filter shared by reads, reports, and assertions.
+`EffectiveDateRange` is the shared-kernel effective-date filter reused by public bookkeeping
+queries and workflow assertions. Its canonical owner is [DOC_01_Core.md](./DOC_01_Core.md).
 
 ```java
 public sealed interface EffectiveDateRange
 ```
 
 - Variants: `Unbounded`, `From`, `To`, `Bounded`
-- Purpose: make date-bound combinations structural instead of using loosely related optionals
+- Purpose: reuse one structural date-range concept without making the public contract package own
+  the internal query model
 - Surface: `contains(...)` plus factory helpers like `of(...)` and `unbounded()`
 
 ## `PostingPageCursor`
@@ -237,17 +243,18 @@ public record AccountBalanceQuery(AccountCode accountCode, EffectiveDateRange ef
 
 ## `CurrencyBalance`
 
-`CurrencyBalance` is one per-currency grouped balance bucket.
+`CurrencyBalance` is the shared-kernel per-currency grouped balance bucket. Its canonical owner is
+[DOC_01_Core.md](./DOC_01_Core.md).
 
 ```java
 public record CurrencyBalance(
     Money debitTotal,
     Money creditTotal,
     Money netAmount,
-    NormalBalance balanceSide)
+    BalanceSide balanceSide)
 ```
 
-- Purpose: report grouped debit, credit, and net totals while preserving exact decimal semantics
+- Purpose: reuse one grouped balance concept across public reports and local bookkeeping views
 
 ## `AccountBalanceSnapshot`
 

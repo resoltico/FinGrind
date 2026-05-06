@@ -1,17 +1,14 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,17 +26,7 @@ final class LedgerPlanFactMapper {
         LedgerFact.text("declaredAt", account.declaredAt().toString()));
   }
 
-  static List<LedgerFact> declaredAccountFacts(DeclaredAccount account) {
-    return declaredAccountFacts(
-        new RegisteredAccount(
-            account.accountCode(),
-            account.accountName(),
-            account.normalBalance(),
-            account.active(),
-            account.declaredAt()));
-  }
-
-  static List<LedgerFact> accountPageFacts(AccountPage page) {
+  static List<LedgerFact> accountPageFacts(AccountRegistryPage page) {
     List<LedgerFact> facts = new ArrayList<>(pageFacts(page.accounts().size(), page.limit()));
     page.nextCursor()
         .ifPresent(cursor -> facts.add(LedgerFact.text("nextCursor", cursor.wireValue())));
@@ -49,7 +36,7 @@ final class LedgerPlanFactMapper {
     return List.copyOf(facts);
   }
 
-  static List<LedgerFact> postingPageFacts(PostingPage page) {
+  static List<LedgerFact> postingPageFacts(PostingHistoryPage page) {
     List<LedgerFact> facts = new ArrayList<>(pageFacts(page.postings().size(), page.limit()));
     page.nextCursor()
         .ifPresent(cursor -> facts.add(LedgerFact.text("nextCursor", cursor.wireValue())));
@@ -90,25 +77,21 @@ final class LedgerPlanFactMapper {
     return List.copyOf(facts);
   }
 
-  static List<LedgerFact> postingFacts(PostingFact postingFact) {
-    return postingFacts(BookkeepingPublishedLanguageTranslator.fromPublished(postingFact));
-  }
-
-  static List<LedgerFact> balanceFacts(AccountBalanceSnapshot snapshot) {
+  static List<LedgerFact> balanceFacts(AccountBalanceView view) {
     List<LedgerFact> facts = new ArrayList<>();
-    facts.add(LedgerFact.group("account", declaredAccountFacts(snapshot.account())));
-    snapshot
+    facts.add(LedgerFact.group("account", declaredAccountFacts(view.account())));
+    view.effectiveDateRange()
         .effectiveDateFrom()
         .ifPresent(
             effectiveDateFrom ->
                 facts.add(LedgerFact.text("effectiveDateFrom", effectiveDateFrom.toString())));
-    snapshot
+    view.effectiveDateRange()
         .effectiveDateTo()
         .ifPresent(
             effectiveDateTo ->
                 facts.add(LedgerFact.text("effectiveDateTo", effectiveDateTo.toString())));
-    facts.add(LedgerFact.count("bucketCount", snapshot.balances().size()));
-    for (CurrencyBalance balance : snapshot.balances()) {
+    facts.add(LedgerFact.count("bucketCount", view.balances().size()));
+    for (CurrencyBalance balance : view.balances()) {
       facts.add(
           LedgerFact.group(
               "balance",

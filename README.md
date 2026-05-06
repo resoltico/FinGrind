@@ -29,28 +29,29 @@ ever reach the book.
 ## The Daily Grind
 
 Every command reads from or writes to the same protected file. The key file is required every time
-— lose the key and the book stays locked:
+— lose the key and the book stays locked. Keep the key outside the book directory so copies of the
+book do not automatically carry the unlocking secret with them:
 
 ```bash
 # Create one protected book
-fingrind generate-book-key-file --book-key-file ./acme.key
-fingrind open-book --book-file ./acme.sqlite --book-key-file ./acme.key
+fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key
 
 # Declare accounts, then post a balanced entry
-fingrind declare-account --book-file ./acme.sqlite --book-key-file ./acme.key \
+fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./cash-account.json
-fingrind post-entry --book-file ./acme.sqlite --book-key-file ./acme.key \
+fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./entry.json
 
 # Read the trial balance back
-fingrind trial-balance --book-file ./acme.sqlite --book-key-file ./acme.key
+fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key
 ```
 
 ```
 Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
 --------+---------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | EUR      |      500.00 |         0.00 |     500.00 | DEBIT
-2000    | Revenue | EUR      |        0.00 |       500.00 |     500.00 | CREDIT
+1000    | Cash    | EUR      |      811.00 |         0.00 |     811.00 | DEBIT
+2000    | Revenue | EUR      |        0.00 |       811.00 |     811.00 | CREDIT
 ```
 
 Wrong entries come back as clear errors before they land: unbalanced lines, undeclared accounts,
@@ -71,8 +72,8 @@ The download is self-contained — no separate Java install needed. The
 ## Legal
 
 FinGrind is MIT-licensed. Its self-contained bundle vendors Jackson and Apache PDFBox (Apache 2.0),
-Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers 2.3.3 with SQLite 3.53.0 (MIT / public
-domain). See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
+Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers with SQLite (MIT / public domain).
+See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
 patent considerations.
 
 [LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS)

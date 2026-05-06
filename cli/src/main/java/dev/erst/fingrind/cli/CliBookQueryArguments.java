@@ -1,13 +1,13 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.List;
@@ -126,7 +126,7 @@ final class CliBookQueryArguments {
               CliArgumentValueParser.supportedOutputModes(
                   OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
     }
-    int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
+    int resolvedLimit = limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit;
     Optional<AccountPageCursor> resolvedCursor =
         Optional.ofNullable(cursor).map(CliArgumentValueParser::accountPageCursor);
     return new ListAccounts(
@@ -212,7 +212,7 @@ final class CliBookQueryArguments {
     String resolvedAccountCodeValue = accountCodeValue;
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
-    int resolvedLimit = limit == null ? ProtocolLimits.DEFAULT_PAGE_LIMIT : limit;
+    int resolvedLimit = limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit;
     String resolvedCursor = cursor;
     Optional<AccountCode> resolvedAccountCode =
         Optional.ofNullable(resolvedAccountCodeValue)

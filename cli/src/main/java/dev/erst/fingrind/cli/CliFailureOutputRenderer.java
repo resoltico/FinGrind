@@ -31,6 +31,17 @@ final class CliFailureOutputRenderer {
         failure.details());
   }
 
+  static String renderInfoHuman(CliFailure failure) {
+    return renderHumanDocument(
+        "Info",
+        failure.code(),
+        failure.message(),
+        failure.hint(),
+        failure.argument(),
+        null,
+        failure.details());
+  }
+
   static String renderRejectedHuman(String code, String message, @Nullable String idempotencyKey) {
     return renderHumanDocument("Rejected", code, message, null, null, idempotencyKey, null);
   }

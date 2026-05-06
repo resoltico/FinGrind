@@ -33,6 +33,10 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/docker-context/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
+    assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/libsqlite3.so.0.sha256"));
     assertFalse(
         dockerfile.contains("COPY cli/build/docker/runtime-modules.txt runtime-modules.txt"));
     assertFalse(dockerfile.contains("COPY cli/build/docker/managed-sqlite-contract.json \\"));
@@ -53,13 +57,19 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
-  void cliBuild_stagesSharedRuntimeModulesAndRetainsPdfboxSupportModule() throws IOException {
+  void cliAndSqliteBuilds_stageManagedRuntimeIdentityFromOneCanonicalOwner() throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
+    String sqliteBuildScript =
+        Files.readString(repositoryRoot().resolve("sqlite/build.gradle.kts"));
 
     assertTrue(buildScript.contains("stageDockerBuildContext"));
     assertTrue(buildScript.contains("docker-context"));
     assertTrue(buildScript.contains("docker-build-context-manifest.json"));
     assertTrue(buildScript.contains("dockerManagedSqliteContractSource"));
+    assertTrue(buildScript.contains("managedSqliteLibrarySha256Path"));
+    assertTrue(buildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
+    assertTrue(
+        buildScript.contains("dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
     assertTrue(buildScript.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
     assertTrue(
         buildScript.contains(
@@ -69,6 +79,10 @@ class CliDistributionBuildContractTest {
     assertFalse(buildScript.contains("archiveExtensionForOperatingSystemId"));
     assertFalse(buildScript.contains("launcherPathForOperatingSystemId"));
     assertFalse(buildScript.contains("launcherCommandForOperatingSystemId"));
+
+    assertTrue(sqliteBuildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
+    assertTrue(sqliteBuildScript.contains("META-INF/fingrind"));
+    assertTrue(sqliteBuildScript.contains("managed-sqlite.sha256"));
   }
 
   @Test
@@ -85,6 +99,9 @@ class CliDistributionBuildContractTest {
             "\"-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}\""));
     assertTrue(
         buildScript.contains("\"-Dfingrind.source-checkout.root=${repositoryRootDirectory}\""));
+    assertTrue(
+        buildScript.contains(
+            "\"-Dfingrind.source-checkout.build-root=${sourceCheckoutBuildRootDirectory}\""));
     assertTrue(buildScript.contains("tasks.named<JavaExec>(\"run\")"));
     assertFalse(buildScript.contains("jvmArgs(\"-Dfingrind.runtime.distribution="));
   }
@@ -98,6 +115,9 @@ class CliDistributionBuildContractTest {
     assertTrue(
         buildScript.contains(
             "\"FinGrind-Source-Checkout-Root\" to repositoryRootDirectory.toString()"));
+    assertTrue(
+        buildScript.contains(
+            "\"FinGrind-Source-Checkout-Build-Root\" to sourceCheckoutBuildRootDirectory.toString()"));
   }
 
   @Test

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.core.CurrencyBalance;
 import java.util.Objects;
 
 /** One per-currency total row inside a period summary. */

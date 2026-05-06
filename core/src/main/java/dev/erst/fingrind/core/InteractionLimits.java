@@ -1,7 +1,7 @@
-package dev.erst.fingrind.contract.protocol;
+package dev.erst.fingrind.core;
 
-/** Canonical protocol-level limits shared by query operations and rendered command help. */
-public final class ProtocolLimits {
+/** Cross-context request and workflow limits shared by protocol and local execution models. */
+public final class InteractionLimits {
   /** Smallest accepted page size for paginated query operations. */
   public static final int PAGE_LIMIT_MIN = 1;
 
@@ -14,5 +14,5 @@ public final class ProtocolLimits {
   /** Largest accepted number of steps in one atomic ledger plan. */
   public static final int LEDGER_PLAN_STEP_MAX = 100;
 
-  private ProtocolLimits() {}
+  private InteractionLimits() {}
 }

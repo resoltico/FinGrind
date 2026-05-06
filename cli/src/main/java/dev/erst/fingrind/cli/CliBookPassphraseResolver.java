@@ -17,7 +17,10 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
-/** Resolves one CLI-visible passphrase source into one zeroizable UTF-8 passphrase payload. */
+/**
+ * Resolves one CLI-visible passphrase source into one UTF-8 passphrase payload with owned-buffer
+ * overwrite.
+ */
 final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private static final String NO_INTERACTIVE_CONSOLE_MESSAGE =
       "FinGrind cannot prompt for a book passphrase because no interactive console is available.";
@@ -67,12 +70,29 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
   private ContractDecision<SqliteBookPassphrase> readFromStandardInput() {
     try {
-      return SqliteBookPassphrase.fromUtf8BytesDecision(
-          "standard input", inputStream.readAllBytes());
+      return readStandardInputBytes()
+          .fold(
+              bytes -> SqliteBookPassphrase.fromUtf8BytesDecision("standard input", bytes),
+              ContractDecision::rejected);
     } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to read the FinGrind book passphrase from standard input.", exception);
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+              "Failed to read the FinGrind book passphrase from standard input.",
+              "Inspect the standard-input passphrase source, confirm the pipeline is readable, and rerun the command.",
+              null));
     }
+  }
+
+  private ContractDecision<byte[]> readStandardInputBytes() throws IOException {
+    byte[] buffer = inputStream.readNBytes(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1);
+    if (buffer.length <= SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES) {
+      return ContractDecision.accepted(buffer);
+    }
+    return ContractDecision.rejected(
+        oversizedPassphraseSource(
+            "standard input",
+            "FinGrind book passphrase input from standard input exceeded the %d-byte limit."
+                .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES)));
   }
 
   private ContractDecision<SqliteBookPassphrase> readFromInteractivePrompt(
@@ -261,6 +281,18 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     return ContractErrors.Descriptor.INTERACTIVE_PROMPT_FAILED.failure(
         message,
         "Rerun the command from a supported interactive terminal and provide one valid passphrase, or use --book-key-file or --book-passphrase-stdin instead.",
+        null);
+  }
+
+  private static ContractFailure oversizedPassphraseSource(
+      String sourceDescription, String message) {
+    return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+        message,
+        "Provide one non-empty single-line UTF-8 passphrase through "
+            + sourceDescription
+            + " within the "
+            + SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES
+            + "-byte limit, then rerun the command.",
         null);
   }
 

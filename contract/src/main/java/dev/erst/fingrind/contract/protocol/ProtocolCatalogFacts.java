@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Shared immutable facts published through the public protocol catalog. */
@@ -40,7 +41,7 @@ final class ProtocolCatalogFacts {
               OperationId.OPEN_BOOK.wireName()
                   + " must be the first step when a plan initializes a book",
               "one plan may contain at most "
-                  + ProtocolLimits.LEDGER_PLAN_STEP_MAX
+                  + InteractionLimits.LEDGER_PLAN_STEP_MAX
                   + " steps, which bounds the emitted execution journal",
               "a rejected or assertion-failed step rolls back the entire plan transaction",
               "preflight steps are validation-only steps and do not commit postings"));

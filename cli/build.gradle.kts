@@ -31,6 +31,7 @@ plugins {
 description = "CLI transport adapter for the FinGrind execution boundary"
 
 val repositoryRootDirectory = rootProject.projectDir.toPath()
+val sourceCheckoutBuildRootDirectory = rootProject.layout.buildDirectory.get().asFile.toPath()
 val sourceCheckoutRuntimeDistribution =
     DistributionContractReader.sourceCheckoutRuntimeDistribution(repositoryRootDirectory)
 
@@ -50,6 +51,7 @@ application {
             "--enable-native-access=ALL-UNNAMED",
             "-Dfingrind.runtime.distribution=${sourceCheckoutRuntimeDistribution}",
             "-Dfingrind.source-checkout.root=${repositoryRootDirectory}",
+            "-Dfingrind.source-checkout.build-root=${sourceCheckoutBuildRootDirectory}",
         )
 }
 
@@ -95,6 +97,12 @@ val managedSqliteLibraryPath =
     rootProject.layout.buildDirectory.file(
         providers.provider {
             "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}"
+        },
+    )
+val managedSqliteLibrarySha256Path =
+    rootProject.layout.buildDirectory.file(
+        providers.provider {
+            "managed-sqlite/${managedSqliteHostClassifier()}/${managedSqliteLibraryFileNameForHost()}.sha256"
         },
     )
 val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
@@ -218,11 +226,13 @@ tasks.named<ShadowJar>("shadowJar") {
             "Implementation-License" to buildMetadata.implementationLicense,
             "Enable-Native-Access" to "ALL-UNNAMED",
             "FinGrind-Source-Checkout-Root" to repositoryRootDirectory.toString(),
+            "FinGrind-Source-Checkout-Build-Root" to sourceCheckoutBuildRootDirectory.toString(),
         )
     }
 }
 
 tasks.named<ProcessResources>("processResources") {
+    dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
     val description: String = providers.gradleProperty("fingrindDescription").get()
     val version: String = project.version.toString()
     inputs.property("fingrindDescription", description)
@@ -384,6 +394,9 @@ val stageCliBundle =
             into("runtime")
         }
         from(managedSqliteLibraryPath) {
+            into("lib/native")
+        }
+        from(managedSqliteLibrarySha256Path) {
             into("lib/native")
         }
         from(rootProject.file("LICENSE"))

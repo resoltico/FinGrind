@@ -1,10 +1,11 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import java.time.LocalDate;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -55,8 +56,9 @@ public sealed interface BookWorkflowAssertion
     }
 
     /** Returns the bookkeeping balance query implied by this assertion. */
-    public AccountBalanceQuery query() {
-      return new AccountBalanceQuery(accountCode, effectiveDateFrom, effectiveDateTo);
+    public AccountBalanceCriteria query() {
+      return new AccountBalanceCriteria(
+          accountCode, EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo));
     }
   }
 }

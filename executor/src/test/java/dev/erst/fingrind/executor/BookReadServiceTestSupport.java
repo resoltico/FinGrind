@@ -1,20 +1,7 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -23,6 +10,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -32,9 +20,21 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -174,7 +174,7 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
-    public AccountPage listAccounts(ListAccountsQuery query) {
+    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
       return delegate.listAccounts(query);
     }
 
@@ -190,27 +190,27 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
-    public PostingPage listPostings(ListPostingsQuery query) {
+    public PostingHistoryPage listPostings(PostingHistoryQuery query) {
       return delegate.listPostings(query);
     }
 
     @Override
-    public Optional<AccountBalanceSnapshot> accountBalance(AccountBalanceQuery query) {
+    public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
       return delegate.accountBalance(query);
     }
 
     @Override
-    public TrialBalanceReport trialBalance(TrialBalanceQuery query) {
+    public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
       return delegate.trialBalance(query);
     }
 
     @Override
-    public AccountLedgerReport accountLedger(AccountLedgerQuery query, RegisteredAccount account) {
+    public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
       return delegate.accountLedger(query, account);
     }
 
     @Override
-    public PeriodSummaryReport periodSummary(PeriodSummaryQuery query) {
+    public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
       return delegate.periodSummary(query);
     }
 

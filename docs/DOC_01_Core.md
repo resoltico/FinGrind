@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: CORE
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -138,6 +138,34 @@ public record CurrencyCode(String value)
 - Normalization: strips whitespace and uppercases with `Locale.ROOT`
 - Validation: accepts exactly three uppercase ASCII letters
 
+## `EffectiveDateRange`
+
+`EffectiveDateRange` is the shared-kernel effective-date filter reused by public bookkeeping
+queries, public workflow assertions, and executor-owned bookkeeping criteria.
+
+```java
+public sealed interface EffectiveDateRange
+```
+
+- Purpose: keep date-range filtering semantics in the shared kernel instead of treating them as
+  contract-owned DTO shape
+- Variants: `unbounded`, `from`, `to`, and `bounded`
+- Validation: bounded ranges reject a lower bound after the upper bound
+
+## `InteractionLimits`
+
+`InteractionLimits` is the shared-kernel owner for page-size defaults and workflow step limits that
+both the public contract and the local executor contexts enforce.
+
+```java
+public final class InteractionLimits
+```
+
+- Purpose: keep paging defaults, paging hard limits, and ledger-plan step limits in one shared
+  owner instead of duplicating them between public protocol helpers and local executor models
+- Current contract: `PAGE_LIMIT_MIN = 1`, `DEFAULT_PAGE_LIMIT = 50`, `PAGE_LIMIT_MAX = 200`,
+  `LEDGER_PLAN_STEP_MAX = 100`
+
 ## `IdempotencyKey`
 
 `IdempotencyKey` is the caller-supplied duplicate-submission identity.
@@ -217,6 +245,19 @@ public record Money(CurrencyCode currencyCode, BigDecimal amount)
 - Normalization: strips trailing zeroes and normalizes negative scale to zero
 - Validation: rejects `null` fields and negative amounts
 - Usage: reused by balances and reports that legitimately need zero-valued totals
+
+## `CurrencyBalance`
+
+`CurrencyBalance` is one shared per-currency grouped balance bucket.
+
+```java
+public record CurrencyBalance(
+    Money debitTotal, Money creditTotal, Money netAmount, BalanceSide balanceSide)
+```
+
+- Purpose: keep grouped per-currency balance math in the shared kernel instead of embedding that
+  shape in one protocol context
+- Validation: rejects `null` totals, `null` balance side, and mixed currencies across the totals
 
 ## `PositiveMoney`
 

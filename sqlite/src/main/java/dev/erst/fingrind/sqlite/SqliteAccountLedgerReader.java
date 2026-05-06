@@ -1,16 +1,17 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerEntryView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -27,25 +28,25 @@ final class SqliteAccountLedgerReader {
     this.postingReader = Objects.requireNonNull(postingReader, "postingReader");
   }
 
-  AccountLedgerReport accountLedger(
-      SqliteNativeDatabase activeDatabase, AccountLedgerQuery query, DeclaredAccount account) {
+  AccountLedgerView accountLedger(
+      SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
     List<CurrencyBalance> openingBalances = openingBalances(activeDatabase, query, account);
     Map<CurrencyCode, BigDecimal> runningTotals = signedRunningTotals(openingBalances);
-    List<AccountLedgerEntry> entries = new ArrayList<>();
-    for (PostingFact postingFact : postingFactsForAccountLedger(activeDatabase, query)) {
-      LedgerMovement movement = ledgerMovement(postingFact, account);
+    List<AccountLedgerEntryView> entries = new ArrayList<>();
+    for (CommittedPosting posting : postingsForAccountLedger(activeDatabase, query)) {
+      LedgerMovement movement = ledgerMovement(posting, account);
       BigDecimal signedNet = movement.debit.subtract(movement.credit);
       BigDecimal runningSigned =
           runningTotals.merge(movement.currencyCode, signedNet, BigDecimal::add);
       entries.add(
-          new AccountLedgerEntry(
-              postingFact,
+          new AccountLedgerEntryView(
+              posting,
               SqliteBalanceMath.currencyBalance(
                   movement.currencyCode, movement.debit, movement.credit),
               new Money(movement.currencyCode, runningSigned.abs()),
               runningBalanceSide(runningSigned)));
     }
-    return new AccountLedgerReport(
+    return new AccountLedgerView(
         account,
         query.effectiveDateRange(),
         openingBalances,
@@ -54,8 +55,8 @@ final class SqliteAccountLedgerReader {
   }
 
   private List<CurrencyBalance> openingBalances(
-      SqliteNativeDatabase activeDatabase, AccountLedgerQuery query, DeclaredAccount account) {
-    Optional<LocalDate> effectiveDateFrom = query.effectiveDateFrom();
+      SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
+    Optional<LocalDate> effectiveDateFrom = query.effectiveDateRange().effectiveDateFrom();
     if (effectiveDateFrom.isEmpty()) {
       return List.of();
     }
@@ -66,44 +67,50 @@ final class SqliteAccountLedgerReader {
     return postingReader
         .accountBalance(
             activeDatabase,
-            new AccountBalanceQuery(account.accountCode(), null, lowerBound.minusDays(1)),
+            new AccountBalanceCriteria(
+                account.accountCode(), EffectiveDateRange.of(null, lowerBound.minusDays(1))),
             account)
         .balances();
   }
 
   private List<CurrencyBalance> closingBalances(
-      SqliteNativeDatabase activeDatabase, AccountLedgerQuery query, DeclaredAccount account) {
+      SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
     return postingReader
         .accountBalance(
             activeDatabase,
-            new AccountBalanceQuery(
-                account.accountCode(), null, query.effectiveDateTo().orElse(null)),
+            new AccountBalanceCriteria(
+                account.accountCode(),
+                EffectiveDateRange.of(
+                    null, query.effectiveDateRange().effectiveDateTo().orElse(null))),
             account)
         .balances();
   }
 
-  private List<PostingFact> postingFactsForAccountLedger(
-      SqliteNativeDatabase activeDatabase, AccountLedgerQuery query) {
-    return postingReader.loadPostingFacts(
+  private List<CommittedPosting> postingsForAccountLedger(
+      SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query) {
+    return postingReader.loadCommittedPostings(
         activeDatabase,
         SqlitePostingSql.listPostingsForAccountLedger(query),
         statement -> {
           int bindIndex = 1;
           statement.bindText(bindIndex, query.accountCode().value());
           bindIndex++;
-          if (query.effectiveDateFrom().isPresent()) {
-            statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
+          if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
+            statement.bindText(
+                bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());
             bindIndex++;
           }
-          if (query.effectiveDateTo().isPresent()) {
-            statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
+          if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
+            statement.bindText(
+                bindIndex, query.effectiveDateRange().effectiveDateTo().orElseThrow().toString());
           }
         });
   }
 
-  private static LedgerMovement ledgerMovement(PostingFact postingFact, DeclaredAccount account) {
+  private static LedgerMovement ledgerMovement(
+      CommittedPosting posting, RegisteredAccount account) {
     List<JournalLine> matchingLines =
-        postingFact.journalEntry().lines().stream()
+        posting.journalEntry().lines().stream()
             .filter(line -> line.accountCode().equals(account.accountCode()))
             .toList();
     CurrencyCode currencyCode = matchingLines.getFirst().amount().currencyCode();

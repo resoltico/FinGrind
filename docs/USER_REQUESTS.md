@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -19,9 +19,13 @@ The public release bundle does not ship those repo paths.
 Book-bound commands pair these JSON payloads with `--book-file` plus exactly one passphrase
 source:
 - `--book-key-file` with a UTF-8 passphrase file protected by POSIX owner-only permissions
-  (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows
-- `--book-passphrase-stdin` with one UTF-8 passphrase payload from standard input
-- `--book-passphrase-prompt` with an interactive non-echo terminal prompt
+  (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows; its containing
+  directory must also remain owner-only, and the public examples keep this file under a separate
+  `./secrets/` tree rather than beside the book
+- `--book-passphrase-stdin` with one UTF-8 passphrase payload up to 4096 bytes from standard
+  input
+- `--book-passphrase-prompt` with an interactive non-echo terminal prompt whose normalized UTF-8
+  payload must also fit within the same 4096-byte limit
 
 `rekey-book` reuses those current-book routes and additionally requires exactly one replacement
 passphrase source: `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, or
@@ -229,7 +233,8 @@ rendered:
   unknown-field rules
 - `environment` reports runtime distribution, protected-book requirements, and managed SQLite
   metadata, including `requiredCompileOptions`, `requiredSqliteSourceId`,
-  `compileOptionsVerification`, `runtimeProvenance`, `loadedLibraryPath`, and
+  `compileOptionsVerification`, `runtimeProvenance`, `runtimeTrustBasis`,
+  `loadedLibraryPath`, and
   `loadedSqliteSourceId`
 - `commands` also lists `print-plan-template` and `execute-plan`, both rendered from the contract
   protocol catalog
@@ -304,10 +309,11 @@ administration, write, and read/report commands can also render operator-facing 
 and the tabular read/report commands support `--output csv` for spreadsheet import.
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
 one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result
-model; it does not change the JSON payload contract. If the report result succeeds but the PDF
-artifact later fails, stdout still carries the same report payload while diagnostics emit a repair
-warning for the `--pdf-out` path. Deterministic failures for commands that accept `--output human`
-are rendered in the same human-facing format instead of falling back to JSON envelopes.
+model; it does not change the JSON payload contract. Successful exports emit a diagnostics info
+message with the normalized artifact path. If the report result succeeds but the PDF artifact later
+fails, stdout still carries the same report payload while diagnostics emit a repair warning for the
+`--pdf-out` path. Deterministic failures for commands that accept `--output human` are rendered in
+the same human-facing format instead of falling back to JSON envelopes.
 
 Checked-in examples for the read/report surface:
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json)

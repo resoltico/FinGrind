@@ -1,14 +1,19 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.LedgerAssertion;
+import dev.erst.fingrind.contract.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerJournalStep;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.LedgerPlanId;
 import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import java.util.Objects;
 
 /** Translates between the public execute-plan schema and the local workflow model. */
@@ -35,8 +40,74 @@ public final class BookWorkflowPublishedLanguageTranslator {
     return new LedgerStepId(stepId);
   }
 
-  /** Projects one internal workflow step into the public journal step identity. */
-  public static LedgerJournalStep toPublishedJournalStep(BookWorkflowStep step) {
+  /** Projects one internal workflow journal descriptor into the public journal-step identity. */
+  public static LedgerJournalStep toPublishedJournalStep(BookWorkflowJournalDescriptor descriptor) {
+    Objects.requireNonNull(descriptor, "descriptor");
+    return switch (descriptor) {
+      case BookWorkflowJournalDescriptor.Step stepDescriptor ->
+          toPublishedJournalStep(stepDescriptor.step());
+      case BookWorkflowJournalDescriptor.Boundary boundary ->
+          LedgerJournalStep.boundary(toPublishedBoundaryPhase(boundary.phase()));
+    };
+  }
+
+  /** Projects one internal workflow journal entry into the public journal entry. */
+  public static LedgerJournalEntry toPublished(BookWorkflowJournalEntry entry) {
+    Objects.requireNonNull(entry, "entry");
+    return switch (entry) {
+      case BookWorkflowJournalEntry.Succeeded succeeded ->
+          new LedgerJournalEntry.Succeeded(
+              toPublishedStepId(succeeded.stepId()),
+              toPublishedJournalStep(succeeded.descriptor()),
+              succeeded.startedAt(),
+              succeeded.finishedAt(),
+              succeeded.facts());
+      case BookWorkflowJournalEntry.Rejected rejected ->
+          new LedgerJournalEntry.Rejected(
+              toPublishedStepId(rejected.stepId()),
+              toPublishedJournalStep(rejected.descriptor()),
+              rejected.startedAt(),
+              rejected.finishedAt(),
+              rejected.facts(),
+              toPublished(rejected.failure()));
+      case BookWorkflowJournalEntry.AssertionFailed assertionFailed ->
+          new LedgerJournalEntry.AssertionFailed(
+              toPublishedStepId(assertionFailed.stepId()),
+              toPublishedJournalStep(assertionFailed.descriptor()),
+              assertionFailed.startedAt(),
+              assertionFailed.finishedAt(),
+              assertionFailed.facts(),
+              toPublished(assertionFailed.failure()));
+    };
+  }
+
+  /** Projects one internal workflow execution journal into the public journal record. */
+  public static LedgerExecutionJournal toPublished(BookWorkflowExecutionJournal journal) {
+    Objects.requireNonNull(journal, "journal");
+    return new LedgerExecutionJournal(
+        journal.startedAt(),
+        journal.finishedAt(),
+        journal.entries().stream()
+            .map(BookWorkflowPublishedLanguageTranslator::toPublished)
+            .toList());
+  }
+
+  private static LedgerStepFailure toPublished(BookWorkflowFailure failure) {
+    Objects.requireNonNull(failure, "failure");
+    return new LedgerStepFailure(failure.code(), failure.message(), failure.facts());
+  }
+
+  private static LedgerBoundaryPhase toPublishedBoundaryPhase(BookWorkflowBoundaryPhase phase) {
+    Objects.requireNonNull(phase, "phase");
+    return switch (phase) {
+      case BEGIN -> LedgerBoundaryPhase.BEGIN;
+      case INITIALIZATION_CHECK -> LedgerBoundaryPhase.INITIALIZATION_CHECK;
+      case COMMIT -> LedgerBoundaryPhase.COMMIT;
+      case ROLLBACK -> LedgerBoundaryPhase.ROLLBACK;
+    };
+  }
+
+  private static LedgerJournalStep toPublishedJournalStep(BookWorkflowStep step) {
     Objects.requireNonNull(step, "step");
     return switch (step) {
       case BookWorkflowStep.OpenBook _ -> LedgerJournalStep.standard(LedgerStepKind.OPEN_BOOK);
@@ -77,14 +148,19 @@ public final class BookWorkflowPublishedLanguageTranslator {
       case LedgerStep.InspectBook inspectBook ->
           new BookWorkflowStep.InspectBook(inspectBook.stepId().value());
       case LedgerStep.ListAccounts listAccounts ->
-          new BookWorkflowStep.ListAccounts(listAccounts.stepId().value(), listAccounts.query());
+          new BookWorkflowStep.ListAccounts(
+              listAccounts.stepId().value(),
+              BookkeepingReadPublishedLanguageTranslator.fromPublished(listAccounts.query()));
       case LedgerStep.GetPosting getPosting ->
           new BookWorkflowStep.GetPosting(getPosting.stepId().value(), getPosting.postingId());
       case LedgerStep.ListPostings listPostings ->
-          new BookWorkflowStep.ListPostings(listPostings.stepId().value(), listPostings.query());
+          new BookWorkflowStep.ListPostings(
+              listPostings.stepId().value(),
+              BookkeepingReadPublishedLanguageTranslator.fromPublished(listPostings.query()));
       case LedgerStep.AccountBalance accountBalance ->
           new BookWorkflowStep.AccountBalance(
-              accountBalance.stepId().value(), accountBalance.query());
+              accountBalance.stepId().value(),
+              BookkeepingReadPublishedLanguageTranslator.fromPublished(accountBalance.query()));
       case LedgerStep.Assert assertion ->
           new BookWorkflowStep.Assert(
               assertion.stepId().value(), fromPublished(assertion.assertion()));

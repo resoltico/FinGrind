@@ -3,11 +3,11 @@ package dev.erst.fingrind.contract;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import java.util.List;
@@ -148,12 +148,13 @@ public final class ContractTemplates {
       effectiveDateTo =
           ContractDescriptorValidation.requireOptionalText(effectiveDateTo, "effectiveDateTo");
       if (limit != null
-          && (limit < ProtocolLimits.PAGE_LIMIT_MIN || limit > ProtocolLimits.PAGE_LIMIT_MAX)) {
+          && (limit < InteractionLimits.PAGE_LIMIT_MIN
+              || limit > InteractionLimits.PAGE_LIMIT_MAX)) {
         throw new IllegalArgumentException(
             "limit must be between "
-                + ProtocolLimits.PAGE_LIMIT_MIN
+                + InteractionLimits.PAGE_LIMIT_MIN
                 + " and "
-                + ProtocolLimits.PAGE_LIMIT_MAX
+                + InteractionLimits.PAGE_LIMIT_MAX
                 + ".");
       }
       cursor = ContractDescriptorValidation.requireOptionalText(cursor, "cursor");

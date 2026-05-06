@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.Money;
 import java.util.Objects;
 

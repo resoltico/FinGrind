@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import java.util.Objects;
-import java.util.OptionalInt;
 
 /** Shared SQLite connection open/configuration helpers. */
 final class SqliteConnectionConfigurer {
@@ -48,11 +47,9 @@ final class SqliteConnectionConfigurer {
     }
   }
 
-  static void requireOptionalPragmaValue(
-      OptionalInt actualValue, int expectedValue, String failureMessage) {
-    Objects.requireNonNull(actualValue, "actualValue");
+  static void requirePragmaValue(int actualValue, int expectedValue, String failureMessage) {
     Objects.requireNonNull(failureMessage, "failureMessage");
-    if (actualValue.isPresent() && actualValue.orElseThrow() != expectedValue) {
+    if (actualValue != expectedValue) {
       throw new IllegalStateException(failureMessage);
     }
   }
@@ -79,8 +76,8 @@ final class SqliteConnectionConfigurer {
     if (SqliteStatementQueries.querySingleInt(openedDatabase, "pragma temp_store") != 2) {
       throw new IllegalStateException("SQLite connection failed to force temp_store=MEMORY.");
     }
-    requireOptionalPragmaValue(
-        SqliteStatementQueries.queryOptionalInt(openedDatabase, "pragma memory_security"),
+    requirePragmaValue(
+        SqliteStatementQueries.querySingleInt(openedDatabase, "pragma memory_security"),
         1,
         "SQLite connection failed to enable memory_security=fill.");
     if (SqliteStatementQueries.querySingleInt(openedDatabase, "pragma query_only")

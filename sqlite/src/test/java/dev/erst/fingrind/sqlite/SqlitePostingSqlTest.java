@@ -4,13 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingPageCursor;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -22,16 +22,16 @@ class SqlitePostingSqlTest {
   void listPostings_includesOnlyRequestedFilters() {
     String unfiltered =
         SqlitePostingSql.listPostings(
-            new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty()));
+            new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty()));
     String fullyFiltered =
         SqlitePostingSql.listPostings(
-            new ListPostingsQuery(
+            new PostingHistoryQuery(
                 Optional.of(new AccountCode("1000")),
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2026-04-30"),
                 50,
                 Optional.of(
-                    new PostingPageCursor(
+                    new PostingHistoryCursor(
                         LocalDate.parse("2026-04-15"),
                         Instant.parse("2026-04-15T10:15:30Z"),
                         new PostingId("posting-1")))));
@@ -59,10 +59,10 @@ class SqlitePostingSqlTest {
   void loadAccountLinesForBalance_includesOnlyRequestedDateFilters() {
     String unfiltered =
         SqlitePostingSql.loadAccountLinesForBalance(
-            new AccountBalanceQuery(new AccountCode("1000"), null, null));
+            new AccountBalanceCriteria(new AccountCode("1000"), null, null));
     String fullyFiltered =
         SqlitePostingSql.loadAccountLinesForBalance(
-            new AccountBalanceQuery(
+            new AccountBalanceCriteria(
                 new AccountCode("1000"),
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2026-04-30")));
@@ -76,22 +76,24 @@ class SqlitePostingSqlTest {
   @Test
   void loadTrialBalanceLines_andAccountLedgerQueries_includeOnlyRequestedFilters() {
     String unfilteredTrialBalance =
-        SqlitePostingSql.loadTrialBalanceLines(new TrialBalanceQuery(Optional.empty()));
+        SqlitePostingSql.loadTrialBalanceLines(new TrialBalanceCriteria(Optional.empty()));
     String filteredTrialBalance =
         SqlitePostingSql.loadTrialBalanceLines(
-            new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30"))));
+            new TrialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-30"))));
     String unboundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(new AccountCode("1000"), null, null));
+            new AccountLedgerCriteria(new AccountCode("1000"), null, null));
     String lowerBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(new AccountCode("1000"), LocalDate.parse("2026-04-01"), null));
+            new AccountLedgerCriteria(
+                new AccountCode("1000"), LocalDate.parse("2026-04-01"), null));
     String upperBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(new AccountCode("1000"), null, LocalDate.parse("2026-04-30")));
+            new AccountLedgerCriteria(
+                new AccountCode("1000"), null, LocalDate.parse("2026-04-30")));
     String boundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            new AccountLedgerQuery(
+            new AccountLedgerCriteria(
                 new AccountCode("1000"),
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2026-04-30")));

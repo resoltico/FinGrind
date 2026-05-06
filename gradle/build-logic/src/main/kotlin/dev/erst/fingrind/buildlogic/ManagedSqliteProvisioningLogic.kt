@@ -17,6 +17,7 @@ internal data class ManagedSqliteProvisioning(
     val classifier: String,
     val libraryFileName: String,
     val libraryPath: Provider<RegularFile>,
+    val checksumPath: Provider<RegularFile>,
     val prepareTask: TaskProvider<PrepareManagedSqliteTask>,
 )
 
@@ -60,6 +61,8 @@ internal object ManagedSqliteProvisioningLogic {
                 ?: defaultCompiler
         val libraryPath =
             project.layout.buildDirectory.file("managed-sqlite/$classifier/$libraryFileName")
+        val checksumPath =
+            project.layout.buildDirectory.file("managed-sqlite/$classifier/$libraryFileName.sha256")
 
         val verifyManagedSqliteSource =
             project.tasks.register<VerifyManagedSqliteSourceTask>("verifyManagedSqliteSource") {
@@ -85,12 +88,14 @@ internal object ManagedSqliteProvisioningLogic {
                     DistributionContractReader.requiredSqliteCompileOptions(repositoryRootDirectory),
                 )
                 outputFile.set(libraryPath)
+                checksumFile.set(checksumPath)
             }
 
         return ManagedSqliteProvisioning(
             classifier = classifier,
             libraryFileName = libraryFileName,
             libraryPath = libraryPath,
+            checksumPath = checksumPath,
             prepareTask = prepareManagedSqlite,
         )
     }

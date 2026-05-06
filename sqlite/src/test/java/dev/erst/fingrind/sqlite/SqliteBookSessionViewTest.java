@@ -7,31 +7,31 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.EffectiveDateRange;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -118,7 +118,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          new BookOpeningOutcome.Rejected(new BookAdministrationRejection.BookContainsSchema()),
+          new BookOpeningOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookContainsSchema()),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
     }
   }
@@ -272,10 +273,10 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.commit(
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
 
-      ListPostingsQuery postingsQuery =
-          new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty());
-      AccountBalanceQuery balanceQuery =
-          new AccountBalanceQuery(new AccountCode("1000"), null, null);
+      PostingHistoryQuery postingsQuery =
+          new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
+      AccountBalanceCriteria balanceQuery =
+          new AccountBalanceCriteria(new AccountCode("1000"), null, null);
 
       var queryView = postingFactStore.readSession();
       assertEquals(postingFactStore.inspectBook(), queryView.inspectBook());
@@ -334,8 +335,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertTrue(reportView.isInitialized());
       assertEquals(Optional.of(cashAccount), reportView.findAccount(new AccountCode("1000")));
       assertEquals(
-          postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())),
-          reportView.trialBalance(new TrialBalanceQuery(Optional.empty())));
+          postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())),
+          reportView.trialBalance(new TrialBalanceCriteria(Optional.empty())));
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(revenueAccount),
@@ -366,14 +367,17 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                       money("EUR", "10.00"),
                       money("EUR", "0.00"),
                       BalanceSide.ZERO))),
-          reportView.accountLedger(
-              new AccountLedgerQuery(new AccountCode("2000"), EffectiveDateRange.unbounded()),
-              revenueAccount));
+          published(
+              reportView.accountLedger(
+                  new AccountLedgerCriteria(
+                      new AccountCode("2000"), EffectiveDateRange.unbounded()),
+                  revenueAccount)));
       assertEquals(
           postingFactStore.periodSummary(
-              new PeriodSummaryQuery(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))),
+              new PeriodSummaryCriteria(
+                  LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))),
           reportView.periodSummary(
-              new PeriodSummaryQuery(
+              new PeriodSummaryCriteria(
                   LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))));
       assertTrue(postingFactStore.isInitialized());
     }
@@ -395,19 +399,19 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException trialBalanceFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.trialBalance(new TrialBalanceQuery(Optional.empty())));
+              () -> postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())));
       IllegalStateException accountLedgerFailure =
           assertThrows(
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      new AccountLedgerQuery(new AccountCode("1000"), null, null), cashAccount));
+                      new AccountLedgerCriteria(new AccountCode("1000"), null, null), cashAccount));
       IllegalStateException periodSummaryFailure =
           assertThrows(
               IllegalStateException.class,
               () ->
                   postingFactStore.periodSummary(
-                      new PeriodSummaryQuery(
+                      new PeriodSummaryCriteria(
                           LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
 
       assertEquals(
@@ -424,9 +428,10 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
   void queryView_requiresInitializedBookForDirectQueryCalls() throws Exception {
-    ListPostingsQuery postingsQuery =
-        new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty());
-    AccountBalanceQuery balanceQuery = new AccountBalanceQuery(new AccountCode("1000"), null, null);
+    PostingHistoryQuery postingsQuery =
+        new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
+    AccountBalanceCriteria balanceQuery =
+        new AccountBalanceCriteria(new AccountCode("1000"), null, null);
 
     Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
@@ -471,10 +476,10 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           () -> queryView.findPosting(new PostingId("posting-1")),
           () ->
               queryView.listPostings(
-                  new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty())),
+                  new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty())),
           () ->
               queryView.accountBalance(
-                  new AccountBalanceQuery(new AccountCode("1000"), null, null)));
+                  new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
       setStoreDatabase(postingFactStore, null);
     }
   }

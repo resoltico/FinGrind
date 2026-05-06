@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -151,7 +151,8 @@ The SQLite adapter is split into focused collaborators:
 - [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/BookAccess.java):
   durable book file plus one explicit passphrase-source selection
 - [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
-  normalized zeroizable UTF-8 passphrase bytes after CLI-side source resolution
+  normalized UTF-8 passphrase bytes after CLI-side source resolution, with best-effort overwrite
+  of owned heap/direct buffers
 - [`SqliteBookSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSession.java),
   [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),
   and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
@@ -225,6 +226,9 @@ The SQLite adapter is split into focused collaborators:
 - read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
   `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, and `preflight-entry`)
   open SQLite through `SQLITE_OPEN_READONLY` and then enforce `pragma query_only = on`
+- read-oriented sessions do not rewrite book-file or sidecar permissions; permission repair
+  happens only on mutation-capable opens such as `open-book`, writable sessions, and
+  `rekey-book`
 - opening an existing plaintext SQLite file, loading a damaged or truncated protected book, or
   using the wrong passphrase source fails during key validation, but the public CLI classifies
   those cases as the deterministic
@@ -236,6 +240,9 @@ The SQLite adapter is split into focused collaborators:
 - `rekey-book` creates one same-directory rollback copy, rotates the passphrase through the native
   SQLite rekey path, reopens the book, revalidates the replacement passphrase before the command
   reports success, and restores the pre-rekey file automatically if that verification fails
+- if a process crash or forced stop interrupts rekey cleanup, the stale same-directory
+  `*.rekey-rollback-*.sqlite` artifact remains on disk under the old ciphertext until an operator
+  inspects or removes it; later opens warn when they detect that stale artifact
 - posting validation is shared between application preflight and transactional SQLite commit, so
   book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
   between the two paths
@@ -257,6 +264,7 @@ The SQLite adapter is split into focused collaborators:
   `environment.sqlite.compileOptionsVerification`,
   `environment.sqlite.runtimeStatus`,
   `environment.sqlite.runtimeProvenance`,
+  `environment.sqlite.runtimeTrustBasis`,
   `environment.sqlite.loadedLibraryPath`,
   `environment.sqlite.loadedSqliteVersion`,
   `environment.sqlite.loadedSqlite3mcVersion`,
@@ -293,14 +301,19 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
   durable book path plus one selected passphrase source
 - CLI passphrase resolution currently supports key file, standard input, and interactive prompt
 - resolved passphrase bytes are normalized by removing one trailing line ending, validated as
-  UTF-8, and rejected if empty
-- transient key bytes are zeroized after native handoff
+  UTF-8, rejected if empty, and rejected when any supported route exceeds 4096 bytes after UTF-8
+  normalization
+- key files must remain inside owner-only parent directories as well as owner-only files
+- transient key bytes are best-effort overwritten after native handoff; Java heap copies outside
+  the overwritten arrays remain outside the automatic protection boundary
 - FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
 - FinGrind calls `sqlite3_rekey()` for `rekey-book` instead of routing replacement secrets through
   SQL text
 - `rekey-book` preserves one same-directory rollback copy until replacement-passphrase validation
   succeeds, so verification failures restore the pre-rekey file instead of leaving an unverified
   rotated book behind
+- crash-interrupted rekeys can leave that rollback artifact on disk; later opens warn about the
+  stale encrypted copy so operators can decide whether to recover or delete it
 - the supported operator backup path is a closed-book encrypted file copy: stop using the selected
   book, copy the `.sqlite` file to protected storage, preserve the key file separately, and
   restore by replacing the closed `.sqlite` file from that encrypted copy before reopening it

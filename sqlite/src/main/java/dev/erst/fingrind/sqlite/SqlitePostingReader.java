@@ -1,18 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -24,8 +21,8 @@ import java.util.Optional;
 
 /** Shared SQLite read helpers for postings, posting lines, and account balances. */
 final class SqlitePostingReader {
-  Optional<AccountBalanceSnapshot> accountBalance(
-      SqliteNativeDatabase activeDatabase, AccountBalanceQuery query) {
+  Optional<AccountBalanceView> accountBalance(
+      SqliteNativeDatabase activeDatabase, AccountBalanceCriteria query) {
     Optional<RegisteredAccount> account =
         SqliteStatementQueries.findOneAccount(activeDatabase, query.accountCode());
     if (account.isEmpty()) {
@@ -34,33 +31,16 @@ final class SqlitePostingReader {
     return Optional.of(accountBalance(activeDatabase, query, account.orElseThrow()));
   }
 
-  AccountBalanceSnapshot accountBalance(
+  AccountBalanceView accountBalance(
       SqliteNativeDatabase activeDatabase,
-      AccountBalanceQuery query,
-      RegisteredAccount declaredAccount) {
-    return new AccountBalanceSnapshot(
-        BookkeepingPublishedLanguageTranslator.toPublished(declaredAccount),
-        query.effectiveDateFrom(),
-        query.effectiveDateTo(),
-        loadCurrencyBalances(activeDatabase, query));
+      AccountBalanceCriteria query,
+      RegisteredAccount account) {
+    return new AccountBalanceView(
+        account, query.effectiveDateRange(), loadCurrencyBalances(activeDatabase, query));
   }
 
-  AccountBalanceSnapshot accountBalance(
-      SqliteNativeDatabase activeDatabase,
-      AccountBalanceQuery query,
-      DeclaredAccount declaredAccount) {
-    return accountBalance(
-        activeDatabase,
-        query,
-        new RegisteredAccount(
-            declaredAccount.accountCode(),
-            declaredAccount.accountName(),
-            declaredAccount.normalBalance(),
-            declaredAccount.active(),
-            declaredAccount.declaredAt()));
-  }
-
-  PostingPage loadPostingPage(SqliteNativeDatabase activeDatabase, ListPostingsQuery query) {
+  PostingHistoryPage loadPostingPage(
+      SqliteNativeDatabase activeDatabase, PostingHistoryQuery query) {
     List<CommittedPosting> postings = new ArrayList<>();
     String sql = SqlitePostingSql.listPostings(query);
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
@@ -71,16 +51,9 @@ final class SqlitePostingReader {
     }
     boolean hasMore = postings.size() > query.limit();
     List<CommittedPosting> pageItems = hasMore ? postings.subList(0, query.limit()) : postings;
-    Optional<PostingPageCursor> nextCursor =
-        hasMore
-            ? Optional.of(
-                PostingPageCursor.fromPosting(
-                    BookkeepingPublishedLanguageTranslator.toPublished(pageItems.getLast())))
-            : Optional.empty();
-    return new PostingPage(
-        pageItems.stream().map(BookkeepingPublishedLanguageTranslator::toPublished).toList(),
-        query.limit(),
-        nextCursor);
+    Optional<PostingHistoryCursor> nextCursor =
+        hasMore ? Optional.of(postingHistoryCursor(pageItems.getLast())) : Optional.empty();
+    return new PostingHistoryPage(pageItems, query.limit(), nextCursor);
   }
 
   Optional<CommittedPosting> findOneCommittedPosting(
@@ -101,13 +74,6 @@ final class SqlitePostingReader {
     return List.copyOf(postings);
   }
 
-  List<PostingFact> loadPostingFacts(
-      SqliteNativeDatabase activeDatabase, String sql, SqliteStatementQueries.Binder binder) {
-    return loadCommittedPostings(activeDatabase, sql, binder).stream()
-        .map(BookkeepingPublishedLanguageTranslator::toPublished)
-        .toList();
-  }
-
   private CommittedPosting loadPostingRow(
       SqliteNativeDatabase activeDatabase, SqliteNativeStatement statement) {
     PostingId postingId =
@@ -123,7 +89,7 @@ final class SqlitePostingReader {
   }
 
   private List<CurrencyBalance> loadCurrencyBalances(
-      SqliteNativeDatabase activeDatabase, AccountBalanceQuery query) {
+      SqliteNativeDatabase activeDatabase, AccountBalanceCriteria query) {
     String sql = SqlitePostingSql.loadAccountLinesForBalance(query);
     Map<CurrencyCode, Totals> totalsByCurrency = mutableTotalsByCurrency();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
@@ -152,22 +118,24 @@ final class SqlitePostingReader {
   }
 
   private static void bindPostingPageQuery(
-      SqliteNativeStatement statement, ListPostingsQuery query) {
+      SqliteNativeStatement statement, PostingHistoryQuery query) {
     int bindIndex = 1;
     if (query.accountCode().isPresent()) {
       statement.bindText(bindIndex, query.accountCode().orElseThrow().value());
       bindIndex++;
     }
-    if (query.effectiveDateFrom().isPresent()) {
-      statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
+      statement.bindText(
+          bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());
       bindIndex++;
     }
-    if (query.effectiveDateTo().isPresent()) {
-      statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
+      statement.bindText(
+          bindIndex, query.effectiveDateRange().effectiveDateTo().orElseThrow().toString());
       bindIndex++;
     }
     if (query.cursor().isPresent()) {
-      PostingPageCursor cursor = query.cursor().orElseThrow();
+      PostingHistoryCursor cursor = query.cursor().orElseThrow();
       statement.bindText(bindIndex, cursor.effectiveDate().toString());
       bindIndex++;
       statement.bindText(bindIndex, cursor.effectiveDate().toString());
@@ -194,16 +162,18 @@ final class SqlitePostingReader {
   }
 
   private static void bindAccountBalanceQuery(
-      SqliteNativeStatement statement, AccountBalanceQuery query) {
+      SqliteNativeStatement statement, AccountBalanceCriteria query) {
     int bindIndex = 1;
     statement.bindText(bindIndex, query.accountCode().value());
     bindIndex++;
-    if (query.effectiveDateFrom().isPresent()) {
-      statement.bindText(bindIndex, query.effectiveDateFrom().orElseThrow().toString());
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
+      statement.bindText(
+          bindIndex, query.effectiveDateRange().effectiveDateFrom().orElseThrow().toString());
       bindIndex++;
     }
-    if (query.effectiveDateTo().isPresent()) {
-      statement.bindText(bindIndex, query.effectiveDateTo().orElseThrow().toString());
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
+      statement.bindText(
+          bindIndex, query.effectiveDateRange().effectiveDateTo().orElseThrow().toString());
     }
   }
 
@@ -221,6 +191,13 @@ final class SqlitePostingReader {
 
   private static CurrencyBalance balance(CurrencyCode currencyCode, Totals totals) {
     return SqliteBalanceMath.currencyBalance(currencyCode, totals.debit, totals.credit);
+  }
+
+  private static PostingHistoryCursor postingHistoryCursor(CommittedPosting posting) {
+    return new PostingHistoryCursor(
+        posting.journalEntry().effectiveDate(),
+        posting.provenance().recordedAt(),
+        posting.postingId());
   }
 
   /** Running debit and credit totals for one account/currency balance bucket. */

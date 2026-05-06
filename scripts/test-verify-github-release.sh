@@ -26,14 +26,28 @@ readonly verifier="${script_dir}/verify-github-release.sh"
 readonly archive_verifier="${script_dir}/verify-source-archive.py"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
+readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 
 [[ -x "${verifier}" ]] || die "missing executable release verifier"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier helper"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
+[[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
 grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the GitHub release verifier regression"
 grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the GitHub release verifier"
+grep -Fq 'verify-security-policy-surface.sh' "${verifier}" || die \
+    "GitHub release verifier no longer checks the live security-policy surface"
+grep -Fq 'gh attestation verify' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
+    "release protocol no longer documents attestation-backed bundle verification"
+grep -Fq 'gh attestation verify' "${verifier}" || die \
+    "release verifier no longer verifies published bundle attestations"
+grep -Fq 'actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb' "${release_workflow}" || die \
+    "release workflow no longer pins the published bundle attestation action"
+grep -Fq 'attestations: write' "${release_workflow}" || die \
+    "release workflow no longer grants attestation write permission for bundle publication"
+grep -Fq 'id-token: write' "${release_workflow}" || die \
+    "release workflow no longer grants OIDC signing permission for bundle publication"
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-github-release.XXXXXX")"
 cleanup() {
@@ -79,6 +93,7 @@ good_zip="${FAKE_GH_GOOD_ZIP:-}"
 good_tar="${FAKE_GH_GOOD_TAR:-}"
 bad_zip="${FAKE_GH_BAD_ZIP:-}"
 asset_listing="${FAKE_GH_ASSETS:-fingrind.zip fingrind.sha256}"
+private_reporting_enabled="${FAKE_GH_PRIVATE_REPORTING_ENABLED:-true}"
 
 if [[ "${1:-}" == "repo" && "${2:-}" == "view" ]]; then
     [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
@@ -125,9 +140,30 @@ if [[ "${1:-}" == "release" && "${2:-}" == "view" ]]; then
     exit 0
 fi
 
+if [[ "${1:-}" == "release" && "${2:-}" == "download" ]]; then
+    requested_tag="${3:-}"
+    [[ "${requested_tag}" == "${tag}" ]] || exit 1
+    [[ "${4:-}" == "--pattern" ]] || exit 1
+    requested_asset="${5:-}"
+    [[ "${6:-}" == "--dir" ]] || exit 1
+    destination_dir="${7:-}"
+    mkdir -p "${destination_dir}"
+    printf 'downloaded %s\n' "${requested_asset}" > "${destination_dir}/${requested_asset}"
+    exit 0
+fi
+
+if [[ "${1:-}" == "attestation" && "${2:-}" == "verify" ]]; then
+    [[ "${mode}" == "bad-attestation" ]] && exit 1
+    exit 0
+fi
+
 if [[ "${1:-}" == "api" ]]; then
     endpoint="${2:-}"
     case "${endpoint}" in
+        /repos/"${repo}"/private-vulnerability-reporting)
+            [[ "${3:-}" == "--jq" && "${4:-}" == ".enabled" ]] || exit 1
+            printf '%s\n' "${private_reporting_enabled}"
+            ;;
         /repos/"${repo}"/zipball/"${tag}")
             if [[ "${mode}" == "bad-archive" ]]; then
                 cat "${bad_zip}"
@@ -172,6 +208,7 @@ failure_output="$(
         FAKE_GH_GOOD_ZIP="${fixture_root}/good.zip" \
         FAKE_GH_GOOD_TAR="${fixture_root}/good.tar.gz" \
         FAKE_GH_BAD_ZIP="${fixture_root}/bad.zip" \
+        FAKE_GH_PRIVATE_REPORTING_ENABLED='true' \
         bash "${verifier}" v9.9.9 fingrind.zip fingrind.sha256 2>&1
 )"
 failure_exit=$?
@@ -182,5 +219,29 @@ if [[ ${failure_exit} -eq 0 ]]; then
 fi
 printf '%s\n' "${failure_output}" | grep -Fq 'forbidden repo-owned agent metadata leaked into source archive' || die \
     "GitHub release verifier did not report the leaked source-archive metadata"
+
+set +e
+attestation_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        GITHUB_REF_NAME='44/merge' \
+        GITHUB_REPOSITORY='resoltico/FinGrind' \
+        FAKE_GH_MODE='bad-attestation' \
+        FAKE_GH_TAG='v9.9.9' \
+        FAKE_GH_REPOSITORY='resoltico/FinGrind' \
+        FAKE_GH_RELEASE_URL='https://example.invalid/releases/v9.9.9' \
+        FAKE_GH_GOOD_ZIP="${fixture_root}/good.zip" \
+        FAKE_GH_GOOD_TAR="${fixture_root}/good.tar.gz" \
+        FAKE_GH_BAD_ZIP="${fixture_root}/bad.zip" \
+        FAKE_GH_PRIVATE_REPORTING_ENABLED='true' \
+        bash "${verifier}" v9.9.9 fingrind.zip fingrind.sha256 2>&1
+)"
+attestation_failure_exit=$?
+set -e
+
+if [[ ${attestation_failure_exit} -eq 0 ]]; then
+    die "GitHub release verifier accepted bundle assets without a valid published attestation"
+fi
+printf '%s\n' "${attestation_failure_output}" | grep -Fq 'release v9.9.9 is missing or incomplete for the required asset set' || die \
+    "GitHub release verifier did not fail when published attestation verification failed"
 
 printf 'GitHub release verifier regression: success\n'

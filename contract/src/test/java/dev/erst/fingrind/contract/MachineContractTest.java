@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
+import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
@@ -40,6 +41,12 @@ class MachineContractTest {
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
         capabilities.requestInput().bookPassphraseOptions());
+    assertTrue(
+        capabilities.requestInput().bookPassphraseSemantics().stream()
+            .anyMatch(semantic -> semantic.contains("owner-only parent directory")));
+    assertTrue(
+        capabilities.requestInput().bookPassphraseSemantics().stream()
+            .anyMatch(semantic -> semantic.contains("4096-byte UTF-8 limit")));
     assertEquals("--output", capabilities.requestInput().outputOption());
     assertEquals(
         List.of(OutputMode.JSON, OutputMode.HUMAN),
@@ -55,6 +62,9 @@ class MachineContractTest {
             .requestInput()
             .requestDocumentSemantics()
             .contains("duplicate JSON object keys are rejected"));
+    assertEquals(
+        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+        capabilities.environment().sqlite().runtimeTrustBasis());
 
     assertEquals(
         enumValues(JournalLine.EntrySide.values()),
@@ -399,6 +409,7 @@ class MachineContractTest {
             ProtocolCatalog.requiredSqliteSourceId(),
             SqliteRuntimeStatus.READY,
             SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
             "/tmp/libsqlite3.dylib",
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),

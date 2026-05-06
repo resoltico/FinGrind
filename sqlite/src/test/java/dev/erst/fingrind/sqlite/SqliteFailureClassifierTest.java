@@ -34,6 +34,14 @@ class SqliteFailureClassifierTest {
     assertEquals(
         SqliteFailureClassifier.Category.MANAGED_RUNTIME,
         SqliteFailureClassifier.classify(
+            new UnsupportedManagedSqliteLibraryIdentityException(
+                java.nio.file.Path.of("/tmp/libsqlite3.so.0"),
+                "sibling SHA-256 file /tmp/libsqlite3.so.0.sha256",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
+    assertEquals(
+        SqliteFailureClassifier.Category.MANAGED_RUNTIME,
+        SqliteFailureClassifier.classify(
             new UnsupportedSqliteSourceIdException(
                 "unexpected-source-id",
                 SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,

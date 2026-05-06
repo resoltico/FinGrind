@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -20,6 +19,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
@@ -43,10 +43,10 @@ class PostingAcceptancePolicyTest {
     book.initialized = true;
     book.existingPosting = Optional.of(existingPosting("posting-1", "idem-1"));
 
-    Optional<PostingRejection> rejection =
+    Optional<BookkeepingPostingRejection> rejection =
         PostingAcceptancePolicy.rejectionFor(command("idem-1"), book);
 
-    assertEquals(Optional.of(new PostingRejection.DuplicateIdempotencyKey()), rejection);
+    assertEquals(Optional.of(new BookkeepingPostingRejection.DuplicateIdempotencyKey()), rejection);
     assertEquals(0, book.findAccountsCalls);
   }
 
@@ -63,7 +63,7 @@ class PostingAcceptancePolicyTest {
             false,
             Instant.parse("2026-04-07T10:15:30Z")));
 
-    Optional<PostingRejection> rejection =
+    Optional<BookkeepingPostingRejection> rejection =
         PostingAcceptancePolicy.rejectionFor(
             command(
                 "idem-2",
@@ -75,10 +75,10 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new PostingRejection.AccountStateViolations(
+            new BookkeepingPostingRejection.AccountStateViolations(
                 List.of(
-                    new PostingRejection.InactiveAccount(new AccountCode("1000")),
-                    new PostingRejection.UnknownAccount(new AccountCode("2000"))))),
+                    new BookkeepingPostingRejection.InactiveAccount(new AccountCode("1000")),
+                    new BookkeepingPostingRejection.UnknownAccount(new AccountCode("2000"))))),
         rejection);
     assertEquals(1, book.findAccountsCalls);
     assertEquals(List.of(new AccountCode("1000"), new AccountCode("2000")), book.requestedAccounts);

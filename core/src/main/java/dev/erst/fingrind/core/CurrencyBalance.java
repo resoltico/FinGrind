@@ -1,7 +1,5 @@
-package dev.erst.fingrind.contract;
+package dev.erst.fingrind.core;
 
-import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.Money;
 import java.util.Objects;
 
 /** One per-currency balance bucket for a declared account. */

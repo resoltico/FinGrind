@@ -1,12 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.CurrencyBalance;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -50,17 +50,17 @@ final class SqliteReportRowValues {
   }
 
   static AccountTotals accountTotalsFor(
-      Map<AccountCode, AccountTotals> totalsByAccount, DeclaredAccount account) {
+      Map<AccountCode, AccountTotals> totalsByAccount, RegisteredAccount account) {
     return totalsByAccount.computeIfAbsent(
         account.accountCode(), ignored -> new AccountTotals(account));
   }
 
   /** Exact per-account currency totals accumulated while building report rows. */
   static final class AccountTotals {
-    private final DeclaredAccount account;
+    private final RegisteredAccount account;
     private final Map<CurrencyCode, Totals> totalsByCurrency = insertionOrderedMap();
 
-    private AccountTotals(DeclaredAccount account) {
+    private AccountTotals(RegisteredAccount account) {
       this.account = Objects.requireNonNull(account, "account");
     }
 
@@ -68,24 +68,24 @@ final class SqliteReportRowValues {
       totalsFor(totalsByCurrency, currencyCode).add(entrySide, amount);
     }
 
-    List<TrialBalanceRow> trialBalanceRows() {
+    List<TrialBalanceRowView> trialBalanceRows() {
       return totalsByCurrency.entrySet().stream()
           .sorted(Map.Entry.comparingByKey(CURRENCY_CODE_ORDER))
           .map(
               entry ->
-                  new TrialBalanceRow(
+                  new TrialBalanceRowView(
                       account,
                       SqliteBalanceMath.currencyBalance(
                           entry.getKey(), entry.getValue().debit, entry.getValue().credit)))
           .toList();
     }
 
-    List<PeriodAccountActivityRow> periodActivityRows() {
+    List<PeriodAccountActivityView> periodActivityRows() {
       return totalsByCurrency.entrySet().stream()
           .sorted(Map.Entry.comparingByKey(CURRENCY_CODE_ORDER))
           .map(
               entry ->
-                  new PeriodAccountActivityRow(
+                  new PeriodAccountActivityView(
                       account,
                       SqliteBalanceMath.currencyBalance(
                           entry.getKey(), entry.getValue().debit, entry.getValue().credit)))

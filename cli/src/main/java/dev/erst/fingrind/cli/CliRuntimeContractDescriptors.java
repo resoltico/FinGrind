@@ -46,6 +46,7 @@ final class CliRuntimeContractDescriptors {
             dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus.fromWireValue(
                 runtimeProbe.status().wireValue()),
             runtimeProbe.runtimeProvenance(),
+            runtimeProbe.runtimeTrustBasis(),
             runtimeProbe.loadedLibraryPath(),
             runtimeProbe.loadedSqliteVersion(),
             runtimeProbe.loadedSqlite3mcVersion(),

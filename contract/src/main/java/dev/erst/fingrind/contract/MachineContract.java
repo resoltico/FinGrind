@@ -295,8 +295,8 @@ public final class MachineContract {
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
           new QuickStartPaths(
-              "./acme.book-key",
-              "./acme.sqlite",
+              "./secrets/acme.book-key",
+              "./books/acme.sqlite",
               "./declare-account-cash.json",
               "./declare-account-revenue.json",
               "./request.json");
@@ -304,8 +304,8 @@ public final class MachineContract {
           SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
           DIRECT_JAVA_WINDOWS_POWERSHELL ->
           new QuickStartPaths(
-              ".\\acme.book-key",
-              ".\\acme.sqlite",
+              ".\\secrets\\acme.book-key",
+              ".\\books\\acme.sqlite",
               ".\\declare-account-cash.json",
               ".\\declare-account-revenue.json",
               ".\\request.json");
@@ -323,8 +323,7 @@ public final class MachineContract {
           ProtocolCatalog.sourceCheckoutLauncherCommand(true);
       case DIRECT_JAVA_POSIX_SHELL -> ProtocolCatalog.directJavaLauncherCommand(false);
       case DIRECT_JAVA_WINDOWS_POWERSHELL -> ProtocolCatalog.directJavaLauncherCommand(true);
-      case CONTAINER_DOCKER ->
-          "docker run --rm -v <host-workdir>:/workspace -w /workspace <container-image>";
+      case CONTAINER_DOCKER -> ProtocolCatalog.containerLauncherCommand();
     };
   }
 

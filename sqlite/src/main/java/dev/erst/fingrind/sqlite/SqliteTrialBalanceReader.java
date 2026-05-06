@@ -1,12 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 /** Loads canonical trial-balance rows from SQLite. */
 final class SqliteTrialBalanceReader {
-  TrialBalanceReport trialBalance(SqliteNativeDatabase activeDatabase, TrialBalanceQuery query) {
+  TrialBalanceView trialBalance(SqliteNativeDatabase activeDatabase, TrialBalanceCriteria query) {
     Map<AccountCode, SqliteReportRowValues.AccountTotals> totalsByAccount =
         SqliteReportRowValues.insertionOrderedMap();
     try (SqliteNativeStatement statement =
@@ -23,7 +23,7 @@ final class SqliteTrialBalanceReader {
         statement.bindText(1, query.effectiveDateTo().orElseThrow().toString());
       }
       while (statement.step() == SqliteNativeResultCodes.ROW) {
-        DeclaredAccount account = SqlitePostingMapper.declaredAccount(statement);
+        RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);
         CurrencyCode currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
         BigDecimal amount = SqliteReportRowValues.reportAmount(statement);
         JournalLine.EntrySide entrySide =
@@ -34,10 +34,10 @@ final class SqliteTrialBalanceReader {
             .add(currencyCode, entrySide, amount);
       }
     }
-    List<TrialBalanceRow> rows = new ArrayList<>();
+    List<TrialBalanceRowView> rows = new ArrayList<>();
     totalsByAccount
         .values()
         .forEach(accountTotals -> rows.addAll(accountTotals.trialBalanceRows()));
-    return new TrialBalanceReport(query.effectiveDateTo(), rows);
+    return new TrialBalanceView(query.effectiveDateTo(), rows);
   }
 }

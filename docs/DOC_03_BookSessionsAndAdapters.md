@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.31.0"
+version: "0.32.0"
 domain: ADAPTERS
-updated: "2026-05-05"
+updated: "2026-05-06"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -130,9 +130,48 @@ public interface BookReadSession
 - Surface: `inspectBook()`, `isInitialized()`, `listAccounts(...)`, `findAccount(...)`,
   `findPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`,
   `accountLedger(...)`, `periodSummary(...)`
-- Purpose: expose one authoritative read model without splitting query and reporting families into
-  parallel seams
+- Purpose: expose one authoritative local bookkeeping read model without splitting query and
+  reporting families into parallel seams
+- Boundary: this seam consumes local bookkeeping read criteria and returns local bookkeeping page
+  and view models; `BookReadService` is the anti-corruption layer that maps those local types to
+  the public read/report DTOs
 - Lifecycle: the outer workflow or store owns `close()`, not the narrowed session view
+
+## `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView`
+
+These exported `executor.bookkeeping` types are the local bookkeeping read model used by
+`BookReadSession`, SQLite read helpers, and workflow/query execution before any public report DTOs
+are projected.
+
+```java
+public record AccountRegistryCursor(...)
+public record AccountRegistryQuery(...)
+public record AccountRegistryPage(...)
+public record PostingHistoryCursor(...)
+public record PostingHistoryQuery(...)
+public record PostingHistoryPage(...)
+public record AccountBalanceCriteria(...)
+public record AccountBalanceView(...)
+public record TrialBalanceCriteria(...)
+public record TrialBalanceRowView(...)
+public record TrialBalanceView(...)
+public record AccountLedgerCriteria(...)
+public record AccountLedgerEntryView(...)
+public record AccountLedgerView(...)
+public record PeriodSummaryCriteria(...)
+public record PeriodCurrencySummaryView(...)
+public record PeriodAccountActivityView(...)
+public record PeriodSummaryView(...)
+```
+
+- Purpose: keep pagination, balance criteria, report rows, and report views inside the local
+  bookkeeping context
+- Shared kernel: these local types reuse `core.EffectiveDateRange`, `core.CurrencyBalance`, and
+  `core.InteractionLimits` where the concept is genuinely common to public and local bookkeeping
+  language
+- Boundary: `BookkeepingReadPublishedLanguageTranslator` is the only owner that maps these types to
+  `AccountPage`, `PostingPage`, `AccountBalanceSnapshot`, `TrialBalanceReport`,
+  `AccountLedgerReport`, and `PeriodSummaryReport`
 
 ## `LedgerPlanSession`
 
@@ -160,7 +199,7 @@ public sealed interface PostingCommitResult
 
 ## `SqliteBookPassphrase`
 
-`SqliteBookPassphrase` is the resolved zeroizable UTF-8 passphrase payload used by the SQLite
+`SqliteBookPassphrase` is the resolved UTF-8 passphrase payload used by the SQLite
 adapter.
 
 ```java
@@ -168,7 +207,22 @@ public final class SqliteBookPassphrase implements AutoCloseable
 ```
 
 - Purpose: hold normalized passphrase bytes only after the CLI has resolved a safe source
-- Lifecycle: copied into native memory for `sqlite3_key()` / `sqlite3_rekey()` and then zeroized
+- Lifecycle: copied into native memory for `sqlite3_key()` / `sqlite3_rekey()` and then
+  best-effort overwritten on the buffers FinGrind owns
+
+## `SqliteSessionSecret`
+
+`SqliteSessionSecret` is the internal adapter owner for one reusable session-scoped secret.
+
+```java
+final class SqliteSessionSecret implements AutoCloseable
+```
+
+- Purpose: keep one durable passphrase copy attached to the openable SQLite session boundary while
+  native calls borrow short-lived working copies
+- Lifecycle: each borrow creates one working `SqliteBookPassphrase` copy for the immediate native
+  call, best-effort overwrites that working copy after handoff, and keeps the durable session
+  copy until the session closes or rotates to a replacement secret
 
 ## `SqliteBookKeyFile`, `SqliteBookKeyFileGenerator`, And `SqliteBookKeyFileGenerator.GeneratedKeyFile`
 
@@ -215,17 +269,22 @@ public final class SqliteFailureClassifier
 - `SqliteFailureClassifier.Category`: stable classification family with `MANAGED_RUNTIME`,
   `STORAGE`, and `OTHER`
 
-## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException`
+## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException`
 
 These public exception types distinguish important SQLite failure categories.
 
 ```java
 public final class ManagedSqliteRuntimeUnavailableException extends IllegalStateException
+public final class UnsupportedManagedSqliteLibraryIdentityException extends IllegalStateException
 public final class UnsupportedSqliteCompileOptionsException extends IllegalStateException
 public final class SqliteStorageFailureException extends IllegalStateException
 ```
 
 - `ManagedSqliteRuntimeUnavailableException`: managed runtime not found or unusable on this host
+- `UnsupportedManagedSqliteLibraryIdentityException`: selected managed library failed the trusted
+  managed-runtime identity check before any native symbol lookup; publisher-owned runtimes are
+  checked against the embedded FinGrind digest resource and their sibling `.sha256` file, while
+  `environment-configured` runtimes are only checked against the sibling `.sha256` sidecar
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
@@ -251,8 +310,9 @@ public final class SqliteBookSessions
 - `SqlitePassphraseIntent`: distinguishes whether the caller is resolving an existing book secret
   or a confirmed replacement/new secret before `openBook(...)` or `rekeyBook(...)`
 - `SqlitePassphraseResolver`: resolves the contract-level `BookAccess.PassphraseSource` plus one
-  `SqlitePassphraseIntent` into a zeroizable `SqliteBookPassphrase`, so external tooling can stay
-  on the neutral `BookAccess` seam instead of passing adapter-native secret objects around
+  `SqlitePassphraseIntent` into a `SqliteBookPassphrase` whose owned buffers are best-effort
+  overwritten after use, so external tooling can stay on the neutral `BookAccess` seam instead of
+  passing adapter-native secret objects around
 - `SqliteBookSessions.open(...)`: constructs one SQLite-backed session boundary for the selected
   caller intent without requiring an eager SQLite open; overloads accept either an already-resolved
   `SqliteBookPassphrase` or the higher-level `BookAccess` plus `SqlitePassphraseResolver`
@@ -278,7 +338,10 @@ public final class SqliteBookSessions
 - `BookAccess` keeps the durable book path coupled to one safe passphrase-source choice, but a
   key file stored beside the selected `.sqlite` path is not protected by SQLite3MC.
 - `SqliteConnectionConfigurer` forces `temp_store=memory`; the documented protection boundary
-  assumes that policy stays in place.
-- Query results after decoding, in-process passphrase bytes before zeroization, crash dumps,
-  copied backups, and exported reports all live outside the encrypted-page boundary and need
-  separate operator controls.
+  assumes that policy stays in place, and it now also requires `memory_security=fill` instead of
+  silently tolerating runtimes that do not expose that zeroization pragma.
+- Query results after decoding, in-process passphrase bytes before best-effort overwrite, crash dumps,
+  heap-resident secret copies the JVM GC may preserve beyond the arrays FinGrind overwrites, the
+  durable session-scoped passphrase copy held by `SqliteSessionSecret`, copied backups, and
+  exported reports all live outside the encrypted-page boundary and need separate operator
+  controls.

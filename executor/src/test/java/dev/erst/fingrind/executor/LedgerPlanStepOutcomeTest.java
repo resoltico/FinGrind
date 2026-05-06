@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.NullUnmarked;
@@ -35,8 +35,9 @@ class LedgerPlanStepOutcomeTest {
 
   @Test
   void failureOutcomes_delegateFactsFromFailurePayload() {
-    LedgerStepFailure failure =
-        new LedgerStepFailure("rejected", "Rejected.", List.of(LedgerFact.text("code", "unknown")));
+    BookWorkflowFailure failure =
+        new BookWorkflowFailure(
+            "rejected", "Rejected.", List.of(LedgerFact.text("code", "unknown")));
 
     assertEquals(failure.facts(), new LedgerPlanStepOutcome.Rejected(failure).facts());
     assertEquals(failure.facts(), new LedgerPlanStepOutcome.AssertionFailed(failure).facts());

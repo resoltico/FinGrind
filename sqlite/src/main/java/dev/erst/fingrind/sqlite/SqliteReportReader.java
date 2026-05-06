@@ -1,12 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.util.Objects;
 
 /** Facade over focused report readers for trial balance, account ledger, and period summary. */
@@ -22,16 +22,17 @@ final class SqliteReportReader {
     this.periodSummaryReader = new SqlitePeriodSummaryReader();
   }
 
-  TrialBalanceReport trialBalance(SqliteNativeDatabase activeDatabase, TrialBalanceQuery query) {
+  TrialBalanceView trialBalance(SqliteNativeDatabase activeDatabase, TrialBalanceCriteria query) {
     return trialBalanceReader.trialBalance(activeDatabase, query);
   }
 
-  AccountLedgerReport accountLedger(
-      SqliteNativeDatabase activeDatabase, AccountLedgerQuery query, DeclaredAccount account) {
+  AccountLedgerView accountLedger(
+      SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
     return accountLedgerReader.accountLedger(activeDatabase, query, account);
   }
 
-  PeriodSummaryReport periodSummary(SqliteNativeDatabase activeDatabase, PeriodSummaryQuery query) {
+  PeriodSummaryView periodSummary(
+      SqliteNativeDatabase activeDatabase, PeriodSummaryCriteria query) {
     return periodSummaryReader.periodSummary(activeDatabase, query);
   }
 }

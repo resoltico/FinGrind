@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
@@ -15,7 +14,7 @@ final class ReversalAcceptancePolicy {
   private ReversalAcceptancePolicy() {}
 
   /** Returns the first deterministic reversal rejection for the supplied attempt, if any. */
-  static Optional<PostingRejection> rejectionFor(
+  static Optional<BookkeepingPostingRejection> rejectionFor(
       PostingRequestModel postingRequest, PostingValidationBook book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
@@ -25,21 +24,22 @@ final class ReversalAcceptancePolicy {
         PostingId priorPostingId = reversal.reference().priorPostingId();
         Optional<CommittedPosting> priorPosting = book.findPosting(priorPostingId);
         if (priorPosting.isEmpty()) {
-          yield Optional.of(new PostingRejection.ReversalTargetNotFound(priorPostingId));
+          yield Optional.of(new BookkeepingPostingRejection.ReversalTargetNotFound(priorPostingId));
         }
         yield reversalRejection(postingRequest.journalEntry(), priorPosting.orElseThrow(), book);
       }
     };
   }
 
-  private static Optional<PostingRejection> reversalRejection(
+  private static Optional<BookkeepingPostingRejection> reversalRejection(
       JournalEntry candidateReversal, CommittedPosting priorPosting, PostingValidationBook book) {
     PostingId priorPostingId = priorPosting.postingId();
     if (book.findReversalFor(priorPostingId).isPresent()) {
-      return Optional.of(new PostingRejection.ReversalAlreadyExists(priorPostingId));
+      return Optional.of(new BookkeepingPostingRejection.ReversalAlreadyExists(priorPostingId));
     }
     if (!negates(candidateReversal, priorPosting.journalEntry())) {
-      return Optional.of(new PostingRejection.ReversalDoesNotNegateTarget(priorPostingId));
+      return Optional.of(
+          new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(priorPostingId));
     }
     return Optional.empty();
   }

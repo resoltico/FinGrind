@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.protocol.ProtocolLimits;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import org.jspecify.annotations.NullUnmarked;
@@ -25,13 +25,13 @@ class ContractTemplatesValidationTest {
 
     ContractTemplates.LedgerPlanQueryTemplateDescriptor boundedQuery =
         new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
-            "1000", "2026-04-25", "2026-04-26", ProtocolLimits.DEFAULT_PAGE_LIMIT, "cursor-1");
+            "1000", "2026-04-25", "2026-04-26", InteractionLimits.DEFAULT_PAGE_LIMIT, "cursor-1");
     ContractTemplates.LedgerPlanQueryTemplateDescriptor openQuery =
         new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
             null, "2026-04-25", null, null, null);
 
     assertEquals("1000", boundedQuery.accountCode());
-    assertEquals(ProtocolLimits.DEFAULT_PAGE_LIMIT, boundedQuery.limit());
+    assertEquals(InteractionLimits.DEFAULT_PAGE_LIMIT, boundedQuery.limit());
     assertEquals("cursor-1", boundedQuery.cursor());
     assertEquals("2026-04-25", openQuery.effectiveDateFrom());
     assertEquals(null, openQuery.limit());
@@ -39,7 +39,7 @@ class ContractTemplatesValidationTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
-                "1000", null, null, ProtocolLimits.PAGE_LIMIT_MIN - 1, null));
+                "1000", null, null, InteractionLimits.PAGE_LIMIT_MIN - 1, null));
   }
 
   @Test
@@ -77,7 +77,7 @@ class ContractTemplatesValidationTest {
               null,
               null,
               new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
-                  "1000", null, null, ProtocolLimits.DEFAULT_PAGE_LIMIT, null),
+                  "1000", null, null, InteractionLimits.DEFAULT_PAGE_LIMIT, null),
               null,
               null);
           new ContractTemplates.LedgerPlanStepTemplateDescriptor(
@@ -121,7 +121,7 @@ class ContractTemplatesValidationTest {
                 null,
                 null,
                 new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
-                    null, null, null, ProtocolLimits.DEFAULT_PAGE_LIMIT, null),
+                    null, null, null, InteractionLimits.DEFAULT_PAGE_LIMIT, null),
                 null,
                 null));
     assertThrows(

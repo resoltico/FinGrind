@@ -27,7 +27,9 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null, List::of));
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    null, null, List::of, () -> null));
 
     assertTrue(exception.getMessage().contains("bundle launcher"));
     assertTrue(exception.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
@@ -101,7 +103,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
 
     SqliteLibraryTarget libraryTarget =
         SqliteNativeRuntimePolicy.configuredLibraryTarget(
-            null, null, () -> List.of(sourceCheckoutRoot));
+            null, null, () -> List.of(sourceCheckoutRoot), () -> null);
 
     assertEquals("managed-only", libraryTarget.mode());
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
@@ -141,6 +143,31 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void configuredLibraryTarget_resolvesManagedLibraryFromExternalizedSourceCheckoutBuildRoot()
+      throws IOException {
+    Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
+    Path externalizedBuildRoot =
+        tempDirectory.resolve("cache").resolve("project-build").resolve("root");
+    Path managedLibraryPath =
+        externalizedBuildRoot
+            .resolve("managed-sqlite")
+            .resolve("host")
+            .resolve(expectedNativeLibraryFileName());
+    Files.createDirectories(sourceCheckoutRoot.resolve("cli"));
+    Files.writeString(sourceCheckoutRoot.resolve("gradlew"), "#!/usr/bin/env bash\n");
+    Files.createDirectories(managedLibraryPath.getParent());
+    Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
+
+    SqliteLibraryTarget libraryTarget =
+        SqliteNativeRuntimePolicy.configuredLibraryTarget(
+            null, null, () -> List.of(sourceCheckoutRoot), () -> externalizedBuildRoot);
+
+    assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
+    assertEquals(
+        managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
+  }
+
+  @Test
   void configuredLibraryTarget_skipsSourceCheckoutCandidatesWithoutManagedLibrary()
       throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind");
@@ -159,7 +186,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteNativeRuntimePolicy.configuredLibraryTarget(
-                    null, null, () -> List.of(sourceCheckoutRoot)));
+                    null, null, () -> List.of(sourceCheckoutRoot), () -> null));
 
     assertTrue(exception.getMessage().contains("prepareManagedSqlite"));
   }
@@ -184,15 +211,21 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     IllegalStateException missingEverywhere =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, null, List::of));
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    null, null, List::of, () -> null));
     IllegalStateException blankConfiguredPath =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget("   ", null, List::of));
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    "   ", null, List::of, () -> null));
     IllegalStateException blankBundleHome =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteNativeRuntimePolicy.configuredLibraryTarget(null, "   ", List::of));
+            () ->
+                SqliteNativeRuntimePolicy.configuredLibraryTarget(
+                    null, "   ", List::of, () -> null));
 
     assertTrue(missingEverywhere.getMessage().contains("bundle launcher"));
     assertTrue(blankConfiguredPath.getMessage().contains("FINGRIND_SQLITE_LIBRARY"));
@@ -231,20 +264,39 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     manifest
         .getMainAttributes()
         .putValue("FinGrind-Source-Checkout-Root", sourceCheckoutRoot.toString());
+    Path buildRoot = tempDirectory.resolve("project-build").resolve("root");
+    manifest
+        .getMainAttributes()
+        .putValue("FinGrind-Source-Checkout-Build-Root", buildRoot.toString());
 
     assertEquals(
         sourceCheckoutRoot.toAbsolutePath().normalize().toString(),
         SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
             codeSourceJar, ignored -> manifest));
     assertEquals(
+        buildRoot.toAbsolutePath().normalize().toString(),
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
+            codeSourceJar, ignored -> manifest));
+    assertEquals(
         null, SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(null, ignored -> manifest));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(null, ignored -> manifest));
     assertEquals(
         null,
         SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
             tempDirectory, ignored -> manifest));
     assertEquals(
         null,
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
+            tempDirectory, ignored -> manifest));
+    assertEquals(
+        null,
         SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(codeSourceJar, ignored -> null));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
+            codeSourceJar, ignored -> null));
     assertEquals(
         null,
         SqliteNativeRuntimePolicy.sourceCheckoutRootFromManifest(
@@ -252,6 +304,38 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             ignored -> {
               throw new IOException("boom");
             }));
+    assertEquals(
+        null,
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRootFromManifest(
+            codeSourceJar,
+            ignored -> {
+              throw new IOException("boom");
+            }));
+  }
+
+  @Test
+  void sourceCheckoutBuildRoot_prefersConfiguredBuildRootOverManifestBuildRoot() {
+    Path configuredBuildRoot = tempDirectory.resolve("configured-build-root");
+    Path manifestBuildRoot = tempDirectory.resolve("manifest-build-root");
+
+    assertEquals(
+        configuredBuildRoot.toAbsolutePath().normalize(),
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(
+            configuredBuildRoot.toString(), manifestBuildRoot.toString()));
+  }
+
+  @Test
+  void sourceCheckoutBuildRoot_fallsBackToManifestBuildRoot() {
+    Path manifestBuildRoot = tempDirectory.resolve("manifest-build-root");
+
+    assertEquals(
+        manifestBuildRoot.toAbsolutePath().normalize(),
+        SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(null, manifestBuildRoot.toString()));
+  }
+
+  @Test
+  void sourceCheckoutBuildRoot_returnsNullWhenNeitherCueExists() {
+    assertEquals(null, SqliteNativeRuntimePolicy.sourceCheckoutBuildRoot(null, null));
   }
 
   @Test

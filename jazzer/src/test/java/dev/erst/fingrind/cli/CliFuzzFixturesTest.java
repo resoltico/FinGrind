@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -16,10 +14,23 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -207,9 +218,9 @@ class CliFuzzFixturesTest {
             NormalBalance.CREDIT,
             true,
             CliFuzzFixtures.fixedClock().instant());
-    AccountPageCursor nextCursor = AccountPageCursor.fromAccount(firstAccount);
+    AccountRegistryCursor nextCursor = new AccountRegistryCursor(firstAccount.accountCode());
     AtomicInteger pageCalls = new AtomicInteger();
-    List<Optional<AccountPageCursor>> cursors = new ArrayList<>();
+    List<Optional<AccountRegistryCursor>> cursors = new ArrayList<>();
     BookReadSession pagedSession =
         new BookReadSession() {
           @Override
@@ -223,12 +234,16 @@ class CliFuzzFixturesTest {
           }
 
           @Override
-          public AccountPage listAccounts(dev.erst.fingrind.contract.ListAccountsQuery query) {
+          public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
             cursors.add(query.cursor());
             if (pageCalls.getAndIncrement() == 0) {
-              return new AccountPage(List.of(firstAccount), query.limit(), Optional.of(nextCursor));
+              return new AccountRegistryPage(
+                  List.of(toRegisteredAccount(firstAccount)),
+                  query.limit(),
+                  Optional.of(nextCursor));
             }
-            return new AccountPage(List.of(secondAccount), query.limit(), Optional.empty());
+            return new AccountRegistryPage(
+                List.of(toRegisteredAccount(secondAccount)), query.limit(), Optional.empty());
           }
 
           @Override
@@ -243,38 +258,43 @@ class CliFuzzFixturesTest {
           }
 
           @Override
-          public dev.erst.fingrind.contract.PostingPage listPostings(
-              dev.erst.fingrind.contract.ListPostingsQuery query) {
+          public PostingHistoryPage listPostings(PostingHistoryQuery query) {
             throw new UnsupportedOperationException("not used");
           }
 
           @Override
-          public Optional<dev.erst.fingrind.contract.AccountBalanceSnapshot> accountBalance(
-              dev.erst.fingrind.contract.AccountBalanceQuery query) {
+          public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
             throw new UnsupportedOperationException("not used");
           }
 
           @Override
-          public dev.erst.fingrind.contract.TrialBalanceReport trialBalance(
-              dev.erst.fingrind.contract.TrialBalanceQuery query) {
+          public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
             throw new UnsupportedOperationException("not used");
           }
 
           @Override
-          public dev.erst.fingrind.contract.AccountLedgerReport accountLedger(
-              dev.erst.fingrind.contract.AccountLedgerQuery query, RegisteredAccount account) {
+          public AccountLedgerView accountLedger(
+              AccountLedgerCriteria query, RegisteredAccount account) {
             throw new UnsupportedOperationException("not used");
           }
 
           @Override
-          public dev.erst.fingrind.contract.PeriodSummaryReport periodSummary(
-              dev.erst.fingrind.contract.PeriodSummaryQuery query) {
+          public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
             throw new UnsupportedOperationException("not used");
           }
         };
 
     assertEquals(List.of(firstAccount, secondAccount), CliFuzzFixtures.listAccounts(pagedSession));
     assertEquals(List.of(Optional.empty(), Optional.of(nextCursor)), cursors);
+  }
+
+  private static RegisteredAccount toRegisteredAccount(DeclaredAccount account) {
+    return new RegisteredAccount(
+        account.accountCode(),
+        account.accountName(),
+        account.normalBalance(),
+        account.active(),
+        account.declaredAt());
   }
 
   private static String basicValidRequest() {

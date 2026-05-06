@@ -7,9 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.CurrencyBalance;
 import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.EffectiveDateRange;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
@@ -26,7 +24,9 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -63,7 +63,7 @@ class PdfReportServiceTest {
   private static final Path BOOK_PATH =
       Path.of("/tmp/Rīga büro/2026 Q2 close/Ops & Sales [April] #1.sqlite");
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.31.0", CLOCK);
+      new PdfReportService("FinGrind", "0.32.0", CLOCK);
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -142,10 +142,10 @@ class PdfReportServiceTest {
 
   @Test
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.31.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.32.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.31.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.32.0", null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -167,7 +167,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.31.0", information.getCreator());
+      assertEquals("FinGrind 0.32.0", information.getCreator());
       assertEquals(BOOK_PATH.toAbsolutePath().normalize().toString(), information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }

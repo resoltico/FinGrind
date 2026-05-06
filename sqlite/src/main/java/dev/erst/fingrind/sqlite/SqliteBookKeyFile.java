@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -37,8 +38,29 @@ public final class SqliteBookKeyFile {
   }
 
   private static ContractDecision<byte[]> readBytes(Path bookKeyFilePath) {
+    return readBytes(
+        bookKeyFilePath,
+        path -> {
+          try (InputStream inputStream = Files.newInputStream(path)) {
+            return readBoundedPassphraseBytes(inputStream);
+          }
+        });
+  }
+
+  static ContractDecision<byte[]> readBytes(Path bookKeyFilePath, ByteLoader byteLoader) {
+    Objects.requireNonNull(byteLoader, "byteLoader");
     try {
-      return ContractDecision.accepted(Files.readAllBytes(bookKeyFilePath));
+      return ContractDecision.accepted(byteLoader.load(bookKeyFilePath));
+    } catch (OversizedBookPassphraseSourceException exception) {
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+              "FinGrind book passphrase input from the selected key file exceeded the %d-byte limit: %s"
+                  .formatted(
+                      SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES,
+                      bookKeyFilePath.toAbsolutePath().normalize()),
+              "Provide one key file whose single-line UTF-8 passphrase fits within the %d-byte limit, then rerun the command."
+                  .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES),
+              null));
     } catch (IOException exception) {
       return ContractDecision.rejected(
           ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
@@ -50,5 +72,25 @@ public final class SqliteBookKeyFile {
 
   static ContractDecision<Path> requireSecureKeyFile(Path bookKeyFilePath) {
     return SqliteBookKeyFileSecurity.requireSecureKeyFile(bookKeyFilePath);
+  }
+
+  /** Loads raw bytes from one validated book-key file path for the same-package loader seam. */
+  @FunctionalInterface
+  interface ByteLoader {
+    /** Reads the complete book-key payload from the supplied validated path. */
+    byte[] load(Path bookKeyFilePath) throws IOException;
+  }
+
+  private static byte[] readBoundedPassphraseBytes(InputStream inputStream) throws IOException {
+    byte[] buffer = inputStream.readNBytes(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1);
+    if (buffer.length <= SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES) {
+      return buffer;
+    }
+    throw new OversizedBookPassphraseSourceException();
+  }
+
+  /** Signals that one passphrase-source payload exceeded FinGrind's byte limit. */
+  private static final class OversizedBookPassphraseSourceException extends IOException {
+    private static final long serialVersionUID = 1L;
   }
 }

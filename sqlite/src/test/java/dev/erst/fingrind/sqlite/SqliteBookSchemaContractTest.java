@@ -23,7 +23,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.Set;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
@@ -524,6 +523,9 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             new OpenConfigurationDrift(
                 "pragma temp_store = file", "SQLite connection failed to force temp_store=MEMORY."),
             new OpenConfigurationDrift(
+                "pragma memory_security = off",
+                "SQLite connection failed to enable memory_security=fill."),
+            new OpenConfigurationDrift(
                 "pragma query_only = on",
                 "SQLite connection failed to enforce the expected query_only setting."));
 
@@ -533,24 +535,16 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void requireOptionalPragmaValue_enforcesPresentUnexpectedValuesOnly() {
+  void requirePragmaValue_rejectsUnexpectedValues() {
     assertDoesNotThrow(
-        () ->
-            SqliteConnectionConfigurer.requireOptionalPragmaValue(
-                OptionalInt.empty(), 1, "should stay optional"));
-    assertDoesNotThrow(
-        () ->
-            SqliteConnectionConfigurer.requireOptionalPragmaValue(
-                OptionalInt.of(1), 1, "should accept expected value"));
+        () -> SqliteConnectionConfigurer.requirePragmaValue(1, 1, "should accept expected value"));
 
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteConnectionConfigurer.requireOptionalPragmaValue(
-                    OptionalInt.of(0),
-                    1,
-                    "SQLite connection failed to enable memory_security=fill."));
+                SqliteConnectionConfigurer.requirePragmaValue(
+                    0, 1, "SQLite connection failed to enable memory_security=fill."));
 
     assertEquals(
         "SQLite connection failed to enable memory_security=fill.", exception.getMessage());

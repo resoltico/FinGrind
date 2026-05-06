@@ -18,6 +18,7 @@ public final class SqliteFailureClassifier {
     Objects.requireNonNull(throwable, "throwable");
     for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
       if (cause instanceof ManagedSqliteRuntimeUnavailableException
+          || cause instanceof UnsupportedManagedSqliteLibraryIdentityException
           || cause instanceof UnsupportedSqliteVersionException
           || cause instanceof UnsupportedSqliteMultipleCiphersVersionException
           || cause instanceof UnsupportedSqliteSourceIdException
