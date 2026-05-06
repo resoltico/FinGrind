@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `./scripts/verify-security-policy-surface.sh` to verify GitHub private vulnerability reporting as part of public release verification, and updated the security reference to point at that executable evidence owner.
 - Stopped read-oriented SQLite opens from rewriting book-file permissions as a side effect, added stale `*.rekey-rollback-*.sqlite` warning detection for interrupted rekeys, and clarified the security/docs contract so passphrase buffer overwrite is described as best-effort under the Java heap model rather than as guaranteed erasure.
 - Tightened the public release protocol so release promotion now waits on the aggregate `Gate` check via `./scripts/verify-release-pr-gate.sh` instead of inferring merge-readiness from an earlier green `Check` job while downstream Windows and Docker fan-out is still running.
+- Fixed the shared release-smoke workflow so bundle and Docker acceptance now compare the `pdf-exported` diagnostics path by normalized artifact identity instead of raw `--pdf-out` argument text, removing a Windows-only false failure when the CLI reports the canonical normalized path form.
 
 ## [0.31.0] - 2026-05-05
 

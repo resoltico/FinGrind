@@ -3,8 +3,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .models import ReleaseSmokeConfig
+from .models import ReleaseSmokeConfig, SmokePath
 from .support import (
+    extract_pdf_exported_path,
+    normalize_reported_path,
     require,
     require_match,
     require_no_match,
@@ -278,9 +280,9 @@ def assert_operator_queries_and_reports(
         r"^Argument[[:space:]]+:[[:space:]]+--pdf-out$",
         f"{config.label} PDF export did not attribute diagnostics to --pdf-out",
     )
-    require_match(
-        pdf_stderr,
-        re.escape(config.trial_balance_pdf.argument),
+    require(
+        normalize_reported_path(extract_pdf_exported_path(pdf_stderr))
+        == normalize_reported_path(expected_reported_artifact_path(config, config.trial_balance_pdf)),
         f"{config.label} PDF export diagnostics did not report the normalized written artifact path",
     )
     require_match(
@@ -313,3 +315,9 @@ def assert_operator_queries_and_reports(
         r"2",
         f"{config.label} period-summary output did not render the expected posting count",
     )
+
+
+def expected_reported_artifact_path(config: ReleaseSmokeConfig, smoke_path: SmokePath) -> str:
+    if config.reported_work_root is not None and smoke_path.argument != str(smoke_path.local_path):
+        return str(config.reported_work_root / smoke_path.argument)
+    return str(smoke_path.local_path)

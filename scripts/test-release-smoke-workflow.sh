@@ -100,6 +100,8 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_sh}" || die \
     "bundle-smoke.sh no longer publishes the shared scenario-id contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the compact shared work-root contract"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_REPORTED_WORK_ROOT' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer publishes the shared reported-work-root contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${docker_smoke_sh}" || die \
@@ -134,6 +136,10 @@ from release_smoke_workflow.scenario import (  # noqa: E402
     ARGUMENT_PATH_MODE_ABSOLUTE,
     ARGUMENT_PATH_MODE_WORK_ROOT_RELATIVE,
     build_release_smoke_scenario,
+)
+from release_smoke_workflow.support import (  # noqa: E402
+    extract_pdf_exported_path,
+    normalize_reported_path,
 )
 
 bundle = build_release_smoke_scenario(
@@ -180,6 +186,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         command_prefix=["unused-direct-command"],
         command_bridge_prefix=[sys.executable, str(bridge_script)],
         command_cwd=None,
+        reported_work_root=None,
         command_env_drop=[],
         command_env_set={},
         runtime_distribution_key="bundleRuntimeDistribution",
@@ -231,6 +238,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         command_prefix=["unused-direct-command"],
         command_bridge_prefix=[sys.executable, str(bridge_script)],
         command_cwd=None,
+        reported_work_root=None,
         command_env_drop=[],
         command_env_set={},
         runtime_distribution_key="bundleRuntimeDistribution",
@@ -268,6 +276,75 @@ with tempfile.TemporaryDirectory() as temp_dir:
         trial_balance_human_output="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
         pdf_stderr=report_stderr,
+        account_ledger_csv_output=(
+            "accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,"
+            "currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"
+            "1000,Cash,2026-04-07,2026-04-08,bridge-sale,2026-04-07,2026-04-07T10:00:00Z,EUR,10.00,0.00,10.00,DEBIT,2000\n"
+            "1000,Cash,2026-04-07,2026-04-08,bridge-adjustment,2026-04-08,2026-04-08T10:00:00Z,EUR,0.00,4.00,6.00,DEBIT,2000\n"
+        ),
+        period_summary_human_output="Period Summary\nPosting count : 2\n",
+    )
+
+    windows_report_stderr = (
+        "Info\n"
+        "====\n\n"
+        "Code     : pdf-exported\n"
+        r"Message  : Wrote the requested PDF report artifact to D:\a\FinGrind\workspace odd\Rīga büro\reports odd\trial balance [bundle-acceptance].pdf"
+        "\n"
+        "Argument : --pdf-out\n"
+    )
+    assert normalize_reported_path(extract_pdf_exported_path(windows_report_stderr)) == (
+        normalize_reported_path(
+            "d:/a/FinGrind/workspace odd/Rīga büro/reports odd/trial balance [bundle-acceptance].pdf"
+        )
+    )
+
+    docker_report_stderr = (
+        "Info\n"
+        "====\n\n"
+        "Code     : pdf-exported\n"
+        "Message  : Wrote the requested PDF report artifact to /workdir/reports odd/trial balance [bridge].pdf\n"
+        "Argument : --pdf-out\n"
+    )
+    docker_config = ReleaseSmokeConfig(
+        label="Docker regression",
+        repo_root=pathlib.Path(sys.argv[1]),
+        command_prefix=["unused-direct-command"],
+        command_bridge_prefix=[sys.executable, str(bridge_script)],
+        command_cwd=None,
+        reported_work_root=pathlib.Path("/workdir"),
+        command_env_drop=[],
+        command_env_set={},
+        runtime_distribution_key="containerRuntimeDistribution",
+        expect_loaded_sqlite_details=True,
+        expect_bundle_home_property=False,
+        book_key_output_permissions="0600",
+        request_sale=dummy,
+        request_adjustment=dummy,
+        invalid_request=dummy,
+        declare_cash=dummy,
+        declare_revenue=dummy,
+        book=dummy,
+        book_key=dummy,
+        replacement_book_key=dummy,
+        prompt_failure_book=dummy,
+        trial_balance_pdf=SmokePath(
+            local_path=pdf_path,
+            argument="reports odd/trial balance [bridge].pdf",
+        ),
+        trial_balance_pdf_stderr_path=temp_path / "docker-stderr.txt",
+        second_page_command_id="bridge-sale",
+        actor_prefix="bridge",
+        open_book_mode="book-key-file",
+    )
+    assert_operator_queries_and_reports(
+        docker_config,
+        list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
+        list_postings_human_output="Effective date | Recorded at\n2026-04-07 | 2026-04-07T10:00:00Z | 10.00\n",
+        account_balance_human_output="Account Balance\nAccount : 1000\nNet     : 6.00\n",
+        trial_balance_human_output="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
+        pdf_stdout="Trial Balance\nEffective date to : 2026-04-08\n1000 | 6.00\n",
+        pdf_stderr=docker_report_stderr,
         account_ledger_csv_output=(
             "accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,"
             "currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts\n"

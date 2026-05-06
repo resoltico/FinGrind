@@ -27,6 +27,7 @@ def load_config() -> ReleaseSmokeConfig:
             "FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON", default=[]
         ),
         command_cwd=optional_path("FINGRIND_RELEASE_SMOKE_COMMAND_CWD"),
+        reported_work_root=optional_path("FINGRIND_RELEASE_SMOKE_REPORTED_WORK_ROOT"),
         command_env_drop=require_json_array(
             "FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON", default=[]
         ),
