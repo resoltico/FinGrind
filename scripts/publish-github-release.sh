@@ -34,14 +34,30 @@ readonly asset_paths=("$@")
 [[ -n "${GH_TOKEN:-}" ]] || die "GH_TOKEN is required"
 [[ -n "${tag_name}" ]] || die "release tag is required"
 
+compute_sha256() {
+    local asset_path=$1
+    python3 - "${asset_path}" <<'PY'
+from hashlib import sha256
+from pathlib import Path
+import sys
+
+target = Path(sys.argv[1])
+digest = sha256()
+with target.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
+print(digest.hexdigest())
+PY
+}
+
 release_exists() {
     gh release view "${tag_name}" >/dev/null 2>&1
 }
 
-release_has_asset() {
+release_asset_digest() {
     local asset_name=$1
     gh release view "${tag_name}" --json assets --jq \
-        ".assets | map(.name) | index(\"${asset_name}\") != null"
+        ".assets[]? | select(.name == \"${asset_name}\") | .digest // empty"
 }
 
 create_or_converge_release() {
@@ -66,26 +82,65 @@ create_or_converge_release() {
     release_exists || die "failed to create release ${tag_name}"
 }
 
-upload_asset_if_missing() {
+delete_release_asset_if_present() {
+    local asset_path=$1
+    local asset_name
+    local observed_digest
+
+    asset_name="$(basename -- "${asset_path}")"
+    observed_digest="$(release_asset_digest "${asset_name}")"
+    [[ -n "${observed_digest}" ]] || return 0
+
+    if gh release delete-asset "${tag_name}" "${asset_name}" --yes >/dev/null 2>&1; then
+        return
+    fi
+
+    observed_digest="$(release_asset_digest "${asset_name}")"
+    [[ -z "${observed_digest}" ]] || die \
+        "failed to replace stale release asset ${asset_name} on ${tag_name}"
+}
+
+upload_asset() {
     local asset_path=$1
     local asset_name
     asset_name="$(basename -- "${asset_path}")"
+    gh release upload "${tag_name}" "${asset_path}" >/dev/null 2>&1 || {
+        local observed_digest expected_digest
+        observed_digest="$(release_asset_digest "${asset_name}")"
+        expected_digest="sha256:$(compute_sha256 "${asset_path}")"
+        [[ "${observed_digest}" == "${expected_digest}" ]] || die \
+            "failed to upload ${asset_name} to release ${tag_name}"
+    }
+}
+
+converge_asset() {
+    local asset_path=$1
+    local asset_name expected_digest observed_digest
+
+    asset_name="$(basename -- "${asset_path}")"
     [[ -f "${asset_path}" ]] || die "missing release asset at ${asset_path}"
+    expected_digest="sha256:$(compute_sha256 "${asset_path}")"
+    observed_digest="$(release_asset_digest "${asset_name}")"
 
-    if [[ "$(release_has_asset "${asset_name}")" == "true" ]]; then
+    if [[ "${observed_digest}" == "${expected_digest}" ]]; then
         return
     fi
 
-    if gh release upload "${tag_name}" "${asset_path}" >/dev/null 2>&1; then
+    if [[ -n "${observed_digest}" ]]; then
+        delete_release_asset_if_present "${asset_path}"
+    fi
+    upload_asset "${asset_path}"
+
+    observed_digest="$(release_asset_digest "${asset_name}")"
+    if [[ "${observed_digest}" == "${expected_digest}" ]]; then
         return
     fi
 
-    [[ "$(release_has_asset "${asset_name}")" == "true" ]] || die \
-        "failed to upload ${asset_name} to release ${tag_name}"
+    die "release ${tag_name} asset ${asset_name} did not converge to digest ${expected_digest}"
 }
 
 create_or_converge_release
 for asset_path in "${asset_paths[@]}"; do
-    upload_asset_if_missing "${asset_path}"
+    converge_asset "${asset_path}"
 done
 printf 'GitHub release publish converged for %s\n' "${tag_name}"

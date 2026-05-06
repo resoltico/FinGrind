@@ -45,6 +45,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-jazzer-fuzz-all-wrapper.sh
     scripts/test-jazzer-replay-wrapper.sh
     scripts/test-source-checkout-launcher.sh
+    scripts/test-publish-github-release.sh
     scripts/test-verify-github-release.sh
     scripts/test-verify-security-policy-surface.sh
     scripts/test-verify-release-primary-checkout.sh

@@ -9,6 +9,13 @@ die() {
     exit 1
 }
 
+last_failure_reason=''
+
+record_failure() {
+    last_failure_reason=$1
+    return 1
+}
+
 tag_name=''
 if [[ $# -gt 0 && "$1" == v* ]]; then
     tag_name="$1"
@@ -49,7 +56,7 @@ download_source_archive() {
 
 verify_source_archives() {
     local repository_slug=$1
-    local work_dir zip_archive tar_archive
+    local work_dir zip_archive tar_archive archive_output
 
     work_dir="$(mktemp -d)"
     zip_archive="${work_dir}/source.zip"
@@ -57,14 +64,19 @@ verify_source_archives() {
 
     download_source_archive "${repository_slug}" zipball "${zip_archive}" || {
         rm -rf "${work_dir}"
+        record_failure "failed to download the published zip source archive for ${tag_name}"
         return 1
     }
     download_source_archive "${repository_slug}" tarball "${tar_archive}" || {
         rm -rf "${work_dir}"
+        record_failure "failed to download the published tarball source archive for ${tag_name}"
         return 1
     }
-    python3 "${archive_verifier}" "${zip_archive}" "${tar_archive}" >/dev/null || {
+    archive_output="$(
+        python3 "${archive_verifier}" "${zip_archive}" "${tar_archive}" 2>&1
+    )" || {
         rm -rf "${work_dir}"
+        record_failure "${archive_output}"
         return 1
     }
     rm -rf "${work_dir}"
@@ -72,24 +84,29 @@ verify_source_archives() {
 
 verify_release_attestations() {
     local repository_slug=$1
-    local work_dir asset_name asset_path signer_workflow
+    local work_dir asset_name asset_path signer_workflow attestation_output
 
     work_dir="$(mktemp -d)"
     signer_workflow="${repository_slug}/${release_signer_workflow_path}"
     for asset_name in "${asset_names[@]}"; do
         gh release download "${tag_name}" --pattern "${asset_name}" --dir "${work_dir}" >/dev/null 2>&1 || {
             rm -rf "${work_dir}"
+            record_failure "failed to download published release asset ${asset_name} from ${tag_name}"
             return 1
         }
         asset_path="${work_dir}/${asset_name}"
         [[ -f "${asset_path}" ]] || {
             rm -rf "${work_dir}"
+            record_failure "published release asset ${asset_name} did not download to ${asset_path}"
             return 1
         }
-        gh attestation verify "${asset_path}" \
-            --repo "${repository_slug}" \
-            --signer-workflow "${signer_workflow}" >/dev/null 2>&1 || {
+        attestation_output="$(
+            gh attestation verify "${asset_path}" \
+                --repo "${repository_slug}" \
+                --signer-workflow "${signer_workflow}" 2>&1
+        )" || {
             rm -rf "${work_dir}"
+            record_failure "published attestation verification failed for ${asset_name}: ${attestation_output}"
             return 1
         }
     done
@@ -99,24 +116,58 @@ verify_release_attestations() {
 verify_release_once() {
     local release_tag is_draft is_prerelease has_asset asset_name repository_slug
 
-    release_tag="$(gh release view "${tag_name}" --json tagName --jq '.tagName' 2>/dev/null)" || return 1
-    [[ "${release_tag}" == "${tag_name}" ]] || return 1
+    release_tag="$(gh release view "${tag_name}" --json tagName --jq '.tagName' 2>/dev/null)" || {
+        record_failure "could not read published release metadata for ${tag_name}"
+        return 1
+    }
+    [[ "${release_tag}" == "${tag_name}" ]] || {
+        record_failure "release metadata resolved tag ${release_tag} instead of ${tag_name}"
+        return 1
+    }
 
-    is_draft="$(gh release view "${tag_name}" --json isDraft --jq '.isDraft' 2>/dev/null)" || return 1
-    [[ "${is_draft}" == "false" ]] || return 1
+    is_draft="$(gh release view "${tag_name}" --json isDraft --jq '.isDraft' 2>/dev/null)" || {
+        record_failure "could not read draft state for release ${tag_name}"
+        return 1
+    }
+    [[ "${is_draft}" == "false" ]] || {
+        record_failure "release ${tag_name} remains a draft"
+        return 1
+    }
 
-    is_prerelease="$(gh release view "${tag_name}" --json isPrerelease --jq '.isPrerelease' 2>/dev/null)" || return 1
-    [[ "${is_prerelease}" == "false" ]] || return 1
+    is_prerelease="$(gh release view "${tag_name}" --json isPrerelease --jq '.isPrerelease' 2>/dev/null)" || {
+        record_failure "could not read prerelease state for release ${tag_name}"
+        return 1
+    }
+    [[ "${is_prerelease}" == "false" ]] || {
+        record_failure "release ${tag_name} is marked as a prerelease"
+        return 1
+    }
 
     for asset_name in "${asset_names[@]}"; do
         has_asset="$(gh release view "${tag_name}" --json assets --jq \
-            ".assets | map(.name) | index(\"${asset_name}\") != null" 2>/dev/null)" || return 1
-        [[ "${has_asset}" == "true" ]] || return 1
+            ".assets | map(.name) | index(\"${asset_name}\") != null" 2>/dev/null)" || {
+            record_failure "could not inspect release assets for ${tag_name}"
+            return 1
+        }
+        [[ "${has_asset}" == "true" ]] || {
+            record_failure "release ${tag_name} is missing published asset ${asset_name}"
+            return 1
+        }
     done
 
-    repository_slug="$(resolve_repository_slug)" || return 1
-    [[ -n "${repository_slug}" ]] || return 1
-    "${security_policy_verifier}" "${repository_slug}" >/dev/null || return 1
+    repository_slug="$(resolve_repository_slug)" || {
+        record_failure "could not resolve the GitHub repository slug for release verification"
+        return 1
+    }
+    [[ -n "${repository_slug}" ]] || {
+        record_failure "release verification resolved an empty GitHub repository slug"
+        return 1
+    }
+    local security_policy_output
+    security_policy_output="$("${security_policy_verifier}" "${repository_slug}" 2>&1)" || {
+        record_failure "${security_policy_output}"
+        return 1
+    }
     verify_release_attestations "${repository_slug}" || return 1
     verify_source_archives "${repository_slug}" || return 1
 
@@ -126,7 +177,13 @@ verify_release_once() {
 attempt=1
 until verify_release_once; do
     if (( attempt >= retry_count )); then
-        die "release ${tag_name} is missing or incomplete for the required asset set"
+        if [[ -n "${last_failure_reason}" ]]; then
+            die "release ${tag_name} verification failed: ${last_failure_reason}"
+        fi
+        die "release ${tag_name} verification failed for an unknown reason"
+    fi
+    if [[ -n "${last_failure_reason}" ]]; then
+        printf 'release verification pending: %s\n' "${last_failure_reason}" >&2
     fi
     attempt=$((attempt + 1))
     sleep "${retry_delay_seconds}"

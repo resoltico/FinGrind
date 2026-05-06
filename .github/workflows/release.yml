@@ -256,6 +256,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
+          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
         run: |
           ./scripts/verify-github-release.sh \
             "fingrind-${{ needs.prepare-release.outputs.version }}-linux-x86_64.tar.gz" \
