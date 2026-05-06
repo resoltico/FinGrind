@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and checksum bytes downloaded back from the published GitHub Release on one neutral post-upload
   job instead of attesting per-runner local artifacts, which closes the Windows publication drift
   where repository attestations could point at different digests than the shipped release assets.
+- Fixed the neutral published-asset attestation job so `gh release download` now receives the
+  repository explicitly, retries with `--clobber`, and prints the final GitHub CLI error on
+  failure instead of looping through opaque download failures.
 - Raised the release verifier job timeout to fit its explicit GitHub-release propagation retry
   budget, and documented that timeout/retry alignment as part of the release protocol contract.
 - Hardened the tag-publication release workflow so published-asset attestation now runs on one

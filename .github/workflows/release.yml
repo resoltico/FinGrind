@@ -241,6 +241,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
           FINGRIND_RELEASE_ASSET_DOWNLOAD_RETRIES: "18"
@@ -248,6 +249,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
+          readonly last_error_file="$(mktemp)"
+          trap 'rm -f "${last_error_file}"' EXIT
           readonly asset_names=(
             "fingrind-${RELEASE_VERSION}-linux-x86_64.tar.gz"
             "fingrind-${RELEASE_VERSION}-linux-x86_64.tar.gz.sha256"
@@ -263,9 +266,14 @@ jobs:
 
           for asset_name in "${asset_names[@]}"; do
             attempt=1
-            until gh release download "${RELEASE_TAG}" --pattern "${asset_name}" --dir release-assets >/dev/null 2>&1; do
+            until gh release download "${RELEASE_TAG}" \
+              --repo "${GH_REPO}" \
+              --pattern "${asset_name}" \
+              --dir release-assets \
+              --clobber >/dev/null 2>"${last_error_file}"; do
               if (( attempt >= FINGRIND_RELEASE_ASSET_DOWNLOAD_RETRIES )); then
                 echo "failed to download published release asset ${asset_name} for attestation"
+                cat "${last_error_file}" >&2
                 exit 1
               fi
               attempt=$((attempt + 1))
