@@ -40,6 +40,8 @@ grep -Fq 'verify-security-policy-surface.sh' "${verifier}" || die \
     "GitHub release verifier no longer checks the live security-policy surface"
 grep -Fq 'gh attestation verify' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer documents attestation-backed bundle verification"
+grep -Fq 'Publication convergence is by asset name and digest' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
+    "release protocol no longer documents digest-aware release-asset convergence"
 grep -Fq 'gh attestation verify' "${verifier}" || die \
     "release verifier no longer verifies published bundle attestations"
 grep -Fq 'actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb' "${release_workflow}" || die \
@@ -67,6 +69,25 @@ required_lines = (
 missing = [line.strip() for line in required_lines if line not in job_text]
 if missing:
     raise SystemExit("missing build-bundles permission lines: " + ", ".join(missing))
+PY
+python3 - <<'PY' "${release_workflow}" || die \
+    "release workflow no longer grants the release verifier the publication retry budget needed for attestation propagation"
+from pathlib import Path
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+job_start = workflow.find("  verify-release:\n")
+if job_start < 0:
+    raise SystemExit("missing verify-release job")
+job_end = workflow.find("\n", workflow.find("        run: |", job_start))
+job_text = workflow[job_start:]
+required_lines = (
+    '          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"\n',
+    '          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"\n',
+)
+missing = [line.strip() for line in required_lines if line not in job_text]
+if missing:
+    raise SystemExit("missing verify-release retry lines: " + ", ".join(missing))
 PY
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-github-release.XXXXXX")"
@@ -219,6 +240,8 @@ PATH="${fixture_root}/bin:${PATH}" \
 set +e
 failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
+        FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES='1' \
+        FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS='0' \
         GITHUB_REF_NAME='44/merge' \
         GITHUB_REPOSITORY='resoltico/FinGrind' \
         FAKE_GH_MODE='bad-archive' \
@@ -243,6 +266,8 @@ printf '%s\n' "${failure_output}" | grep -Fq 'forbidden repo-owned agent metadat
 set +e
 attestation_failure_output="$(
     PATH="${fixture_root}/bin:${PATH}" \
+        FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES='1' \
+        FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS='0' \
         GITHUB_REF_NAME='44/merge' \
         GITHUB_REPOSITORY='resoltico/FinGrind' \
         FAKE_GH_MODE='bad-attestation' \
@@ -261,7 +286,9 @@ set -e
 if [[ ${attestation_failure_exit} -eq 0 ]]; then
     die "GitHub release verifier accepted bundle assets without a valid published attestation"
 fi
-printf '%s\n' "${attestation_failure_output}" | grep -Fq 'release v9.9.9 is missing or incomplete for the required asset set' || die \
-    "GitHub release verifier did not fail when published attestation verification failed"
+printf '%s\n' "${attestation_failure_output}" | grep -Fq 'published attestation verification failed for fingrind.zip' || die \
+    "GitHub release verifier no longer reports the failing published asset attestation"
+printf '%s\n' "${attestation_failure_output}" | grep -Fq 'release v9.9.9 verification failed:' || die \
+    "GitHub release verifier did not fail with the structured release-verification prefix"
 
 printf 'GitHub release verifier regression: success\n'

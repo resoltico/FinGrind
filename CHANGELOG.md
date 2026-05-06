@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   workflow-only tag-publication defects: fix `main` and rerun `release.yml` or `container.yml`
   with `workflow_dispatch` against the existing release tag instead of moving or duplicating the
   tag.
+- Fixed release-rerun publication convergence so `publish-github-release.sh` now replaces
+  same-named GitHub Release assets when their digest differs, the release workflow's own
+  verification step now carries the same release-asset propagation retry budget as the container
+  workflow, and `verify-github-release.sh` now reports the exact failing sub-check and asset name
+  instead of collapsing every publication defect into one generic "missing or incomplete" error.
 
 ## [0.32.0] - 2026-05-06
 
