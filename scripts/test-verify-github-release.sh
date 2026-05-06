@@ -40,6 +40,8 @@ grep -Fq 'verify-security-policy-surface.sh' "${verifier}" || die \
     "GitHub release verifier no longer checks the live security-policy surface"
 grep -Fq 'gh attestation verify' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer documents attestation-backed bundle verification"
+grep -Fq 'published release assets' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
+    "release protocol no longer documents attesting the published release assets themselves"
 grep -Fq 'Publication convergence is by asset name and digest' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer documents digest-aware release-asset convergence"
 grep -Fq 'gh attestation verify' "${verifier}" || die \
@@ -47,7 +49,7 @@ grep -Fq 'gh attestation verify' "${verifier}" || die \
 grep -Fq 'actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb' "${release_workflow}" || die \
     "release workflow no longer pins the published bundle attestation action"
 python3 - <<'PY' "${release_workflow}" || die \
-    "release workflow build-bundles job no longer grants the exact attestation permissions required by actions/attest"
+    "release workflow no longer isolates published-asset attestation to the neutral post-upload job"
 from pathlib import Path
 import sys
 
@@ -55,23 +57,52 @@ workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
 job_start = workflow.find("  build-bundles:\n")
 if job_start < 0:
     raise SystemExit("missing build-bundles job")
+job_end = workflow.find("\n  attest-release-assets:\n", job_start)
+if job_end < 0:
+    raise SystemExit("missing attest-release-assets job delimiter")
+job_text = workflow[job_start:job_end]
+if "actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb" in job_text:
+    raise SystemExit("build-bundles job is attesting local artifacts instead of only publishing them")
+required_lines = (
+    "    permissions:\n",
+    "      contents: write\n",
+)
+missing = [line.strip() for line in required_lines if line not in job_text]
+if missing:
+    raise SystemExit("missing build-bundles publish permission lines: " + ", ".join(missing))
+PY
+python3 - <<'PY' "${release_workflow}" || die \
+    "release workflow no longer grants the published-asset attestation job the permissions and download path required for exact-byte signing"
+from pathlib import Path
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+job_start = workflow.find("  attest-release-assets:\n")
+if job_start < 0:
+    raise SystemExit("missing attest-release-assets job")
 job_end = workflow.find("\n  verify-release:\n", job_start)
 if job_end < 0:
     raise SystemExit("missing verify-release job delimiter")
 job_text = workflow[job_start:job_end]
 required_lines = (
     "    permissions:\n",
-    "      contents: write\n",
+    "      contents: read\n",
     "      attestations: write\n",
     "      id-token: write\n",
     "      artifact-metadata: write\n",
+    '          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}\n',
+    '          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}\n',
+    '          FINGRIND_RELEASE_ASSET_DOWNLOAD_RETRIES: "18"\n',
+    '          FINGRIND_RELEASE_ASSET_DOWNLOAD_DELAY_SECONDS: "10"\n',
+    '            until gh release download "${RELEASE_TAG}" --pattern "${asset_name}" --dir release-assets >/dev/null 2>&1; do\n',
+    '            release-assets/fingrind-${{ needs.prepare-release.outputs.version }}-windows-x86_64.zip\n',
 )
 missing = [line.strip() for line in required_lines if line not in job_text]
 if missing:
-    raise SystemExit("missing build-bundles permission lines: " + ", ".join(missing))
+    raise SystemExit("missing attest-release-assets lines: " + ", ".join(missing))
 PY
 python3 - <<'PY' "${release_workflow}" || die \
-    "release workflow no longer grants the release verifier the publication retry budget needed for attestation propagation"
+    "release workflow no longer aligns the release-verifier timeout with its retry budget and published-asset attestation dependency"
 from pathlib import Path
 import sys
 
@@ -79,9 +110,10 @@ workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
 job_start = workflow.find("  verify-release:\n")
 if job_start < 0:
     raise SystemExit("missing verify-release job")
-job_end = workflow.find("\n", workflow.find("        run: |", job_start))
 job_text = workflow[job_start:]
 required_lines = (
+    '      - attest-release-assets\n',
+    '    timeout-minutes: 15\n',
     '          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"\n',
     '          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"\n',
 )

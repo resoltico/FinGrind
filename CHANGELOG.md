@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Hardened the tag-publication release workflow so each bundle-publication job now grants the
-  OIDC, attestation, and artifact-metadata permissions required by `actions/attest`, added a
-  regression that proves those permissions belong to the publishing job itself rather than only
-  appearing elsewhere in `release.yml`, and clarified the release protocol's recovery path for
-  workflow-only tag-publication defects: fix `main` and rerun `release.yml` or `container.yml`
-  with `workflow_dispatch` against the existing release tag instead of moving or duplicating the
-  tag.
+- Fixed public-release provenance so `.github/workflows/release.yml` now attests the exact bundle
+  and checksum bytes downloaded back from the published GitHub Release on one neutral post-upload
+  job instead of attesting per-runner local artifacts, which closes the Windows publication drift
+  where repository attestations could point at different digests than the shipped release assets.
+- Raised the release verifier job timeout to fit its explicit GitHub-release propagation retry
+  budget, and documented that timeout/retry alignment as part of the release protocol contract.
+- Hardened the tag-publication release workflow so published-asset attestation now runs on one
+  dedicated neutral post-upload job with the exact OIDC, attestation, and artifact-metadata
+  permissions required by `actions/attest`, and clarified the release protocol's recovery path
+  for workflow-only tag-publication defects: fix `main` and rerun `release.yml` or
+  `container.yml` with `workflow_dispatch` against the existing release tag instead of moving or
+  duplicating the tag.
 - Fixed release-rerun publication convergence so `publish-github-release.sh` now replaces
   same-named GitHub Release assets when their digest differs, the release workflow's own
   verification step now carries the same release-asset propagation retry budget as the container

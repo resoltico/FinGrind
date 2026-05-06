@@ -159,7 +159,7 @@ Current verification paths:
 ## Release Integrity And Disclosure
 
 Public release integrity rules:
-- every published CLI archive and every published archive checksum file receives one GitHub artifact attestation from `.github/workflows/release.yml`
+- every published CLI archive and every published archive checksum file receives one GitHub artifact attestation from `.github/workflows/release.yml`, and those attestations are created from the exact bytes downloaded back from the published release object rather than from per-runner local bundle outputs
 - `./scripts/verify-github-release.sh` verifies the release object, downloads the published
   assets, verifies their attestations with `gh attestation verify`, and rejects releases whose
   source archives leak repo-owned agent metadata

@@ -507,6 +507,10 @@ Requirements:
 - Every published archive and published checksum file verifies through `gh attestation verify`
   against the repository's `.github/workflows/release.yml` signer workflow. The helper script
   downloads the published assets and performs that verification for you.
+- The release workflow must create those attestations from the published release assets
+  themselves. Upload the bundle and checksum files first, download the published bytes back from
+  GitHub on a neutral attestation job, and attest those downloaded files. Do not attest
+  runner-local build outputs directly.
 - Publication convergence is by asset name and digest, not by asset name alone. If a repaired
   rerun rebuilds `fingrind-X.Y.Z-...` under an existing release asset name and the bytes differ,
   the publication step must replace the stale release asset before attestation verification runs.
@@ -525,7 +529,8 @@ public release verification fails if the repository's private vulnerability repo
 longer matches the checked-in security policy.
 The release and container workflows both carry an explicit retry budget for release-asset and
 attestation propagation because GitHub can publish those surfaces asynchronously after the bundle
-jobs complete.
+jobs complete. The release workflow's verifier job timeout must exceed that retry budget with
+headroom; treat a shorter timeout as a release-system defect.
 
 The container workflow is also expected to wait for this complete GitHub release asset set before
 it publishes the public image. If container publication succeeds while the release asset set is
