@@ -30,6 +30,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-bundle-archive-pruning.sh
     scripts/test-release-smoke-workflow.sh
     scripts/test-release-check-contract.sh
+    scripts/test-verify-release-pr-gate.sh
     scripts/test-release-protocol-pr-diff-fallback.sh
     scripts/test-release-protocol-worktree-handoff.sh
     scripts/test-verify-release-candidate-tag.sh
@@ -56,6 +57,7 @@ readonly check_stage5_executable_script_paths=(
 
 readonly check_stage5_shell_only_script_paths=(
     scripts/verify-release-candidate-tag.sh
+    scripts/verify-release-pr-gate.sh
     scripts/verify-release-merge-handoff.sh
 )
 

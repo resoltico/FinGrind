@@ -48,6 +48,12 @@ grep -Fq "required checks remain exactly \`${expected_check_name}\`" "${bootstra
     "bootstrap protocol no longer documents Gate as the sole required check"
 grep -Fq "required status checks are exactly \`${expected_check_name}\`" "${release_protocol}" || die \
     "release protocol no longer documents Gate as the sole required status check"
+grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
+    "release protocol no longer requires the PR Gate verifier"
+grep -Fq 'The aggregate `Gate` check run appears only after `Check`, `Windows bundle smoke`, and `Docker' "${release_protocol}" || die \
+    "release protocol no longer documents delayed aggregate Gate materialization"
+grep -Fq '`Gate` is still absent. Treat a missing `Gate` as pending, not as success.' "${release_protocol}" || die \
+    "release protocol no longer documents missing-Gate-as-pending semantics"
 grep -Fq "Step 10 must close the superseded PR and delete its branch" "${release_protocol}" || die \
     "release protocol no longer closes superseded release-starting PRs"
 grep -Fq "No superseded ordinary PR may remain open after release hygiene." "${release_protocol}" || die \
