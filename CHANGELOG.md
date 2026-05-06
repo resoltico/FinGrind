@@ -5,6 +5,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Hardened the tag-publication release workflow so each bundle-publication job now grants the
+  OIDC, attestation, and artifact-metadata permissions required by `actions/attest`, added a
+  regression that proves those permissions belong to the publishing job itself rather than only
+  appearing elsewhere in `release.yml`, and clarified the release protocol's recovery path for
+  workflow-only tag-publication defects: fix `main` and rerun `release.yml` or `container.yml`
+  with `workflow_dispatch` against the existing release tag instead of moving or duplicating the
+  tag.
+
 ## [0.32.0] - 2026-05-06
 
 ### Fixed
