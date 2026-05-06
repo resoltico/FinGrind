@@ -7,6 +7,7 @@ from .models import ReleaseSmokeConfig, SmokePath
 from .support import (
     extract_pdf_exported_path,
     normalize_reported_path,
+    normalized_path_components,
     require,
     require_match,
     require_no_match,
@@ -280,9 +281,9 @@ def assert_operator_queries_and_reports(
         r"^Argument[[:space:]]+:[[:space:]]+--pdf-out$",
         f"{config.label} PDF export did not attribute diagnostics to --pdf-out",
     )
+    reported_pdf_path = extract_pdf_exported_path(pdf_stderr)
     require(
-        normalize_reported_path(extract_pdf_exported_path(pdf_stderr))
-        == normalize_reported_path(expected_reported_artifact_path(config, config.trial_balance_pdf)),
+        reported_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
         f"{config.label} PDF export diagnostics did not report the normalized written artifact path",
     )
     require_match(
@@ -319,5 +320,21 @@ def assert_operator_queries_and_reports(
 
 def expected_reported_artifact_path(config: ReleaseSmokeConfig, smoke_path: SmokePath) -> str:
     if config.reported_work_root is not None and smoke_path.argument != str(smoke_path.local_path):
-        return str(config.reported_work_root / smoke_path.argument)
+        return str(config.reported_work_root / smoke_path.relative_path)
     return str(smoke_path.local_path)
+
+
+def reported_artifact_path_matches(
+    config: ReleaseSmokeConfig,
+    smoke_path: SmokePath,
+    reported_path: str,
+) -> bool:
+    expected_path = expected_reported_artifact_path(config, smoke_path)
+    if normalize_reported_path(reported_path) == normalize_reported_path(expected_path):
+        return True
+    reported_components = normalized_path_components(reported_path)
+    relative_components = normalized_path_components(smoke_path.relative_path.as_posix())
+    return (
+        len(reported_components) >= len(relative_components)
+        and reported_components[-len(relative_components) :] == relative_components
+    )

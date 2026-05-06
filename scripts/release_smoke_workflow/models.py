@@ -6,6 +6,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class SmokePath:
+    relative_path: Path
     local_path: Path
     argument: str
 

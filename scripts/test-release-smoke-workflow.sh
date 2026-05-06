@@ -163,7 +163,11 @@ assert (
 )
 assert docker.actor_prefix == "docker-acceptance"
 
-dummy = SmokePath(local_path=pathlib.Path("/tmp/dummy"), argument="dummy")
+dummy = SmokePath(
+    relative_path=pathlib.Path("dummy"),
+    local_path=pathlib.Path("/tmp/dummy"),
+    argument="dummy",
+)
 with tempfile.TemporaryDirectory() as temp_dir:
     temp_path = pathlib.Path(temp_dir)
     bridge_script = temp_path / "bridge.py"
@@ -254,7 +258,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
         book_key=dummy,
         replacement_book_key=dummy,
         prompt_failure_book=dummy,
-        trial_balance_pdf=SmokePath(local_path=pdf_path, argument=str(pdf_path)),
+        trial_balance_pdf=SmokePath(
+            relative_path=pathlib.Path("reports odd") / "trial balance [bridge].pdf",
+            local_path=pdf_path,
+            argument=str(pdf_path),
+        ),
         trial_balance_pdf_stderr_path=temp_path / "stderr.txt",
         second_page_command_id="bridge-sale",
         actor_prefix="bridge",
@@ -329,6 +337,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         replacement_book_key=dummy,
         prompt_failure_book=dummy,
         trial_balance_pdf=SmokePath(
+            relative_path=pathlib.Path("reports odd") / "trial balance [bridge].pdf",
             local_path=pdf_path,
             argument="reports odd/trial balance [bridge].pdf",
         ),
