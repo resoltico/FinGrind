@@ -247,7 +247,7 @@ It is not the public release artifact.
 Every GitHub release must publish:
 - one archive per supported target (`.tar.gz` for macOS and Linux, `.zip` for Windows)
 - one `.sha256` checksum file per supported target archive
-- one GitHub artifact attestation per published archive and checksum file
+- one GitHub artifact attestation per published archive and checksum file, created from the exact bytes downloaded from the published GitHub Release rather than attesting runner-local bundle outputs
 
 Every release must verify:
 - the extracted bundle runs without ambient Java
