@@ -124,6 +124,10 @@ assert_wrapper_help 'Usage: jazzer/bin/replay <target-key> <input-path> [--json]
     "${repo_root}/jazzer/bin/replay" --help
 assert_wrapper_help 'Usage: jazzer/bin/list-findings [<target-key>] [--json] [supported Gradle options]' \
     "${repo_root}/jazzer/bin/list-findings" --help
+assert_wrapper_help 'Usage: jazzer/bin/promote-seed <target-key> <input-path> --name <seed-name> --intent <coverage-intent> [--json] [supported Gradle options]' \
+    "${repo_root}/jazzer/bin/promote-seed" --help
+assert_wrapper_help 'Usage: jazzer/bin/seed-audit [<target-key>] [--json] [supported Gradle options]' \
+    "${repo_root}/jazzer/bin/seed-audit" --help
 assert_wrapper_help 'Usage: jazzer/bin/clean-local-findings [supported Gradle options]' \
     "${repo_root}/jazzer/bin/clean-local-findings" --help
 assert_wrapper_help 'Usage: jazzer/bin/clean-local-corpus [supported Gradle options]' \
@@ -138,5 +142,19 @@ while IFS= read -r target_key; do
 done < <(
     python3 "${repo_root}/scripts/read-jazzer-topology.py" active-target-keys
 )
+
+promote_help_output="$(run_help env "TMPDIR=$(mktemp -d "${temp_root}/help-surface.XXXXXX")" "${repo_root}/jazzer/bin/promote-seed" --help)"
+[[ "${promote_help_output}" == *'Supported <target-key> values:'* ]] ||
+    die "promote-seed help omitted the supported target-key heading"
+[[ "${promote_help_output}" == *'cli-request'* && "${promote_help_output}" == *'sqlite-book-roundtrip'* ]] ||
+    die "promote-seed help omitted replayable target keys"
+[[ "${promote_help_output}" == *'must describe one committed behavior or invariant uniquely across the corpus'* ]] ||
+    die "promote-seed help omitted the coverage-intent uniqueness contract"
+
+seed_audit_help_output="$(run_help env "TMPDIR=$(mktemp -d "${temp_root}/help-surface.XXXXXX")" "${repo_root}/jazzer/bin/seed-audit" --help)"
+[[ "${seed_audit_help_output}" == *'Supported <target-key> values:'* ]] ||
+    die "seed-audit help omitted the supported target-key heading"
+[[ "${seed_audit_help_output}" == *'cli-request'* && "${seed_audit_help_output}" == *'sqlite-book-roundtrip'* ]] ||
+    die "seed-audit help omitted replayable target keys"
 
 printf 'operator help surface regression: success\n'

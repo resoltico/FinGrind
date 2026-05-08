@@ -4,15 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Thin compatibility base that now layers small SQLite fixture and introspection supports. */
-@NullUnmarked
 class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupport {
   @TempDir Path tempDirectory;
 
@@ -24,14 +25,12 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
             SqliteNativeConnections.open(bookAccess(bookPath)),
             SqliteStoreAccessMode.READ_WRITE_CREATE)) {
       database.executeScript(driftSql + ";");
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
                   SqliteConnectionConfigurer.assertOpenConfiguration(
                       database, SqliteStoreAccessMode.READ_WRITE_CREATE));
-
       assertEquals(expectedMessage, exception.getMessage());
     }
   }
@@ -53,5 +52,13 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
+  }
+
+  static PostingCommitResult commitPosting(
+      SqlitePostingFactStore postingFactStore, CommittedPosting postingFact) {
+    return postingFactStore.commit(
+        new PostingDraft(
+            postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
+        postingFact::postingId);
   }
 }

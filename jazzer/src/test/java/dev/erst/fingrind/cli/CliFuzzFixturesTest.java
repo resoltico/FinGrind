@@ -11,8 +11,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.BookAdministrationService;
-import dev.erst.fingrind.executor.BookAdministrationSession;
-import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -31,6 +29,11 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,12 +56,6 @@ class CliFuzzFixturesTest {
     assertEquals(
         "plan-1",
         CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8)).planId().value());
-    assertEquals(
-        "plan-1",
-        CliFuzzFixtures.readBookWorkflowPlan(basicValidLedgerPlan().getBytes(UTF_8)).planId());
-    assertTrue(
-        CliFuzzFixtures.readBookWorkflowPlan(basicValidLedgerPlan().getBytes(UTF_8))
-            .beginsWithOpenBook());
     assertEquals(
         CliFuzzFixtures.postingIdGenerator(requestBytes).nextPostingId().value(),
         CliFuzzFixtures.postingIdGenerator(requestBytes).nextPostingId().value());
@@ -135,30 +132,16 @@ class CliFuzzFixturesTest {
 
     BookAdministrationService driftedOpenBookService =
         new BookAdministrationService(
-            new BookAdministrationSession() {
+            new AbstractBookStoreStub() {
               @Override
               public BookOpeningOutcome openBook(Instant initializedAt) {
                 return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1));
-              }
-
-              @Override
-              public AccountDeclarationOutcome declareAccount(
-                  AccountCode accountCode,
-                  AccountName accountName,
-                  NormalBalance normalBalance,
-                  Instant declaredAt) {
-                throw new UnsupportedOperationException("not used");
               }
             },
             CliFuzzFixtures.fixedClock());
     BookAdministrationService inactiveReactivationService =
         new BookAdministrationService(
-            new BookAdministrationSession() {
-              @Override
-              public BookOpeningOutcome openBook(Instant initializedAt) {
-                throw new UnsupportedOperationException("not used");
-              }
-
+            new AbstractBookStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
@@ -173,12 +156,7 @@ class CliFuzzFixturesTest {
             CliFuzzFixtures.fixedClock());
     BookAdministrationService changedDeclaredAtService =
         new BookAdministrationService(
-            new BookAdministrationSession() {
-              @Override
-              public BookOpeningOutcome openBook(Instant initializedAt) {
-                throw new UnsupportedOperationException("not used");
-              }
-
+            new AbstractBookStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
@@ -221,16 +199,11 @@ class CliFuzzFixturesTest {
     AccountRegistryCursor nextCursor = new AccountRegistryCursor(firstAccount.accountCode());
     AtomicInteger pageCalls = new AtomicInteger();
     List<Optional<AccountRegistryCursor>> cursors = new ArrayList<>();
-    BookReadSession pagedSession =
-        new BookReadSession() {
+    BookStore pagedStore =
+        new AbstractBookStoreStub() {
           @Override
-          public dev.erst.fingrind.contract.BookInspection inspectBook() {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public boolean isInitialized() {
-            return true;
+          public BookLifecycleInspection inspectBook() {
+            return new BookLifecycleInspection.Initialized(7, 1, 1, Instant.EPOCH);
           }
 
           @Override
@@ -245,47 +218,89 @@ class CliFuzzFixturesTest {
             return new AccountRegistryPage(
                 List.of(toRegisteredAccount(secondAccount)), query.limit(), Optional.empty());
           }
-
-          @Override
-          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public Optional<CommittedPosting> findPosting(
-              dev.erst.fingrind.core.PostingId postingId) {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public PostingHistoryPage listPostings(PostingHistoryQuery query) {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public AccountLedgerView accountLedger(
-              AccountLedgerCriteria query, RegisteredAccount account) {
-            throw new UnsupportedOperationException("not used");
-          }
-
-          @Override
-          public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
-            throw new UnsupportedOperationException("not used");
-          }
         };
 
-    assertEquals(List.of(firstAccount, secondAccount), CliFuzzFixtures.listAccounts(pagedSession));
+    assertEquals(List.of(firstAccount, secondAccount), CliFuzzFixtures.listAccounts(pagedStore));
     assertEquals(List.of(Optional.empty(), Optional.of(nextCursor)), cursors);
+  }
+
+  private abstract static class AbstractBookStoreStub implements BookStore {
+    @Override
+    public BookOpeningOutcome openBook(Instant initializedAt) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public AccountDeclarationOutcome declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public BookLifecycleInspection inspectBook() {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<CommittedPosting> findExistingPosting(
+        dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<CommittedPosting> findPosting(dev.erst.fingrind.core.PostingId postingId) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<CommittedPosting> findReversalFor(
+        dev.erst.fingrind.core.PostingId priorPostingId) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public PostingHistoryPage listPostings(PostingHistoryQuery query) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public PostingCommitResult commit(
+        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      throw new UnsupportedOperationException("not used");
+    }
   }
 
   private static RegisteredAccount toRegisteredAccount(DeclaredAccount account) {

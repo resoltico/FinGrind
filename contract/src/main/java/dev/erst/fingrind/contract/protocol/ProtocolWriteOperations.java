@@ -20,14 +20,18 @@ final class ProtocolWriteOperations {
             ExecutionMode.JSON_ENVELOPE,
             "Execute one ordered AI-agent ledger plan inside a single atomic book transaction.",
             List.of(
-                "fingrind %s > plan.json".formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName()),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s plan.json"
-                    .formatted(
-                        OperationId.EXECUTE_PLAN.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE),
-                "Replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value in plan.json before execution.")),
+                ProtocolExampleStep.command(
+                    "fingrind %s > plan.json"
+                        .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s plan.json"
+                        .formatted(
+                            OperationId.EXECUTE_PLAN.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REQUEST_FILE)),
+                ProtocolExampleStep.note(
+                    "Replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value in plan.json before execution."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PREFLIGHT_ENTRY,
             OperationCategory.WRITE,
@@ -42,15 +46,18 @@ final class ProtocolWriteOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Validate one posting request without committing it.",
             List.of(
-                "fingrind %s > request.json"
-                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
-                    .formatted(
-                        OperationId.PREFLIGHT_ENTRY.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE),
-                "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in request.json before submission.")),
+                ProtocolExampleStep.command(
+                    "fingrind %s > request.json"
+                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
+                        .formatted(
+                            OperationId.PREFLIGHT_ENTRY.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REQUEST_FILE)),
+                ProtocolExampleStep.note(
+                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in request.json before submission."))),
         ProtocolOperationDefinitions.operation(
             OperationId.POST_ENTRY,
             OperationCategory.WRITE,
@@ -65,14 +72,17 @@ final class ProtocolWriteOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Commit one posting request into the selected SQLite book.",
             List.of(
-                "fingrind %s > request.json"
-                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
-                    .formatted(
-                        OperationId.POST_ENTRY.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE),
-                "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in request.json before submission.")));
+                ProtocolExampleStep.command(
+                    "fingrind %s > request.json"
+                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s request.json"
+                        .formatted(
+                            OperationId.POST_ENTRY.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REQUEST_FILE)),
+                ProtocolExampleStep.note(
+                    "Replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value in request.json before submission."))));
   }
 }

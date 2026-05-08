@@ -16,13 +16,10 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void accountLedger_computesOpeningRunningAndClosingBalances() {
     Path databasePath = tempDirectory.resolve("account-ledger-report.sqlite");
@@ -53,17 +50,14 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "USD", "8.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "USD", "8.00")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(postingOne);
-      postingFactStore.commit(postingTwo);
-      postingFactStore.commit(postingThree);
-
+      commitPosting(postingFactStore, postingOne);
+      commitPosting(postingFactStore, postingTwo);
+      commitPosting(postingFactStore, postingThree);
       RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
-
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(cashAccount),
@@ -126,15 +120,12 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(posting);
-
+      commitPosting(postingFactStore, posting);
       RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
-
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(cashAccount),
@@ -184,16 +175,13 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(openingPosting);
-      postingFactStore.commit(inRangePosting);
-
+      commitPosting(postingFactStore, openingPosting);
+      commitPosting(postingFactStore, inRangePosting);
       RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
-
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(revenueAccount),
@@ -251,16 +239,13 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "USD", "7.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "USD", "7.00")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(eurOpeningPosting);
-      postingFactStore.commit(usdOpeningPosting);
-
+      commitPosting(postingFactStore, eurOpeningPosting);
+      commitPosting(postingFactStore, usdOpeningPosting);
       RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
-
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(cashAccount),

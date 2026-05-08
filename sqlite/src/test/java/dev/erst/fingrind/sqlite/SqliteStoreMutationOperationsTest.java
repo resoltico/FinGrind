@@ -9,20 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Unit tests for isolated recovery helpers inside {@link SqliteStoreMutationOperations}. */
-@NullUnmarked
 class SqliteStoreMutationOperationsTest {
   @TempDir Path tempDirectory;
 
   @Test
   void captureBestEffortRuntimeFailure_returnsNullOnSuccessAndReturnsRuntimeFailure() {
     assertNull(SqliteStoreMutationOperations.captureBestEffortRuntimeFailure(() -> {}));
-
     RuntimeException failure = new IllegalStateException("close failed");
     assertSame(
         failure,
@@ -37,16 +36,13 @@ class SqliteStoreMutationOperationsTest {
     RuntimeException verificationFailure = new IllegalStateException("verify failed");
     RuntimeException restoreFailure = new IllegalStateException("restore failed");
     RuntimeException closeFailure = new IllegalStateException("close failed");
-
     IllegalStateException failure =
         SqliteStoreMutationOperations.catastrophicRekeyRestoreFailure(
             verificationFailure, restoreFailure, closeFailure);
-
     assertSame(verificationFailure, failure.getCause());
     assertEquals(2, failure.getSuppressed().length);
     assertSame(restoreFailure, failure.getSuppressed()[0]);
     assertSame(closeFailure, failure.getSuppressed()[1]);
-
     IllegalStateException withoutCloseFailure =
         SqliteStoreMutationOperations.catastrophicRekeyRestoreFailure(
             verificationFailure, restoreFailure, null);
@@ -58,14 +54,12 @@ class SqliteStoreMutationOperationsTest {
   void restoredOriginalBookFailure_preservesVerificationCauseAndOptionalCloseFailure() {
     RuntimeException verificationFailure = new IllegalStateException("verify failed");
     RuntimeException closeFailure = new IllegalStateException("close failed");
-
     IllegalStateException withCloseFailure =
         SqliteStoreMutationOperations.restoredOriginalBookFailure(
             verificationFailure, closeFailure);
     assertSame(verificationFailure, withCloseFailure.getCause());
     assertEquals(1, verificationFailure.getSuppressed().length);
     assertSame(closeFailure, verificationFailure.getSuppressed()[0]);
-
     RuntimeException cleanVerificationFailure = new IllegalStateException("verify failed cleanly");
     IllegalStateException withoutCloseFailure =
         SqliteStoreMutationOperations.restoredOriginalBookFailure(cleanVerificationFailure, null);
@@ -79,14 +73,12 @@ class SqliteStoreMutationOperationsTest {
     RuntimeException restoreFailure = new IllegalStateException("restore failed");
     RuntimeException closeFailure = new IllegalStateException("close failed");
     AtomicInteger deleteCalls = new AtomicInteger();
-
     IllegalStateException catastrophic =
         SqliteStoreMutationOperations.finalizeFailedRekey(
             verificationFailure, restoreFailure, closeFailure, deleteCalls::incrementAndGet);
     assertSame(verificationFailure, catastrophic.getCause());
     assertEquals(2, catastrophic.getSuppressed().length);
     assertEquals(0, deleteCalls.get());
-
     RuntimeException restoredVerificationFailure =
         new IllegalStateException("verify failed cleanly");
     IllegalStateException restored =
@@ -139,7 +131,7 @@ class SqliteStoreMutationOperationsTest {
 
   /** Test-only context seam that captures the reopened replacement handle before publication. */
   private static final class CapturingStoreContext extends SqliteStoreContext {
-    private SqliteNativeDatabase reopenedDatabase;
+    private @Nullable SqliteNativeDatabase reopenedDatabase;
 
     CapturingStoreContext(
         Path bookPath, java.util.function.Supplier<SqliteNativeApi> sqliteApiSupplier) {
@@ -153,7 +145,7 @@ class SqliteStoreMutationOperationsTest {
     }
 
     SqliteNativeDatabase reopenedDatabase() {
-      return reopenedDatabase;
+      return Objects.requireNonNull(reopenedDatabase, "reopenedDatabase");
     }
   }
 

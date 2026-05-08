@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.contract.RekeyBookResult;
@@ -10,12 +9,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.BookAdministrationSession;
-import dev.erst.fingrind.executor.BookReadSession;
-import dev.erst.fingrind.executor.PostingBookSession;
-import dev.erst.fingrind.executor.PostingCommitResult;
-import dev.erst.fingrind.executor.PostingDraft;
-import dev.erst.fingrind.executor.PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -32,6 +25,10 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Map;
@@ -52,9 +49,6 @@ class SqlitePostingFactStore implements SqliteBookSession {
   final SqliteStoreLifecycle lifecycle;
   private final SqliteStoreReadOperations readOperations;
   private final SqliteStoreMutationOperations mutationOperations;
-  private final BookAdministrationSession administrationView;
-  private final PostingBookSession postingView;
-  private final BookReadSession readView;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
   SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
@@ -106,9 +100,6 @@ class SqlitePostingFactStore implements SqliteBookSession {
     this.lifecycle = new SqliteStoreLifecycle(this.context, sessionSecret);
     this.readOperations = new SqliteStoreReadOperations(context, lifecycle);
     this.mutationOperations = new SqliteStoreMutationOperations(context, lifecycle);
-    this.administrationView = new SqliteBookAdministrationSessionView(mutationOperations);
-    this.postingView = new SqlitePostingBookSessionView(readOperations, mutationOperations);
-    this.readView = new SqliteBookReadSessionView(readOperations);
   }
 
   /** Opens and primes one SQLite-backed book session for explicit CLI/workflow result handling. */
@@ -125,31 +116,9 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   @Override
-  public BookAdministrationSession administrationSession() {
-    threadOwner.requireOwnerThread();
-    return administrationView;
-  }
-
-  @Override
-  public PostingBookSession postingSession() {
-    threadOwner.requireOwnerThread();
-    return postingView;
-  }
-
-  @Override
-  public BookReadSession readSession() {
-    threadOwner.requireOwnerThread();
-    return readView;
-  }
-
-  BookInspection inspectBook() {
+  public BookLifecycleInspection inspectBook() {
     threadOwner.requireOwnerThread();
     return readOperations.inspectBook();
-  }
-
-  boolean isInitialized() {
-    threadOwner.requireOwnerThread();
-    return readOperations.isInitialized();
   }
 
   @Override
@@ -158,12 +127,14 @@ class SqlitePostingFactStore implements SqliteBookSession {
     return readOperations.findAccount(accountCode);
   }
 
-  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  @Override
+  public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     threadOwner.requireOwnerThread();
     return readOperations.findAccounts(accountCodes);
   }
 
-  AccountRegistryPage listAccounts(AccountRegistryQuery query) {
+  @Override
+  public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     threadOwner.requireOwnerThread();
     return readOperations.listAccounts(query);
   }
@@ -174,47 +145,56 @@ class SqlitePostingFactStore implements SqliteBookSession {
     return readOperations.findExistingPosting(idempotencyKey);
   }
 
-  Optional<CommittedPosting> findPosting(PostingId postingId) {
+  @Override
+  public Optional<CommittedPosting> findPosting(PostingId postingId) {
     threadOwner.requireOwnerThread();
     return readOperations.findPosting(postingId);
   }
 
-  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+  @Override
+  public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     threadOwner.requireOwnerThread();
     return readOperations.findReversalFor(priorPostingId);
   }
 
-  PostingHistoryPage listPostings(PostingHistoryQuery query) {
+  @Override
+  public PostingHistoryPage listPostings(PostingHistoryQuery query) {
     threadOwner.requireOwnerThread();
     return readOperations.listPostings(query);
   }
 
-  Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
+  @Override
+  public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.accountBalance(query);
   }
 
-  TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+  @Override
+  public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.trialBalance(query);
   }
 
-  AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
+  @Override
+  public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
     threadOwner.requireOwnerThread();
     return readOperations.accountLedger(query, account);
   }
 
-  PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
+  @Override
+  public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
     threadOwner.requireOwnerThread();
     return readOperations.periodSummary(query);
   }
 
-  BookOpeningOutcome openBook(Instant initializedAt) {
+  @Override
+  public BookOpeningOutcome openBook(Instant initializedAt) {
     threadOwner.requireOwnerThread();
     return mutationOperations.openBook(initializedAt);
   }
 
-  AccountDeclarationOutcome declareAccount(
+  @Override
+  public AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
       NormalBalance normalBalance,
@@ -223,7 +203,9 @@ class SqlitePostingFactStore implements SqliteBookSession {
     return mutationOperations.declareAccount(accountCode, accountName, normalBalance, declaredAt);
   }
 
-  PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+  @Override
+  public PostingCommitResult commit(
+      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
     threadOwner.requireOwnerThread();
     return mutationOperations.commit(postingDraft, postingIdGenerator);
   }
@@ -302,15 +284,5 @@ class SqlitePostingFactStore implements SqliteBookSession {
 
   static ContractDecision<SqliteBookPassphrase> passphraseDecisionFor(BookAccess bookAccess) {
     return SqliteStoreOperations.passphraseFor(bookAccess);
-  }
-
-  /** Commits one fully materialized posting fact for fixture-oriented callers. */
-  PostingCommitResult commit(CommittedPosting postingFact) {
-    threadOwner.requireOwnerThread();
-    Objects.requireNonNull(postingFact, "postingFact");
-    return commit(
-        new PostingDraft(
-            postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
-        postingFact::postingId);
   }
 }

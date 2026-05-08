@@ -48,10 +48,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 
 /** Shared CLI fixture helpers and sample payloads for split command tests. */
-@NullUnmarked
 class CliFixtureSupport extends CliIoFixtureSupport {
   protected static DeclaredAccount declaredAccount(
       String accountCode, String accountName, NormalBalance normalBalance) {

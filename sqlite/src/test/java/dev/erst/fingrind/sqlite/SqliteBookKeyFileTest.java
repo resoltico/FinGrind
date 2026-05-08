@@ -18,12 +18,10 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for the SQLite book-key file loader. */
-@NullUnmarked
 class SqliteBookKeyFileTest {
   @TempDir Path tempDirectory;
 
@@ -31,7 +29,6 @@ class SqliteBookKeyFileTest {
   void load_acceptsUtf8PassphraseAndStripsOneTrailingLineEnding() throws Exception {
     Path keyFile = tempDirectory.resolve("book.key");
     writeSecureString(keyFile, "swordfish\n");
-
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
       assertEquals(
@@ -52,7 +49,6 @@ class SqliteBookKeyFileTest {
   void load_acceptsUtf8PassphraseAndStripsOneTrailingCrLf() throws Exception {
     Path keyFile = tempDirectory.resolve("book-crlf.key");
     writeSecureString(keyFile, "swordfish\r\n");
-
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(9, keyMaterial.byteLength());
     }
@@ -62,7 +58,6 @@ class SqliteBookKeyFileTest {
   void load_acceptsUtf8PassphraseWithoutTrailingLineEnding() throws Exception {
     Path keyFile = tempDirectory.resolve("book-no-newline.key");
     writeSecureString(keyFile, "swordfish");
-
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(9, keyMaterial.byteLength());
     }
@@ -72,57 +67,49 @@ class SqliteBookKeyFileTest {
   void load_rejectsEmptyPassphraseAfterTrailingLineEndingNormalization() throws Exception {
     Path keyFile = tempDirectory.resolve("empty.key");
     writeSecureString(keyFile, "\r\n");
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("must contain a non-empty UTF-8 passphrase"));
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains("must contain a non-empty UTF-8 passphrase"));
   }
 
   @Test
   void load_rejectsSingleLineFeedThatNormalizesToEmptyPassphrase() throws Exception {
     Path keyFile = tempDirectory.resolve("line-feed-only.key");
     writeSecureString(keyFile, "\n");
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("must contain a non-empty UTF-8 passphrase"));
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains("must contain a non-empty UTF-8 passphrase"));
   }
 
   @Test
   void load_rejectsTrulyEmptyKeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("empty-file.key");
     writeSecureBytes(keyFile, new byte[0]);
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("must contain a non-empty UTF-8 passphrase"));
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains("must contain a non-empty UTF-8 passphrase"));
   }
 
   @Test
   void load_rejectsInvalidUtf8() throws Exception {
     Path keyFile = tempDirectory.resolve("invalid-utf8.key");
     writeSecureBytes(keyFile, new byte[] {(byte) 0xC3, (byte) 0x28});
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("must contain a UTF-8 passphrase"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
   @Test
   void load_rejectsControlCharactersInsidePassphrase() throws Exception {
     Path keyFile = tempDirectory.resolve("control-character.key");
     writeSecureString(keyFile, "sword\u0007fish");
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
     assertTrue(
-        exception
-            .getMessage()
+        NullTestSupport.messageOf(exception)
             .contains(
                 "must contain a single-line UTF-8 text passphrase without control characters"));
   }
@@ -131,13 +118,10 @@ class SqliteBookKeyFileTest {
   void load_rejectsOversizedKeyFiles() throws Exception {
     Path keyFile = tempDirectory.resolve("oversized.key");
     writeSecureString(keyFile, "x".repeat(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1));
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
     assertTrue(
-        exception
-            .getMessage()
+        NullTestSupport.messageOf(exception)
             .contains(
                 "selected key file exceeded the %d-byte limit"
                     .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES)));
@@ -147,13 +131,10 @@ class SqliteBookKeyFileTest {
   void load_rejectsEmbeddedLineFeedsAfterTrailingNormalization() throws Exception {
     Path keyFile = tempDirectory.resolve("embedded-line-feed.key");
     writeSecureString(keyFile, "first\nsecond\n");
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
     assertTrue(
-        exception
-            .getMessage()
+        NullTestSupport.messageOf(exception)
             .contains(
                 "must contain a single-line UTF-8 text passphrase without control characters"));
   }
@@ -161,17 +142,15 @@ class SqliteBookKeyFileTest {
   @Test
   void load_rethrowsMissingKeyFileAsStableIllegalState() {
     Path keyFile = tempDirectory.resolve("missing.key");
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("The FinGrind book key file does not exist"));
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains("The FinGrind book key file does not exist"));
   }
 
   @Test
   void readBytes_wrapsIoFailuresAsInvalidBookKeyFileFailures() {
     Path keyFile = tempDirectory.resolve("read-io-failure.key");
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -182,19 +161,17 @@ class SqliteBookKeyFileTest {
                           throw new IOException("boom");
                         })
                     .requireAccepted());
-
-    assertTrue(exception.getMessage().contains("Failed to read the FinGrind book key file"));
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains("Failed to read the FinGrind book key file"));
   }
 
   @Test
   void load_rejectsDirectoryTargets() throws IOException {
     Path keyDirectory = tempDirectory.resolve("not-a-file.key");
     Files.createDirectories(keyDirectory);
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyDirectory));
-
-    assertTrue(exception.getMessage().contains("regular non-symlink file"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("regular non-symlink file"));
   }
 
   @Test
@@ -203,11 +180,9 @@ class SqliteBookKeyFileTest {
     Path keyFile = tempDirectory.resolve("owner-unreadable.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     Files.setPosixFilePermissions(keyFile, Set.of(PosixFilePermission.OWNER_WRITE));
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("owner-readable"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("owner-readable"));
   }
 
   @Test
@@ -221,11 +196,9 @@ class SqliteBookKeyFileTest {
             PosixFilePermission.OWNER_READ,
             PosixFilePermission.OWNER_WRITE,
             PosixFilePermission.GROUP_READ));
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("owner-only permissions"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("owner-only permissions"));
   }
 
   @Test
@@ -245,18 +218,17 @@ class SqliteBookKeyFileTest {
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     Files.setPosixFilePermissions(
         keyFile, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, () -> SqliteBookKeyFile.load(keyFile));
-
-    assertTrue(exception.getMessage().contains("parent directory must use owner-only permissions"));
+    assertTrue(
+        NullTestSupport.messageOf(exception)
+            .contains("parent directory must use owner-only permissions"));
   }
 
   @Test
   void requireSecureKeyFile_wrapsUnsupportedSecurityInspection() throws IOException {
     Path keyFile = tempDirectory.resolve("zipfs.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -267,30 +239,25 @@ class SqliteBookKeyFileTest {
                           throw new UnsupportedOperationException("no owner-only security view");
                         })
                     .requireAccepted());
-
     assertTrue(
-        exception
-            .getMessage()
+        NullTestSupport.messageOf(exception)
             .contains("supports POSIX owner-only permissions or Windows owner-only ACLs"));
   }
 
   @Test
   void requireSecureKeyFile_rejectsMissingKeyFiles() {
     Path keyFile = tempDirectory.resolve("missing-direct.key");
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyFile).requireAccepted());
-
-    assertTrue(exception.getMessage().contains("does not exist"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("does not exist"));
   }
 
   @Test
   void requireSecureKeyFile_wrapsPermissionInspectionIoFailures() throws IOException {
     Path keyFile = tempDirectory.resolve("permission-io.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -301,10 +268,8 @@ class SqliteBookKeyFileTest {
                           throw new IOException("boom");
                         })
                     .requireAccepted());
-
     assertTrue(
-        exception
-            .getMessage()
+        NullTestSupport.messageOf(exception)
             .contains("Failed to inspect the FinGrind book key file permissions"));
   }
 
@@ -314,7 +279,6 @@ class SqliteBookKeyFileTest {
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     UserPrincipal owner = new TestPrincipal("owner");
     UserPrincipal other = new TestPrincipal("other");
-
     assertDoesNotThrow(
         () ->
             SqliteBookKeyFileSecurity.requireSecureKeyFile(
@@ -334,7 +298,6 @@ class SqliteBookKeyFileTest {
     Path keyFile = tempDirectory.resolve("owner-unreadable-acl.key");
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     UserPrincipal owner = new TestPrincipal("owner");
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -344,8 +307,8 @@ class SqliteBookKeyFileTest {
                         aclSecurityInspector(
                             keyFile, owner, List.of(allow(owner, AclEntryPermission.WRITE_DATA))))
                     .requireAccepted());
-
-    assertTrue(exception.getMessage().contains("ACL must grant the file owner read access"));
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains("ACL must grant the file owner read access"));
   }
 
   @Test
@@ -354,7 +317,6 @@ class SqliteBookKeyFileTest {
     Files.writeString(keyFile, "swordfish", StandardCharsets.UTF_8);
     UserPrincipal owner = new TestPrincipal("owner");
     UserPrincipal other = new TestPrincipal("other");
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -368,9 +330,8 @@ class SqliteBookKeyFileTest {
                                 allow(owner, AclEntryPermission.READ_DATA),
                                 allow(other, AclEntryPermission.READ_DATA))))
                     .requireAccepted());
-
-    assertTrue(exception.getMessage().contains("ACL must grant secret access only"));
-    assertTrue(exception.getMessage().contains("other"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("ACL must grant secret access only"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("other"));
   }
 
   private static void writeSecureString(Path keyFile, String content) throws IOException {

@@ -3,7 +3,6 @@ package dev.erst.fingrind.report.pdf;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Calendar;
@@ -39,16 +38,14 @@ final class PdfDocumentFactory {
     this.fontResourceLoader = Objects.requireNonNull(fontResourceLoader, "fontResourceLoader");
   }
 
-  DocumentSession create(
-      String reportTitle, Path bookFilePath, Instant generatedAt, PageOrientation orientation)
+  DocumentSession create(String reportTitle, Instant generatedAt, PageOrientation orientation)
       throws IOException {
     Objects.requireNonNull(reportTitle, "reportTitle");
-    Objects.requireNonNull(bookFilePath, "bookFilePath");
     Objects.requireNonNull(generatedAt, "generatedAt");
     Objects.requireNonNull(orientation, "orientation");
     PDDocument document = new PDDocument();
     try {
-      configureInformation(document, reportTitle, bookFilePath, generatedAt);
+      configureInformation(document, reportTitle, generatedAt);
       PdfFonts fonts =
           new PdfFonts(
               loadFont(document, REGULAR_FONT_RESOURCE), loadFont(document, BOLD_FONT_RESOURCE));
@@ -59,7 +56,6 @@ final class PdfDocumentFactory {
               fonts,
               orientation,
               reportTitle,
-              bookFilePath,
               generatedAt,
               applicationName + " " + applicationVersion));
     } catch (IOException | RuntimeException exception) {
@@ -68,13 +64,12 @@ final class PdfDocumentFactory {
     }
   }
 
-  private void configureInformation(
-      PDDocument document, String reportTitle, Path bookFilePath, Instant generatedAt) {
+  private void configureInformation(PDDocument document, String reportTitle, Instant generatedAt) {
     PDDocumentInformation information = document.getDocumentInformation();
     information.setTitle(reportTitle);
     information.setAuthor(applicationName);
     information.setCreator(applicationName + " " + applicationVersion);
-    information.setSubject(PdfValueFormatter.absolutePath(bookFilePath));
+    information.setSubject(reportTitle);
     information.setCreationDate(calendar(generatedAt));
     information.setModificationDate(calendar(generatedAt));
   }
@@ -160,7 +155,10 @@ final class PdfDocumentFactory {
   /** One strategy for opening bundled font resources. */
   @FunctionalInterface
   interface FontResourceLoader {
-    /** Opens one font resource stream for the supplied classpath path. */
+    /**
+     * Opens one font resource stream for the supplied classpath path, or returns {@code null} when
+     * that classpath resource does not exist.
+     */
     @Nullable InputStream open(String resourcePath) throws IOException;
   }
 

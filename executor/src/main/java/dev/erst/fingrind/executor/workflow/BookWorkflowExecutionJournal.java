@@ -10,7 +10,7 @@ public record BookWorkflowExecutionJournal(
   public BookWorkflowExecutionJournal {
     Objects.requireNonNull(startedAt, "startedAt");
     Objects.requireNonNull(finishedAt, "finishedAt");
-    entries = entries == null ? List.of() : List.copyOf(entries);
+    entries = List.copyOf(Objects.requireNonNull(entries, "entries"));
     if (entries.isEmpty()) {
       throw new IllegalArgumentException(
           "Workflow execution journal must contain at least one entry.");

@@ -5,10 +5,11 @@ import java.util.Objects;
 
 /** Describes the deterministic replay contract for one committed FinGrind Jazzer seed. */
 public record RegressionSeedMetadata(
-    String targetKey, String inputPath, ReplayExpectation expectation) {
+    String targetKey, String inputPath, String coverageIntent, ReplayExpectation expectation) {
   public RegressionSeedMetadata {
     targetKey = requireNonBlank(targetKey, "targetKey");
     inputPath = normalizeStoredPath(inputPath, "inputPath");
+    coverageIntent = requireNonBlank(coverageIntent, "coverageIntent");
     Objects.requireNonNull(expectation, "expectation must not be null");
   }
 

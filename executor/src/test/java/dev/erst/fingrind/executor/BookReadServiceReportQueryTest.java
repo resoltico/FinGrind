@@ -9,6 +9,7 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REVENUE_ACCO
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.declareDefaultAccounts;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
+import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.AccountLedgerEntry;
@@ -40,7 +41,7 @@ class BookReadServiceReportQueryTest {
   @Test
   void trialBalance_rejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(bookSession);
+      BookReadService service = readService(bookSession);
 
       assertEquals(
           new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
@@ -53,7 +54,7 @@ class BookReadServiceReportQueryTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       bookSession.commit(postingFact("posting-1", "idem-1"));
-      BookReadService service = new BookReadService(bookSession);
+      BookReadService service = readService(bookSession);
 
       assertEquals(
           new TrialBalanceResult.Reported(
@@ -69,7 +70,7 @@ class BookReadServiceReportQueryTest {
   @Test
   void accountLedger_rejectsUninitializedAndUnknownAccount() {
     try (InMemoryBookSession uninitializedBook = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(uninitializedBook);
+      BookReadService service = readService(uninitializedBook);
 
       assertEquals(
           new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
@@ -77,7 +78,7 @@ class BookReadServiceReportQueryTest {
               new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded())));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
-      BookReadService service = new BookReadService(bookSession);
+      BookReadService service = readService(bookSession);
 
       assertEquals(
           new AccountLedgerResult.Rejected(
@@ -94,7 +95,7 @@ class BookReadServiceReportQueryTest {
       var postingFact = postingFact("posting-1", "idem-1");
       var publishedPostingFact = BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
       bookSession.commit(postingFact);
-      BookReadService service = new BookReadService(bookSession);
+      BookReadService service = readService(bookSession);
 
       assertEquals(
           new AccountLedgerResult.Reported(
@@ -117,7 +118,7 @@ class BookReadServiceReportQueryTest {
   @Test
   void periodSummary_rejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(bookSession);
+      BookReadService service = readService(bookSession);
 
       assertEquals(
           new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
@@ -130,7 +131,7 @@ class BookReadServiceReportQueryTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       bookSession.commit(postingFact("posting-1", "idem-1"));
-      BookReadService service = new BookReadService(bookSession);
+      BookReadService service = readService(bookSession);
 
       assertEquals(
           new PeriodSummaryResult.Reported(

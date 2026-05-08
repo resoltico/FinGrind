@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -23,11 +24,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostEntryCommand}. */
-@NullUnmarked
 class PostEntryCommandTest {
   @Test
   void constructor_acceptsValidCommand() {
@@ -39,7 +38,6 @@ class PostEntryCommandTest {
                 new ReversalReason("operator reversal")),
             requestProvenance("idem-1"),
             SourceChannel.CLI);
-
     assertEquals(LocalDate.parse("2026-04-07"), command.journalEntry().effectiveDate());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
@@ -50,7 +48,7 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                null, PostingLineage.direct(), requestProvenance("idem-1"), SourceChannel.CLI));
+                nullOf(), PostingLineage.direct(), requestProvenance("idem-1"), SourceChannel.CLI));
   }
 
   @Test
@@ -59,7 +57,7 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                journalEntry(), null, requestProvenance("idem-1"), SourceChannel.CLI));
+                journalEntry(), nullOf(), requestProvenance("idem-1"), SourceChannel.CLI));
   }
 
   private static JournalEntry journalEntry() {

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,11 +22,9 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for protocol vocabulary helpers and descriptor namespaces. */
-@NullUnmarked
 class ContractProtocolVocabularyTest {
   @Test
   void protocolVocabularyHelpersParseWireValuesAndRejectUnknownValues() {
@@ -50,10 +49,9 @@ class ContractProtocolVocabularyTest {
             "assert-account-balance"),
         LedgerAssertionKind.wireValues());
     assertEquals("open-book", LedgerStepKind.wireValues().getFirst());
-
-    assertThrows(NullPointerException.class, () -> LedgerStepKind.fromWireValue(null));
+    assertThrows(NullPointerException.class, () -> LedgerStepKind.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerStepKind.fromWireValue("post_entry"));
-    assertThrows(NullPointerException.class, () -> LedgerAssertionKind.fromWireValue(null));
+    assertThrows(NullPointerException.class, () -> LedgerAssertionKind.fromWireValue(nullOf()));
     assertThrows(
         IllegalArgumentException.class, () -> LedgerAssertionKind.fromWireValue("assert-unknown"));
     assertThrows(IllegalArgumentException.class, () -> OperationId.fromWireValue("post_entry"));
@@ -99,7 +97,6 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of("required", "conditional", "optional", "forbidden"),
         RequestFieldPresence.wireValues());
-
     assertThrows(
         IllegalArgumentException.class, () -> RuntimeDistribution.fromWireValue("source-checkout"));
     assertThrows(
@@ -115,7 +112,6 @@ class ContractProtocolVocabularyTest {
   void descriptorNamespacesPublishTheirRecordInventories() {
     ContractResponse.RejectionDescriptor leafRejection =
         new ContractResponse.RejectionDescriptor("code", "description");
-
     assertEquals(
         List.of(
             ApplicationIdentity.class,
@@ -180,7 +176,6 @@ class ContractProtocolVocabularyTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> DescriptorNamespaceSupport.descriptorTypes(String.class));
-
     assertEquals(
         "Descriptor namespace root must be sealed: java.lang.String", exception.getMessage());
   }

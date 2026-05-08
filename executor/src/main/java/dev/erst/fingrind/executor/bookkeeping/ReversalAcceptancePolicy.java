@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.PostingValidationBook;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -15,7 +14,7 @@ final class ReversalAcceptancePolicy {
 
   /** Returns the first deterministic reversal rejection for the supplied attempt, if any. */
   static Optional<BookkeepingPostingRejection> rejectionFor(
-      PostingRequestModel postingRequest, PostingValidationBook book) {
+      PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
     return switch (postingRequest.postingLineage()) {
@@ -32,7 +31,7 @@ final class ReversalAcceptancePolicy {
   }
 
   private static Optional<BookkeepingPostingRejection> reversalRejection(
-      JournalEntry candidateReversal, CommittedPosting priorPosting, PostingValidationBook book) {
+      JournalEntry candidateReversal, CommittedPosting priorPosting, PostingValidationStore book) {
     PostingId priorPostingId = priorPosting.postingId();
     if (book.findReversalFor(priorPostingId).isPresent()) {
       return Optional.of(new BookkeepingPostingRejection.ReversalAlreadyExists(priorPostingId));

@@ -19,17 +19,13 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void declareAccount_requiresInitializedBook() {
     Path databasePath = tempDirectory.resolve("declare-uninitialized.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
@@ -47,7 +43,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void declareAccount_listsAndReactivatesAccounts() {
     Path databasePath = tempDirectory.resolve("declare-accounts.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
@@ -64,9 +59,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
               new AccountName("Cash"),
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
-
       deactivateAccount(databasePath, "1000");
-
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               new RegisteredAccount(
@@ -95,11 +88,9 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void findAccount_returnsDeclaredAccountFromInitializedBook() {
     Path databasePath = tempDirectory.resolve("find-account.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-
       assertEquals(
           Optional.of(
               new RegisteredAccount(
@@ -115,7 +106,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void declareAccount_rejectsNormalBalanceConflict() {
     Path databasePath = tempDirectory.resolve("declare-conflict.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
@@ -124,7 +114,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
           new AccountName("Cash"),
           NormalBalance.DEBIT,
           Instant.parse("2026-04-07T10:15:30Z"));
-
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
               new BookkeepingAdministrationRejection.NormalBalanceConflict(
@@ -140,7 +129,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void listAccounts_paginatesDeclaredRegistry() {
     Path databasePath = tempDirectory.resolve("list-accounts-paginated.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
@@ -159,7 +147,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
           new AccountName("Receivable"),
           NormalBalance.DEBIT,
           Instant.parse("2026-04-07T10:15:30Z"));
-
       assertEquals(
           List.of(new AccountCode("1000"), new AccountCode("2000")),
           postingFactStore
@@ -190,7 +177,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   @Test
   void mutationWriterUpsertAccount_preservesImmutableBalanceAndUpdatesRedeclarationTimestamp() {
     Path databasePath = tempDirectory.resolve("upsert-account-columns.sqlite");
-
     assertDoesNotThrow(
         () ->
             withStandaloneDatabase(
@@ -213,7 +199,6 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           NormalBalance.CREDIT,
                           true,
                           Instant.parse("2026-04-08T10:15:30Z")));
-
                   assertEquals(
                       "Cash Renamed",
                       queryText(

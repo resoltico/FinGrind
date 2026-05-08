@@ -12,12 +12,10 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.Path;
 import java.util.Map;
-import org.jspecify.annotations.NullUnmarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Deterministic coverage tests for protected-book format introspection and drift detection. */
-@NullUnmarked
 class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestSupport {
   private static final Map<String, Integer> CANONICAL_RUNTIME_PARAMETERS = Map.of("cipher", 1);
   private static final Map<String, Integer> CANONICAL_CIPHER_PARAMETERS =
@@ -41,14 +39,12 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
                       "plaintext_header_size", 0)),
               constantMethodHandle(arena.allocateFrom("chacha20"), int.class),
               null);
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
                   SqliteProtectedBookFormatIntrospection.requireRuntimeDefaultCipherContract(
                       sqliteApi));
-
       assertTrue(messageText(exception).contains("drifted from the canonical contract"));
     }
   }
@@ -61,12 +57,10 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
             configCipherHandle(CANONICAL_CIPHER_PARAMETERS),
             nullMemorySegmentHandle(int.class),
             null);
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () -> SqliteProtectedBookFormatIntrospection.runtimeDefaultCipherSettings(sqliteApi));
-
     assertTrue(messageText(exception).contains("returned no cipher name"));
   }
 
@@ -78,12 +72,10 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
             configCipherHandle(CANONICAL_CIPHER_PARAMETERS),
             constantMethodHandle(MemorySegment.NULL, int.class),
             null);
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () -> SqliteProtectedBookFormatIntrospection.runtimeDefaultCipherSettings(sqliteApi));
-
     assertTrue(messageText(exception).contains("returned no cipher name"));
   }
 
@@ -96,12 +88,10 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
               configCipherHandle(CANONICAL_CIPHER_PARAMETERS),
               constantMethodHandle(arena.allocateFrom("chacha20"), int.class),
               null);
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteProtectedBookFormatIntrospection.runtimeDefaultCipherSettings(sqliteApi));
-
       assertTrue(
           messageText(exception).contains("did not expose protected-book parameter `cipher`"));
     }
@@ -116,12 +106,10 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
               configCipherHandle(Map.of()),
               constantMethodHandle(arena.allocateFrom("chacha20"), int.class),
               null);
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteProtectedBookFormatIntrospection.runtimeDefaultCipherSettings(sqliteApi));
-
       assertTrue(messageText(exception).contains("did not expose cipher parameter `legacy`"));
     }
   }
@@ -145,12 +133,10 @@ class SqliteProtectedBookFormatIntrospectionTest extends SqliteNativeBridgeTestS
       // double-close.
       SqliteNativeDatabase probingDatabase =
           new SqliteNativeDatabase(database.handle(), failingApi);
-
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
               () -> SqliteProtectedBookFormatIntrospection.openedBookFormat(probingDatabase));
-
       assertEquals(SqliteNativeResultCodes.CANTOPEN, exception.resultCode());
       assertEquals("SQLITE_CANTOPEN", exception.resultName());
     }

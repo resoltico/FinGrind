@@ -59,8 +59,8 @@ public record ProtocolOperation(
     return documentation.analysisSummary();
   }
 
-  /** Returns the catalog examples for this operation. */
-  public List<String> examples() {
-    return documentation.examples();
+  /** Returns the typed command examples and operator notes for this operation. */
+  public List<ProtocolExampleStep> exampleSteps() {
+    return documentation.exampleSteps();
   }
 }

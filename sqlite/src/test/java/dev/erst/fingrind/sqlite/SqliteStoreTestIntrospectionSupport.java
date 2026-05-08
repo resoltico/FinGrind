@@ -13,19 +13,17 @@ import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.executor.PostingCommitResult;
-import dev.erst.fingrind.executor.PostingDraft;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -35,16 +33,17 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 
 /** Shared SQLite store-introspection helpers layered on top of common posting fixtures. */
-@NullUnmarked
 class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSupport {
   static void setStoreDatabase(
       SqlitePostingFactStore postingFactStore,
@@ -78,7 +77,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     };
   }
 
-  static SqliteNativeDatabase storeDatabase(SqlitePostingFactStore postingFactStore) {
+  static @org.jspecify.annotations.Nullable SqliteNativeDatabase storeDatabase(
+      SqlitePostingFactStore postingFactStore) {
     return SqliteStoreTestAccess.publishedDatabase(postingFactStore);
   }
 
@@ -123,15 +123,16 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     assertEquals(
         "FinGrind could not verify the selected protected book with the supplied passphrase source.",
         contractFailureException.failure().message());
-    assertTrue(contractFailureException.failure().hint().contains("wrong secret"));
-    assertTrue(
-        contractFailureException.failure().hint().contains("damaged or truncated book file"));
-    assertFalse(exception.getMessage().contains("SQLITE_NOTADB"));
-    assertFalse(exception.getMessage().contains("SQLITE_IOERR_BADKEY"));
-    assertFalse(exception.getMessage().contains("SQLITE_IOERR_CODEC"));
+    String hint = Objects.requireNonNull(contractFailureException.failure().hint());
+    assertTrue(hint.contains("wrong secret"));
+    assertTrue(hint.contains("damaged or truncated book file"));
+    String message = Objects.requireNonNull(exception.getMessage());
+    assertFalse(message.contains("SQLITE_NOTADB"));
+    assertFalse(message.contains("SQLITE_IOERR_BADKEY"));
+    assertFalse(message.contains("SQLITE_IOERR_CODEC"));
   }
 
-  static PostingCommitResult rejected(PostingRejection rejection) {
+  static PostingCommitResult rejected(BookkeepingPostingRejection rejection) {
     return new PostingCommitResult.Rejected(rejection);
   }
 
@@ -146,9 +147,9 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
         postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance());
   }
 
-  static PostingRejection.AccountStateViolations accountStateViolations(
-      PostingRejection.AccountStateViolation... violations) {
-    return new PostingRejection.AccountStateViolations(List.of(violations));
+  static BookkeepingPostingRejection.AccountStateViolations accountStateViolations(
+      BookkeepingPostingRejection.AccountStateViolation... violations) {
+    return new BookkeepingPostingRejection.AccountStateViolations(List.of(violations));
   }
 
   static AccountRegistryQuery firstAccountPage() {
@@ -201,8 +202,9 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   static void assertWrappedQueryViewNativeFailure(ThrowingRunnable... invocations) {
     for (ThrowingRunnable invocation : invocations) {
       IllegalStateException exception = assertThrows(IllegalStateException.class, invocation::run);
-      assertTrue(exception.getMessage().contains("Failed to query SQLite book."));
-      assertTrue(exception.getMessage().contains("SQLITE_CANTOPEN"));
+      String message = Objects.requireNonNull(exception.getMessage());
+      assertTrue(message.contains("Failed to query SQLite book."));
+      assertTrue(message.contains("SQLITE_CANTOPEN"));
     }
   }
 

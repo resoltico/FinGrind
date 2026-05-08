@@ -11,11 +11,9 @@ import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for the public {@link SqliteBookSessions} seam. */
-@NullUnmarked
 class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void open_usesDefaultAndExplicitSessionModes() {
@@ -63,7 +61,6 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
       case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
           fail("Expected plan-execution open to succeed but was " + failure.code());
     }
-
     Path rejectedPath = tempDirectory.resolve("open-resolved-wrong-passphrase.sqlite");
     initializeBookOnDisk(rejectedPath);
     ContractDecision<SqliteBookSession> rejectedDecision =
@@ -95,13 +92,12 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
         try (session) {
           assertEquals(SqliteStoreAccessMode.READ_ONLY, storeAccessMode(store(session)));
           assertFalse(java.nio.file.Files.exists(readOnlyMissingPath));
-          assertFalse(session.readSession().isInitialized());
+          assertFalse(session.inspectBook().initialized());
         }
       }
       case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
           fail("Expected missing read-only session to stay lazy but was " + failure.code());
     }
-
     Path existingMissingPath =
         tempDirectory.resolve("open-resolved-read-write-existing-missing.sqlite");
     ContractDecision<SqliteBookSession> existingDecision =
@@ -114,7 +110,7 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
         try (session) {
           assertEquals(SqliteStoreAccessMode.READ_WRITE_EXISTING, storeAccessMode(store(session)));
           assertFalse(java.nio.file.Files.exists(existingMissingPath));
-          assertFalse(session.readSession().isInitialized());
+          assertFalse(session.inspectBook().initialized());
         }
       }
       case ContractDecision.Rejected<SqliteBookSession>(var failure) ->
@@ -128,7 +124,6 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
   void openResolved_supportsContractLevelBookAccessAndResolver() {
     Path bookPath = tempDirectory.resolve("resolved-from-book-access.sqlite");
     BookAccess bookAccess = bookAccess(bookPath);
-
     ContractDecision<SqliteBookSession> decision =
         SqliteBookSessions.openResolved(
             bookAccess,
@@ -140,7 +135,6 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
               return ContractDecision.accepted(passphrase("resolver-secret"));
             },
             SqlitePassphraseIntent.NEW_SECRET);
-
     switch (decision) {
       case ContractDecision.Accepted<SqliteBookSession>(SqliteBookSession session) -> {
         try (session) {
@@ -156,7 +150,6 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
   void open_supportsContractLevelBookAccessAndThrowsWhenResolverRejects() {
     Path acceptedPath = tempDirectory.resolve("open-from-book-access.sqlite");
     BookAccess acceptedBookAccess = bookAccess(acceptedPath);
-
     try (SqliteBookSession session =
         SqliteBookSessions.open(
             acceptedBookAccess,
@@ -170,7 +163,6 @@ class SqliteBookSessionsTest extends SqlitePostingFactStoreTestSupport {
             SqlitePassphraseIntent.NEW_SECRET)) {
       assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, storeAccessMode(store(session)));
     }
-
     ContractFailureException exception =
         assertThrows(
             ContractFailureException.class,

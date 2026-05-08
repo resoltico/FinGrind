@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.function.LongSupplier;

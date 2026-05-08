@@ -15,7 +15,6 @@ import dev.erst.fingrind.contract.PreflightEntryResult;
 import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.util.Optional;
 
@@ -27,32 +26,7 @@ final class CliExecutionPolicy {
     if (args.length == 0) {
       return OutputMode.HUMAN;
     }
-    OutputMode inferred =
-        ProtocolCatalog.findByToken(args[0])
-            .map(
-                operation ->
-                    switch (operation.id()) {
-                      case HELP, CAPABILITIES, VERSION -> OutputMode.HUMAN;
-                      case PRINT_REQUEST_TEMPLATE,
-                          PRINT_PLAN_TEMPLATE,
-                          GENERATE_BOOK_KEY_FILE,
-                          OPEN_BOOK,
-                          REKEY_BOOK,
-                          DECLARE_ACCOUNT,
-                          INSPECT_BOOK,
-                          LIST_ACCOUNTS,
-                          GET_POSTING,
-                          LIST_POSTINGS,
-                          ACCOUNT_BALANCE,
-                          TRIAL_BALANCE,
-                          ACCOUNT_LEDGER,
-                          PERIOD_SUMMARY,
-                          EXECUTE_PLAN,
-                          PREFLIGHT_ENTRY,
-                          POST_ENTRY ->
-                          OutputMode.JSON;
-                    })
-            .orElse(OutputMode.JSON);
+    OutputMode inferred = OutputMode.HUMAN;
     int index = 1;
     while (index + 1 < args.length) {
       if (!ProtocolOptions.OUTPUT.equals(args[index])) {

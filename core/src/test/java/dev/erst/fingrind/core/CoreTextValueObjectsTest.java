@@ -1,10 +1,10 @@
 package dev.erst.fingrind.core;
 
+import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Covers boundary validation for core text-backed semantic value objects. */
@@ -78,8 +78,7 @@ class CoreTextValueObjectsTest {
     assertArrayEquals(new SourceChannel[] {SourceChannel.CLI}, SourceChannel.values());
     assertEquals(SourceChannel.CLI, SourceChannel.fromWireValue("CLI"));
     assertThrows(IllegalArgumentException.class, () -> SourceChannel.fromWireValue("API"));
-    assertThrows(
-        NullPointerException.class, () -> SourceChannel.fromWireValue(nullSourceChannelToken()));
+    assertThrows(NullPointerException.class, () -> SourceChannel.fromWireValue(nullOf()));
 
     assertEquals("DEBIT", JournalLine.EntrySide.DEBIT.wireValue());
     assertEquals("CREDIT", JournalLine.EntrySide.CREDIT.wireValue());
@@ -87,10 +86,5 @@ class CoreTextValueObjectsTest {
     assertEquals(JournalLine.EntrySide.CREDIT, JournalLine.EntrySide.fromWireValue("CREDIT"));
     assertEquals(java.util.List.of("DEBIT", "CREDIT"), JournalLine.EntrySide.wireValues());
     assertThrows(IllegalArgumentException.class, () -> JournalLine.EntrySide.fromWireValue("LEFT"));
-  }
-
-  @NullUnmarked
-  private static String nullSourceChannelToken() {
-    return null;
   }
 }

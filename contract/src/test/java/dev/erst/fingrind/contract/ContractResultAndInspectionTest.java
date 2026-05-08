@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,11 +13,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for contract result records and book-inspection models. */
-@NullUnmarked
 class ContractResultAndInspectionTest extends ContractTestSupport {
   @Test
   void resultRecordsExposePayloadsAcrossAdministrationAndQuerySurfaces() {
@@ -32,7 +31,6 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             List.of(
                 new CurrencyBalance(
                     money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
-
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
         new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")).initializedAt());
@@ -103,7 +101,6 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             BalanceSide.DEBIT);
     PostingRejection.InactiveAccount inactive =
         new PostingRejection.InactiveAccount(new AccountCode("2000"));
-
     assertEquals(BookInspection.Status.INITIALIZED, inspection.status());
     assertEquals(
         BookFormatContract.APPLICATION_ID,
@@ -162,7 +159,6 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     List<Boolean> initialized = List.of(false, false, true, false, false, false);
     List<Boolean> compatibleWithCurrentBinary = List.of(false, false, true, false, false, false);
     List<Boolean> canInitializeWithOpenBook = List.of(true, true, false, false, false, false);
-
     for (int index = 0; index < inspections.size(); index++) {
       assertEquals(statuses.get(index), inspections.get(index).status());
       BookInspection.Status status = inspections.get(index).status();
@@ -172,10 +168,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
       assertEquals(
           BookFormatContract.FORMAT_VERSION, inspections.get(index).supportedBookFormatVersion());
     }
-
     assertEquals(
         BookInspection.Status.BLANK_SQLITE, BookInspection.Status.fromWireValue("blank-sqlite"));
-
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
     assertThrows(
         IllegalArgumentException.class,
@@ -200,6 +194,6 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 BookFormatContract.FORMAT_VERSION));
     assertThrows(
         NullPointerException.class,
-        () -> new BookInspection.Initialized(BookFormatContract.APPLICATION_ID, 1, 1, null));
+        () -> new BookInspection.Initialized(BookFormatContract.APPLICATION_ID, 1, 1, nullOf()));
   }
 }

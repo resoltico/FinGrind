@@ -45,6 +45,8 @@ def verify_rekey_and_wrong_key_semantics(
         config.book.argument,
         "--book-key-file",
         config.book_key.argument,
+        "--output",
+        "json",
     )
     replacement_key_trial_balance_output = run_cli(
         config,
@@ -93,6 +95,8 @@ def verify_deterministic_nonsense_workflows(
         config.replacement_book_key.argument,
         "--cursor",
         "definitely-not-a-valid-cursor",
+        "--output",
+        "json",
     )
     prompt_failure_output, prompt_failure_status = run_cli_allow_failure(
         config,
@@ -100,6 +104,8 @@ def verify_deterministic_nonsense_workflows(
         "--book-file",
         config.prompt_failure_book.argument,
         "--book-passphrase-prompt",
+        "--output",
+        "json",
     )
     invalid_request_output, invalid_request_status = run_cli_allow_failure(
         config,
@@ -110,6 +116,8 @@ def verify_deterministic_nonsense_workflows(
         config.replacement_book_key.argument,
         "--request-file",
         config.invalid_request.argument,
+        "--output",
+        "json",
     )
     require(
         invalid_cursor_status == 1,

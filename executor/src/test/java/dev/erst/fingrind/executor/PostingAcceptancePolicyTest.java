@@ -24,7 +24,9 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -156,7 +158,7 @@ class PostingAcceptancePolicyTest {
   }
 
   /** Validation-book double that exposes the batch account lookup path explicitly. */
-  private static final class RecordingValidationBook implements PostingValidationBook {
+  private static final class RecordingValidationBook implements PostingValidationStore {
     private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
     private boolean initialized;
     private Optional<CommittedPosting> existingPosting = Optional.empty();
@@ -164,8 +166,11 @@ class PostingAcceptancePolicyTest {
     private List<AccountCode> requestedAccounts = List.of();
 
     @Override
-    public boolean isInitialized() {
-      return initialized;
+    public BookLifecycleInspection inspectBook() {
+      return initialized
+          ? new BookLifecycleInspection.Initialized(
+              1001, 1, 1, Instant.parse("2026-04-07T10:15:30Z"))
+          : new BookLifecycleInspection.Missing(1);
     }
 
     @Override
@@ -205,13 +210,14 @@ class PostingAcceptancePolicyTest {
   }
 
   /** Validation-book double that exercises the default single-account fallback lookup path. */
-  private static final class FallbackValidationBook implements PostingValidationBook {
+  private static final class FallbackValidationBook implements PostingValidationStore {
     private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
     private List<AccountCode> requestedAccounts = List.of();
 
     @Override
-    public boolean isInitialized() {
-      return true;
+    public BookLifecycleInspection inspectBook() {
+      return new BookLifecycleInspection.Initialized(
+          1001, 1, 1, Instant.parse("2026-04-07T10:15:30Z"));
     }
 
     @Override

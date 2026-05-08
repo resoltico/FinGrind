@@ -1,6 +1,7 @@
 {
   "targetKey": "sqlite-book-roundtrip",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_missing_reversal_reason.json",
+  "coverageIntent": "sqlite round-trip rejects reversal without a reason",
   "expectation": {
     "outcomeKind": "expected-invalid",
     "message": "Missing required field: reason",

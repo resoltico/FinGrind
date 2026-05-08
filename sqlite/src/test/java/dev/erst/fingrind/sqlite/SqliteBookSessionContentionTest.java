@@ -7,27 +7,22 @@ import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Deterministic same-book contention coverage for the public SQLite session surface. */
-@NullUnmarked
 class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void secondWriterHonorsBusyTimeoutWhenFirstWriterHoldsImmediateTransaction() {
     Path bookPath = tempDirectory.resolve("contention-book.sqlite");
-
     try (SqliteNativeDatabase firstWriter = SqliteNativeConnections.open(bookAccess(bookPath));
         SqliteNativeDatabase secondWriter = SqliteNativeConnections.open(bookAccess(bookPath))) {
       firstWriter.executeStatement("begin immediate");
       setBusyTimeout(secondWriter, 100);
-
       long startNanos = System.nanoTime();
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class, () -> secondWriter.executeStatement("begin immediate"));
       long elapsedMillis = Duration.ofNanos(System.nanoTime() - startNanos).toMillis();
-
       assertTrue(
           Set.of(
                   SqliteNativeResultCodes.BUSY,
@@ -42,7 +37,6 @@ class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport 
           exception.resultName().startsWith("SQLITE_BUSY")
               || exception.resultName().startsWith("SQLITE_LOCKED"),
           () -> "Unexpected SQLite contention name: " + exception.resultName());
-
       firstWriter.executeStatement("rollback");
     }
   }

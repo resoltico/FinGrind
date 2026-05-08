@@ -38,7 +38,21 @@ public record ProtocolOperation(...)
 - Purpose: keep command metadata machine-readable before any renderer serializes it
 - Related types: `ProtocolCommandSignature` owns display label, aliases, options, and usage;
   `ProtocolOperationOutputs` owns execution/output modes plus artifact outputs; and
-  `ProtocolOperationDocumentation` owns the summary/examples prose
+  `ProtocolOperationDocumentation` owns the summary/examples prose plus typed example steps
+
+## `ProtocolExampleStep`
+
+`ProtocolExampleStep` keeps command help examples typed so executable grammar stays distinct from
+operator guidance.
+
+```java
+public sealed interface ProtocolExampleStep
+```
+
+- Variants: `Command` for copy-pasteable invocations and `Note` for non-grammar operator guidance
+- Purpose: prevent guidance text from masquerading as first-class command grammar in help,
+  discovery, examples, and public CLI docs
+- Consumers: `ProtocolOperationDocumentation`, command-help rendering, docs lint, and example sync
 
 ## `OperationId`
 
@@ -90,11 +104,13 @@ public enum OutputMode implements WireValue
 - Purpose: keep output-mode parsing and rendering enum-owned instead of switch-local
 - Surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and branch-owning `run(...)`
 
-## `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode`
+## `ProtocolSuccessPayload`, `ProtocolSuccessStatus`, `ProtocolRejectionStatus`, `ProtocolFailureStatus`, And `ProtocolDiagnosticCode`
 
-These enums are the canonical owners of public envelope status and diagnostics tokens.
+This marker interface plus these enums are the canonical owners of public envelope success payload
+typing, status tokens, and diagnostics tokens.
 
 ```java
+public sealed interface ProtocolSuccessPayload
 public enum ProtocolSuccessStatus implements WireValue
 public enum ProtocolRejectionStatus implements WireValue
 public enum ProtocolFailureStatus implements WireValue
@@ -102,9 +118,11 @@ public enum ProtocolDiagnosticCode implements WireValue
 ```
 
 - Purpose: distinguish success, deterministic rejection, and runtime failure statuses with
-  compile-time subset boundaries instead of one open string bucket, and keep post-success
-  diagnostics codes typed instead of renderer-local string literals
-- Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
+  compile-time subset boundaries instead of one open string bucket, keep post-success diagnostics
+  codes typed instead of renderer-local string literals, and prevent arbitrary records from
+  drifting onto the public success-envelope payload surface.
+- Surface: `ProtocolSuccessPayload` as the marker interface plus `wireValue()`, `wireValues()`,
+  and `fromWireValue(...)` on the enums.
 
 ## `ProtocolOptions`
 
@@ -169,8 +187,8 @@ public record PublicDistributionContract(
 
 - Purpose: keep release-target metadata in one typed owner shared by capabilities, docs, and build
   verification
-- Validation: rejects unknown targets, duplicates, and overlap between the supported and
-  unsupported lists
+- Validation: requires both bundle-target lists to be present in the canonical JSON resource and
+  rejects unknown targets, duplicates, and overlap between the supported and unsupported lists
 - Resource authority: loaded from the protocol-owned JSON contract resource instead of ad hoc
   build or shell literals
 
@@ -356,7 +374,7 @@ public final class ScaffoldPlaceholders
 public enum WorkflowSurface
 public record WorkflowDescriptor(...)
 public enum WorkflowStepKind
-public record WorkflowStepDescriptor(...)
+public sealed interface WorkflowStepDescriptor
 ```
 
 - `ScaffoldPlaceholders`: owns the canonical `replace-before-commit-*` sentinel values shared by
@@ -366,8 +384,9 @@ public record WorkflowStepDescriptor(...)
 - `WorkflowDescriptor`: groups one platform-specific quick-start sequence under its published
   workflow surface
 - `WorkflowStepKind`: distinguishes command, edit, and note steps in the public help workflow
-- `WorkflowStepDescriptor`: keeps each workflow step typed so machine consumers can distinguish
-  runnable commands from canonical file-write payloads and explanatory notes
+- `WorkflowStepDescriptor`: keeps each workflow step typed through explicit `Command`, `Edit`, and
+  `Note` variants so machine consumers can distinguish runnable commands from canonical file-write
+  payloads and explanatory notes without nullable payload slots
 
 ## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
 
@@ -389,9 +408,10 @@ public final class ContractTemplates
   `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
   `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
-- `EnvironmentSqliteDescriptor.runtimeTrustBasis` publishes the machine-readable trust downgrade
-  between publisher-authenticated managed runtimes and operator-trusted configured runtimes,
-  rather than forcing consumers to infer that distinction from `runtimeProvenance` alone
+- `EnvironmentSqliteDescriptor.runtime` is an explicit state family with `ReadyRuntime`,
+  `UnavailableRuntime`, `FailedRuntime`, and `IncompatibleRuntime`, so discovery payloads publish
+  compile-option proof, trust basis, loaded-library facts, and failure detail only in the runtime
+  states where those facts actually exist
 - `EnvironmentStorageDescriptor.defaultProtectedBookFormat` publishes the canonical protected-book
   cipher, page-size, reserve-byte, and KDF facts as one typed contract record instead of leaking
   those defaults through loosely related scalar fields

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,17 +37,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for read and report rendering through {@link CliResponseWriter}. */
-@NullUnmarked
 class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
   @Test
   void writeReadResults_supportsJsonHumanAndCsvVariants() {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
     PostingFact postingFact = reversalPostingFact();
-
     assertWriterOutput(
         writer ->
             writer.writeBookInspection(
@@ -148,7 +146,6 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             1,
             List.of(new PeriodCurrencySummary(eurDebitBalance)),
             List.of(new PeriodAccountActivityRow(cashAccount, eurDebitBalance)));
-
     assertWriterOutput(
         writer ->
             writer.writeAccountBalanceResult(
@@ -226,7 +223,6 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
   @Test
   void writeReadAndReportResults_rejectUnsupportedModesAndNullInputs() {
     PostingFact postingFact = reversalPostingFact();
-
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
@@ -293,48 +289,49 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                     Path.of("office/report.sqlite"),
                     new BookInspection.Initialized(
                         123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
-                    null));
+                    nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeListAccountsResult(
-                    null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
-                .writeGetPostingResult(null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                .writeGetPostingResult(
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeListPostingsResult(
-                    null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeAccountBalanceResult(
-                    null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeTrialBalanceResult(
-                    null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeAccountLedgerResult(
-                    null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
             new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
                 .writePeriodSummaryResult(
-                    null, dev.erst.fingrind.contract.protocol.OutputMode.JSON));
+                    nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
   }
 
   private static void assertWriterOutput(

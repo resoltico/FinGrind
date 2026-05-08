@@ -1,18 +1,18 @@
 # Vendored SQLite3 Multiple Ciphers Source
 
-FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.3 amalgamation in this directory so
+FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.4 amalgamation in this directory so
 local Gradle runs, the nested Jazzer build, GitHub Actions, and the Docker image can all build
 against the same pinned protected-book native source instead of inheriting whichever `libsqlite3`
 version happens to exist on the host.
 
 Source provenance:
 - project page: [https://utelle.github.io/SQLite3MultipleCiphers/](https://utelle.github.io/SQLite3MultipleCiphers/)
-- upstream release: `SQLite3 Multiple Ciphers 2.3.3 (based on SQLite 3.53.0)`
+- upstream release: `SQLite3 Multiple Ciphers 2.3.4 (based on SQLite 3.53.1)`
 - official amalgamation asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.3/sqlite3mc-2.3.3-sqlite-3.53.0-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.3/sqlite3mc-2.3.3-sqlite-3.53.0-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip)
 - upstream license: [../../LICENSE-SQLITE3MULTIPLECIPHERS](../../LICENSE-SQLITE3MULTIPLECIPHERS)
 - verified LF-normalized `sqlite3mc_amalgamation.c` SHA3-256:
-  `64efba2c47b1db44be7c6b7fdad93267c5cbcf8c0ec4e2f65d73d3de68279526`
+  `e4d6fe92d776ccca57e50fc13dec430c64b88b46b05c4ffb97eb2265842f45c2`
 
 Build policy:
 - the Gradle task `verifyManagedSqliteSource` verifies the vendored `sqlite3mc_amalgamation.c`
@@ -20,13 +20,14 @@ Build policy:
 - the Gradle task `prepareManagedSqlite` compiles a managed shared library from this source for the
   current macOS, Linux, or Windows host
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
-  `SQLITE_TEMP_STORE=3`, and `SQLITE_SECURE_DELETE=1`
+  `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
+- managed/runtime compatibility also forbids the SQLite compile option `USE_URI`
 - the Docker image compiles the same vendored source during image build
 
 Runtime policy:
 - FinGrind deliberately builds `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c` copy that is
   also shipped by the upstream release bundle
-- controlled FinGrind surfaces pin SQLite 3.53.0 together with SQLite3 Multiple Ciphers 2.3.3
+- controlled FinGrind surfaces pin SQLite 3.53.1 together with SQLite3 Multiple Ciphers 2.3.4
 - FinGrind applies `sqlite3_key()` immediately after open and relies on the upstream default
   `sqleet` / `chacha20` cipher
 - the supported FinGrind passphrase transport contract is one explicit safe source

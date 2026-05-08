@@ -69,9 +69,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
           setupTurnHeld = false;
           PostingApplicationService applicationService =
               new PostingApplicationService(
-                  bookSession.postingSession(),
-                  new UuidV7PostingIdGenerator(),
-                  CliFuzzFixtures.fixedClock());
+                  bookSession, new UuidV7PostingIdGenerator(), CliFuzzFixtures.fixedClock());
           ready.countDown();
           awaitConcurrentGate(
               start,

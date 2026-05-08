@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -66,10 +67,15 @@ class MachineContractRequestSchemasTest {
             () ->
                 MachineContractSchemaSupport.orderedMap(
                     "type", "object", Integer.valueOf(7), "value"));
+    IllegalArgumentException nullValue =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> MachineContractSchemaSupport.orderedMap("type", nullOf()));
 
     assertEquals(
         "orderedMap requires an even number of key/value arguments.", oddArity.getMessage());
     assertEquals(
         "orderedMap keys must be non-null Strings at argument index 2.", nonStringKey.getMessage());
+    assertEquals("orderedMap values must be non-null at argument index 1.", nullValue.getMessage());
   }
 }

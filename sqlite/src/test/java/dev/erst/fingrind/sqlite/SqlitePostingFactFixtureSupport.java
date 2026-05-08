@@ -31,10 +31,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 
 /** Shared SQLite posting/book fixtures and native-handle doubles for split store tests. */
-@NullUnmarked
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static CommittedPosting postingFact(
       String postingId,

@@ -1,6 +1,7 @@
 {
   "targetKey": "ledger-plan-request",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/rejected_missing_book_list_postings.json",
+  "coverageIntent": "parsed plan rejects as missing-book query workflow without synthetic page facts",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

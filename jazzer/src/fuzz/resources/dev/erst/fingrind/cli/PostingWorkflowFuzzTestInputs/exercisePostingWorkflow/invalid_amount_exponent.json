@@ -1,24 +1,28 @@
 {
-  "effectiveDate": "2026-04-07",
+  "effectiveDate": "2026-04-12",
   "lines": [
     {
-      "accountCode": "1000",
-      "side": "DEBIT",
-      "currencyCode": "EUR",
+      "accountCode": "5100",
+      "side": "CREDIT",
+      "currencyCode": "GBP",
       "amount": "1e1000000100"
     },
     {
-      "accountCode": "2000",
-      "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "1.00"
+      "accountCode": "6100",
+      "side": "DEBIT",
+      "currencyCode": "GBP",
+      "amount": "123.45"
     }
   ],
+  "reversal": {
+    "priorPostingId": "posting-legacy-9",
+    "reason": "replay candidate"
+  },
   "provenance": {
-    "actorId": "actor-1",
-    "actorType": "AGENT",
-    "commandId": "command-1",
-    "idempotencyKey": "idem-1",
-    "causationId": "cause-1"
+    "actorId": "actor-posting-invalid-9",
+    "actorType": "HUMAN",
+    "commandId": "command-posting-invalid-9",
+    "idempotencyKey": "idem-posting-invalid-9",
+    "causationId": "cause-posting-invalid-9"
   }
 }

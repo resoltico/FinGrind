@@ -9,11 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Locks checked-in discovery template fixtures to the live CLI output surface. */
-@NullUnmarked
 class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
   @Test
   void printRequestTemplate_matchesCheckedInFixture() throws IOException {
@@ -37,9 +35,7 @@ class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {command});
-
     assertEquals(0, exitCode);
     return outputStream.toString(StandardCharsets.UTF_8);
   }

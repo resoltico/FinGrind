@@ -1,6 +1,7 @@
 {
   "targetKey": "posting-workflow",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/reversal_target_missing.json",
+  "coverageIntent": "deterministic rejection for missing reversal target",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

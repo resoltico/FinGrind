@@ -58,13 +58,17 @@ document = {
                 "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
                 "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
                 "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
-                "compileOptionsVerification": "verified",
-                "runtimeStatus": "ready",
-                "runtimeProvenance": runtime_provenance,
-                "loadedLibraryPath": "/tmp/libsqlite3.so.0",
-                "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
-                "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
-                "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+                "forbiddenCompileOptions": managed_sqlite["forbiddenCompileOptions"],
+                "requiresSecureMemorySupport": managed_sqlite["requiresSecureMemorySupport"],
+                "runtime": {
+                    "compileOptionsVerification": "verified",
+                    "status": "ready",
+                    "runtimeProvenance": runtime_provenance,
+                    "loadedLibraryPath": "/tmp/libsqlite3.so.0",
+                    "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                    "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+                    "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+                },
             }
         }
     }
@@ -104,13 +108,17 @@ document = {
                 "requiredMinimumSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
                 "requiredSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
                 "requiredCompileOptions": managed_sqlite["requiredCompileOptions"],
-                "compileOptionsVerification": "not-verified",
-                "runtimeStatus": "missing",
-                "runtimeProvenance": "environment-configured",
-                "loadedLibraryPath": "/tmp/libsqlite3.so.0",
-                "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
-                "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
-                "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+                "forbiddenCompileOptions": [],
+                "requiresSecureMemorySupport": False,
+                "runtime": {
+                    "compileOptionsVerification": "not-verified",
+                    "status": "missing",
+                    "runtimeProvenance": "environment-configured",
+                    "loadedLibraryPath": "/tmp/libsqlite3.so.0",
+                    "loadedSqliteVersion": managed_sqlite["requiredMinimumSqliteVersion"],
+                    "loadedSqlite3mcVersion": managed_sqlite["requiredSqlite3mcVersion"],
+                    "loadedSqliteSourceId": managed_sqlite["requiredSqliteSourceId"],
+                },
             }
         }
     }
@@ -133,10 +141,14 @@ fi
 printf '%s\n' "${failure_output}" | grep -Fq 'runtime distribution drifted from the canonical contract' ||
     die "SQLite runtime verifier did not report runtime-distribution drift"
 printf '%s\n' "${failure_output}" | grep -Fq 'missing ready SQLite runtime status' ||
-    die "SQLite runtime verifier did not report the runtimeStatus failure"
+    die "SQLite runtime verifier did not report the runtime status failure"
 printf '%s\n' "${failure_output}" | grep -Fq 'missing verified SQLite compile-options status' ||
     die "SQLite runtime verifier did not report compile-option verification drift"
 printf '%s\n' "${failure_output}" | grep -Fq 'missing expected SQLite runtime provenance' ||
     die "SQLite runtime verifier did not report runtime provenance drift"
+printf '%s\n' "${failure_output}" | grep -Fq 'missing canonical forbidden SQLite compile options' ||
+    die "SQLite runtime verifier did not report forbidden compile-option drift"
+printf '%s\n' "${failure_output}" | grep -Fq 'missing canonical SQLite3MC secure-memory requirement' ||
+    die "SQLite runtime verifier did not report secure-memory requirement drift"
 
 printf 'SQLite runtime verifier regression: success\n'

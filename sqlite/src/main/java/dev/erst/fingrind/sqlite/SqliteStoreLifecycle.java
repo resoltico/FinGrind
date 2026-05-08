@@ -15,15 +15,8 @@ class SqliteStoreLifecycle {
   private final SqliteSessionSecret sessionSecret;
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
 
-  private @Nullable SqliteNativeDatabase database;
-  private @Nullable SqliteBookStateSnapshot cachedBookState;
-  private boolean closed;
-  private boolean ledgerPlanTransactionActive;
-  private boolean ledgerPlanTransactionBegunInDatabase;
-  private boolean ledgerPlanTransactionStartedWithMissingBook;
-  private boolean ledgerPlanTransactionCreatedBookArtifacts;
-  private @Nullable Path ledgerPlanPreexistingAncestorDirectory;
-  private @Nullable IllegalStateException terminalFailure;
+  private SessionState sessionState = new IdleSession(null);
+  private LedgerPlanTransactionState ledgerPlanTransactionState = new NoLedgerPlanTransaction();
 
   SqliteStoreLifecycle(SqliteStoreContext context, SqliteSessionSecret sessionSecret) {
     this.context = Objects.requireNonNull(context, "context");
@@ -34,19 +27,18 @@ class SqliteStoreLifecycle {
     threadOwner.requireOwnerThread();
     ensureOpen();
     context.accessMode().requireWritableMutation();
-    if (ledgerPlanTransactionActive) {
+    if (ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction) {
       throw new IllegalStateException("Ledger plan transaction is already active.");
     }
-    ledgerPlanTransactionActive = true;
-    ledgerPlanTransactionBegunInDatabase = false;
-    ledgerPlanTransactionStartedWithMissingBook = Files.notExists(context.bookPath());
-    ledgerPlanTransactionCreatedBookArtifacts = false;
-    ledgerPlanPreexistingAncestorDirectory =
-        ledgerPlanTransactionStartedWithMissingBook
-            ? SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(context.bookPath())
-            : null;
-    if (context.accessMode().defersMissingBookOpen()
-        && ledgerPlanTransactionStartedWithMissingBook) {
+    boolean missingBookAtStart = Files.notExists(context.bookPath());
+    ArtifactCleanupState artifactCleanupState =
+        missingBookAtStart
+            ? new MissingBookArtifactsPending(
+                SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(context.bookPath()))
+            : new NoArtifactCleanup();
+    ledgerPlanTransactionState =
+        new ActiveLedgerPlanTransaction(new DatabaseTransactionDeferred(), artifactCleanupState);
+    if (context.accessMode().defersMissingBookOpen() && missingBookAtStart) {
       return;
     }
     markLedgerPlanBookArtifactsMayMutate();
@@ -68,10 +60,10 @@ class SqliteStoreLifecycle {
   void commitLedgerPlanTransaction() {
     threadOwner.requireOwnerThread();
     ensureOpen();
-    if (!ledgerPlanTransactionActive) {
+    if (!(ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction activeTransaction)) {
       throw new IllegalStateException("No ledger plan transaction is active.");
     }
-    if (!ledgerPlanTransactionBegunInDatabase) {
+    if (!activeTransaction.begunInDatabase()) {
       resetLedgerPlanTransactionState();
       return;
     }
@@ -89,37 +81,37 @@ class SqliteStoreLifecycle {
 
   void rollbackLedgerPlanTransaction() {
     threadOwner.requireOwnerThread();
-    if (!ledgerPlanTransactionActive) {
+    if (!(ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction activeTransaction)) {
       return;
     }
-    boolean rollbackDatabase = ledgerPlanTransactionBegunInDatabase;
-    boolean cleanupCreatedBookArtifacts = ledgerPlanTransactionCreatedBookArtifacts;
-    ledgerPlanTransactionActive = false;
-    ledgerPlanTransactionBegunInDatabase = false;
-    if (rollbackDatabase && database != null) {
-      SqliteStoreOperations.rollbackQuietly(database);
+    boolean rollbackDatabase = activeTransaction.begunInDatabase();
+    boolean cleanupCreatedBookArtifacts = activeTransaction.createdBookArtifacts();
+    @Nullable Path preexistingAncestorDirectory = activeTransaction.preexistingAncestorDirectory();
+    if (rollbackDatabase && publishedDatabaseValue() != null) {
+      SqliteStoreOperations.rollbackQuietly(database());
     }
     try {
       if (cleanupCreatedBookArtifacts) {
-        cleanupCreatedMissingBookArtifactsIfPresent();
+        cleanupCreatedMissingBookArtifacts(preexistingAncestorDirectory);
       }
     } finally {
-      clearLedgerPlanFileTracking();
+      resetLedgerPlanTransactionState();
     }
   }
 
   void close() {
     threadOwner.requireOwnerThread();
-    if (closed) {
+    if (sessionState instanceof ClosedSession) {
       return;
     }
-    SqliteNativeDatabase closingDatabase = database;
+    SqliteNativeDatabase closingDatabase = publishedDatabaseValue();
     SqliteSessionSecret closingSecret = sessionSecret;
+    ActiveLedgerPlanTransaction activeTransaction = activeLedgerPlanTransaction();
     boolean cleanupCreatedBookArtifacts =
-        ledgerPlanTransactionActive && ledgerPlanTransactionCreatedBookArtifacts;
-    database = null;
-    cachedBookState = null;
-    closed = true;
+        activeTransaction != null && activeTransaction.createdBookArtifacts();
+    @Nullable Path preexistingAncestorDirectory =
+        activeTransaction == null ? null : activeTransaction.preexistingAncestorDirectory();
+    sessionState = new ClosedSession(null);
     try (closingSecret;
         closingDatabase) {
       // Resources close on scope exit; any close failure poisons this session permanently.
@@ -129,19 +121,20 @@ class SqliteStoreLifecycle {
           new SqliteStorageFailureException(
               "Failed to close SQLite book connection. " + exception.resultName() + ": " + detail,
               exception);
-      terminalFailure = closeFailure;
+      sessionState = new ClosedSession(closeFailure);
       resetLedgerPlanTransactionState();
       throw closeFailure;
     } catch (IllegalStateException exception) {
       IllegalStateException closeFailure =
           new IllegalStateException("Failed to close SQLite book connection.", exception);
-      terminalFailure = closeFailure;
+      sessionState = new ClosedSession(closeFailure);
       resetLedgerPlanTransactionState();
       throw closeFailure;
     }
     try {
       if (cleanupCreatedBookArtifacts) {
-        cleanupCreatedMissingBookArtifactsIfPresent();
+        SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
+            context.bookPath(), preexistingAncestorDirectory, null);
       }
     } finally {
       resetLedgerPlanTransactionState();
@@ -166,18 +159,19 @@ class SqliteStoreLifecycle {
 
   SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
     threadOwner.requireOwnerThread();
-    SqliteBookStateSnapshot snapshot = cachedBookState;
+    SqliteBookStateSnapshot snapshot = cachedBookState();
     if (snapshot != null) {
       return snapshot;
     }
     snapshot = context.bookStateReader().snapshot(activeDatabase);
-    cachedBookState = snapshot;
+    cacheState(snapshot);
     return snapshot;
   }
 
   SqliteNativeDatabase database() {
     threadOwner.requireOwnerThread();
-    SqliteNativeDatabase activeDatabase = database;
+    ensureOpen();
+    SqliteNativeDatabase activeDatabase = publishedDatabaseValue();
     if (activeDatabase != null) {
       return activeDatabase;
     }
@@ -186,14 +180,14 @@ class SqliteStoreLifecycle {
       case ContractDecision.Accepted<SqliteNativeDatabase>(SqliteNativeDatabase resolvedDatabase) ->
           resolvedDatabase;
       case ContractDecision.Rejected<SqliteNativeDatabase>(ContractFailure failure) ->
-          throw rememberTerminalFailure(new ContractFailureException(failure));
+          throw rememberedRejectedFailure(failure);
     };
   }
 
   ContractDecision<SqliteStoreLifecycle> prime() {
     threadOwner.requireOwnerThread();
     ensureOpen();
-    if (database != null) {
+    if (publishedDatabaseValue() != null) {
       return ContractDecision.accepted(this);
     }
     if (context.accessMode().defersMissingBookOpen() && Files.notExists(context.bookPath())) {
@@ -220,7 +214,7 @@ class SqliteStoreLifecycle {
 
   SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
     threadOwner.requireOwnerThread();
-    if (ledgerPlanTransactionActive) {
+    if (ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction) {
       beginLedgerPlanTransactionIfNeeded(activeDatabase);
       return SqliteTransactionOwnership.SHARED;
     }
@@ -230,23 +224,55 @@ class SqliteStoreLifecycle {
 
   void cacheState(SqliteBookStateSnapshot snapshot) {
     threadOwner.requireOwnerThread();
-    cachedBookState = Objects.requireNonNull(snapshot, "snapshot");
+    sessionState =
+        switch (sessionState) {
+          case IdleSession ignored -> new IdleSession(Objects.requireNonNull(snapshot, "snapshot"));
+          case OpenedSession opened ->
+              new OpenedSession(opened.database(), Objects.requireNonNull(snapshot, "snapshot"));
+          case FailedSession failed ->
+              new FailedSession(
+                  failed.database(),
+                  Objects.requireNonNull(snapshot, "snapshot"),
+                  failed.failure());
+          case ClosedSession closed -> closed;
+        };
   }
 
   void clearCachedState() {
     threadOwner.requireOwnerThread();
-    cachedBookState = null;
+    sessionState =
+        switch (sessionState) {
+          case IdleSession ignored -> new IdleSession(null);
+          case OpenedSession opened -> new OpenedSession(opened.database(), null);
+          case FailedSession failed -> new FailedSession(failed.database(), null, failed.failure());
+          case ClosedSession closed -> closed;
+        };
   }
 
   void clearDatabaseState() {
     threadOwner.requireOwnerThread();
-    database = null;
-    cachedBookState = null;
+    sessionState =
+        switch (sessionState) {
+          case IdleSession ignored -> new IdleSession(null);
+          case OpenedSession ignored -> new IdleSession(null);
+          case FailedSession failed -> new FailedSession(null, null, failed.failure());
+          case ClosedSession closed -> closed;
+        };
   }
 
   void publishDatabase(SqliteNativeDatabase activeDatabase) {
     threadOwner.requireOwnerThread();
-    database = Objects.requireNonNull(activeDatabase, "activeDatabase");
+    SqliteNativeDatabase publishedDatabase =
+        Objects.requireNonNull(activeDatabase, "activeDatabase");
+    sessionState =
+        switch (sessionState) {
+          case IdleSession idle -> new OpenedSession(publishedDatabase, idle.cachedBookState());
+          case OpenedSession opened ->
+              new OpenedSession(publishedDatabase, opened.cachedBookState());
+          case FailedSession failed ->
+              new FailedSession(publishedDatabase, failed.cachedBookState(), failed.failure());
+          case ClosedSession closed -> closed;
+        };
   }
 
   void rotateSessionSecret(SqliteBookPassphrase replacementPassphrase) {
@@ -256,22 +282,23 @@ class SqliteStoreLifecycle {
 
   @Nullable SqliteNativeDatabase publishedDatabase() {
     threadOwner.requireOwnerThread();
-    return database;
+    return publishedDatabaseValue();
   }
 
   boolean closed() {
     threadOwner.requireOwnerThread();
-    return closed;
+    return sessionState instanceof ClosedSession;
   }
 
   boolean ledgerPlanTransactionActive() {
     threadOwner.requireOwnerThread();
-    return ledgerPlanTransactionActive;
+    return ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction;
   }
 
   boolean ledgerPlanTransactionBegunInDatabase() {
     threadOwner.requireOwnerThread();
-    return ledgerPlanTransactionBegunInDatabase;
+    ActiveLedgerPlanTransaction activeTransaction = activeLedgerPlanTransaction();
+    return activeTransaction != null && activeTransaction.begunInDatabase();
   }
 
   private ContractDecision<SqliteNativeDatabase> openDatabase() {
@@ -283,7 +310,7 @@ class SqliteStoreLifecycle {
       }
       SqliteNativeDatabase openedDatabase =
           context.openConfiguredDatabase(workingPassphrase.nativePassphrase());
-      database = openedDatabase;
+      publishDatabase(openedDatabase);
       beginLedgerPlanTransactionIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
     } catch (SqliteNativeException exception) {
@@ -301,63 +328,220 @@ class SqliteStoreLifecycle {
 
   private void ensureOpen() {
     threadOwner.requireOwnerThread();
-    IllegalStateException failure = terminalFailure;
-    if (failure != null) {
-      throw failure;
+    if (sessionState instanceof FailedSession failed) {
+      throw failed.failure();
     }
-    if (closed) {
+    if (sessionState instanceof ClosedSession closed) {
+      IllegalStateException closeFailure = closed.closeFailure();
+      if (closeFailure != null) {
+        throw closeFailure;
+      }
       throw new IllegalStateException("SQLite book session is already closed.");
     }
   }
 
   private void beginLedgerPlanTransactionIfNeeded(SqliteNativeDatabase activeDatabase) {
     threadOwner.requireOwnerThread();
-    if (ledgerPlanTransactionActive && !ledgerPlanTransactionBegunInDatabase) {
+    if (ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction activeTransaction
+        && !activeTransaction.begunInDatabase()) {
       activeDatabase.executeStatement("begin immediate");
-      ledgerPlanTransactionBegunInDatabase = true;
+      ledgerPlanTransactionState = activeTransaction.withBegunDatabase();
     }
   }
 
   private void cleanupCreatedMissingBookArtifactsIfPresent() {
     threadOwner.requireOwnerThread();
-    if (!ledgerPlanTransactionCreatedBookArtifacts) {
+    ActiveLedgerPlanTransaction activeTransaction = activeLedgerPlanTransaction();
+    if (activeTransaction == null || !activeTransaction.createdBookArtifacts()) {
       return;
     }
-    cachedBookState = null;
-    SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
-        context.bookPath(), ledgerPlanPreexistingAncestorDirectory, detachPublishedDatabase());
+    cleanupCreatedMissingBookArtifacts(activeTransaction.preexistingAncestorDirectory());
   }
 
   private @Nullable SqliteNativeDatabase detachPublishedDatabase() {
     threadOwner.requireOwnerThread();
-    SqliteNativeDatabase detachedDatabase = database;
-    database = null;
+    SqliteNativeDatabase detachedDatabase = publishedDatabaseValue();
+    sessionState =
+        switch (sessionState) {
+          case IdleSession ignored -> new IdleSession(null);
+          case OpenedSession ignored -> new IdleSession(null);
+          case FailedSession failed -> new FailedSession(null, null, failed.failure());
+          case ClosedSession closed -> closed;
+        };
     return detachedDatabase;
   }
 
   private void markLedgerPlanBookArtifactsMayMutate() {
     threadOwner.requireOwnerThread();
-    if (ledgerPlanTransactionActive && ledgerPlanTransactionStartedWithMissingBook) {
-      ledgerPlanTransactionCreatedBookArtifacts = true;
+    if (ledgerPlanTransactionState instanceof ActiveLedgerPlanTransaction activeTransaction) {
+      ledgerPlanTransactionState = activeTransaction.withCreatedBookArtifacts();
     }
   }
 
   private void resetLedgerPlanTransactionState() {
     threadOwner.requireOwnerThread();
-    ledgerPlanTransactionActive = false;
-    ledgerPlanTransactionBegunInDatabase = false;
-    clearLedgerPlanFileTracking();
+    ledgerPlanTransactionState = new NoLedgerPlanTransaction();
   }
 
-  private void clearLedgerPlanFileTracking() {
-    threadOwner.requireOwnerThread();
-    ledgerPlanTransactionStartedWithMissingBook = false;
-    ledgerPlanTransactionCreatedBookArtifacts = false;
-    ledgerPlanPreexistingAncestorDirectory = null;
+  private void cleanupCreatedMissingBookArtifacts(@Nullable Path preexistingAncestorDirectory) {
+    SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
+        context.bookPath(), preexistingAncestorDirectory, detachPublishedDatabase());
+  }
+
+  private @Nullable ActiveLedgerPlanTransaction activeLedgerPlanTransaction() {
+    return switch (ledgerPlanTransactionState) {
+      case NoLedgerPlanTransaction ignored -> null;
+      case ActiveLedgerPlanTransaction activeTransaction -> activeTransaction;
+    };
+  }
+
+  private @Nullable SqliteBookStateSnapshot cachedBookState() {
+    return switch (sessionState) {
+      case IdleSession idle -> idle.cachedBookState();
+      case OpenedSession opened -> opened.cachedBookState();
+      case FailedSession failed -> failed.cachedBookState();
+      case ClosedSession ignored -> null;
+    };
+  }
+
+  private @Nullable SqliteNativeDatabase publishedDatabaseValue() {
+    return switch (sessionState) {
+      case IdleSession ignored -> null;
+      case OpenedSession opened -> opened.database();
+      case FailedSession failed -> failed.database();
+      case ClosedSession ignored -> null;
+    };
   }
 
   private IllegalStateException rememberTerminalFailure(IllegalStateException failure) {
-    terminalFailure = Objects.requireNonNull(failure, "failure");
-    return failure;
+    IllegalStateException rememberedFailure = Objects.requireNonNull(failure, "failure");
+    sessionState =
+        switch (sessionState) {
+          case IdleSession idle ->
+              new FailedSession(null, idle.cachedBookState(), rememberedFailure);
+          case OpenedSession opened ->
+              new FailedSession(opened.database(), opened.cachedBookState(), rememberedFailure);
+          case FailedSession failed ->
+              new FailedSession(failed.database(), failed.cachedBookState(), rememberedFailure);
+          case ClosedSession ignored -> new ClosedSession(rememberedFailure);
+        };
+    return rememberedFailure;
   }
+
+  private ContractFailureException rememberedRejectedFailure(ContractFailure failure) {
+    Objects.requireNonNull(failure, "failure");
+    if (sessionState instanceof FailedSession failed
+        && failed.failure() instanceof ContractFailureException stored) {
+      return stored;
+    }
+    return new ContractFailureException(failure);
+  }
+
+  /** Internal session-state model for a single store lifecycle instance. */
+  private sealed interface SessionState
+      permits IdleSession, OpenedSession, FailedSession, ClosedSession {}
+
+  /** Internal ledger-plan transaction model for one store lifecycle instance. */
+  private sealed interface LedgerPlanTransactionState
+      permits NoLedgerPlanTransaction, ActiveLedgerPlanTransaction {}
+
+  /** Lifecycle state when no ledger-plan transaction is active. */
+  private record NoLedgerPlanTransaction() implements LedgerPlanTransactionState {}
+
+  /** Active ledger-plan transaction with explicit database and artifact tracking state. */
+  private record ActiveLedgerPlanTransaction(
+      DatabaseTransactionState databaseTransactionState, ArtifactCleanupState artifactCleanupState)
+      implements LedgerPlanTransactionState {
+    private ActiveLedgerPlanTransaction {
+      Objects.requireNonNull(databaseTransactionState, "databaseTransactionState");
+      Objects.requireNonNull(artifactCleanupState, "artifactCleanupState");
+    }
+
+    boolean begunInDatabase() {
+      return databaseTransactionState instanceof DatabaseTransactionBegun;
+    }
+
+    boolean createdBookArtifacts() {
+      return artifactCleanupState instanceof MissingBookArtifactsCreated;
+    }
+
+    @Nullable Path preexistingAncestorDirectory() {
+      return artifactCleanupState.preexistingAncestorDirectory();
+    }
+
+    ActiveLedgerPlanTransaction withBegunDatabase() {
+      return new ActiveLedgerPlanTransaction(new DatabaseTransactionBegun(), artifactCleanupState);
+    }
+
+    ActiveLedgerPlanTransaction withCreatedBookArtifacts() {
+      return switch (artifactCleanupState) {
+        case NoArtifactCleanup ignored -> this;
+        case MissingBookArtifactsPending pending ->
+            new ActiveLedgerPlanTransaction(
+                databaseTransactionState,
+                new MissingBookArtifactsCreated(pending.preexistingAncestorDirectory()));
+        case MissingBookArtifactsCreated ignored -> this;
+      };
+    }
+  }
+
+  /** Database-begin state for one active ledger-plan transaction. */
+  private sealed interface DatabaseTransactionState
+      permits DatabaseTransactionDeferred, DatabaseTransactionBegun {}
+
+  /** Active ledger-plan transaction before the SQLite database transaction begins. */
+  private record DatabaseTransactionDeferred() implements DatabaseTransactionState {}
+
+  /** Active ledger-plan transaction after the SQLite database transaction begins. */
+  private record DatabaseTransactionBegun() implements DatabaseTransactionState {}
+
+  /** Missing-book artifact cleanup state for one active ledger-plan transaction. */
+  private sealed interface ArtifactCleanupState
+      permits NoArtifactCleanup, MissingBookArtifactsPending, MissingBookArtifactsCreated {
+    /**
+     * Returns the ancestor directory that predated missing-book artifact creation, when one exists.
+     */
+    @Nullable default Path preexistingAncestorDirectory() {
+      return null;
+    }
+  }
+
+  /** Active ledger-plan transaction that did not begin from a missing-book path. */
+  private record NoArtifactCleanup() implements ArtifactCleanupState {}
+
+  /** Missing-book transaction before schema/bootstrap work creates cleanup-eligible artifacts. */
+  private record MissingBookArtifactsPending(@Nullable Path preexistingAncestorDirectory)
+      implements ArtifactCleanupState {}
+
+  /** Missing-book transaction after schema/bootstrap work creates cleanup-eligible artifacts. */
+  private record MissingBookArtifactsCreated(@Nullable Path preexistingAncestorDirectory)
+      implements ArtifactCleanupState {}
+
+  /** Session state before a database handle has been opened. */
+  private record IdleSession(@Nullable SqliteBookStateSnapshot cachedBookState)
+      implements SessionState {}
+
+  /** Session state with a live database handle. */
+  private record OpenedSession(
+      SqliteNativeDatabase database, @Nullable SqliteBookStateSnapshot cachedBookState)
+      implements SessionState {
+    private OpenedSession {
+      Objects.requireNonNull(database, "database");
+    }
+  }
+
+  /** Session state after a terminal lifecycle failure has been recorded. */
+  private record FailedSession(
+      @Nullable SqliteNativeDatabase database,
+      @Nullable SqliteBookStateSnapshot cachedBookState,
+      IllegalStateException failure)
+      implements SessionState {
+    private FailedSession {
+      Objects.requireNonNull(failure, "failure");
+    }
+  }
+
+  /** Session state after the lifecycle has been closed. */
+  private record ClosedSession(@Nullable IllegalStateException closeFailure)
+      implements SessionState {}
 }

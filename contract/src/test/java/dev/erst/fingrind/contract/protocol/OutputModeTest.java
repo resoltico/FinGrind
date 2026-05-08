@@ -1,15 +1,14 @@
 package dev.erst.fingrind.contract.protocol;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link OutputMode}. */
-@NullUnmarked
 class OutputModeTest {
   @Test
   void wireValuesAndParsing_followTheCanonicalVocabulary() {
@@ -20,8 +19,7 @@ class OutputModeTest {
     assertEquals("json", OutputMode.JSON.wireValue());
     assertEquals("human", OutputMode.HUMAN.wireValue());
     assertEquals("csv", OutputMode.CSV.wireValue());
-
-    assertThrows(NullPointerException.class, () -> OutputMode.fromWireValue(null));
+    assertThrows(NullPointerException.class, () -> OutputMode.fromWireValue(nullOf()));
     assertThrows(
         IllegalArgumentException.class, () -> OutputMode.fromWireValue("spreadsheet-maybe"));
   }
@@ -29,21 +27,20 @@ class OutputModeTest {
   @Test
   void run_dispatchesToTheSelectedOutputBranch() {
     AtomicInteger counter = new AtomicInteger();
-
     OutputMode.JSON.run(
         counter::incrementAndGet, () -> counter.addAndGet(10), () -> counter.addAndGet(100));
     assertEquals(1, counter.get());
-
     OutputMode.HUMAN.run(
         counter::incrementAndGet, () -> counter.addAndGet(10), () -> counter.addAndGet(100));
     assertEquals(11, counter.get());
-
     OutputMode.CSV.run(
         counter::incrementAndGet, () -> counter.addAndGet(10), () -> counter.addAndGet(100));
     assertEquals(111, counter.get());
-
-    assertThrows(NullPointerException.class, () -> OutputMode.JSON.run(null, () -> {}, () -> {}));
-    assertThrows(NullPointerException.class, () -> OutputMode.HUMAN.run(() -> {}, null, () -> {}));
-    assertThrows(NullPointerException.class, () -> OutputMode.CSV.run(() -> {}, () -> {}, null));
+    assertThrows(
+        NullPointerException.class, () -> OutputMode.JSON.run(nullOf(), () -> {}, () -> {}));
+    assertThrows(
+        NullPointerException.class, () -> OutputMode.HUMAN.run(() -> {}, nullOf(), () -> {}));
+    assertThrows(
+        NullPointerException.class, () -> OutputMode.CSV.run(() -> {}, () -> {}, nullOf()));
   }
 }

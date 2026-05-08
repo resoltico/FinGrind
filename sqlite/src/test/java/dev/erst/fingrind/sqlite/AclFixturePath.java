@@ -12,17 +12,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.jspecify.annotations.Nullable;
 
 /** Minimal path implementation for the test ACL filesystem. */
-@NullUnmarked
 final class AclFixturePath implements Path {
   private final AclFixtureFileSystem fileSystem;
   private final String value;
   boolean exists;
   boolean regularFile;
-  AclFixtureView aclView;
+  @Nullable AclFixtureView aclView;
   Set<PosixFilePermission> posixPermissions = Set.of();
   private @Nullable IOException deleteIfExistsFailure;
 
@@ -63,7 +61,7 @@ final class AclFixturePath implements Path {
   }
 
   @Override
-  public Path getParent() {
+  public @Nullable Path getParent() {
     int index = value.lastIndexOf('\\');
     if (index <= 0) {
       return null;

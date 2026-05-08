@@ -9,7 +9,7 @@ import dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -17,13 +17,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Compatibility and restore coverage for committed protected-book fixtures. */
-@NullUnmarked
 class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStoreTestSupport {
   private static final String CURRENT_DEFAULT_FIXTURE_RESOURCE =
       "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite";
@@ -36,11 +34,10 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
       throws Exception {
     ProtectedBookFormatContract expectedFormat = ProtocolCatalog.protectedBookFormat();
     assertEquals(expectedFormat, fixtureMetadataFormat());
-
     Path fixtureCopy = copyFixture("current-default-protected-book-format.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(fixtureCopy))) {
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
       assertEquals(
           expectedFormat,
           SqliteProtectedBookFormatIntrospection.openedBookFormat(
@@ -51,7 +48,6 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
   @Test
   void newlyCreatedProtectedBook_usesCanonicalProtectedBookFormat() throws Exception {
     Path newBookPath = tempDirectory.resolve("new-protected-book-format.sqlite");
-
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromUtf8Bytes(
                 "test-protected-book-format",
@@ -66,22 +62,20 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
   @Test
   void currentDefaultProtectedBookFixture_reopensAndRejectsWrongKey() throws Exception {
     Path fixtureCopy = copyFixture("current-default-protected-book.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(fixtureCopy))) {
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
       assertEquals(2, listAccounts(postingFactStore).size());
       assertTrue(postingFactStore.findAccount(new AccountCode("1000")).isPresent());
       assertTrue(postingFactStore.findAccount(new AccountCode("2000")).isPresent());
       assertTrue(
           postingFactStore.findExistingPosting(new IdempotencyKey("fixture-idem-1")).isPresent());
     }
-
     try (SqlitePostingFactStore wrongKeyStore =
         new SqlitePostingFactStore(bookAccess(fixtureCopy, "wrong-fixture-key"))) {
       IllegalStateException exception =
           org.junit.jupiter.api.Assertions.assertThrows(
-              IllegalStateException.class, wrongKeyStore::isInitialized);
+              IllegalStateException.class, wrongKeyStore::inspectBook);
       assertProtectedBookVerificationFailure(exception);
     }
   }
@@ -91,7 +85,6 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
     Path workingBook = copyFixture("working-protected-book.sqlite");
     Path backupBook = tempDirectory.resolve("working-protected-book.backup.sqlite");
     Files.copy(workingBook, backupBook, StandardCopyOption.REPLACE_EXISTING);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(workingBook))) {
       assertEquals(
@@ -101,7 +94,8 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
                   "fixture-idem-2",
                   java.util.Optional.empty(),
                   java.util.Optional.empty())),
-          postingFactStore.commit(
+          commitPosting(
+              postingFactStore,
               postingFact(
                   "fixture-posting-2",
                   "fixture-idem-2",
@@ -110,12 +104,10 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
       assertTrue(
           postingFactStore.findExistingPosting(new IdempotencyKey("fixture-idem-2")).isPresent());
     }
-
     Files.copy(backupBook, workingBook, StandardCopyOption.REPLACE_EXISTING);
-
     try (SqlitePostingFactStore restoredStore =
         new SqlitePostingFactStore(bookAccess(workingBook))) {
-      assertTrue(restoredStore.isInitialized());
+      assertTrue(restoredStore.inspectBook().initialized());
       assertTrue(
           restoredStore.findExistingPosting(new IdempotencyKey("fixture-idem-1")).isPresent());
       assertFalse(
@@ -123,12 +115,11 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
       assertTrue(restoredStore.findAccount(new AccountCode("1000")).isPresent());
       assertTrue(restoredStore.findAccount(new AccountCode("2000")).isPresent());
     }
-
     try (SqlitePostingFactStore wrongKeyStore =
         new SqlitePostingFactStore(bookAccess(workingBook, "wrong-fixture-key"))) {
       IllegalStateException exception =
           org.junit.jupiter.api.Assertions.assertThrows(
-              IllegalStateException.class, wrongKeyStore::isInitialized);
+              IllegalStateException.class, wrongKeyStore::inspectBook);
       assertProtectedBookVerificationFailure(exception);
     }
   }

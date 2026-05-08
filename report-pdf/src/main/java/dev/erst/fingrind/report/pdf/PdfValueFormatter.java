@@ -4,17 +4,12 @@ import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.time.LocalDate;
-import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Shared formatting helpers for FinGrind PDF reports. */
 final class PdfValueFormatter {
   private PdfValueFormatter() {}
-
-  static String absolutePath(Path path) {
-    return path.toAbsolutePath().normalize().toString();
-  }
 
   static String displayMoney(Money money) {
     return displayAmount(money.amount());
@@ -24,18 +19,19 @@ final class PdfValueFormatter {
     return amount.stripTrailingZeros().toPlainString();
   }
 
-  static String optionalDate(Optional<LocalDate> date) {
-    return date.map(LocalDate::toString).orElse("(current)");
+  static String optionalDate(@Nullable LocalDate date) {
+    return date == null ? "(current)" : date.toString();
   }
 
-  static String optionalDateRange(Optional<LocalDate> from, Optional<LocalDate> to) {
-    String lower = from.map(LocalDate::toString).orElse("(start)");
-    String upper = to.map(LocalDate::toString).orElse("(current)");
+  static String optionalDateRange(@Nullable LocalDate from, @Nullable LocalDate to) {
+    String lower = from == null ? "(start)" : from.toString();
+    String upper = to == null ? "(current)" : to.toString();
     return lower + " to " + upper;
   }
 
   static String effectiveDateRange(EffectiveDateRange range) {
-    return optionalDateRange(range.effectiveDateFrom(), range.effectiveDateTo());
+    return optionalDateRange(
+        range.effectiveDateFrom().orElse(null), range.effectiveDateTo().orElse(null));
   }
 
   static String reversalTarget(PostingFact postingFact) {

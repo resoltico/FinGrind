@@ -1,6 +1,7 @@
 {
   "targetKey": "ledger-plan-request",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/basic_valid.json",
+  "coverageIntent": "valid plan with operation, posting, and assertion steps",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

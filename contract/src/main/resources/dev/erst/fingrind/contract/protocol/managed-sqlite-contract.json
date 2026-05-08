@@ -1,11 +1,13 @@
 {
-  "requiredMinimumSqliteVersion": "3.53.0",
-  "requiredSqlite3mcVersion": "2.3.3",
-  "requiredSqliteSourceId": "2026-04-09 11:41:38 4525003a53a7fc63ca75c59b22c79608659ca12f0131f52c18637f829977f20b",
+  "requiredMinimumSqliteVersion": "3.53.1",
+  "requiredSqlite3mcVersion": "2.3.4",
+  "requiredSqliteSourceId": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
   "requiredCompileOptions": [
     "THREADSAFE=1",
     "OMIT_LOAD_EXTENSION",
     "TEMP_STORE=3",
     "SECURE_DELETE"
-  ]
+  ],
+  "forbiddenCompileOptions": ["USE_URI"],
+  "requiresSecureMemorySupport": true
 }

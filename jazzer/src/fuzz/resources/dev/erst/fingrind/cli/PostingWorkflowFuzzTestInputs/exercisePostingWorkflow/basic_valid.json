@@ -1,24 +1,37 @@
 {
-  "effectiveDate": "2026-04-07",
+  "effectiveDate": "2026-04-10",
   "lines": [
     {
-      "accountCode": "1000",
+      "accountCode": "1100",
       "side": "DEBIT",
       "currencyCode": "EUR",
       "amount": "10.00"
     },
     {
-      "accountCode": "2000",
+      "accountCode": "1200",
+      "side": "DEBIT",
+      "currencyCode": "EUR",
+      "amount": "15.00"
+    },
+    {
+      "accountCode": "2100",
       "side": "CREDIT",
       "currencyCode": "EUR",
       "amount": "10.00"
+    },
+    {
+      "accountCode": "2200",
+      "side": "CREDIT",
+      "currencyCode": "EUR",
+      "amount": "15.00"
     }
   ],
   "provenance": {
-    "actorId": "actor-1",
-    "actorType": "AGENT",
-    "commandId": "command-1",
-    "idempotencyKey": "idem-1",
-    "causationId": "cause-1"
+    "actorId": "actor-posting-4",
+    "actorType": "HUMAN",
+    "commandId": "command-posting-4",
+    "idempotencyKey": "idem-posting-4",
+    "causationId": "cause-posting-4",
+    "correlationId": "corr-posting-4"
   }
 }

@@ -29,10 +29,8 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.PostingApplicationService;
-import dev.erst.fingrind.executor.PostingBookSession;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqliteBookSessions;
@@ -59,9 +57,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqlitePassphraseIntent.NEW_SECRET,
         bookSession ->
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
-                .toPublished(
-                    new BookAdministrationService(bookSession.administrationSession(), clock)
-                        .openBook()));
+                .toPublished(new BookAdministrationService(bookSession, clock).openBook()));
   }
 
   @Override
@@ -83,7 +79,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession.administrationSession(), clock)
+                new BookAdministrationService(bookSession, clock)
                     .declareAccount(
                         BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
@@ -94,7 +90,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).inspectBook());
+        bookSession -> new BookReadService(bookSession).inspectBook());
   }
 
   @Override
@@ -104,7 +100,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).listAccounts(query));
+        bookSession -> new BookReadService(bookSession).listAccounts(query));
   }
 
   @Override
@@ -114,7 +110,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).getPosting(postingId));
+        bookSession -> new BookReadService(bookSession).getPosting(postingId));
   }
 
   @Override
@@ -124,7 +120,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).listPostings(query));
+        bookSession -> new BookReadService(bookSession).listPostings(query));
   }
 
   @Override
@@ -134,7 +130,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).accountBalance(query));
+        bookSession -> new BookReadService(bookSession).accountBalance(query));
   }
 
   @Override
@@ -144,7 +140,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).trialBalance(query));
+        bookSession -> new BookReadService(bookSession).trialBalance(query));
   }
 
   @Override
@@ -154,7 +150,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).accountLedger(query));
+        bookSession -> new BookReadService(bookSession).accountLedger(query));
   }
 
   @Override
@@ -164,7 +160,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> new BookReadService(bookSession.readSession()).periodSummary(query));
+        bookSession -> new BookReadService(bookSession).periodSummary(query));
   }
 
   @Override
@@ -178,7 +174,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
             : SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
             new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
-                .execute(BookWorkflowPublishedLanguageTranslator.fromPublished(plan)));
+                .execute(plan));
   }
 
   @Override
@@ -189,7 +185,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
-            postingApplicationService(bookSession.postingSession(), clock)
+            postingApplicationService(bookSession, clock)
                 .preflight(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
@@ -201,7 +197,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_WRITE_EXISTING,
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession ->
-            postingApplicationService(bookSession.postingSession(), clock)
+            postingApplicationService(bookSession, clock)
                 .commit(BookkeepingPublishedLanguageTranslator.fromPublished(command)));
   }
 
@@ -244,7 +240,7 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
   }
 
   private static PostingApplicationService postingApplicationService(
-      PostingBookSession bookSession, Clock clock) {
+      SqliteBookSession bookSession, Clock clock) {
     return new PostingApplicationService(bookSession, new UuidV7PostingIdGenerator(), clock);
   }
 }

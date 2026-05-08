@@ -1,6 +1,7 @@
 {
   "targetKey": "cli-request",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/basic_valid.json",
+  "coverageIntent": "minimal valid posting request",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

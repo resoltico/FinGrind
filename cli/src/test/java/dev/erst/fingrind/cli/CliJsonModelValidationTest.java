@@ -1,9 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
@@ -13,11 +13,9 @@ import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import java.nio.file.Path;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Pins constructor invariants for package-private CLI JSON transport models. */
-@NullUnmarked
 class CliJsonModelValidationTest {
   @Test
   void responseModels_trimTextAndRejectBlankValues() {
@@ -28,14 +26,13 @@ class CliJsonModelValidationTest {
             " The book is not initialized. ",
             " idem-1 ",
             null);
-
     assertEquals(ProtocolRejectionStatus.REJECTED, envelope.status());
     assertEquals("query-book-not-initialized", envelope.code());
     assertEquals("The book is not initialized.", envelope.message());
     assertEquals("idem-1", envelope.idempotencyKey());
     assertThrows(
         NullPointerException.class,
-        () -> new CliEnvelopeJsonModels.RejectedEnvelope(null, "code", "message", null, null));
+        () -> new CliEnvelopeJsonModels.RejectedEnvelope(nullOf(), "code", "message", null, null));
   }
 
   @Test
@@ -63,7 +60,6 @@ class CliJsonModelValidationTest {
             null,
             " --limit ",
             new CliErrorJsonModels.InvalidRequestDetails(List.of("One problem.")));
-
     assertEquals("invalid-request", failure.code());
     assertEquals("Message", failure.message());
     assertEquals("--limit", failure.argument());
@@ -88,7 +84,6 @@ class CliJsonModelValidationTest {
             null,
             null,
             new CliErrorJsonModels.InvalidJsonDetails(" Unexpected token ", 3, 14));
-
     assertEquals("invalid-request", failure.code());
     CliErrorJsonModels.InvalidJsonDetails details =
         assertInstanceOf(CliErrorJsonModels.InvalidJsonDetails.class, failure.details());
@@ -104,16 +99,18 @@ class CliJsonModelValidationTest {
   }
 
   @Test
-  void parsedBookArguments_coalesceNullCommandArguments() {
-    CliBookArgumentParser.ParsedBookArguments parsedBookArguments =
-        new CliBookArgumentParser.ParsedBookArguments(
-            new BookAccess(
-                Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE),
-            null,
-            null);
-
-    assertEquals(List.of(), parsedBookArguments.commandArguments());
-    assertEquals(Path.of("book.sqlite"), parsedBookArguments.bookAccess().bookFilePath());
-    assertTrue(parsedBookArguments.optionalRequestFile().isEmpty());
+  void parsedBookArguments_rejectNullCommandArguments() {
+    assertEquals(
+        "commandArguments",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new CliBookArgumentParser.ParsedBookArguments(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE),
+                        nullOf(),
+                        nullOf()))
+            .getMessage());
   }
 }

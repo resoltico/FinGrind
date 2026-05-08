@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.VersionDescriptor;
 import dev.erst.fingrind.contract.WorkflowDescriptor;
 import dev.erst.fingrind.contract.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import java.util.List;
 import java.util.Objects;
@@ -90,12 +91,8 @@ final class CliDiscoveryOutputRenderer {
         command.options().isEmpty()
             ? "(none)"
             : String.join(System.lineSeparator(), command.options());
-    String examples =
-        operation.examples().isEmpty()
-            ? "(none)"
-            : operation.examples().stream()
-                .map(CliInvocationText::rewriteInvocationPrefix)
-                .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
+    String examples = renderCommandExamples(operation);
+    String operatorNotes = renderOperatorNotes(operation);
     String exitCodes =
         CliTextFormat.renderTable(
             List.of("Code", "Meaning"),
@@ -111,6 +108,7 @@ final class CliDiscoveryOutputRenderer {
             section("Usage", usage),
             section("Options", options),
             section("Examples", examples),
+            operatorNotes,
             section("Exit Codes", exitCodes)));
   }
 
@@ -176,7 +174,10 @@ final class CliDiscoveryOutputRenderer {
   }
 
   private static String joinSections(String... sections) {
-    return String.join(System.lineSeparator() + System.lineSeparator(), sections);
+    return java.util.Arrays.stream(sections)
+        .filter(section -> !section.isBlank())
+        .collect(
+            java.util.stream.Collectors.joining(System.lineSeparator() + System.lineSeparator()));
   }
 
   private static boolean isCommandScoped(HelpDescriptor helpDescriptor) {
@@ -193,6 +194,29 @@ final class CliDiscoveryOutputRenderer {
 
   private static String joinCommandNames(List<CommandDescriptor> commands) {
     return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
+  }
+
+  private static String renderCommandExamples(ProtocolOperation operation) {
+    List<String> commandExamples =
+        operation.exampleSteps().stream()
+            .filter(ProtocolExampleStep.Command.class::isInstance)
+            .map(ProtocolExampleStep::text)
+            .map(CliInvocationText::rewriteInvocationPrefix)
+            .toList();
+    return commandExamples.isEmpty()
+        ? "(none)"
+        : String.join(System.lineSeparator(), commandExamples);
+  }
+
+  private static String renderOperatorNotes(ProtocolOperation operation) {
+    List<String> notes =
+        operation.exampleSteps().stream()
+            .filter(ProtocolExampleStep.Note.class::isInstance)
+            .map(ProtocolExampleStep::text)
+            .toList();
+    return notes.isEmpty()
+        ? ""
+        : section("Operator Notes", String.join(System.lineSeparator(), notes));
   }
 
   private static String renderQuickStartWorkflow(WorkflowDescriptor workflow) {
@@ -215,14 +239,11 @@ final class CliDiscoveryOutputRenderer {
   }
 
   private static String renderQuickStartStep(WorkflowStepDescriptor step) {
-    return switch (step.kind()) {
-      case COMMAND -> requireText(step);
-      case EDIT ->
-          "Write: "
-              + requirePath(step)
-              + System.lineSeparator()
-              + indent(requireContent(step), "  ");
-      case NOTE -> "Note: " + requireText(step);
+    return switch (step) {
+      case WorkflowStepDescriptor.Command command -> command.text();
+      case WorkflowStepDescriptor.Edit edit ->
+          "Write: " + edit.path() + System.lineSeparator() + indent(edit.content(), "  ");
+      case WorkflowStepDescriptor.Note note -> "Note: " + note.text();
     };
   }
 
@@ -230,18 +251,6 @@ final class CliDiscoveryOutputRenderer {
     return text.lines()
         .map(line -> prefix + line)
         .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
-  }
-
-  private static String requireText(WorkflowStepDescriptor step) {
-    return java.util.Objects.requireNonNull(step.text(), "Workflow text is missing.");
-  }
-
-  private static String requirePath(WorkflowStepDescriptor step) {
-    return java.util.Objects.requireNonNull(step.path(), "Workflow path is missing.");
-  }
-
-  private static String requireContent(WorkflowStepDescriptor step) {
-    return java.util.Objects.requireNonNull(step.content(), "Workflow content is missing.");
   }
 
   private static String artifactSummary(CommandDescriptor command) {

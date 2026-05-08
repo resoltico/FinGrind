@@ -193,22 +193,22 @@ class ProtocolDomainModelContractTest extends ProtocolContractLintSupport {
   }
 
   @Test
-  void executorModule_exportsLocalContextsWithoutQualifiedTargetDrift() throws IOException {
+  void executorModule_exportsOnlyTheIntendedPublicAndAdapterBridgePackages() throws IOException {
     String moduleInfo =
         Files.readString(repositoryRoot().resolve("executor/src/main/java/module-info.java"));
 
     Set<String> violations = new LinkedHashSet<>();
+    if (!moduleInfo.contains("exports dev.erst.fingrind.executor;")) {
+      violations.add("executor module must export the public application-service package.");
+    }
     if (!moduleInfo.contains("exports dev.erst.fingrind.executor.bookkeeping;")) {
-      violations.add("executor module must export the bookkeeping context package.");
+      violations.add("executor module must export the bookkeeping bridge vocabulary unqualified.");
     }
-    if (!moduleInfo.contains("exports dev.erst.fingrind.executor.workflow;")) {
-      violations.add("executor module must export the workflow context package.");
+    if (!moduleInfo.contains("exports dev.erst.fingrind.executor.spi;")) {
+      violations.add("executor module must export the explicit store seam vocabulary unqualified.");
     }
-    if (moduleInfo.contains("exports dev.erst.fingrind.executor.bookkeeping to")) {
-      violations.add("executor bookkeeping export may not use qualified JPMS targets.");
-    }
-    if (moduleInfo.contains("exports dev.erst.fingrind.executor.workflow to")) {
-      violations.add("executor workflow export may not use qualified JPMS targets.");
+    if (moduleInfo.contains("exports dev.erst.fingrind.executor.workflow;")) {
+      violations.add("executor workflow context must remain internal to the module.");
     }
 
     assertTrue(violations.isEmpty(), () -> "Executor module export drift:\n" + sorted(violations));

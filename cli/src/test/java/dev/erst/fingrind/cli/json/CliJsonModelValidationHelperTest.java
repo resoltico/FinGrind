@@ -1,9 +1,11 @@
 package dev.erst.fingrind.cli.json;
 
+import static dev.erst.fingrind.cli.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +13,19 @@ import org.junit.jupiter.api.Test;
 class CliJsonModelValidationHelperTest {
   @Test
   void helperBranches_coverNullAndFailingNumericCases() {
-    assertEquals(List.of(), CliJsonModelValidation.copyList(null));
+    assertEquals(
+        "values must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () -> CliJsonModelValidation.copyList(nullOf(), "values"))
+            .getMessage());
+    assertEquals(
+        "values[1] must not be null.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> CliJsonModelValidation.copyList(Arrays.asList("alpha", nullOf()), "values"))
+            .getMessage());
+    assertEquals(List.of("alpha"), CliJsonModelValidation.copyList(List.of("alpha"), "values"));
     assertNull(CliJsonModelValidation.requireOptionalText(null, "hint"));
     assertThrows(
         IllegalArgumentException.class,

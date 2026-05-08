@@ -8,17 +8,14 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for report-oriented CLI argument parsing. */
-@NullUnmarked
 class CliReportArgumentParsingTest {
   @Test
   void parse_assignsDefaultAndExplicitOutputModesForReadAndReportCommands() {
     Path bookFile = Path.of("book.sqlite");
     Path keyFile = Path.of("book.key");
-
     InspectBook defaultInspectBook =
         assertInstanceOf(
             InspectBook.class,
@@ -133,7 +130,6 @@ class CliReportArgumentParsingTest {
                   "--effective-date-to",
                   "2026-04-30"
                 }));
-
     assertEquals(OutputMode.JSON, defaultInspectBook.outputMode());
     assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
     assertEquals(OutputMode.JSON, defaultTrialBalance.output().outputMode());
@@ -150,7 +146,6 @@ class CliReportArgumentParsingTest {
   void parse_rejectsUnsupportedAndConflictingReportArguments() {
     Path bookFile = Path.of("book.sqlite");
     Path keyFile = Path.of("book.key");
-
     assertThrows(
         CliArgumentsException.class,
         () ->

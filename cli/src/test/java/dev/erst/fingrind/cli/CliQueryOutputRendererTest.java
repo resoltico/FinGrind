@@ -26,11 +26,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for CLI read, report, and mutation renderers. */
-@NullUnmarked
 class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   @Test
   void renderInspectionAccountsAndPostingViewsInHumanAndCsvForms() {
@@ -75,7 +73,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String postingRegisterCsv =
         CliQueryOutputRenderer.renderPostingRegisterCsv(
             new PostingPage(List.of(postingFact), 10, Optional.empty()));
-
     assertTrue(missingInspection.contains("missing"));
     assertTrue(missingInspection.contains("Can initialize with open-book"));
     assertTrue(missingInspection.contains("true"));
@@ -111,7 +108,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         accountLedgerReport(cashAccount, postingFact, eurDebitBalance);
     AccountLedgerReport selfLedgerReport = selfLedgerReport(cashAccount, selfPostingFact);
     PeriodSummaryReport periodSummaryReport = periodSummaryReport(revenueAccount, eurDebitBalance);
-
     String accountBalanceHuman = CliQueryOutputRenderer.renderAccountBalanceHuman(balanceSnapshot);
     String accountBalanceCsv = CliQueryOutputRenderer.renderAccountBalanceCsv(balanceSnapshot);
     String trialBalanceHuman = CliQueryOutputRenderer.renderTrialBalanceHuman(trialBalanceReport);
@@ -146,7 +142,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 new IdempotencyKey("coverage-idem"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z")));
-
     assertTrue(accountBalanceHuman.contains("Account Balance"));
     assertTrue(accountBalanceHuman.contains("Range"));
     assertTrue(accountBalanceCsv.contains("effectiveDateFrom,effectiveDateTo"));

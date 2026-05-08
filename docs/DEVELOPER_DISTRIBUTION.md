@@ -213,6 +213,13 @@ that same contract through
 `scripts/read-contract-values.py`. Bundle metadata, launchers, Docker staging, and operator
 verification therefore all consume one canonical runtime-surface owner instead of parallel copied
 literal values.
+The staged manifest now also records a SHA3-256 fingerprint of the current CLI, contract, core,
+executor, report, SQLite, and Gradle build inputs that feed that staged runtime. A plain
+`docker build` from the repository root therefore rejects stale staged contexts instead of
+silently packaging an older `fingrind.jar` or entrypoint script after local source edits.
+When Gradle stages into a relocated build root, the same task now mirrors that fresh context back
+into `cli/build/docker-context/` automatically, so repository-root `docker build` sees the same
+fresh payload that Gradle assembled instead of an older leftover tree under the checkout.
 The Unix bundle and Docker acceptance entrypoints now also delegate their shared office-worker
 workflow through `scripts/release-smoke-support.sh`, whose Bash wrapper now delegates the shared
 command/fixture/assertion lifecycle into the single Python owner
@@ -243,6 +250,11 @@ shell acceptance do not maintain separate per-platform lookup tables.
 It is not the public release artifact.
 
 ## Publication Rules
+
+For the GitHub Release publication topology, published-byte attestation rationale, Windows ZIP
+canary behavior, and post-tag workflow-repair path, use
+[DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md). This document keeps the
+distribution contract concise; the publication reference carries the failure theory.
 
 Every GitHub release must publish:
 - one archive per supported target (`.tar.gz` for macOS and Linux, `.zip` for Windows)

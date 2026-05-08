@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import java.util.Objects;
 
@@ -15,7 +16,7 @@ final class ProtocolOperationDefinitions {
       List<String> options,
       ExecutionMode executionMode,
       String analysisSummary,
-      List<String> examples) {
+      List<ProtocolExampleStep> exampleSteps) {
     return operation(
         new OperationDefinition(
             id,
@@ -27,7 +28,7 @@ final class ProtocolOperationDefinitions {
             List.of(),
             List.of(),
             analysisSummary,
-            examples));
+            exampleSteps));
   }
 
   static ProtocolOperation operation(
@@ -39,7 +40,7 @@ final class ProtocolOperationDefinitions {
       ExecutionMode executionMode,
       List<OutputMode> outputModes,
       String analysisSummary,
-      List<String> examples) {
+      List<ProtocolExampleStep> exampleSteps) {
     return operation(
         new OperationDefinition(
             id,
@@ -51,7 +52,7 @@ final class ProtocolOperationDefinitions {
             outputModes,
             List.of(),
             analysisSummary,
-            examples));
+            exampleSteps));
   }
 
   static ProtocolOperation operation(OperationDefinition definition) {
@@ -71,7 +72,8 @@ final class ProtocolOperationDefinitions {
             definition.displayLabel(), definition.aliases(), definition.options(), usage),
         new ProtocolOperationOutputs(
             definition.executionMode(), definition.outputModes(), definition.artifactOutputs()),
-        new ProtocolOperationDocumentation(definition.analysisSummary(), definition.examples()));
+        new ProtocolOperationDocumentation(
+            definition.analysisSummary(), definition.exampleSteps()));
   }
 
   private static String usageOption(String option) {
@@ -91,18 +93,18 @@ final class ProtocolOperationDefinitions {
       List<OutputMode> outputModes,
       List<ProtocolArtifactOutput> artifactOutputs,
       String analysisSummary,
-      List<String> examples) {
+      List<ProtocolExampleStep> exampleSteps) {
     OperationDefinition {
       Objects.requireNonNull(id, "id");
       Objects.requireNonNull(category, "category");
       displayLabel = requireText(displayLabel, "displayLabel");
-      aliases = copyList(aliases);
-      options = copyList(options);
+      aliases = ContractDescriptorValidation.copyList(aliases, "aliases");
+      options = ContractDescriptorValidation.copyList(options, "options");
       Objects.requireNonNull(executionMode, "executionMode");
-      outputModes = copyList(outputModes);
-      artifactOutputs = copyList(artifactOutputs);
+      outputModes = ContractDescriptorValidation.copyList(outputModes, "outputModes");
+      artifactOutputs = ContractDescriptorValidation.copyList(artifactOutputs, "artifactOutputs");
       analysisSummary = requireText(analysisSummary, "analysisSummary");
-      examples = copyList(examples);
+      exampleSteps = ContractDescriptorValidation.copyList(exampleSteps, "exampleSteps");
     }
   }
 
@@ -112,9 +114,5 @@ final class ProtocolOperationDefinitions {
       throw new IllegalArgumentException(fieldName + " must not be blank.");
     }
     return value;
-  }
-
-  private static <T> List<T> copyList(List<T> values) {
-    return values == null ? List.of() : List.copyOf(values);
   }
 }

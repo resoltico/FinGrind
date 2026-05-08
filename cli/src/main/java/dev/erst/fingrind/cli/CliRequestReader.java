@@ -21,7 +21,7 @@ import tools.jackson.databind.node.NullNode;
 
 /** Parses FinGrind CLI request payloads into application commands. */
 final class CliRequestReader {
-  private final ObjectMapper objectMapper = CliJsonRequestCodec.configuredObjectMapper();
+  private final ObjectMapper objectMapper = CliJsonObjectMappers.configuredObjectMapper();
   private final InputStream inputStream;
 
   CliRequestReader(InputStream inputStream) {
@@ -32,7 +32,7 @@ final class CliRequestReader {
   PostEntryCommand readPostEntryCommand(Path requestFile) {
     return parseDatedRequest(
         requestFile,
-        CliJsonRequestCodec.postEntryRequestHint(),
+        CliJsonRequestHints.postEntryRequestHint(),
         "Request contains an invalid date/time value.",
         CliPostingRequestParser::readPostEntryCommand);
   }
@@ -41,7 +41,7 @@ final class CliRequestReader {
   DeclareAccountCommand readDeclareAccountCommand(Path requestFile) {
     return parseRequest(
         requestFile,
-        CliJsonRequestCodec.declareAccountRequestHint(),
+        CliJsonRequestHints.declareAccountRequestHint(),
         CliPostingRequestParser::readDeclareAccountCommand);
   }
 
@@ -49,7 +49,7 @@ final class CliRequestReader {
   LedgerPlan readLedgerPlan(Path requestFile) {
     return parseDatedRequest(
         requestFile,
-        CliJsonRequestCodec.ledgerPlanRequestHint(),
+        CliJsonRequestHints.ledgerPlanRequestHint(),
         "Ledger plan contains an invalid date/time value.",
         CliLedgerPlanParser::readLedgerPlan);
   }
@@ -60,20 +60,20 @@ final class CliRequestReader {
       Function<tools.jackson.databind.node.ObjectNode, T> parser) {
     try {
       return parser.apply(
-          CliJsonRequestCodec.requireRootObject(readRootNode(requestFile, requestHint)));
+          CliJsonFieldAccess.requireRootObject(readRootNode(requestFile, requestHint)));
     } catch (CliRequestException exception) {
       throw exception;
     } catch (JournalEntryValidationException exception) {
       throw new CliRequestException(
           ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestCodec.normalizedMessage(exception),
+          CliJsonRequestFailures.normalizedMessage(exception),
           requestHint,
           exception,
           new CliErrorJsonModels.InvalidRequestDetails(exception.violations()));
     } catch (IllegalArgumentException | ArithmeticException exception) {
       throw new CliRequestException(
           ContractErrors.Descriptor.INVALID_REQUEST.code(),
-          CliJsonRequestCodec.normalizedMessage(exception),
+          CliJsonRequestFailures.normalizedMessage(exception),
           requestHint,
           exception);
     }
@@ -96,15 +96,20 @@ final class CliRequestReader {
   }
 
   private JsonNode readRootNode(Path requestFile, String readFailureHint) {
+    byte[] requestBytes;
     try {
-      byte[] requestBytes = readRequestBytes(requestFile);
-      if (CliJsonRequestCodec.hasDuplicateObjectKeys(requestBytes)) {
-        throw CliJsonRequestCodec.duplicateObjectKeyFailure(readFailureHint);
-      }
+      requestBytes = readRequestBytes(requestFile);
+    } catch (IOException exception) {
+      throw CliJsonRequestFailures.requestReadFailure(requestFile, exception, readFailureHint);
+    }
+    if (CliJsonObjectMappers.hasDuplicateObjectKeys(requestBytes)) {
+      throw CliJsonRequestFailures.duplicateObjectKeyFailure(readFailureHint);
+    }
+    try {
       return Objects.requireNonNullElseGet(
           objectMapper.readTree(requestBytes), NullNode::getInstance);
-    } catch (IOException | JacksonException exception) {
-      throw CliJsonRequestCodec.requestReadFailure(requestFile, exception, readFailureHint);
+    } catch (JacksonException exception) {
+      throw CliJsonRequestFailures.requestReadFailure(requestFile, exception, readFailureHint);
     }
   }
 

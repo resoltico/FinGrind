@@ -123,6 +123,25 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 options.errorprone.error(*enforcedErrorProneChecks.toTypedArray())
             }
 
+            val compileJava = tasks.named<JavaCompile>("compileJava")
+            val pruneCompileJavaOutputs =
+                tasks.register("pruneMainCompileJavaOutputs") {
+                    val destinationDirectory = compileJava.flatMap { it.destinationDirectory }
+                    outputs.dir(destinationDirectory)
+                    outputs.upToDateWhen { false }
+                    doLast {
+                        val outputDirectory = destinationDirectory.get().asFile
+                        outputDirectory.deleteRecursively()
+                        outputDirectory.mkdirs()
+                    }
+                }
+
+            compileJava.configure {
+                options.isIncremental = false
+                outputs.upToDateWhen { false }
+                dependsOn(pruneCompileJavaOutputs)
+            }
+
             tasks.withType<Pmd>().configureEach {
                 reports {
                     xml.required.set(true)
@@ -185,9 +204,16 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 toolVersion = libs.findVersion("jacoco").get().requiredVersion
             }
 
+            val mainSourceSet =
+                extensions.findByType(JavaPluginExtension::class.java)?.sourceSets?.findByName("main")
+                    ?: throw IllegalStateException(
+                        "FinGrind Java conventions require a Java main source set for JaCoCo configuration.",
+                    )
             tasks.named<JacocoReport>("jacocoTestReport") {
                 dependsOn(testTasks)
                 executionData.from(jacocoExecutionData)
+                classDirectories.setFrom(mainSourceSet.output.classesDirs)
+                sourceDirectories.setFrom(mainSourceSet.allJava.srcDirs)
                 reports {
                     xml.required.set(true)
                     html.required.set(true)
@@ -197,6 +223,8 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
                 dependsOn(testTasks)
                 executionData.from(jacocoExecutionData)
+                classDirectories.setFrom(mainSourceSet.output.classesDirs)
+                sourceDirectories.setFrom(mainSourceSet.allJava.srcDirs)
                 violationRules {
                     rule {
                         limit {

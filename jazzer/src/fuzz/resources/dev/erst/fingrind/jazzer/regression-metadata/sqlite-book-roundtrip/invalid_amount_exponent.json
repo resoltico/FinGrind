@@ -1,6 +1,7 @@
 {
   "targetKey": "sqlite-book-roundtrip",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_amount_exponent.json",
+  "coverageIntent": "exponent notation rejection with optional provenance correlation",
   "expectation": {
     "outcomeKind": "expected-invalid",
     "message": "Money amount must be a plain decimal string without exponent notation.",

@@ -182,7 +182,7 @@ final class CliQueryResponseWriter {
   }
 
   void writeLedgerPlanResult(LedgerPlanResult result) {
-    Object envelope =
+    Record envelope =
         switch (result) {
           case LedgerPlanResult.Succeeded succeeded ->
               new CliEnvelopeJsonModels.SuccessEnvelope(

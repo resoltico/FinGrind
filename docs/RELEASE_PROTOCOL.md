@@ -30,6 +30,10 @@ If either command fails — `gh` is not installed, or `gh auth status` reports "
 
 Do not attempt to resolve missing `gh` or authentication failures autonomously.
 
+This document is the operator procedure. For publication topology, attestation invariants,
+cross-platform canary behavior, and safe post-tag repair theory, use
+[DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md).
+
 ---
 
 ### Step 1

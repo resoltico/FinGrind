@@ -19,9 +19,10 @@ runtime-identity rules, and protected-book failure semantics in one canonical de
 
 FinGrind's current security model is built from four contract owners:
 - one explicit `BookAccess` tuple: durable book path plus one selected passphrase source
-- one managed SQLite runtime contract: SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 plus the
+- one managed SQLite runtime contract: SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 plus the
   required compile options `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`,
-  `SECURE_DELETE`, and `SQLITE3MC_SECURE_MEMORY=1`
+  `SECURE_DELETE`, the forbidden compile option `USE_URI`, and secure-memory support enabled with
+  `SQLITE3MC_SECURE_MEMORY=1`
 - one connection-hardening contract: `secure_delete=on`, `temp_store=memory`, and
   `memory_security=fill` on every opened SQLite handle
 - one persisted protected-book format contract: `cipher=chacha20`, `legacyMode=false`,
@@ -131,11 +132,11 @@ Runtime identity rules:
   library to match its sibling `.sha256` file for local consistency, copies that pair into one
   private verification snapshot before load, but does not claim publisher-authenticated identity
   for the operator-supplied binary
-- machine consumers read `environment.sqlite.runtimeProvenance` together with
-  `environment.sqlite.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field reports
-  `publisher-authenticated` for `bundle-managed` and `source-checkout-managed`, while
+- machine consumers read `environment.sqlite.runtime.runtimeProvenance` together with
+  `environment.sqlite.runtime.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field
+  reports `publisher-authenticated` for `bundle-managed` and `source-checkout-managed`, while
   `operator-trusted` is the trust basis for `environment-configured`
-- capabilities.environment.sqlite.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes without requiring agents to infer that downgrade from prose alone
+- capabilities.environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes without requiring agents to infer that downgrade from prose alone
 - the source-checkout launcher and developer raw-JAR wrapper publish both the source-checkout root
   and the active root-project build directory, so relocated Gradle build roots resolve the same
   managed library tree that Gradle actually prepared instead of guessing at `repo/build/...`
@@ -165,6 +166,9 @@ Public release integrity rules:
   source archives leak repo-owned agent metadata
 - `.sha256` files remain convenience digests for operators; publisher authenticity comes from the
   GitHub attestation, not from storing a checksum beside the artifact in the same release object
+- [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md) is the maintainer-facing
+  theory holder for the release publication topology, cross-platform attestation behavior, and
+  workflow-repair path behind those integrity rules
 
 Disclosure rules:
 - `SECURITY.md` is the canonical public security-policy surface

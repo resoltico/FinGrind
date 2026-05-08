@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -59,21 +60,18 @@ class WorkflowStepContractTest {
             }
             """);
     WorkflowStepDescriptor note = WorkflowStepDescriptor.note("Use a fresh idempotency key");
-    WorkflowStepDescriptor direct =
-        new WorkflowStepDescriptor(WorkflowStepKind.NOTE, "Direct note", null, null);
+    WorkflowStepDescriptor direct = new WorkflowStepDescriptor.Note("Direct note");
 
     assertEquals(WorkflowStepKind.COMMAND, command.kind());
-    assertEquals("./bin/fingrind help", command.text());
-    assertEquals(null, command.path());
-    assertEquals(null, command.content());
+    assertEquals("./bin/fingrind help", ((WorkflowStepDescriptor.Command) command).text());
     assertEquals(WorkflowStepKind.EDIT, edit.kind());
-    assertEquals("./declare-account-cash.json", edit.path());
-    assertTrue(edit.content() != null && edit.content().contains("\"accountCode\": \"1000\""));
-    assertEquals(null, edit.text());
+    assertEquals("./declare-account-cash.json", ((WorkflowStepDescriptor.Edit) edit).path());
+    assertTrue(
+        ((WorkflowStepDescriptor.Edit) edit).content().contains("\"accountCode\": \"1000\""));
     assertEquals(WorkflowStepKind.NOTE, note.kind());
-    assertEquals("Use a fresh idempotency key", note.text());
+    assertEquals("Use a fresh idempotency key", ((WorkflowStepDescriptor.Note) note).text());
     assertEquals(WorkflowStepKind.NOTE, direct.kind());
-    assertEquals("Direct note", direct.text());
+    assertEquals("Direct note", ((WorkflowStepDescriptor.Note) direct).text());
 
     WorkflowDescriptor workflow =
         new WorkflowDescriptor(WorkflowSurface.BUNDLE_POSIX_SHELL, List.of(command, edit, note));
@@ -83,37 +81,14 @@ class WorkflowStepContractTest {
         IllegalArgumentException.class,
         () -> new WorkflowDescriptor(WorkflowSurface.BUNDLE_POSIX_SHELL, List.of()));
     assertThrows(
-        NullPointerException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.COMMAND, null, null, null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.COMMAND, "cmd", "./file.json", null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.COMMAND, "cmd", null, "{}"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.COMMAND, "cmd", "./file.json", "{}"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.EDIT, "bad", null, null));
+        NullPointerException.class, () -> new WorkflowStepDescriptor.Command(nullOf(String.class)));
     assertThrows(
         NullPointerException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.EDIT, null, null, "{}"));
+        () -> new WorkflowStepDescriptor.Edit(nullOf(String.class), "{}"));
     assertThrows(
         NullPointerException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.EDIT, null, "./file.json", null));
+        () -> new WorkflowStepDescriptor.Edit("./file.json", nullOf(String.class)));
     assertThrows(
-        NullPointerException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.NOTE, null, null, null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.NOTE, "note", "./file.json", null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.NOTE, "note", null, "{}"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowStepDescriptor(WorkflowStepKind.NOTE, "note", "./file.json", "{}"));
+        NullPointerException.class, () -> new WorkflowStepDescriptor.Note(nullOf(String.class)));
   }
 }

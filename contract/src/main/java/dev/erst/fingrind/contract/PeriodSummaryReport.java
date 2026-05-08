@@ -1,9 +1,9 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Canonical bounded period summary for one selected book. */
 public record PeriodSummaryReport(
@@ -21,8 +21,8 @@ public record PeriodSummaryReport(
       int postingCount,
       int postingLineCount,
       int accountsTouched,
-      @Nullable List<PeriodCurrencySummary> currencyTotals,
-      @Nullable List<PeriodAccountActivityRow> accountActivity) {
+      List<PeriodCurrencySummary> currencyTotals,
+      List<PeriodAccountActivityRow> accountActivity) {
     this.effectiveDateFrom = Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
     this.effectiveDateTo = Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
     this.postingCount = postingCount;
@@ -40,7 +40,8 @@ public record PeriodSummaryReport(
     if (accountsTouched < 0) {
       throw new IllegalArgumentException("accountsTouched must not be negative.");
     }
-    this.currencyTotals = currencyTotals == null ? List.of() : List.copyOf(currencyTotals);
-    this.accountActivity = accountActivity == null ? List.of() : List.copyOf(accountActivity);
+    this.currencyTotals = ContractDescriptorValidation.copyList(currencyTotals, "currencyTotals");
+    this.accountActivity =
+        ContractDescriptorValidation.copyList(accountActivity, "accountActivity");
   }
 }

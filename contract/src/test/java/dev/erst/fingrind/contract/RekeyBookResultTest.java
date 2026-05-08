@@ -1,20 +1,18 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link RekeyBookResult}. */
-@NullUnmarked
 class RekeyBookResultTest {
   @Test
   void variants_validateNonNullState() {
     RekeyBookResult.Rekeyed rekeyed = new RekeyBookResult.Rekeyed(Path.of("book.sqlite"));
     RekeyBookResult.Rejected rejected =
         new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
-
     org.junit.jupiter.api.Assertions.assertEquals(Path.of("book.sqlite"), rekeyed.bookFilePath());
     org.junit.jupiter.api.Assertions.assertEquals(
         new BookAdministrationRejection.BookNotInitialized(), rejected.rejection());
@@ -22,7 +20,7 @@ class RekeyBookResultTest {
 
   @Test
   void variants_rejectNullState() {
-    assertThrows(NullPointerException.class, () -> new RekeyBookResult.Rekeyed(null));
-    assertThrows(NullPointerException.class, () -> new RekeyBookResult.Rejected(null));
+    assertThrows(NullPointerException.class, () -> new RekeyBookResult.Rekeyed(nullOf()));
+    assertThrows(NullPointerException.class, () -> new RekeyBookResult.Rejected(nullOf()));
   }
 }

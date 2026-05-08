@@ -129,6 +129,7 @@ import sys
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_runtime_distribution = sys.argv[2]
 sqlite = document["payload"]["environment"]["sqlite"]
+runtime = sqlite["runtime"]
 actual_runtime_distribution = (
     document["payload"]["environment"]["distribution"]["runtimeDistribution"]
 )
@@ -139,10 +140,10 @@ if actual_runtime_distribution != expected_runtime_distribution:
         + " != "
         + expected_runtime_distribution
     )
-if sqlite["runtimeProvenance"] != "source-checkout-managed":
+if runtime["runtimeProvenance"] != "source-checkout-managed":
     raise SystemExit(
         "unexpected runtime provenance: "
-        + sqlite["runtimeProvenance"]
+        + runtime["runtimeProvenance"]
         + " != source-checkout-managed"
     )
 PY
@@ -185,7 +186,7 @@ import sys
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_distribution = sys.argv[2]
 distribution = document["payload"]["environment"]["distribution"]["runtimeDistribution"]
-provenance = document["payload"]["environment"]["sqlite"]["runtimeProvenance"]
+provenance = document["payload"]["environment"]["sqlite"]["runtime"]["runtimeProvenance"]
 if distribution != expected_distribution:
     raise SystemExit(
         "unexpected direct-Java runtime distribution: "

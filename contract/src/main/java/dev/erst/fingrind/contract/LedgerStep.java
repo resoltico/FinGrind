@@ -29,7 +29,10 @@ public sealed interface LedgerStep
     return LedgerJournalStep.standard(kind());
   }
 
-  /** Returns the nested assertion kind emitted for assertion steps only. */
+  /**
+   * Returns the nested assertion kind emitted for assertion steps, or {@code null} for every
+   * non-assert ledger step.
+   */
   default @Nullable LedgerAssertionKind detailKind() {
     return journalStep().detailKind();
   }

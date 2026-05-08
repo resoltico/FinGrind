@@ -117,7 +117,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
     assertEquals("Request JSON must not contain duplicate object keys.", exception.getMessage());
-    assertEquals(CliJsonRequestCodec.ledgerPlanRequestHint(), exception.failure().hint());
+    assertEquals(CliJsonRequestHints.ledgerPlanRequestHint(), exception.failure().hint());
   }
 
   @Test
@@ -343,7 +343,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
             .startsWith("Unsupported value for kind: unsupported-step."));
-    assertEquals(CliJsonRequestCodec.ledgerPlanRequestHint(), exception.failure().hint());
+    assertEquals(CliJsonRequestHints.ledgerPlanRequestHint(), exception.failure().hint());
   }
 
   @Test
@@ -416,8 +416,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   @Test
   void optionalInt_treatsMissingAndNullFieldsAsEmpty() throws IOException {
     var rootNode =
-        CliJsonRequestCodec.requireRootObject(
-            CliJsonRequestCodec.configuredObjectMapper()
+        CliJsonFieldAccess.requireRootObject(
+            CliJsonObjectMappers.configuredObjectMapper()
                 .readTree(
                     """
                     {
@@ -426,8 +426,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                     }
                     """));
 
-    assertEquals(OptionalInt.empty(), CliJsonRequestCodec.optionalInt(rootNode, "missing"));
-    assertEquals(OptionalInt.empty(), CliJsonRequestCodec.optionalInt(rootNode, "explicitNull"));
-    assertEquals(OptionalInt.of(25), CliJsonRequestCodec.optionalInt(rootNode, "limit"));
+    assertEquals(OptionalInt.empty(), CliJsonFieldAccess.optionalInt(rootNode, "missing"));
+    assertEquals(OptionalInt.empty(), CliJsonFieldAccess.optionalInt(rootNode, "explicitNull"));
+    assertEquals(OptionalInt.of(25), CliJsonFieldAccess.optionalInt(rootNode, "limit"));
   }
 }

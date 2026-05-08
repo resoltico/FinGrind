@@ -226,12 +226,14 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("Command"));
     assertTrue(rendered.contains("Usage"));
     assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("Operator Notes"));
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Commit one posting request"));
     assertTrue(
         rendered.contains(
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " > request.json"));
+    assertTrue(rendered.contains("Replace scaffold placeholders such as effectiveDate"));
   }
 
   @Test
@@ -372,17 +374,20 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
-            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            ProtocolCatalog.forbiddenSqliteCompileOptions(),
+            ProtocolCatalog.requiresSecureMemorySupport(),
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            SqliteRuntimeStatus.READY,
-            SqliteRuntimeProvenance.BUNDLE_MANAGED,
-            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-            "/tmp/libsqlite3.dylib",
-            ProtocolCatalog.requiredMinimumSqliteVersion(),
-            ProtocolCatalog.requiredSqlite3mcVersion(),
-            ProtocolCatalog.requiredSqliteSourceId(),
-            null));
+            EnvironmentSqliteDescriptor.runtime(
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntimeStatus.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                "/tmp/libsqlite3.dylib",
+                ProtocolCatalog.requiredMinimumSqliteVersion(),
+                ProtocolCatalog.requiredSqlite3mcVersion(),
+                ProtocolCatalog.requiredSqliteSourceId(),
+                null)));
   }
 }

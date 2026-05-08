@@ -28,10 +28,9 @@ import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 
 /** Shared CLI workflow doubles and routing-oriented helpers for split command tests. */
-@NullUnmarked
 class CliWorkflowDoubleSupport extends CliFixtureSupport {
   protected static BookAccess bookAccess(Path bookFilePath, Path bookKeyFilePath) {
     return new BookAccess(bookFilePath, new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath));
@@ -55,7 +54,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     private final ListAccountsResult listAccountsResult;
     private final PreflightEntryResult preflightResult;
     private final CommitEntryResult commitResult;
-    private LedgerPlanResult executePlanResult;
+    private @Nullable LedgerPlanResult executePlanResult;
 
     RecordingWorkflow(
         OpenBookResult openBookResult,

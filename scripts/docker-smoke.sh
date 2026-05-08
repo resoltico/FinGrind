@@ -56,9 +56,7 @@ readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_di
 
 prepare_python_runtime_env
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
-readonly repo_cli_build_dir="${repo_root}/cli/build"
 readonly cli_docker_context_dir="${cli_build_dir}/docker-context"
-readonly repo_cli_docker_context_dir="${repo_cli_build_dir}/docker-context"
 
 resolve_docker_buildx_plugin() {
     local docker_binary=''
@@ -147,14 +145,7 @@ env GRADLE_USER_HOME="${gradle_user_home}" \
 
 [[ -d "${cli_docker_context_dir}" ]] || die \
     "missing staged Docker build context at ${cli_docker_context_dir} after :cli:stageDockerBuildContext"
-python3 "${docker_context_verifier}" --context-dir "${cli_docker_context_dir}"
-
-if [[ "${cli_build_dir}" != "${repo_cli_build_dir}" ]]; then
-    printf 'Docker acceptance: staging relocated Docker build context into repository context\n'
-    mkdir -p "${repo_cli_build_dir}"
-    rm -rf "${repo_cli_docker_context_dir}"
-    cp -R "${cli_docker_context_dir}" "${repo_cli_docker_context_dir}"
-fi
+python3 "${docker_context_verifier}" --context-dir "${cli_docker_context_dir}" --source-root "${repo_root}"
 
 docker_endpoint="${DOCKER_HOST:-}"
 if [[ -z "${docker_endpoint}" ]]; then

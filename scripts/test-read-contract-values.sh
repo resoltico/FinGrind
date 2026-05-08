@@ -81,6 +81,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
                 "requiredSqliteSourceId": "requiredSqliteSourceId",
                 "requiredCompileOptions": "requiredCompileOptions",
+                "forbiddenCompileOptions": "forbiddenCompileOptions",
+                "requiresSecureMemorySupport": "requiresSecureMemorySupport",
             },
             "runtimeEnvironment": {
                 "sourceCheckoutJava": "sourceCheckoutJava",
@@ -150,8 +152,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     write_json(
         protocol_root / "managed-sqlite-contract.json",
         {
-            "requiredMinimumSqliteVersion": "3.53.0",
-            "requiredSqlite3mcVersion": "2.3.3",
+            "requiredMinimumSqliteVersion": "3.53.1",
+            "requiredSqlite3mcVersion": "2.3.4",
             "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
             "requiredCompileOptions": [
                 "THREADSAFE=1",
@@ -159,6 +161,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "TEMP_STORE=3",
                 "SECURE_DELETE",
             ],
+            "forbiddenCompileOptions": ["USE_URI"],
+            "requiresSecureMemorySupport": True,
         },
     )
     write_json(
@@ -230,12 +234,12 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     loaded = contract_values.load_contract_values(
         fixture_root, os_name="Windows 11", architecture="ARM64"
     )
-    assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.0"
+    assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.1"
     assert loaded["protectedBookFormat"]["cipher"] == "chacha20"
     assert loaded["protectedBookFormat"]["legacyMode"] is False
     assert loaded["protectedBookFormat"]["pageSize"] == 4096
     assert loaded["protectedBookFormat"]["reservedBytes"] == 32
-    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.3"
+    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.4"
     assert (
         loaded["managedSqlite"]["requiredSqliteSourceId"]
         == "2026-04-09 sqlite-source-id"
@@ -246,6 +250,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         "TEMP_STORE=3",
         "SECURE_DELETE",
     ]
+    assert loaded["managedSqlite"]["forbiddenCompileOptions"] == ["USE_URI"]
+    assert loaded["managedSqlite"]["requiresSecureMemorySupport"] is True
     assert loaded["runtimeEnvironment"]["sourceCheckoutJava"] == "26+"
     assert loaded["bundleLayout"]["hostBundleTarget"]["classifier"] == "windows-aarch64"
     assert loaded["bundleLayout"]["hostBundleTarget"]["archiveFormat"] == "zip"

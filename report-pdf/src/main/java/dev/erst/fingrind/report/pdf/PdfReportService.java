@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
@@ -62,57 +61,49 @@ public final class PdfReportService {
   }
 
   /** Renders one account-balance snapshot as a portrait PDF artifact. */
-  public byte[] renderAccountBalance(Path bookFilePath, AccountBalanceSnapshot snapshot) {
+  public byte[] renderAccountBalance(AccountBalanceSnapshot snapshot) {
     Objects.requireNonNull(snapshot, "snapshot");
     return renderReport(
         "Account Balance",
-        bookFilePath,
         PageOrientation.PORTRAIT,
         writer -> accountBalanceRenderer.render(writer, snapshot));
   }
 
   /** Renders one trial-balance report as a landscape PDF artifact. */
-  public byte[] renderTrialBalance(Path bookFilePath, TrialBalanceReport report) {
+  public byte[] renderTrialBalance(TrialBalanceReport report) {
     Objects.requireNonNull(report, "report");
     return renderReport(
         "Trial Balance",
-        bookFilePath,
         PageOrientation.LANDSCAPE,
         writer -> trialBalanceRenderer.render(writer, report));
   }
 
   /** Renders one account-ledger report as a landscape PDF artifact. */
-  public byte[] renderAccountLedger(Path bookFilePath, AccountLedgerReport report) {
+  public byte[] renderAccountLedger(AccountLedgerReport report) {
     Objects.requireNonNull(report, "report");
     return renderReport(
         "Account Ledger",
-        bookFilePath,
         PageOrientation.LANDSCAPE,
         writer -> accountLedgerRenderer.render(writer, report));
   }
 
   /** Renders one period-summary report as a landscape PDF artifact. */
-  public byte[] renderPeriodSummary(Path bookFilePath, PeriodSummaryReport report) {
+  public byte[] renderPeriodSummary(PeriodSummaryReport report) {
     Objects.requireNonNull(report, "report");
     return renderReport(
         "Period Summary",
-        bookFilePath,
         PageOrientation.LANDSCAPE,
         writer -> periodSummaryRenderer.render(writer, report));
   }
 
   private byte[] renderReport(
-      String reportTitle,
-      Path bookFilePath,
-      PageOrientation orientation,
-      PdfRenderAction renderAction) {
+      String reportTitle, PageOrientation orientation, PdfRenderAction renderAction) {
     Objects.requireNonNull(reportTitle, "reportTitle");
-    Objects.requireNonNull(bookFilePath, "bookFilePath");
     Objects.requireNonNull(orientation, "orientation");
     Objects.requireNonNull(renderAction, "renderAction");
     Instant generatedAt = Instant.now(clock);
     try (PdfDocumentFactory.DocumentSession session =
-        documentFactory.create(reportTitle, bookFilePath, generatedAt, orientation)) {
+        documentFactory.create(reportTitle, generatedAt, orientation)) {
       renderAction.render(session.pageWriter());
       return session.toByteArray();
     } catch (IOException exception) {

@@ -36,11 +36,11 @@ final class SqliteBookSchemaBootstrap {
   }
 
   static void initializeBook(
-      SqliteNativeDatabase database, Supplier<InputStream> schemaStreamSupplier) {
+      SqliteNativeDatabase database, Supplier<@Nullable InputStream> schemaStreamSupplier) {
     database.executeScript(readSchema(schemaStreamSupplier));
   }
 
-  static String readSchema(Supplier<InputStream> schemaStreamSupplier) {
+  static String readSchema(Supplier<@Nullable InputStream> schemaStreamSupplier) {
     try (InputStream schemaStream =
         Objects.requireNonNull(
             schemaStreamSupplier.get(), "SQLite book schema resource is missing.")) {
@@ -69,7 +69,7 @@ final class SqliteBookSchemaBootstrap {
     return Objects.requireNonNull(cache.get(), "SQLite schema cache lost its loaded value.");
   }
 
-  private static InputStream openSchemaStream() {
+  private static @Nullable InputStream openSchemaStream() {
     return SqliteBookSchemaBootstrap.class.getResourceAsStream(
         "/dev/erst/fingrind/sqlite/book_schema.sql");
   }

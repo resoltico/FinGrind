@@ -43,3 +43,5 @@ public final class PdfReportService
 - Ownership split: report semantics stay in `contract` / `executor`; document layout and PDFBox
   lifecycle stay in `report-pdf`
 - I/O contract: returns `byte[]` so CLI code decides where artifacts are written
+- Privacy boundary: rendered PDF content and metadata do not embed the selected source book's
+  absolute filesystem path

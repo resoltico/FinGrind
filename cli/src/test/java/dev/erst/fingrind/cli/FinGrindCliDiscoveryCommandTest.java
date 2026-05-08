@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.AccountPage;
@@ -11,6 +10,7 @@ import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.DeclareAccountResult;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.contract.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.ListAccountsResult;
 import dev.erst.fingrind.contract.OpenBookResult;
 import dev.erst.fingrind.contract.PostEntryResult;
@@ -39,22 +39,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
   @Test
   void run_returnsHelpWhenArgumentsAreEmpty() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[0]);
-
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("FinGrind Help"));
@@ -84,16 +80,16 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {"help", "post-entry"});
-
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("Command"));
     assertTrue(help.contains("Usage"));
     assertTrue(help.contains("Examples"));
+    assertTrue(help.contains("Operator Notes"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
+    assertTrue(help.contains("Replace scaffold placeholders such as effectiveDate"));
   }
 
   @Test
@@ -101,9 +97,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {"post-entry", "--help"});
-
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
@@ -133,10 +127,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
               new ByteArrayInputStream(new byte[0]),
               utf8PrintStream(failureOutputStream),
               fixedClock());
-
       int helpExitCode = helpCli.run(new String[] {"help", "post-entry", "--output", "json"});
       int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
-
       assertEquals(0, helpExitCode);
       assertEquals(1, failureExitCode);
       JsonNode helpPayload =
@@ -144,12 +136,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
               .readTree(helpOutputStream.toString(StandardCharsets.UTF_8))
               .path("payload");
       assertTrue(containsText(helpPayload, bundleLauncher + " post-entry"));
-      JsonNode failurePayload =
-          new ObjectMapper().readTree(failureOutputStream.toString(StandardCharsets.UTF_8));
-      assertEquals("Unsupported argument: --bogus", failurePayload.path("message").stringValue());
-      assertEquals(
-          "Run '" + bundleLauncher + " help post-entry' to inspect the supported command syntax.",
-          failurePayload.path("hint").stringValue());
+      String failureText = failureOutputStream.toString(StandardCharsets.UTF_8);
+      assertTrue(failureText.contains("Error"));
+      assertTrue(failureText.contains("Unsupported argument: --bogus"));
+      assertTrue(
+          failureText.contains(
+              "Run '"
+                  + bundleLauncher
+                  + " help post-entry' to inspect the supported command syntax."));
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
@@ -189,9 +183,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {"capabilities", "--output", "json"});
-
     assertEquals(0, exitCode);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     JsonNode payload = new ObjectMapper().readTree(json).path("payload");
@@ -262,11 +254,9 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
               new ByteArrayInputStream(new byte[0]),
               utf8PrintStream(failureOutputStream),
               fixedClock());
-
       int helpExitCode = helpCli.run(new String[0]);
       int commandHelpExitCode = commandHelpCli.run(new String[] {"help", "open-book"});
       int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
-
       assertEquals(0, helpExitCode);
       assertEquals(0, commandHelpExitCode);
       assertEquals(1, failureExitCode);
@@ -276,11 +266,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       assertTrue(help.contains(expectedLauncher), help);
       assertTrue(commandHelp.contains("| " + expectedLauncher + " open-book"), commandHelp);
       assertFalse(commandHelp.contains("| fingrind open-book"), commandHelp);
-      JsonNode failurePayload =
-          new ObjectMapper().readTree(failureOutputStream.toString(StandardCharsets.UTF_8));
-      assertEquals(
-          "Run '" + expectedLauncher + " help post-entry' to inspect the supported command syntax.",
-          failurePayload.path("hint").stringValue());
+      String failureText = failureOutputStream.toString(StandardCharsets.UTF_8);
+      assertTrue(failureText.contains("Error"), failureText);
+      assertTrue(
+          failureText.contains(
+              "Run '"
+                  + expectedLauncher
+                  + " help post-entry' to inspect the supported command syntax."),
+          failureText);
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
@@ -297,6 +290,21 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
       }
     }
     throw new AssertionError("Missing command descriptor: " + operationId);
+  }
+
+  @Test
+  void run_invalidInvocationHonorsExplicitJsonOutputSelection() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"post-entry", "--bogus", "--output", "json"});
+
+    assertEquals(1, exitCode);
+    JsonNode failurePayload =
+        new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+    assertEquals("error", failurePayload.path("status").stringValue());
+    assertEquals("Unsupported argument: --bogus", failurePayload.path("message").stringValue());
   }
 
   private static void assertCapabilitiesCommandCatalog(JsonNode payload) {
@@ -470,10 +478,20 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         ProtocolCatalog.requiredSqliteCompileOptions(),
         readTextArray(payload.path("environment").path("sqlite").path("requiredCompileOptions")));
     assertEquals(
+        ProtocolCatalog.forbiddenSqliteCompileOptions(),
+        readTextArray(payload.path("environment").path("sqlite").path("forbiddenCompileOptions")));
+    assertTrue(
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("requiresSecureMemorySupport")
+            .booleanValue());
+    assertEquals(
         "verified",
         payload
             .path("environment")
             .path("sqlite")
+            .path("runtime")
             .path("compileOptionsVerification")
             .stringValue());
     assertEquals(
@@ -484,14 +502,25 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         payload.path("environment").path("sqlite").path("requiredSqlite3mcVersion").stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
-        payload.path("environment").path("sqlite").path("loadedSqlite3mcVersion").stringValue());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("runtime")
+            .path("loadedSqlite3mcVersion")
+            .stringValue());
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-        payload.path("environment").path("sqlite").path("loadedSqliteSourceId").stringValue());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("runtime")
+            .path("loadedSqliteSourceId")
+            .stringValue());
     assertFalse(
         payload
             .path("environment")
             .path("sqlite")
+            .path("runtime")
             .path("loadedLibraryPath")
             .stringValue()
             .isBlank());
@@ -499,12 +528,18 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         payload
             .path("environment")
             .path("sqlite")
+            .path("runtime")
             .path("runtimeProvenance")
             .stringValue()
             .isBlank());
     assertEquals(
         SqliteRuntimeTrustBasis.OPERATOR_TRUSTED.wireValue(),
-        payload.path("environment").path("sqlite").path("runtimeTrustBasis").stringValue());
+        payload
+            .path("environment")
+            .path("sqlite")
+            .path("runtime")
+            .path("runtimeTrustBasis")
+            .stringValue());
   }
 
   private static void assertCapabilitiesRequestInput(JsonNode payload) {
@@ -562,9 +597,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {"version", "--output", "json"});
-
     assertEquals(0, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"application\""));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"version\""));
@@ -589,7 +622,6 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
                 null,
                 "managed sqlite unavailable"),
             FinGrindCli.SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION);
-
     assertEquals(
         ProtocolCatalog.sourceCheckoutRuntimeDistribution(),
         environmentDescriptor.distribution().runtimeDistribution());
@@ -623,8 +655,14 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
         ProtocolCatalog.requiredSqliteCompileOptions(),
         environmentDescriptor.sqlite().requiredCompileOptions());
     assertEquals(
+        ProtocolCatalog.forbiddenSqliteCompileOptions(),
+        environmentDescriptor.sqlite().forbiddenCompileOptions());
+    assertTrue(environmentDescriptor.sqlite().requiresSecureMemorySupport());
+    EnvironmentSqliteDescriptor.UnavailableRuntime unavailableRuntime =
+        (EnvironmentSqliteDescriptor.UnavailableRuntime) environmentDescriptor.sqlite().runtime();
+    assertEquals(
         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-        environmentDescriptor.sqlite().compileOptionsVerification());
+        unavailableRuntime.compileOptionsVerification());
     assertEquals(
         SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
         environmentDescriptor.sqlite().requiredMinimumSqliteVersion());
@@ -634,14 +672,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertEquals(
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
         environmentDescriptor.sqlite().requiredSqliteSourceId());
-    assertEquals(SqliteRuntimeStatus.UNAVAILABLE, environmentDescriptor.sqlite().runtimeStatus());
-    assertEquals("managed sqlite unavailable", environmentDescriptor.sqlite().runtimeIssue());
-    assertNull(environmentDescriptor.sqlite().runtimeProvenance());
-    assertNull(environmentDescriptor.sqlite().runtimeTrustBasis());
-    assertNull(environmentDescriptor.sqlite().loadedLibraryPath());
-    assertNull(environmentDescriptor.sqlite().loadedSqliteVersion());
-    assertNull(environmentDescriptor.sqlite().loadedSqlite3mcVersion());
-    assertNull(environmentDescriptor.sqlite().loadedSqliteSourceId());
+    assertEquals(SqliteRuntimeStatus.UNAVAILABLE, unavailableRuntime.status());
+    assertEquals("managed sqlite unavailable", unavailableRuntime.runtimeIssue());
   }
 
   @Test
@@ -650,10 +682,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
-
     assertEquals(0, exitCode);
     assertTrue(Files.isRegularFile(keyFilePath));
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
@@ -675,10 +705,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
-
     assertEquals(2, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
@@ -692,9 +720,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {"print-request-template"});
-
     assertEquals(0, exitCode);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"replace-before-commit-effective-date\""));
@@ -709,9 +735,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(new String[] {"print-plan-template"});
-
     assertEquals(0, exitCode);
     JsonNode json =
         assertDoesNotThrow(
@@ -764,9 +788,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode = cli.run(new String[] {"capabilities", "--output", "json"});
-
     assertEquals(0, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\""));
     assertFalse(workflow.workflowInvoked());

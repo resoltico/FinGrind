@@ -102,7 +102,9 @@ final class ProtocolContractSchemaKeys {
             requireText(managedSqliteNode, "requiredMinimumSqliteVersion"),
             requireText(managedSqliteNode, "requiredSqlite3mcVersion"),
             requireText(managedSqliteNode, "requiredSqliteSourceId"),
-            requireText(managedSqliteNode, "requiredCompileOptions")),
+            requireText(managedSqliteNode, "requiredCompileOptions"),
+            requireText(managedSqliteNode, "forbiddenCompileOptions"),
+            requireText(managedSqliteNode, "requiresSecureMemorySupport")),
         new BundleLayout(
             requireText(bundleLayoutNode, "bundleTargets"),
             requireText(bundleLayoutNode, "operatingSystemId"),
@@ -140,11 +142,8 @@ final class ProtocolContractSchemaKeys {
   }
 
   private static JsonNode requiredObject(JsonNode document, String key) {
-    JsonNode node = document.get(key);
-    if (node == null || !node.isObject()) {
-      throw new IllegalArgumentException(key + " must be one JSON object of schema keys.");
-    }
-    return node;
+    return JsonContractResourceSupport.requireObject(
+        document, key, key + " must be one JSON object of schema keys.");
   }
 
   private static String requireText(JsonNode document, String key) {
@@ -185,7 +184,9 @@ final class ProtocolContractSchemaKeys {
       String requiredMinimumSqliteVersion,
       String requiredSqlite3mcVersion,
       String requiredSqliteSourceId,
-      String requiredCompileOptions) {}
+      String requiredCompileOptions,
+      String forbiddenCompileOptions,
+      String requiresSecureMemorySupport) {}
 
   /** Canonical external field names for the per-target bundle-layout contract resource. */
   record BundleLayout(

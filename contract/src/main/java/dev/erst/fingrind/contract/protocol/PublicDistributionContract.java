@@ -4,7 +4,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 
 /** Protocol-owned metadata for public bundle targets and excluded bundle targets. */
 public record PublicDistributionContract(
@@ -18,8 +17,8 @@ public record PublicDistributionContract(
 
   /** Parses one wire-value snapshot into the typed public-distribution contract. */
   public static PublicDistributionContract fromWireValues(
-      @Nullable List<String> supportedPublicCliBundleTargets,
-      @Nullable List<String> unsupportedPublicCliBundleTargets) {
+      List<String> supportedPublicCliBundleTargets,
+      List<String> unsupportedPublicCliBundleTargets) {
     return new PublicDistributionContract(
         normalize(supportedPublicCliBundleTargets, SUPPORTED_BUNDLE_TARGETS_KEY),
         normalize(unsupportedPublicCliBundleTargets, UNSUPPORTED_BUNDLE_TARGETS_KEY));
@@ -32,11 +31,8 @@ public record PublicDistributionContract(
     requireNoOverlap(supportedPublicCliBundleTargets, unsupportedPublicCliBundleTargets);
   }
 
-  private static List<PublicCliBundleTarget> normalize(
-      @Nullable List<String> values, String fieldName) {
-    if (values == null) {
-      return List.of();
-    }
+  private static List<PublicCliBundleTarget> normalize(List<String> values, String fieldName) {
+    Objects.requireNonNull(values, fieldName + " must not be null.");
     Set<PublicCliBundleTarget> unique = new LinkedHashSet<>();
     for (String value : values) {
       Objects.requireNonNull(value, fieldName);

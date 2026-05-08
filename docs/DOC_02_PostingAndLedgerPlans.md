@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.32.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-06"
+updated: "2026-05-07"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -114,7 +114,7 @@ public final class BookkeepingPublishedLanguageTranslator
 ```
 
 - `PostingAcceptancePolicy`: validates initialization, account state, duplicate idempotency,
-  reversal admissibility, and related bookkeeping rules against one `PostingValidationBook`
+  reversal admissibility, and related bookkeeping rules against one `PostingValidationStore`
 - `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
   account-declaration rules before translation into public `BookAdministrationRejection`
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
@@ -178,8 +178,8 @@ public sealed interface LedgerAssertion
 
 ## `BookWorkflowPlan`, `BookWorkflowStep`, And `BookWorkflowAssertion`
 
-These types are the local workflow context consumed by `LedgerPlanService` after the public plan
-schema crosses the translator edge.
+These types are the local workflow context consumed by `BookWorkflowExecutionService` after the
+public plan schema crosses the translator edge.
 
 ```java
 public record BookWorkflowPlan(String planId, List<BookWorkflowStep> steps)
@@ -194,13 +194,14 @@ public sealed interface BookWorkflowAssertion
 - `BookWorkflowAssertion`: local assertion family evaluated against bookkeeping/read outcomes and
   local balance criteria
 
-## `BookWorkflowBoundaryPhase`, `BookWorkflowFailure`, `BookWorkflowJournalDescriptor`, `BookWorkflowJournalEntry`, And `BookWorkflowExecutionJournal`
+## `BookWorkflowBoundaryPhase`, `BookWorkflowFact`, `BookWorkflowFailure`, `BookWorkflowJournalDescriptor`, `BookWorkflowJournalEntry`, And `BookWorkflowExecutionJournal`
 
-These types are the internal workflow execution record used while `LedgerPlanService` is running
-and deciding whether to commit or roll back.
+These types are the internal workflow execution record used while
+`BookWorkflowExecutionService` is running and deciding whether to commit or roll back.
 
 ```java
 public enum BookWorkflowBoundaryPhase
+public sealed interface BookWorkflowFact
 public record BookWorkflowFailure(...)
 public sealed interface BookWorkflowJournalDescriptor
 public sealed interface BookWorkflowJournalEntry
@@ -209,7 +210,10 @@ public record BookWorkflowExecutionJournal(...)
 ```
 
 - `BookWorkflowBoundaryPhase`: local begin/initialization-check/commit/rollback failure phases
-- `BookWorkflowFailure`: local failure payload with stable code, message, and machine facts
+- `BookWorkflowFact`: workflow-owned machine-readable per-step observation family used while the
+  internal journal is being built
+- `BookWorkflowFailure`: local failure payload with stable code, message, and workflow-owned
+  facts
 - `BookWorkflowJournalDescriptor`: local executed-step-or-boundary descriptor
 - `BookWorkflowJournalEntry`: local per-step journal entry emitted before public projection
 - `BookWorkflowExecutionStatus`: local execution outcome derived before public journal/result
@@ -228,7 +232,8 @@ public final class BookWorkflowPublishedLanguageTranslator
 
 - Purpose: keep plan orchestration semantics and published workflow DTOs decoupled
 - Boundary: translates request plans into local steps/assertions at ingress, and translates local
-  workflow journals/failures back into `LedgerJournal*` and `LedgerPlanResult` at egress
+  workflow journals, failures, and `BookWorkflowFact` observations back into `LedgerJournal*`,
+  `LedgerFact`, and `LedgerPlanResult` at egress
 
 ## `LedgerFact`
 
@@ -239,7 +244,8 @@ public sealed interface LedgerFact
 ```
 
 - Families: `Text`, `Flag`, `Count`, `Group`
-- Purpose: keep step observations machine-readable without collapsing everything to strings
+- Purpose: keep published step observations machine-readable without collapsing everything to
+  strings after the local workflow facts have crossed the translator boundary
 
 ## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus`
 
@@ -286,24 +292,53 @@ public sealed interface LedgerPlanResult
 public final class PostingApplicationService
 ```
 
-- Constructor: requires `PostingBookSession`, `PostingIdGenerator`, and `Clock`
-- Surface: `preflight(PostEntryCommand)` and `commit(PostEntryCommand)`
-- Boundary: the service translates the published `PostEntryCommand` into the internal bookkeeping
-  model before acceptance or commit
+- Constructor: requires `BookStore`, `PostingIdGenerator`, and `Clock`
+- Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
+- Boundary: the service operates after the published `PostEntryCommand` has crossed the
+  bookkeeping translator edge and become one local `PostingCommand`, then delegates local
+  admission and commit semantics to `executor.bookkeeping.posting.BookkeepingPostingService`
+
+## `BookkeepingPostingService`
+
+`BookkeepingPostingService` owns local bookkeeping preflight and commit behavior before any public
+published-language projection.
+
+```java
+public final class BookkeepingPostingService
+```
+
+- Constructor: requires `BookStore`, `PostingIdGenerator`, and `Clock`
+- Surface: `preflight(PostingCommand)` and `commit(PostingCommand)`
+- Boundary: this service stays inside the bookkeeping context and returns only local admission and
+  commit outcomes
+
+## `BookWorkflowExecutionService`
+
+`BookWorkflowExecutionService` owns atomic execution of the local workflow model.
+
+```java
+public final class BookWorkflowExecutionService
+```
+
+- Constructor: requires `AtomicBookStore`, `PostingIdGenerator`, and `Clock`
+- Surface: `execute(BookWorkflowPlan)`
+- Policy: runs the whole local plan inside one durable transaction and rolls back on the first
+  rejected step or failed assertion
+- Boundary: this service stays inside the workflow context and returns one local
+  `BookWorkflowExecutionResult`
 
 ## `LedgerPlanService`
 
-`LedgerPlanService` owns atomic multi-step execution for `execute-plan`.
+`LedgerPlanService` is the published-language adapter for `execute-plan`.
 
 ```java
 public final class LedgerPlanService
 ```
 
-- Constructor: requires `LedgerPlanSession`, `PostingIdGenerator`, and `Clock`
-- Policy: runs the whole plan inside one durable transaction and rolls back on the first rejected
-  step or failed assertion
-- Boundary: the service executes the local workflow model after the published `LedgerPlan` has
-  crossed the translator boundary
+- Constructor: requires `AtomicBookStore`, `PostingIdGenerator`, and `Clock`
+- Boundary: the service translates the public `LedgerPlan` into the local workflow model, delegates
+  execution to `BookWorkflowExecutionService`, then projects the local execution result back into
+  the public `LedgerPlanResult` surface
 
 ## `PostingIdGenerator`
 

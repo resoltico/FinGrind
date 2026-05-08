@@ -15,13 +15,11 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for rollback-copy lifecycle behavior around SQLite rekey attempts. */
-@NullUnmarked
 class SqliteRekeyRollbackFileTest {
   @TempDir Path tempDirectory;
 
@@ -29,16 +27,13 @@ class SqliteRekeyRollbackFileTest {
   void createRestoreAndDeleteQuietly_roundTripOneRollbackCopy() throws java.io.IOException {
     Path bookPath = tempDirectory.resolve("acme.sqlite");
     Files.writeString(bookPath, "original book bytes");
-
     SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
     Path rollbackPath = rollbackFile.path();
     assertNotNull(rollbackPath);
     assertTrue(Files.exists(rollbackPath));
-
     Files.writeString(bookPath, "rotated book bytes");
     rollbackFile.restore(bookPath);
     assertEquals("original book bytes", Files.readString(bookPath));
-
     rollbackFile.deleteQuietly();
     assertFalse(Files.exists(rollbackPath));
   }
@@ -50,31 +45,26 @@ class SqliteRekeyRollbackFileTest {
         assertThrows(
             SqliteStorageFailureException.class,
             () -> SqliteRekeyRollbackFile.create(missingBookPath));
-    assertTrue(missingBook.getMessage().contains("rekey rollback copy"));
-
+    assertTrue(NullTestSupport.messageOf(missingBook).contains("rekey rollback copy"));
     IllegalArgumentException rootPath =
         assertThrows(
             IllegalArgumentException.class,
             () -> SqliteRekeyRollbackFile.create(tempDirectory.getRoot()));
-    assertTrue(rootPath.getMessage().contains("parent directory"));
+    assertTrue(NullTestSupport.messageOf(rootPath).contains("parent directory"));
   }
 
   @Test
   void restoreAndDeleteQuietly_preserveBestEffortFailureSemantics() throws java.io.IOException {
     Path bookPath = tempDirectory.resolve("book.sqlite");
     Files.writeString(bookPath, "original");
-
     SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
-
     SqliteStorageFailureException restoreFailure =
         assertThrows(
             SqliteStorageFailureException.class, () -> rollbackFile.restore(tempDirectory));
-    assertTrue(restoreFailure.getMessage().contains("rekey rollback copy"));
-
+    assertTrue(NullTestSupport.messageOf(restoreFailure).contains("rekey rollback copy"));
     Path nonEmptyDirectory = tempDirectory.resolve("rollback-dir");
     Files.createDirectories(nonEmptyDirectory);
     Files.writeString(nonEmptyDirectory.resolve("sentinel.txt"), "keep");
-
     SqliteRekeyRollbackFile directoryRollback = new SqliteRekeyRollbackFile(nonEmptyDirectory);
     assertDoesNotThrow(directoryRollback::deleteQuietly);
     assertTrue(Files.exists(nonEmptyDirectory));
@@ -94,17 +84,14 @@ class SqliteRekeyRollbackFileTest {
     Files.writeString(wrongSuffixArtifact, "ciphertext");
     Files.writeString(otherBookArtifact, "other ciphertext");
     Files.writeString(unrelatedFile, "ignore");
-
     assertIterableEquals(
         List.of(
             siblingArtifact.toAbsolutePath().normalize(),
             laterArtifact.toAbsolutePath().normalize()),
         SqliteRekeyRollbackFile.findStaleRollbackArtifacts(bookPath));
-
     AtomicReference<List<Path>> reportedArtifacts = new AtomicReference<>();
     AtomicReference<Path> reportedBookPath = new AtomicReference<>();
     AtomicReference<java.io.IOException> scanFailure = new AtomicReference<>();
-
     SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(
         bookPath,
         (normalizedBookPath, rollbackArtifacts) -> {
@@ -112,7 +99,6 @@ class SqliteRekeyRollbackFileTest {
           reportedArtifacts.set(rollbackArtifacts);
         },
         (normalizedBookPath, exception) -> scanFailure.set(exception));
-
     assertEquals(bookPath, reportedBookPath.get());
     assertIterableEquals(
         List.of(
@@ -127,7 +113,6 @@ class SqliteRekeyRollbackFileTest {
   void findStaleRollbackArtifacts_returnsEmptyWhenParentIsNotDirectory() throws Exception {
     Path parentFile = tempDirectory.resolve("not-a-directory");
     Files.writeString(parentFile, "file");
-
     assertEquals(
         List.of(),
         SqliteRekeyRollbackFile.findStaleRollbackArtifacts(parentFile.resolve("book.sqlite")));
@@ -140,7 +125,6 @@ class SqliteRekeyRollbackFileTest {
     AtomicReference<Path> reportedBookPath = new AtomicReference<>();
     AtomicReference<List<Path>> reportedArtifacts = new AtomicReference<>();
     AtomicReference<java.io.IOException> scanFailure = new AtomicReference<>();
-
     SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(
         bookPath,
         (normalizedBookPath, rollbackArtifacts) -> {
@@ -148,7 +132,6 @@ class SqliteRekeyRollbackFileTest {
           reportedArtifacts.set(rollbackArtifacts);
         },
         (normalizedBookPath, exception) -> scanFailure.set(exception));
-
     assertNull(reportedBookPath.get());
     assertNull(reportedArtifacts.get());
     assertNull(scanFailure.get());

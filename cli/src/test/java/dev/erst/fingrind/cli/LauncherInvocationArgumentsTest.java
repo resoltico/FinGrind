@@ -141,6 +141,28 @@ class LauncherInvocationArgumentsTest {
   }
 
   @Test
+  void resolveRejectsEmptyLauncherArgumentPayloads() throws IOException {
+    Path argumentsFile = tempDir.resolve("launcher-arguments-empty.json");
+    Files.writeString(argumentsFile, "   \n", StandardCharsets.UTF_8);
+
+    LauncherInvocationArgumentsException exception =
+        assertThrows(
+            LauncherInvocationArgumentsException.class,
+            () ->
+                new LauncherInvocationArguments(
+                        Map.of(
+                            LauncherInvocationArguments.ARGUMENTS_FILE_ENV,
+                            argumentsFile.toString()))
+                    .resolve(new String[] {"help"}));
+
+    assertEquals(
+        "Staged launcher arguments file at "
+            + argumentsFile
+            + " must contain one JSON array of strings.",
+        exception.getMessage());
+  }
+
+  @Test
   void resolveRejectsNonStringLauncherArgumentElements() throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
     writeJson(argumentsFile, List.of("help", 42));
@@ -165,7 +187,7 @@ class LauncherInvocationArgumentsTest {
   private static void writeJson(Path file, Object payload) throws IOException {
     Files.writeString(
         file,
-        CliJsonRequestCodec.configuredObjectMapper().writeValueAsString(payload) + "\n",
+        CliJsonObjectMappers.configuredObjectMapper().writeValueAsString(payload) + "\n",
         StandardCharsets.UTF_8);
   }
 }

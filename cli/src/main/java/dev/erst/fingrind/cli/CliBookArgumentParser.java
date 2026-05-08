@@ -140,7 +140,7 @@ final class CliBookArgumentParser {
       BookAccess bookAccess, @Nullable Path requestFile, List<String> commandArguments) {
     ParsedBookArguments {
       Objects.requireNonNull(bookAccess, "bookAccess");
-      commandArguments = commandArguments == null ? List.of() : List.copyOf(commandArguments);
+      commandArguments = List.copyOf(Objects.requireNonNull(commandArguments, "commandArguments"));
     }
 
     Optional<Path> optionalRequestFile() {

@@ -40,7 +40,9 @@ class DistributionContractReaderTest {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
                     "requiredSqlite3mcVersion": "sqlite3mcVersion",
                     "requiredSqliteSourceId": "sqliteSourceId",
-                    "requiredCompileOptions": "compileOptions"
+                    "requiredCompileOptions": "compileOptions",
+                    "forbiddenCompileOptions": "forbiddenCompileOptions",
+                    "requiresSecureMemorySupport": "requiresSecureMemorySupport"
                   },
                   "bundleLayout": {
                     "bundleTargets": "bundleTargets",
@@ -95,10 +97,12 @@ class DistributionContractReaderTest {
                 "managed-sqlite-contract.json",
                 """
                 {
-                  "minimumSqliteVersion": "3.53.0",
-                  "sqlite3mcVersion": "2.3.3",
+                  "minimumSqliteVersion": "3.53.1",
+                  "sqlite3mcVersion": "2.3.4",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
-                  "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"]
+                  "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"],
+                  "forbiddenCompileOptions": ["USE_URI"],
+                  "requiresSecureMemorySupport": true
                 }
                 """.trimIndent(),
             )
@@ -185,11 +189,11 @@ class DistributionContractReaderTest {
                 DistributionContractReader.sqliteBundleHomeSystemProperty(repositoryRoot),
             )
             assertEquals(
-                "3.53.0",
+                "3.53.1",
                 DistributionContractReader.requiredMinimumSqliteVersion(repositoryRoot),
             )
             assertEquals(
-                "2.3.3",
+                "2.3.4",
                 DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot),
             )
             assertEquals(
@@ -199,6 +203,14 @@ class DistributionContractReaderTest {
             assertEquals(
                 listOf("THREADSAFE=1", "SECURE_DELETE"),
                 DistributionContractReader.requiredSqliteCompileOptions(repositoryRoot),
+            )
+            assertEquals(
+                listOf("USE_URI"),
+                DistributionContractReader.forbiddenSqliteCompileOptions(repositoryRoot),
+            )
+            assertEquals(
+                true,
+                DistributionContractReader.requiresSecureMemorySupport(repositoryRoot),
             )
             assertEquals(
                 DistributionContractReader.BundleTargetContract(
@@ -232,7 +244,7 @@ class DistributionContractReaderTest {
             )
             assertEquals("print-plan-template", DistributionContractReader.planTemplateOperationName(repositoryRoot))
             assertEquals(
-                "3.53.0",
+                "3.53.1",
                 DistributionContractReader.requiredMinimumSqliteVersion(nestedBuildRoot),
             )
             assertEquals(
@@ -279,7 +291,9 @@ class DistributionContractReaderTest {
                     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
                     "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
                     "requiredSqliteSourceId": "requiredSqliteSourceId",
-                    "requiredCompileOptions": "requiredCompileOptions"
+                    "requiredCompileOptions": "requiredCompileOptions",
+                    "forbiddenCompileOptions": "forbiddenCompileOptions",
+                    "requiresSecureMemorySupport": "requiresSecureMemorySupport"
                   },
                   "bundleLayout": {
                     "bundleTargets": "bundleTargets",

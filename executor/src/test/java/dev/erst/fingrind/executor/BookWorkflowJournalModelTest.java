@@ -1,14 +1,15 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.CASH_ACCOUNT;
+import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
 import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryPhase;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionJournal;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionStatus;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
 import dev.erst.fingrind.executor.workflow.BookWorkflowJournalDescriptor;
 import dev.erst.fingrind.executor.workflow.BookWorkflowJournalEntry;
@@ -109,12 +110,18 @@ class BookWorkflowJournalModelTest {
     assertEquals(rejected, rejectedJournal.requiredFailedEntry());
     assertEquals(BookWorkflowExecutionStatus.ASSERTION_FAILED, assertionFailedJournal.status());
     assertEquals(assertionFailed, assertionFailedJournal.requiredFailedEntry());
-
-    @SuppressWarnings("NullAway")
-    List<BookWorkflowJournalEntry> missingEntries = null;
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new BookWorkflowExecutionJournal(STARTED_AT, FINISHED_AT, missingEntries));
+    assertEquals(
+        "entries",
+        assertThrows(
+                NullPointerException.class,
+                () -> new BookWorkflowExecutionJournal(STARTED_AT, FINISHED_AT, nullOf()))
+            .getMessage());
+    assertEquals(
+        "Workflow execution journal must contain at least one entry.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new BookWorkflowExecutionJournal(STARTED_AT, FINISHED_AT, List.of()))
+            .getMessage());
     assertThrows(
         IllegalArgumentException.class,
         () -> new BookWorkflowExecutionJournal(FINISHED_AT, STARTED_AT, List.of(succeeded)));
@@ -133,16 +140,20 @@ class BookWorkflowJournalModelTest {
   }
 
   @Test
-  @SuppressWarnings("NullAway")
-  void workflowFailure_normalizesMissingFactsAndCopiesProvidedFacts() {
-    List<LedgerFact> mutableFacts = new ArrayList<>(List.of(LedgerFact.text("code", "value")));
+  void workflowFailure_rejectsNullFactsAndCopiesProvidedFacts() {
+    List<BookWorkflowFact> mutableFacts =
+        new ArrayList<>(List.of(BookWorkflowFact.text("code", "value")));
     BookWorkflowFailure copiedFacts = new BookWorkflowFailure("code", "message", mutableFacts);
-    BookWorkflowFailure missingFacts = new BookWorkflowFailure("code", "message", null);
 
     mutableFacts.clear();
 
-    assertEquals(List.of(LedgerFact.text("code", "value")), copiedFacts.facts());
-    assertEquals(List.of(), missingFacts.facts());
+    assertEquals(List.of(BookWorkflowFact.text("code", "value")), copiedFacts.facts());
+    assertEquals(
+        "facts",
+        assertThrows(
+                NullPointerException.class,
+                () -> new BookWorkflowFailure("code", "message", nullOf()))
+            .getMessage());
   }
 
   private static BookWorkflowJournalEntry.Succeeded succeeded(String stepId) {
@@ -151,7 +162,7 @@ class BookWorkflowJournalModelTest {
         inspectDescriptor(stepId),
         STARTED_AT,
         FINISHED_AT,
-        List.of(LedgerFact.flag("ok", true)));
+        List.of(BookWorkflowFact.flag("ok", true)));
   }
 
   private static BookWorkflowJournalEntry.Rejected rejected(String stepId) {
@@ -171,7 +182,7 @@ class BookWorkflowJournalModelTest {
 
   private static BookWorkflowFailure failure(String code) {
     return new BookWorkflowFailure(
-        code, "failure message", List.of(LedgerFact.text("reason", "example")));
+        code, "failure message", List.of(BookWorkflowFact.text("reason", "example")));
   }
 
   private static BookWorkflowJournalDescriptor.Step inspectDescriptor(String stepId) {

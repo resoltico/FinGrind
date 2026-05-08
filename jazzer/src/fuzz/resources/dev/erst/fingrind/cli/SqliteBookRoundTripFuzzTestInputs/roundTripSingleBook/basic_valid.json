@@ -1,24 +1,24 @@
 {
-  "effectiveDate": "2026-04-07",
+  "effectiveDate": "2026-04-11",
   "lines": [
     {
-      "accountCode": "1000",
+      "accountCode": "3100",
       "side": "DEBIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "currencyCode": "USD",
+      "amount": "88.40"
     },
     {
-      "accountCode": "2000",
+      "accountCode": "4100",
       "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "currencyCode": "USD",
+      "amount": "88.40"
     }
   ],
   "provenance": {
-    "actorId": "actor-1",
-    "actorType": "AGENT",
-    "commandId": "command-1",
-    "idempotencyKey": "idem-1",
-    "causationId": "cause-1"
+    "actorId": "actor-sqlite-1",
+    "actorType": "SYSTEM",
+    "commandId": "command-sqlite-1",
+    "idempotencyKey": "idem-sqlite-1",
+    "causationId": "cause-sqlite-1"
   }
 }

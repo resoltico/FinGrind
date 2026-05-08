@@ -20,10 +20,11 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
-                "fingrind %s %s ./secrets/acme.book-key"
-                    .formatted(
-                        OperationId.GENERATE_BOOK_KEY_FILE.wireName(),
-                        ProtocolOptions.BOOK_KEY_FILE))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./secrets/acme.book-key"
+                        .formatted(
+                            OperationId.GENERATE_BOOK_KEY_FILE.wireName(),
+                            ProtocolOptions.BOOK_KEY_FILE)))),
         ProtocolOperationDefinitions.operation(
             OperationId.OPEN_BOOK,
             OperationCategory.ADMINISTRATION,
@@ -37,21 +38,24 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Initialize a new book file with the canonical schema.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
-                    .formatted(
-                        OperationId.OPEN_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE),
-                "fingrind %s %s ./books/acme.sqlite %s"
-                    .formatted(
-                        OperationId.OPEN_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_PASSPHRASE_PROMPT),
-                "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s"
-                    .formatted(
-                        OperationId.OPEN_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_PASSPHRASE_STDIN))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
+                        .formatted(
+                            OperationId.OPEN_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE)),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s"
+                        .formatted(
+                            OperationId.OPEN_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
+                ProtocolExampleStep.command(
+                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s"
+                        .formatted(
+                            OperationId.OPEN_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_PASSPHRASE_STDIN)))),
         ProtocolOperationDefinitions.operation(
             OperationId.REKEY_BOOK,
             OperationCategory.ADMINISTRATION,
@@ -66,22 +70,25 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Rotate the passphrase that protects one existing book.",
             List.of(
-                "fingrind %s %s ./secrets/acme-replacement.book-key"
-                    .formatted(
-                        OperationId.GENERATE_BOOK_KEY_FILE.wireName(),
-                        ProtocolOptions.BOOK_KEY_FILE),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key"
-                    .formatted(
-                        OperationId.REKEY_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
-                    .formatted(
-                        OperationId.REKEY_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./secrets/acme-replacement.book-key"
+                        .formatted(
+                            OperationId.GENERATE_BOOK_KEY_FILE.wireName(),
+                            ProtocolOptions.BOOK_KEY_FILE)),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key"
+                        .formatted(
+                            OperationId.REKEY_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE)),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
+                        .formatted(
+                            OperationId.REKEY_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT)))),
         ProtocolOperationDefinitions.operation(
             OperationId.DECLARE_ACCOUNT,
             OperationCategory.ADMINISTRATION,
@@ -96,17 +103,19 @@ final class ProtocolAdministrationOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Declare or reactivate one account in the selected book.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-cash.json"
-                    .formatted(
-                        OperationId.DECLARE_ACCOUNT.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE),
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-revenue.json"
-                    .formatted(
-                        OperationId.DECLARE_ACCOUNT.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE))));
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-cash.json"
+                        .formatted(
+                            OperationId.DECLARE_ACCOUNT.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REQUEST_FILE)),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-revenue.json"
+                        .formatted(
+                            OperationId.DECLARE_ACCOUNT.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.REQUEST_FILE)))));
   }
 }

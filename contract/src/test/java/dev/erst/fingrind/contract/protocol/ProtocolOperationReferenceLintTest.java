@@ -98,7 +98,9 @@ class ProtocolOperationReferenceLintTest extends ProtocolContractLintSupport {
     ProtocolCatalog.operations()
         .forEach(
             operation ->
-                Stream.concat(Stream.of(operation.usage()), operation.examples().stream())
+                Stream.concat(
+                        Stream.of(operation.usage()),
+                        operation.exampleSteps().stream().map(ProtocolExampleStep::text))
                     .forEach(
                         text ->
                             FINGRIND_COMMAND_PATTERN

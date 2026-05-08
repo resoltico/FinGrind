@@ -17,6 +17,9 @@ final class ManagedSqliteContracts {
       SCHEMA_KEYS.requiredSqlite3mcVersion();
   private static final String REQUIRED_SQLITE_SOURCE_ID_KEY = SCHEMA_KEYS.requiredSqliteSourceId();
   private static final String REQUIRED_COMPILE_OPTIONS_KEY = SCHEMA_KEYS.requiredCompileOptions();
+  private static final String FORBIDDEN_COMPILE_OPTIONS_KEY = SCHEMA_KEYS.forbiddenCompileOptions();
+  private static final String REQUIRES_SECURE_MEMORY_SUPPORT_KEY =
+      SCHEMA_KEYS.requiresSecureMemorySupport();
   private static final ManagedSqliteContract CURRENT = loadCurrent();
 
   private ManagedSqliteContracts() {}
@@ -35,7 +38,9 @@ final class ManagedSqliteContracts {
         JsonContractResourceSupport.requireText(document, REQUIRED_MINIMUM_SQLITE_VERSION_KEY),
         JsonContractResourceSupport.requireText(document, REQUIRED_SQLITE3MC_VERSION_KEY),
         JsonContractResourceSupport.requireText(document, REQUIRED_SQLITE_SOURCE_ID_KEY),
-        JsonContractResourceSupport.optionalStringArray(document, REQUIRED_COMPILE_OPTIONS_KEY));
+        JsonContractResourceSupport.requireStringArray(document, REQUIRED_COMPILE_OPTIONS_KEY),
+        JsonContractResourceSupport.requireStringArray(document, FORBIDDEN_COMPILE_OPTIONS_KEY),
+        JsonContractResourceSupport.requireBoolean(document, REQUIRES_SECURE_MEMORY_SUPPORT_KEY));
   }
 
   private static ManagedSqliteContract loadCurrent() {

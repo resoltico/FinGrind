@@ -11,25 +11,22 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
-import org.jspecify.annotations.NullUnmarked;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and invariant tests for contract-owned template descriptors. */
-@NullUnmarked
 class ContractTemplatesValidationTest {
   @Test
   void ledgerPlanAndQueryTemplates_validateEmptyAndInRangeCases() {
     assertThrows(
         IllegalArgumentException.class,
         () -> new ContractTemplates.LedgerPlanTemplateDescriptor("plan-1", java.util.List.of()));
-
     ContractTemplates.LedgerPlanQueryTemplateDescriptor boundedQuery =
         new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
             "1000", "2026-04-25", "2026-04-26", InteractionLimits.DEFAULT_PAGE_LIMIT, "cursor-1");
     ContractTemplates.LedgerPlanQueryTemplateDescriptor openQuery =
         new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
             null, "2026-04-25", null, null, null);
-
     assertEquals("1000", boundedQuery.accountCode());
     assertEquals(InteractionLimits.DEFAULT_PAGE_LIMIT, boundedQuery.limit());
     assertEquals("cursor-1", boundedQuery.cursor());
@@ -152,7 +149,6 @@ class ContractTemplatesValidationTest {
             "10.00",
             BalanceSide.CREDIT,
             null);
-
     assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, accountDeclared.kind());
     assertEquals("2000", accountActive.accountCode());
     assertEquals("posting-1", postingExists.postingId());
@@ -166,6 +162,48 @@ class ContractTemplatesValidationTest {
         () ->
             new ContractTemplates.LedgerAssertionTemplateDescriptor(
                 LedgerAssertionKind.ACCOUNT_DECLARED, null, null, null, null, null, null, null));
+  }
+
+  @Test
+  void shapeRequirementHelpers_reportMissingRuleRegistration() {
+    IllegalStateException missingStepRule =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                ContractTemplateShapeValidator.stepRequirements(
+                    Map.of(
+                        LedgerStepKind.OPEN_BOOK,
+                        new ContractTemplateStepShapeRequirements(
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            false)),
+                    LedgerStepKind.POST_ENTRY));
+    assertEquals(
+        "No step-shape requirements are registered for ledger step kind POST_ENTRY.",
+        missingStepRule.getMessage());
+
+    IllegalStateException missingAssertionRule =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                ContractTemplateShapeValidator.assertionRequirements(
+                    Map.of(
+                        LedgerAssertionKind.ACCOUNT_DECLARED,
+                        new ContractTemplateAssertionShapeRequirements(
+                            ContractTemplateFieldPresence.REQUIRED,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN,
+                            ContractTemplateFieldPresence.FORBIDDEN)),
+                    LedgerAssertionKind.POSTING_EXISTS));
+    assertEquals(
+        "No assertion-shape requirements are registered for ledger assertion kind POSTING_EXISTS.",
+        missingAssertionRule.getMessage());
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplate() {

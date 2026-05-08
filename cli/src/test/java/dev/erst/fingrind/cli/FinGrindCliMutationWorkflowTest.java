@@ -12,20 +12,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
   @Test
   void run_rekeyBookThroughDefaultSqliteWorkflowRotatesBookKey() throws IOException {
     Path bookFilePath = tempDirectory.resolve("rekey-books").resolve("entity.sqlite");
     Path currentBookKeyFilePath = writeBookKey(bookFilePath, TEST_BOOK_KEY);
     Path replacementBookKeyFilePath = writeNamedBookKey("replacement-book.key", "replacement-key");
-
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
@@ -39,7 +36,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               currentBookKeyFilePath.toString()
             }));
-
     ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
     FinGrindCli rekeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
@@ -56,7 +52,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               replacementBookKeyFilePath.toString()
             }));
     assertTrue(rekeyOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
-
     ByteArrayOutputStream oldKeyOutput = new ByteArrayOutputStream();
     FinGrindCli oldKeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(oldKeyOutput), fixedClock());
@@ -75,7 +70,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
         oldKeyFailureEnvelope.path("code").stringValue());
     assertFalse(oldKeyFailureEnvelope.path("message").stringValue().contains("SQLITE_NOTADB"));
-
     ByteArrayOutputStream newKeyOutput = new ByteArrayOutputStream();
     FinGrindCli newKeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(newKeyOutput), fixedClock());
@@ -97,7 +91,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
       throws IOException {
     Path bookFilePath = tempDirectory.resolve("corrupted-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
@@ -111,13 +104,11 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             }));
-
     Path corruptedBookPath =
         tempDirectory.resolve("corrupted-books").resolve("entity-corrupted.sqlite");
     byte[] corruptedBytes = Files.readAllBytes(bookFilePath);
     corruptedBytes[Math.min(200, corruptedBytes.length - 1)] ^= 0x5A;
     Files.write(corruptedBookPath, corruptedBytes);
-
     ByteArrayOutputStream inspectOutput = new ByteArrayOutputStream();
     FinGrindCli inspectCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock());
@@ -131,7 +122,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             }));
-
     JsonNode failureEnvelope = new ObjectMapper().readTree(inspectOutput.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
@@ -151,7 +141,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("committed-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     FinGrindCli cli;
-
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
     assertEquals(
@@ -165,7 +154,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString()
             }));
     assertTrue(openOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
-
     ByteArrayOutputStream declareCashOutput = new ByteArrayOutputStream();
     cli =
         cli(
@@ -186,7 +174,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             }));
     assertTrue(
         declareCashOutput.toString(StandardCharsets.UTF_8).contains("\"accountCode\":\"1000\""));
-
     ByteArrayOutputStream declareRevenueOutput = new ByteArrayOutputStream();
     cli =
         cli(
@@ -205,7 +192,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               declareRevenueFile.toString()
             }));
-
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(listOutput), fixedClock());
     assertEquals(
@@ -220,7 +206,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             }));
     assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"accountName\":\"Cash\""));
     assertTrue(listOutput.toString(StandardCharsets.UTF_8).contains("\"accountName\":\"Revenue\""));
-
     ByteArrayOutputStream preflightOutput = new ByteArrayOutputStream();
     cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(preflightOutput), fixedClock());
@@ -240,7 +225,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         preflightOutput
             .toString(StandardCharsets.UTF_8)
             .contains("\"status\":\"preflight-accepted\""));
-
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
     assertEquals(
@@ -255,7 +239,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             }));
-
     JsonNode envelope = new ObjectMapper().readTree(commitOutput.toString(StandardCharsets.UTF_8));
     assertEquals("committed", envelope.path("status").stringValue());
     UUID postingId = UUID.fromString(envelope.path("postingId").stringValue());
@@ -272,7 +255,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         writeNamedBookKey("wrong-current-book.key", "wrong-current-secret");
     Path replacementBookKeyFilePath =
         writeNamedBookKey("replacement-secret-book.key", "replacement-secret");
-
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
@@ -286,7 +268,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               currentBookKeyFilePath.toString()
             }));
-
     ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
     FinGrindCli rekeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
@@ -302,7 +283,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               "--replacement-book-key-file",
               replacementBookKeyFilePath.toString()
             }));
-
     String outputText = rekeyOutput.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(

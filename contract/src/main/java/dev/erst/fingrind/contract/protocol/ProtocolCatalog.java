@@ -30,8 +30,7 @@ public final class ProtocolCatalog {
 
   /** Returns the operation descriptor for a canonical operation identifier. */
   public static ProtocolOperation operation(OperationId operationId) {
-    return Objects.requireNonNull(
-        BY_ID.get(Objects.requireNonNull(operationId, "operationId")), "operation");
+    return requireOperation(BY_ID, operationId);
   }
 
   /** Returns the stable wire name for one canonical operation identifier. */
@@ -219,6 +218,16 @@ public final class ProtocolCatalog {
     return ProtocolCatalogFacts.managedSqliteContract().requiredCompileOptions();
   }
 
+  /** Returns compile options that must be absent for the managed runtime surface. */
+  public static List<String> forbiddenSqliteCompileOptions() {
+    return ProtocolCatalogFacts.managedSqliteContract().forbiddenCompileOptions();
+  }
+
+  /** Returns whether the managed runtime contract requires SQLite3MC secure-memory support. */
+  public static boolean requiresSecureMemorySupport() {
+    return ProtocolCatalogFacts.managedSqliteContract().requiresSecureMemorySupport();
+  }
+
   private static Stream<Map.Entry<String, ProtocolOperation>> tokensFor(
       ProtocolOperation operation) {
     return Stream.concat(
@@ -260,5 +269,19 @@ public final class ProtocolCatalog {
 
   private static Map<String, ProtocolOperation> newTokenIndex() {
     return new LinkedHashMap<>();
+  }
+
+  static ProtocolOperation requireOperation(
+      Map<OperationId, ProtocolOperation> operationsById, OperationId operationId) {
+    Objects.requireNonNull(operationsById, "operationsById");
+    OperationId requiredOperationId = Objects.requireNonNull(operationId, "operationId");
+    ProtocolOperation operation = operationsById.get(requiredOperationId);
+    if (operation == null) {
+      throw new IllegalStateException(
+          "No protocol catalog entry is registered for operationId "
+              + requiredOperationId.name()
+              + ".");
+    }
+    return operation;
   }
 }

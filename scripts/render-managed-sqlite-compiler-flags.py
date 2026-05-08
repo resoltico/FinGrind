@@ -22,6 +22,11 @@ def main() -> int:
         raise SystemExit(
             "managed SQLite contract must declare one non-empty requiredCompileOptions array"
         )
+    requires_secure_memory_support = document.get("requiresSecureMemorySupport")
+    if not isinstance(requires_secure_memory_support, bool):
+        raise SystemExit(
+            "managed SQLite contract must declare requiresSecureMemorySupport as a boolean"
+        )
 
     flags: list[str] = []
     for option in compile_options:
@@ -32,7 +37,8 @@ def main() -> int:
         if "=" not in macro:
             macro += "=1"
         flags.append("-D" + macro)
-    flags.append("-DSQLITE3MC_SECURE_MEMORY=1")
+    if requires_secure_memory_support:
+        flags.append("-DSQLITE3MC_SECURE_MEMORY=1")
 
     print(" ".join(flags))
     return 0

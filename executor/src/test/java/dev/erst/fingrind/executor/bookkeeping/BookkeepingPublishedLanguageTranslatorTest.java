@@ -96,7 +96,9 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 BookkeepingPostingRejection.AccountStateViolations.class
                     .getDeclaredConstructor(java.util.List.class)
                     .newInstance((Object) null));
-    assertInstanceOf(IllegalArgumentException.class, invocationTargetException.getCause());
+    NullPointerException cause =
+        assertInstanceOf(NullPointerException.class, invocationTargetException.getCause());
+    assertEquals("violations", cause.getMessage());
   }
 
   @Test

@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.32.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do i clean local jazzer state in fingrind", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
@@ -28,6 +28,8 @@ route:
 | `jazzer/bin/fuzz-all` | run all active fuzz tasks sequentially |
 | `jazzer/bin/replay` | replay one raw local input against one harness |
 | `jazzer/bin/list-findings` | classify raw local finding artifacts through deterministic replay |
+| `jazzer/bin/promote-seed` | commit one ad hoc input into the deterministic seed floor |
+| `jazzer/bin/seed-audit` | summarize committed seeds and report corpus-integrity defects across metadata and raw inputs |
 | `jazzer/bin/clean-local-findings` | delete raw finding artifacts and non-corpus run state |
 | `jazzer/bin/clean-local-corpus` | delete generated local corpora |
 
@@ -52,10 +54,14 @@ verification command should run at a time.
   they participate in the same repo-wide verification lock contract as `./check.sh`. Each one
   starts from a clean relocated nested-build output so removed classfiles cannot linger and poison
   deterministic coverage verification.
-- `jazzer/bin/replay`, `jazzer/bin/list-findings`, `jazzer/bin/clean-local-findings`, and
-  `jazzer/bin/clean-local-corpus`: read-only or maintenance wrapper surfaces. They use the same
-  repo-wide verification lock, but they do not run a nested Gradle `clean` first because
-  replay/classification and local Jazzer cleanup must not wipe unrelated build outputs.
+- `jazzer/bin/replay`, `jazzer/bin/list-findings`, `jazzer/bin/seed-audit`,
+  `jazzer/bin/clean-local-findings`, and `jazzer/bin/clean-local-corpus`: read-only or
+  maintenance wrapper surfaces. They use the same repo-wide verification lock, but they do not
+  run a nested Gradle `clean` first because replay/classification, seed inspection, and local
+  Jazzer cleanup must not wipe unrelated build outputs.
+- `jazzer/bin/promote-seed`: the project-owned write path for turning one ad hoc raw input into a
+  committed seed plus deterministic replay metadata. It uses the same repo-wide verification lock
+  and rejects duplicate raw seed bytes across the committed corpus.
 - `jazzer/bin/*`: the one supported Jazzer operator surface for active fuzzing, regression, replay,
   and cleanup. Active fuzz through this surface forces `--no-daemon` and owns interrupt and
   timeout teardown.
@@ -118,8 +124,10 @@ jazzer/bin/fuzz-all -PjazzerMaxDuration=10s --console=plain
 `-PjazzerMaxDuration` still applies per harness, not across the whole campaign.
 The all-target wrapper derives its harness list from the `activeFuzzing` targets in
 `jazzer-topology.json`, calls those per-harness wrapper scripts in topology order, prints
-start/finish markers for each one, keeps going after plain timeout exits, but stops immediately
-after an actionable harness failure. Before it returns non-zero, it also runs
+start/finish markers for each one, and stops immediately after an actionable harness failure.
+Bounded Jazzer completion exits successfully; wrapper exit `124` is reserved for timeout teardown
+only when a harness misses its stop window after libFuzzer has started or never reaches the
+libFuzzer start marker at all. Before the all-target wrapper returns non-zero, it also runs
 `jazzer/bin/list-findings` for the failed target so the replay-classified finding summary is not
 buried beneath later harness logs.
 
@@ -308,11 +316,69 @@ This command replays each raw local finding artifact and reports whether it curr
 `details.type` distinguishes fully parsed inputs from unparsed request shapes such as
 `CLI_REQUEST_UNPARSED` and `LEDGER_PLAN_REQUEST_UNPARSED`.
 
+### Audit The Committed Seed Floor
+
+```bash
+jazzer/bin/seed-audit --console=plain
+jazzer/bin/seed-audit --json --console=plain
+jazzer/bin/seed-audit posting-workflow --console=plain
+```
+
+This command reports:
+
+- committed seed counts per harness
+- committed seed outcome kinds per harness
+- the declared coverage intent for each committed seed
+- orphaned committed raw inputs with no metadata entry
+- committed metadata entries that encode `unexpected-failure`
+- committed metadata that cannot be read, points outside its owning harness directory, or points to
+  a missing/non-file raw input
+- malformed committed `.json` raw seed bodies
+- duplicate raw-input content groups
+
+The command fails whenever any of those defects are present.
+
+Use `--json` when a machine or agent needs the exact committed-seed inventory.
+Deterministic `--json` failures on the seed-management commands are machine-readable too; they
+return one error payload with `status`, `command`, `exitCode`, `message`, and `usage`.
+Wrapper-side target validation also includes `supportedTargetKeys`, so a machine caller can
+recover without opening docs or source.
+
+### Promote One Ad Hoc Input Into A Committed Seed
+
+```bash
+jazzer/bin/promote-seed posting-workflow \
+  jazzer/.local/runs/posting-workflow/crash-<sha1> \
+  --name posted_reversal_exponent \
+  --intent "exponent rejection with reversal payload present" \
+  --console=plain
+```
+
+This command:
+
+- replays the selected input through the chosen harness
+- copies the raw input into the canonical committed input directory
+- writes deterministic regression metadata with the observed replay expectation
+- records one required `coverageIntent`
+- requires that `coverageIntent` remain unique across the committed corpus
+- requires `--name` to use lower_snake_case ASCII letters, digits, and underscores
+- rejects duplicate raw input bytes across the committed corpus
+- refuses `unexpected-failure` replay outcomes so active bugs cannot be codified into the committed floor
+
+When `--json` is selected, deterministic operator failures also return the same structured error
+payload instead of leaking Gradle task failure boilerplate.
+Both `jazzer/bin/promote-seed --help` and `jazzer/bin/seed-audit --help` print the supported
+replayable `<target-key>` values directly, so the write and audit surfaces remain black-box
+discoverable.
+
 ### Replay The Committed Regression Floor
 
 ```bash
 jazzer/bin/regression --console=plain
 ```
+
+`jazzer/bin/regression` accepts Gradle-style options only. Positional arguments such as target keys
+are rejected at the wrapper edge instead of falling through into raw Gradle task-name errors.
 
 ### Clean Local State Before A Fresh Fuzz Pass
 
@@ -350,8 +416,9 @@ What these artifacts mean:
 - `.cifuzz-corpus/`: generated local corpus for that harness
 - `latest.log`: log of the most recent run for that harness
 - `history/<timestamp>/run.log`: immutable log for one completed or interrupted run
-- `history/<timestamp>/timed-out`: wrapper-written marker when the requested duration plus grace
-  was exceeded
+- `history/<timestamp>/timed-out`: wrapper-written marker when wrapper-enforced timeout teardown
+  was required, either because fuzz startup never reached the libFuzzer start marker before the
+  startup ceiling or because a started harness ran past the requested duration plus grace
 - `crash-*`, `timeout-*`, `oom-*`, `leak-*`, `slow-unit-*`: raw libFuzzer artifact files written
   under libFuzzer's own naming scheme. These prefixes are not final product bug classifications on
   their own.
@@ -363,11 +430,12 @@ repository path). Wrapper and nested Gradle reentry use the published lock-owner
 that directory rather than shell-parent heuristics, so the supported monitored shell surfaces keep
 working under `./check.sh`.
 
-There is still no promotion or corpus-summary CLI. Today the primary operator surface is:
+The seed operator surface is now explicit:
 
 - committed seeds in source control
 - committed regression metadata in source control
-- the supported commands above
+- `jazzer/bin/promote-seed`
+- `jazzer/bin/seed-audit`
 - direct inspection of `.local/runs/`
 - replay-backed classification through `jazzer/bin/replay` and `jazzer/bin/list-findings`
 

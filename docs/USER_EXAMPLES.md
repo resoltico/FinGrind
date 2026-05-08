@@ -536,7 +536,8 @@ fingrind \
   preflight-entry \
   --book-file ./errors.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./invalid-empty-lines-request.json
+  --request-file ./invalid-empty-lines-request.json \
+  --output json
 ```
 
 One invalid-request response:
@@ -552,7 +553,8 @@ fingrind \
   list-postings \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --cursor definitely-not-a-valid-cursor
+  --cursor definitely-not-a-valid-cursor \
+  --output json
 ```
 
 One deterministic error example is checked in at
@@ -565,7 +567,8 @@ fingrind generate-book-key-file --book-key-file ./secrets/wrong.book-key
 fingrind \
   list-accounts \
   --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/wrong.book-key
+  --book-key-file ./secrets/wrong.book-key \
+  --output json
 ```
 
 One deterministic error example is checked in at

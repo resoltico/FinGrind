@@ -26,15 +26,12 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 
 /** Shared CLI fixture helpers and sample payloads for split command tests. */
-@NullUnmarked
 class CliIoFixtureSupport {
   protected static final String TEST_BOOK_KEY = "cli-test-book-key";
-
   @TempDir protected Path tempDirectory;
 
   protected Path writeRequest(String payload) throws IOException {

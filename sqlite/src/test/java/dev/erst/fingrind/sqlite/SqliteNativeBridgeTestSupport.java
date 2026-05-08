@@ -16,11 +16,9 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Shared native API fixtures and handle helpers for split SQLite bridge tests. */
-@NullUnmarked
 class SqliteNativeBridgeTestSupport {
   static final String TEST_BOOK_KEY = "native-library-test-book-key";
   static final int SQLITE_API_ARGUMENT_OPEN_V2 = 1;
@@ -115,8 +113,8 @@ class SqliteNativeBridgeTestSupport {
       constantMethodHandle(MemorySegment.NULL, MemorySegment.class),
       constantMethodHandle(MemorySegment.NULL, int.class),
       constantMethodHandle(0, MemorySegment.class),
-      "3.53.0",
-      "2.3.3",
+      "3.53.1",
+      "2.3.4",
       SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
       SqliteRuntimeProvenance.BUNDLE_MANAGED,
       "/tmp/libsqlite3.dylib"

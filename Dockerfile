@@ -5,16 +5,27 @@ WORKDIR /build
 RUN apk add --no-cache build-base python3
 
 COPY gradle.properties gradle.properties
+COPY gradle.properties /build/source-root/gradle.properties
+COPY build.gradle.kts settings.gradle.kts /build/source-root/
+COPY gradle/ /build/source-root/gradle/
+COPY cli/ /build/source-root/cli/
+COPY contract/ /build/source-root/contract/
+COPY core/ /build/source-root/core/
+COPY executor/ /build/source-root/executor/
+COPY report-pdf/ /build/source-root/report-pdf/
+COPY sqlite/ /build/source-root/sqlite/
 COPY cli/build/docker-context/ /build/docker-context/
 COPY scripts/render-managed-sqlite-compiler-flags.py scripts/render-managed-sqlite-compiler-flags.py
 COPY scripts/verify-docker-build-context.py scripts/verify-docker-build-context.py
-COPY third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/sqlite3mc_amalgamation.c sqlite3mc_amalgamation.c
+COPY third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/sqlite3mc_amalgamation.c sqlite3mc_amalgamation.c
 
 # The canonical Docker assembly input is built by ./gradlew :cli:stageDockerBuildContext before
 # docker build is invoked. That staged directory carries the internal application JAR, the
 # canonical private-runtime module list, the rendered entrypoint, the managed-SQLite contract,
 # and the generated build-context manifest so container assembly consumes one checked context
-# instead of re-listing parallel file owners in the Dockerfile.
+# instead of re-listing parallel file owners in the Dockerfile. The build also copies the
+# current source/build inputs into /build/source-root so the verifier can reject stale staged
+# contexts instead of silently packaging an older jar.
 # Public CLI downloads are the self-contained bundle archives, not this assembly input.
 
 RUN python3 - <<'PY'
@@ -35,7 +46,7 @@ if actual != expected:
     )
 PY
 
-RUN python3 scripts/verify-docker-build-context.py --context-dir /build/docker-context
+RUN python3 scripts/verify-docker-build-context.py --context-dir /build/docker-context --source-root /build/source-root
 
 RUN cc -O2 -fPIC $(python3 scripts/render-managed-sqlite-compiler-flags.py /build/docker-context/managed-sqlite-contract.json) -shared \
     -Wl,-soname,libsqlite3.so.0 -o libsqlite3.so.0 sqlite3mc_amalgamation.c -ldl -lpthread

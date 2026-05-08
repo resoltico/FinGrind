@@ -4,18 +4,19 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.ContractFailureException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void lifecyclePrime_coversPublishedDatabaseAndAuthenticationRejectionBranches() throws Exception {
     Path publishedPath = tempDirectory.resolve("prime-published.sqlite");
@@ -24,14 +25,12 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
       setStoreDatabase(postingFactStore, SqliteNativeConnections.open(bookAccess(publishedPath)));
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
-
     Path existingPath = tempDirectory.resolve("prime-existing.sqlite");
     initializeBookOnDisk(existingPath);
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(existingPath))) {
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
-
     Path existingReadWriteExistingPath =
         tempDirectory.resolve("prime-existing-read-write-existing.sqlite");
     initializeBookOnDisk(existingReadWriteExistingPath);
@@ -40,7 +39,6 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
             bookAccess(existingReadWriteExistingPath), SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
       assertDoesNotThrow(() -> postingFactStore.prime().requireAccepted());
     }
-
     Path initializedPath = tempDirectory.resolve("prime-wrong-passphrase.sqlite");
     initializeBookOnDisk(initializedPath);
     try (SqliteBookPassphrase wrongPassphrase =
@@ -65,14 +63,11 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
   void lifecycleTransactionBranches_coverExistingCreateAndDetachedRollbackPaths() throws Exception {
     Path existingPath = tempDirectory.resolve("lifecycle-existing-create.sqlite");
     initializeBookOnDisk(existingPath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(existingPath))) {
       postingFactStore.beginLedgerPlanTransaction();
-
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
-
       try (SqliteNativeDatabase detachedDatabase = requireStoreDatabase(postingFactStore)) {
         setStoreDatabase(postingFactStore, null);
         assertNotNull(detachedDatabase.handle());
@@ -81,7 +76,6 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
         assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
       }
     }
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
             bookAccess(existingPath), SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
@@ -89,6 +83,74 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
       assertDoesNotThrow(postingFactStore::rollbackLedgerPlanTransaction);
+    }
+  }
+
+  @Test
+  void lifecycleTransactionBegin_rejectsAuthenticationFailureWithoutLeavingActiveState()
+      throws Exception {
+    Path existingPath = tempDirectory.resolve("lifecycle-begin-wrong-passphrase.sqlite");
+    initializeBookOnDisk(existingPath);
+    try (SqliteBookPassphrase wrongPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "lifecycle wrong passphrase", "wrong-passphrase".toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                existingPath, wrongPassphrase, SqliteStoreAccessMode.PLAN_EXECUTION)) {
+      ContractFailureException exception =
+          assertThrows(
+              ContractFailureException.class, postingFactStore::beginLedgerPlanTransaction);
+      assertEquals(
+          ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+          exception.failure().code());
+      assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
+      assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
+    }
+  }
+
+  @Test
+  void lifecycleIntrospection_coversDeferredTransactionBranchStates() {
+    Path databasePath =
+        tempDirectory
+            .resolve("lifecycle-deferred-introspection")
+            .resolve("nested")
+            .resolve("book.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(
+            bookAccess(databasePath), SqliteStoreAccessMode.PLAN_EXECUTION)) {
+      assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
+      assertDoesNotThrow(
+          () ->
+              SqliteStoreTestAccess.invokeCleanupCreatedMissingBookArtifactsIfPresent(
+                  postingFactStore));
+      postingFactStore.beginLedgerPlanTransaction();
+      assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
+      assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
+      assertDoesNotThrow(
+          () ->
+              SqliteStoreTestAccess.invokeCleanupCreatedMissingBookArtifactsIfPresent(
+                  postingFactStore));
+    }
+  }
+
+  @Test
+  void lifecycleIntrospection_coversCreatedArtifactCleanupBranchState() throws Exception {
+    Path parentDirectory = tempDirectory.resolve("lifecycle-created-cleanup").resolve("nested");
+    Path databasePath = parentDirectory.resolve("book.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      postingFactStore.beginLedgerPlanTransaction();
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
+      assertDoesNotThrow(
+          () ->
+              SqliteStoreTestAccess.invokeCleanupCreatedMissingBookArtifactsIfPresent(
+                  postingFactStore));
+      assertFalse(Files.exists(databasePath));
+      assertFalse(Files.exists(parentDirectory));
+      assertDoesNotThrow(postingFactStore::rollbackLedgerPlanTransaction);
+      assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionActive"));
+      assertFalse(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
     }
   }
 }

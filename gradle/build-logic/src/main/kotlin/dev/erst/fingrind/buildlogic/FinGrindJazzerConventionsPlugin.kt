@@ -13,6 +13,7 @@ import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.named
@@ -22,6 +23,7 @@ import org.gradle.process.CommandLineArgumentProvider
 import org.gradle.api.provider.Provider
 
 private const val jazzerTestProjectRootProperty = "fingrind.jazzer.test-project-root"
+private const val jazzerWrapperExitStatusProperty = "fingrind.jazzer.wrapper.exit-status-file"
 
 class FinGrindJazzerConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -83,14 +85,35 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 options.release.set(fingrindJavaVersion)
             }
 
-            tasks.named<JavaCompile>("compileJava").configure {
+            tasks.withType<ProcessResources>().configureEach {
+                outputs.upToDateWhen { false }
                 doFirst {
-                    // The nested Jazzer build lives under a wrapper-owned cache directory.
-                    // When helper types disappear from a source file, javac does not remove the
-                    // orphaned nested classfiles on its own, so prune the main source-set output
-                    // directory before each real main compile run.
-                    project.delete(destinationDirectory.get().asFile)
+                    // The nested Jazzer build also mirrors committed regression seeds and metadata
+                    // through Gradle resource outputs. Copy-style resource processing does not
+                    // prune renamed or removed inputs on its own, so clear the destination
+                    // directory before each real resource sync to keep packaged corpora aligned
+                    // with src/fuzz/resources instead of retaining stale historical seeds.
+                    destinationDir.deleteRecursively()
                 }
+            }
+
+            val compileJava = tasks.named<JavaCompile>("compileJava")
+            val pruneCompileJavaOutputs =
+                tasks.register("pruneJazzerCompileJavaOutputs") {
+                    val destinationDirectory = compileJava.flatMap { it.destinationDirectory }
+                    outputs.dir(destinationDirectory)
+                    outputs.upToDateWhen { false }
+                    doLast {
+                        val outputDirectory = destinationDirectory.get().asFile
+                        outputDirectory.deleteRecursively()
+                        outputDirectory.mkdirs()
+                    }
+                }
+
+            compileJava.configure {
+                options.isIncremental = false
+                outputs.upToDateWhen { false }
+                dependsOn(pruneCompileJavaOutputs)
             }
 
             val sourceSets = extensions.getByType<SourceSetContainer>()
@@ -193,11 +216,17 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 descriptionText: String,
                 argumentsProvider: Provider<List<String>>,
                 requiresProjectRoot: Boolean = true,
+                wrapperExitStatusFile: Provider<String> =
+                    providers.gradleProperty("__unusedJazzerWrapperExitStatusFile"),
             ) = tasks.register<JavaExec>(name) {
                 description = descriptionText
                 group = "verification"
                 configureMainSourceSet()
                 mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerCli")
+                wrapperExitStatusFile.orNull?.let { exitStatusFile ->
+                    isIgnoreExitValue = true
+                    systemProperty(jazzerWrapperExitStatusProperty, exitStatusFile)
+                }
                 argumentProviders.add(
                     ProviderBackedArguments(
                         providers.provider {
@@ -256,7 +285,11 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
 
             val jazzerTargetProperty = providers.gradleProperty("jazzerTarget")
             val jazzerInputProperty = providers.gradleProperty("jazzerInput")
+            val jazzerSeedNameProperty = providers.gradleProperty("jazzerSeedName")
+            val jazzerSeedIntentProperty = providers.gradleProperty("jazzerSeedIntent")
             val jazzerJsonOutputProperty = providers.gradleProperty("jazzerJsonOutput")
+            val jazzerWrapperExitStatusFileProperty =
+                providers.gradleProperty("fingrindJazzerWrapperExitStatusFile")
 
             registerToolTask(
                 "jazzerReplay",
@@ -277,6 +310,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                         }
                     }
                 },
+                wrapperExitStatusFile = jazzerWrapperExitStatusFileProperty,
             )
 
             registerToolTask(
@@ -291,6 +325,54 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                         }
                     }
                 },
+                wrapperExitStatusFile = jazzerWrapperExitStatusFileProperty,
+            )
+
+            registerToolTask(
+                "jazzerPromoteSeed",
+                "Promotes one ad hoc replay input into the committed Jazzer seed floor.",
+                providers.provider {
+                    buildList {
+                        add("promote-seed")
+                        add(
+                            jazzerTargetProperty.orNull
+                                ?: throw IllegalArgumentException("Missing Gradle property: jazzerTarget"),
+                        )
+                        add(
+                            jazzerInputProperty.orNull
+                                ?: throw IllegalArgumentException("Missing Gradle property: jazzerInput"),
+                        )
+                        add("--name")
+                        add(
+                            jazzerSeedNameProperty.orNull
+                                ?: throw IllegalArgumentException("Missing Gradle property: jazzerSeedName"),
+                        )
+                        add("--intent")
+                        add(
+                            jazzerSeedIntentProperty.orNull
+                                ?: throw IllegalArgumentException("Missing Gradle property: jazzerSeedIntent"),
+                        )
+                        if (jazzerJsonOutputProperty.orNull == "true") {
+                            add("--json")
+                        }
+                    }
+                },
+                wrapperExitStatusFile = jazzerWrapperExitStatusFileProperty,
+            )
+
+            registerToolTask(
+                "jazzerSeedAudit",
+                "Summarizes committed Jazzer seeds and reports duplicate-content defects.",
+                providers.provider {
+                    buildList {
+                        add("seed-audit")
+                        jazzerTargetProperty.orNull?.let(::add)
+                        if (jazzerJsonOutputProperty.orNull == "true") {
+                            add("--json")
+                        }
+                    }
+                },
+                wrapperExitStatusFile = jazzerWrapperExitStatusFileProperty,
             )
 
             registerToolTask(

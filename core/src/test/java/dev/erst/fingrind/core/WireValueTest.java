@@ -7,11 +7,9 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for the shared {@link WireValue} enum vocabulary cache. */
-@NullUnmarked
 class WireValueTest {
   private static final MethodHandle WIRE_VALUES = wireValueMethod("wireValues");
   private static final MethodHandle FROM_WIRE_VALUE = wireValueMethod("fromWireValue");
@@ -25,6 +23,7 @@ class WireValueTest {
   }
 
   @Test
+  @org.jspecify.annotations.NullUnmarked
   void helpers_rejectNullAndUnknownInputs() {
     assertThrows(NullPointerException.class, () -> WireValue.wireValues(null));
     assertThrows(
@@ -103,7 +102,6 @@ class WireValueTest {
   private enum DuplicateWireValue implements WireValue {
     LEFT("same"),
     RIGHT("same");
-
     private final String wireValue;
 
     DuplicateWireValue(String wireValue) {
@@ -119,7 +117,6 @@ class WireValueTest {
   /** Enum that violates the non-blank wire-value invariant. */
   private enum BlankWireValue implements WireValue {
     BLANK(" ");
-
     private final String wireValue;
 
     BlankWireValue(String wireValue) {

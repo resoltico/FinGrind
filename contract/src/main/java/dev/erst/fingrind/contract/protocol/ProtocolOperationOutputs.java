@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import java.util.Objects;
 
@@ -11,11 +12,7 @@ public record ProtocolOperationOutputs(
   /** Validates one operation-output descriptor. */
   public ProtocolOperationOutputs {
     Objects.requireNonNull(executionMode, "executionMode");
-    outputModes = copyList(outputModes);
-    artifactOutputs = copyList(artifactOutputs);
-  }
-
-  private static <T> List<T> copyList(List<T> values) {
-    return values == null ? List.of() : List.copyOf(values);
+    outputModes = ContractDescriptorValidation.copyList(outputModes, "outputModes");
+    artifactOutputs = ContractDescriptorValidation.copyList(artifactOutputs, "artifactOutputs");
   }
 }

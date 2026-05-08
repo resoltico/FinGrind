@@ -118,7 +118,7 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(
           "administration-book-not-initialized",
           result.journal().steps().getFirst().requiredFailure().code());
-      assertFalse(bookSession.isInitialized());
+      assertFalse(bookSession.inspectBook().initialized());
     }
   }
 
@@ -208,7 +208,7 @@ class LedgerPlanServiceWorkflowTest {
                   fact ->
                       groupFact(
                           fact, "violation", "code", "unknown-account", "accountCode", "2000")));
-      assertFalse(bookSession.isInitialized());
+      assertFalse(bookSession.inspectBook().initialized());
     }
   }
 

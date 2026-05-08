@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.AccountLedgerQuery;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.AccountPageCursor;
+import dev.erst.fingrind.contract.BookQueryRejection;
 import dev.erst.fingrind.contract.ListAccountsQuery;
 import dev.erst.fingrind.contract.ListPostingsQuery;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
@@ -130,6 +131,19 @@ public final class BookkeepingReadPublishedLanguageTranslator {
         view.accountActivity().stream()
             .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
             .toList());
+  }
+
+  /** Projects one local bookkeeping query rejection into the public contract. */
+  public static BookQueryRejection toPublished(BookkeepingQueryRejection rejection) {
+    Objects.requireNonNull(rejection, "rejection");
+    return switch (rejection) {
+      case BookkeepingQueryRejection.BookNotInitialized _ ->
+          new BookQueryRejection.BookNotInitialized();
+      case BookkeepingQueryRejection.UnknownAccount unknownAccount ->
+          new BookQueryRejection.UnknownAccount(unknownAccount.accountCode());
+      case BookkeepingQueryRejection.PostingNotFound postingNotFound ->
+          new BookQueryRejection.PostingNotFound(postingNotFound.postingId());
+    };
   }
 
   private static PostingHistoryCursor fromPublished(PostingPageCursor cursor) {

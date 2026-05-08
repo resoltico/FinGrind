@@ -13,7 +13,7 @@ route:
 **Purpose**: Run the packaged FinGrind CLI and understand its command, file, and exit behavior.
 **Prerequisites**: For public use, download one self-contained FinGrind release bundle and unpack it.
 No separate Java install is required for that path. For source-driven local runs,
-`./gradlew :cli:run` manages SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 automatically.
+`./gradlew :cli:run` manages SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 automatically.
 The generated source-checkout launcher from `./gradlew :cli:installShadowDist prepareManagedSqlite`
 also carries the managed native-access, source-checkout runtime-distribution, and managed-SQLite
 checkout-discovery defaults for you. The raw `java -jar` route remains developer-only, but when
@@ -32,8 +32,8 @@ Every book-bound command also requires exactly one passphrase source:
 `help` is returned when no command is supplied.
 `help`, `version`, and `capabilities` default to human-readable discovery output and also accept
 `--output json` for machine parsing.
-`help <command>` and `<command> --help` both return command-scoped usage, options, examples, and
-exit-code guidance for one selected command.
+`help <command>` and `<command> --help` both return command-scoped usage, options, executable
+examples, operator notes, and exit-code guidance for one selected command.
 `print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
 or piped into another process.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
@@ -64,15 +64,18 @@ accounts for every journal line they touch, and surface those failures as
 the write transaction before `post-entry` succeeds.
 Every journal entry is single-currency; mixed-currency lines inside one entry are not supported.
 Every journal-line amount must be greater than zero.
-Protected books use SQLite3 Multiple Ciphers 2.3.3 with the upstream default `chacha20` cipher.
+Protected books use SQLite3 Multiple Ciphers 2.3.4 with the upstream default `chacha20` cipher.
 The operation catalog rendered in `help` and `capabilities` is contract-owned protocol metadata,
-so CLI help, parser aliases, output modes, summaries, and query limits share one source.
+so CLI help, parser aliases, output modes, summaries, query limits, and the separation between
+executable examples and operator notes share one source.
 `capabilities.commands` publishes those command contracts as grouped `CommandDescriptor` objects,
 so automation can read the per-command `executionMode`, `outputModes`, `artifactOutputs`, aliases,
 options, and summary directly instead of inferring stdout behavior from one global mode list.
-Commands that advertise `--output` keep JSON as the default machine surface. Discovery,
-administration, write, and query/report commands can render operator-facing `--output human`,
-and the tabular read/report commands also accept `--output csv`. The report commands
+Commands that advertise `--output` keep JSON as the default machine surface for successful
+results. Discovery, administration, write, and query/report commands can render operator-facing
+`--output human`, and the tabular read/report commands also accept `--output csv`. Invalid
+invocation failures default to human repair guidance unless one recognized machine output mode is
+selected explicitly, such as `--output json`. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
 one PDF artifact through `--pdf-out <path>`. Successful exports keep the main stdout result
 unchanged and emit the normalized artifact path on the diagnostics stream. If the report itself
@@ -250,8 +253,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | Exit Code | Meaning | Typical Output |
 |:----------|:--------|:---------------|
 | `0` | successful command | `ok`, raw request or plan template JSON, `preflight-accepted`, `committed` |
-| `1` | invalid invocation or malformed request | `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar |
-| `2` | deterministic refusal after the command was understood | `error`, `rejected`, `plan-rejected` |
+| `1` | invalid invocation or malformed request | human repair text by default, or `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar when a recognized machine output mode is selected explicitly |
+| `2` | deterministic refusal after the command was understood | human `Rejected`, `error`, `rejected`, or `plan-rejected` depending on the command family and selected output mode |
 | `3` | valid `execute-plan` request whose assertion step failed | `plan-assertion-failed` |
 | `4` | runtime or environment failure | `error` with code `managed-runtime-failure`, `storage-runtime-failure`, or `runtime-failure` |
 
@@ -290,6 +293,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the
   call without consulting docs.
+- If you want one machine envelope while probing malformed input, add `--output json` on
+  commands that advertise it; otherwise invalid invocations default to human repair text.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject
   extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths.
@@ -328,8 +333,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   material separately from the copied book tree.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
-- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.0 /
-  SQLite3 Multiple Ciphers 2.3.3 native library.
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.1 /
+  SQLite3 Multiple Ciphers 2.3.4 native library.
 - `capabilities.environment.distribution.runtimeDistribution` tells you whether the current
   process is running from a self-contained bundle, container image, source-checkout Gradle launch,
   or direct `java -jar` invocation.
@@ -379,17 +384,19 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.sqlite.libraryEnvironmentVariable`,
   `environment.sqlite.bundleHomeSystemProperty`,
   `environment.sqlite.requiredCompileOptions`,
+  `environment.sqlite.forbiddenCompileOptions`,
+  `environment.sqlite.requiresSecureMemorySupport`,
   `environment.sqlite.requiredMinimumSqliteVersion`,
   `environment.sqlite.requiredSqlite3mcVersion`,
   `environment.sqlite.requiredSqliteSourceId`,
-  `environment.sqlite.compileOptionsVerification`,
-  `environment.sqlite.runtimeStatus`,
-  `environment.sqlite.runtimeProvenance`,
-  `environment.sqlite.runtimeTrustBasis`,
-  `environment.sqlite.loadedLibraryPath`,
-  `environment.sqlite.loadedSqliteVersion`,
-  `environment.sqlite.loadedSqlite3mcVersion`,
-  `environment.sqlite.loadedSqliteSourceId`,
+  `environment.sqlite.runtime.compileOptionsVerification`,
+  `environment.sqlite.runtime.status`,
+  `environment.sqlite.runtime.runtimeProvenance`,
+  `environment.sqlite.runtime.runtimeTrustBasis`,
+  `environment.sqlite.runtime.loadedLibraryPath`,
+  `environment.sqlite.runtime.loadedSqliteVersion`,
+  `environment.sqlite.runtime.loadedSqlite3mcVersion`,
+  `environment.sqlite.runtime.loadedSqliteSourceId`,
   `environment.storage.bookProtectionMode`, and
   `environment.storage.defaultProtectedBookFormat.cipher`,
   `environment.storage.defaultProtectedBookFormat.legacyMode`,
@@ -397,21 +404,23 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   `environment.storage.defaultProtectedBookFormat.reservedBytes`,
   `environment.storage.defaultProtectedBookFormat.kdfIter`, and
   `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize`.
-- `environment.sqlite.compileOptionsVerification` is `verified` only when the managed runtime is
-  ready, `failed` when the loaded library is present but missing one or more required compile
-  options, and "not-verified" when the runtime is unavailable, when the probe resolved one runtime
-  target but aborted before verification could finish, or when an earlier compatibility gate
-  prevents a compile-option verdict.
+- `environment.sqlite.runtime.compileOptionsVerification` is `verified` only when the managed
+  runtime is ready, `failed` when the loaded library is present but violates the compile-option
+  contract by missing required options or exposing forbidden options, and `not-verified` when the
+  runtime is unavailable, when the probe resolved one runtime target but aborted before
+  verification could finish, or when an earlier compatibility gate prevents a compile-option
+  verdict.
 - `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and
   `currencyModel` so agents can discover the advisory preflight contract and single-currency
   scope without reading source code.
 - Gradle-driven local runs, the generated source-checkout launcher, and the container image use a
-  managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 shared library.
+  managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library.
 - The developer-only `java -jar` path auto-discovers that managed SQLite3MC library and native
   access when it runs from a prepared checkout. Custom direct-Java launches outside that checkout
   shape must provide `FINGRIND_SQLITE_LIBRARY` explicitly; that `environment-configured`
-  provenance reports `runtimeTrustBasis: "operator-trusted"` and is only checked for local
-  library-plus-sidecar consistency, not publisher-authenticated bundle provenance.
+  provenance reports `environment.sqlite.runtime.runtimeTrustBasis: "operator-trusted"` and is
+  only checked for local library-plus-sidecar consistency, not publisher-authenticated bundle
+  provenance.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while
   `capabilities.commands.<group>[]` publishes the authoritative per-command stdout and artifact

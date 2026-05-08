@@ -47,6 +47,29 @@ class BundleLayoutContractsTest {
   }
 
   @Test
+  void requireBundleTarget_reportsMissingTargetRegistration() {
+    IllegalStateException missingTarget =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                BundleLayoutContract.requireBundleTarget(
+                    Map.of(
+                        PublicCliBundleTarget.LINUX_X86_64,
+                        new BundleLayoutContract.BundleTarget(
+                            "linux",
+                            "x86_64",
+                            "tar.gz",
+                            "bin/fingrind",
+                            "./bin/fingrind",
+                            "libsqlite3.so.0")),
+                    PublicCliBundleTarget.WINDOWS_AARCH64));
+
+    assertEquals(
+        "No bundle-layout contract is registered for bundle target windows-aarch64.",
+        missingTarget.getMessage());
+  }
+
+  @Test
   void loadFromResource_rejectsMissingBundleTargetsAndContradictoryEntries() {
     IllegalArgumentException missingBundleTargets =
         assertThrows(

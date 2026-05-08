@@ -24,7 +24,7 @@ public interface CliErrorJsonModels {
 
   record InvalidRequestDetails(List<String> violations) implements ErrorDetails {
     public InvalidRequestDetails {
-      violations = copyList(violations);
+      violations = copyList(violations, "violations");
       if (violations.isEmpty()) {
         throw new IllegalArgumentException("violations must not be empty.");
       }

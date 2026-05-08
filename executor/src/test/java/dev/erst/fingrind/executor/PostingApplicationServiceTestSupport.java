@@ -21,10 +21,28 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -59,7 +77,7 @@ final class PostingApplicationServiceTestSupport {
         FIXED_CLOCK.instant());
   }
 
-  static PostingApplicationService applicationService(PostingBookSession bookSession) {
+  static PostingApplicationService applicationService(BookStore bookSession) {
     return new PostingApplicationService(
         bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
   }
@@ -163,11 +181,11 @@ final class PostingApplicationServiceTestSupport {
         new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
   }
 
-  static PostingBookSession mappedOutcomeBookSession() {
+  static BookStore mappedOutcomeBookSession() {
     return new DelegatingPostingBookSession() {
       @Override
-      public boolean isInitialized() {
-        return true;
+      public BookLifecycleInspection inspectBook() {
+        return new BookLifecycleInspection.Initialized(1001, 1, 1, FIXED_CLOCK.instant());
       }
 
       @Override
@@ -187,25 +205,34 @@ final class PostingApplicationServiceTestSupport {
       }
 
       @Override
-      public PostingCommitResult commit(CommittedPosting postingFact) {
+      public PostingCommitResult commit(
+          PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+        CommittedPosting postingFact = postingDraft.materialize(postingIdGenerator.nextPostingId());
         String idempotencyKey =
             postingFact.provenance().requestProvenance().idempotencyKey().value();
         return switch (idempotencyKey) {
           case "idem-book-not-initialized" ->
-              new PostingCommitResult.Rejected(new PostingRejection.BookNotInitialized());
+              new PostingCommitResult.Rejected(
+                  new BookkeepingPostingRejection.BookNotInitialized());
           case "idem-unknown-account" ->
               new PostingCommitResult.Rejected(
-                  new PostingRejection.AccountStateViolations(
-                      List.of(new PostingRejection.UnknownAccount(new AccountCode("1000")))));
+                  new BookkeepingPostingRejection.AccountStateViolations(
+                      List.of(
+                          new BookkeepingPostingRejection.UnknownAccount(
+                              new AccountCode("1000")))));
           case "idem-inactive-account" ->
               new PostingCommitResult.Rejected(
-                  new PostingRejection.AccountStateViolations(
-                      List.of(new PostingRejection.InactiveAccount(new AccountCode("1000")))));
+                  new BookkeepingPostingRejection.AccountStateViolations(
+                      List.of(
+                          new BookkeepingPostingRejection.InactiveAccount(
+                              new AccountCode("1000")))));
           case "idem-duplicate" ->
-              new PostingCommitResult.Rejected(new PostingRejection.DuplicateIdempotencyKey());
+              new PostingCommitResult.Rejected(
+                  new BookkeepingPostingRejection.DuplicateIdempotencyKey());
           case "idem-reversal-duplicate" ->
               new PostingCommitResult.Rejected(
-                  new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1")));
+                  new BookkeepingPostingRejection.ReversalAlreadyExists(
+                      new PostingId("posting-1")));
           default -> throw new AssertionError("Unexpected test idempotency key: " + idempotencyKey);
         };
       }
@@ -213,10 +240,25 @@ final class PostingApplicationServiceTestSupport {
   }
 
   /** Minimal book-session stub whose methods fail unless a test overrides them. */
-  abstract static class DelegatingPostingBookSession implements PostingBookSession {
+  abstract static class DelegatingPostingBookSession implements BookStore {
     @Override
-    public boolean isInitialized() {
-      throw new AssertionError("isInitialized should not be called in this test");
+    public dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
+        Instant initializedAt) {
+      throw new AssertionError("openBook should not be called in this test");
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
+      throw new AssertionError("declareAccount should not be called in this test");
+    }
+
+    @Override
+    public BookLifecycleInspection inspectBook() {
+      throw new AssertionError("inspectBook should not be called in this test");
     }
 
     @Override
@@ -240,9 +282,39 @@ final class PostingApplicationServiceTestSupport {
     }
 
     @Override
+    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
+      throw new AssertionError("listAccounts should not be called in this test");
+    }
+
+    @Override
+    public PostingHistoryPage listPostings(PostingHistoryQuery query) {
+      throw new AssertionError("listPostings should not be called in this test");
+    }
+
+    @Override
+    public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
+      throw new AssertionError("accountBalance should not be called in this test");
+    }
+
+    @Override
+    public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+      throw new AssertionError("trialBalance should not be called in this test");
+    }
+
+    @Override
+    public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
+      throw new AssertionError("accountLedger should not be called in this test");
+    }
+
+    @Override
+    public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
+      throw new AssertionError("periodSummary should not be called in this test");
+    }
+
+    @Override
     public PostingCommitResult commit(
         PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-      return commit(postingDraft.materialize(postingIdGenerator.nextPostingId()));
+      throw new AssertionError("commit should not be called in this test");
     }
   }
 }

@@ -194,6 +194,7 @@ class JazzerRegressionRunnerTest {
           new RegressionSeedMetadata(
               metadata.targetKey(),
               metadata.inputPath(),
+              metadata.coverageIntent(),
               new ReplayExpectation(
                   ReplayOutcomeKind.SUCCESS,
                   ReplayOutcome.SUCCESS_MESSAGE,
@@ -242,7 +243,10 @@ class JazzerRegressionRunnerTest {
       JazzerJson.write(
           metadataPath,
           new RegressionSeedMetadata(
-              "posting-workflow", metadata.inputPath(), metadata.expectation()));
+              "posting-workflow",
+              metadata.inputPath(),
+              metadata.coverageIntent(),
+              metadata.expectation()));
 
       int exitCode =
           JazzerRegressionRunner.run(
@@ -322,6 +326,7 @@ class JazzerRegressionRunnerTest {
           new RegressionSeedMetadata(
               metadata.targetKey(),
               metadata.inputPath(),
+              metadata.coverageIntent(),
               new ReplayExpectation(
                   ReplayOutcomeKind.UNEXPECTED_FAILURE, "boom", metadata.expectation().details())));
 
@@ -375,6 +380,7 @@ class JazzerRegressionRunnerTest {
           new RegressionSeedMetadata(
               harness.key(),
               projectDirectory.relativize(inputPath).toString(),
+              "test replay seed",
               JazzerReplayRunner.expectationFor(
                   JazzerReplayRunner.replay(harness, Files.readAllBytes(inputPath))));
       Path metadataPath =

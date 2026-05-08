@@ -215,6 +215,16 @@ def verify_bundle_manifest(bundle_root: Path, contract: dict[str, object]) -> No
             "bundle manifest did not report the canonical SQLite compile options",
         ),
         (
+            manifest["managedSqlite"]["forbiddenCompileOptions"]
+            == managed_sqlite["forbiddenCompileOptions"],
+            "bundle manifest did not report the canonical forbidden SQLite compile options",
+        ),
+        (
+            manifest["managedSqlite"]["requiresSecureMemorySupport"]
+            == managed_sqlite["requiresSecureMemorySupport"],
+            "bundle manifest did not report the canonical SQLite3MC secure-memory requirement",
+        ),
+        (
             manifest["bundleTarget"]["classifier"] == host_bundle_target["classifier"],
             "bundle manifest did not report the current host classifier",
         ),

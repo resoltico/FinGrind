@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,11 +32,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for reporting contract value types and deterministic CLI error descriptors. */
-@NullUnmarked
 class ReportingContractTypesTest {
   private static final DeclaredAccount CASH_ACCOUNT =
       new DeclaredAccount(
@@ -44,7 +43,6 @@ class ReportingContractTypesTest {
           NormalBalance.DEBIT,
           true,
           Instant.parse("2026-04-07T10:15:30Z"));
-
   private static final CurrencyBalance EUR_DEBIT_BALANCE =
       new CurrencyBalance(
           new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
@@ -64,7 +62,6 @@ class ReportingContractTypesTest {
         new TrialBalanceResult.Reported(trialBalanceReport);
     TrialBalanceResult.Rejected rejectedTrialBalance =
         new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
-
     AccountLedgerQuery accountLedgerQuery =
         new AccountLedgerQuery(
             CASH_ACCOUNT.accountCode(),
@@ -88,7 +85,6 @@ class ReportingContractTypesTest {
     AccountLedgerResult.Rejected rejectedAccountLedger =
         new AccountLedgerResult.Rejected(
             new BookQueryRejection.UnknownAccount(CASH_ACCOUNT.accountCode()));
-
     PeriodSummaryQuery periodSummaryQuery =
         new PeriodSummaryQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
     PeriodSummaryReport periodSummaryReport =
@@ -104,7 +100,6 @@ class ReportingContractTypesTest {
         new PeriodSummaryResult.Reported(periodSummaryReport);
     PeriodSummaryResult.Rejected rejectedPeriodSummary =
         new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized());
-
     ListAccountsResult.Listed listedAccounts =
         new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     ListAccountsResult.Rejected rejectedAccounts =
@@ -124,7 +119,6 @@ class ReportingContractTypesTest {
                 CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE)));
     AccountBalanceResult.Rejected rejectedBalance =
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
-
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), trialBalanceQuery.effectiveDateTo());
     assertEquals(
         List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)), trialBalanceReport.rows());
@@ -132,7 +126,6 @@ class ReportingContractTypesTest {
     assertEquals(
         "query-book-not-initialized",
         BookQueryRejection.wireCode(rejectedTrialBalance.rejection()));
-
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-01")), accountLedgerQuery.effectiveDateFrom());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), accountLedgerQuery.effectiveDateTo());
@@ -141,7 +134,6 @@ class ReportingContractTypesTest {
         CASH_ACCOUNT.accountCode(),
         ((BookQueryRejection.UnknownAccount) rejectedAccountLedger.rejection()).accountCode());
     assertEquals(accountLedgerEntry, accountLedgerReport.entries().getFirst());
-
     assertEquals(LocalDate.parse("2026-04-01"), periodSummaryQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), periodSummaryQuery.effectiveDateTo());
     assertSame(periodSummaryReport, reportedPeriodSummary.report());
@@ -149,7 +141,6 @@ class ReportingContractTypesTest {
         "query-book-not-initialized",
         BookQueryRejection.wireCode(rejectedPeriodSummary.rejection()));
     assertEquals(1, periodSummaryReport.accountsTouched());
-
     assertEquals("listed", listedAccounts.fold(ignored -> "listed", ignored -> "rejected"));
     assertEquals("rejected", rejectedAccounts.fold(ignored -> "listed", ignored -> "rejected"));
     assertEquals("found", foundPosting.fold(ignored -> "found", ignored -> "rejected"));
@@ -174,31 +165,35 @@ class ReportingContractTypesTest {
 
   @Test
   void reportingValueTypes_rejectInvalidInputs() {
-    assertThrows(NullPointerException.class, () -> new TrialBalanceQuery(null));
-    assertEquals(List.of(), new TrialBalanceReport(Optional.empty(), null).rows());
-    assertThrows(NullPointerException.class, () -> new TrialBalanceRow(null, EUR_DEBIT_BALANCE));
-    assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Reported(null));
-    assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Rejected(null));
-
+    assertThrows(NullPointerException.class, () -> new TrialBalanceQuery(nullOf()));
+    assertEquals(
+        "rows must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () -> new TrialBalanceReport(Optional.empty(), nullOf()))
+            .getMessage());
+    assertThrows(
+        NullPointerException.class, () -> new TrialBalanceRow(nullOf(), EUR_DEBIT_BALANCE));
+    assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new TrialBalanceResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountLedgerQuery(null, EffectiveDateRange.unbounded()));
+        () -> new AccountLedgerQuery(nullOf(), EffectiveDateRange.unbounded()));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), (EffectiveDateRange) null));
+        () -> new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountLedgerReport(
-                null, EffectiveDateRange.unbounded(), List.of(), List.of(), List.of()));
+                nullOf(), EffectiveDateRange.unbounded(), List.of(), List.of(), List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountLedgerEntry(
-                null, EUR_DEBIT_BALANCE, EUR_DEBIT_BALANCE.netAmount(), BalanceSide.DEBIT));
-    assertThrows(NullPointerException.class, () -> new AccountLedgerResult.Reported(null));
-    assertThrows(NullPointerException.class, () -> new AccountLedgerResult.Rejected(null));
-
+                nullOf(), EUR_DEBIT_BALANCE, EUR_DEBIT_BALANCE.netAmount(), BalanceSide.DEBIT));
+    assertThrows(NullPointerException.class, () -> new AccountLedgerResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new AccountLedgerResult.Rejected(nullOf()));
     assertThrows(
         IllegalArgumentException.class,
         () -> new PeriodSummaryQuery(LocalDate.parse("2026-04-30"), LocalDate.parse("2026-04-01")));
@@ -246,24 +241,23 @@ class ReportingContractTypesTest {
                 -1,
                 List.of(),
                 List.of()));
-    assertThrows(NullPointerException.class, () -> new PeriodCurrencySummary(null));
+    assertThrows(NullPointerException.class, () -> new PeriodCurrencySummary(nullOf()));
     assertThrows(
-        NullPointerException.class, () -> new PeriodAccountActivityRow(null, EUR_DEBIT_BALANCE));
-    assertThrows(NullPointerException.class, () -> new PeriodSummaryResult.Reported(null));
-    assertThrows(NullPointerException.class, () -> new PeriodSummaryResult.Rejected(null));
-
+        NullPointerException.class,
+        () -> new PeriodAccountActivityRow(nullOf(), EUR_DEBIT_BALANCE));
+    assertThrows(NullPointerException.class, () -> new PeriodSummaryResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new PeriodSummaryResult.Rejected(nullOf()));
     AccountBalanceResult.Reported reportedBalance =
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
                 CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of(EUR_DEBIT_BALANCE)));
     assertThrows(
-        NullPointerException.class, () -> reportedBalance.fold(null, ignored -> "rejected"));
+        NullPointerException.class, () -> reportedBalance.fold(nullOf(), ignored -> "rejected"));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized())
-                .fold(ignored -> "reported", null));
-
+                .fold(ignored -> "reported", nullOf()));
     AtomicInteger foldCounter = new AtomicInteger();
     ListAccountsResult.Listed listedAccounts =
         new ListAccountsResult.Listed(new AccountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
@@ -287,7 +281,6 @@ class ReportingContractTypesTest {
             "Wrong key", "Use the correct key file.", "--book-key-file");
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
-
     assertEquals(13, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
@@ -307,13 +300,11 @@ class ReportingContractTypesTest {
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
             .description()
             .contains("verify"));
-
     assertSame(ContractErrors.Descriptor.INVALID_PAGE_CURSOR, withoutCause.descriptor());
     assertEquals("invalid-page-cursor", withoutCause.code());
     assertEquals("Retry without --cursor.", withoutCause.hint());
     assertEquals("--cursor", withoutCause.argument());
     assertEquals("Bad cursor", withoutCause.message());
-
     assertSame(
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED, withCause.descriptor());
     assertEquals("protected-book-verification-failed", withCause.code());
@@ -332,12 +323,11 @@ class ReportingContractTypesTest {
     assertEquals(
         "Expected a rejected contract decision.",
         assertThrows(IllegalStateException.class, accepted::requireRejected).getMessage());
-
     assertThrows(
-        NullPointerException.class, () -> new ContractFailure(null, "message", null, null));
-    assertThrows(NullPointerException.class, () -> ContractDecision.accepted(null));
-    assertThrows(NullPointerException.class, () -> accepted.fold(null, ignored -> "rejected"));
-    assertThrows(NullPointerException.class, () -> accepted.fold(value -> value, null));
+        NullPointerException.class, () -> new ContractFailure(nullOf(), "message", null, null));
+    assertThrows(NullPointerException.class, () -> ContractDecision.accepted(nullOf()));
+    assertThrows(NullPointerException.class, () -> accepted.fold(nullOf(), ignored -> "rejected"));
+    assertThrows(NullPointerException.class, () -> accepted.fold(value -> value, nullOf()));
   }
 
   @Test

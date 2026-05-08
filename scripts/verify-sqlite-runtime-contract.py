@@ -52,6 +52,7 @@ def main() -> None:
         environment.get("distribution"), "payload.environment.distribution"
     )
     sqlite = require_mapping(environment.get("sqlite"), "payload.environment.sqlite")
+    runtime = require_mapping(sqlite.get("runtime"), "payload.environment.sqlite.runtime")
 
     expected_runtime_distribution = runtime_surface.get(
         args.expected_runtime_distribution_key
@@ -72,16 +73,16 @@ def main() -> None:
             f"{args.label} missing required minimum SQLite version",
         ),
         (
-            sqlite.get("runtimeStatus") == "ready",
+            runtime.get("status") == "ready",
             f"{args.label} missing ready SQLite runtime status",
         ),
         (
-            sqlite.get("loadedSqliteVersion")
+            runtime.get("loadedSqliteVersion")
             == managed_sqlite.get("requiredMinimumSqliteVersion"),
             f"{args.label} missing loaded SQLite version",
         ),
         (
-            sqlite.get("loadedSqlite3mcVersion")
+            runtime.get("loadedSqlite3mcVersion")
             == managed_sqlite.get("requiredSqlite3mcVersion"),
             f"{args.label} missing loaded SQLite3 Multiple Ciphers version",
         ),
@@ -91,7 +92,7 @@ def main() -> None:
             f"{args.label} missing required SQLite source id",
         ),
         (
-            sqlite.get("loadedSqliteSourceId")
+            runtime.get("loadedSqliteSourceId")
             == managed_sqlite.get("requiredSqliteSourceId"),
             f"{args.label} missing loaded SQLite source id",
         ),
@@ -101,16 +102,26 @@ def main() -> None:
             f"{args.label} missing canonical SQLite compile options",
         ),
         (
-            sqlite.get("compileOptionsVerification") == "verified",
+            sqlite.get("forbiddenCompileOptions")
+            == managed_sqlite.get("forbiddenCompileOptions"),
+            f"{args.label} missing canonical forbidden SQLite compile options",
+        ),
+        (
+            sqlite.get("requiresSecureMemorySupport")
+            == managed_sqlite.get("requiresSecureMemorySupport"),
+            f"{args.label} missing canonical SQLite3MC secure-memory requirement",
+        ),
+        (
+            runtime.get("compileOptionsVerification") == "verified",
             f"{args.label} missing verified SQLite compile-options status",
         ),
         (
-            sqlite.get("runtimeProvenance") == args.expected_runtime_provenance,
+            runtime.get("runtimeProvenance") == args.expected_runtime_provenance,
             f"{args.label} missing expected SQLite runtime provenance",
         ),
         (
-            isinstance(sqlite.get("loadedLibraryPath"), str)
-            and bool(sqlite.get("loadedLibraryPath").strip()),
+            isinstance(runtime.get("loadedLibraryPath"), str)
+            and bool(runtime.get("loadedLibraryPath").strip()),
             f"{args.label} missing loaded SQLite library path",
         ),
     ]

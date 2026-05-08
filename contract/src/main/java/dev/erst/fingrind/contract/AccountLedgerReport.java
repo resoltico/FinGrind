@@ -1,10 +1,10 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Canonical running-balance ledger report for one declared account. */
 public record AccountLedgerReport(
@@ -17,13 +17,15 @@ public record AccountLedgerReport(
   public AccountLedgerReport(
       DeclaredAccount account,
       EffectiveDateRange effectiveDateRange,
-      @Nullable List<CurrencyBalance> openingBalances,
-      @Nullable List<AccountLedgerEntry> entries,
-      @Nullable List<CurrencyBalance> closingBalances) {
+      List<CurrencyBalance> openingBalances,
+      List<AccountLedgerEntry> entries,
+      List<CurrencyBalance> closingBalances) {
     this.account = Objects.requireNonNull(account, "account");
     this.effectiveDateRange = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
-    this.openingBalances = openingBalances == null ? List.of() : List.copyOf(openingBalances);
-    this.entries = entries == null ? List.of() : List.copyOf(entries);
-    this.closingBalances = closingBalances == null ? List.of() : List.copyOf(closingBalances);
+    this.openingBalances =
+        ContractDescriptorValidation.copyList(openingBalances, "openingBalances");
+    this.entries = ContractDescriptorValidation.copyList(entries, "entries");
+    this.closingBalances =
+        ContractDescriptorValidation.copyList(closingBalances, "closingBalances");
   }
 }

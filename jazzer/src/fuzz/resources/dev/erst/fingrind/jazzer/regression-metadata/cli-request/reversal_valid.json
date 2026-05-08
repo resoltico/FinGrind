@@ -1,6 +1,7 @@
 {
   "targetKey": "cli-request",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/reversal_valid.json",
+  "coverageIntent": "valid request carrying reversal linkage",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

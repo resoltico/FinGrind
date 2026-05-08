@@ -1,15 +1,15 @@
 package dev.erst.fingrind.cli;
 
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.optionalInt;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.optionalObject;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.optionalText;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.parseAmount;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.parseWireValue;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.rejectUnexpectedFields;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.requireObjectNode;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredArray;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredObject;
-import static dev.erst.fingrind.cli.CliJsonRequestCodec.requiredText;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalInt;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalObject;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalText;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.rejectUnexpectedFields;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requireObjectNode;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredArray;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
+import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseAmount;
+import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
 import dev.erst.fingrind.contract.AccountPageCursor;
@@ -42,7 +42,7 @@ final class CliLedgerPlanParser {
   private CliLedgerPlanParser() {}
 
   static LedgerPlan readLedgerPlan(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, CliJsonRequestCodec.LEDGER_PLAN_FIELDS);
+    rejectUnexpectedFields(rootNode, null, CliJsonRequestSchemas.LEDGER_PLAN_FIELDS);
     return new LedgerPlan(
         new LedgerPlanId(requiredText(rootNode, ProtocolLedgerPlanFields.Plan.PLAN_ID)),
         readLedgerSteps(requiredArray(rootNode, ProtocolLedgerPlanFields.Plan.STEPS)));
@@ -113,8 +113,8 @@ final class CliLedgerPlanParser {
 
   private static void rejectUnexpectedStepFields(ObjectNode stepNode, LedgerStepKind kind) {
     List<String> unexpectedFields =
-        CliJsonRequestCodec.unexpectedFields(
-            stepNode, null, CliJsonRequestCodec.LEDGER_STEP_FIELDS);
+        CliJsonFieldAccess.unexpectedFields(
+            stepNode, null, CliJsonRequestSchemas.LEDGER_STEP_FIELDS);
     if (unexpectedFields.isEmpty()) {
       return;
     }
@@ -123,14 +123,14 @@ final class CliLedgerPlanParser {
         kind,
         unexpectedFields,
         ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT,
-        CliJsonRequestCodec.DECLARE_ACCOUNT_FIELDS,
+        CliJsonRequestSchemas.DECLARE_ACCOUNT_FIELDS,
         LedgerStepKind.DECLARE_ACCOUNT);
     rejectFlattenedNestedStepPayload(
         stepNode,
         kind,
         unexpectedFields,
         ProtocolLedgerPlanFields.Step.POSTING,
-        CliJsonRequestCodec.POST_ENTRY_TOP_LEVEL_FIELDS,
+        CliJsonRequestSchemas.POST_ENTRY_TOP_LEVEL_FIELDS,
         LedgerStepKind.PREFLIGHT_ENTRY,
         LedgerStepKind.POST_ENTRY);
     rejectFlattenedNestedStepPayload(
@@ -138,7 +138,7 @@ final class CliLedgerPlanParser {
         kind,
         unexpectedFields,
         ProtocolLedgerPlanFields.Step.QUERY,
-        CliJsonRequestCodec.LEDGER_QUERY_FIELDS,
+        CliJsonRequestSchemas.LEDGER_QUERY_FIELDS,
         LedgerStepKind.LIST_ACCOUNTS,
         LedgerStepKind.LIST_POSTINGS,
         LedgerStepKind.ACCOUNT_BALANCE);
@@ -147,9 +147,9 @@ final class CliLedgerPlanParser {
         kind,
         unexpectedFields,
         ProtocolLedgerPlanFields.Step.ASSERTION,
-        CliJsonRequestCodec.LEDGER_ASSERTION_FIELDS,
+        CliJsonRequestSchemas.LEDGER_ASSERTION_FIELDS,
         LedgerStepKind.ASSERT);
-    throw CliJsonRequestCodec.unexpectedFieldsFailure(unexpectedFields);
+    throw CliJsonFieldAccess.unexpectedFieldsFailure(unexpectedFields);
   }
 
   private static void rejectFlattenedNestedStepPayload(
@@ -182,7 +182,8 @@ final class CliLedgerPlanParser {
   }
 
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {
-    rejectUnexpectedFields(assertionNode, "assertion", CliJsonRequestCodec.LEDGER_ASSERTION_FIELDS);
+    rejectUnexpectedFields(
+        assertionNode, "assertion", CliJsonRequestSchemas.LEDGER_ASSERTION_FIELDS);
     LedgerAssertionKind kind =
         parseWireValue(
             requiredText(assertionNode, ProtocolLedgerPlanFields.Assertion.KIND),
@@ -231,7 +232,7 @@ final class CliLedgerPlanParser {
       return new ListAccountsQuery(InteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
-    rejectUnexpectedFields(queryObject, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
+    rejectUnexpectedFields(queryObject, "query", CliJsonRequestSchemas.LEDGER_QUERY_FIELDS);
     return new ListAccountsQuery(
         optionalInt(queryObject, ProtocolLedgerPlanFields.Query.LIMIT)
             .orElse(InteractionLimits.DEFAULT_PAGE_LIMIT),
@@ -245,7 +246,7 @@ final class CliLedgerPlanParser {
           Optional.empty(), null, null, InteractionLimits.DEFAULT_PAGE_LIMIT, Optional.empty());
     }
     ObjectNode queryObject = queryNode.orElseThrow();
-    rejectUnexpectedFields(queryObject, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
+    rejectUnexpectedFields(queryObject, "query", CliJsonRequestSchemas.LEDGER_QUERY_FIELDS);
     return new ListPostingsQuery(
         optionalText(queryObject, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)
             .map(AccountCode::new),
@@ -262,7 +263,7 @@ final class CliLedgerPlanParser {
   }
 
   private static AccountBalanceQuery readAccountBalanceQuery(ObjectNode query) {
-    rejectUnexpectedFields(query, "query", CliJsonRequestCodec.LEDGER_QUERY_FIELDS);
+    rejectUnexpectedFields(query, "query", CliJsonRequestSchemas.LEDGER_QUERY_FIELDS);
     return new AccountBalanceQuery(
         new AccountCode(requiredText(query, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE)),
         optionalText(query, ProtocolLedgerPlanFields.Query.EFFECTIVE_DATE_FROM)

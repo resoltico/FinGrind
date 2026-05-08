@@ -16,7 +16,7 @@ final class CliMetadata {
     this(openMetadataStream());
   }
 
-  CliMetadata(InputStream inputStream) {
+  CliMetadata(@Nullable InputStream inputStream) {
     try (InputStream metadataStream =
         Objects.requireNonNull(inputStream, "Missing fingrind.properties resource.")) {
       properties.load(metadataStream);
@@ -54,9 +54,7 @@ final class CliMetadata {
     return UNKNOWN_VERSION;
   }
 
-  private static InputStream openMetadataStream() {
-    return Objects.requireNonNull(
-        CliMetadata.class.getResourceAsStream("/fingrind.properties"),
-        "Missing fingrind.properties resource.");
+  private static @Nullable InputStream openMetadataStream() {
+    return CliMetadata.class.getResourceAsStream("/fingrind.properties");
   }
 }

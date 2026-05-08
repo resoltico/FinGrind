@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.ContractFailureException;
 import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -111,6 +112,10 @@ final class FinGrindCli {
     } catch (CliArgumentsException | CliRequestException exception) {
       responseWriter.writeFailure(CliFailureMapper.cliFailure(exception), failureOutputMode);
       return CliExecutionPolicy.invalidInvocationExitCode();
+    } catch (ContractFailureException exception) {
+      responseWriter.writeDeterministicFailure(
+          CliFailureMapper.contractFailure(exception.failure()), failureOutputMode);
+      return CliExecutionPolicy.deterministicFailureExitCode();
     } catch (RuntimeException exception) {
       responseWriter.writeFailure(CliFailureMapper.runtimeFailure(exception), failureOutputMode);
       return CliExecutionPolicy.runtimeFailureExitCode();

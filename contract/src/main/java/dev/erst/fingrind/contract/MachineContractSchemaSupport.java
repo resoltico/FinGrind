@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
@@ -138,7 +137,14 @@ final class MachineContractSchemaSupport {
                             + (index * 2)
                             + ".");
                   }
-                  return Map.entry(stringKey, keyValues[index * 2 + 1]);
+                  Object value = keyValues[index * 2 + 1];
+                  if (value == null) {
+                    throw new IllegalArgumentException(
+                        "orderedMap values must be non-null at argument index "
+                            + (index * 2 + 1)
+                            + ".");
+                  }
+                  return Map.entry(stringKey, value);
                 })
             .toList());
   }
@@ -168,10 +174,7 @@ final class MachineContractSchemaSupport {
     return orderedMapFromEntries(
         fields.stream()
             .filter(MachineContractFieldSpec::acceptsInput)
-            .map(
-                field ->
-                    Map.entry(
-                        field.name(), (Object) Objects.requireNonNull(field.acceptedSchema())))
+            .map(field -> Map.entry(field.name(), (Object) field.inputSchema()))
             .toList());
   }
 

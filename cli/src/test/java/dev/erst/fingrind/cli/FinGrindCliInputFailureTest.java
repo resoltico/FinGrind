@@ -26,12 +26,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
   @Test
   void run_mapsCliRequestExceptionToInvalidRequestWithoutInvokingWorkflow() throws IOException {
@@ -64,7 +62,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -76,10 +73,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
-        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
@@ -127,7 +123,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -139,10 +134,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
-        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
@@ -187,7 +181,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -201,7 +194,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--output",
               "human"
             });
-
     assertEquals(1, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("invalid-request"));
@@ -274,7 +266,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -286,10 +277,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
-        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
@@ -352,7 +342,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -364,10 +353,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
-        CliJsonRequestCodec.configuredObjectMapper().readTree(outputStream.toByteArray());
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
@@ -411,7 +399,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -425,9 +412,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--effective-date-from",
               "2026-04-30",
               "--effective-date-to",
-              "2026-04-01"
+              "2026-04-01",
+              "--output",
+              "json"
             });
-
     assertEquals(1, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"code\":\"invalid-request\""));
@@ -468,7 +456,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     int exitCode =
         cli.run(
             new String[] {
@@ -481,7 +468,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "human",
               "--bogus"
             });
-
     assertEquals(1, exitCode);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
     assertTrue(

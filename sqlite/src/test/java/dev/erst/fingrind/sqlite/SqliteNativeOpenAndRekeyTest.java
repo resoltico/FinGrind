@@ -18,16 +18,15 @@ import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for the SQLite FFM binding layer. */
-@NullUnmarked
 class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
-
   @Test
   void open_rejectsNullBookAccess() {
-    assertThrows(NullPointerException.class, () -> SqliteNativeConnections.open(null));
+    assertThrows(
+        NullPointerException.class,
+        () -> SqliteNativeConnections.open(NullTestSupport.nullOf(BookAccess.class)));
   }
 
   @Test
@@ -40,7 +39,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                     new BookAccess(
                         tempDirectory.resolve("stdin-access.sqlite"),
                         BookAccess.PassphraseSource.StandardInput.INSTANCE)));
-
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
         exception.failure().code());
@@ -56,7 +54,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             new BookAccess(
                 tempDirectory.resolve("prompt-access.sqlite"),
                 BookAccess.PassphraseSource.InteractivePrompt.INSTANCE));
-
     switch (decision) {
       case ContractDecision.Accepted<Path>(Path ignored) ->
           throw new AssertionError("Expected prompt selection to be rejected.");
@@ -76,22 +73,19 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     Path keyPath = tempDirectory.resolve("invalid-key-payload.key");
     writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
     Files.write(keyPath, new byte[] {(byte) 0xFF});
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () ->
                 SqliteNativeConnections.open(
                     new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
-
-    assertTrue(exception.getMessage().contains("must contain a UTF-8 passphrase"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
   @Test
   void open_wrapsRejectedKeyFileDecisionAsContractFailure() {
     Path bookPath = tempDirectory.resolve("missing-key-file.sqlite");
     Path missingKeyPath = tempDirectory.resolve("missing-key-file.key");
-
     ContractFailureException exception =
         assertThrows(
             ContractFailureException.class,
@@ -99,16 +93,14 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                 SqliteNativeConnections.open(
                     new BookAccess(
                         bookPath, new BookAccess.PassphraseSource.KeyFile(missingKeyPath))));
-
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code(), exception.failure().code());
-    assertTrue(exception.getMessage().contains("does not exist"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("does not exist"));
   }
 
   @Test
   void enforceBookFilePermissions_wrapsIoFailuresAsStorageFailures() {
     Path bookPath = tempDirectory.resolve("permission-hardening.sqlite");
-
     SqliteStorageFailureException exception =
         assertThrows(
             SqliteStorageFailureException.class,
@@ -118,15 +110,13 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                     ignored -> {
                       throw new IOException("chmod failed");
                     }));
-
-    assertTrue(exception.getMessage().contains("book file permissions"));
-    assertEquals("chmod failed", exception.getCause().getMessage());
+    assertTrue(NullTestSupport.messageOf(exception).contains("book file permissions"));
+    assertEquals("chmod failed", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
   }
 
   @Test
   void openExecutePrepareAndClose_roundTripThroughSystemLibrary() throws Exception {
     Path bookPath = tempDirectory.resolve("native-round-trip.sqlite");
-
     assertDoesNotThrow(
         () ->
             withOpenDatabase(
@@ -134,7 +124,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                 database -> {
                   database.executeStatement(
                       "create table sample (id integer not null, note text null)");
-
                   try (SqliteNativeStatement insert =
                       SqliteNativeStatements.prepare(
                           database, "insert into sample (id, note) values (?, ?)")) {
@@ -142,7 +131,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
                     insert.bindText(2, null);
                     assertEquals(SqliteNativeResultCodes.DONE, insert.step());
                   }
-
                   try (SqliteNativeStatement select =
                       SqliteNativeStatements.prepare(database, "select id, note from sample")) {
                     assertEquals(SqliteNativeResultCodes.ROW, select.step());
@@ -156,10 +144,8 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   @Test
   void utf8ByteLength_usesNativeSegmentSizeWithoutNullTerminator() {
     String value = "Riga € 漢字";
-
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment valuePointer = arena.allocateFrom(value);
-
       assertEquals(
           value.getBytes(StandardCharsets.UTF_8).length,
           SqliteNativeStatement.utf8ByteLength(valuePointer));
@@ -171,28 +157,23 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   void open_throwsForDirectoryTarget() throws Exception {
     Path directoryPath = tempDirectory.resolve("not-a-book");
     java.nio.file.Files.createDirectories(directoryPath);
-
     SqliteNativeException exception =
         assertThrows(
             SqliteNativeException.class,
             () -> SqliteNativeConnections.open(bookAccess(directoryPath)));
-
     assertTrue(exception.resultName().contains("SQLITE_CANTOPEN"));
   }
 
   @Test
   void open_rejectsWrongBookKey() throws Exception {
     Path bookPath = tempDirectory.resolve("wrong-key.sqlite");
-
     withOpenDatabase(
         bookAccess(bookPath, TEST_BOOK_KEY),
         database -> database.executeStatement("create table sample (id integer not null)"));
-
     SqliteNativeException exception =
         assertThrows(
             SqliteNativeException.class,
             () -> SqliteNativeConnections.open(bookAccess(bookPath, "different-book-key")));
-
     assertTrue(exception.resultName().contains("SQLITE_NOTADB"));
     assertFalse(String.valueOf(exception.getMessage()).contains("different-book-key"));
   }
@@ -200,21 +181,18 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   @Test
   void openOverloadAndRekey_rotateBookPassphrase() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-native.sqlite");
-
     try (SqliteBookPassphrase initialPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "initial native passphrase", TEST_BOOK_KEY.toCharArray());
         SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, initialPassphrase)) {
       database.executeStatement("create table sample (id integer primary key, note text not null)");
       database.executeStatement("insert into sample (id, note) values (1, 'ok')");
-
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "replacement native passphrase", "rotated-key".toCharArray())) {
         SqliteNativeConnections.rekey(database, replacementPassphrase);
       }
     }
-
     try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "replacement native passphrase", "rotated-key".toCharArray());
@@ -226,7 +204,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         assertEquals(1, statement.columnInt(0));
       }
     }
-
     try (SqliteBookPassphrase oldPassphrase =
         SqliteBookPassphrase.fromCharacters(
             "stale native passphrase", TEST_BOOK_KEY.toCharArray())) {
@@ -234,7 +211,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
           assertThrows(
               SqliteNativeException.class,
               () -> SqliteNativeConnections.open(bookPath, oldPassphrase));
-
       assertEquals("SQLITE_NOTADB", exception.resultName());
     }
   }
@@ -242,20 +218,27 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   @Test
   void rekey_rejectsNullArguments() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-nulls.sqlite");
-
-    assertThrows(NullPointerException.class, () -> SqliteNativeConnections.rekey(null, null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            SqliteNativeConnections.rekey(
+                NullTestSupport.nullOf(SqliteNativeDatabase.class),
+                NullTestSupport.nullOf(SqliteBookPassphrase.class)));
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "rekey null passphrase", TEST_BOOK_KEY.toCharArray());
         SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
-      assertThrows(NullPointerException.class, () -> SqliteNativeConnections.rekey(database, null));
+      assertThrows(
+          NullPointerException.class,
+          () ->
+              SqliteNativeConnections.rekey(
+                  database, NullTestSupport.nullOf(SqliteBookPassphrase.class)));
     }
   }
 
   @Test
   void rekey_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-native-failure.sqlite");
-
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "native failure passphrase", TEST_BOOK_KEY.toCharArray());
@@ -275,7 +258,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             assertThrows(
                 SqliteNativeException.class,
                 () -> SqliteNativeConnections.rekey(database, replacementPassphrase));
-
         assertEquals("SQLITE_CANTOPEN", exception.resultName());
       }
     }
@@ -284,7 +266,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   @Test
   void rekey_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-throwable.sqlite");
-
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 "throwable passphrase", TEST_BOOK_KEY.toCharArray());
@@ -308,14 +289,12 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             assertThrows(
                 IllegalStateException.class,
                 () -> SqliteNativeConnections.rekey(database, replacementPassphrase));
-
         assertTrue(
-            exception
-                .getMessage()
+            NullTestSupport.messageOf(exception)
                 .contains(
                     "Failed to rekey the FinGrind SQLite book with passphrase material from"));
-        assertEquals("boom", exception.getCause().getMessage());
-        assertFalse(exception.getMessage().contains("rotated-key"));
+        assertEquals("boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+        assertFalse(NullTestSupport.messageOf(exception).contains("rotated-key"));
       }
     }
   }
@@ -324,7 +303,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   void applyKey_wrapsUnexpectedThrowableFromNativeInvocation() throws Exception {
     Path keyFile = tempDirectory.resolve("apply-key.key");
     writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
-
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
       SqliteNativeApi sqliteApi =
@@ -339,19 +317,16 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
               constantMethodHandle(MemorySegment.NULL, MemorySegment.class),
               constantMethodHandle(MemorySegment.NULL, int.class),
               constantMethodHandle(0, MemorySegment.class));
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
                   SqliteNativeConnections.applyKey(
                       MemorySegment.NULL, keyMaterial, sqliteApi, arena));
-
       assertTrue(
-          exception
-              .getMessage()
+          NullTestSupport.messageOf(exception)
               .contains("Failed to apply the FinGrind SQLite book passphrase from"));
-      assertFalse(exception.getMessage().contains(TEST_BOOK_KEY));
+      assertFalse(NullTestSupport.messageOf(exception).contains(TEST_BOOK_KEY));
     }
   }
 
@@ -359,7 +334,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   void applyKey_rethrowsSqliteNativeException() throws Exception {
     Path keyFile = tempDirectory.resolve("apply-key-native-failure.key");
     writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
-
     try (SqliteBookPassphrase keyMaterial = SqliteBookKeyFile.load(keyFile);
         Arena arena = Arena.ofConfined()) {
       SqliteNativeApi sqliteApi =
@@ -369,14 +343,12 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
               constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class),
               constantMethodHandle(arena.allocateFrom("boom"), int.class),
               constantMethodHandle(14, MemorySegment.class));
-
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
               () ->
                   SqliteNativeConnections.applyKey(
                       MemorySegment.NULL, keyMaterial, sqliteApi, arena));
-
       assertEquals("SQLITE_CANTOPEN: boom", exception.getMessage());
     }
   }

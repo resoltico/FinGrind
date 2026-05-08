@@ -89,7 +89,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     assertEquals(
         "Scaffold placeholder must be replaced before submission: provenance.actorId",
         exception.getMessage());
-    assertEquals(CliJsonRequestCodec.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
   }
 
   @Test
@@ -108,7 +108,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     assertEquals(
         "Scaffold placeholder must be replaced before submission: effectiveDate",
         exception.getMessage());
-    assertEquals(CliJsonRequestCodec.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
   }
 
   @Test

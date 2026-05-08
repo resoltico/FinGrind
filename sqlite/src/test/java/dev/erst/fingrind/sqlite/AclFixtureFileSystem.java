@@ -38,10 +38,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 
 /** Minimal ACL-capable filesystem for exercising platform-specific security code. */
-@NullUnmarked
 final class AclFixtureFileSystem extends FileSystem {
   private final FileSystemProvider provider;
   private final Map<String, AclFixturePath> paths = new ConcurrentHashMap<>();
@@ -248,7 +247,7 @@ final class AclFixtureFileSystem extends FileSystem {
     }
 
     @Override
-    public <V extends FileAttributeView> V getFileAttributeView(
+    public <V extends FileAttributeView> @Nullable V getFileAttributeView(
         Path path, Class<V> type, LinkOption... options) {
       AclFixturePath fixturePath = testPath(path);
       if (type == AclFileAttributeView.class) {

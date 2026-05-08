@@ -54,8 +54,6 @@ import org.junit.jupiter.api.io.TempDir;
 class CliPdfReportExporterTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
-  private static final Path BOOK_PATH =
-      Path.of("/tmp/Rīga büro/2026 Q2 close/Ops & Sales [April] #1.sqlite");
   private static final DeclaredAccount CASH_ACCOUNT =
       new DeclaredAccount(
           new AccountCode("1000"),
@@ -83,10 +81,10 @@ class CliPdfReportExporterTest {
     Path accountLedgerPdf = tempDirectory.resolve("ledger.pdf");
     Path periodSummaryPdf = tempDirectory.resolve("summary.pdf");
 
-    exporter.exportAccountBalance(accountBalancePdf, BOOK_PATH, accountBalanceSnapshot());
-    exporter.exportTrialBalance(trialBalancePdf, BOOK_PATH, trialBalanceReport());
-    exporter.exportAccountLedger(accountLedgerPdf, BOOK_PATH, accountLedgerReport());
-    exporter.exportPeriodSummary(periodSummaryPdf, BOOK_PATH, periodSummaryReport());
+    exporter.exportAccountBalance(accountBalancePdf, accountBalanceSnapshot());
+    exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
+    exporter.exportAccountLedger(accountLedgerPdf, accountLedgerReport());
+    exporter.exportPeriodSummary(periodSummaryPdf, periodSummaryReport());
 
     assertPdfFile(accountBalancePdf);
     assertPdfFile(trialBalancePdf);
@@ -105,7 +103,7 @@ class CliPdfReportExporterTest {
     CliPdfExportException exception =
         assertThrows(
             CliPdfExportException.class,
-            () -> exporter.exportTrialBalance(outputPath, BOOK_PATH, trialBalanceReport()));
+            () -> exporter.exportTrialBalance(outputPath, trialBalanceReport()));
 
     assertEquals(outputPath.toAbsolutePath().normalize(), exception.outputPath());
   }
@@ -116,7 +114,7 @@ class CliPdfReportExporterTest {
     CliPdfReportExporter exporter =
         new CliPdfReportExporter(new PdfReportService("FinGrind", "0.32.0", CLOCK), fileOperations);
 
-    exporter.exportTrialBalance(Path.of("trial-balance.pdf"), BOOK_PATH, trialBalanceReport());
+    exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport());
 
     assertTrue(fileOperations.atomicMoveAttempted);
     assertTrue(fileOperations.regularMovePerformed);
@@ -133,9 +131,7 @@ class CliPdfReportExporterTest {
     CliPdfExportException exception =
         assertThrows(
             CliPdfExportException.class,
-            () ->
-                exporter.exportTrialBalance(
-                    Path.of("trial-balance.pdf"), BOOK_PATH, trialBalanceReport()));
+            () -> exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport()));
 
     assertEquals(Path.of("trial-balance.pdf").toAbsolutePath().normalize(), exception.outputPath());
     assertTrue(fileOperations.deleteAttempted);

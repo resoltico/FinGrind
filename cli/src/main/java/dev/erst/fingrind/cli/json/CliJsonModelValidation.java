@@ -28,8 +28,14 @@ final class CliJsonModelValidation {
     return Objects.requireNonNull(value, fieldName + " must not be null.");
   }
 
-  static <T> List<T> copyList(@Nullable List<T> values) {
-    return values == null ? List.of() : List.copyOf(values);
+  static <T> List<T> copyList(List<T> values, String fieldName) {
+    Objects.requireNonNull(values, fieldName + " must not be null.");
+    for (int index = 0; index < values.size(); index++) {
+      if (values.get(index) == null) {
+        throw new IllegalArgumentException(fieldName + "[" + index + "] must not be null.");
+      }
+    }
+    return List.copyOf(values);
   }
 
   static void requirePositive(int value, String fieldName) {

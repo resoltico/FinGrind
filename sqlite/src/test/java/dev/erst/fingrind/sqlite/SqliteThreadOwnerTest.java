@@ -7,17 +7,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Covers direct validation and same-thread/cross-thread behavior for {@link SqliteThreadOwner}. */
-@NullUnmarked
 class SqliteThreadOwnerTest {
   @Test
   void constructor_rejectsNullLabel() {
     NullPointerException exception =
-        assertThrows(NullPointerException.class, () -> new SqliteThreadOwner(null));
-
+        assertThrows(
+            NullPointerException.class,
+            () -> new SqliteThreadOwner(NullTestSupport.nullOf(String.class)));
     assertEquals("resourceLabel must not be null", exception.getMessage());
   }
 
@@ -25,14 +24,12 @@ class SqliteThreadOwnerTest {
   void constructor_rejectsBlankLabel() {
     IllegalArgumentException exception =
         assertThrows(IllegalArgumentException.class, () -> new SqliteThreadOwner("   "));
-
     assertEquals("resourceLabel must not be blank", exception.getMessage());
   }
 
   @Test
   void requireOwnerThread_allowsTheOwnerThread() {
     SqliteThreadOwner owner = new SqliteThreadOwner("SQLite helper");
-
     assertDoesNotThrow(owner::requireOwnerThread);
   }
 
@@ -41,10 +38,8 @@ class SqliteThreadOwnerTest {
       throws ExecutionException, InterruptedException {
     SqliteThreadOwner owner =
         createOnThread("sqlite-owner-helper", () -> new SqliteThreadOwner("SQLite helper"));
-
     IllegalStateException exception =
         captureIllegalStateOnThread("sqlite-reader-helper", owner::requireOwnerThread);
-
     assertEquals(
         "SQLite helper is thread-confined and is owned by thread 'sqlite-owner-helper' but was accessed from thread 'sqlite-reader-helper'.",
         exception.getMessage());
