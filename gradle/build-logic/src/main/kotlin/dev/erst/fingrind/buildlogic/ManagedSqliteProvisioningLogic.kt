@@ -87,6 +87,9 @@ internal object ManagedSqliteProvisioningLogic {
                 requiredCompileOptions.set(
                     DistributionContractReader.requiredSqliteCompileOptions(repositoryRootDirectory),
                 )
+                requiresSecureMemorySupport.set(
+                    DistributionContractReader.requiresSecureMemorySupport(repositoryRootDirectory),
+                )
                 outputFile.set(libraryPath)
                 checksumFile.set(checksumPath)
             }

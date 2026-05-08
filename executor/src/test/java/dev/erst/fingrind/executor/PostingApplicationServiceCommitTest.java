@@ -21,8 +21,10 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -94,7 +96,7 @@ class PostingApplicationServiceCommitTest {
 
   @Test
   void commit_mapsOrdinaryBookSessionOutcomes() {
-    PostingBookSession bookSession = mappedOutcomeBookSession();
+    BookStore bookSession = mappedOutcomeBookSession();
     PostingApplicationService applicationService = applicationService(bookSession);
 
     assertEquals(
@@ -132,11 +134,11 @@ class PostingApplicationServiceCommitTest {
 
   @Test
   void commit_propagatesUnexpectedBookSessionFailure() {
-    PostingBookSession bookSession =
+    BookStore bookSession =
         new PostingApplicationServiceTestSupport.DelegatingPostingBookSession() {
           @Override
-          public boolean isInitialized() {
-            return true;
+          public BookLifecycleInspection inspectBook() {
+            return new BookLifecycleInspection.Initialized(1001, 1, 1, FIXED_CLOCK.instant());
           }
 
           @Override
@@ -151,7 +153,9 @@ class PostingApplicationServiceCommitTest {
           }
 
           @Override
-          public PostingCommitResult commit(CommittedPosting postingFact) {
+          public PostingCommitResult commit(
+              dev.erst.fingrind.executor.spi.PostingDraft postingDraft,
+              dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator) {
             throw new IllegalStateException("boom");
           }
         };

@@ -73,11 +73,8 @@ final class BundleLayoutContracts {
   }
 
   private static JsonNode requireObject(JsonNode document, String key) {
-    JsonNode node = document.get(key);
-    if (node == null || !node.isObject()) {
-      throw new IllegalArgumentException(key + " must be one JSON object.");
-    }
-    return node;
+    return JsonContractResourceSupport.requireObject(
+        document, key, key + " must be one JSON object.");
   }
 
   private static JsonNode requireObjectNode(JsonNode node, String key) {

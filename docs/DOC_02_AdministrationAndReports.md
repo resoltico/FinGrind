@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented"]
@@ -21,25 +21,50 @@ This file documents the exported administration, inspection, query, and reportin
 public final class BookAdministrationService
 ```
 
-- Constructor: requires `BookAdministrationSession` and `Clock`
-- Surface: `openBook()` and `declareAccount(DeclareAccountCommand)`
+- Constructor: requires `BookStore` and `Clock`
+- Surface: `openBook()` and `declareAccount(AccountDeclaration)`
 - Policy: stamps lifecycle timestamps from the application clock
+- Boundary: the service operates after the public `DeclareAccountCommand` has crossed the
+  bookkeeping translator edge and become one local `AccountDeclaration`
 
 ## `BookReadService`
 
-`BookReadService` owns lifecycle inspection, read-side queries, and office-worker reports.
+`BookReadService` is the published-language adapter for lifecycle inspection, read-side queries,
+and office-worker reports.
 
 ```java
 public final class BookReadService
 ```
 
-- Constructor: requires `BookReadSession`
+- Constructor: requires `BookStore`
 - Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`,
   `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`
 - Boundary: this is the anti-corruption layer between public read/report DTOs and the local
-  bookkeeping read criteria/view model served by `BookReadSession`
-- Translator: `BookkeepingReadPublishedLanguageTranslator` owns the projection between public
-  report/query DTOs and the local bookkeeping read model
+  bookkeeping inspection/query/report model served by one selected `BookStore`
+- Translators: the exported `BookInspectionPublishedLanguageTranslator` in the `executor` package
+  projects the local `BookLifecycleInspection` family into public `BookInspection`, while
+  `BookkeepingReadPublishedLanguageTranslator` projects local `BookkeepingQueryRejection`,
+  criteria, pages, and report views into the public read/report DTO surface
+
+## `BookkeepingReadService` And `BookkeepingLookupOutcome`
+
+`BookkeepingReadService` owns the local bookkeeping inspection, lookup, query, and reporting
+semantics before any public DTO or rejection family is projected, and
+`BookkeepingLookupOutcome` preserves lifecycle rejection, ordinary absence, and successful lookup
+distinctly for internal workflow and assertion callers.
+
+```java
+public final class BookkeepingReadService
+public sealed interface BookkeepingLookupOutcome<T>
+```
+
+- Constructor: requires `BookStore`
+- Surface: `inspectBook()`, `findAccount(...)`, `findPosting(...)`, `listAccounts(...)`,
+  `getPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`,
+  `accountLedger(...)`, `periodSummary(...)`
+- Lookup variants: `Found`, `Missing`, `Rejected`
+- Boundary: this service stays inside the bookkeeping context and returns only local lifecycle,
+  lookup, query-rejection, and report-view outcomes
 
 ## `DeclareAccountCommand`
 
@@ -352,10 +377,11 @@ public sealed interface BookQueryRejection
 
 ## `RejectionNarrative`
 
-`RejectionNarrative` owns user-facing rejection prose and plan-journal failure facts.
+`RejectionNarrative` owns user-facing rejection prose for public rejection contracts.
 
 ```java
 public final class RejectionNarrative
 ```
 
-- Purpose: prevent plan execution and CLI rendering from leaking Java class names as rejection text
+- Purpose: prevent CLI rendering and other public rejection surfaces from leaking Java class names
+  as rejection text

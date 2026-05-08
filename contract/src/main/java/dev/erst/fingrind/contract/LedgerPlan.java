@@ -11,7 +11,7 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps) {
   /** Validates one ledger plan. */
   public LedgerPlan {
     Objects.requireNonNull(planId, "planId");
-    steps = steps == null ? List.of() : List.copyOf(steps);
+    steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Ledger plan must contain at least one step.");
     }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import java.util.Objects;
 
@@ -69,7 +70,7 @@ public sealed interface LedgerFact
     /** Validates one grouped journal fact. */
     public Group {
       requireName(name);
-      facts = facts == null ? List.of() : List.copyOf(facts);
+      facts = ContractDescriptorValidation.copyList(facts, "facts");
       if (facts.isEmpty()) {
         throw new IllegalArgumentException("Grouped ledger facts must not be empty.");
       }

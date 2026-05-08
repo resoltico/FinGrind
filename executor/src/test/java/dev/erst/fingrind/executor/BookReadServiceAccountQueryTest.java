@@ -6,7 +6,10 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.REVENUE_ACCO
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.declareDefaultAccounts;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedCountingBook;
+import static dev.erst.fingrind.executor.BookReadServiceTestSupport.localReadService;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
+import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
+import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -25,25 +28,28 @@ import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
+import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingLookupOutcome;
+import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests covering account and posting queries in {@link BookReadService}. */
-@NullUnmarked
 class BookReadServiceAccountQueryTest {
   @Test
-  void constructor_rejectsNullSession() {
-    assertThrows(NullPointerException.class, () -> new BookReadService(null));
+  void constructor_rejectsNullBookStore() {
+    assertEquals(
+        "bookStore",
+        assertThrows(NullPointerException.class, () -> new BookReadService(nullOf())).getMessage());
   }
 
   @Test
   void inspectBook_delegatesToSessionInspection() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(bookSession);
-
-      BookInspection inspection = bookSession.inspectBook();
+      BookReadService service = readService(bookSession);
+      BookInspection inspection =
+          BookInspectionPublishedLanguageTranslator.toPublished(bookSession.inspectBook());
       assertEquals(inspection, service.inspectBook());
     }
   }
@@ -51,8 +57,7 @@ class BookReadServiceAccountQueryTest {
   @Test
   void listAccounts_rejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(bookSession);
-
+      BookReadService service = readService(bookSession);
       assertEquals(
           new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.listAccounts(new ListAccountsQuery(50, Optional.empty())));
@@ -63,8 +68,7 @@ class BookReadServiceAccountQueryTest {
   void listAccounts_returnsDeclaredAccountsWhenInitialized() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
-      BookReadService service = new BookReadService(bookSession);
-
+      BookReadService service = readService(bookSession);
       assertEquals(
           new ListAccountsResult.Listed(
               new AccountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, Optional.empty())),
@@ -75,15 +79,13 @@ class BookReadServiceAccountQueryTest {
   @Test
   void getPosting_rejectsUninitializedAndMissingPosting() {
     try (InMemoryBookSession uninitializedBook = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(uninitializedBook);
-
+      BookReadService service = readService(uninitializedBook);
       assertEquals(
           new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.getPosting(new PostingId("posting-1")));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
-      BookReadService service = new BookReadService(bookSession);
-
+      BookReadService service = readService(bookSession);
       assertEquals(
           new GetPostingResult.Rejected(
               new BookQueryRejection.PostingNotFound(new PostingId("posting-1"))),
@@ -94,8 +96,7 @@ class BookReadServiceAccountQueryTest {
   @Test
   void listPostings_rejectsUnknownFilteredAccount() {
     try (InMemoryBookSession bookSession = initializedBook()) {
-      BookReadService service = new BookReadService(bookSession);
-
+      BookReadService service = readService(bookSession);
       assertEquals(
           new ListPostingsResult.Rejected(
               new BookQueryRejection.UnknownAccount(new AccountCode("9999"))),
@@ -108,8 +109,7 @@ class BookReadServiceAccountQueryTest {
   @Test
   void listPostings_rejectsUninitializedBookAndListsCommittedPostings() {
     try (InMemoryBookSession uninitializedBook = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(uninitializedBook);
-
+      BookReadService service = readService(uninitializedBook);
       assertEquals(
           new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.listPostings(
@@ -120,8 +120,7 @@ class BookReadServiceAccountQueryTest {
       var postingFact = postingFact("posting-1", "idem-1");
       var publishedPostingFact = BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
       bookSession.commit(postingFact);
-      BookReadService service = new BookReadService(bookSession);
-
+      BookReadService service = readService(bookSession);
       assertEquals(
           new ListPostingsResult.Listed(
               new PostingPage(List.of(publishedPostingFact), 20, Optional.empty())),
@@ -144,8 +143,7 @@ class BookReadServiceAccountQueryTest {
     var postingFact = postingFact("posting-1", "idem-1");
     bookSession.commit(postingFact);
     bookSession.resetFindAccountCalls();
-    BookReadService service = new BookReadService(bookSession);
-
+    BookReadService service = readService(bookSession);
     assertEquals(
         new GetPostingResult.Found(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
         service.getPosting(new PostingId("posting-1")));
@@ -158,38 +156,52 @@ class BookReadServiceAccountQueryTest {
   }
 
   @Test
-  void findHelpers_returnEmptyForUninitializedBooksAndDelegateWhenInitialized() {
+  void lookupOutcomes_preserveRejectionAbsenceAndPresenceDistinctly() {
     try (InMemoryBookSession uninitializedBook = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(uninitializedBook);
-
-      assertEquals(Optional.empty(), service.findAccount(CASH_ACCOUNT.accountCode()));
-      assertEquals(Optional.empty(), service.findPosting(new PostingId("posting-1")));
+      BookkeepingReadService service = localReadService(uninitializedBook);
+      assertEquals(
+          new BookkeepingLookupOutcome.Rejected<
+              dev.erst.fingrind.executor.bookkeeping.RegisteredAccount>(
+              new BookkeepingQueryRejection.BookNotInitialized()),
+          service.findAccount(CASH_ACCOUNT.accountCode()));
+      assertEquals(
+          new BookkeepingLookupOutcome.Rejected<
+              dev.erst.fingrind.executor.bookkeeping.CommittedPosting>(
+              new BookkeepingQueryRejection.BookNotInitialized()),
+          service.findPosting(new PostingId("posting-1")));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       var postingFact = postingFact("posting-1", "idem-1");
       bookSession.commit(postingFact);
-      BookReadService service = new BookReadService(bookSession);
-
+      BookkeepingReadService service = localReadService(bookSession);
       assertEquals(
-          Optional.of(BookReadServiceTestSupport.REGISTERED_CASH_ACCOUNT),
+          new BookkeepingLookupOutcome.Found<>(BookReadServiceTestSupport.REGISTERED_CASH_ACCOUNT),
           service.findAccount(CASH_ACCOUNT.accountCode()));
-      assertEquals(Optional.of(postingFact), service.findPosting(new PostingId("posting-1")));
+      assertEquals(
+          new BookkeepingLookupOutcome.Missing<
+              dev.erst.fingrind.executor.bookkeeping.RegisteredAccount>(),
+          service.findAccount(new AccountCode("9999")));
+      assertEquals(
+          new BookkeepingLookupOutcome.Found<>(postingFact),
+          service.findPosting(new PostingId("posting-1")));
+      assertEquals(
+          new BookkeepingLookupOutcome.Missing<
+              dev.erst.fingrind.executor.bookkeeping.CommittedPosting>(),
+          service.findPosting(new PostingId("posting-missing")));
     }
   }
 
   @Test
   void accountBalance_rejectsUninitializedAndUnknownAccount() {
     try (InMemoryBookSession uninitializedBook = new InMemoryBookSession()) {
-      BookReadService service = new BookReadService(uninitializedBook);
-
+      BookReadService service = readService(uninitializedBook);
       assertEquals(
           new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.accountBalance(new AccountBalanceQuery(CASH_ACCOUNT.accountCode(), null, null)));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
-      BookReadService service = new BookReadService(bookSession);
-
+      BookReadService service = readService(bookSession);
       assertEquals(
           new AccountBalanceResult.Rejected(
               new BookQueryRejection.UnknownAccount(CASH_ACCOUNT.accountCode())),
@@ -200,17 +212,17 @@ class BookReadServiceAccountQueryTest {
   @Test
   void readMethods_rejectNullInputs() {
     try (InMemoryBookSession bookSession = initializedBook()) {
-      BookReadService service = new BookReadService(bookSession);
-
-      assertThrows(NullPointerException.class, () -> service.listAccounts(null));
-      assertThrows(NullPointerException.class, () -> service.getPosting(null));
-      assertThrows(NullPointerException.class, () -> service.findAccount(null));
-      assertThrows(NullPointerException.class, () -> service.findPosting(null));
-      assertThrows(NullPointerException.class, () -> service.listPostings(null));
-      assertThrows(NullPointerException.class, () -> service.accountBalance(null));
-      assertThrows(NullPointerException.class, () -> service.trialBalance(null));
-      assertThrows(NullPointerException.class, () -> service.accountLedger(null));
-      assertThrows(NullPointerException.class, () -> service.periodSummary(null));
+      BookReadService service = readService(bookSession);
+      BookkeepingReadService localService = localReadService(bookSession);
+      assertThrows(NullPointerException.class, () -> service.listAccounts(nullOf()));
+      assertThrows(NullPointerException.class, () -> service.getPosting(nullOf()));
+      assertThrows(NullPointerException.class, () -> localService.findAccount(nullOf()));
+      assertThrows(NullPointerException.class, () -> localService.findPosting(nullOf()));
+      assertThrows(NullPointerException.class, () -> service.listPostings(nullOf()));
+      assertThrows(NullPointerException.class, () -> service.accountBalance(nullOf()));
+      assertThrows(NullPointerException.class, () -> service.trialBalance(nullOf()));
+      assertThrows(NullPointerException.class, () -> service.accountLedger(nullOf()));
+      assertThrows(NullPointerException.class, () -> service.periodSummary(nullOf()));
     }
   }
 }

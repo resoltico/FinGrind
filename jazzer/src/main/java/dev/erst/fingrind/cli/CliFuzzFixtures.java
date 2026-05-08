@@ -18,16 +18,12 @@ import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationService;
-import dev.erst.fingrind.executor.BookAdministrationSession;
 import dev.erst.fingrind.executor.BookReadService;
-import dev.erst.fingrind.executor.BookReadSession;
 import dev.erst.fingrind.executor.PostingApplicationService;
-import dev.erst.fingrind.executor.PostingBookSession;
-import dev.erst.fingrind.executor.PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
-import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -57,11 +53,6 @@ public final class CliFuzzFixtures {
     return new CliRequestReader(new ByteArrayInputStream(input)).readLedgerPlan(Path.of("-"));
   }
 
-  /** Parses one ledger-plan payload and translates it into the internal workflow model. */
-  public static BookWorkflowPlan readBookWorkflowPlan(byte[] input) {
-    return BookWorkflowPublishedLanguageTranslator.fromPublished(readLedgerPlan(input));
-  }
-
   /** Returns a deterministic posting-id generator for one fuzz iteration. */
   public static PostingIdGenerator postingIdGenerator(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
@@ -75,10 +66,9 @@ public final class CliFuzzFixtures {
   }
 
   /** Creates the fixed-clock administration service used by lifecycle-aware harnesses. */
-  public static BookAdministrationService administrationService(
-      BookAdministrationSession bookSession) {
-    Objects.requireNonNull(bookSession, "bookSession must not be null");
-    return new BookAdministrationService(bookSession, fixedClock());
+  public static BookAdministrationService administrationService(BookStore bookStore) {
+    Objects.requireNonNull(bookStore, "bookStore must not be null");
+    return new BookAdministrationService(bookStore, fixedClock());
   }
 
   /** Opens one book and fails fast if lifecycle setup drifts unexpectedly. */
@@ -180,17 +170,17 @@ public final class CliFuzzFixtures {
    * Loads one stored posting from a posting session and translates it into the public fact shape.
    */
   public static Optional<PostingFact> publishedStoredPosting(
-      PostingBookSession bookSession, dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
-    Objects.requireNonNull(bookSession, "bookSession must not be null");
+      BookStore bookStore, dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
+    Objects.requireNonNull(bookStore, "bookStore must not be null");
     Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
-    return publishedStoredPosting(bookSession.findExistingPosting(idempotencyKey));
+    return publishedStoredPosting(bookStore.findExistingPosting(idempotencyKey));
   }
 
   /** Lists accounts and fails fast if the registry surface is not in the expected state. */
-  public static List<DeclaredAccount> listAccounts(BookReadSession bookSession) {
-    Objects.requireNonNull(bookSession, "bookSession must not be null");
+  public static List<DeclaredAccount> listAccounts(BookStore bookStore) {
+    Objects.requireNonNull(bookStore, "bookStore must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
-    BookReadService readService = new BookReadService(bookSession);
+    BookReadService readService = new BookReadService(bookStore);
     Optional<AccountPageCursor> cursor = Optional.empty();
     while (true) {
       ListAccountsResult result = listAccountsPage(readService, cursor);

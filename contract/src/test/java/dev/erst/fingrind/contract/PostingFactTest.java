@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -23,11 +24,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostingFact}. */
-@NullUnmarked
 class PostingFactTest {
   @Test
   void constructor_acceptsValidFact() {
@@ -37,7 +36,6 @@ class PostingFactTest {
             journalEntry(),
             PostingLineage.direct(),
             provenance("idem-1"));
-
     assertEquals("posting-1", postingFact.postingId().value());
   }
 
@@ -45,7 +43,9 @@ class PostingFactTest {
   void constructor_rejectsNullPostingId() {
     assertThrows(
         NullPointerException.class,
-        () -> new PostingFact(null, journalEntry(), PostingLineage.direct(), provenance("idem-1")));
+        () ->
+            new PostingFact(
+                nullOf(), journalEntry(), PostingLineage.direct(), provenance("idem-1")));
   }
 
   @Test
@@ -54,7 +54,7 @@ class PostingFactTest {
         NullPointerException.class,
         () ->
             new PostingFact(
-                new PostingId("posting-1"), journalEntry(), null, provenance("idem-1")));
+                new PostingId("posting-1"), journalEntry(), nullOf(), provenance("idem-1")));
   }
 
   private static JournalEntry journalEntry() {

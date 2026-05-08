@@ -5,11 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link SqliteFailureClassifier}. */
-@NullUnmarked
 class SqliteFailureClassifierTest {
   @Test
   void classify_distinguishesManagedRuntimeStorageAndOtherFailures() {
@@ -46,9 +44,8 @@ class SqliteFailureClassifierTest {
                 "unexpected-source-id",
                 SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 "bundle",
-                "3.53.0",
-                "2.3.3")));
-
+                "3.53.1",
+                "2.3.4")));
     assertEquals(
         SqliteFailureClassifier.Category.STORAGE,
         SqliteFailureClassifier.classify(
@@ -56,7 +53,6 @@ class SqliteFailureClassifierTest {
     assertEquals(
         SqliteFailureClassifier.Category.STORAGE,
         SqliteFailureClassifier.classify(new SqliteNativeException(14, "unable to open file")));
-
     assertEquals(
         SqliteFailureClassifier.Category.OTHER,
         SqliteFailureClassifier.classify(new IllegalStateException("other failure")));
@@ -64,12 +60,12 @@ class SqliteFailureClassifierTest {
 
   @Test
   void classify_requiresThrowableAndStorageExceptionPreservesCause() {
-    assertThrows(NullPointerException.class, () -> SqliteFailureClassifier.classify(null));
-
+    assertThrows(
+        NullPointerException.class,
+        () -> SqliteFailureClassifier.classify(NullTestSupport.nullOf(Throwable.class)));
     RuntimeException cause = new RuntimeException("disk");
     SqliteStorageFailureException exception =
         new SqliteStorageFailureException("storage failure", cause);
-
     assertEquals(
         "storage failure", new SqliteStorageFailureException("storage failure").getMessage());
     assertEquals("storage failure", exception.getMessage());

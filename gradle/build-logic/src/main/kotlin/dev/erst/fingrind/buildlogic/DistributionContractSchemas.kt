@@ -40,6 +40,10 @@ internal object DistributionContractSchemas {
                     schemaKey(document, "managedSqlite", "requiredSqliteSourceId"),
                 requiredCompileOptions =
                     schemaKey(document, "managedSqlite", "requiredCompileOptions"),
+                forbiddenCompileOptions =
+                    schemaKey(document, "managedSqlite", "forbiddenCompileOptions"),
+                requiresSecureMemorySupport =
+                    schemaKey(document, "managedSqlite", "requiresSecureMemorySupport"),
             ),
             bundleLayout = DistributionContractReader.BundleLayoutSchema(
                 bundleTargets = schemaKey(document, "bundleLayout", "bundleTargets"),

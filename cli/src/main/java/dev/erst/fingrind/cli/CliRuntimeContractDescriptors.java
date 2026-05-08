@@ -39,18 +39,21 @@ final class CliRuntimeContractDescriptors {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
-            runtimeProbe.compileOptionsVerification(),
+            SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
+            SqliteRuntime.REQUIRES_SECURE_MEMORY_SUPPORT,
             runtimeProbe.requiredMinimumSqliteVersion(),
             runtimeProbe.requiredSqlite3mcVersion(),
             runtimeProbe.requiredSqliteSourceId(),
-            dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus.fromWireValue(
-                runtimeProbe.status().wireValue()),
-            runtimeProbe.runtimeProvenance(),
-            runtimeProbe.runtimeTrustBasis(),
-            runtimeProbe.loadedLibraryPath(),
-            runtimeProbe.loadedSqliteVersion(),
-            runtimeProbe.loadedSqlite3mcVersion(),
-            runtimeProbe.loadedSqliteSourceId(),
-            runtimeProbe.issue()));
+            EnvironmentSqliteDescriptor.runtime(
+                runtimeProbe.compileOptionsVerification(),
+                dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus.fromWireValue(
+                    runtimeProbe.status().wireValue()),
+                runtimeProbe.runtimeProvenance(),
+                runtimeProbe.runtimeTrustBasis(),
+                runtimeProbe.loadedLibraryPath(),
+                runtimeProbe.loadedSqliteVersion(),
+                runtimeProbe.loadedSqlite3mcVersion(),
+                runtimeProbe.loadedSqliteSourceId(),
+                runtimeProbe.issue())));
   }
 }

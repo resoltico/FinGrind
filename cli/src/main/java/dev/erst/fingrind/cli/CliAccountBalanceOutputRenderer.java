@@ -19,7 +19,8 @@ final class CliAccountBalanceOutputRenderer {
                 List.of(
                     "Range",
                     CliQueryOutputFormatter.dateRange(
-                        snapshot.effectiveDateFrom(), snapshot.effectiveDateTo()))));
+                        snapshot.effectiveDateFrom().orElse(null),
+                        snapshot.effectiveDateTo().orElse(null)))));
     String balances =
         CliTextFormat.renderTable(
             List.of("Currency", "Debit total", "Credit total", "Net amount", "Balance side"),

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core;
 
+import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -7,19 +8,15 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link JournalEntry}. */
-@NullUnmarked
 class JournalEntryTest {
   @Test
   void constructor_defensivelyCopiesLines() {
     List<JournalLine> lines = new ArrayList<>(balancedLines());
     JournalEntry journalEntry = new JournalEntry(LocalDate.parse("2026-04-07"), lines);
-
     lines.clear();
-
     assertEquals(2, journalEntry.lines().size());
   }
 
@@ -32,9 +29,11 @@ class JournalEntryTest {
 
   @Test
   void constructor_rejectsNullLines() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new JournalEntry(LocalDate.parse("2026-04-07"), null));
+    NullPointerException exception =
+        assertThrows(
+            NullPointerException.class,
+            () -> new JournalEntry(LocalDate.parse("2026-04-07"), nullOf()));
+    assertEquals("lines", exception.getMessage());
   }
 
   @Test
@@ -49,7 +48,6 @@ class JournalEntryTest {
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
                 new Money(new CurrencyCode("USD"), new BigDecimal("10.00"))));
-
     assertThrows(
         IllegalArgumentException.class,
         () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
@@ -67,7 +65,6 @@ class JournalEntryTest {
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
                 new Money(new CurrencyCode("EUR"), new BigDecimal("9.00"))));
-
     assertThrows(
         IllegalArgumentException.class,
         () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
@@ -81,12 +78,10 @@ class JournalEntryTest {
                 new AccountCode("1000"),
                 JournalLine.EntrySide.DEBIT,
                 new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
-
     JournalEntryValidationException exception =
         assertThrows(
             JournalEntryValidationException.class,
             () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
-
     assertEquals(
         "Journal entry is invalid: Journal entry must contain at least one debit line and one credit line. Journal entry must balance debits and credits.",
         exception.getMessage());
@@ -105,12 +100,10 @@ class JournalEntryTest {
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
                 new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
-
     JournalEntryValidationException exception =
         assertThrows(
             JournalEntryValidationException.class,
             () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
-
     assertEquals(
         "Journal entry is invalid: Journal entry must contain at least one debit line and one credit line. Journal entry must balance debits and credits.",
         exception.getMessage());
@@ -126,15 +119,14 @@ class JournalEntryTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class, () -> new JournalEntryValidationException(List.of()));
-
     assertEquals("violations must not be empty.", exception.getMessage());
   }
 
   @Test
   void journalEntryValidationException_rejectsNullViolations() {
     NullPointerException exception =
-        assertThrows(NullPointerException.class, () -> new JournalEntryValidationException(null));
-
+        assertThrows(
+            NullPointerException.class, () -> new JournalEntryValidationException(nullOf()));
     assertEquals("violations", exception.getMessage());
   }
 

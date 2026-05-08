@@ -166,6 +166,14 @@ def load_contract_values(
                 managed_sqlite_document,
                 required_string(managed_sqlite_schema, "requiredCompileOptions"),
             ),
+            "forbiddenCompileOptions": string_array(
+                managed_sqlite_document,
+                required_string(managed_sqlite_schema, "forbiddenCompileOptions"),
+            ),
+            "requiresSecureMemorySupport": required_bool(
+                managed_sqlite_document,
+                required_string(managed_sqlite_schema, "requiresSecureMemorySupport"),
+            ),
         },
         "runtimeEnvironment": {
             "sourceCheckoutJava": required_value(

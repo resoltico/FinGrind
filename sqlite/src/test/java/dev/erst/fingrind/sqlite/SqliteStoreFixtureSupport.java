@@ -11,10 +11,9 @@ import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
+import java.util.Objects;
 
 /** Shared SQLite store/bootstrap fixtures and native-handle doubles for split store tests. */
-@NullUnmarked
 class SqliteStoreFixtureSupport {
   static final String TEST_BOOK_KEY = "posting-fact-store-test-book-key";
 
@@ -48,7 +47,7 @@ class SqliteStoreFixtureSupport {
       assertEquals(SqliteNativeResultCodes.ROW, statement.step());
       String value = statement.columnText(0);
       assertEquals(SqliteNativeResultCodes.DONE, statement.step());
-      return value;
+      return Objects.requireNonNull(value, "SQLite text query returned null.");
     }
   }
 

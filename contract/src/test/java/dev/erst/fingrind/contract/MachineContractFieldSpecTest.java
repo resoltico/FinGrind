@@ -14,6 +14,8 @@ class MachineContractFieldSpecTest {
   void helperFactories_publishExpectedPresenceAndDescriptorState() {
     MachineContractFieldSpec required =
         MachineContractFieldSpec.required("field", "Required field.", Map.of("type", "string"));
+    MachineContractFieldSpec optional =
+        MachineContractFieldSpec.optional("field", "Optional field.", Map.of("type", "string"));
     MachineContractFieldSpec conditional =
         MachineContractFieldSpec.conditional(
             "field", "Conditional field.", Map.of("type", "string"));
@@ -22,10 +24,13 @@ class MachineContractFieldSpecTest {
 
     assertTrue(required.acceptsInput());
     assertTrue(required.requiredInSchema());
+    assertTrue(optional.acceptsInput());
+    assertFalse(optional.requiredInSchema());
     assertFalse(conditional.requiredInSchema());
     assertTrue(conditional.acceptsInput());
     assertFalse(forbidden.acceptsInput());
     assertFalse(forbidden.requiredInSchema());
+    assertEquals(Map.of("type", "string"), optional.inputSchema());
     assertEquals(
         new ContractRequestShapes.RequestFieldDescriptor(
             "field", RequestFieldPresence.CONDITIONAL, "Conditional field."),
@@ -42,16 +47,30 @@ class MachineContractFieldSpecTest {
                     "field",
                     RequestFieldPresence.FORBIDDEN,
                     "Forbidden field.",
-                    Map.of("type", "string")));
+                    new MachineContractFieldSpec.AcceptedFieldContract(Map.of("type", "string"))));
     IllegalArgumentException missingSchema =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new MachineContractFieldSpec(
-                    "field", RequestFieldPresence.CONDITIONAL, "Conditional field.", null));
+                    "field",
+                    RequestFieldPresence.CONDITIONAL,
+                    "Conditional field.",
+                    MachineContractFieldSpec.ForbiddenFieldContract.INSTANCE));
 
     assertEquals(
         "Forbidden field specs must not publish an accepted schema.", forbiddenSchema.getMessage());
     assertEquals("Accepted field specs must publish a schema.", missingSchema.getMessage());
+  }
+
+  @Test
+  void inputSchema_rejectsForbiddenFields() {
+    MachineContractFieldSpec forbidden =
+        MachineContractFieldSpec.forbidden("field", "Forbidden field.");
+
+    IllegalStateException exception =
+        assertThrows(IllegalStateException.class, forbidden::inputSchema);
+
+    assertEquals("Forbidden field field does not accept input.", exception.getMessage());
   }
 }

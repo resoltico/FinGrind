@@ -12,10 +12,11 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,11 +25,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void ensureParentDirectory_acceptsBareBookFileNames() {
@@ -49,20 +48,18 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_setsFinGrindIdentityAndHardeningPragmas() throws Exception {
     Path databasePath = tempDirectory.resolve("identity-pragmas.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
-
-      assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma foreign_keys"));
-      assertEquals("delete", queryText(storeDatabase(postingFactStore), "pragma journal_mode"));
-      assertEquals(3, queryInt(storeDatabase(postingFactStore), "pragma synchronous"));
-      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma trusted_schema"));
-      assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma secure_delete"));
-      assertEquals(2, queryInt(storeDatabase(postingFactStore), "pragma temp_store"));
-      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma query_only"));
+      assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
+      assertEquals(
+          "delete", queryText(requireStoreDatabase(postingFactStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(requireStoreDatabase(postingFactStore), "pragma synchronous"));
+      assertEquals(0, queryInt(requireStoreDatabase(postingFactStore), "pragma trusted_schema"));
+      assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma secure_delete"));
+      assertEquals(2, queryInt(requireStoreDatabase(postingFactStore), "pragma temp_store"));
+      assertEquals(0, queryInt(requireStoreDatabase(postingFactStore), "pragma query_only"));
     }
-
     withStandaloneDatabase(
         bookAccess(databasePath),
         database -> {
@@ -82,7 +79,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                     "Missing schema resource.")
                 .readAllBytes(),
             StandardCharsets.UTF_8);
-
     assertTrue(
         schema.contains(
             "source_channel text not null check (source_channel in ('%s'))"
@@ -92,16 +88,13 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_hardensBookDirectoryAndFilePermissionsOnSupportedHost() throws Exception {
     Path databasePath = tempDirectory.resolve("secure-book.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
     }
-
     if (!databasePath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
       return;
     }
-
     assertEquals(
         Set.of(
             PosixFilePermission.OWNER_READ,
@@ -118,7 +111,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("encrypted-sentinel.sqlite");
     String sentinelAccountName = "SENTINEL_ACCOUNT_NAME_X9Q2";
     String sentinelIdempotencyKey = "SENTINEL_IDEMPOTENCY_X9Q2";
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -145,7 +137,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                   List.of(
                       line("9000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "1.00"),
                       line("2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "1.00")))),
-          postingFactStore.commit(
+          commitPosting(
+              postingFactStore,
               postingFact(
                   "posting-sentinel-1",
                   sentinelIdempotencyKey,
@@ -155,7 +148,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       line("9000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "1.00"),
                       line("2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "1.00")))));
     }
-
     String rawDatabaseBytes =
         new String(Files.readAllBytes(databasePath), StandardCharsets.ISO_8859_1);
     assertFalse(rawDatabaseBytes.contains(sentinelAccountName));
@@ -167,14 +159,15 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   void foreignAndUnsupportedBooks_areRejectedAcrossBoundaries() throws Exception {
     Path foreignBookPath = tempDirectory.resolve("foreign.sqlite");
     createPostingFactOnlyBook(foreignBookPath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(foreignBookPath))) {
-      IllegalStateException initializedException =
-          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
       assertEquals(
-          "The selected SQLite file is not a FinGrind book.", initializedException.getMessage());
-
+          new BookLifecycleInspection.Existing(
+              BookLifecycleInspection.Status.FOREIGN_SQLITE,
+              0,
+              0,
+              SqliteBookContract.FORMAT_VERSION),
+          postingFactStore.inspectBook());
       IllegalStateException accountException =
           assertThrows(
               IllegalStateException.class,
@@ -182,45 +175,45 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           "The selected SQLite file is not a FinGrind book.", accountException.getMessage());
     }
-
     Path unsupportedBookPath = tempDirectory.resolve("unsupported-version.sqlite");
     initializeBookOnDisk(unsupportedBookPath);
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
         database -> database.executeStatement("pragma user_version = 2"));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
-      IllegalStateException initializedException =
-          assertThrows(IllegalStateException.class, postingFactStore::isInitialized);
-      assertTrue(initializedException.getMessage().contains("format version 2 is unsupported"));
-
+      assertEquals(
+          new BookLifecycleInspection.Existing(
+              BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+              SqliteBookContract.APPLICATION_ID,
+              2,
+              SqliteBookContract.FORMAT_VERSION),
+          postingFactStore.inspectBook());
       IllegalStateException openException =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
-      assertTrue(openException.getMessage().contains("format version 2 is unsupported"));
-
+      assertTrue(
+          NullTestSupport.messageOf(openException).contains("format version 2 is unsupported"));
       IllegalStateException accountException =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findAccount(new AccountCode("1000")));
-      assertTrue(accountException.getMessage().contains("format version 2 is unsupported"));
+      assertTrue(
+          NullTestSupport.messageOf(accountException).contains("format version 2 is unsupported"));
     }
   }
 
   @Test
   void openBook_initializesCanonicalTablesAsStrict() {
     Path databasePath = tempDirectory.resolve("strict-schema.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
           new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
     }
-
     withStandaloneDatabase(
         bookAccess(databasePath),
         database -> {
@@ -250,14 +243,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_createsAccountCodeIndexForJournalLines() {
     Path databasePath = tempDirectory.resolve("journal-line-index.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
           new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
     }
-
     withStandaloneDatabase(
         bookAccess(databasePath),
         database ->
@@ -275,14 +266,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_createsPostingHistoryIndexForReverseChronologicalPages() {
     Path databasePath = tempDirectory.resolve("posting-history-index.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
           new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
     }
-
     withStandaloneDatabase(
         bookAccess(databasePath),
         database ->
@@ -300,15 +289,14 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openBook_configuresOpenConnectionForHardeningAndDurability() throws Exception {
     Path databasePath = tempDirectory.resolve("connection-pragmas.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
-
-      assertEquals(1, queryInt(storeDatabase(postingFactStore), "pragma foreign_keys"));
-      assertEquals("delete", queryText(storeDatabase(postingFactStore), "pragma journal_mode"));
-      assertEquals(3, queryInt(storeDatabase(postingFactStore), "pragma synchronous"));
-      assertEquals(0, queryInt(storeDatabase(postingFactStore), "pragma trusted_schema"));
+      assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
+      assertEquals(
+          "delete", queryText(requireStoreDatabase(postingFactStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(requireStoreDatabase(postingFactStore), "pragma synchronous"));
+      assertEquals(0, queryInt(requireStoreDatabase(postingFactStore), "pragma trusted_schema"));
     }
   }
 
@@ -324,7 +312,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                   insertInitializedAtRow(database);
                   insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
                   insertPostingFactRow(database, "posting-1", "idem-1");
-
                   SqliteNativeException exception =
                       assertThrows(
                           SqliteNativeException.class,
@@ -347,7 +334,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                       '10.00'
                                   )
                                   """));
-
                   assertEquals(SqliteNativeResultCodes.CONSTRAINT_DATATYPE, exception.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_DATATYPE", exception.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
@@ -364,7 +350,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 database -> {
                   SqliteBookSchemaBootstrap.initializeBook(database);
                   insertInitializedAtRow(database);
-
                   SqliteNativeException invalidAccountCode =
                       assertThrows(
                           SqliteNativeException.class,
@@ -375,7 +360,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAccountCode.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAccountCode.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from account"));
-
                   SqliteNativeException invalidAccountName =
                       assertThrows(
                           SqliteNativeException.class,
@@ -386,9 +370,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidAccountName.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidAccountName.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from account"));
-
                   insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
-
                   SqliteNativeException invalidIdempotencyKey =
                       assertThrows(
                           SqliteNativeException.class,
@@ -397,7 +379,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidIdempotencyKey.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidIdempotencyKey.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
-
                   SqliteNativeException invalidActorId =
                       assertThrows(
                           SqliteNativeException.class,
@@ -414,7 +395,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidActorId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidActorId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
-
                   SqliteNativeException invalidCommandId =
                       assertThrows(
                           SqliteNativeException.class,
@@ -431,7 +411,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCommandId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCommandId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
-
                   SqliteNativeException invalidCausationId =
                       assertThrows(
                           SqliteNativeException.class,
@@ -448,7 +427,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       SqliteNativeResultCodes.CONSTRAINT_CHECK, invalidCausationId.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidCausationId.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
-
                   SqliteNativeException invalidCorrelationId =
                       assertThrows(
                           SqliteNativeException.class,
@@ -476,7 +454,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
         withStandaloneDatabaseResult(
             bookAccess(missingMarkerPath), SqliteStatementQueries::loadInitializedAt);
     assertEquals(Optional.empty(), missingInitializedAt);
-
     Path presentMarkerPath = tempDirectory.resolve("initialized-at-present.sqlite");
     initializeBookOnDisk(presentMarkerPath);
     Optional<Instant> presentInitializedAt =
@@ -486,10 +463,37 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void lifecycleInspectionMapper_rejectsInitializedBooksMissingInitializedAtMetadata()
+      throws Exception {
+    Path initializedBookPath = tempDirectory.resolve("initialized-at-required.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database -> {
+          database.executeStatement("delete from book_meta where key = 'initialized_at'");
+
+          IllegalStateException exception =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteBookLifecycleInspectionMapper.fromSnapshot(
+                          new SqliteBookStateSnapshot(
+                              SqliteBookContract.APPLICATION_ID,
+                              SqliteBookContract.FORMAT_VERSION,
+                              SqliteBookState.INITIALIZED_FINGRIND),
+                          database));
+
+          assertEquals(
+              "Initialized SQLite book is missing initialized-at metadata.",
+              exception.getMessage());
+        });
+  }
+
+  @Test
   void bookPath_and_passphraseDelegates_matchTheSharedStoreContext() {
     Path bookPath = tempDirectory.resolve("delegate-path.sqlite");
     BookAccess access = bookAccess(bookPath);
-
     try (SqlitePostingFactStore postingFactStore = new SqlitePostingFactStore(access)) {
       assertEquals(bookPath, postingFactStore.bookPath());
       try (SqliteBookPassphrase delegated =
@@ -528,7 +532,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             new OpenConfigurationDrift(
                 "pragma query_only = on",
                 "SQLite connection failed to enforce the expected query_only setting."));
-
     for (OpenConfigurationDrift driftCase : driftCases) {
       assertOpenConfigurationFailure(driftCase.pragma(), driftCase.failureMessage());
     }
@@ -538,14 +541,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   void requirePragmaValue_rejectsUnexpectedValues() {
     assertDoesNotThrow(
         () -> SqliteConnectionConfigurer.requirePragmaValue(1, 1, "should accept expected value"));
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () ->
                 SqliteConnectionConfigurer.requirePragmaValue(
                     0, 1, "SQLite connection failed to enable memory_security=fill."));
-
     assertEquals(
         "SQLite connection failed to enable memory_security=fill.", exception.getMessage());
   }
@@ -560,7 +561,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             "book_meta",
             "journal_line",
             "posting_fact");
-
     Path noMetaPath = tempDirectory.resolve("fgrd-no-meta.sqlite");
     createPartialFinGrindBook(noMetaPath, false, false, false, false, false);
     BookStateProbe noMetaProbe =
@@ -574,19 +574,16 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertFalse(noMetaProbe.hasCanonicalTables());
     assertFalse(noMetaProbe.hasInitializedMarker());
     assertEquals("INCOMPLETE_FINGRIND", noMetaProbe.bookState());
-
     Path noAccountPath = tempDirectory.resolve("fgrd-no-account.sqlite");
     createPartialFinGrindBook(noAccountPath, true, false, false, false, false);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noAccountPath), bookStateReader::hasCanonicalTables));
-
     Path noPostingPath = tempDirectory.resolve("fgrd-no-posting.sqlite");
     createPartialFinGrindBook(noPostingPath, true, true, false, false, false);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noPostingPath), bookStateReader::hasCanonicalTables));
-
     Path noJournalLinePath = tempDirectory.resolve("fgrd-no-journal-line.sqlite");
     createPartialFinGrindBook(noJournalLinePath, true, true, true, false, false);
     BookStateProbe noJournalLineProbe =
@@ -599,7 +596,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                     bookStateReader.bookState(database).toString()));
     assertFalse(noJournalLineProbe.hasCanonicalTables());
     assertEquals("INCOMPLETE_FINGRIND", noJournalLineProbe.bookState());
-
     Path initializedPath = tempDirectory.resolve("fgrd-initialized-short-circuit.sqlite");
     initializeBookOnDisk(initializedPath);
     BookStateProbe initializedProbe =
@@ -618,7 +614,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertTrue(initializedProbe.hasCanonicalTables());
     assertTrue(initializedProbe.hasInitializedMarker());
     assertEquals("INITIALIZED_FINGRIND", initializedProbe.bookState());
-
     Path versionOnlyPath = tempDirectory.resolve("foreign-version-only.sqlite");
     withStandaloneDatabase(
         bookAccess(versionOnlyPath),

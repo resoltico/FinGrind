@@ -7,7 +7,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
 public interface CliAdministrationJsonModels {
 
-  record OpenBookPayload(String bookFile, String initializedAt) {
+  record OpenBookPayload(String bookFile, String initializedAt) implements CliSuccessPayload {
     public OpenBookPayload {
       bookFile = requireText(bookFile, "bookFile");
       initializedAt = requireText(initializedAt, "initializedAt");
@@ -15,7 +15,8 @@ public interface CliAdministrationJsonModels {
   }
 
   record GeneratedBookKeyFilePayload(
-      String bookKeyFile, String encoding, int entropyBits, String permissions) {
+      String bookKeyFile, String encoding, int entropyBits, String permissions)
+      implements CliSuccessPayload {
     public GeneratedBookKeyFilePayload {
       bookKeyFile = requireText(bookKeyFile, "bookKeyFile");
       encoding = requireText(encoding, "encoding");
@@ -24,7 +25,7 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RekeyBookPayload(String bookFile) {
+  record RekeyBookPayload(String bookFile) implements CliSuccessPayload {
     public RekeyBookPayload {
       bookFile = requireText(bookFile, "bookFile");
     }
@@ -35,7 +36,8 @@ public interface CliAdministrationJsonModels {
       String state,
       boolean compatibleWithCurrentBinary,
       boolean canInitializeWithOpenBook,
-      int supportedBookFormatVersion) {
+      int supportedBookFormatVersion)
+      implements CliSuccessPayload {
     public MissingBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");
@@ -50,7 +52,8 @@ public interface CliAdministrationJsonModels {
       boolean canInitializeWithOpenBook,
       int applicationId,
       int detectedBookFormatVersion,
-      int supportedBookFormatVersion) {
+      int supportedBookFormatVersion)
+      implements CliSuccessPayload {
     public ExistingBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");
@@ -67,7 +70,8 @@ public interface CliAdministrationJsonModels {
       int applicationId,
       int detectedBookFormatVersion,
       int supportedBookFormatVersion,
-      String initializedAt) {
+      String initializedAt)
+      implements CliSuccessPayload {
     public InitializedBookInspectionPayload {
       bookFile = requireText(bookFile, "bookFile");
       state = requireText(state, "state");

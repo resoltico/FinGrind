@@ -106,8 +106,25 @@ val managedSqliteLibrarySha256Path =
         },
     )
 val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
+val repositoryDockerBuildContextDirectory = layout.projectDirectory.dir("build/docker-context")
+val mirrorRepositoryDockerBuildContext =
+    dockerBuildContextDirectory.get().asFile.toPath().normalize() !=
+        repositoryDockerBuildContextDirectory.asFile.toPath().normalize()
 val dockerBuildContextManifestOutputFile =
     layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
+val dockerBuildContextSourceProjects =
+    listOf(project(":cli"), project(":contract"), project(":core"), project(":executor"), project(":report-pdf"), project(":sqlite"))
+val dockerBuildContextSourceInputs =
+    objects.fileCollection().from(
+        rootProject.layout.projectDirectory.file("build.gradle.kts"),
+        rootProject.layout.projectDirectory.file("settings.gradle.kts"),
+        rootProject.layout.projectDirectory.file("gradle.properties"),
+        rootProject.layout.projectDirectory.file("gradle/libs.versions.toml"),
+        rootProject.layout.projectDirectory.dir("gradle/build-logic/src/main"),
+        dockerBuildContextSourceProjects.map { it.layout.projectDirectory.file("build.gradle.kts") },
+        dockerBuildContextSourceProjects.map { it.layout.projectDirectory.dir("src/main") },
+        layout.projectDirectory.dir("src/docker"),
+    )
 val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
 val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
 val bundleWorkspaceDirectory = layout.buildDirectory.dir("bundle")
@@ -283,9 +300,12 @@ val writeRuntimeModuleList =
 val writeDockerBuildContextManifest =
     tasks.register<WriteDockerBuildContextManifestTask>("writeDockerBuildContextManifest") {
         group = "distribution"
-        description = "Writes the manifest for the staged Docker build context."
+        description =
+            "Writes the manifest for the staged Docker build context plus the source fingerprint used to verify freshness."
         ownerTaskName.set("stageDockerBuildContext")
         fileNames.set(dockerBuildContextFiles)
+        repositoryRootPath.set(repositoryRootDirectory.toString())
+        sourceFiles.from(dockerBuildContextSourceInputs)
         outputFile.set(dockerBuildContextManifestOutputFile)
     }
 
@@ -322,6 +342,21 @@ val stageDockerBuildContext =
             rename { "managed-sqlite-contract.json" }
         }
     }
+
+val syncRepositoryDockerBuildContext =
+    tasks.register<Sync>("syncRepositoryDockerBuildContext") {
+        group = "distribution"
+        description =
+            "Mirrors the staged Docker build context into cli/build/docker-context for plain docker build consumers."
+        dependsOn(stageDockerBuildContext)
+        from(dockerBuildContextDirectory)
+        into(repositoryDockerBuildContextDirectory)
+        enabled = mirrorRepositoryDockerBuildContext
+    }
+
+stageDockerBuildContext.configure {
+    finalizedBy(syncRepositoryDockerBuildContext)
+}
 
 val createRuntimeImage =
     tasks.register<CreateRuntimeImageTask>("createRuntimeImage") {

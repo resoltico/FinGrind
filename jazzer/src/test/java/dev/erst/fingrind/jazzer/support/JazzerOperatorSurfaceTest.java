@@ -29,6 +29,8 @@ class JazzerOperatorSurfaceTest {
     expectedScripts.add("fuzz-all");
     expectedScripts.add("replay");
     expectedScripts.add("list-findings");
+    expectedScripts.add("promote-seed");
+    expectedScripts.add("seed-audit");
     expectedScripts.add("clean-local-findings");
     expectedScripts.add("clean-local-corpus");
     for (JazzerRunTarget target : JazzerRunTarget.values()) {
@@ -52,6 +54,8 @@ class JazzerOperatorSurfaceTest {
     assertTrue(readme.contains("jazzer/bin/test"));
     assertTrue(readme.contains("jazzer/bin/regression"));
     assertTrue(readme.contains("jazzer/bin/check"));
+    assertTrue(readme.contains("jazzer/bin/promote-seed"));
+    assertTrue(readme.contains("jazzer/bin/seed-audit"));
     assertTrue(readme.contains("repo-wide verification lock"));
     assertFalse(readme.contains("./gradlew -p jazzer test"));
     assertFalse(readme.contains("./gradlew -p jazzer jazzerRegression"));

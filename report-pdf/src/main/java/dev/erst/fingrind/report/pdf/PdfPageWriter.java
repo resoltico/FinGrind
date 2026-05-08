@@ -1,7 +1,6 @@
 package dev.erst.fingrind.report.pdf;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -17,7 +16,6 @@ final class PdfPageWriter implements AutoCloseable {
   private final PDDocument document;
   private final PdfFonts fonts;
   private final String reportTitle;
-  private final String bookFilePath;
   private final Instant generatedAt;
   private final String preparedBy;
   private final PDRectangle currentPageSize;
@@ -31,7 +29,6 @@ final class PdfPageWriter implements AutoCloseable {
       PdfFonts fonts,
       PageOrientation orientation,
       String reportTitle,
-      Path bookFilePath,
       Instant generatedAt,
       String preparedBy)
       throws IOException {
@@ -39,8 +36,6 @@ final class PdfPageWriter implements AutoCloseable {
     this.fonts = Objects.requireNonNull(fonts, "fonts");
     Objects.requireNonNull(orientation, "orientation");
     this.reportTitle = Objects.requireNonNull(reportTitle, "reportTitle");
-    this.bookFilePath =
-        PdfValueFormatter.absolutePath(Objects.requireNonNull(bookFilePath, "bookFilePath"));
     this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt");
     this.preparedBy = Objects.requireNonNull(preparedBy, "preparedBy");
     this.currentPageSize = orientation.pageSize();
@@ -122,13 +117,6 @@ final class PdfPageWriter implements AutoCloseable {
         PdfReportTheme.PAGE_MARGIN,
         cursorY);
     cursorY -= PdfReportTheme.LINE_HEIGHT + 2f;
-    drawText(
-        "Book: " + bookFilePath,
-        fonts.regular(),
-        PdfReportTheme.HEADER_META_SIZE,
-        PdfReportTheme.PAGE_MARGIN,
-        cursorY);
-    cursorY -= PdfReportTheme.LINE_HEIGHT;
     drawText(
         "Generated: " + generatedAt,
         fonts.regular(),
@@ -225,15 +213,16 @@ final class PdfPageWriter implements AutoCloseable {
       throws IOException {
     float y = rowTop - PdfReportTheme.CELL_PADDING;
     for (String line : lines) {
-      float x =
-          switch (alignment) {
-            case LEFT -> cellX + PdfReportTheme.CELL_PADDING;
-            case RIGHT ->
-                cellX
-                    + cellWidth
-                    - PdfReportTheme.CELL_PADDING
-                    - stringWidth(line, font, PdfReportTheme.SMALL_FONT_SIZE);
-          };
+      float x;
+      if (alignment == PdfTableColumn.CellAlignment.LEFT) {
+        x = cellX + PdfReportTheme.CELL_PADDING;
+      } else {
+        x =
+            cellX
+                + cellWidth
+                - PdfReportTheme.CELL_PADDING
+                - stringWidth(line, font, PdfReportTheme.SMALL_FONT_SIZE);
+      }
       drawText(line, font, PdfReportTheme.SMALL_FONT_SIZE, x, y);
       y -= PdfReportTheme.LINE_HEIGHT;
     }

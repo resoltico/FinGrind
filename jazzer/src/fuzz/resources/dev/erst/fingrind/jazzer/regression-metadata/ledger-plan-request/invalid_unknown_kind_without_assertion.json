@@ -1,6 +1,7 @@
 {
   "targetKey": "ledger-plan-request",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/invalid_unknown_kind_without_assertion.json",
+  "coverageIntent": "unknown kind rejection without assertion fallthrough",
   "expectation": {
     "outcomeKind": "expected-invalid",
     "message": "Unsupported value for kind: post_entry. Accepted values: open-book, declare-account, preflight-entry, post-entry, inspect-book, list-accounts, get-posting, list-postings, account-balance, assert.",

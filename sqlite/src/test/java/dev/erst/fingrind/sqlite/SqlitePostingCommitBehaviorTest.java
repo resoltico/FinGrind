@@ -5,51 +5,46 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.executor.PostingCommitResult;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void commit_returnsUnknownAndInactiveAccountOutcomes() {
     Path databasePath = tempDirectory.resolve("account-rejections.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
-
       assertEquals(
           rejected(
               accountStateViolations(
-                  new PostingRejection.UnknownAccount(new AccountCode("1000")),
-                  new PostingRejection.UnknownAccount(new AccountCode("2000")))),
-          postingFactStore.commit(
+                  new BookkeepingPostingRejection.UnknownAccount(new AccountCode("1000")),
+                  new BookkeepingPostingRejection.UnknownAccount(new AccountCode("2000")))),
+          commitPosting(
+              postingFactStore,
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
-
       declareDefaultAccounts(postingFactStore);
       deactivateAccount(databasePath, "1000");
-
       assertEquals(
           rejected(
               accountStateViolations(
-                  new PostingRejection.InactiveAccount(new AccountCode("1000")))),
-          postingFactStore.commit(
+                  new BookkeepingPostingRejection.InactiveAccount(new AccountCode("1000")))),
+          commitPosting(
+              postingFactStore,
               postingFact("posting-2", "idem-2", Optional.empty(), Optional.empty())));
     }
   }
@@ -59,12 +54,12 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
     CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
-          new PostingCommitResult.Committed(postingFact), postingFactStore.commit(postingFact));
+          new PostingCommitResult.Committed(postingFact),
+          commitPosting(postingFactStore, postingFact));
       assertEquals(
           Optional.of(postingFact),
           postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")));
@@ -85,13 +80,11 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
             "idem-2",
             Optional.of(new ReversalReference(new PostingId("posting-1"))),
             Optional.of(new ReversalReason("full reversal")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(originalFact);
-      postingFactStore.commit(reversalFact);
-
+      commitPosting(postingFactStore, originalFact);
+      commitPosting(postingFactStore, reversalFact);
       assertEquals(
           Optional.of(reversalFact),
           postingFactStore.findExistingPosting(new IdempotencyKey("idem-2")));
@@ -103,15 +96,14 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     Path databasePath = tempDirectory.resolve("fingrind.sqlite");
     CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(postingFact);
-
+      commitPosting(postingFactStore, postingFact);
       assertEquals(
-          rejected(new PostingRejection.DuplicateIdempotencyKey()),
-          postingFactStore.commit(
+          rejected(new BookkeepingPostingRejection.DuplicateIdempotencyKey()),
+          commitPosting(
+              postingFactStore,
               postingFact("posting-2", "idem-1", Optional.empty(), Optional.empty())));
     }
   }
@@ -133,16 +125,15 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
             "idem-3",
             Optional.of(new ReversalReference(new PostingId("posting-1"))),
             Optional.of(new ReversalReason("another full reversal")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(originalFact);
-      postingFactStore.commit(firstReversal);
-
+      commitPosting(postingFactStore, originalFact);
+      commitPosting(postingFactStore, firstReversal);
       assertEquals(
-          rejected(new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
-          postingFactStore.commit(secondReversal));
+          rejected(
+              new BookkeepingPostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+          commitPosting(postingFactStore, secondReversal));
       assertEquals(
           Optional.of(firstReversal), postingFactStore.findReversalFor(new PostingId("posting-1")));
     }
@@ -151,22 +142,21 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commit_throwsWhenPostingIdAlreadyExistsWithDifferentIdempotencyKey() {
     Path databasePath = tempDirectory.resolve("duplicate-posting-id.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(
-          postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
-
+      commitPosting(
+          postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.commit(
+                  commitPosting(
+                      postingFactStore,
                       postingFact("posting-1", "idem-2", Optional.empty(), Optional.empty())));
-
-      assertTrue(exception.getMessage().contains("Failed to commit SQLite posting fact."));
-      assertTrue(exception.getMessage().contains("PRIMARYKEY"));
+      assertTrue(
+          NullTestSupport.messageOf(exception).contains("Failed to commit SQLite posting fact."));
+      assertTrue(NullTestSupport.messageOf(exception).contains("PRIMARYKEY"));
     }
   }
 
@@ -179,13 +169,14 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
             "idem-2",
             Optional.of(new ReversalReference(new PostingId("posting-missing"))),
             Optional.of(new ReversalReason("operator reversal")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
-          rejected(new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
-          postingFactStore.commit(invalidReversalFact));
+          rejected(
+              new BookkeepingPostingRejection.ReversalTargetNotFound(
+                  new PostingId("posting-missing"))),
+          commitPosting(postingFactStore, invalidReversalFact));
     }
   }
 
@@ -196,7 +187,6 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     Path keyPath = tempDirectory.resolve("book-keys").resolve("entity.book-key");
     Files.createDirectories(keyPath.getParent());
     writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
             new BookAccess(
@@ -206,8 +196,8 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
-
-      assertTrue(exception.getMessage().contains("Failed to create SQLite book directory."));
+      assertTrue(
+          NullTestSupport.messageOf(exception).contains("Failed to create SQLite book directory."));
     }
   }
 
@@ -215,14 +205,12 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   void findByIdempotency_throwsWhenExistingBookFileIsNotSqlite() throws IOException {
     Path databasePath = tempDirectory.resolve("not-a-database.sqlite");
     Files.writeString(databasePath, "not sqlite", StandardCharsets.UTF_8);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
-
       assertProtectedBookVerificationFailure(exception);
     }
   }
@@ -231,15 +219,14 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   void findByIdempotency_throwsWhenBookPathPointsAtDirectory() throws IOException {
     Path databasePath = tempDirectory.resolve("book-directory");
     Files.createDirectories(databasePath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
-
-      assertTrue(exception.getMessage().contains("Failed to open SQLite book connection."));
+      assertTrue(
+          NullTestSupport.messageOf(exception).contains("Failed to open SQLite book connection."));
     }
   }
 
@@ -250,15 +237,15 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.commit(
+                  commitPosting(
+                      postingFactStore,
                       postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
-
-      assertTrue(exception.getMessage().contains("Failed to commit SQLite posting fact."));
+      assertTrue(
+          NullTestSupport.messageOf(exception).contains("Failed to commit SQLite posting fact."));
       setStoreDatabase(postingFactStore, null);
     }
   }
@@ -266,25 +253,23 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
   @Test
   void commit_primaryKeyConflictWithFirstReversalLeavesConstraintAsPrimaryFailure() {
     Path databasePath = tempDirectory.resolve("duplicate-posting-id-reversal.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(
-          postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
-
+      commitPosting(
+          postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.commit(
+                  commitPosting(
+                      postingFactStore,
                       postingFact(
                           "posting-1",
                           "idem-2",
                           Optional.of(new ReversalReference(new PostingId("posting-1"))),
                           Optional.of(new ReversalReason("full reversal")))));
-
-      assertTrue(exception.getMessage().contains("PRIMARYKEY"));
+      assertTrue(NullTestSupport.messageOf(exception).contains("PRIMARYKEY"));
     }
   }
 }

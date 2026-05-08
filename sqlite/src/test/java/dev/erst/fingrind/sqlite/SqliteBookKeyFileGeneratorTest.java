@@ -19,22 +19,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for {@link SqliteBookKeyFileGenerator}. */
-@NullUnmarked
 class SqliteBookKeyFileGeneratorTest {
   @TempDir Path tempDirectory;
 
   @Test
   void generate_publicFactoryCreatesSecureUtf8KeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("public-acme.book-key");
-
     SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
         SqliteBookKeyFileGenerator.generate(keyFile);
-
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertTrue(Files.isRegularFile(keyFile));
   }
@@ -42,10 +38,8 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_createsOneNewSecureUtf8KeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("keys").resolve("acme.book-key");
-
     SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
         SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
-
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertEquals("base64url-no-padding", generatedKeyFile.encoding());
     assertEquals(256, generatedKeyFile.entropyBits());
@@ -64,10 +58,8 @@ class SqliteBookKeyFileGeneratorTest {
     } else {
       assertEquals("owner-only-acl", generatedKeyFile.permissions());
     }
-
     String generatedSecret = Files.readString(keyFile, StandardCharsets.UTF_8);
     assertTrue(generatedSecret.matches("[A-Za-z0-9_-]{43}"));
-
     try (SqliteBookPassphrase passphrase = SqliteBookKeyFile.load(keyFile)) {
       assertEquals(
           generatedSecret.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
@@ -78,24 +70,22 @@ class SqliteBookKeyFileGeneratorTest {
   void generate_rejectsExistingKeyFiles() throws Exception {
     Path keyFile = tempDirectory.resolve("existing.book-key");
     SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class, () -> SqliteBookKeyFileGenerator.generate(keyFile));
-
-    assertTrue(exception.getMessage().contains("already exists and will not be overwritten"));
+    assertTrue(
+        NullTestSupport.messageOf(exception)
+            .contains("already exists and will not be overwritten"));
   }
 
   @Test
   void generate_customMaterializerFactoryReturnsAcceptedMetadataOnSuccess() throws Exception {
     Path keyFile = tempDirectory.resolve("custom-materializer.book-key");
-
     SqliteBookKeyFileGenerator.GeneratedKeyFile generatedKeyFile =
         SqliteBookKeyFileGenerator.generate(
             keyFile,
             deterministicRandom(),
             (normalizedPath, encodedPassphrase) -> Files.write(normalizedPath, encodedPassphrase));
-
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertTrue(Files.isRegularFile(keyFile));
   }
@@ -105,20 +95,19 @@ class SqliteBookKeyFileGeneratorTest {
     Path blockingParent = tempDirectory.resolve("blocking-parent");
     Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
     Path nestedKeyFile = blockingParent.resolve("entity.book-key");
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () -> SqliteBookKeyFileGenerator.generate(nestedKeyFile, deterministicRandom()));
-
-    assertTrue(exception.getMessage().contains("Failed to create the FinGrind book key file"));
+    assertTrue(
+        NullTestSupport.messageOf(exception)
+            .contains("Failed to create the FinGrind book key file"));
     assertFalse(Files.exists(nestedKeyFile));
   }
 
   @Test
   void generate_cleansUpCreatedKeyFileWhenMaterializationFails() throws Exception {
     Path keyFile = tempDirectory.resolve("cleanup.book-key");
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -130,9 +119,12 @@ class SqliteBookKeyFileGeneratorTest {
                       Files.write(normalizedPath, encodedPassphrase);
                       throw new IOException("simulated materialization failure");
                     }));
-
-    assertTrue(exception.getMessage().contains(keyFile.toAbsolutePath().normalize().toString()));
-    assertEquals("simulated materialization failure", exception.getCause().getMessage());
+    assertTrue(
+        NullTestSupport.messageOf(exception)
+            .contains(keyFile.toAbsolutePath().normalize().toString()));
+    assertEquals(
+        "simulated materialization failure",
+        NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
     assertFalse(Files.exists(keyFile));
   }
 
@@ -143,7 +135,6 @@ class SqliteBookKeyFileGeneratorTest {
             SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                 tempDirectory.resolve("ok.book-key")));
     assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.ensureParentDirectory(Path.of("/")));
-
     Path zipArchive = tempDirectory.resolve("zipfs-book-key.zip");
     try (FileSystem zipFileSystem =
         FileSystems.newFileSystem(
@@ -155,11 +146,9 @@ class SqliteBookKeyFileGeneratorTest {
                   SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                       zipFileSystem.getPath("/keys/acme.book-key")));
       assertTrue(
-          nonSecureFilesystemException
-              .getMessage()
+          NullTestSupport.messageOf(nonSecureFilesystemException)
               .contains("supports POSIX owner-only permissions or Windows owner-only ACLs"));
     }
-
     Path nonEmptyDirectory =
         Files.createDirectory(tempDirectory.resolve("non-empty-delete-target"));
     Files.writeString(nonEmptyDirectory.resolve("child.txt"), "keep", StandardCharsets.UTF_8);
@@ -174,7 +163,6 @@ class SqliteBookKeyFileGeneratorTest {
     assertEquals(
         List.of("deleting one partially created book-key path|DirectoryNotEmptyException"),
         cleanupReports);
-
     if (supportsPosix(tempDirectory)) {
       Path lockedDirectory = tempDirectory.resolve("locked");
       Files.createDirectory(lockedDirectory);
@@ -197,7 +185,6 @@ class SqliteBookKeyFileGeneratorTest {
   void generatedKeyFile_rejectsInvalidMetadata() throws Exception {
     Path directoryPath = Files.createDirectory(tempDirectory.resolve("book-key-directory"));
     Path absentPath = tempDirectory.resolve("absent.book-key");
-
     IllegalArgumentException directoryException =
         assertThrows(
             IllegalArgumentException.class,
@@ -205,13 +192,11 @@ class SqliteBookKeyFileGeneratorTest {
                 new SqliteBookKeyFileGenerator.GeneratedKeyFile(
                     directoryPath, "base64url-no-padding", 256, "0600"));
     assertEquals("bookKeyFilePath must identify a regular file.", directoryException.getMessage());
-
     IllegalArgumentException blankEncodingException =
         assertThrows(
             IllegalArgumentException.class,
             () -> new SqliteBookKeyFileGenerator.GeneratedKeyFile(absentPath, " ", 256, "0600"));
     assertEquals("encoding must not be blank.", blankEncodingException.getMessage());
-
     IllegalArgumentException nonPositiveEntropyException =
         assertThrows(
             IllegalArgumentException.class,
@@ -219,7 +204,6 @@ class SqliteBookKeyFileGeneratorTest {
                 new SqliteBookKeyFileGenerator.GeneratedKeyFile(
                     absentPath, "base64url-no-padding", 0, "0600"));
     assertEquals("entropyBits must be positive.", nonPositiveEntropyException.getMessage());
-
     IllegalArgumentException blankPermissionsException =
         assertThrows(
             IllegalArgumentException.class,

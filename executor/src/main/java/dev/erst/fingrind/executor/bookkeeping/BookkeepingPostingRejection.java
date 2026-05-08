@@ -26,7 +26,7 @@ public sealed interface BookkeepingPostingRejection
   record AccountStateViolations(List<AccountStateViolation> violations)
       implements BookkeepingPostingRejection {
     public AccountStateViolations {
-      violations = violations == null ? List.of() : List.copyOf(violations);
+      violations = List.copyOf(Objects.requireNonNull(violations, "violations"));
       if (violations.isEmpty()) {
         throw new IllegalArgumentException(
             "Posting account-state violations must contain at least one issue.");

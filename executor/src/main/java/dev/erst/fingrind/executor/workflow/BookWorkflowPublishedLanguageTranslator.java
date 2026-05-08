@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.workflow;
 import dev.erst.fingrind.contract.LedgerAssertion;
 import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.LedgerJournalEntry;
 import dev.erst.fingrind.contract.LedgerJournalStep;
 import dev.erst.fingrind.contract.LedgerPlan;
@@ -61,14 +62,18 @@ public final class BookWorkflowPublishedLanguageTranslator {
               toPublishedJournalStep(succeeded.descriptor()),
               succeeded.startedAt(),
               succeeded.finishedAt(),
-              succeeded.facts());
+              succeeded.facts().stream()
+                  .map(BookWorkflowPublishedLanguageTranslator::toPublished)
+                  .toList());
       case BookWorkflowJournalEntry.Rejected rejected ->
           new LedgerJournalEntry.Rejected(
               toPublishedStepId(rejected.stepId()),
               toPublishedJournalStep(rejected.descriptor()),
               rejected.startedAt(),
               rejected.finishedAt(),
-              rejected.facts(),
+              rejected.facts().stream()
+                  .map(BookWorkflowPublishedLanguageTranslator::toPublished)
+                  .toList(),
               toPublished(rejected.failure()));
       case BookWorkflowJournalEntry.AssertionFailed assertionFailed ->
           new LedgerJournalEntry.AssertionFailed(
@@ -76,7 +81,9 @@ public final class BookWorkflowPublishedLanguageTranslator {
               toPublishedJournalStep(assertionFailed.descriptor()),
               assertionFailed.startedAt(),
               assertionFailed.finishedAt(),
-              assertionFailed.facts(),
+              assertionFailed.facts().stream()
+                  .map(BookWorkflowPublishedLanguageTranslator::toPublished)
+                  .toList(),
               toPublished(assertionFailed.failure()));
     };
   }
@@ -94,7 +101,27 @@ public final class BookWorkflowPublishedLanguageTranslator {
 
   private static LedgerStepFailure toPublished(BookWorkflowFailure failure) {
     Objects.requireNonNull(failure, "failure");
-    return new LedgerStepFailure(failure.code(), failure.message(), failure.facts());
+    return new LedgerStepFailure(
+        failure.code(),
+        failure.message(),
+        failure.facts().stream()
+            .map(BookWorkflowPublishedLanguageTranslator::toPublished)
+            .toList());
+  }
+
+  private static LedgerFact toPublished(BookWorkflowFact fact) {
+    Objects.requireNonNull(fact, "fact");
+    return switch (fact) {
+      case BookWorkflowFact.Text text -> LedgerFact.text(text.name(), text.value());
+      case BookWorkflowFact.Flag flag -> LedgerFact.flag(flag.name(), flag.value());
+      case BookWorkflowFact.Count count -> LedgerFact.count(count.name(), count.value());
+      case BookWorkflowFact.Group group ->
+          LedgerFact.group(
+              group.name(),
+              group.facts().stream()
+                  .map(BookWorkflowPublishedLanguageTranslator::toPublished)
+                  .toList());
+    };
   }
 
   private static LedgerBoundaryPhase toPublishedBoundaryPhase(BookWorkflowBoundaryPhase phase) {

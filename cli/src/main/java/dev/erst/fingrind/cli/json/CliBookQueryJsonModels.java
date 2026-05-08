@@ -16,7 +16,8 @@ public interface CliBookQueryJsonModels {
       String accountName,
       String normalBalance,
       boolean active,
-      String declaredAt) {
+      String declaredAt)
+      implements CliSuccessPayload {
     public DeclaredAccountPayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
@@ -37,7 +38,8 @@ public interface CliBookQueryJsonModels {
       @Nullable String correlationId,
       String sourceChannel,
       @Nullable ReversalPayload reversal,
-      List<JournalLinePayload> lines) {
+      List<JournalLinePayload> lines)
+      implements CliSuccessPayload {
     public PostingPayload {
       postingId = requireText(postingId, "postingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
@@ -49,7 +51,7 @@ public interface CliBookQueryJsonModels {
       causationId = requireText(causationId, "causationId");
       correlationId = requireOptionalText(correlationId, "correlationId");
       sourceChannel = requireText(sourceChannel, "sourceChannel");
-      lines = copyList(lines);
+      lines = copyList(lines, "lines");
     }
   }
 
@@ -69,20 +71,22 @@ public interface CliBookQueryJsonModels {
     }
   }
 
-  record PostingListPayload(int limit, @Nullable String nextCursor, List<PostingPayload> postings) {
+  record PostingListPayload(int limit, @Nullable String nextCursor, List<PostingPayload> postings)
+      implements CliSuccessPayload {
     public PostingListPayload {
       requirePositive(limit, "limit");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
-      postings = copyList(postings);
+      postings = copyList(postings, "postings");
     }
   }
 
   record AccountListPayload(
-      int limit, @Nullable String nextCursor, List<DeclaredAccountPayload> accounts) {
+      int limit, @Nullable String nextCursor, List<DeclaredAccountPayload> accounts)
+      implements CliSuccessPayload {
     public AccountListPayload {
       requirePositive(limit, "limit");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
-      accounts = copyList(accounts);
+      accounts = copyList(accounts, "accounts");
     }
   }
 
@@ -94,7 +98,8 @@ public interface CliBookQueryJsonModels {
       String declaredAt,
       @Nullable String effectiveDateFrom,
       @Nullable String effectiveDateTo,
-      List<BalanceBucketPayload> balances) {
+      List<BalanceBucketPayload> balances)
+      implements CliSuccessPayload {
     public AccountBalancePayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
@@ -102,7 +107,7 @@ public interface CliBookQueryJsonModels {
       declaredAt = requireText(declaredAt, "declaredAt");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
-      balances = copyList(balances);
+      balances = copyList(balances, "balances");
     }
   }
 

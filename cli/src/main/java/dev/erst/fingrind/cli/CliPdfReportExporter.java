@@ -28,20 +28,20 @@ final class CliPdfReportExporter {
     this.fileOperations = Objects.requireNonNull(fileOperations, "fileOperations");
   }
 
-  void exportAccountBalance(Path outputPath, Path bookFilePath, AccountBalanceSnapshot snapshot) {
-    writePdf(outputPath, pdfReportService.renderAccountBalance(bookFilePath, snapshot));
+  void exportAccountBalance(Path outputPath, AccountBalanceSnapshot snapshot) {
+    writePdf(outputPath, pdfReportService.renderAccountBalance(snapshot));
   }
 
-  void exportTrialBalance(Path outputPath, Path bookFilePath, TrialBalanceReport report) {
-    writePdf(outputPath, pdfReportService.renderTrialBalance(bookFilePath, report));
+  void exportTrialBalance(Path outputPath, TrialBalanceReport report) {
+    writePdf(outputPath, pdfReportService.renderTrialBalance(report));
   }
 
-  void exportAccountLedger(Path outputPath, Path bookFilePath, AccountLedgerReport report) {
-    writePdf(outputPath, pdfReportService.renderAccountLedger(bookFilePath, report));
+  void exportAccountLedger(Path outputPath, AccountLedgerReport report) {
+    writePdf(outputPath, pdfReportService.renderAccountLedger(report));
   }
 
-  void exportPeriodSummary(Path outputPath, Path bookFilePath, PeriodSummaryReport report) {
-    writePdf(outputPath, pdfReportService.renderPeriodSummary(bookFilePath, report));
+  void exportPeriodSummary(Path outputPath, PeriodSummaryReport report) {
+    writePdf(outputPath, pdfReportService.renderPeriodSummary(report));
   }
 
   private void writePdf(Path outputPath, byte[] pdfBytes) {

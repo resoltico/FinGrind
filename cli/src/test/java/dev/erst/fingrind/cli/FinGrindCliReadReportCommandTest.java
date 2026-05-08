@@ -34,12 +34,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** End-to-end CLI tests for read and report commands. */
-@NullUnmarked
 class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
   @Test
   void run_executesHumanReadAndReportCommandsAgainstDefaultSqliteWorkflow() throws IOException {
@@ -52,7 +50,6 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
             "coverage-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
     Path bookFilePath = tempDirectory.resolve("coverage-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-
     assertEquals(
         0,
         cli(
@@ -99,7 +96,6 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   "--request-file",
                   declareRevenueFile.toString()
                 }));
-
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
@@ -119,7 +115,6 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
             .path("postingId")
             .stringValue();
-
     assertCommandOutputContains(
         new String[] {
           "inspect-book",
@@ -225,7 +220,6 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
   @Test
   void run_returnsExitCodeTwoForRejectedReportCommands() {
     RecordingReportWorkflow workflow = new RecordingReportWorkflow();
-
     assertEquals(
         2,
         cli(

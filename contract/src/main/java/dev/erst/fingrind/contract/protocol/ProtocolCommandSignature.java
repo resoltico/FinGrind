@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import java.util.Objects;
 
@@ -9,8 +10,8 @@ public record ProtocolCommandSignature(
   /** Validates one command-signature descriptor. */
   public ProtocolCommandSignature {
     displayLabel = requireText(displayLabel, "displayLabel");
-    aliases = copyList(aliases);
-    options = copyList(options);
+    aliases = ContractDescriptorValidation.copyList(aliases, "aliases");
+    options = ContractDescriptorValidation.copyList(options, "options");
     usage = requireText(usage, "usage");
   }
 
@@ -20,9 +21,5 @@ public record ProtocolCommandSignature(
       throw new IllegalArgumentException(fieldName + " must not be blank.");
     }
     return value;
-  }
-
-  private static <T> List<T> copyList(List<T> values) {
-    return values == null ? List.of() : List.copyOf(values);
   }
 }

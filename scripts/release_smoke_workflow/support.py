@@ -67,6 +67,13 @@ def require_string(container: dict[str, Any], key: str) -> str:
     return value
 
 
+def require_bool(container: dict[str, Any], key: str) -> bool:
+    value = container.get(key)
+    if not isinstance(value, bool):
+        raise ReleaseSmokeFailure(f"missing required boolean field: {key}")
+    return value
+
+
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise ReleaseSmokeFailure(message)

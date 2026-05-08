@@ -9,11 +9,10 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Covers status-dependent invariant checks on the environment SQLite descriptor. */
-@NullUnmarked
 class EnvironmentSqliteDescriptorTest {
   @Test
   void readyStatus_requiresRuntimeProvenanceLoadedFieldsAndNoRuntimeIssue() {
@@ -26,14 +25,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.READY,
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     null));
     assertEquals(
         "compileOptionsVerification must be VERIFIED when SQLite runtime status is READY.",
         readyWithoutVerifiedCompileOptions.getMessage());
-
     IllegalArgumentException missingProvenance =
         assertThrows(
             IllegalArgumentException.class,
@@ -42,14 +40,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.READY,
                     null,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     null));
     assertEquals(
         "runtimeProvenance is required when SQLite runtime status is READY.",
         missingProvenance.getMessage());
-
     IllegalArgumentException missingLibraryPath =
         assertThrows(
             IllegalArgumentException.class,
@@ -58,14 +55,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.READY,
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     null,
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     null));
     assertEquals(
         "loadedLibraryPath is required when SQLite runtime status is READY.",
         missingLibraryPath.getMessage());
-
     IllegalArgumentException missingLoadedVersionFields =
         assertThrows(
             IllegalArgumentException.class,
@@ -75,13 +71,12 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
-                    "2.3.3",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     null));
     assertEquals(
         "Loaded SQLite version, SQLite3MC version, and source id are required when SQLite runtime status is READY.",
         missingLoadedVersionFields.getMessage());
-
     IllegalArgumentException missingLoadedSqlite3mcVersion =
         assertThrows(
             IllegalArgumentException.class,
@@ -90,14 +85,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.READY,
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
+                    "3.53.1",
                     null,
                     ProtocolCatalog.requiredSqliteSourceId(),
                     null));
     assertEquals(
         "Loaded SQLite version, SQLite3MC version, and source id are required when SQLite runtime status is READY.",
         missingLoadedSqlite3mcVersion.getMessage());
-
     IllegalArgumentException missingLoadedSqliteSourceId =
         assertThrows(
             IllegalArgumentException.class,
@@ -106,14 +100,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.READY,
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     null,
                     null));
     assertEquals(
         "Loaded SQLite version, SQLite3MC version, and source id are required when SQLite runtime status is READY.",
         missingLoadedSqliteSourceId.getMessage());
-
     IllegalArgumentException readyWithRuntimeIssue =
         assertThrows(
             IllegalArgumentException.class,
@@ -122,8 +115,8 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.READY,
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     "unexpected"));
     assertEquals(
@@ -149,7 +142,6 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is UNAVAILABLE.",
         unavailableWithFailedCompileOptions.getMessage());
-
     IllegalArgumentException unavailableWithLoadedFields =
         assertThrows(
             IllegalArgumentException.class,
@@ -165,7 +157,6 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "Loaded SQLite provenance and version fields must be absent when SQLite runtime status is UNAVAILABLE.",
         unavailableWithLoadedFields.getMessage());
-
     IllegalArgumentException unavailableWithLoadedLibraryPath =
         assertThrows(
             IllegalArgumentException.class,
@@ -181,7 +172,6 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "Loaded SQLite provenance and version fields must be absent when SQLite runtime status is UNAVAILABLE.",
         unavailableWithLoadedLibraryPath.getMessage());
-
     IllegalArgumentException unavailableWithLoadedSqliteVersion =
         assertThrows(
             IllegalArgumentException.class,
@@ -190,14 +180,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.UNAVAILABLE,
                     null,
                     null,
-                    "3.53.0",
+                    "3.53.1",
                     null,
                     null,
                     "missing native library"));
     assertEquals(
         "Loaded SQLite provenance and version fields must be absent when SQLite runtime status is UNAVAILABLE.",
         unavailableWithLoadedSqliteVersion.getMessage());
-
     IllegalArgumentException unavailableWithLoadedSqlite3mcVersion =
         assertThrows(
             IllegalArgumentException.class,
@@ -207,13 +196,12 @@ class EnvironmentSqliteDescriptorTest {
                     null,
                     null,
                     null,
-                    "2.3.3",
+                    "2.3.4",
                     null,
                     "missing native library"));
     assertEquals(
         "Loaded SQLite provenance and version fields must be absent when SQLite runtime status is UNAVAILABLE.",
         unavailableWithLoadedSqlite3mcVersion.getMessage());
-
     IllegalArgumentException unavailableWithLoadedSqliteSourceId =
         assertThrows(
             IllegalArgumentException.class,
@@ -229,7 +217,6 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "Loaded SQLite provenance and version fields must be absent when SQLite runtime status is UNAVAILABLE.",
         unavailableWithLoadedSqliteSourceId.getMessage());
-
     IllegalArgumentException unavailableWithoutRuntimeIssue =
         assertThrows(
             IllegalArgumentException.class,
@@ -250,22 +237,24 @@ class EnvironmentSqliteDescriptorTest {
                     "FINGRIND_SQLITE_LIBRARY",
                     "fingrind.sqlite.bundle.home",
                     List.of("THREADSAFE=1", "SECURE_DELETE"),
-                    SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-                    "3.53.0",
-                    "2.3.3",
+                    List.of("USE_URI"),
+                    true,
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
-                    SqliteRuntimeStatus.UNAVAILABLE,
-                    null,
-                    SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-                    null,
-                    null,
-                    null,
-                    null,
-                    "missing native library"));
+                    EnvironmentSqliteDescriptor.runtime(
+                        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                        SqliteRuntimeStatus.UNAVAILABLE,
+                        null,
+                        SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "missing native library")));
     assertEquals(
         "runtimeTrustBasis must be absent when runtimeProvenance is absent.",
         trustBasisWithoutProvenance.getMessage());
-
     IllegalArgumentException mismatchedTrustBasis =
         assertThrows(
             IllegalArgumentException.class,
@@ -275,41 +264,46 @@ class EnvironmentSqliteDescriptorTest {
                     "FINGRIND_SQLITE_LIBRARY",
                     "fingrind.sqlite.bundle.home",
                     List.of("THREADSAFE=1", "SECURE_DELETE"),
-                    SqliteCompileOptionsVerificationStatus.VERIFIED,
-                    "3.53.0",
-                    "2.3.3",
+                    List.of("USE_URI"),
+                    true,
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
-                    SqliteRuntimeStatus.READY,
-                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                    SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
-                    "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
-                    ProtocolCatalog.requiredSqliteSourceId(),
-                    null));
+                    EnvironmentSqliteDescriptor.runtime(
+                        SqliteCompileOptionsVerificationStatus.VERIFIED,
+                        SqliteRuntimeStatus.READY,
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                        SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+                        "/tmp/libsqlite3.dylib",
+                        "3.53.1",
+                        "2.3.4",
+                        ProtocolCatalog.requiredSqliteSourceId(),
+                        null)));
     assertEquals(
         "runtimeTrustBasis must match runtimeProvenance source-checkout-managed.",
         mismatchedTrustBasis.getMessage());
-
     EnvironmentSqliteDescriptor descriptor =
         new EnvironmentSqliteDescriptor(
             SqliteLibraryMode.MANAGED_ONLY,
             "FINGRIND_SQLITE_LIBRARY",
             "fingrind.sqlite.bundle.home",
             List.of("THREADSAFE=1", "SECURE_DELETE"),
-            SqliteCompileOptionsVerificationStatus.VERIFIED,
-            "3.53.0",
-            "2.3.3",
+            List.of("USE_URI"),
+            true,
+            "3.53.1",
+            "2.3.4",
             ProtocolCatalog.requiredSqliteSourceId(),
-            SqliteRuntimeStatus.READY,
-            SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-            null,
-            "/tmp/libsqlite3.dylib",
-            "3.53.0",
-            "2.3.3",
-            ProtocolCatalog.requiredSqliteSourceId(),
-            null);
-    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, descriptor.runtimeTrustBasis());
+            EnvironmentSqliteDescriptor.runtime(
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntimeStatus.READY,
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                null,
+                "/tmp/libsqlite3.dylib",
+                "3.53.1",
+                "2.3.4",
+                ProtocolCatalog.requiredSqliteSourceId(),
+                null));
+    assertEquals(SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED, runtimeTrustBasis(descriptor));
   }
 
   @Test
@@ -330,7 +324,6 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "compileOptionsVerification must be NOT_VERIFIED when SQLite runtime status is FAILED.",
         failedWithVerifiedCompileOptions.getMessage());
-
     IllegalArgumentException missingProvenance =
         assertThrows(
             IllegalArgumentException.class,
@@ -346,7 +339,6 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "runtimeProvenance is required when SQLite runtime status is FAILED.",
         missingProvenance.getMessage());
-
     IllegalArgumentException missingLibraryPath =
         assertThrows(
             IllegalArgumentException.class,
@@ -362,7 +354,51 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "loadedLibraryPath is required when SQLite runtime status is FAILED.",
         missingLibraryPath.getMessage());
-
+    IllegalArgumentException failedWithLoadedSqliteVersion =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteRuntimeStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    "/tmp/libsqlite3.dylib",
+                    "3.53.1",
+                    null,
+                    null,
+                    "native bridge failed"));
+    assertEquals(
+        "Loaded SQLite version, SQLite3MC version, and source id must be absent when SQLite runtime status is FAILED.",
+        failedWithLoadedSqliteVersion.getMessage());
+    IllegalArgumentException failedWithLoadedSqlite3mcVersion =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteRuntimeStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    "/tmp/libsqlite3.dylib",
+                    null,
+                    "2.3.4",
+                    null,
+                    "native bridge failed"));
+    assertEquals(
+        "Loaded SQLite version, SQLite3MC version, and source id must be absent when SQLite runtime status is FAILED.",
+        failedWithLoadedSqlite3mcVersion.getMessage());
+    IllegalArgumentException failedWithLoadedSqliteSourceId =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                descriptor(
+                    SqliteRuntimeStatus.FAILED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    "/tmp/libsqlite3.dylib",
+                    null,
+                    null,
+                    ProtocolCatalog.requiredSqliteSourceId(),
+                    "native bridge failed"));
+    assertEquals(
+        "Loaded SQLite version, SQLite3MC version, and source id must be absent when SQLite runtime status is FAILED.",
+        failedWithLoadedSqliteSourceId.getMessage());
     IllegalArgumentException missingRuntimeIssue =
         assertThrows(
             IllegalArgumentException.class,
@@ -378,20 +414,18 @@ class EnvironmentSqliteDescriptorTest {
     assertEquals(
         "runtimeIssue is required when SQLite runtime status is FAILED.",
         missingRuntimeIssue.getMessage());
-
     EnvironmentSqliteDescriptor descriptor =
         descriptor(
             SqliteRuntimeStatus.FAILED,
             SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
             "/tmp/libsqlite3.dylib",
-            "3.53.0",
+            null,
             null,
             null,
             "native bridge failed");
-    assertEquals(SqliteRuntimeStatus.FAILED, descriptor.runtimeStatus());
-    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, descriptor.runtimeTrustBasis());
-    assertEquals("3.53.0", descriptor.loadedSqliteVersion());
-    assertEquals("native bridge failed", descriptor.runtimeIssue());
+    assertEquals(SqliteRuntimeStatus.FAILED, runtimeStatus(descriptor));
+    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, runtimeTrustBasis(descriptor));
+    assertEquals("native bridge failed", runtimeIssue(descriptor));
   }
 
   @Test
@@ -405,14 +439,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.INCOMPATIBLE,
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "compileOptionsVerification must not be VERIFIED when SQLite runtime status is INCOMPATIBLE.",
         incompatibleWithVerifiedCompileOptions.getMessage());
-
     IllegalArgumentException missingProvenance =
         assertThrows(
             IllegalArgumentException.class,
@@ -421,14 +454,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.INCOMPATIBLE,
                     null,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "runtimeProvenance is required when SQLite runtime status is INCOMPATIBLE.",
         missingProvenance.getMessage());
-
     IllegalArgumentException missingLoadedLibraryPath =
         assertThrows(
             IllegalArgumentException.class,
@@ -437,14 +469,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.INCOMPATIBLE,
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                     null,
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
         missingLoadedLibraryPath.getMessage());
-
     IllegalArgumentException missingLoadedSqliteVersion =
         assertThrows(
             IllegalArgumentException.class,
@@ -454,13 +485,12 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                     "/tmp/libsqlite3.dylib",
                     null,
-                    "2.3.3",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
         missingLoadedSqliteVersion.getMessage());
-
     IllegalArgumentException missingLoadedSqlite3mcVersion =
         assertThrows(
             IllegalArgumentException.class,
@@ -469,14 +499,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.INCOMPATIBLE,
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
+                    "3.53.1",
                     null,
                     ProtocolCatalog.requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
         missingLoadedSqlite3mcVersion.getMessage());
-
     IllegalArgumentException missingLoadedSqliteSourceId =
         assertThrows(
             IllegalArgumentException.class,
@@ -485,14 +514,13 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.INCOMPATIBLE,
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     null,
                     "source id mismatch"));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
         missingLoadedSqliteSourceId.getMessage());
-
     IllegalArgumentException missingRuntimeIssue =
         assertThrows(
             IllegalArgumentException.class,
@@ -501,38 +529,150 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeStatus.INCOMPATIBLE,
                     SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
                     "/tmp/libsqlite3.dylib",
-                    "3.53.0",
-                    "2.3.3",
+                    "3.53.1",
+                    "2.3.4",
                     ProtocolCatalog.requiredSqliteSourceId(),
                     null));
     assertEquals(
         "Loaded SQLite provenance, version, source id, and runtimeIssue are required when SQLite runtime status is INCOMPATIBLE.",
         missingRuntimeIssue.getMessage());
-
     EnvironmentSqliteDescriptor descriptor =
         descriptor(
             SqliteRuntimeStatus.INCOMPATIBLE,
             SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
             "/tmp/libsqlite3.dylib",
-            "3.53.0",
-            "2.3.3",
+            "3.53.1",
+            "2.3.4",
             "different-source-id",
             "source id mismatch");
-    assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, descriptor.runtimeStatus());
-    assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, descriptor.runtimeProvenance());
-    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, descriptor.runtimeTrustBasis());
-    assertEquals("different-source-id", descriptor.loadedSqliteSourceId());
-    assertEquals("source id mismatch", descriptor.runtimeIssue());
+    assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, runtimeStatus(descriptor));
+    assertEquals(SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED, runtimeProvenance(descriptor));
+    assertEquals(SqliteRuntimeTrustBasis.OPERATOR_TRUSTED, runtimeTrustBasis(descriptor));
+    assertEquals("different-source-id", loadedSqliteSourceId(descriptor));
+    assertEquals("source id mismatch", runtimeIssue(descriptor));
+  }
+
+  @Test
+  void explicitRuntimeStates_exposeStatusAndCompileVerification() {
+    EnvironmentSqliteDescriptor.ReadyRuntime ready =
+        new EnvironmentSqliteDescriptor.ReadyRuntime(
+            SqliteRuntimeProvenance.BUNDLE_MANAGED,
+            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+            "/tmp/libsqlite3.dylib",
+            "3.53.1",
+            "2.3.4",
+            ProtocolCatalog.requiredSqliteSourceId());
+    assertEquals(SqliteRuntimeStatus.READY, ready.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.VERIFIED, ready.compileOptionsVerification());
+
+    EnvironmentSqliteDescriptor.UnavailableRuntime unavailable =
+        new EnvironmentSqliteDescriptor.UnavailableRuntime("missing native library");
+    assertEquals(SqliteRuntimeStatus.UNAVAILABLE, unavailable.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+        unavailable.compileOptionsVerification());
+
+    EnvironmentSqliteDescriptor.FailedRuntime failed =
+        new EnvironmentSqliteDescriptor.FailedRuntime(
+            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+            SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+            "/tmp/libsqlite3.dylib",
+            "native bridge failed");
+    assertEquals(SqliteRuntimeStatus.FAILED, failed.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED, failed.compileOptionsVerification());
+
+    EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible =
+        new EnvironmentSqliteDescriptor.IncompatibleRuntime(
+            SqliteCompileOptionsVerificationStatus.FAILED,
+            SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+            SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+            "/tmp/libsqlite3.dylib",
+            "3.53.1",
+            "2.3.4",
+            "different-source-id",
+            "source id mismatch");
+    assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, incompatible.status());
+    assertEquals(
+        SqliteCompileOptionsVerificationStatus.FAILED, incompatible.compileOptionsVerification());
+  }
+
+  @Test
+  void incompatibleRuntime_rejectsVerifiedCompileOptions() {
+    IllegalArgumentException verifiedCompileOptions =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new EnvironmentSqliteDescriptor.IncompatibleRuntime(
+                    SqliteCompileOptionsVerificationStatus.VERIFIED,
+                    SqliteRuntimeProvenance.ENVIRONMENT_CONFIGURED,
+                    SqliteRuntimeTrustBasis.OPERATOR_TRUSTED,
+                    "/tmp/libsqlite3.dylib",
+                    "3.53.1",
+                    "2.3.4",
+                    "different-source-id",
+                    "source id mismatch"));
+    assertEquals(
+        "compileOptionsVerification must not be VERIFIED when SQLite runtime status is INCOMPATIBLE.",
+        verifiedCompileOptions.getMessage());
+  }
+
+  private static SqliteRuntimeStatus runtimeStatus(EnvironmentSqliteDescriptor descriptor) {
+    return descriptor.runtime().status();
+  }
+
+  private static @Nullable SqliteRuntimeProvenance runtimeProvenance(
+      EnvironmentSqliteDescriptor descriptor) {
+    return switch (descriptor.runtime()) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.runtimeProvenance();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed -> failed.runtimeProvenance();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.runtimeProvenance();
+      case EnvironmentSqliteDescriptor.UnavailableRuntime _ -> null;
+    };
+  }
+
+  private static @Nullable SqliteRuntimeTrustBasis runtimeTrustBasis(
+      EnvironmentSqliteDescriptor descriptor) {
+    return switch (descriptor.runtime()) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.runtimeTrustBasis();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed -> failed.runtimeTrustBasis();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.runtimeTrustBasis();
+      case EnvironmentSqliteDescriptor.UnavailableRuntime _ -> null;
+    };
+  }
+
+  private static @Nullable String loadedSqliteSourceId(EnvironmentSqliteDescriptor descriptor) {
+    return switch (descriptor.runtime()) {
+      case EnvironmentSqliteDescriptor.ReadyRuntime ready -> ready.loadedSqliteSourceId();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.loadedSqliteSourceId();
+      case EnvironmentSqliteDescriptor.FailedRuntime _,
+          EnvironmentSqliteDescriptor.UnavailableRuntime _ ->
+          null;
+    };
+  }
+
+  private static @Nullable String runtimeIssue(EnvironmentSqliteDescriptor descriptor) {
+    return switch (descriptor.runtime()) {
+      case EnvironmentSqliteDescriptor.UnavailableRuntime unavailable -> unavailable.runtimeIssue();
+      case EnvironmentSqliteDescriptor.FailedRuntime failed -> failed.runtimeIssue();
+      case EnvironmentSqliteDescriptor.IncompatibleRuntime incompatible ->
+          incompatible.runtimeIssue();
+      case EnvironmentSqliteDescriptor.ReadyRuntime _ -> null;
+    };
   }
 
   private static EnvironmentSqliteDescriptor descriptor(
       SqliteRuntimeStatus runtimeStatus,
-      SqliteRuntimeProvenance runtimeProvenance,
-      String loadedLibraryPath,
-      String loadedSqliteVersion,
-      String loadedSqlite3mcVersion,
-      String loadedSqliteSourceId,
-      String runtimeIssue) {
+      @Nullable SqliteRuntimeProvenance runtimeProvenance,
+      @Nullable String loadedLibraryPath,
+      @Nullable String loadedSqliteVersion,
+      @Nullable String loadedSqlite3mcVersion,
+      @Nullable String loadedSqliteSourceId,
+      @Nullable String runtimeIssue) {
     SqliteCompileOptionsVerificationStatus compileOptionsVerification =
         switch (runtimeStatus) {
           case READY -> SqliteCompileOptionsVerificationStatus.VERIFIED;
@@ -553,30 +693,33 @@ class EnvironmentSqliteDescriptorTest {
   private static EnvironmentSqliteDescriptor descriptor(
       SqliteCompileOptionsVerificationStatus compileOptionsVerification,
       SqliteRuntimeStatus runtimeStatus,
-      SqliteRuntimeProvenance runtimeProvenance,
-      String loadedLibraryPath,
-      String loadedSqliteVersion,
-      String loadedSqlite3mcVersion,
-      String loadedSqliteSourceId,
-      String runtimeIssue) {
+      @Nullable SqliteRuntimeProvenance runtimeProvenance,
+      @Nullable String loadedLibraryPath,
+      @Nullable String loadedSqliteVersion,
+      @Nullable String loadedSqlite3mcVersion,
+      @Nullable String loadedSqliteSourceId,
+      @Nullable String runtimeIssue) {
     return new EnvironmentSqliteDescriptor(
         SqliteLibraryMode.MANAGED_ONLY,
         "FINGRIND_SQLITE_LIBRARY",
         "fingrind.sqlite.bundle.home",
         List.of("THREADSAFE=1", "SECURE_DELETE"),
-        compileOptionsVerification,
-        "3.53.0",
-        "2.3.3",
+        List.of("USE_URI"),
+        true,
+        "3.53.1",
+        "2.3.4",
         ProtocolCatalog.requiredSqliteSourceId(),
-        runtimeStatus,
-        runtimeProvenance,
-        runtimeProvenance == null
-            ? null
-            : SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-        loadedLibraryPath,
-        loadedSqliteVersion,
-        loadedSqlite3mcVersion,
-        loadedSqliteSourceId,
-        runtimeIssue);
+        EnvironmentSqliteDescriptor.runtime(
+            compileOptionsVerification,
+            runtimeStatus,
+            runtimeProvenance,
+            runtimeProvenance == null
+                ? null
+                : SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
+            loadedLibraryPath,
+            loadedSqliteVersion,
+            loadedSqlite3mcVersion,
+            loadedSqliteSourceId,
+            runtimeIssue));
   }
 }

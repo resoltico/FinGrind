@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepStatus;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.LedgerPlanService;
-import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import java.util.List;
 import java.util.Objects;
 
@@ -45,7 +44,7 @@ public final class LedgerPlanFuzzAssertions {
                   bookSession,
                   CliFuzzFixtures.postingIdGenerator(input),
                   CliFuzzFixtures.fixedClock())
-              .execute(BookWorkflowPublishedLanguageTranslator.fromPublished(plan));
+              .execute(plan);
       return assertPlanResult(plan, result);
     }
   }

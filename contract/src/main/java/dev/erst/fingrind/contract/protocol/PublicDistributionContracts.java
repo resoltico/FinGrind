@@ -24,9 +24,9 @@ final class PublicDistributionContracts {
         JsonContractResourceSupport.loadObject(
             resourceStream, resourcePath, "public distribution contract");
     return PublicDistributionContract.fromWireValues(
-        JsonContractResourceSupport.optionalStringArray(
+        JsonContractResourceSupport.requireStringArray(
             document, PublicDistributionContract.SUPPORTED_BUNDLE_TARGETS_KEY),
-        JsonContractResourceSupport.optionalStringArray(
+        JsonContractResourceSupport.requireStringArray(
             document, PublicDistributionContract.UNSUPPORTED_BUNDLE_TARGETS_KEY));
   }
 

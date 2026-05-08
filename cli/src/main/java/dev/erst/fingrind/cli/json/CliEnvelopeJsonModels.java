@@ -6,13 +6,15 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import org.jspecify.annotations.Nullable;
 
 /** Envelope-level JSON records emitted by the CLI transport layer. */
 public interface CliEnvelopeJsonModels {
 
-  record SuccessEnvelope(ProtocolSuccessStatus status, Object payload) {
+  record SuccessEnvelope<T extends ProtocolSuccessPayload>(
+      ProtocolSuccessStatus status, T payload) {
     public SuccessEnvelope {
       status = requireValue(status, "status");
       payload = requireValue(payload, "payload");

@@ -25,12 +25,25 @@ import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.workflow.LedgerPlanAssertionEvaluator;
+import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests covering assertion-specific behavior in {@link LedgerPlanService}. */
 class LedgerPlanServiceAssertionTest {
+  private static final BookStore REJECTED_LOOKUP_BOOK_STORE =
+      new LedgerPlanServiceTestSupport.DelegatingAtomicBookStore() {
+        @Override
+        public BookLifecycleInspection inspectBook() {
+          return new BookLifecycleInspection.Missing(1);
+        }
+      };
+
   @Test
   void execute_rollsBackOnAssertionFailure() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
@@ -54,7 +67,7 @@ class LedgerPlanServiceAssertionTest {
       assertEquals("cash", result.journal().steps().get(1).stepId().value());
       assertEquals("missing-posting", result.journal().steps().get(2).stepId().value());
       assertEquals("assertion-failed", result.journal().steps().getLast().requiredFailure().code());
-      assertFalse(bookSession.isInitialized());
+      assertFalse(bookSession.inspectBook().initialized());
     }
   }
 
@@ -158,5 +171,88 @@ class LedgerPlanServiceAssertionTest {
           amountMismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
               .anyMatch(fact -> textFact(fact, "actualNetAmount", "10")));
     }
+  }
+
+  @Test
+  void execute_routesLifecycleRejectionsThroughAssertionLookupVariants() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      var accountDeclaredResult =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-assert-account-declared-rejected"),
+                      List.of(
+                          new LedgerStep.Assert(
+                              stepId("assert-account-declared"),
+                              new LedgerAssertion.AccountDeclared(new AccountCode("1000"))))));
+      assertEquals(LedgerPlanStatus.REJECTED, accountDeclaredResult.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          accountDeclaredResult.journal().steps().getLast().requiredFailure().code());
+
+      var accountActiveResult =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-assert-account-active-rejected"),
+                      List.of(
+                          new LedgerStep.Assert(
+                              stepId("assert-account-active"),
+                              new LedgerAssertion.AccountActive(new AccountCode("1000"))))));
+      assertEquals(LedgerPlanStatus.REJECTED, accountActiveResult.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          accountActiveResult.journal().steps().getLast().requiredFailure().code());
+
+      var postingExistsResult =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-assert-posting-exists-rejected"),
+                      List.of(
+                          new LedgerStep.Assert(
+                              stepId("assert-posting-exists"),
+                              new LedgerAssertion.PostingExists(new PostingId("posting-1"))))));
+      assertEquals(LedgerPlanStatus.REJECTED, postingExistsResult.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          postingExistsResult.journal().steps().getLast().requiredFailure().code());
+    }
+  }
+
+  @Test
+  void evaluate_routesLifecycleRejectionsThroughLookupAssertionsDirectly() {
+    BookkeepingReadService rejectedReadService =
+        new BookkeepingReadService(REJECTED_LOOKUP_BOOK_STORE);
+
+    assertEquals(
+        BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+        ((LedgerPlanStepOutcome.Rejected)
+                LedgerPlanAssertionEvaluator.evaluate(
+                    rejectedReadService,
+                    new dev.erst.fingrind.executor.workflow.BookWorkflowAssertion.AccountDeclared(
+                        new AccountCode("1000"))))
+            .failure()
+            .code());
+
+    assertEquals(
+        BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+        ((LedgerPlanStepOutcome.Rejected)
+                LedgerPlanAssertionEvaluator.evaluate(
+                    rejectedReadService,
+                    new dev.erst.fingrind.executor.workflow.BookWorkflowAssertion.AccountActive(
+                        new AccountCode("1000"))))
+            .failure()
+            .code());
+
+    assertEquals(
+        BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+        ((LedgerPlanStepOutcome.Rejected)
+                LedgerPlanAssertionEvaluator.evaluate(
+                    rejectedReadService,
+                    new dev.erst.fingrind.executor.workflow.BookWorkflowAssertion.PostingExists(
+                        new PostingId("posting-1"))))
+            .failure()
+            .code());
   }
 }

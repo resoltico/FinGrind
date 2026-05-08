@@ -18,13 +18,29 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.BookAdministrationSession;
-import dev.erst.fingrind.executor.BookReadSession;
-import dev.erst.fingrind.executor.PostingBookSession;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
+import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -208,17 +224,32 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
-    public BookAdministrationSession administrationSession() {
+    public BookLifecycleInspection inspectBook() {
+      return new BookLifecycleInspection.Initialized(
+          7, 1, 1, CliFuzzFixtures.fixedClock().instant());
+    }
+
+    @Override
+    public BookOpeningOutcome openBook(Instant initializedAt) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public PostingBookSession postingSession() {
+    public AccountDeclarationOutcome declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public BookReadSession readSession() {
+    public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PostingHistoryPage listPostings(PostingHistoryQuery query) {
       throw new UnsupportedOperationException();
     }
 
@@ -229,6 +260,42 @@ final class SqliteRoundTripWorkflowTestSupport {
 
     @Override
     public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<CommittedPosting> findPosting(PostingId postingId) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public AccountLedgerView accountLedger(AccountLedgerCriteria query, RegisteredAccount account) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PostingCommitResult commit(
+        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       throw new UnsupportedOperationException();
     }
 

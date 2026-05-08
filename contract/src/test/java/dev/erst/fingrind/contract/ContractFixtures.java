@@ -66,17 +66,20 @@ final class ContractFixtures {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
-            SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+            ProtocolCatalog.forbiddenSqliteCompileOptions(),
+            ProtocolCatalog.requiresSecureMemorySupport(),
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            SqliteRuntimeStatus.UNAVAILABLE,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            "test fixture"));
+            EnvironmentSqliteDescriptor.runtime(
+                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
+                SqliteRuntimeStatus.UNAVAILABLE,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test fixture")));
   }
 }

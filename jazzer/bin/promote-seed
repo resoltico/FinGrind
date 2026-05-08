@@ -1,0 +1,130 @@
+#!/bin/bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+readonly usage='Usage: jazzer/bin/promote-seed <target-key> <input-path> --name <seed-name> --intent <coverage-intent> [--json] [supported Gradle options]'
+
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/promote-seed <target-key> <input-path> --name <seed-name> --intent <coverage-intent> [--json] [supported Gradle options]
+
+Promotes one ad hoc raw input into the committed Jazzer regression floor.
+
+Notes:
+  <seed-name> must use lower_snake_case ASCII letters, digits, and underscores.
+  <coverage-intent> must describe one committed behavior or invariant uniquely across the corpus.
+EOF
+    fg_print_replayable_target_key_help_block
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+
+if [[ $# -lt 2 ]]; then
+    printf '%s\n' "${usage}" >&2
+    exit 1
+fi
+
+target_key=$1
+input_path=$2
+shift 2
+
+seed_name=''
+coverage_intent=''
+json_output=false
+for argument in "$@"; do
+    if [[ "${argument}" == "--json" ]]; then
+        json_output=true
+        break
+    fi
+done
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --name)
+            [[ $# -ge 2 ]] || {
+                fg_fail_wrapper_command \
+                    "${json_output}" \
+                    "promote-seed" \
+                    "${usage}" \
+                    "Missing seed name after --name"
+            }
+            seed_name=$2
+            shift 2
+            ;;
+        --intent)
+            [[ $# -ge 2 ]] || {
+                fg_fail_wrapper_command \
+                    "${json_output}" \
+                    "promote-seed" \
+                    "${usage}" \
+                    "Missing coverage intent after --intent"
+            }
+            coverage_intent=$2
+            shift 2
+            ;;
+        --json)
+            json_output=true
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+fg_initialize_wrapper "$0"
+
+validation_message=''
+if ! validation_message="$(fg_require_replayable_target_key "${target_key}" 2>&1 1>/dev/null)"; then
+    fg_fail_wrapper_command \
+        "${json_output}" \
+        "promote-seed" \
+        "${usage}" \
+        "${validation_message}" \
+        "$(fg_replayable_target_keys_shell_json)"
+fi
+if ! input_path="$(fg_require_existing_regular_file_path "${input_path}" "Seed promotion input path" 2>&1)"; then
+    fg_fail_wrapper_command \
+        "${json_output}" \
+        "promote-seed" \
+        "${usage}" \
+        "${input_path}"
+fi
+
+if [[ -z "${seed_name}" ]]; then
+    fg_fail_wrapper_command \
+        "${json_output}" \
+        "promote-seed" \
+        "${usage}" \
+        "Missing required promote-seed option: --name"
+fi
+if [[ -z "${coverage_intent}" ]]; then
+    fg_fail_wrapper_command \
+        "${json_output}" \
+        "promote-seed" \
+        "${usage}" \
+        "Missing required promote-seed option: --intent"
+fi
+if ! seed_name="$(fg_require_seed_name "${seed_name}" 2>&1)"; then
+    fg_fail_wrapper_command \
+        "${json_output}" \
+        "promote-seed" \
+        "${usage}" \
+        "${seed_name}"
+fi
+
+gradle_args=(
+    "-PjazzerTarget=${target_key}"
+    "-PjazzerInput=${input_path}"
+    "-PjazzerSeedName=${seed_name}"
+    "-PjazzerSeedIntent=${coverage_intent}"
+)
+if [[ "${json_output}" == "true" ]]; then
+    gradle_args+=("-PjazzerJsonOutput=true")
+    fg_run_machine_json_command "jazzerPromoteSeed" "${gradle_args[@]}" "$@"
+    exit 0
+fi
+fg_run_maintenance_command "jazzerPromoteSeed" "${gradle_args[@]}" "$@"

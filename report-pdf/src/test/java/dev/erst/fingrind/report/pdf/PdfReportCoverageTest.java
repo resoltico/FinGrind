@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -38,8 +37,6 @@ class PdfReportCoverageTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final Instant GENERATED_AT = Instant.now(CLOCK);
-  private static final Path BOOK_PATH =
-      Path.of("/tmp/Rīga büro/2026 Q2 close/Ops & Sales [April] #1.sqlite");
 
   @Test
   void renderTrialBalanceWrapsFontLoadingIoFailures() {
@@ -48,7 +45,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -56,7 +53,7 @@ class PdfReportCoverageTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> service.renderTrialBalance(BOOK_PATH, sampleTrialBalanceReport()));
+            () -> service.renderTrialBalance(sampleTrialBalanceReport()));
 
     assertEquals("Failed to render Trial Balance PDF.", exception.getMessage());
     assertInstanceOf(IOException.class, exception.getCause());
@@ -64,14 +61,12 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.32.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.33.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () ->
-                factory.create(
-                    "Trial Balance", BOOK_PATH, GENERATED_AT, PageOrientation.LANDSCAPE));
+            () -> factory.create("Trial Balance", GENERATED_AT, PageOrientation.LANDSCAPE));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage()).contains("Missing bundled font resource"));
@@ -80,8 +75,7 @@ class PdfReportCoverageTest {
   @Test
   void documentSessionAggregatesCloseFailuresAndRemainsIdempotent() throws IOException {
     try (PdfDocumentFactory.DocumentSession backingSession =
-            standardFactory()
-                .create("Trial Balance", BOOK_PATH, GENERATED_AT, PageOrientation.PORTRAIT);
+            standardFactory().create("Trial Balance", GENERATED_AT, PageOrientation.PORTRAIT);
         PdfDocumentFactory.DocumentSession session =
             new PdfDocumentFactory.DocumentSession(
                 backingSession.pageWriter(),
@@ -105,8 +99,7 @@ class PdfReportCoverageTest {
   @Test
   void documentSessionPropagatesDocumentCloseFailureWhenWriterCloseSucceeds() throws IOException {
     try (PdfDocumentFactory.DocumentSession backingSession =
-            standardFactory()
-                .create("Trial Balance", BOOK_PATH, GENERATED_AT, PageOrientation.PORTRAIT);
+            standardFactory().create("Trial Balance", GENERATED_AT, PageOrientation.PORTRAIT);
         PdfDocumentFactory.DocumentSession session =
             new PdfDocumentFactory.DocumentSession(
                 backingSession.pageWriter(),
@@ -126,8 +119,7 @@ class PdfReportCoverageTest {
   @Test
   void pageWriterHandlesBlankCellsBrokenWordsAndKeyValuePagination() throws IOException {
     try (PdfDocumentFactory.DocumentSession session =
-        standardFactory()
-            .create("Coverage Cases", BOOK_PATH, GENERATED_AT, PageOrientation.PORTRAIT)) {
+        standardFactory().create("Coverage Cases", GENERATED_AT, PageOrientation.PORTRAIT)) {
       session
           .pageWriter()
           .writeTable(
@@ -170,7 +162,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.32.0");
+    return new PdfDocumentFactory("FinGrind", "0.33.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {

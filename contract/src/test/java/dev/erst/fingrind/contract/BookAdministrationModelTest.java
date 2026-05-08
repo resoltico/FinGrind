@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -8,11 +9,9 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for Phase 2 book-administration model records. */
-@NullUnmarked
 class BookAdministrationModelTest {
   @Test
   void declaredAccount_holdsItsPayload() {
@@ -23,7 +22,6 @@ class BookAdministrationModelTest {
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-
     assertEquals("1000", account.accountCode().value());
   }
 
@@ -31,12 +29,13 @@ class BookAdministrationModelTest {
   void declareAccountCommand_rejectsNullNormalBalance() {
     assertThrows(
         NullPointerException.class,
-        () -> new DeclareAccountCommand(new AccountCode("1000"), new AccountName("Cash"), null));
+        () ->
+            new DeclareAccountCommand(new AccountCode("1000"), new AccountName("Cash"), nullOf()));
   }
 
   @Test
   void openBookResultRejected_rejectsNullRejection() {
-    assertThrows(NullPointerException.class, () -> new OpenBookResult.Rejected(null));
+    assertThrows(NullPointerException.class, () -> new OpenBookResult.Rejected(nullOf()));
   }
 
   @Test
@@ -48,7 +47,7 @@ class BookAdministrationModelTest {
 
   @Test
   void declareAccountResultDeclared_rejectsNullAccount() {
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Declared(null));
+    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Declared(nullOf()));
   }
 
   @Test
@@ -62,11 +61,9 @@ class BookAdministrationModelTest {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T10:15:30Z"))));
-
     ListAccountsResult.Listed listed =
         new ListAccountsResult.Listed(new AccountPage(source, 50, java.util.Optional.empty()));
     source.clear();
-
     assertEquals(1, listed.page().accounts().size());
   }
 
@@ -76,6 +73,6 @@ class BookAdministrationModelTest {
         NullPointerException.class,
         () ->
             new BookAdministrationRejection.NormalBalanceConflict(
-                new AccountCode("1000"), NormalBalance.DEBIT, null));
+                new AccountCode("1000"), NormalBalance.DEBIT, nullOf()));
   }
 }

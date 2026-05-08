@@ -41,6 +41,8 @@ class JazzerCliTest {
     assertTrue(errors.toString().contains("Commands:"));
     assertTrue(errors.toString().contains("replay"));
     assertTrue(errors.toString().contains("list-findings"));
+    assertTrue(errors.toString().contains("promote-seed"));
+    assertTrue(errors.toString().contains("seed-audit"));
   }
 
   @Test
@@ -98,7 +100,55 @@ class JazzerCliTest {
     }
 
     assertTrue(mainOutput.toString(UTF_8).contains("Commands:"));
+    assertTrue(mainOutput.toString(UTF_8).contains("promote-seed"));
     assertTrue(mainErrors.toString(UTF_8).isBlank());
+  }
+
+  @Test
+  void instanceRun_writes_wrapper_exit_status_and_skips_exit_handler_when_managed()
+      throws Exception {
+    AtomicInteger exitCode = new AtomicInteger(-1);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ByteArrayOutputStream errors = new ByteArrayOutputStream();
+    Path exitStatusFile = projectDirectory.resolve("wrapper-exit-status.txt");
+    String previousProperty = System.getProperty("fingrind.jazzer.wrapper.exit-status-file");
+
+    System.setProperty("fingrind.jazzer.wrapper.exit-status-file", exitStatusFile.toString());
+    try {
+      new JazzerCli(projectDirectory, output, errors, exitCode::set).run(new String[] {"replay"});
+    } finally {
+      if (previousProperty == null) {
+        System.clearProperty("fingrind.jazzer.wrapper.exit-status-file");
+      } else {
+        System.setProperty("fingrind.jazzer.wrapper.exit-status-file", previousProperty);
+      }
+    }
+
+    assertEquals(-1, exitCode.get());
+    assertEquals("1", Files.readString(exitStatusFile, UTF_8).trim());
+    assertTrue(errors.toString(UTF_8).contains("Missing required target key."));
+  }
+
+  @Test
+  void instanceRun_treats_blank_wrapper_exit_status_property_as_unmanaged() throws Exception {
+    AtomicInteger exitCode = new AtomicInteger(-1);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ByteArrayOutputStream errors = new ByteArrayOutputStream();
+    String previousProperty = System.getProperty("fingrind.jazzer.wrapper.exit-status-file");
+
+    System.setProperty("fingrind.jazzer.wrapper.exit-status-file", "   ");
+    try {
+      new JazzerCli(projectDirectory, output, errors, exitCode::set).run(new String[] {"replay"});
+    } finally {
+      if (previousProperty == null) {
+        System.clearProperty("fingrind.jazzer.wrapper.exit-status-file");
+      } else {
+        System.setProperty("fingrind.jazzer.wrapper.exit-status-file", previousProperty);
+      }
+    }
+
+    assertEquals(1, exitCode.get());
+    assertTrue(errors.toString(UTF_8).contains("Missing required target key."));
   }
 
   @Test
@@ -303,24 +353,30 @@ class JazzerCliTest {
       assertTrue(missingTargetErrors.toString().contains("Missing required target key."));
 
       StringWriter flagOnlyErrors = new StringWriter();
+      StringWriter flagOnlyOutput = new StringWriter();
       int flagOnlyExitCode =
           JazzerCli.run(
               projectDirectory,
               new String[] {"replay", "--json"},
-              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(flagOnlyOutput, true),
               new PrintWriter(flagOnlyErrors, true));
       assertEquals(1, flagOnlyExitCode);
-      assertTrue(flagOnlyErrors.toString().contains("Missing required target key."));
+      assertTrue(flagOnlyOutput.toString().contains("\"status\" : \"error\""));
+      assertTrue(flagOnlyOutput.toString().contains("Missing required target key."));
+      assertTrue(flagOnlyErrors.toString().isBlank());
 
       StringWriter jsonBeforeInputErrors = new StringWriter();
+      StringWriter jsonBeforeInputOutput = new StringWriter();
       int jsonBeforeInputExitCode =
           JazzerCli.run(
               projectDirectory,
               new String[] {"replay", "cli-request", "--json"},
-              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(jsonBeforeInputOutput, true),
               new PrintWriter(jsonBeforeInputErrors, true));
       assertEquals(1, jsonBeforeInputExitCode);
-      assertTrue(jsonBeforeInputErrors.toString().contains("Missing required input path."));
+      assertTrue(jsonBeforeInputOutput.toString().contains("\"status\" : \"error\""));
+      assertTrue(jsonBeforeInputOutput.toString().contains("Missing required input path."));
+      assertTrue(jsonBeforeInputErrors.toString().isBlank());
 
       StringWriter unexpectedArgumentErrors = new StringWriter();
       int unexpectedArgumentExitCode =
@@ -334,15 +390,18 @@ class JazzerCliTest {
           unexpectedArgumentErrors.toString().contains("Unexpected replay argument: --bogus"));
 
       StringWriter unexpectedAfterJsonErrors = new StringWriter();
+      StringWriter unexpectedAfterJsonOutput = new StringWriter();
       int unexpectedAfterJsonExitCode =
           JazzerCli.run(
               projectDirectory,
               new String[] {"replay", "cli-request", inputPath.toString(), "--json", "extra"},
-              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(unexpectedAfterJsonOutput, true),
               new PrintWriter(unexpectedAfterJsonErrors, true));
       assertEquals(1, unexpectedAfterJsonExitCode);
+      assertTrue(unexpectedAfterJsonOutput.toString().contains("\"status\" : \"error\""));
       assertTrue(
-          unexpectedAfterJsonErrors.toString().contains("Unexpected replay argument: extra"));
+          unexpectedAfterJsonOutput.toString().contains("Unexpected replay argument: extra"));
+      assertTrue(unexpectedAfterJsonErrors.toString().isBlank());
     }
 
     @Test
@@ -554,17 +613,20 @@ class JazzerCliTest {
               .contains("Unexpected list-findings argument: --bogus"));
 
       StringWriter unexpectedAfterJsonErrors = new StringWriter();
+      StringWriter unexpectedAfterJsonOutput = new StringWriter();
       int unexpectedAfterJsonExitCode =
           JazzerCli.run(
               projectDirectory,
               new String[] {"list-findings", "cli-request", "--json", "extra"},
-              new PrintWriter(new StringWriter(), true),
+              new PrintWriter(unexpectedAfterJsonOutput, true),
               new PrintWriter(unexpectedAfterJsonErrors, true));
       assertEquals(1, unexpectedAfterJsonExitCode);
+      assertTrue(unexpectedAfterJsonOutput.toString().contains("\"status\" : \"error\""));
       assertTrue(
-          unexpectedAfterJsonErrors
+          unexpectedAfterJsonOutput
               .toString()
               .contains("Unexpected list-findings argument: extra"));
+      assertTrue(unexpectedAfterJsonErrors.toString().isBlank());
     }
   }
 

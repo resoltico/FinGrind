@@ -12,13 +12,10 @@ import dev.erst.fingrind.contract.ContractFailureException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void constructor_rejectsNonKeyFileAccessSelection() {
     ContractFailureException exception =
@@ -29,7 +26,6 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
                     new BookAccess(
                         tempDirectory.resolve("stdin-access.sqlite"),
                         BookAccess.PassphraseSource.StandardInput.INSTANCE)));
-
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.code(),
         exception.failure().code());
@@ -44,22 +40,19 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
     Path keyPath = tempDirectory.resolve("invalid-key-payload-store.key");
     writeSecureKeyFile(keyPath, TEST_BOOK_KEY);
     Files.write(keyPath, new byte[] {(byte) 0xFF});
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () ->
                 new SqlitePostingFactStore(
                     new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
-
-    assertTrue(exception.getMessage().contains("must contain a UTF-8 passphrase"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
   @Test
   void passphraseFor_loadsKeyFileBackedAccessSelection() throws Exception {
     Path keyFile = tempDirectory.resolve("book-passphrase.key");
     writeSecureKeyFile(keyFile, TEST_BOOK_KEY);
-
     try (SqliteBookPassphrase passphrase =
         SqlitePostingFactStore.passphraseDecisionFor(
                 new BookAccess(
@@ -75,15 +68,14 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
   void sessionReopensCleanlyAfterDatabaseStateReset() throws Exception {
     Path bookPath = tempDirectory.resolve("session-reopen.sqlite");
     initializeBookOnDisk(bookPath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
       try (SqliteNativeDatabase firstDatabase = requireStoreDatabase(postingFactStore)) {
         clearPublishedDatabaseState(postingFactStore);
         assertNotSame(firstDatabase, postingFactStore.activeNativeDatabase());
       }
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
 
@@ -91,20 +83,18 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
   void reusedSessionKeepsWorkingAfterStateResetForInitializationFlow() throws Exception {
     Path bookPath = tempDirectory.resolve("state-reset-initialization.sqlite");
     initializeBookOnDisk(bookPath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
             bookPath,
             SqliteBookPassphrase.fromCharacters(
                 "test session secret reuse", TEST_BOOK_KEY.toCharArray()),
             SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
       try (SqliteNativeDatabase firstDatabase = requireStoreDatabase(postingFactStore)) {
         assertDoesNotThrow(firstDatabase::handle);
         clearPublishedDatabaseState(postingFactStore);
       }
-
-      assertDoesNotThrow(postingFactStore::isInitialized);
+      assertDoesNotThrow(() -> postingFactStore.inspectBook());
     }
   }
 }

@@ -12,6 +12,7 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
   private final String loadedSourceId;
   private final String libraryMode;
   private final List<String> missingCompileOptions;
+  private final List<String> forbiddenCompileOptions;
 
   UnsupportedSqliteCompileOptionsException(
       String loadedSqliteVersion,
@@ -23,7 +24,8 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
         loadedSqlite3mcVersion,
         SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
         libraryMode,
-        missingCompileOptions);
+        missingCompileOptions,
+        List.of());
   }
 
   UnsupportedSqliteCompileOptionsException(
@@ -31,22 +33,27 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
       String loadedSqlite3mcVersion,
       String loadedSourceId,
       String libraryMode,
-      List<String> missingCompileOptions) {
+      List<String> missingCompileOptions,
+      List<String> forbiddenCompileOptions) {
     super(
         message(
             loadedSqliteVersion,
             loadedSqlite3mcVersion,
             loadedSourceId,
             libraryMode,
-            missingCompileOptions));
+            missingCompileOptions,
+            forbiddenCompileOptions));
     this.loadedSqliteVersion = requireText(loadedSqliteVersion, "loadedSqliteVersion");
     this.loadedSqlite3mcVersion = requireText(loadedSqlite3mcVersion, "loadedSqlite3mcVersion");
     this.loadedSourceId = requireText(loadedSourceId, "loadedSourceId");
     this.libraryMode = requireText(libraryMode, "libraryMode");
     this.missingCompileOptions =
-        missingCompileOptions == null ? List.of() : List.copyOf(missingCompileOptions);
-    if (this.missingCompileOptions.isEmpty()) {
-      throw new IllegalArgumentException("missingCompileOptions must not be empty.");
+        List.copyOf(Objects.requireNonNull(missingCompileOptions, "missingCompileOptions"));
+    this.forbiddenCompileOptions =
+        List.copyOf(Objects.requireNonNull(forbiddenCompileOptions, "forbiddenCompileOptions"));
+    if (this.missingCompileOptions.isEmpty() && this.forbiddenCompileOptions.isEmpty()) {
+      throw new IllegalArgumentException(
+          "At least one missing or forbidden compile option must be reported.");
     }
   }
 
@@ -70,14 +77,32 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
     return missingCompileOptions;
   }
 
+  public List<String> forbiddenCompileOptions() {
+    return forbiddenCompileOptions;
+  }
+
   private static String message(
       String loadedSqliteVersion,
       String loadedSqlite3mcVersion,
       String loadedSourceId,
       String libraryMode,
-      List<String> missingCompileOptions) {
-    List<String> compileOptions =
-        missingCompileOptions == null ? List.of() : List.copyOf(missingCompileOptions);
+      List<String> missingCompileOptions,
+      List<String> forbiddenCompileOptions) {
+    List<String> missingOptions =
+        List.copyOf(Objects.requireNonNull(missingCompileOptions, "missingCompileOptions"));
+    List<String> forbiddenOptions =
+        List.copyOf(Objects.requireNonNull(forbiddenCompileOptions, "forbiddenCompileOptions"));
+    String detail =
+        java.util.stream.Stream.of(
+                missingOptions.isEmpty()
+                    ? null
+                    : "missing required compile options: " + String.join(", ", missingOptions),
+                forbiddenOptions.isEmpty()
+                    ? null
+                    : "forbidden compile options were present: "
+                        + String.join(", ", forbiddenOptions))
+            .filter(Objects::nonNull)
+            .collect(java.util.stream.Collectors.joining("; "));
     return "SQLite "
         + loadedSqliteVersion
         + " / SQLite3 Multiple Ciphers "
@@ -86,8 +111,8 @@ public final class UnsupportedSqliteCompileOptionsException extends IllegalState
         + loadedSourceId
         + " in "
         + libraryMode
-        + " is missing required compile options: "
-        + String.join(", ", compileOptions);
+        + " violated the FinGrind compile-option contract: "
+        + detail;
   }
 
   private static String requireText(String value, String fieldName) {

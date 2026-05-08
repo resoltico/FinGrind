@@ -27,7 +27,7 @@ class SqliteFuzzAssertionsTest {
 
     try (SqliteBookSession store = SqliteFuzzAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
-          CliFuzzFixtures.administrationService(store.administrationSession());
+          CliFuzzFixtures.administrationService(store);
       CliFuzzFixtures.openBook(administrationService);
       java.util.List<DeclaredAccount> accounts =
           CliFuzzFixtures.declarePostingAccounts(administrationService, command);

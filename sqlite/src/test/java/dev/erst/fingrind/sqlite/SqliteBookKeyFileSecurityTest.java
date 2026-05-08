@@ -9,46 +9,53 @@ import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for platform-specific key-file security branches. */
-@NullUnmarked
 class SqliteBookKeyFileSecurityTest {
-
   @Test
   void aclFilesystemBranchesUseOwnerOnlyAclDescriptorsAndGeneration() throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath keyPath = fileSystem.path("\\keys\\acme.book-key");
       AclFixturePath parentPath = fileSystem.path("\\keys");
-
       assertEquals(
           "owner-only-acl", SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
       SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
-
       assertTrue(keyPath.exists);
       assertTrue(keyPath.regularFile);
       assertTrue(parentPath.exists);
       assertFalse(parentPath.regularFile);
-      assertEquals(1, parentPath.aclView.getAcl().size());
-      assertEquals(fileSystem.owner, parentPath.aclView.getAcl().getFirst().principal());
+      assertEquals(1, Objects.requireNonNull(parentPath.aclView).getAcl().size());
+      assertEquals(
+          fileSystem.owner,
+          Objects.requireNonNull(parentPath.aclView).getAcl().getFirst().principal());
       assertTrue(
-          parentPath
-              .aclView
+          Objects.requireNonNull(parentPath.aclView)
               .getAcl()
               .getFirst()
               .permissions()
               .contains(AclEntryPermission.LIST_DIRECTORY));
-      assertEquals(1, keyPath.aclView.getAcl().size());
-      assertEquals(fileSystem.owner, keyPath.aclView.getAcl().getFirst().principal());
+      assertEquals(1, Objects.requireNonNull(keyPath.aclView).getAcl().size());
+      assertEquals(
+          fileSystem.owner,
+          Objects.requireNonNull(keyPath.aclView).getAcl().getFirst().principal());
       assertTrue(
-          keyPath.aclView.getAcl().getFirst().permissions().contains(AclEntryPermission.READ_DATA));
+          Objects.requireNonNull(keyPath.aclView)
+              .getAcl()
+              .getFirst()
+              .permissions()
+              .contains(AclEntryPermission.READ_DATA));
       assertTrue(
-          keyPath.aclView.getAcl().getFirst().permissions().contains(AclEntryPermission.DELETE));
+          Objects.requireNonNull(keyPath.aclView)
+              .getAcl()
+              .getFirst()
+              .permissions()
+              .contains(AclEntryPermission.DELETE));
     }
   }
 
@@ -57,13 +64,11 @@ class SqliteBookKeyFileSecurityTest {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath keyPath = fileSystem.path("\\keys\\acme.book-key");
       AclFixturePath parentPath = fileSystem.path("\\keys");
-
       assertEquals("0600", SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
       SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
-
       assertTrue(keyPath.exists);
       assertTrue(keyPath.regularFile);
       assertTrue(parentPath.exists);
@@ -95,16 +100,13 @@ class SqliteBookKeyFileSecurityTest {
       ownerUnreadable.exists = true;
       ownerUnreadable.regularFile = true;
       ownerUnreadable.posixPermissions = Set.of(PosixFilePermission.OWNER_WRITE);
-
       IllegalStateException ownerUnreadableException =
           assertThrows(
               IllegalStateException.class,
               () ->
                   SqliteBookKeyFileSecurity.requireSecureKeyFile(ownerUnreadable)
                       .requireAccepted());
-
-      assertTrue(ownerUnreadableException.getMessage().contains("owner-readable"));
-
+      assertTrue(NullTestSupport.messageOf(ownerUnreadableException).contains("owner-readable"));
       AclFixturePath groupReadable = fileSystem.path("\\keys\\group-readable.book-key");
       groupReadable.exists = true;
       groupReadable.regularFile = true;
@@ -113,14 +115,13 @@ class SqliteBookKeyFileSecurityTest {
               PosixFilePermission.OWNER_READ,
               PosixFilePermission.OWNER_WRITE,
               PosixFilePermission.GROUP_READ);
-
       IllegalStateException groupReadableException =
           assertThrows(
               IllegalStateException.class,
               () ->
                   SqliteBookKeyFileSecurity.requireSecureKeyFile(groupReadable).requireAccepted());
-
-      assertTrue(groupReadableException.getMessage().contains("owner-only permissions"));
+      assertTrue(
+          NullTestSupport.messageOf(groupReadableException).contains("owner-only permissions"));
     }
   }
 
@@ -142,14 +143,13 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
       assertTrue(
-          exception.getMessage().contains("parent directory must use owner-only permissions"));
+          NullTestSupport.messageOf(exception)
+              .contains("parent directory must use owner-only permissions"));
     }
   }
 
@@ -166,13 +166,13 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
-      assertTrue(exception.getMessage().contains("parent directory must be owner-searchable"));
+      assertTrue(
+          NullTestSupport.messageOf(exception)
+              .contains("parent directory must be owner-searchable"));
     }
   }
 
@@ -183,38 +183,37 @@ class SqliteBookKeyFileSecurityTest {
       AclFixturePath keyPath = fileSystem.path("\\keys\\shared-parent.book-key");
       parentPath.exists = true;
       parentPath.regularFile = false;
-      parentPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
-                  .build(),
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.group)
-                  .setPermissions(AclEntryPermission.LIST_DIRECTORY)
-                  .build()));
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .build(),
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
       keyPath.exists = true;
       keyPath.regularFile = true;
-      keyPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.READ_DATA)
-                  .build()));
-
+      Objects.requireNonNull(keyPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.READ_DATA)
+                      .build()));
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
       assertTrue(
-          exception
-              .getMessage()
+          NullTestSupport.messageOf(exception)
               .contains("parent directory ACL must grant secret-directory access only"));
-      assertTrue(exception.getMessage().contains(fileSystem.group.getName()));
+      assertTrue(NullTestSupport.messageOf(exception).contains(fileSystem.group.getName()));
     }
   }
 
@@ -225,31 +224,30 @@ class SqliteBookKeyFileSecurityTest {
       AclFixturePath keyPath = fileSystem.path("\\keys\\non-traversable-parent.book-key");
       parentPath.exists = true;
       parentPath.regularFile = false;
-      parentPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.LIST_DIRECTORY)
-                  .build()));
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build()));
       keyPath.exists = true;
       keyPath.regularFile = true;
-      keyPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.READ_DATA)
-                  .build()));
-
+      Objects.requireNonNull(keyPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.READ_DATA)
+                      .build()));
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
       assertTrue(
-          exception
-              .getMessage()
+          NullTestSupport.messageOf(exception)
               .contains("parent directory ACL must grant the directory owner traversal access"));
     }
   }
@@ -261,33 +259,34 @@ class SqliteBookKeyFileSecurityTest {
       AclFixturePath keyPath = fileSystem.path("\\keys\\deny-entry-owner-only.book-key");
       parentPath.exists = true;
       parentPath.regularFile = false;
-      parentPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.DENY)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.DELETE_CHILD)
-                  .build(),
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.DENY)
-                  .setPrincipal(fileSystem.group)
-                  .setPermissions(AclEntryPermission.LIST_DIRECTORY)
-                  .build(),
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
-                  .build()));
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.DENY)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.DELETE_CHILD)
+                      .build(),
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.DENY)
+                      .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY)
+                      .build(),
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .build()));
       keyPath.exists = true;
       keyPath.regularFile = true;
-      keyPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.READ_DATA)
-                  .build()));
-
+      Objects.requireNonNull(keyPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.READ_DATA)
+                      .build()));
       assertEquals(
           keyPath, SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
@@ -301,13 +300,13 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-
       IllegalArgumentException exception =
           assertThrows(
               IllegalArgumentException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
-      assertTrue(exception.getMessage().contains("resolve beneath an existing parent directory"));
+      assertTrue(
+          NullTestSupport.messageOf(exception)
+              .contains("resolve beneath an existing parent directory"));
     }
   }
 
@@ -322,13 +321,13 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-
       IllegalArgumentException exception =
           assertThrows(
               IllegalArgumentException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
-      assertTrue(exception.getMessage().contains("resolve beneath an existing parent directory"));
+      assertTrue(
+          NullTestSupport.messageOf(exception)
+              .contains("resolve beneath an existing parent directory"));
     }
   }
 
@@ -338,7 +337,6 @@ class SqliteBookKeyFileSecurityTest {
       AclFixturePath keyPath = fileSystem.path("\\keys\\unsupported.book-key");
       keyPath.exists = true;
       keyPath.regularFile = true;
-
       assertThrows(
           IllegalArgumentException.class,
           () -> SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
@@ -357,9 +355,7 @@ class SqliteBookKeyFileSecurityTest {
       AclFixturePath filePath = fileSystem.path("\\keys\\not-a-directory");
       filePath.exists = true;
       filePath.regularFile = true;
-
       SqliteBookKeyFileSecurity.hardenDirectory(filePath);
-
       assertTrue(filePath.exists);
       assertTrue(filePath.regularFile);
     }
@@ -371,24 +367,24 @@ class SqliteBookKeyFileSecurityTest {
       AclFixturePath parentPath = fileSystem.path("\\keys");
       parentPath.exists = true;
       parentPath.regularFile = false;
-      parentPath.aclView.setAcl(
-          java.util.List.of(
-              AclEntry.newBuilder()
-                  .setType(AclEntryType.ALLOW)
-                  .setPrincipal(fileSystem.owner)
-                  .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
-                  .build()));
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .build()));
       AclFixturePath keyPath = fileSystem.path("\\keys\\missing-view.book-key");
       keyPath.exists = true;
       keyPath.regularFile = true;
       keyPath.aclView = null;
-
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-
-      assertTrue(exception.getMessage().contains("supports POSIX owner-only permissions"));
+      assertTrue(
+          NullTestSupport.messageOf(exception).contains("supports POSIX owner-only permissions"));
     }
   }
 }

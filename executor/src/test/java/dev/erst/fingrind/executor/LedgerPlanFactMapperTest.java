@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.LedgerFact;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
@@ -32,6 +31,8 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTransl
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
+import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -57,30 +58,30 @@ class LedgerPlanFactMapperTest {
                     reversalPosting.provenance().recordedAt(),
                     reversalPosting.postingId())));
 
-    List<LedgerFact> facts = LedgerPlanFactMapper.postingPageFacts(page);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingPageFacts(page);
 
     assertTrue(
         facts.stream()
             .anyMatch(
                 fact ->
-                    fact instanceof LedgerFact.Text text
+                    fact instanceof BookWorkflowFact.Text text
                         && "nextCursor".equals(text.name())
                         && page.nextCursor().orElseThrow().wireValue().equals(text.value())));
     assertTrue(
         facts.stream()
             .anyMatch(
                 fact ->
-                    fact instanceof LedgerFact.Group group
+                    fact instanceof BookWorkflowFact.Group group
                         && "posting".equals(group.name())
                         && group.facts().stream()
                             .anyMatch(
                                 child ->
-                                    child instanceof LedgerFact.Group reversal
+                                    child instanceof BookWorkflowFact.Group reversal
                                         && "reversal".equals(reversal.name())
                                         && reversal.facts().stream()
                                             .anyMatch(
                                                 nested ->
-                                                    nested instanceof LedgerFact.Text text
+                                                    nested instanceof BookWorkflowFact.Text text
                                                         && "reason".equals(text.name())
                                                         && "operator reversal"
                                                             .equals(text.value())))));
@@ -103,14 +104,14 @@ class LedgerPlanFactMapperTest {
                 new CurrencyBalance(
                     money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
 
-    List<LedgerFact> facts = LedgerPlanFactMapper.balanceFacts(snapshot);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.balanceFacts(snapshot);
 
     assertEquals(
         1,
         facts.stream()
             .filter(
                 fact ->
-                    fact instanceof LedgerFact.Text text
+                    fact instanceof BookWorkflowFact.Text text
                         && "effectiveDateFrom".equals(text.name())
                         && "2026-04-01".equals(text.value()))
             .count());
@@ -119,7 +120,7 @@ class LedgerPlanFactMapperTest {
         facts.stream()
             .filter(
                 fact ->
-                    fact instanceof LedgerFact.Text text
+                    fact instanceof BookWorkflowFact.Text text
                         && "effectiveDateTo".equals(text.name())
                         && "2026-04-30".equals(text.value()))
             .count());

@@ -21,16 +21,13 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Integration tests for the low-level SQLite FFM bridge failure paths. */
-@NullUnmarked
 class SqliteNativeInteropTest {
   private static final String TEST_BOOK_KEY = "interop-test-book-key";
-
   @TempDir Path tempDirectory;
 
   @Test
@@ -39,21 +36,45 @@ class SqliteNativeInteropTest {
       MemorySegment sqlPointer = arena.allocateFrom("select 1");
       MemorySegment statementPointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment textPointer = arena.allocateFrom("x");
-
-      assertBridgeFailure(() -> SqliteNativeConnections.close(null, SqliteNativeBootstrap.api()));
       assertBridgeFailure(
           () ->
-              SqliteNativeStatements.executeScript(null, sqlPointer, SqliteNativeBootstrap.api()));
+              SqliteNativeConnections.close(
+                  NullTestSupport.nullOf(MemorySegment.class), SqliteNativeBootstrap.api()));
       assertBridgeFailure(
-          () -> SqliteNativeStatements.prepareStatement(null, sqlPointer, statementPointer));
-      assertBridgeFailure(() -> SqliteNativeStatements.bindNull(null, 1));
-      assertBridgeFailure(() -> SqliteNativeStatements.bindInt(null, 1, 7));
-      assertBridgeFailure(() -> SqliteNativeStatements.bindText(null, 1, textPointer, 1));
-      assertBridgeFailure(() -> SqliteNativeStatements.step(null, null));
-      assertBridgeFailure(() -> SqliteNativeStatements.finalizeStatement(null));
-      assertBridgeFailure(() -> SqliteNativeStatements.columnText(null, 0));
-      assertBridgeFailure(() -> SqliteNativeStatements.columnInt(null, 0));
-      assertBridgeFailure(() -> SqliteNativeStatements.extendedErrorCode(null));
+          () ->
+              SqliteNativeStatements.executeScript(
+                  NullTestSupport.nullOf(MemorySegment.class),
+                  sqlPointer,
+                  SqliteNativeBootstrap.api()));
+      assertBridgeFailure(
+          () ->
+              SqliteNativeStatements.prepareStatement(
+                  NullTestSupport.nullOf(MemorySegment.class), sqlPointer, statementPointer));
+      assertBridgeFailure(
+          () -> SqliteNativeStatements.bindNull(NullTestSupport.nullOf(MemorySegment.class), 1));
+      assertBridgeFailure(
+          () -> SqliteNativeStatements.bindInt(NullTestSupport.nullOf(MemorySegment.class), 1, 7));
+      assertBridgeFailure(
+          () ->
+              SqliteNativeStatements.bindText(
+                  NullTestSupport.nullOf(MemorySegment.class), 1, textPointer, 1));
+      assertBridgeFailure(
+          () ->
+              SqliteNativeStatements.step(
+                  NullTestSupport.nullOf(MemorySegment.class),
+                  NullTestSupport.nullOf(MemorySegment.class)));
+      assertBridgeFailure(
+          () ->
+              SqliteNativeStatements.finalizeStatement(
+                  NullTestSupport.nullOf(MemorySegment.class)));
+      assertBridgeFailure(
+          () -> SqliteNativeStatements.columnText(NullTestSupport.nullOf(MemorySegment.class), 0));
+      assertBridgeFailure(
+          () -> SqliteNativeStatements.columnInt(NullTestSupport.nullOf(MemorySegment.class), 0));
+      assertBridgeFailure(
+          () ->
+              SqliteNativeStatements.extendedErrorCode(
+                  NullTestSupport.nullOf(MemorySegment.class)));
     }
   }
 
@@ -62,7 +83,6 @@ class SqliteNativeInteropTest {
     try (SqliteNativeDatabase database =
         SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("interop.sqlite")))) {
       database.executeStatement("create table sample (id integer primary key)");
-
       try (Arena arena = Arena.ofConfined()) {
         MemorySegment sqlPointer = arena.allocateFrom("select from");
         MemorySegment statementPointer = arena.allocate(ValueLayout.ADDRESS);
@@ -72,11 +92,9 @@ class SqliteNativeInteropTest {
                 SqliteNativeStatements.prepareStatement(
                     database.handle(), sqlPointer, statementPointer));
       }
-
       try (SqliteNativeStatement statement =
           SqliteNativeStatements.prepare(database, "insert into sample (id) values (?)")) {
         MemorySegment statementHandle = statement.handle();
-
         try (Arena arena = Arena.ofConfined()) {
           MemorySegment textPointer = arena.allocateFrom("x");
           assertThrows(
@@ -90,11 +108,11 @@ class SqliteNativeInteropTest {
               () -> SqliteNativeStatements.bindText(statementHandle, 0, textPointer, 1));
         }
       }
-
       assertThrows(
           SqliteNativeException.class, () -> new SqliteNativeStatement(database, "select from"));
-      assertThrows(NullPointerException.class, () -> new SqliteNativeStatement(database, null));
-
+      assertThrows(
+          NullPointerException.class,
+          () -> new SqliteNativeStatement(database, NullTestSupport.nullOf(String.class)));
       database.executeStatement("insert into sample (id) values (1)");
       try (SqliteNativeStatement duplicateInsert =
           SqliteNativeStatements.prepare(database, "insert into sample (id) values (1)")) {
@@ -123,7 +141,6 @@ class SqliteNativeInteropTest {
                       create table sample (id integer primary key);
                       create table broken (
                       """));
-
       assertEquals(1, exception.resultCode());
       assertEquals("SQLITE_ERROR", exception.resultName());
     }
@@ -135,7 +152,6 @@ class SqliteNativeInteropTest {
         SqliteNativeConnections.open(bookAccess(tempDirectory.resolve("row-producing.sqlite")))) {
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, () -> database.executeStatement("select 1"));
-
       assertEquals(
           "SQLite control statement must not produce rows: select 1", exception.getMessage());
     }
@@ -155,7 +171,6 @@ class SqliteNativeInteropTest {
         assertEquals(SqliteNativeResultCodes.ROW, missingPrior.step());
         assertEquals(PostingLineage.direct(), SqlitePostingMapper.readPostingLineage(missingPrior));
       }
-
       try (SqliteNativeStatement missingPriorForWrapper =
           SqliteNativeStatements.prepare(
               database,
@@ -168,7 +183,6 @@ class SqliteNativeInteropTest {
             java.util.Optional.empty(),
             SqlitePostingMapper.readReversalReference(missingPriorForWrapper));
       }
-
       try (SqliteNativeStatement presentPriorPostingId =
           SqliteNativeStatements.prepare(
               database,
@@ -184,7 +198,6 @@ class SqliteNativeInteropTest {
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
             SqlitePostingMapper.readPostingLineage(presentPriorPostingId));
       }
-
       try (SqliteNativeStatement missingReason =
           SqliteNativeStatements.prepare(
               database,
@@ -201,7 +214,6 @@ class SqliteNativeInteropTest {
             "Persisted posting lineage is inconsistent: reversal reference and reason must be present together.",
             exception.getMessage());
       }
-
       try (SqliteNativeStatement missingPriorPostingId =
           SqliteNativeStatements.prepare(
               database,
@@ -222,7 +234,7 @@ class SqliteNativeInteropTest {
   }
 
   @Test
-  void mapper_postingFactWrapperMatchesTheCommittedPostingTranslation() throws Exception {
+  void committedPosting_mapsToPublishedPostingAtTheBoundary() throws Exception {
     try (SqliteNativeDatabase database =
         SqliteNativeConnections.open(
             bookAccess(tempDirectory.resolve("posting-fact-wrapper.sqlite")))) {
@@ -245,7 +257,6 @@ class SqliteNativeInteropTest {
                   null
               """)) {
         assertEquals(SqliteNativeResultCodes.ROW, postingRow.step());
-
         List<JournalLine> lines =
             List.of(
                 new JournalLine(
@@ -256,11 +267,11 @@ class SqliteNativeInteropTest {
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
                     new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
-
         assertEquals(
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(SqlitePostingMapper.committedPosting(postingRow, lines)),
-            SqlitePostingMapper.postingFact(postingRow, lines));
+            dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
+                .toPublished(SqlitePostingMapper.committedPosting(postingRow, lines)));
       }
     }
   }
@@ -295,14 +306,12 @@ class SqliteNativeInteropTest {
     MethodHandle throwingStrlenHandle =
         MethodHandles.throwException(long.class, IllegalStateException.class)
             .bindTo(new IllegalStateException("boom"));
-
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment fakeHandle = arena.allocate(1);
       MemorySegment messagePointer = arena.allocateFrom("boom");
       MethodHandle messageHandle =
           MethodHandles.dropArguments(
               MethodHandles.constant(MemorySegment.class, messagePointer), 0, MemorySegment.class);
-
       assertEquals(4L, strlen(messagePointer));
       assertThrows(
           IllegalStateException.class,
@@ -325,14 +334,12 @@ class SqliteNativeInteropTest {
   void errorMessage_readsWholeCStringWithoutFixedTruncation() throws Throwable {
     String longMessage = "x".repeat(5_000);
     MethodHandle longMessageHandle;
-
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment fakeHandle = arena.allocate(1);
       MemorySegment messagePointer = arena.allocateFrom(longMessage);
       longMessageHandle =
           MethodHandles.dropArguments(
               MethodHandles.constant(MemorySegment.class, messagePointer), 0, MemorySegment.class);
-
       assertEquals(longMessage, SqliteNativeErrors.errorMessage(fakeHandle, longMessageHandle));
     }
   }
@@ -345,11 +352,9 @@ class SqliteNativeInteropTest {
                 .bindTo(new IllegalStateException("fallback should not run")),
             0,
             MemorySegment.class);
-
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment fakeHandle = arena.allocate(1);
       MemorySegment execErrorPointer = arena.allocateFrom("exec-owned failure");
-
       assertEquals(
           "exec-owned failure",
           SqliteNativeErrors.scriptErrorMessage(
@@ -367,7 +372,6 @@ class SqliteNativeInteropTest {
               MethodHandles.constant(MemorySegment.class, databaseErrorPointer),
               0,
               MemorySegment.class);
-
       assertEquals(
           "database failure",
           SqliteNativeErrors.scriptErrorMessage(
@@ -385,7 +389,6 @@ class SqliteNativeInteropTest {
               MethodHandles.constant(MemorySegment.class, databaseErrorPointer),
               0,
               MemorySegment.class);
-
       assertEquals(
           "database failure",
           SqliteNativeErrors.scriptErrorMessage(
@@ -401,10 +404,8 @@ class SqliteNativeInteropTest {
                 .bindTo(new IllegalStateException("boom")),
             0,
             MemorySegment.class);
-
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment pointer = arena.allocate(1);
-
       assertThrows(
           IllegalStateException.class,
           () -> SqliteNativeErrors.freeSqliteBuffer(pointer, throwingFreeHandle));

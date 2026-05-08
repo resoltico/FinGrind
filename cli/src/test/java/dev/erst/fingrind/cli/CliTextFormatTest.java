@@ -6,11 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliTextFormat}. */
-@NullUnmarked
 class CliTextFormatTest {
   @Test
   void renderers_escapeCsvAndNormalizeDisplayAmounts() {

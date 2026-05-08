@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -22,10 +21,12 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
@@ -35,6 +36,12 @@ import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -94,6 +101,22 @@ final class BookReadServiceTestSupport {
     return bookSession;
   }
 
+  static BookReadService readService(InMemoryBookSession bookSession) {
+    return new BookReadService(bookSession);
+  }
+
+  static BookkeepingReadService localReadService(InMemoryBookSession bookSession) {
+    return new BookkeepingReadService(bookSession);
+  }
+
+  static BookReadService readService(CountingFindAccountBookSession bookSession) {
+    return new BookReadService(bookSession);
+  }
+
+  static BookkeepingReadService localReadService(CountingFindAccountBookSession bookSession) {
+    return new BookkeepingReadService(bookSession);
+  }
+
   static void declareDefaultAccounts(InMemoryBookSession bookSession) {
     bookSession.declareAccount(
         CASH_ACCOUNT.accountCode(),
@@ -147,16 +170,32 @@ final class BookReadServiceTestSupport {
   }
 
   /** Counts account lookups so account-balance tests can assert the read seam stays single-read. */
-  static final class CountingFindAccountBookSession implements BookReadSession {
+  static final class CountingFindAccountBookSession implements BookStore {
     private final InMemoryBookSession delegate = new InMemoryBookSession();
     private int findAccountCalls;
 
-    private void openBook(Instant initializedAt) {
-      delegate.openBook(initializedAt);
+    @Override
+    public BookOpeningOutcome openBook(Instant initializedAt) {
+      return delegate.openBook(initializedAt);
     }
 
-    void commit(CommittedPosting postingFact) {
-      delegate.commit(postingFact);
+    @Override
+    public AccountDeclarationOutcome declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
+      return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+    }
+
+    @Override
+    public PostingCommitResult commit(
+        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      return delegate.commit(postingDraft, postingIdGenerator);
+    }
+
+    PostingCommitResult commit(CommittedPosting postingFact) {
+      return delegate.commit(postingFact);
     }
 
     InMemoryBookSession delegate() {
@@ -164,13 +203,8 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
-    public BookInspection inspectBook() {
+    public BookLifecycleInspection inspectBook() {
       return delegate.inspectBook();
-    }
-
-    @Override
-    public boolean isInitialized() {
-      return delegate.isInitialized();
     }
 
     @Override
@@ -185,8 +219,18 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
+    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+      return delegate.findExistingPosting(idempotencyKey);
+    }
+
+    @Override
     public Optional<CommittedPosting> findPosting(PostingId postingId) {
       return delegate.findPosting(postingId);
+    }
+
+    @Override
+    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+      return delegate.findReversalFor(priorPostingId);
     }
 
     @Override

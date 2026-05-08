@@ -11,10 +11,11 @@ import org.jspecify.annotations.Nullable;
 /** Report-oriented JSON records emitted by the CLI transport layer. */
 public interface CliReportJsonModels extends CliBookQueryJsonModels {
 
-  record TrialBalancePayload(@Nullable String effectiveDateTo, List<TrialBalanceRowPayload> rows) {
+  record TrialBalancePayload(@Nullable String effectiveDateTo, List<TrialBalanceRowPayload> rows)
+      implements CliSuccessPayload {
     public TrialBalancePayload {
       effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
-      rows = copyList(rows);
+      rows = copyList(rows, "rows");
     }
   }
 
@@ -52,7 +53,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       @Nullable String effectiveDateTo,
       List<BalanceBucketPayload> openingBalances,
       List<AccountLedgerEntryPayload> entries,
-      List<BalanceBucketPayload> closingBalances) {
+      List<BalanceBucketPayload> closingBalances)
+      implements CliSuccessPayload {
     public AccountLedgerPayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
@@ -60,9 +62,9 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       declaredAt = requireText(declaredAt, "declaredAt");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
-      openingBalances = copyList(openingBalances);
-      entries = copyList(entries);
-      closingBalances = copyList(closingBalances);
+      openingBalances = copyList(openingBalances, "openingBalances");
+      entries = copyList(entries, "entries");
+      closingBalances = copyList(closingBalances, "closingBalances");
     }
   }
 
@@ -85,7 +87,7 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       creditAmount = requireText(creditAmount, "creditAmount");
       runningBalance = requireText(runningBalance, "runningBalance");
       runningBalanceSide = requireText(runningBalanceSide, "runningBalanceSide");
-      counterpartAccounts = copyList(counterpartAccounts);
+      counterpartAccounts = copyList(counterpartAccounts, "counterpartAccounts");
     }
   }
 
@@ -96,15 +98,16 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
       int postingLineCount,
       int accountsTouched,
       List<BalanceBucketPayload> currencyTotals,
-      List<PeriodAccountActivityPayload> accountActivity) {
+      List<PeriodAccountActivityPayload> accountActivity)
+      implements CliSuccessPayload {
     public PeriodSummaryPayload {
       effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
       requireNonNegative(postingCount, "postingCount");
       requireNonNegative(postingLineCount, "postingLineCount");
       requireNonNegative(accountsTouched, "accountsTouched");
-      currencyTotals = copyList(currencyTotals);
-      accountActivity = copyList(accountActivity);
+      currencyTotals = copyList(currencyTotals, "currencyTotals");
+      accountActivity = copyList(accountActivity, "accountActivity");
     }
   }
 

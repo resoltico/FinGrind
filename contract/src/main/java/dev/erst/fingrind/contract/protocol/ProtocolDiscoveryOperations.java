@@ -20,9 +20,9 @@ final class ProtocolDiscoveryOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Print command usage, examples, and workflow guidance.",
             List.of(
-                "fingrind help post-entry",
-                "fingrind post-entry --help",
-                "fingrind help post-entry --output json")),
+                ProtocolExampleStep.command("fingrind help post-entry"),
+                ProtocolExampleStep.command("fingrind post-entry --help"),
+                ProtocolExampleStep.command("fingrind help post-entry --output json"))),
         ProtocolOperationDefinitions.operation(
             OperationId.VERSION,
             OperationCategory.DISCOVERY,
@@ -54,9 +54,11 @@ final class ProtocolDiscoveryOperations {
             ExecutionMode.RAW_JSON,
             "Print the canonical minimal posting request scaffold JSON document.",
             List.of(
-                "fingrind %s > request.json"
-                    .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName()),
-                "Edit request.json and replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value before submission.")),
+                ProtocolExampleStep.command(
+                    "fingrind %s > request.json"
+                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                ProtocolExampleStep.note(
+                    "Edit request.json and replace scaffold placeholders such as effectiveDate and every replace-before-commit-* provenance value before submission."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,
@@ -66,7 +68,10 @@ final class ProtocolDiscoveryOperations {
             ExecutionMode.RAW_JSON,
             "Print the canonical minimal AI-agent ledger plan scaffold JSON document.",
             List.of(
-                "fingrind %s > plan.json".formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName()),
-                "Edit plan.json and replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value before submission.")));
+                ProtocolExampleStep.command(
+                    "fingrind %s > plan.json"
+                        .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
+                ProtocolExampleStep.note(
+                    "Edit plan.json and replace scaffold placeholders such as effectiveDate and every nested replace-before-commit-* provenance value before submission."))));
   }
 }

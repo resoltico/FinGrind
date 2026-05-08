@@ -40,23 +40,18 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** Unit tests for {@link CliResponseWriter}. */
-@NullUnmarked
 class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
-
   @Test
   void writeQueryRejection_keepsJsonEnvelopeOutsideHumanMode() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-
     responseWriter.writeListAccountsResult(
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
         OutputMode.JSON);
-
     JsonNode json = readJson(outputStream);
     assertEquals("rejected", json.path("status").stringValue());
     assertEquals("query-book-not-initialized", json.path("code").stringValue());
@@ -66,11 +61,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   void writeQueryRejection_supportsHumanOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-
     responseWriter.writeListAccountsResult(
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
         OutputMode.HUMAN);
-
     String text = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(text.contains("Rejected"));
     assertTrue(text.contains("query-book-not-initialized"));
@@ -87,16 +80,13 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             "The book is not initialized.",
             null,
             null);
-
     outputChannel.writeQueryRejection(OutputMode.HUMAN, envelope);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
-
     outputStream.reset();
     outputChannel.writeQueryRejection(OutputMode.JSON, envelope);
     JsonNode json = readJson(outputStream);
     assertEquals("rejected", json.path("status").stringValue());
     assertEquals("query-book-not-initialized", json.path("code").stringValue());
-
     outputStream.reset();
     outputChannel.writeQueryRejection(OutputMode.CSV, envelope);
     json = readJson(outputStream);
@@ -123,7 +113,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                     money("EUR", "4.00"),
                     money("EUR", "6.00"),
                     BalanceSide.DEBIT)));
-
     ByteArrayOutputStream inspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
     inspectionWriter.writeBookInspection(
@@ -143,7 +132,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     getPostingRejectionWriter.writeGetPostingResult(
         new GetPostingResult.Rejected(
             new BookQueryRejection.PostingNotFound(new PostingId("posting-9"))));
-
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     CliResponseWriter listPostingsWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsOutput));
@@ -156,7 +144,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     listPostingsRejectionWriter.writeListPostingsResult(
         new ListPostingsResult.Rejected(
             new BookQueryRejection.UnknownAccount(new AccountCode("9999"))));
-
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     CliResponseWriter balanceWriter = new CliResponseWriter(utf8PrintStream(balanceOutput));
     balanceWriter.writeAccountBalanceResult(new AccountBalanceResult.Reported(balanceSnapshot));
@@ -165,7 +152,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         new CliResponseWriter(utf8PrintStream(balanceRejectionOutput));
     balanceRejectionWriter.writeAccountBalanceResult(
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()));
-
     assertTrue(inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"bookFile\""));
     assertTrue(
         inspectionOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
@@ -215,7 +201,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.of(LocalDate.parse("2026-04-30")),
             List.of(currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)));
-
     ByteArrayOutputStream postingRegisterHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterHumanOutput))
         .writeListPostingsResult(
@@ -226,7 +211,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(postingRegisterHuman.contains("Posting id"));
     assertTrue(postingRegisterHuman.contains("10.00"));
     assertTrue(postingRegisterHuman.contains("posting-1"));
-
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
@@ -238,7 +222,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         postingRegisterCsv.startsWith(
             "effectiveDate,recordedAt,postingId,currencyCode,totalAmount,accountCodes,reversalTarget"));
     assertTrue(postingRegisterCsv.contains("2026-04-07,2026-04-07T10:15:30Z,posting-1,EUR,10.00"));
-
     ByteArrayOutputStream balanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceHumanOutput))
         .writeAccountBalanceResult(
@@ -248,7 +231,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(balanceHuman.contains("Debit total"));
     assertTrue(balanceHuman.contains("10.00"));
     assertTrue(balanceHuman.contains("6.00"));
-
     ByteArrayOutputStream balanceCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(balanceCsvOutput))
         .writeAccountBalanceResult(
@@ -296,7 +278,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 new PeriodAccountActivityRow(
                     declaredCashAccount(),
                     currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))));
-
     ByteArrayOutputStream trialBalanceJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(trialBalanceJsonOutput))
         .writeTrialBalanceResult(
@@ -312,7 +293,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         "10",
         trialBalanceJson.path("payload").path("rows").get(0).path("debitTotal").stringValue());
     assertFalse(trialBalanceJson.toString().contains("\"value\""));
-
     ByteArrayOutputStream trialBalanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(trialBalanceHumanOutput))
         .writeTrialBalanceResult(
@@ -321,7 +301,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(trialBalanceHuman.contains("Effective date to : 2026-04-30"));
     assertTrue(trialBalanceHuman.contains("Account"));
     assertTrue(trialBalanceHuman.contains("6.00"));
-
     ByteArrayOutputStream accountLedgerHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerHumanOutput))
         .writeAccountLedgerResult(
@@ -331,7 +310,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(accountLedgerHuman.contains("Opening balances : EUR 10.00 DEBIT"));
     assertTrue(accountLedgerHuman.contains("Running balance"));
     assertTrue(accountLedgerHuman.contains("posting-1"));
-
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
         .writeAccountLedgerResult(
@@ -354,7 +332,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .get(0)
             .stringValue());
     assertFalse(accountLedgerJson.toString().contains("\"postingFact\""));
-
     ByteArrayOutputStream accountLedgerCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerCsvOutput))
         .writeAccountLedgerResult(
@@ -367,7 +344,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         accountLedgerCsv.contains(
             "1000,Cash,2026-04-01,2026-04-30,posting-1,2026-04-07,2026-04-07T10:15:30Z,EUR,10.00,0.00,10.00,DEBIT,2000"));
-
     ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
         .writePeriodSummaryResult(
@@ -377,7 +353,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(periodSummaryHuman.contains("Posting count"));
     assertTrue(periodSummaryHuman.contains("Posting line count"));
     assertTrue(periodSummaryHuman.contains("10.00"));
-
     ByteArrayOutputStream periodSummaryJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryJsonOutput))
         .writePeriodSummaryResult(
@@ -396,7 +371,6 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("accountCode")
             .stringValue());
     assertFalse(periodSummaryJson.toString().contains("\"account\":{\"accountCode\""));
-
     ByteArrayOutputStream periodSummaryCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryCsvOutput))
         .writePeriodSummaryResult(
@@ -424,10 +398,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     List<String> states =
         List.of(
             "blank-sqlite", "foreign-sqlite", "unsupported-format-version", "incomplete-fingrind");
-
     for (int index = 0; index < inspections.size(); index++) {
       JsonNode payload = writeInspection(inspections.get(index));
-
       assertEquals(states.get(index), payload.path("state").stringValue());
       assertEquals(1_179_079_236, payload.path("applicationId").asInt());
       assertEquals(1, payload.path("supportedBookFormatVersion").asInt());

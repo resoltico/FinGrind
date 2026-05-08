@@ -64,6 +64,14 @@ object BundleManifestRenderer {
                             DistributionContractReader.requiredSqliteSourceId(projectRootDirectory),
                         requiredCompileOptions =
                             DistributionContractReader.requiredSqliteCompileOptions(projectRootDirectory),
+                        forbiddenCompileOptions =
+                            DistributionContractReader.forbiddenSqliteCompileOptions(
+                                projectRootDirectory,
+                            ),
+                        requiresSecureMemorySupport =
+                            DistributionContractReader.requiresSecureMemorySupport(
+                                projectRootDirectory,
+                            ),
                     ),
                 bootstrap =
                     BootstrapDocument(
@@ -138,6 +146,8 @@ object BundleManifestRenderer {
         val requiredSqlite3mcVersion: String,
         val requiredSqliteSourceId: String,
         val requiredCompileOptions: List<String>,
+        val forbiddenCompileOptions: List<String>,
+        val requiresSecureMemorySupport: Boolean,
     )
 
     private data class BootstrapDocument(

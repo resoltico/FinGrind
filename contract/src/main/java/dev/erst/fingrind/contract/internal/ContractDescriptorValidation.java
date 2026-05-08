@@ -33,16 +33,29 @@ public final class ContractDescriptorValidation {
   }
 
   /** Copies one descriptor-owned list defensively. */
-  public static <T> List<T> copyList(@Nullable List<T> values, String fieldName) {
+  public static <T> List<T> copyList(List<T> values, String fieldName) {
     Objects.requireNonNull(fieldName, "fieldName");
-    return values == null ? List.of() : List.copyOf(values);
+    Objects.requireNonNull(values, fieldName + " must not be null.");
+    for (int index = 0; index < values.size(); index++) {
+      if (values.get(index) == null) {
+        throw new IllegalArgumentException(fieldName + "[" + index + "] must not be null.");
+      }
+    }
+    return List.copyOf(values);
   }
 
   /** Copies one descriptor-owned map defensively while preserving insertion order. */
-  public static <K, V> Map<K, V> copyMap(@Nullable Map<K, V> values, String fieldName) {
+  public static <K, V> Map<K, V> copyMap(Map<K, V> values, String fieldName) {
     Objects.requireNonNull(fieldName, "fieldName");
-    return values == null
-        ? Map.of()
-        : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(values));
+    Objects.requireNonNull(values, fieldName + " must not be null.");
+    var ordered = new java.util.LinkedHashMap<K, V>();
+    for (Map.Entry<K, V> entry : values.entrySet()) {
+      K key = Objects.requireNonNull(entry.getKey(), fieldName + " must not contain a null key.");
+      V value =
+          Objects.requireNonNull(
+              entry.getValue(), fieldName + "[" + key + "] must not contain a null value.");
+      ordered.put(key, value);
+    }
+    return java.util.Collections.unmodifiableMap(ordered);
   }
 }

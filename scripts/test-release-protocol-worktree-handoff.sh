@@ -30,6 +30,10 @@ grep -Fq 'primary checkout contains the real release payload but release verific
     "release protocol no longer documents bootstrapping unpublished release payload into a clean worktree"
 grep -Fq 'git diff --binary > /tmp/fingrind-release-bootstrap.patch' "${release_protocol}" || die \
     "release protocol no longer documents the explicit patch bootstrap path"
+grep -Fq 'repo-wide verification lock' "${release_protocol}" || die \
+    "release protocol no longer documents live repo-lock handoff for release verification"
+grep -Fq 'do not delete the lock by hand' "${release_protocol}" || die \
+    "release protocol no longer forbids deleting a live verification lock by hand"
 grep -Fq 'gh pr merge <N> --repo "$REPO" --merge --admin --delete-branch' "${release_protocol}" || die \
     "release protocol no longer pins repository-scoped gh pr merge for worktree-safe release merges"
 grep -Fq 'git switch --detach origin/main' "${release_protocol}" || die \

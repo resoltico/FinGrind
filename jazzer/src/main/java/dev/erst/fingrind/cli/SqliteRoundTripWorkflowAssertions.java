@@ -75,10 +75,10 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostEntryCommand command, byte[] input, Path bookPath) throws IOException {
     try (SqliteBookSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
-          CliFuzzFixtures.administrationService(postingFactStore.administrationSession());
+          CliFuzzFixtures.administrationService(postingFactStore);
       PostingApplicationService applicationService =
           new PostingApplicationService(
-              postingFactStore.postingSession(),
+              postingFactStore,
               CliFuzzFixtures.postingIdGenerator(input),
               CliFuzzFixtures.fixedClock());
 
@@ -98,8 +98,7 @@ public final class SqliteRoundTripWorkflowAssertions {
 
       var declaredAccounts = CliFuzzFixtures.declarePostingAccounts(administrationService, command);
       SqliteRoundTripWorkflowLifecycleAssertions.verifyDeclaredAccountListing(
-          CliFuzzFixtures.listAccounts(postingFactStore.readSession()).size(),
-          declaredAccounts.size());
+          CliFuzzFixtures.listAccounts(postingFactStore).size(), declaredAccounts.size());
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
 
@@ -151,14 +150,14 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingFact postingFact =
           SqliteRoundTripWorkflowLifecycleAssertions.requireStoredPosting(
               CliFuzzFixtures.publishedStoredPosting(
-                  reloadedStore.postingSession(), command.requestProvenance().idempotencyKey()));
+                  reloadedStore, command.requestProvenance().idempotencyKey()));
       SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);
       SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
           postingFact, committed, command);
 
       PostingApplicationService duplicateService =
           new PostingApplicationService(
-              reloadedStore.postingSession(),
+              reloadedStore,
               CliFuzzFixtures.postingIdGenerator(input),
               CliFuzzFixtures.fixedClock());
       PostingLifecycleStatus duplicateStatus =
@@ -187,7 +186,7 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus inactiveCommitStatus) {
     SqliteRoundTripWorkflowLifecycleAssertions.assertRejectedStateDidNotPersistPosting(
         CliFuzzFixtures.publishedStoredPosting(
-            postingFactStore.postingSession(), command.requestProvenance().idempotencyKey()));
+            postingFactStore, command.requestProvenance().idempotencyKey()));
     PostingLifecycleStatus duplicateStatus =
         SqliteRoundTripWorkflowLifecycleAssertions.verifyRejectedCommitConsistency(
             rejected, CliFuzzFixtures.commit(applicationService, command));

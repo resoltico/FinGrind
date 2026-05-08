@@ -1,14 +1,15 @@
 {
   "targetKey": "sqlite-book-roundtrip",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/basic_valid.json",
+  "coverageIntent": "minimal durable round-trip with distinct system provenance",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",
     "details": {
       "type": "SQLITE_BOOK_ROUND_TRIP",
       "request": {
-        "effectiveDate": "2026-04-07",
-        "idempotencyKey": "idem-1",
+        "effectiveDate": "2026-04-11",
+        "idempotencyKey": "idem-sqlite-1",
         "lineCount": 2,
         "reversalPresent": false
       },

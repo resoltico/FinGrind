@@ -32,7 +32,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -96,7 +96,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -145,7 +145,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -194,7 +194,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 "desc",
                 List.of("fingrind post-entry --book-file <path>"),
                 new ContractResponse.BookModelDescriptor(
@@ -226,12 +226,14 @@ class CliDiscoveryOutputRendererTest {
     assertTrue(rendered.contains("Command"));
     assertTrue(rendered.contains("Usage"));
     assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("Operator Notes"));
     assertTrue(rendered.contains("post-entry"));
     assertTrue(rendered.contains("Commit one posting request"));
     assertTrue(
         rendered.contains(
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " > request.json"));
+    assertTrue(rendered.contains("Replace scaffold placeholders such as effectiveDate"));
   }
 
   @Test
@@ -240,7 +242,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 "desc",
                 List.of(),
                 new ContractResponse.BookModelDescriptor(
@@ -283,7 +285,7 @@ class CliDiscoveryOutputRendererTest {
         CliDiscoveryOutputRenderer.renderHelpHuman(
             new HelpDescriptor(
                 "FinGrind",
-                "0.32.0",
+                "0.33.0",
                 "desc",
                 List.of("fingrind help"),
                 new ContractResponse.BookModelDescriptor(
@@ -344,13 +346,13 @@ class CliDiscoveryOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.32.0"));
+    assertTrue(rendered.contains("0.33.0"));
   }
 
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.32.0",
+        "0.33.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -372,17 +374,20 @@ class CliDiscoveryOutputRendererTest {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
-            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            ProtocolCatalog.forbiddenSqliteCompileOptions(),
+            ProtocolCatalog.requiresSecureMemorySupport(),
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            SqliteRuntimeStatus.READY,
-            SqliteRuntimeProvenance.BUNDLE_MANAGED,
-            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-            "/tmp/libsqlite3.dylib",
-            ProtocolCatalog.requiredMinimumSqliteVersion(),
-            ProtocolCatalog.requiredSqlite3mcVersion(),
-            ProtocolCatalog.requiredSqliteSourceId(),
-            null));
+            EnvironmentSqliteDescriptor.runtime(
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntimeStatus.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                "/tmp/libsqlite3.dylib",
+                ProtocolCatalog.requiredMinimumSqliteVersion(),
+                ProtocolCatalog.requiredSqlite3mcVersion(),
+                ProtocolCatalog.requiredSqliteSourceId(),
+                null)));
   }
 }

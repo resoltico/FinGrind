@@ -20,7 +20,8 @@ final class AccountBalancePdfRenderer {
             List.of(
                 "Effective date range",
                 PdfValueFormatter.optionalDateRange(
-                    snapshot.effectiveDateFrom(), snapshot.effectiveDateTo()))));
+                    snapshot.effectiveDateFrom().orElse(null),
+                    snapshot.effectiveDateTo().orElse(null)))));
     pageWriter.writeTable(
         "Per-Currency Balances",
         List.of(

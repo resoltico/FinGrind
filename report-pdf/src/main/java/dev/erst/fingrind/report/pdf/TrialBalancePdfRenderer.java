@@ -14,7 +14,8 @@ final class TrialBalancePdfRenderer {
         "Parameters",
         List.of(
             List.of(
-                "Effective date to", PdfValueFormatter.optionalDate(report.effectiveDateTo()))));
+                "Effective date to",
+                PdfValueFormatter.optionalDate(report.effectiveDateTo().orElse(null)))));
     pageWriter.writeTable(
         "Trial Balance",
         List.of(

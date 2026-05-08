@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,11 +11,9 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for ledger facts, journal entries, and execution journals. */
-@NullUnmarked
 class LedgerJournalModelTest extends ContractTestSupport {
   @Test
   void ledgerFactsAndJournalValidationCoverTypedAndFailureBranches() {
@@ -25,7 +24,6 @@ class LedgerJournalModelTest extends ContractTestSupport {
     LedgerJournalStep assertionStep =
         LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_DECLARED);
     LedgerJournalStep boundaryStep = LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT);
-
     assertEquals("value", LedgerFact.text("text", "value").value());
     assertTrue(LedgerFact.flag("flag", true).value());
     assertEquals(7, LedgerFact.count("count", 7).value());
@@ -39,14 +37,13 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, boundaryStep.kind());
     assertNull(boundaryStep.detailKind());
     assertEquals(LedgerBoundaryPhase.COMMIT, boundaryStep.boundaryPhase());
-    assertThrows(NullPointerException.class, () -> new LedgerFact.Text("null", null));
+    assertThrows(NullPointerException.class, () -> new LedgerFact.Text("null", nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.count(" ", 7));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.group("balance", List.of()));
     assertThrows(
         IllegalArgumentException.class, () -> LedgerJournalStep.standard(LedgerStepKind.ASSERT));
-    assertThrows(NullPointerException.class, () -> LedgerJournalStep.assertion(null));
-    assertThrows(NullPointerException.class, () -> LedgerJournalStep.boundary(null));
-
+    assertThrows(NullPointerException.class, () -> LedgerJournalStep.assertion(nullOf()));
+    assertThrows(NullPointerException.class, () -> LedgerJournalStep.boundary(nullOf()));
     LedgerJournalEntry detailed =
         new LedgerJournalEntry.Rejected(
             stepId("assert"),
@@ -74,7 +71,6 @@ class LedgerJournalModelTest extends ContractTestSupport {
             finishedAt,
             List.of(),
             failure);
-
     assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, detailed.detailKind());
     assertEquals(LedgerJournalKind.ASSERT, detailed.kind());
     assertNull(nullableOptionals.detailKind());
@@ -98,7 +94,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
         NullPointerException.class,
         () ->
             new LedgerJournalEntry.Rejected(
-                stepId("assert"), null, startedAt, finishedAt, List.of(), failure));
+                stepId("assert"), nullOf(), startedAt, finishedAt, List.of(), failure));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -168,7 +164,6 @@ class LedgerJournalModelTest extends ContractTestSupport {
                     finishedAt,
                     List.of(),
                     failure)));
-
     assertTrue(succeededWithoutFailure instanceof LedgerJournalEntry.Succeeded);
     assertEquals(stepId("post"), rejectedJournal.terminalStep().stepId());
     assertEquals(stepId("post"), rejectedJournal.requiredFailedStep().stepId());

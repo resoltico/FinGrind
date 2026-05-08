@@ -5,10 +5,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import org.jspecify.annotations.NullUnmarked;
 
 /** Thin compatibility base that now composes smaller CLI fixture and workflow support classes. */
-@NullUnmarked
 class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
   protected static FinGrindCli cli(InputStream inputStream, PrintStream outputStream, Clock clock) {
     return FinGrindCli.standard(inputStream, outputStream, diagnosticsStream(), clock);

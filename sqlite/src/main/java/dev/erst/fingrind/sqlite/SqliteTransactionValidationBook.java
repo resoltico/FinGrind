@@ -3,16 +3,17 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.PostingValidationBook;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
 /** Transaction-scoped validation view that rechecks posting invariants inside SQLite writes. */
-final class SqliteTransactionValidationBook implements PostingValidationBook {
+final class SqliteTransactionValidationBook implements PostingValidationStore {
   private final SqliteNativeDatabase activeDatabase;
   private final SqlitePostingReader postingReader;
 
@@ -23,10 +24,11 @@ final class SqliteTransactionValidationBook implements PostingValidationBook {
   }
 
   @Override
-  public boolean isInitialized() {
+  public BookLifecycleInspection inspectBook() {
     try {
-      return SqliteBookState.INITIALIZED_FINGRIND
-          == SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase).state();
+      SqliteBookStateSnapshot snapshot =
+          SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase);
+      return SqliteBookLifecycleInspectionMapper.fromSnapshot(snapshot, activeDatabase);
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }

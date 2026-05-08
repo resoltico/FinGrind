@@ -15,4 +15,14 @@ EOF
     fg_print_gradle_passthrough_help
     exit 0
 fi
+
+for argument in "$@"; do
+    if [[ "${argument}" != -* ]]; then
+        printf '%s\n' \
+            "Regression wrapper does not accept positional arguments: ${argument}" >&2
+        printf '%s\n' "Usage: jazzer/bin/regression [supported Gradle options]" >&2
+        exit 1
+    fi
+done
+
 fg_run_verification_command "jazzerRegression" "$@"

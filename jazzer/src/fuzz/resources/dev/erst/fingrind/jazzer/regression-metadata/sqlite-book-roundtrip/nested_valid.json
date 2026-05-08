@@ -1,6 +1,7 @@
 {
   "targetKey": "sqlite-book-roundtrip",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/nested_valid.json",
+  "coverageIntent": "nested-path round-trip with optional provenance fields",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

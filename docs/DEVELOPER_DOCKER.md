@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -61,10 +61,14 @@ The container image itself also stays on the same managed-runtime policy as the 
 - it consumes one repository-built `cli/build/docker-context/` directory produced by
   `:cli:stageDockerBuildContext`; that staged directory carries the internal application JAR, the
   runtime-module list, the rendered entrypoint, the managed-SQLite contract, and
-  `docker-build-context-manifest.json`, and `scripts/docker-smoke.sh` verifies that manifest
-  before mirroring a relocated build tree back under `cli/build/`, so Docker and bundle
-  publication cannot drift onto competing private-runtime closures, private compile-option inputs,
-  or stale in-checkout leftovers
+  `docker-build-context-manifest.json`; that manifest now includes a SHA3-256 fingerprint of the
+  current source/build inputs behind the staged runtime, and both Docker image build and
+  `scripts/docker-smoke.sh` verify that fingerprint before trusting the staged context, so Docker
+  and bundle publication cannot drift onto competing private-runtime closures, private
+  compile-option inputs, or stale in-checkout leftovers
+- when Gradle assembles that context outside the repository tree, the same staging task mirrors
+  the fresh payload back under `cli/build/docker-context/` automatically so repository-root
+  `docker build` sees the verified current context instead of an older checkout-local leftover
 - it generates the Docker entrypoint and verifies the image's runtime-surface disclosure from the
   same protocol-owned contract resources that drive bundle metadata, so the container does not
   carry a parallel handwritten runtime-distribution or storage contract
@@ -124,7 +128,7 @@ Then the supported local gates are:
 - runs mounted-path container commands under the caller's UID:GID so generated key files and book
   files stay owned by the invoking operator on both macOS Docker Desktop and Linux CI runners
 - verifies `version`
-- verifies the managed SQLite 3.53.0 / SQLite3 Multiple Ciphers 2.3.3 runtime contract through
+- verifies the managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 runtime contract through
   `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
 - creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized

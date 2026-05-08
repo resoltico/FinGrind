@@ -32,6 +32,10 @@ public final class SqliteRuntime {
   public static final String REQUIRED_SQLITE_SOURCE_ID = ProtocolCatalog.requiredSqliteSourceId();
   public static final List<String> REQUIRED_SQLITE_COMPILE_OPTIONS =
       ProtocolCatalog.requiredSqliteCompileOptions();
+  public static final List<String> FORBIDDEN_SQLITE_COMPILE_OPTIONS =
+      ProtocolCatalog.forbiddenSqliteCompileOptions();
+  public static final boolean REQUIRES_SECURE_MEMORY_SUPPORT =
+      ProtocolCatalog.requiresSecureMemorySupport();
 
   private SqliteRuntime() {}
 
@@ -255,22 +259,24 @@ public final class SqliteRuntime {
       requiredSqliteSourceId = requireText(requiredSqliteSourceId, "requiredSqliteSourceId");
       Objects.requireNonNull(compileOptionsVerification, "compileOptionsVerification");
       Objects.requireNonNull(status, "status");
+      if (runtimeProvenance != null && runtimeTrustBasis == null) {
+        runtimeTrustBasis = SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance);
+      }
       loadedLibraryPath = normalizeNullableText(loadedLibraryPath);
       loadedSqliteVersion = normalizeNullableText(loadedSqliteVersion);
       loadedSqlite3mcVersion = normalizeNullableText(loadedSqlite3mcVersion);
       loadedSqliteSourceId = normalizeNullableText(loadedSqliteSourceId);
       issue = normalizeNullableText(issue);
-      runtimeTrustBasis =
-          SqliteRuntimeStateValidator.validate(
-              compileOptionsVerification,
-              contractStatus(status),
-              runtimeProvenance,
-              runtimeTrustBasis,
-              loadedLibraryPath,
-              loadedSqliteVersion,
-              loadedSqlite3mcVersion,
-              loadedSqliteSourceId,
-              issue);
+      SqliteRuntimeStateValidator.validate(
+          compileOptionsVerification,
+          contractStatus(status),
+          runtimeProvenance,
+          runtimeTrustBasis,
+          loadedLibraryPath,
+          loadedSqliteVersion,
+          loadedSqlite3mcVersion,
+          loadedSqliteSourceId,
+          issue);
     }
 
     private static String requireText(@Nullable String value, String fieldName) {

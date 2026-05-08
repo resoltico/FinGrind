@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -232,10 +232,11 @@ rendered:
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
 - `environment` reports runtime distribution, protected-book requirements, and managed SQLite
-  metadata, including `requiredCompileOptions`, `requiredSqliteSourceId`,
-  `compileOptionsVerification`, `runtimeProvenance`, `runtimeTrustBasis`,
-  `loadedLibraryPath`, and
-  `loadedSqliteSourceId`
+  metadata, including `requiredCompileOptions`, `forbiddenCompileOptions`,
+  `requiresSecureMemorySupport`, `requiredSqliteSourceId`,
+  `runtime.compileOptionsVerification`, `runtime.runtimeProvenance`,
+  `runtime.runtimeTrustBasis`, `runtime.loadedLibraryPath`, and
+  `runtime.loadedSqliteSourceId`
 - `commands` also lists `print-plan-template` and `execute-plan`, both rendered from the contract
   protocol catalog
 
@@ -304,16 +305,20 @@ path directly. The current public line reports `true` for `missing` and `blank-s
   `normalBalance`, `active`, `declaredAt`, `currencyCode`, `debitTotal`, `creditTotal`,
   `netAmount`, and `balanceSide`
 
-Commands that advertise `--output` keep JSON as the default machine surface. Discovery,
-administration, write, and read/report commands can also render operator-facing `--output human`,
-and the tabular read/report commands support `--output csv` for spreadsheet import.
+Commands that advertise `--output` keep JSON as the default machine surface for successful
+results. Discovery, administration, write, and read/report commands can also render
+operator-facing `--output human`, and the tabular read/report commands support `--output csv` for
+spreadsheet import. Invalid invocation failures default to human repair guidance unless callers
+select one recognized machine output mode explicitly, such as `--output json`.
 `account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
 one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result
 model; it does not change the JSON payload contract. Successful exports emit a diagnostics info
 message with the normalized artifact path. If the report result succeeds but the PDF artifact later
 fails, stdout still carries the same report payload while diagnostics emit a repair warning for the
 `--pdf-out` path. Deterministic failures for commands that accept `--output human` are rendered in
-the same human-facing format instead of falling back to JSON envelopes.
+the same human-facing format instead of falling back to JSON envelopes. Deterministic non-business
+contract failures render with the `Rejected` heading in human mode so operator refusals do not
+masquerade as generic runtime crashes.
 
 Checked-in examples for the read/report surface:
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json)
@@ -377,3 +382,6 @@ Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json)
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json)
+
+When you want those malformed-input or deterministic-error examples as JSON from the live CLI,
+request them explicitly with `--output json` on commands that support output negotiation.

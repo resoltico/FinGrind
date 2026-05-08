@@ -27,13 +27,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void rekeyBook_contractLevelResolverUsesNewSecretIntentAndSurfacesRejections() throws Exception {
     Path acceptedBookPath = tempDirectory.resolve("rekey-contract-level.sqlite");
@@ -42,7 +39,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
       initializeBookWithDefaultAccounts(postingFactStore);
       BookAccess.PassphraseSource replacementSource =
           BookAccess.PassphraseSource.StandardInput.INSTANCE;
-
       ContractDecision<RekeyBookResult> acceptedDecision =
           postingFactStore.rekeyBook(
               replacementSource,
@@ -54,17 +50,14 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                     SqliteBookPassphrase.fromCharacters(
                         "contract-level replacement", "rotated-contract-key".toCharArray()));
               });
-
       assertEquals(
           new RekeyBookResult.Rekeyed(acceptedBookPath.toAbsolutePath().normalize()),
           acceptedDecision.requireAccepted());
     }
-
     try (SqlitePostingFactStore rejectedStore =
         new SqlitePostingFactStore(
             bookAccess(tempDirectory.resolve("rekey-contract-rejected.sqlite")))) {
       initializeBookWithDefaultAccounts(rejectedStore);
-
       ContractDecision<RekeyBookResult> rejectedDecision =
           rejectedStore.rekeyBook(
               BookAccess.PassphraseSource.StandardInput.INSTANCE,
@@ -72,7 +65,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                   ContractDecision.rejected(
                       ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
                           "Rejected replacement secret", null, null)));
-
       switch (rejectedDecision) {
         case ContractDecision.Accepted<RekeyBookResult>(RekeyBookResult result) ->
             throw new AssertionError("Expected rejected replacement secret but was " + result);
@@ -86,11 +78,9 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   @Test
   void rekeyBook_rotatesPassphraseAndPreservesReadableState() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-book.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "replacement store passphrase", "rotated-store-key".toCharArray())) {
@@ -100,14 +90,12 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
             postingFactStore.rekeyBook(replacementPassphrase));
       }
     }
-
     try (SqlitePostingFactStore oldKeyStore = new SqlitePostingFactStore(bookAccess(bookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class, () -> oldKeyStore.listAccounts(firstAccountPage()));
       assertProtectedBookVerificationFailure(exception);
     }
-
     try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "replacement store passphrase", "rotated-store-key".toCharArray());
@@ -129,9 +117,9 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
           listAccounts(rotatedStore));
-      assertEquals("delete", queryText(storeDatabase(rotatedStore), "pragma journal_mode"));
-      assertEquals(3, queryInt(storeDatabase(rotatedStore), "pragma synchronous"));
-      assertEquals(1, queryInt(storeDatabase(rotatedStore), "pragma query_only"));
+      assertEquals("delete", queryText(requireStoreDatabase(rotatedStore), "pragma journal_mode"));
+      assertEquals(3, queryInt(requireStoreDatabase(rotatedStore), "pragma synchronous"));
+      assertEquals(1, queryInt(requireStoreDatabase(rotatedStore), "pragma query_only"));
     }
   }
 
@@ -153,7 +141,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
           new byte["rotated-store-key".getBytes(StandardCharsets.UTF_8).length],
           passphraseBytes(replacementPassphrase));
     }
-
     Path blankBookPath = tempDirectory.resolve("rekey-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
     try (SqlitePostingFactStore postingFactStore =
@@ -171,7 +158,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
           new byte["rotated-store-key".getBytes(StandardCharsets.UTF_8).length],
           passphraseBytes(replacementPassphrase));
     }
-
     Path initializedBookPath = tempDirectory.resolve("rekey-read-only.sqlite");
     initializeBookOnDisk(initializedBookPath);
     try (SqliteBookPassphrase bookPassphrase =
@@ -200,7 +186,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
     Path bookPath = tempDirectory.resolve("permissions-on-open.sqlite");
     initializeBookOnDisk(bookPath);
     assumeTrue(bookPath.getFileSystem().supportedFileAttributeViews().contains("posix"));
-
     Set<PosixFilePermission> relaxedPermissions =
         Set.of(
             PosixFilePermission.OWNER_READ,
@@ -208,7 +193,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
             PosixFilePermission.GROUP_READ);
     Set<PosixFilePermission> hardenedPermissions =
         Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-
     Files.setPosixFilePermissions(bookPath, relaxedPermissions);
     try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters(
@@ -218,7 +202,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
       listAccounts(postingFactStore);
     }
     assertEquals(relaxedPermissions, Files.getPosixFilePermissions(bookPath));
-
     try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "writable permissions open", TEST_BOOK_KEY.toCharArray());
@@ -233,42 +216,39 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   @Test
   void transactionValidationBook_wrapsNativeFailuresForStateAndAccountLookups() throws Exception {
     Path bookPath = tempDirectory.resolve("validation-stale.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
               staleDatabaseHandle(bookPath), postingFactStore.postingReader());
-
       IllegalStateException initializedFailure =
-          assertThrows(IllegalStateException.class, validationBook::isInitialized);
-      assertTrue(initializedFailure.getMessage().contains("Failed to query SQLite book."));
-
+          assertThrows(IllegalStateException.class, validationBook::inspectBook);
+      assertTrue(
+          NullTestSupport.messageOf(initializedFailure).contains("Failed to query SQLite book."));
       IllegalStateException accountFailure =
           assertThrows(
               IllegalStateException.class,
               () -> validationBook.findAccount(new AccountCode("1000")));
-      assertTrue(accountFailure.getMessage().contains("Failed to query SQLite book."));
-
+      assertTrue(
+          NullTestSupport.messageOf(accountFailure).contains("Failed to query SQLite book."));
       IllegalStateException postingFailure =
           assertThrows(
               IllegalStateException.class,
               () -> validationBook.findExistingPosting(new IdempotencyKey("idem-1")));
-      assertTrue(postingFailure.getMessage().contains("Failed to query SQLite book."));
+      assertTrue(
+          NullTestSupport.messageOf(postingFailure).contains("Failed to query SQLite book."));
     }
   }
 
   @Test
   void transactionValidationBook_findsDeclaredAccountsThroughBatchLookup() throws Exception {
     Path bookPath = tempDirectory.resolve("validation-success.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
-              storeDatabase(postingFactStore), postingFactStore.postingReader());
-
+              requireStoreDatabase(postingFactStore), postingFactStore.postingReader());
       assertEquals(
           postingFactStore.findAccount(new AccountCode("1000")),
           validationBook.findAccount(new AccountCode("1000")));
@@ -279,7 +259,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   void rekeyBook_clearsCachedDatabaseHandleWhenReopenFailsAfterRotation() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-reopen-failure.sqlite");
     AtomicReference<SqliteNativeApi> sqliteApi = new AtomicReference<>(SqliteNativeBootstrap.api());
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(
             bookAccess(bookPath), SqliteStoreAccessMode.READ_WRITE_CREATE, sqliteApi::get)) {
@@ -289,7 +268,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
               SqliteNativeBootstrap.api(),
               constantMethodHandle(
                   14, MemorySegment.class, MemorySegment.class, int.class, MemorySegment.class)));
-
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "rekey reopen failure", "rotated-store-key".toCharArray())) {
@@ -297,12 +275,12 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
             assertThrows(
                 IllegalStateException.class,
                 () -> postingFactStore.rekeyBook(replacementPassphrase));
-
-        assertTrue(exception.getMessage().contains("FinGrind restored the pre-rekey book on disk"));
+        assertTrue(
+            NullTestSupport.messageOf(exception)
+                .contains("FinGrind restored the pre-rekey book on disk"));
         assertNull(storeDatabase(postingFactStore));
       }
     }
-
     try (SqlitePostingFactStore restoredStore = new SqlitePostingFactStore(bookAccess(bookPath))) {
       assertEquals(
           List.of(
@@ -320,7 +298,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                   Instant.parse("2026-04-07T10:15:30Z"))),
           listAccounts(restoredStore));
     }
-
     try (SqliteBookPassphrase replacementPassphrase =
             SqliteBookPassphrase.fromCharacters(
                 "replacement store passphrase", "rotated-store-key".toCharArray());
@@ -338,7 +315,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   @Test
   void rekeyBook_preservesOpenDatabaseWhenNativeRekeyFailsBeforeClose() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-native-failure.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -349,7 +325,6 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
               SqliteNativeApiTestSupport.withRekey(
                   SqliteNativeBootstrap.api(),
                   constantMethodHandle(14, MemorySegment.class, MemorySegment.class, int.class))));
-
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "rekey native failure", "rotated-store-key".toCharArray())) {
@@ -357,8 +332,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
             assertThrows(
                 IllegalStateException.class,
                 () -> postingFactStore.rekeyBook(replacementPassphrase));
-
-        assertTrue(exception.getMessage().contains("Failed to rekey SQLite book."));
+        assertTrue(NullTestSupport.messageOf(exception).contains("Failed to rekey SQLite book."));
         assertNotNull(storeDatabase(postingFactStore));
       }
     }

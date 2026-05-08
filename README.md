@@ -76,4 +76,6 @@ Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers with SQLite (MIT / public 
 See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
 patent considerations.
 
+The FinGrind README and first-party project graphics are Copyright (c) 2026 Ervins Strauhmanis.
+
 [LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS)

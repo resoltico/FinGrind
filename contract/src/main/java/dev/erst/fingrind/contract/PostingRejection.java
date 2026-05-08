@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.List;
@@ -46,7 +47,7 @@ public sealed interface PostingRejection
       implements PostingRejection {
     /** Validates the account-state violation payload. */
     public AccountStateViolations {
-      violations = violations == null ? List.of() : List.copyOf(violations);
+      violations = ContractDescriptorValidation.copyList(violations, "violations");
       if (violations.isEmpty()) {
         throw new IllegalArgumentException(
             "Posting account-state violations must contain at least one issue.");

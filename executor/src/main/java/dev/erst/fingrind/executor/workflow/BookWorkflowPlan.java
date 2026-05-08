@@ -12,7 +12,7 @@ public record BookWorkflowPlan(String planId, List<BookWorkflowStep> steps) {
     if (planId.isBlank()) {
       throw new IllegalArgumentException("Workflow planId must not be blank.");
     }
-    steps = steps == null ? List.of() : List.copyOf(steps);
+    steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
     if (steps.isEmpty()) {
       throw new IllegalArgumentException("Workflow plan must contain at least one step.");
     }

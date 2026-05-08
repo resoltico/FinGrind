@@ -11,10 +11,16 @@ public sealed interface LedgerJournalStep
   /** Returns the top-level journal kind for this step identity. */
   LedgerJournalKind kind();
 
-  /** Returns the nested assertion kind when the journal step represents an assertion. */
+  /**
+   * Returns the nested assertion kind when the journal step represents an assertion, or {@code
+   * null} for standard and plan-boundary journal steps.
+   */
   @Nullable LedgerAssertionKind detailKind();
 
-  /** Returns the nested boundary phase when the journal step represents one plan-boundary phase. */
+  /**
+   * Returns the nested boundary phase when the journal step represents one plan-boundary phase, or
+   * {@code null} for standard and assertion journal steps.
+   */
   default @Nullable LedgerBoundaryPhase boundaryPhase() {
     return null;
   }

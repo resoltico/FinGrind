@@ -39,11 +39,14 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-gradlew-bat-wrapper.sh
     scripts/test-gradle-wrapper-support.sh
     scripts/test-jazzer-stale-class-pruning.sh
+    scripts/test-jazzer-stale-resource-pruning.sh
     scripts/test-check-process-support.sh
     scripts/test-check-stage-contract.sh
     scripts/test-operator-help-surfaces.sh
     scripts/test-jazzer-fuzz-all-wrapper.sh
+    scripts/test-jazzer-active-wrapper-timeout.sh
     scripts/test-jazzer-replay-wrapper.sh
+    scripts/test-jazzer-seed-wrapper.sh
     scripts/test-source-checkout-launcher.sh
     scripts/test-publish-github-release.sh
     scripts/test-verify-github-release.sh

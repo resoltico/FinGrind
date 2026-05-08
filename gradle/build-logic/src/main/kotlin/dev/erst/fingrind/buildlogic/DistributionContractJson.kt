@@ -60,6 +60,14 @@ internal object DistributionContractJson {
         return values.toList()
     }
 
+    fun booleanProperty(projectRootDirectory: Path, relativePath: String, key: String): Boolean {
+        val valueNode = loadJson(projectRootDirectory, relativePath).path(key)
+        if (!valueNode.isBoolean) {
+            throw IllegalStateException("Expected JSON boolean contract property $key in $relativePath.")
+        }
+        return valueNode.booleanValue()
+    }
+
     fun objectProperty(document: JsonNode, key: String, relativePath: String): JsonNode =
         requireObjectNode(document.path(key), key, relativePath)
 

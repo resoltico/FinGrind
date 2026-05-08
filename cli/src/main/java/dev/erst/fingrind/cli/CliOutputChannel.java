@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.core.WireValue;
 import java.io.PrintStream;
 import java.util.Objects;
@@ -50,15 +51,15 @@ final class CliOutputChannel {
     outputStream.flush();
   }
 
-  void writeEnvelope(Object envelope) {
+  void writeEnvelope(Record envelope) {
     writeJson(envelope);
   }
 
-  private void writePrettyEnvelope(Object envelope) {
+  private void writePrettyEnvelope(Record envelope) {
     writePrettyJson(envelope);
   }
 
-  void writePrettySuccess(Object payload) {
+  void writePrettySuccess(ProtocolSuccessPayload payload) {
     writePrettyEnvelope(CliResponsePayloadMapper.successEnvelope(payload));
   }
 

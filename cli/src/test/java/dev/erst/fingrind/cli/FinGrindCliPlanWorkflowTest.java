@@ -10,13 +10,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
   @Test
   void run_executesOpenBookPlanThroughDefaultSqliteWorkflow() throws IOException {
@@ -26,7 +24,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         cli.run(
             new String[] {
@@ -38,7 +35,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               planFile.toString()
             });
-
     assertEquals(0, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-committed\""));
@@ -56,7 +52,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(new ByteArrayOutputStream()),
             fixedClock());
-
     assertEquals(
         0,
         openCli.run(
@@ -67,11 +62,9 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             }));
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         executeCli.run(
             new String[] {
@@ -83,7 +76,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               planFile.toString()
             });
-
     assertEquals(0, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-committed\""));
@@ -98,7 +90,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         cli.run(
             new String[] {
@@ -110,7 +101,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               planFile.toString()
             });
-
     assertEquals(2, exitCode);
     assertTrue(
         outputStream.toString(StandardCharsets.UTF_8).contains("\"status\":\"plan-rejected\""));
@@ -130,7 +120,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream planOutputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(planOutputStream), fixedClock());
-
     int exitCode =
         executeCli.run(
             new String[] {
@@ -142,19 +131,16 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               planFile.toString()
             });
-
     assertEquals(3, exitCode);
     JsonNode planResult = new ObjectMapper().readTree(planOutputStream.toByteArray());
     assertEquals("plan-assertion-failed", planResult.path("status").stringValue());
     assertFalse(Files.exists(bookFilePath));
-
     ByteArrayOutputStream inspectOutputStream = new ByteArrayOutputStream();
     FinGrindCli inspectCli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(inspectOutputStream),
             fixedClock());
-
     assertEquals(
         0,
         inspectCli.run(
@@ -165,7 +151,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             }));
-
     JsonNode inspectionResult = new ObjectMapper().readTree(inspectOutputStream.toByteArray());
     assertEquals("missing", inspectionResult.path("payload").path("state").stringValue());
   }
@@ -178,7 +163,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         cli.run(
             new String[] {
@@ -190,7 +174,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString()
             });
-
     assertEquals(2, exitCode);
     assertTrue(
         outputStream
@@ -208,7 +191,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     Path revenueRequest =
         writeNamedRequest("declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
     Path planFile = writeNamedRequest("list-accounts-plan.json", listAccountsPlanJson(1));
-
     FinGrindCli openCli =
         cli(
             new ByteArrayInputStream(new byte[0]),
@@ -224,7 +206,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString()
             }));
-
     FinGrindCli declareCli =
         cli(
             new ByteArrayInputStream(new byte[0]),
@@ -254,11 +235,9 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               revenueRequest.toString()
             }));
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode =
         executeCli.run(
             new String[] {
@@ -270,7 +249,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "--request-file",
               planFile.toString()
             });
-
     assertEquals(0, exitCode);
     JsonNode facts =
         new ObjectMapper()

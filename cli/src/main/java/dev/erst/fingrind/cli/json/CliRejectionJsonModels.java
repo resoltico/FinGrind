@@ -21,7 +21,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   record AccountStateViolationsDetails(List<AccountStateViolationPayload> violations)
       implements RejectionDetails {
     public AccountStateViolationsDetails {
-      violations = copyList(violations);
+      violations = copyList(violations, "violations");
       if (violations.isEmpty()) {
         throw new IllegalArgumentException("violations must not be empty.");
       }

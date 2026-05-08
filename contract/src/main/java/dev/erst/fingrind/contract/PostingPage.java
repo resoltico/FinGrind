@@ -1,17 +1,17 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /** One stable ordered page of committed postings. */
 public record PostingPage(
     List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
   /** Validates one committed-posting page. */
   public PostingPage(
-      @Nullable List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
-    this.postings = postings == null ? List.of() : List.copyOf(postings);
+      List<PostingFact> postings, int limit, Optional<PostingPageCursor> nextCursor) {
+    this.postings = ContractDescriptorValidation.copyList(postings, "postings");
     this.limit = limit;
     this.nextCursor = Objects.requireNonNull(nextCursor, "nextCursor");
     if (limit < 1) {

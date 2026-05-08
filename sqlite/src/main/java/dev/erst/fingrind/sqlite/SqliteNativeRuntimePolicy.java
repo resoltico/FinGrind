@@ -142,13 +142,18 @@ final class SqliteNativeRuntimePolicy {
         SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS.stream()
             .filter(option -> !compileOptionUsed(compileOptionUsedHandle, option))
             .toList();
-    if (!missingCompileOptions.isEmpty()) {
+    var forbiddenCompileOptions =
+        SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS.stream()
+            .filter(option -> compileOptionUsed(compileOptionUsedHandle, option))
+            .toList();
+    if (!missingCompileOptions.isEmpty() || !forbiddenCompileOptions.isEmpty()) {
       throw new UnsupportedSqliteCompileOptionsException(
           loadedSqliteVersion,
           loadedSqlite3mcVersion,
           loadedSqliteSourceId,
           libraryMode,
-          missingCompileOptions);
+          missingCompileOptions,
+          forbiddenCompileOptions);
     }
   }
 
@@ -198,7 +203,7 @@ final class SqliteNativeRuntimePolicy {
       @Nullable String configuredLibraryPath,
       @Nullable String bundleHomePath,
       Supplier<List<Path>> sourceCheckoutRootsSupplier,
-      Supplier<Path> sourceCheckoutBuildRootSupplier) {
+      Supplier<@Nullable Path> sourceCheckoutBuildRootSupplier) {
     String normalizedConfiguredPath = normalizeNullableConfiguredLibraryPath(configuredLibraryPath);
     if (normalizedConfiguredPath != null) {
       return new SqliteLibraryTarget(
@@ -288,9 +293,10 @@ final class SqliteNativeRuntimePolicy {
 
   private static @Nullable SqliteLibraryTarget sourceCheckoutLibraryTarget(
       Supplier<List<Path>> sourceCheckoutRootsSupplier,
-      Supplier<Path> sourceCheckoutBuildRootSupplier) {
+      Supplier<@Nullable Path> sourceCheckoutBuildRootSupplier) {
     Objects.requireNonNull(sourceCheckoutRootsSupplier, "sourceCheckoutRootsSupplier");
-    Path sourceCheckoutBuildRoot = sourceCheckoutBuildRootSupplier.get();
+    Objects.requireNonNull(sourceCheckoutBuildRootSupplier, "sourceCheckoutBuildRootSupplier");
+    @Nullable Path sourceCheckoutBuildRoot = sourceCheckoutBuildRootSupplier.get();
     for (Path sourceCheckoutRoot : sourceCheckoutRootsSupplier.get()) {
       Path managedLibraryPath =
           sourceCheckoutManagedLibraryPath(sourceCheckoutRoot, sourceCheckoutBuildRoot);

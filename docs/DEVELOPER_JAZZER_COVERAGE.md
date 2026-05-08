@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -122,8 +122,8 @@ What it asserts:
 | `cli-request` | `basic_valid.json` | minimal valid posting request |
 | `cli-request` | `reversal_valid.json` | valid request carrying reversal linkage |
 | `cli-request` | `invalid_legacy_correction.json` | rejected legacy correction request shape |
-| `cli-request` | `invalid_forbidden_recorded_at.json` | rejected committed-audit request field |
-| `cli-request` | `invalid_forbidden_source_channel.json` | rejected committed-audit request field, even as `null` |
+| `cli-request` | `invalid_forbidden_recorded_at.json` | removed `recordedAt` field rejection |
+| `cli-request` | `invalid_forbidden_source_channel.json` | removed `sourceChannel` field rejection, even when `null` |
 | `cli-request` | `invalid_amount_exponent.json` | exponent notation rejection |
 | `cli-request` | `invalid_duplicate_idempotency_key.json` | duplicate JSON object key rejection |
 | `cli-request` | `invalid_missing_provenance.json` | missing provenance object |
@@ -136,20 +136,22 @@ What it asserts:
 | `ledger-plan-request` | `invalid_open_book_not_first.json` | open-book ordering rejection |
 | `ledger-plan-request` | `invalid_too_many_steps.json` | 100-step protocol limit rejection |
 | `ledger-plan-request` | `invalid_unknown_kind_without_assertion.json` | unknown kind rejection without assertion fallthrough |
-| `posting-workflow` | `basic_valid.json` | successful preflight then commit |
+| `posting-workflow` | `basic_valid.json` | successful four-line preflight then commit with optional correlation id |
 | `posting-workflow` | `invalid_missing_reversal_reason.json` | invalid request for missing reversal reason inside `reversal` |
 | `posting-workflow` | `reversal_target_missing.json` | deterministic rejection for missing reversal target |
-| `posting-workflow` | `invalid_amount_exponent.json` | exponent notation rejection |
-| `posting-workflow` | `invalid_blank_actor.json` | invalid provenance normalization case |
-| `sqlite-book-roundtrip` | `basic_valid.json` | minimal durable round-trip |
+| `posting-workflow` | `invalid_amount_exponent.json` | exponent notation rejection with reversal payload present |
+| `posting-workflow` | `invalid_blank_actor.json` | blank actor-id rejection |
+| `sqlite-book-roundtrip` | `basic_valid.json` | minimal durable round-trip with distinct system provenance |
 | `sqlite-book-roundtrip` | `invalid_missing_reversal_reason.json` | invalid request for missing reversal reason inside `reversal` |
-| `sqlite-book-roundtrip` | `reversal_target_missing.json` | deterministic rejection does not persist |
-| `sqlite-book-roundtrip` | `invalid_amount_exponent.json` | exponent notation rejection |
+| `sqlite-book-roundtrip` | `reversal_target_missing.json` | missing reversal target rejects commit without persisting facts |
+| `sqlite-book-roundtrip` | `invalid_amount_exponent.json` | exponent notation rejection with optional provenance correlation |
 | `sqlite-book-roundtrip` | `nested_valid.json` | nested-path round-trip with optional provenance fields |
 | `sqlite-book-roundtrip` | `invalid_unicode_account_code.json` | invalid Unicode account-code rejection through the strict SQLite request path |
-| `sqlite-book-roundtrip` | `invalid_wrong_type.json` | malformed field-type rejection case |
+| `sqlite-book-roundtrip` | `invalid_wrong_type.json` | `effectiveDate` wrong-type rejection |
 
 ## Remaining Gap Register
 
-No known open committed-harness gaps are recorded in the current Jazzer surface.
+No known open committed-harness gaps are recorded in the current Jazzer surface, and the current
+seed audit reports no duplicate-content defects, no orphaned committed inputs, and no committed
+`unexpected-failure` expectations.
 Add entries here only when a concrete uncovered behavior is proven against the live harness set.

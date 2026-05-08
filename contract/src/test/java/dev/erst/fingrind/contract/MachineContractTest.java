@@ -64,7 +64,8 @@ class MachineContractTest {
             .contains("duplicate JSON object keys are rejected"));
     assertEquals(
         SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-        capabilities.environment().sqlite().runtimeTrustBasis());
+        ((EnvironmentSqliteDescriptor.ReadyRuntime) capabilities.environment().sqlite().runtime())
+            .runtimeTrustBasis());
 
     assertEquals(
         enumValues(JournalLine.EntrySide.values()),
@@ -189,75 +190,81 @@ class MachineContractTest {
         help.quickStart().stream().map(WorkflowDescriptor::surface).toList());
     assertTrue(
         quickStartSteps(help)
-            .noneMatch(step -> step.text() != null && step.text().contains("docs/examples/")));
+            .noneMatch(
+                step ->
+                    switch (step) {
+                      case WorkflowStepDescriptor.Command(var commandText) ->
+                          commandText.contains("docs/examples/");
+                      case WorkflowStepDescriptor.Note(var noteText) ->
+                          noteText.contains("docs/examples/");
+                      case WorkflowStepDescriptor.Edit ignored -> false;
+                    }));
     assertTrue(
         quickStartSteps(help)
             .filter(step -> step.kind() == WorkflowStepKind.COMMAND)
             .allMatch(
                 step ->
-                    step.text() != null
-                        && (step.text().startsWith("./bin/fingrind")
-                            || step.text().startsWith(".\\bin\\fingrind.ps1"))));
+                    step instanceof WorkflowStepDescriptor.Command(String text)
+                        && (text.startsWith("./bin/fingrind")
+                            || text.startsWith(".\\bin\\fingrind.ps1"))));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.EDIT
-                        && "./declare-account-cash.json".equals(step.path())
-                        && step.content() != null
-                        && step.content().contains("\"accountCode\": \"1000\"")));
+                    step instanceof WorkflowStepDescriptor.Edit(String path, String content)
+                        && "./declare-account-cash.json".equals(path)
+                        && content.contains("\"accountCode\": \"1000\"")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.COMMAND
-                        && step.text() != null
-                        && step.text().contains("./declare-account-cash.json")));
+                    step instanceof WorkflowStepDescriptor.Command(String text)
+                        && text.contains("./declare-account-cash.json")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.EDIT
-                        && "./declare-account-revenue.json".equals(step.path())
-                        && step.content() != null
-                        && step.content().contains("\"accountCode\": \"2000\"")));
+                    step instanceof WorkflowStepDescriptor.Edit(String path, String content)
+                        && "./declare-account-revenue.json".equals(path)
+                        && content.contains("\"accountCode\": \"2000\"")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.COMMAND
-                        && step.text() != null
-                        && step.text().contains("./declare-account-revenue.json")));
+                    step instanceof WorkflowStepDescriptor.Command(String text)
+                        && text.contains("./declare-account-revenue.json")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.NOTE
-                        && step.text() != null
-                        && step.text().contains("effectiveDate")));
+                    step instanceof WorkflowStepDescriptor.Note(String text)
+                        && text.contains("effectiveDate")));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.EDIT
-                        && ".\\declare-account-cash.json".equals(step.path())));
+                    step instanceof WorkflowStepDescriptor.Edit edit
+                        && ".\\declare-account-cash.json".equals(edit.path())));
     assertTrue(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    step.kind() == WorkflowStepKind.COMMAND
-                        && step.text() != null
-                        && step.text().contains(".\\request.json")));
+                    step instanceof WorkflowStepDescriptor.Command(String text)
+                        && text.contains(".\\request.json")));
     assertFalse(
         quickStartSteps(help)
             .anyMatch(
                 step ->
-                    (step.text() != null
-                            && (step.text().contains("./cash.json")
-                                || step.text().contains("./revenue.json")))
-                        || (step.path() != null
-                            && (step.path().contains("./cash.json")
-                                || step.path().contains("./revenue.json")))));
+                    switch (step) {
+                      case WorkflowStepDescriptor.Command(String commandText) ->
+                          commandText.contains("./cash.json")
+                              || commandText.contains("./revenue.json");
+                      case WorkflowStepDescriptor.Note(String noteText) ->
+                          noteText.contains("./cash.json") || noteText.contains("./revenue.json");
+                      case WorkflowStepDescriptor.Edit edit ->
+                          edit.path().contains("./cash.json")
+                              || edit.path().contains("./revenue.json");
+                    }));
 
     assertEquals("0.9.0", version.version());
     assertEquals(
@@ -403,17 +410,20 @@ class MachineContractTest {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
-            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            ProtocolCatalog.forbiddenSqliteCompileOptions(),
+            ProtocolCatalog.requiresSecureMemorySupport(),
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            SqliteRuntimeStatus.READY,
-            SqliteRuntimeProvenance.BUNDLE_MANAGED,
-            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-            "/tmp/libsqlite3.dylib",
-            ProtocolCatalog.requiredMinimumSqliteVersion(),
-            ProtocolCatalog.requiredSqlite3mcVersion(),
-            ProtocolCatalog.requiredSqliteSourceId(),
-            null));
+            EnvironmentSqliteDescriptor.runtime(
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntimeStatus.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                "/tmp/libsqlite3.dylib",
+                ProtocolCatalog.requiredMinimumSqliteVersion(),
+                ProtocolCatalog.requiredSqlite3mcVersion(),
+                ProtocolCatalog.requiredSqliteSourceId(),
+                null)));
   }
 }

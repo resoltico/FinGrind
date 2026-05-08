@@ -20,6 +20,17 @@ final class CliFailureOutputRenderer {
         failure.details());
   }
 
+  static String renderDeterministicFailureHuman(CliFailure failure) {
+    return renderHumanDocument(
+        "Rejected",
+        failure.code(),
+        failure.message(),
+        failure.hint(),
+        failure.argument(),
+        null,
+        failure.details());
+  }
+
   static String renderWarningHuman(CliFailure failure) {
     return renderHumanDocument(
         "Warning",

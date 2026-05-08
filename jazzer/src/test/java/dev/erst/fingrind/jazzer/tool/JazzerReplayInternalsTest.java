@@ -402,6 +402,7 @@ class JazzerReplayInternalsTest {
         new RegressionSeedMetadata(
             " cli-request ",
             " src/fuzz/resources/../resources/example.json ",
+            " minimal replay example ",
             new ReplayExpectation(ReplayOutcomeKind.SUCCESS, " ok ", details));
 
     assertEquals("cli-request", findingArtifact.targetKey());
@@ -442,7 +443,10 @@ class JazzerReplayInternalsTest {
         IllegalArgumentException.class,
         () ->
             new RegressionSeedMetadata(
-                "cli-request", Path.of("/tmp/absolute.json").toString(), metadata.expectation()));
+                "cli-request",
+                Path.of("/tmp/absolute.json").toString(),
+                metadata.coverageIntent(),
+                metadata.expectation()));
     assertThrows(
         NullPointerException.class,
         () -> new ParsedLedgerPlanShapeReplayDetails(nullLedgerPlanShapeDetails()));

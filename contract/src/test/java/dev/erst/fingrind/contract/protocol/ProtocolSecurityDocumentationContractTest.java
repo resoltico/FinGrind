@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.LinkedHashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -95,6 +94,20 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
           compileOption,
           "documented required SQLite compile option " + compileOption);
     }
+    for (String compileOption : capabilities.environment().sqlite().forbiddenCompileOptions()) {
+      requireContains(
+          document,
+          violations,
+          compileOption,
+          "documented forbidden SQLite compile option " + compileOption);
+    }
+    if (capabilities.environment().sqlite().requiresSecureMemorySupport()) {
+      requireContains(
+          document,
+          violations,
+          "SQLITE3MC_SECURE_MEMORY=1",
+          "the managed SQLite secure-memory compile requirement");
+    }
     for (String runtimeFact :
         java.util.List.of(
             capabilities.environment().sqlite().requiredMinimumSqliteVersion(),
@@ -144,10 +157,12 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
         "docs/DEVELOPER_SECURITY.md must describe the machine-readable runtimeTrustBasis field.");
     assertTrue(
         document.contains(
-            "capabilities.environment.sqlite.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes"),
+            "capabilities.environment.sqlite.runtime.runtimeTrustBasis distinguishes publisher-authenticated managed runtimes from operator-trusted configured runtimes"),
         "docs/DEVELOPER_SECURITY.md must explain how machine consumers distinguish runtime trust classes.");
+    EnvironmentSqliteDescriptor.ReadyRuntime readyRuntime =
+        (EnvironmentSqliteDescriptor.ReadyRuntime) sqlite.runtime();
     assertTrue(
-        document.contains(Objects.requireNonNull(sqlite.runtimeTrustBasis()).wireValue()),
+        document.contains(readyRuntime.runtimeTrustBasis().wireValue()),
         "docs/DEVELOPER_SECURITY.md must include the ready managed-runtime trust-basis wire value.");
     assertTrue(
         document.contains("public quick-start and example docs keep key files under a separate"),
@@ -203,7 +218,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
     return MachineContract.capabilities(
-        new ApplicationIdentity("FinGrind", "0.32.0", "desc"),
+        new ApplicationIdentity("FinGrind", "0.33.0", "desc"),
         readyEnvironmentDescriptor(),
         Instant.parse("2026-05-06T00:00:00Z"));
   }
@@ -226,18 +241,21 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             ProtocolCatalog.requiredSqliteCompileOptions(),
-            SqliteCompileOptionsVerificationStatus.VERIFIED,
+            ProtocolCatalog.forbiddenSqliteCompileOptions(),
+            ProtocolCatalog.requiresSecureMemorySupport(),
             ProtocolCatalog.requiredMinimumSqliteVersion(),
             ProtocolCatalog.requiredSqlite3mcVersion(),
             ProtocolCatalog.requiredSqliteSourceId(),
-            SqliteRuntimeStatus.READY,
-            SqliteRuntimeProvenance.BUNDLE_MANAGED,
-            SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
-            "/tmp/libsqlite3.dylib",
-            ProtocolCatalog.requiredMinimumSqliteVersion(),
-            ProtocolCatalog.requiredSqlite3mcVersion(),
-            ProtocolCatalog.requiredSqliteSourceId(),
-            null));
+            EnvironmentSqliteDescriptor.runtime(
+                SqliteCompileOptionsVerificationStatus.VERIFIED,
+                SqliteRuntimeStatus.READY,
+                SqliteRuntimeProvenance.BUNDLE_MANAGED,
+                SqliteRuntimeTrustBasis.PUBLISHER_AUTHENTICATED,
+                "/tmp/libsqlite3.dylib",
+                ProtocolCatalog.requiredMinimumSqliteVersion(),
+                ProtocolCatalog.requiredSqlite3mcVersion(),
+                ProtocolCatalog.requiredSqliteSourceId(),
+                null)));
   }
 
   private static String sharedPassphraseByteLimit(CapabilitiesDescriptor capabilities) {

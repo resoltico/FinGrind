@@ -5,8 +5,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-05-08
+
+### Added
+
+- Added `docs/DEVELOPER_RELEASE_PUBLICATION.md` as the maintainer reference for GitHub Release
+  publication topology, published-byte attestation rules, Windows ZIP canary behavior, neutral
+  `gh release download` job constraints, and the safe `workflow_dispatch` repair path for
+  workflow-only post-tag publication defects.
+- Added project-owned Jazzer seed operators for promoting ad hoc replay inputs into committed
+  regression seeds and for auditing the committed seed floor, including required coverage-intent
+  metadata, duplicate-content detection, orphaned-input detection, and rejection of committed
+  `unexpected-failure` expectations.
+
+### Changed
+
+- Hardened `jazzer/bin/seed-audit` into a full committed-corpus integrity check so it now reports
+  unreadable metadata, escaped or missing input references, non-file inputs, and malformed
+  committed `.json` seed bodies as first-class audit defects instead of surfacing them only
+  through indirect failures.
+- Tightened the Jazzer custom-seed operator surface so wrapper-side `--json` failures are
+  machine-readable before Gradle starts, `promote-seed` now enforces corpus-wide
+  `coverageIntent` uniqueness, and the seed-management help text prints the supported replayable
+  target keys directly.
+- Upgraded the managed SQLite baseline from SQLite3 Multiple Ciphers 2.3.3 / SQLite 3.53.0 to
+  SQLite3 Multiple Ciphers 2.3.4 / SQLite 3.53.1 across the vendored amalgamation, managed-runtime
+  contract metadata, Docker/build surfaces, nested Jazzer build, developer references, and
+  operator-facing CLI/runtime documentation.
+- Pinned JaCoCo to the newer Java-26-ready snapshot artifact `0.8.15-20260506.113836-98` and
+  updated the developer build references to match the exact immutable coordinate resolved from the
+  Sonatype Maven snapshots repository.
+- Split executor and SQLite lifecycle inspection, query rejection, posting rejection, and
+  workflow-fact models away from the public contract so the local seams now translate to
+  `BookInspection`, `BookQueryRejection`, `PostingRejection`, and `LedgerFact` only at exported
+  application-service or published-language boundaries.
+- Pulled bookkeeping read semantics into `BookkeepingReadService`, bookkeeping posting semantics
+  into `BookkeepingPostingService`, and workflow execution semantics into
+  `BookWorkflowExecutionService`, while shrinking `BookReadService`, `PostingApplicationService`,
+  and `LedgerPlanService` into published-language adapters and removing the fixture-only
+  `commit(CommittedPosting)` production seam from `BookStore` and SQLite.
+- Forced full main-source recompilation after stale-class pruning in both the shared Java build
+  conventions and the nested Jazzer build so grouped top-level command classes are regenerated
+  into emptied output directories instead of disappearing behind incremental compile drift.
+- Pruned nested Jazzer processed-resource destinations before each real resource sync so renamed
+  or deleted committed seeds cannot linger in cached `jazzer-build/resources/` outputs and skew
+  packaged corpus behavior away from `src/fuzz/resources`.
+
 ### Fixed
 
+- Split command-scoped help so executable examples and operator notes no longer share one raw
+  `Examples` section, changed invalid invocation failures to default to human repair text
+  unless a recognized machine output mode is selected explicitly, and aligned human
+  deterministic contract-failure rendering on the `Rejected` heading.
+- Hardened container-image assembly so `docker build` now verifies the staged
+  `cli/build/docker-context/` payload against a SHA3-256 fingerprint of the current CLI,
+  contract, core, executor, report-PDF, SQLite, and Gradle build inputs, which turns stale
+  staged Docker contexts into loud build failures instead of silently packaging an older
+  application jar or Docker entrypoint.
+- Removed the source book's absolute filesystem path from rendered PDF report content and PDF
+  metadata, tightened the protocol-owned public-distribution and managed-SQLite contract loaders
+  so required canonical array keys cannot disappear into silent empty defaults, and replaced the
+  last boolean book-initialization shortcuts in SQLite tests and helpers with the inspection-first
+  lifecycle seam introduced by the local bookkeeping/workflow boundary refactor.
+- Tightened the managed SQLite compile contract so the canonical protocol resource now owns the
+  required compile options, forbidden compile options, and SQLite3MC secure-memory requirement in
+  one place, while runtime discovery, bundle metadata, build logic, and shell verifiers all prove
+  the same contract instead of mixing one required-subset check with separate handwritten flags.
 - Fixed public-release provenance so `.github/workflows/release.yml` now attests the exact bundle
   and checksum bytes downloaded back from the published GitHub Release on one neutral post-upload
   job instead of attesting per-runner local artifacts, which closes the Windows publication drift
@@ -16,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failure instead of looping through opaque download failures.
 - Raised the release verifier job timeout to fit its explicit GitHub-release propagation retry
   budget, and documented that timeout/retry alignment as part of the release protocol contract.
+- Clarified the public release protocol's worktree/bootstrap handoff for cases where a live
+  FinGrind verification owner already holds the repo-wide verification lock, so release operators
+  are told to wait or bootstrap into a clean worktree instead of deleting a live lock or starting
+  competing verification in the same checkout.
 - Hardened the tag-publication release workflow so published-asset attestation now runs on one
   dedicated neutral post-upload job with the exact OIDC, attestation, and artifact-metadata
   permissions required by `actions/attest`, and clarified the release protocol's recovery path
@@ -27,6 +95,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   verification step now carries the same release-asset propagation retry budget as the container
   workflow, and `verify-github-release.sh` now reports the exact failing sub-check and asset name
   instead of collapsing every publication defect into one generic "missing or incomplete" error.
+- Narrowed test-only null escape hatches from class-wide and method-wide opt-outs to exact
+  typed-null call sites, tightened CLI/contract null diagnostics and payload typing, and replaced
+  the SQLite store lifecycle's nullable field mesh with an explicit session-state model so the
+  compiler, tests, and runtime contracts now describe the same state transitions.
+- Replaced duplicate committed Jazzer seed bytes across posting-workflow and SQLite harnesses with
+  harness-specific seeds, fixed the `jazzer/bin/seed-audit` zero-target shell path under
+  `set -u`, and updated the committed seed inventory/docs to reflect the stricter seed-management
+  contract.
+- Clarified several committed Jazzer seed coverage-intent labels so `jazzer/bin/seed-audit`
+  now names exact rejected fields and persistence outcomes instead of relying on internal shorthand.
+- Tightened the custom Jazzer seed operator surface so `promote-seed` now validates lower_snake_case
+  seed names before Gradle launch, deterministic `--json` seed-management failures return one
+  structured error payload without Gradle failure boilerplate, `jazzer/bin/regression` rejects
+  stray positional arguments at the wrapper edge, and the committed `.json` regression inputs are
+  syntax-checked by the deterministic Jazzer test floor after removing one corrupted
+  posting-workflow seed body.
+- Replaced the remaining null-to-empty constructor and helper normalization paths across core,
+  contract, CLI, executor, and SQLite-support models with direct field-named null rejection,
+  added explicit nullable JSON/resource seam helpers at the Jackson boundaries, and tightened the
+  staged-launcher and contract-resource tests so empty or malformed inputs fail through the
+  intended diagnostics instead of generic null failures while JaCoCo verification now measures
+  compiled Java classes rather than treating resource outputs as uncovered code.
+- Extended the stale-classfile pruning rule from the nested Jazzer build to every product-module
+  `compileJava` run, so removed nested helper classes cannot linger in cached main output
+  directories and reappear later as false branch-coverage failures.
+- Removed the stale claim that `RejectionNarrative` owns ledger-plan failure facts now that
+  workflow execution records build their local `BookWorkflowFailure` and `BookWorkflowFact`
+  payloads inside the workflow context and only project public rejection prose at the outer edge.
+- Updated the SQLite runtime verifier, release-smoke assertions, and bundle acceptance workflow
+  to read the current `environment.sqlite.runtime` capabilities shape instead of the older flat
+  runtime fields, and tightened the SQLite lifecycle coverage tests so the end-to-end gate proves
+  the real deferred, created-artifact, and no-active transaction branches without reflective
+  state mutation.
 
 ## [0.32.0] - 2026-05-06
 
@@ -467,11 +568,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contract field/property names.
 - Root Spotless project-file coverage now includes tracked `.codex/**` Markdown, so repo-owned
   agent/system-theory files are back under the default repository hygiene gate.
-- `jazzer/bin/fuzz-all` now keeps pure per-harness timeout exits moving, but stops on the first
-  actionable harness failure and prints replay-classified findings for that target before
-  returning, so real bugs no longer get buried beneath later harness logs. The wrapper and its
-  regression surface now also stay compatible with stock macOS Bash 3.2 while deriving the active
-  harness list from `jazzer-topology.json`.
+- Jazzer wrapper timeboxing now starts from the libFuzzer start marker instead of raw Gradle
+  process launch, so bounded local fuzz sessions no longer get mislabeled as timeout failures just
+  because startup and instrumentation took longer than the requested fuzzing window. Wrapper exit
+  `124` is now reserved for real timeout teardown, while `jazzer/bin/fuzz-all` keeps that
+  distinction when it stops on the first actionable harness failure and prints replay-classified
+  findings for the failed target. The wrapper and its regression surface also stay compatible with
+  stock macOS Bash 3.2 while deriving the active harness list from `jazzer-topology.json`.
 - Jazzer replay expectations, finding artifacts, and JSON/operator output now use the typed
   lower-case wire vocabularies they actually model instead of flattening sealed outcomes and
   lifecycle states back to ad hoc strings.
@@ -1399,7 +1502,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.33.0
 [0.32.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.32.0
 [0.31.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.31.0
 [0.30.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.30.0

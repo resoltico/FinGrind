@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
@@ -18,6 +17,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -35,12 +35,8 @@ final class SqliteStoreReadOperations {
     this.reportOperations = new SqliteStoreReportOperations(context, lifecycle);
   }
 
-  BookInspection inspectBook() {
+  BookLifecycleInspection inspectBook() {
     return queryOperations.inspectBook();
-  }
-
-  boolean isInitialized() {
-    return queryOperations.isInitialized();
   }
 
   Optional<RegisteredAccount> findAccount(AccountCode accountCode) {

@@ -27,6 +27,20 @@ object DistributionContractReader {
             loadContractSchema(projectRootDirectory).managedSqlite.requiredCompileOptions,
         )
 
+    fun forbiddenSqliteCompileOptions(projectRootDirectory: Path): List<String> =
+        DistributionContractJson.listProperty(
+            projectRootDirectory,
+            DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
+            loadContractSchema(projectRootDirectory).managedSqlite.forbiddenCompileOptions,
+        )
+
+    fun requiresSecureMemorySupport(projectRootDirectory: Path): Boolean =
+        DistributionContractJson.booleanProperty(
+            projectRootDirectory,
+            DistributionContractPaths.MANAGED_SQLITE_CONTRACT_PATH,
+            loadContractSchema(projectRootDirectory).managedSqlite.requiresSecureMemorySupport,
+        )
+
     fun sourceCheckoutRuntimeDistribution(projectRootDirectory: Path): String =
         runtimeSurfaceProperty(projectRootDirectory) { it.sourceCheckoutRuntimeDistribution }
 
@@ -177,6 +191,8 @@ object DistributionContractReader {
         val requiredSqlite3mcVersion: String,
         val requiredSqliteSourceId: String,
         val requiredCompileOptions: String,
+        val forbiddenCompileOptions: String,
+        val requiresSecureMemorySupport: String,
     )
 
     internal data class BundleLayoutSchema(

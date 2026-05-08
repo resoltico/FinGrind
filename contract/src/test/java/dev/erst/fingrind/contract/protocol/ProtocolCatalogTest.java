@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -14,17 +15,15 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the core-owned protocol catalog. */
-@NullUnmarked
 class ProtocolCatalogTest {
   @Test
   void operations_followCanonicalPublicOrder() {
     List<String> operationNames =
         ProtocolCatalog.operations().stream().map(operation -> operation.id().wireName()).toList();
-
     assertEquals(
         Arrays.stream(OperationId.values()).map(OperationId::wireName).toList(), operationNames);
     assertEquals("open-book", ProtocolCatalog.operationName(OperationId.OPEN_BOOK));
@@ -56,11 +55,25 @@ class ProtocolCatalogTest {
     ProtocolOperation help = operation(OperationId.HELP, List.of("--same"));
     ProtocolOperation duplicateHelp = operation(OperationId.HELP, List.of("--other"));
     ProtocolOperation version = operation(OperationId.VERSION, List.of("--same"));
-
     assertThrows(
         IllegalStateException.class, () -> ProtocolCatalog.indexById(List.of(help, duplicateHelp)));
     assertThrows(
         IllegalStateException.class, () -> ProtocolCatalog.indexByToken(List.of(help, version)));
+  }
+
+  @Test
+  void requireOperation_reportsMissingCanonicalRegistration() {
+    IllegalStateException missingOperation =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                ProtocolCatalog.requireOperation(
+                    Map.of(OperationId.HELP, ProtocolCatalog.operation(OperationId.HELP)),
+                    OperationId.VERSION));
+
+    assertEquals(
+        "No protocol catalog entry is registered for operationId VERSION.",
+        missingOperation.getMessage());
   }
 
   @Test
@@ -88,37 +101,72 @@ class ProtocolCatalogTest {
   }
 
   @Test
-  void protocolDescriptorRecords_rejectBlankTextAndCoalesceNullCollections() {
+  void protocolDescriptorRecords_rejectBlankTextAndNullCollectionsWithContext() {
     ProtocolOperation operation =
         new ProtocolOperation(
             OperationId.HELP,
             OperationCategory.DISCOVERY,
-            new ProtocolCommandSignature("Help", null, null, "fingrind help"),
-            new ProtocolOperationOutputs(ExecutionMode.JSON_ENVELOPE, null, null),
-            new ProtocolOperationDocumentation("summary", null));
+            new ProtocolCommandSignature("Help", List.of(), List.of(), "fingrind help"),
+            new ProtocolOperationOutputs(ExecutionMode.JSON_ENVELOPE, List.of(), List.of()),
+            new ProtocolOperationDocumentation("summary", List.of()));
     ProtocolOperationDefinitions.OperationDefinition definition =
         new ProtocolOperationDefinitions.OperationDefinition(
             OperationId.HELP,
             OperationCategory.DISCOVERY,
             "Help",
-            null,
-            null,
+            List.of(),
+            List.of(),
             ExecutionMode.JSON_ENVELOPE,
-            null,
-            null,
+            List.of(),
+            List.of(),
             "summary",
-            null);
-
+            List.of());
     assertEquals(List.of(), operation.aliases());
     assertEquals(List.of(), operation.options());
     assertEquals(List.of(), operation.outputModes());
     assertEquals(List.of(), operation.artifactOutputs());
-    assertEquals(List.of(), operation.examples());
+    assertEquals(List.of(), operation.exampleSteps());
     assertEquals(List.of(), definition.aliases());
     assertEquals(List.of(), definition.options());
     assertEquals(List.of(), definition.outputModes());
     assertEquals(List.of(), definition.artifactOutputs());
-    assertEquals(List.of(), definition.examples());
+    assertEquals(List.of(), definition.exampleSteps());
+    assertEquals(
+        "aliases must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () -> new ProtocolCommandSignature("Help", nullOf(), List.of(), "fingrind help"))
+            .getMessage());
+    assertEquals(
+        "outputModes must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new ProtocolOperationOutputs(ExecutionMode.JSON_ENVELOPE, nullOf(), List.of()))
+            .getMessage());
+    assertEquals(
+        "exampleSteps must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () -> new ProtocolOperationDocumentation("summary", nullOf()))
+            .getMessage());
+    assertEquals(
+        "artifactOutputs must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new ProtocolOperationDefinitions.OperationDefinition(
+                        OperationId.HELP,
+                        OperationCategory.DISCOVERY,
+                        "Help",
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(),
+                        nullOf(),
+                        "summary",
+                        List.of()))
+            .getMessage());
     assertThrows(
         IllegalArgumentException.class, () -> new ProtocolOperationDocumentation(" ", List.of()));
     assertThrows(
@@ -159,7 +207,6 @@ class ProtocolCatalogTest {
                 """
                     .getBytes(StandardCharsets.UTF_8)),
             "memory");
-
     assertEquals("help", contract.wireName("HELP"));
     assertThrows(IllegalStateException.class, () -> contract.wireName("UNKNOWN"));
     assertThrows(
@@ -174,7 +221,7 @@ class ProtocolCatalogTest {
                 "blank"));
     assertThrows(
         IllegalStateException.class,
-        () -> OperationIdContract.loadFromResource(null, "missing.json"));
+        () -> OperationIdContract.loadFromResource(nullOf(), "missing.json"));
     assertThrows(
         UncheckedIOException.class,
         () ->
@@ -211,7 +258,6 @@ class ProtocolCatalogTest {
     ProtocolOperation printRequestTemplate =
         ProtocolCatalog.operation(OperationId.PRINT_REQUEST_TEMPLATE);
     ProtocolOperation executePlan = ProtocolCatalog.operation(OperationId.EXECUTE_PLAN);
-
     assertEquals("[--limit <1-200>]", ProtocolOptions.optionalLimitSyntax());
     assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
     assertEquals(
@@ -227,7 +273,15 @@ class ProtocolCatalogTest {
     assertEquals(100, InteractionLimits.LEDGER_PLAN_STEP_MAX);
     assertTrue(listAccounts.options().contains("[--limit <1-200>]"));
     assertTrue(listAccounts.usage().contains("[--book-key-file <path> | --book-passphrase-stdin"));
-    assertTrue(listAccounts.examples().getFirst().contains("--limit 50"));
+    assertEquals(
+        new ProtocolExampleStep.Command(
+            "fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --limit 50"),
+        listAccounts.exampleSteps().getFirst());
+    assertTrue(
+        printRequestTemplate.exampleSteps().stream()
+            .anyMatch(ProtocolExampleStep.Note.class::isInstance));
+    assertTrue(
+        executePlan.exampleSteps().stream().anyMatch(ProtocolExampleStep.Note.class::isInstance));
     assertEquals(
         List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV), trialBalance.outputModes());
     assertTrue(trialBalance.options().contains("[--output <json|human|csv>]"));
@@ -296,10 +350,10 @@ class ProtocolCatalogTest {
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.sqliteLibraryMode());
     assertEquals("FINGRIND_SQLITE_LIBRARY", ProtocolCatalog.sqliteLibraryEnvironmentVariable());
     assertEquals("fingrind.bundle.home", ProtocolCatalog.sqliteBundleHomeSystemProperty());
-    assertEquals("3.53.0", ProtocolCatalog.requiredMinimumSqliteVersion());
-    assertEquals("2.3.3", ProtocolCatalog.requiredSqlite3mcVersion());
+    assertEquals("3.53.1", ProtocolCatalog.requiredMinimumSqliteVersion());
+    assertEquals("2.3.4", ProtocolCatalog.requiredSqlite3mcVersion());
     assertEquals(
-        "2026-04-09 11:41:38 4525003a53a7fc63ca75c59b22c79608659ca12f0131f52c18637f829977f20b",
+        "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
         ProtocolCatalog.requiredSqliteSourceId());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
@@ -359,7 +413,6 @@ class ProtocolCatalogTest {
             PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
             "complete journal",
             List.of("limit"));
-
     assertEquals(List.of("limit"), facts.hardLimitations());
     assertEquals(List.of("planId", "steps"), ProtocolLedgerPlanFields.planFields());
     assertEquals(
@@ -442,15 +495,14 @@ class ProtocolCatalogTest {
     assertEquals(
         ProtocolSharedRequestFields.CURRENCY_CODE,
         ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE);
-
     assertThrows(
         NullPointerException.class,
         () ->
             new PlanExecutionFacts(
-                null, PlanFailurePolicy.HALT_ON_FIRST_FAILURE, "journal", List.of()));
+                nullOf(), PlanFailurePolicy.HALT_ON_FIRST_FAILURE, "journal", List.of()));
     assertThrows(
         NullPointerException.class,
-        () -> new PlanExecutionFacts(PlanTransactionMode.ATOMIC, null, "journal", List.of()));
+        () -> new PlanExecutionFacts(PlanTransactionMode.ATOMIC, nullOf(), "journal", List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -479,21 +531,24 @@ class ProtocolCatalogTest {
                 """
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
             "test-resource");
-
     assertEquals(
         List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.LINUX_X86_64),
         loaded.supportedPublicCliBundleTargets());
     assertEquals(
         List.of(PublicCliBundleTarget.WINDOWS_AARCH64), loaded.unsupportedPublicCliBundleTargets());
     assertEquals(
-        List.of(),
-        PublicDistributionContracts.loadFromResource(
-                new ByteArrayInputStream("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                "blank-resource")
-            .supportedPublicCliBundleTargets());
+        "supportedPublicCliBundleTargets must be a JSON array of strings.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    PublicDistributionContracts.loadFromResource(
+                        new ByteArrayInputStream(
+                            "{}".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                        "blank-resource"))
+            .getMessage());
     assertThrows(
         IllegalStateException.class,
-        () -> PublicDistributionContracts.loadFromResource(null, "missing-resource"));
+        () -> PublicDistributionContracts.loadFromResource(nullOf(), "missing-resource"));
     assertThrows(
         UncheckedIOException.class,
         () -> PublicDistributionContracts.loadFromResource(failingInputStream(), "bad-resource"));
@@ -508,9 +563,11 @@ class ProtocolCatalogTest {
                         .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
                 "invalid-resource"));
     assertEquals(
-        List.of(),
-        PublicDistributionContract.fromWireValues(null, List.of())
-            .supportedPublicCliBundleTargets());
+        "supportedPublicCliBundleTargets must not be null.",
+        assertThrows(
+                NullPointerException.class,
+                () -> PublicDistributionContract.fromWireValues(nullOf(), List.of()))
+            .getMessage());
     assertThrows(
         IllegalArgumentException.class,
         () -> PublicDistributionContract.fromWireValues(List.of("macos-aarch64", " "), List.of()));

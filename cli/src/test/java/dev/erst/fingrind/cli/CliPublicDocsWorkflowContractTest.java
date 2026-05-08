@@ -11,13 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Executes the published quick-start and example workflows against the live CLI surface. */
-@NullUnmarked
 class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -31,7 +29,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertTrue(guide.contains("same book is rejected"));
     assertTrue(guide.contains("--request-file ./declare-account-cash.json"));
     assertTrue(guide.contains("--request-file ./declare-account-revenue.json"));
-
     Path workspace = tempDirectory.resolve("quick-start");
     Path bookFile = workspace.resolve("acme.sqlite");
     Path bookKeyFile = workspace.resolve("acme.book-key");
@@ -51,13 +48,11 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
                 "Replace the contents of `./request.json` with one balanced entry, for example:",
                 "json"));
     Path rawTemplateRequestFile = workspace.resolve("quick-start-request-template.json");
-
     JsonNode generatedKey =
         runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     assertEquals("ok", generatedKey.path("status").stringValue());
     assertGeneratedKeyFileIsSecure(
         bookKeyFile, generatedKey.path("payload").path("permissions").stringValue());
-
     JsonNode openBook =
         runJsonCommand(
             "open-book",
@@ -66,7 +61,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             "--book-key-file",
             bookKeyFile.toString());
     assertEquals("ok", openBook.path("status").stringValue());
-
     JsonNode requestTemplate = runRawJsonCommand("print-request-template");
     assertEquals(
         "replace-before-commit-effective-date",
@@ -77,7 +71,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
         requestTemplate.path("provenance").path("idempotencyKey").stringValue());
     Files.writeString(
         rawTemplateRequestFile, requestTemplate.toPrettyString(), StandardCharsets.UTF_8);
-
     runJsonCommand(
         "declare-account",
         "--book-file",
@@ -94,7 +87,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
         bookKeyFile.toString(),
         "--request-file",
         declareRevenueFile.toString());
-
     JsonNode rawTemplateFailure =
         runJsonCommandExpectingExit(
             1,
@@ -109,7 +101,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertEquals("invalid-request", rawTemplateFailure.path("code").stringValue());
     assertTrue(rawTemplateFailure.path("message").stringValue().contains("effectiveDate"));
     assertTrue(rawTemplateFailure.path("hint").stringValue().contains("print-request-template"));
-
     JsonNode preflight =
         runJsonCommand(
             "preflight-entry",
@@ -120,7 +111,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             "--request-file",
             requestFile.toString());
     assertEquals("preflight-accepted", preflight.path("status").stringValue());
-
     JsonNode committed =
         runJsonCommand(
             "post-entry",
@@ -131,7 +121,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             "--request-file",
             requestFile.toString());
     assertEquals("committed", committed.path("status").stringValue());
-
     String trialBalance =
         runPlainCommand(
             "trial-balance",
@@ -163,7 +152,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertFalse(
         requestsGuide.contains(
             "print-plan-template` emits the accepted `execute-plan` request shape directly"));
-
     Path workspace = tempDirectory.resolve("examples");
     Path bookFile = workspace.resolve("acme.sqlite");
     Path bookKeyFile = workspace.resolve("acme.book-key");
@@ -175,7 +163,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     Path planRequestFile = copyExampleFixture("ledger-plan-request.json");
     Path queryPlanBookFile = workspace.resolve("acme-plan-query.sqlite");
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
-
     runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     runJsonCommand(
         "open-book", "--book-file", bookFile.toString(), "--book-key-file", bookKeyFile.toString());
@@ -195,7 +182,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
         bookKeyFile.toString(),
         "--request-file",
         declareRevenueFile.toString());
-
     JsonNode committed =
         runJsonCommand(
             "post-entry",
@@ -207,7 +193,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             postingRequestFile.toString());
     String postingId = committed.path("postingId").stringValue();
     assertFalse(postingId.isBlank());
-
     JsonNode listing =
         runJsonCommand(
             "list-postings",
@@ -219,7 +204,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             "10");
     assertEquals(
         postingId, listing.path("payload").path("postings").get(0).path("postingId").stringValue());
-
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
     Files.writeString(
         rawPlanTemplateFile, rawPlanTemplate.toPrettyString(), StandardCharsets.UTF_8);
@@ -237,7 +221,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     assertEquals("invalid-request", rawPlanFailure.path("code").stringValue());
     assertTrue(rawPlanFailure.path("message").stringValue().contains("effectiveDate"));
     assertTrue(rawPlanFailure.path("hint").stringValue().contains("print-plan-template"));
-
     JsonNode planResult =
         runJsonCommand(
             "execute-plan",
@@ -248,7 +231,6 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
             "--request-file",
             planRequestFile.toString());
     assertEquals("plan-committed", planResult.path("status").stringValue());
-
     JsonNode queryPlanResult =
         runJsonCommand(
             "execute-plan",
@@ -286,9 +268,7 @@ class CliPublicDocsWorkflowContractTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-
     int exitCode = cli.run(arguments);
-
     assertEquals(
         expectedExitCode,
         exitCode,

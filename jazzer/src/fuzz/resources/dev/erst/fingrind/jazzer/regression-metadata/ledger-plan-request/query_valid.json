@@ -1,6 +1,7 @@
 {
   "targetKey": "ledger-plan-request",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/query_valid.json",
+  "coverageIntent": "valid plan with successful structured list-query journal facts",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",

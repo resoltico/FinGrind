@@ -23,7 +23,7 @@ class CliJsonRequestCodecTest {
   @Test
   void hasDuplicateObjectKeys_returnsFalseWhenObjectKeysAreDistinct() throws Exception {
     assertFalse(
-        CliJsonRequestCodec.hasDuplicateObjectKeys(
+        CliJsonObjectMappers.hasDuplicateObjectKeys(
             """
             {
               "effectiveDate": "2026-04-07",
@@ -39,7 +39,7 @@ class CliJsonRequestCodecTest {
   @Test
   void hasDuplicateObjectKeys_returnsTrueWhenObjectKeysRepeat() throws Exception {
     assertTrue(
-        CliJsonRequestCodec.hasDuplicateObjectKeys(
+        CliJsonObjectMappers.hasDuplicateObjectKeys(
             """
             {
               "provenance": {
@@ -57,7 +57,7 @@ class CliJsonRequestCodecTest {
     Path requestFile = Path.of("missing-request.json");
 
     CliRequestException exception =
-        CliJsonRequestCodec.requestReadFailure(
+        CliJsonRequestFailures.requestReadFailure(
             requestFile, new NoSuchFileException(requestFile.toString()), "unused hint");
 
     assertEquals(
@@ -73,7 +73,7 @@ class CliJsonRequestCodecTest {
     Path requestFile = Path.of("private-request.json");
 
     CliRequestException exception =
-        CliJsonRequestCodec.requestReadFailure(
+        CliJsonRequestFailures.requestReadFailure(
             requestFile, new AccessDeniedException(requestFile.toString()), "unused hint");
 
     assertEquals(
@@ -86,7 +86,8 @@ class CliJsonRequestCodecTest {
     Path requestFile = Path.of("broken-request.json");
 
     CliRequestException exception =
-        CliJsonRequestCodec.requestReadFailure(requestFile, new IOException("boom"), "unused hint");
+        CliJsonRequestFailures.requestReadFailure(
+            requestFile, new IOException("boom"), "unused hint");
 
     assertEquals(
         "Failed to read request file: " + requestFile.toAbsolutePath().normalize() + ".",
@@ -96,7 +97,7 @@ class CliJsonRequestCodecTest {
   @Test
   void requestReadFailure_reportsStandardInputTransportFailuresSeparately() {
     CliRequestException exception =
-        CliJsonRequestCodec.requestReadFailure(
+        CliJsonRequestFailures.requestReadFailure(
             Path.of("-"), new IOException("boom"), "unused hint");
 
     assertEquals("Failed to read request JSON from standard input.", exception.getMessage());
@@ -112,11 +113,11 @@ class CliJsonRequestCodecTest {
             assertThrows(
                 JacksonException.class,
                 () ->
-                    CliJsonRequestCodec.configuredObjectMapper()
+                    CliJsonObjectMappers.configuredObjectMapper()
                         .readTree("{".getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
-        CliJsonRequestCodec.requestReadFailure(
+        CliJsonRequestFailures.requestReadFailure(
             Path.of("request.json"), parseFailure, "schema hint");
 
     assertEquals(
@@ -139,34 +140,35 @@ class CliJsonRequestCodecTest {
   void readFailureMessage_fallsBackForNonJacksonAndUnusableJacksonLocations() {
     assertEquals(
         "Failed to read request JSON.",
-        CliJsonRequestCodec.readFailureMessage(new RuntimeException("boom")));
+        CliJsonRequestFailures.readFailureMessage(new RuntimeException("boom")));
     assertEquals(
         "Failed to read request JSON.",
-        CliJsonRequestCodec.readFailureMessage(new StubJacksonException("boom", null)));
+        CliJsonRequestFailures.readFailureMessage(new StubJacksonException("boom", null)));
     assertEquals(
         "Failed to read request JSON.",
-        CliJsonRequestCodec.readFailureMessage(
+        CliJsonRequestFailures.readFailureMessage(
             new StubJacksonException("boom", new FixedLocation(0, 7))));
     assertEquals(
         "Failed to read request JSON.",
-        CliJsonRequestCodec.readFailureMessage(
+        CliJsonRequestFailures.readFailureMessage(
             new StubJacksonException("boom", new FixedLocation(7, 0))));
   }
 
   @Test
   void parseLocation_returnsOnlyUsablePositiveLocations() {
     assertEquals(
-        new CliJsonRequestCodec.JsonParseLocation(4, 9),
-        CliJsonRequestCodec.parseLocation(
+        new CliJsonRequestFailures.JsonParseLocation(4, 9),
+        CliJsonRequestFailures.parseLocation(
             new StubJacksonException("boom", new FixedLocation(4, 9))));
-    assertEquals(null, CliJsonRequestCodec.parseLocation(new StubJacksonException("boom", null)));
+    assertEquals(
+        null, CliJsonRequestFailures.parseLocation(new StubJacksonException("boom", null)));
     assertEquals(
         null,
-        CliJsonRequestCodec.parseLocation(
+        CliJsonRequestFailures.parseLocation(
             new StubJacksonException("boom", new FixedLocation(0, 9))));
     assertEquals(
         null,
-        CliJsonRequestCodec.parseLocation(
+        CliJsonRequestFailures.parseLocation(
             new StubJacksonException("boom", new FixedLocation(9, 0))));
   }
 
@@ -174,12 +176,14 @@ class CliJsonRequestCodecTest {
   void jsonParseLocation_requiresPositiveCoordinates() {
     IllegalArgumentException lineFailure =
         assertThrows(
-            IllegalArgumentException.class, () -> new CliJsonRequestCodec.JsonParseLocation(0, 1));
+            IllegalArgumentException.class,
+            () -> new CliJsonRequestFailures.JsonParseLocation(0, 1));
     assertEquals("line must be positive", lineFailure.getMessage());
 
     IllegalArgumentException columnFailure =
         assertThrows(
-            IllegalArgumentException.class, () -> new CliJsonRequestCodec.JsonParseLocation(1, 0));
+            IllegalArgumentException.class,
+            () -> new CliJsonRequestFailures.JsonParseLocation(1, 0));
     assertEquals("column must be positive", columnFailure.getMessage());
   }
 
@@ -195,13 +199,13 @@ class CliJsonRequestCodecTest {
               FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
 
       assertTrue(
-          CliJsonRequestCodec.postEntryRequestHint()
+          CliJsonRequestHints.postEntryRequestHint()
               .contains(bundleLauncher + " print-request-template"));
       assertTrue(
-          CliJsonRequestCodec.ledgerPlanRequestHint()
+          CliJsonRequestHints.ledgerPlanRequestHint()
               .contains(bundleLauncher + " print-plan-template"));
       assertTrue(
-          CliJsonRequestCodec.declareAccountRequestHint()
+          CliJsonRequestHints.declareAccountRequestHint()
               .contains(bundleLauncher + " capabilities"));
     } finally {
       if ("__missing__".equals(priorDistribution)) {

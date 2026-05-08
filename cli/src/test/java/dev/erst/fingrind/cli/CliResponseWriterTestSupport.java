@@ -53,12 +53,11 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Shared payload fixtures and JSON helpers for split CLI response writer tests. */
-@NullUnmarked
 class CliResponseWriterTestSupport {
   protected CliResponseWriterTestSupport() {}
 
@@ -120,9 +119,9 @@ class CliResponseWriterTestSupport {
       String runtimeDistribution,
       SqliteCompileOptionsVerificationStatus compileOptionsVerification,
       String state,
-      String loadedSqliteVersion,
-      String loadedSqlite3mcVersion,
-      String diagnostics) {
+      @Nullable String loadedSqliteVersion,
+      @Nullable String loadedSqlite3mcVersion,
+      @Nullable String diagnostics) {
     SqliteRuntimeStatus runtimeStatus = SqliteRuntimeStatus.fromWireValue(state);
     SqliteRuntimeProvenance runtimeProvenance =
         runtimeStatus == SqliteRuntimeStatus.UNAVAILABLE
@@ -155,37 +154,36 @@ class CliResponseWriterTestSupport {
             ProtocolCatalog.sqliteLibraryEnvironmentVariable(),
             ProtocolCatalog.sqliteBundleHomeSystemProperty(),
             SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS,
-            compileOptionsVerification,
+            SqliteRuntime.FORBIDDEN_SQLITE_COMPILE_OPTIONS,
+            SqliteRuntime.REQUIRES_SECURE_MEMORY_SUPPORT,
             SqliteRuntime.REQUIRED_MINIMUM_SQLITE_VERSION,
             SqliteRuntime.REQUIRED_SQLITE3MC_VERSION,
             SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
-            runtimeStatus,
-            runtimeProvenance,
-            runtimeTrustBasis,
-            loadedLibraryPath,
-            loadedSqliteVersion,
-            loadedSqlite3mcVersion,
-            loadedSqliteSourceId,
-            diagnostics));
+            EnvironmentSqliteDescriptor.runtime(
+                compileOptionsVerification,
+                runtimeStatus,
+                runtimeProvenance,
+                runtimeTrustBasis,
+                loadedLibraryPath,
+                loadedSqliteVersion,
+                loadedSqlite3mcVersion,
+                loadedSqliteSourceId,
+                diagnostics)));
   }
 
   static String rejectedJson(PostingRejection rejection) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-
     responseWriter.writePostEntryResult(
         new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), rejection));
-
     return outputStream.toString(StandardCharsets.UTF_8);
   }
 
   static String openBookRejectedJson(BookAdministrationRejection rejection) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-
     responseWriter.writeOpenBookResult(
         Path.of("book.sqlite"), new OpenBookResult.Rejected(rejection));
-
     return outputStream.toString(StandardCharsets.UTF_8);
   }
 
@@ -254,6 +252,7 @@ class CliResponseWriterTestSupport {
     UNSAFE;
 
     @Override
+    @org.jspecify.annotations.NullUnmarked
     public String wireValue() {
       return null;
     }
@@ -262,13 +261,13 @@ class CliResponseWriterTestSupport {
   /** Value whose accessor throws so unrelated serializer failures are not rewritten. */
   static final class ExplodingGetter {
     final boolean explode;
-    final String failureMessage;
+    final @Nullable String failureMessage;
 
     ExplodingGetter() {
       this(true, "boom");
     }
 
-    ExplodingGetter(boolean explode, String failureMessage) {
+    ExplodingGetter(boolean explode, @Nullable String failureMessage) {
       this.explode = explode;
       this.failureMessage = failureMessage;
     }

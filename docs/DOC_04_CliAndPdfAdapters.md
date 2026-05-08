@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: CLI_PDF_ADAPTERS
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, cli, app, pdf, report-pdf, adapter, entrypoint, process, pdfbox]
   questions: ["where is the public cli entrypoint in fingrind", "how does fingrind render pdf reports", "which module owns pdf export in fingrind"]
@@ -43,3 +43,5 @@ public final class PdfReportService
 - Ownership split: report semantics stay in `contract` / `executor`; document layout and PDFBox
   lifecycle stay in `report-pdf`
 - I/O contract: returns `byte[]` so CLI code decides where artifacts are written
+- Privacy boundary: rendered PDF content and metadata do not embed the selected source book's
+  absolute filesystem path

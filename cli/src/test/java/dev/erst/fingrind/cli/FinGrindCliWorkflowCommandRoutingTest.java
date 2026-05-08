@@ -27,11 +27,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
   @Test
   void run_routesCommandsThroughSelectedBookWorkflow() throws IOException {
@@ -71,7 +69,6 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z")));
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -79,7 +76,6 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     assertEquals(
         0,
         cli.run(
@@ -152,7 +148,6 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               "--request-file",
               planFile.toString()
             }));
-
     assertEquals(List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.openBookAccesses());
     assertEquals(
         List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.declareAccountAccesses());
@@ -191,7 +186,6 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z")));
-
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -199,7 +193,6 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             fixedClock(),
             workflow);
-
     assertEquals(
         0,
         cli.run(
@@ -212,7 +205,6 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               "--replacement-book-key-file",
               replacementBookKeyFilePath.toString()
             }));
-
     assertEquals(
         List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.rekeyBookAccesses());
     assertEquals(

@@ -38,7 +38,7 @@ final class CliReportCommandExecutor {
         output.outputMode(),
         result -> {
           responseWriter.writeAccountBalanceResult(result, output.outputMode());
-          exportAccountBalance(bookAccess.bookFilePath(), result, output.pdfOutPath());
+          exportAccountBalance(result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -51,7 +51,7 @@ final class CliReportCommandExecutor {
         output.outputMode(),
         result -> {
           responseWriter.writeTrialBalanceResult(result, output.outputMode());
-          exportTrialBalance(bookAccess.bookFilePath(), result, output.pdfOutPath());
+          exportTrialBalance(result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -64,7 +64,7 @@ final class CliReportCommandExecutor {
         output.outputMode(),
         result -> {
           responseWriter.writeAccountLedgerResult(result, output.outputMode());
-          exportAccountLedger(bookAccess.bookFilePath(), result, output.pdfOutPath());
+          exportAccountLedger(result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
@@ -77,14 +77,13 @@ final class CliReportCommandExecutor {
         output.outputMode(),
         result -> {
           responseWriter.writePeriodSummaryResult(result, output.outputMode());
-          exportPeriodSummary(bookAccess.bookFilePath(), result, output.pdfOutPath());
+          exportPeriodSummary(result, output.pdfOutPath());
         },
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }
 
-  private void exportAccountBalance(
-      Path bookFilePath, AccountBalanceResult result, @Nullable Path outputPath) {
+  private void exportAccountBalance(AccountBalanceResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
       return;
     }
@@ -92,15 +91,12 @@ final class CliReportCommandExecutor {
       case AccountBalanceResult.Reported reported ->
           exportPdfWithDiagnostics(
               outputPath,
-              () ->
-                  pdfReportExporter.exportAccountBalance(
-                      outputPath, bookFilePath, reported.snapshot()));
+              () -> pdfReportExporter.exportAccountBalance(outputPath, reported.snapshot()));
       case AccountBalanceResult.Rejected _ -> {}
     }
   }
 
-  private void exportTrialBalance(
-      Path bookFilePath, TrialBalanceResult result, @Nullable Path outputPath) {
+  private void exportTrialBalance(TrialBalanceResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
       return;
     }
@@ -108,15 +104,12 @@ final class CliReportCommandExecutor {
       case TrialBalanceResult.Reported reported ->
           exportPdfWithDiagnostics(
               outputPath,
-              () ->
-                  pdfReportExporter.exportTrialBalance(
-                      outputPath, bookFilePath, reported.report()));
+              () -> pdfReportExporter.exportTrialBalance(outputPath, reported.report()));
       case TrialBalanceResult.Rejected _ -> {}
     }
   }
 
-  private void exportAccountLedger(
-      Path bookFilePath, AccountLedgerResult result, @Nullable Path outputPath) {
+  private void exportAccountLedger(AccountLedgerResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
       return;
     }
@@ -124,15 +117,12 @@ final class CliReportCommandExecutor {
       case AccountLedgerResult.Reported reported ->
           exportPdfWithDiagnostics(
               outputPath,
-              () ->
-                  pdfReportExporter.exportAccountLedger(
-                      outputPath, bookFilePath, reported.report()));
+              () -> pdfReportExporter.exportAccountLedger(outputPath, reported.report()));
       case AccountLedgerResult.Rejected _ -> {}
     }
   }
 
-  private void exportPeriodSummary(
-      Path bookFilePath, PeriodSummaryResult result, @Nullable Path outputPath) {
+  private void exportPeriodSummary(PeriodSummaryResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
       return;
     }
@@ -140,9 +130,7 @@ final class CliReportCommandExecutor {
       case PeriodSummaryResult.Reported reported ->
           exportPdfWithDiagnostics(
               outputPath,
-              () ->
-                  pdfReportExporter.exportPeriodSummary(
-                      outputPath, bookFilePath, reported.report()));
+              () -> pdfReportExporter.exportPeriodSummary(outputPath, reported.report()));
       case PeriodSummaryResult.Rejected _ -> {}
     }
   }

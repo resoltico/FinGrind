@@ -9,6 +9,7 @@ from .support import (
     normalize_reported_path,
     normalized_path_components,
     require,
+    require_bool,
     require_match,
     require_no_match,
     require_string,
@@ -27,6 +28,7 @@ def assert_capabilities_payload(
     distribution = required_mapping(environment, "distribution")
     storage = required_mapping(environment, "storage")
     sqlite = required_mapping(environment, "sqlite")
+    runtime = required_mapping(sqlite, "runtime")
     request_input = required_mapping(payload, "requestInput")
     commands = required_mapping(payload, "commands")
     response_model = required_mapping(payload, "responseModel")
@@ -144,15 +146,15 @@ def assert_capabilities_payload(
             "bundle-managed" if config.expect_bundle_home_property else "environment-configured"
         )
         require(
-            require_string(sqlite, "runtimeStatus") == "ready",
+            require_string(runtime, "status") == "ready",
             f"{config.label} capabilities output did not report a ready SQLite runtime",
         )
         require(
-            require_string(sqlite, "runtimeProvenance") == expected_runtime_provenance,
+            require_string(runtime, "runtimeProvenance") == expected_runtime_provenance,
             f"{config.label} capabilities output did not report the expected SQLite runtime provenance",
         )
         require(
-            bool(require_string(sqlite, "loadedLibraryPath").strip()),
+            bool(require_string(runtime, "loadedLibraryPath").strip()),
             f"{config.label} capabilities output did not report the loaded SQLite library path",
         )
         require(
@@ -161,17 +163,17 @@ def assert_capabilities_payload(
             f"{config.label} capabilities output did not report the canonical SQLite source id requirement",
         )
         require(
-            require_string(sqlite, "loadedSqliteVersion")
+            require_string(runtime, "loadedSqliteVersion")
             == require_string(managed_sqlite, "requiredMinimumSqliteVersion"),
             f"{config.label} capabilities output did not report the canonical SQLite version",
         )
         require(
-            require_string(sqlite, "loadedSqlite3mcVersion")
+            require_string(runtime, "loadedSqlite3mcVersion")
             == require_string(managed_sqlite, "requiredSqlite3mcVersion"),
             f"{config.label} capabilities output did not report the canonical SQLite3 Multiple Ciphers version",
         )
         require(
-            require_string(sqlite, "loadedSqliteSourceId")
+            require_string(runtime, "loadedSqliteSourceId")
             == require_string(managed_sqlite, "requiredSqliteSourceId"),
             f"{config.label} capabilities output did not report the canonical SQLite source id",
         )
@@ -181,7 +183,17 @@ def assert_capabilities_payload(
             f"{config.label} capabilities output did not report the canonical SQLite compile options",
         )
         require(
-            require_string(sqlite, "compileOptionsVerification") == "verified",
+            required_list(sqlite, "forbiddenCompileOptions")
+            == required_list(managed_sqlite, "forbiddenCompileOptions"),
+            f"{config.label} capabilities output did not report the canonical forbidden SQLite compile options",
+        )
+        require(
+            require_bool(sqlite, "requiresSecureMemorySupport")
+            == require_bool(managed_sqlite, "requiresSecureMemorySupport"),
+            f"{config.label} capabilities output did not report the canonical SQLite3MC secure-memory requirement",
+        )
+        require(
+            require_string(runtime, "compileOptionsVerification") == "verified",
             f"{config.label} capabilities output did not report verified SQLite compile-option enforcement",
         )
 

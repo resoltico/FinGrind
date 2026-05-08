@@ -4,18 +4,17 @@ import dev.erst.fingrind.contract.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.executor.PostingCommitResult;
-import dev.erst.fingrind.executor.PostingDraft;
-import dev.erst.fingrind.executor.PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Objects;
@@ -121,8 +120,7 @@ final class SqliteStoreMutationOperations {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     if (Files.notExists(context.bookPath())) {
-      return new PostingCommitResult.Rejected(
-          new dev.erst.fingrind.contract.PostingRejection.BookNotInitialized());
+      return new PostingCommitResult.Rejected(new BookkeepingPostingRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
         activeDatabase -> {
@@ -135,9 +133,7 @@ final class SqliteStoreMutationOperations {
                     new SqliteTransactionValidationBook(activeDatabase, context.postingReader()));
             if (ordinaryOutcome.isPresent()) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new PostingCommitResult.Rejected(
-                  BookkeepingPublishedLanguageTranslator.toPublished(
-                      ordinaryOutcome.orElseThrow()));
+              return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
             }
             CommittedPosting postingFact =
                 postingDraft.materialize(

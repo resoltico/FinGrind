@@ -77,8 +77,8 @@ final class CliReportOutputRenderer {
                 List.of(
                     "Range",
                     CliQueryOutputFormatter.dateRange(
-                        report.effectiveDateRange().effectiveDateFrom(),
-                        report.effectiveDateRange().effectiveDateTo())),
+                        report.effectiveDateRange().effectiveDateFrom().orElse(null),
+                        report.effectiveDateRange().effectiveDateTo().orElse(null))),
                 List.of(
                     "Opening balances",
                     CliQueryOutputFormatter.joinedBalances(report.openingBalances())),

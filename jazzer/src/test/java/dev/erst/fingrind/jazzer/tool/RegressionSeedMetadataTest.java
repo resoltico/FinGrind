@@ -12,7 +12,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -53,6 +55,31 @@ class RegressionSeedMetadataTest {
         assertTrue(
             Files.exists(metadata.inputPath(PROJECT_DIRECTORY)),
             "committed regression input must exist for " + metadataPath.getFileName());
+      }
+    }
+  }
+
+  @Test
+  void committedMetadataCoverageIntentIsNonBlank_andTargetsOwnHarnessInputDirectories()
+      throws IOException {
+    Set<String> seenCoverageIntents = new HashSet<>();
+    for (JazzerHarness harness : JazzerHarness.values()) {
+      for (Path metadataPath : RegressionSeedCatalog.metadataPaths(PROJECT_DIRECTORY, harness)) {
+        RegressionSeedMetadata metadata =
+            JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
+        assertEquals(harness.key(), metadata.targetKey(), "metadata target must match its harness");
+        assertFalse(metadata.coverageIntent().isBlank(), "coverageIntent must not be blank");
+        assertTrue(
+            seenCoverageIntents.add(metadata.coverageIntent()),
+            "coverageIntent must be unique across the committed corpus: "
+                + metadata.coverageIntent());
+        assertTrue(
+            metadata
+                .inputPath(PROJECT_DIRECTORY)
+                .toAbsolutePath()
+                .normalize()
+                .startsWith(harness.inputDirectory(PROJECT_DIRECTORY).toAbsolutePath().normalize()),
+            "committed regression input must live under the owning harness input directory");
       }
     }
   }
@@ -105,27 +132,78 @@ class RegressionSeedMetadataTest {
   }
 
   @Test
+  void strict_catalog_helpers_fail_fast_on_invalid_metadata() throws IOException {
+    Path metadataDirectory =
+        RegressionSeedCatalog.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
+    Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
+    Files.createDirectories(metadataDirectory);
+    Files.createDirectories(inputDirectory);
+    Files.writeString(
+        inputDirectory.resolve("orphan.json"), JazzerReplayRequestFixtures.basicValidRequest());
+    Files.writeString(
+        metadataDirectory.resolve("broken.json"),
+        "{broken",
+        java.nio.charset.StandardCharsets.UTF_8);
+
+    IllegalStateException entriesFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> RegressionSeedCatalog.entries(tempDirectory, JazzerHarness.cliRequest()));
+    String entriesFailureMessage = java.util.Objects.requireNonNull(entriesFailure.getMessage());
+    assertTrue(entriesFailureMessage.contains("Committed regression metadata is unreadable:"));
+
+    IllegalStateException orphanFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> RegressionSeedCatalog.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
+    String orphanFailureMessage = java.util.Objects.requireNonNull(orphanFailure.getMessage());
+    assertTrue(orphanFailureMessage.contains("Committed regression metadata is invalid:"));
+  }
+
+  @Test
   void metadata_constructor_normalizes_relative_paths_and_rejects_invalid_shapes() {
     RegressionSeedMetadata metadata =
         new RegressionSeedMetadata(
             " cli-request ",
             " src/fuzz/resources/../resources/basic_valid.json ",
+            " basic valid request ",
             new ReplayExpectation(
                 ReplayOutcomeKind.SUCCESS,
                 ReplayOutcome.SUCCESS_MESSAGE,
                 new UnparsedCliRequestReplayDetails()));
 
     assertEquals("src/fuzz/resources/basic_valid.json", metadata.inputPath());
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new RegressionSeedMetadata(" ", "relative.json", metadata.expectation()));
+    assertEquals("basic valid request", metadata.coverageIntent());
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new RegressionSeedMetadata(
-                "cli-request", Path.of("/tmp/absolute.json").toString(), metadata.expectation()));
+                " ", "relative.json", metadata.coverageIntent(), metadata.expectation()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new RegressionSeedMetadata("cli-request", ".", metadata.expectation()));
+        () ->
+            new RegressionSeedMetadata(
+                "cli-request",
+                Path.of("/tmp/absolute.json").toString(),
+                metadata.coverageIntent(),
+                metadata.expectation()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RegressionSeedMetadata(
+                "cli-request", ".", metadata.coverageIntent(), metadata.expectation()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new RegressionSeedMetadata("cli-request", "seed.json", " ", metadata.expectation()));
+  }
+
+  @Test
+  void committedSeedsDoNotReuseIdenticalRawInputBytesAcrossTheCorpus() throws IOException {
+    Set<String> seenDigests = new HashSet<>();
+    for (RegressionSeedCatalogEntry entry : RegressionSeedCatalog.entries(PROJECT_DIRECTORY)) {
+      assertTrue(
+          seenDigests.add(entry.sha256()),
+          "committed seed bytes must be unique across the corpus: " + entry.inputPath());
+    }
   }
 }

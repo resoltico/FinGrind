@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.NullNode;
 
 /** Resolves staged launcher arguments for bundle-internal process handoff seams. */
 final class LauncherInvocationArguments {
@@ -56,7 +57,10 @@ final class LauncherInvocationArguments {
     final JsonNode document;
     try {
       document =
-          CliJsonRequestCodec.configuredObjectMapper().readTree(Files.readAllBytes(argumentsFile));
+          Objects.requireNonNullElseGet(
+              CliJsonObjectMappers.configuredObjectMapper()
+                  .readTree(Files.readAllBytes(argumentsFile)),
+              NullNode::getInstance);
     } catch (IOException | JacksonException exception) {
       if (!Files.exists(argumentsFile)) {
         throw new LauncherInvocationArgumentsException(

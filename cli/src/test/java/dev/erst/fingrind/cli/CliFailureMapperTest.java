@@ -24,11 +24,9 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class CliFailureMapperTest extends FinGrindCliTestSupport {
   @Test
   void cliFailure_mapsSealedCliCommandExceptions() {
@@ -38,7 +36,6 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     CliFailure requestFailure =
         CliFailureMapper.cliFailure(
             new CliRequestException("invalid-request", "bad request", "fix request", null));
-
     assertEquals("invalid-argument", argumentFailure.code());
     assertEquals("--flag", argumentFailure.argument());
     assertEquals("invalid-request", requestFailure.code());
@@ -57,7 +54,6 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
                 "fix request",
                 null,
                 new CliErrorJsonModels.InvalidRequestDetails(List.of("Problem one."))));
-
     assertEquals(
         List.of("Problem one."),
         assertInstanceOf(CliErrorJsonModels.InvalidRequestDetails.class, requestFailure.details())
@@ -74,7 +70,6 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
                 "fix request",
                 null,
                 new CliErrorJsonModels.InvalidJsonDetails("Unexpected token", 4, 12)));
-
     CliErrorJsonModels.InvalidJsonDetails details =
         assertInstanceOf(CliErrorJsonModels.InvalidJsonDetails.class, requestFailure.details());
     assertEquals("Unexpected token", details.parseMessage());
@@ -92,12 +87,13 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
                 "fix request",
                 "--book-file"));
     CliFailure runtimeFailure = CliFailureMapper.runtimeFailure(new RuntimeException());
-
     assertEquals(ContractErrors.Descriptor.INVALID_REQUEST.code(), contractFailure.code());
     assertEquals("--book-file", contractFailure.argument());
     assertEquals(ContractErrors.Descriptor.RUNTIME_FAILURE.code(), runtimeFailure.code());
     assertEquals("CLI command failed.", runtimeFailure.message());
-    assertTrue(runtimeFailure.hint().contains("underlying runtime problem"));
+    assertTrue(
+        java.util.Objects.requireNonNull(runtimeFailure.hint())
+            .contains("underlying runtime problem"));
     assertEquals(
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         CliFailureMapper.runtimeFailure(
@@ -113,11 +109,10 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
         CliFailureMapper.runtimeFailure(
             new CliPdfExportException(
                 Path.of("reports", "trial-balance.pdf"), new IOException("disk full")));
-
     assertEquals(ContractErrors.Descriptor.PDF_EXPORT_FAILURE.code(), runtimeFailure.code());
     assertEquals("--pdf-out", runtimeFailure.argument());
     assertTrue(runtimeFailure.message().contains("trial-balance.pdf"));
-    assertTrue(runtimeFailure.hint().contains("--pdf-out"));
+    assertTrue(java.util.Objects.requireNonNull(runtimeFailure.hint()).contains("--pdf-out"));
   }
 
   @Test
@@ -126,7 +121,6 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
         new BookAccess(
             Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")));
     CliCommand.ReportOutput humanReport = new CliCommand.ReportOutput(OutputMode.HUMAN, null);
-
     assertEquals(OutputMode.HUMAN, new Help(null, OutputMode.HUMAN).failureOutputMode());
     assertEquals(OutputMode.JSON, new Capabilities(OutputMode.JSON).failureOutputMode());
     assertEquals(OutputMode.HUMAN, new Version(OutputMode.HUMAN).failureOutputMode());
@@ -200,7 +194,7 @@ class CliFailureMapperTest extends FinGrindCliTestSupport {
     assertEquals(
         OutputMode.JSON, new ExecutePlan(bookAccess, Path.of("plan.json")).failureOutputMode());
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.HUMAN,
         CliExecutionPolicy.inferredFailureOutputMode(
             new String[] {
               "open-book",

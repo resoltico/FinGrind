@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -75,13 +75,15 @@ The bookkeeping context lives across:
 This context owns:
 - account declaration and reactivation semantics
 - posting acceptance rules
+- local book lifecycle inspection snapshots and local query/commit rejection families
 - committed posting shape used inside execution and storage
 - book-local invariants such as duplicate idempotency rejection, reversal admissibility, and
   account activity requirements
 
 The bookkeeping context uses `RegisteredAccount`, `PostingCommand`, `CommittedPosting`,
-`PostingLineageModel`, `BookOpeningOutcome`, and `AccountDeclarationOutcome` as its local
-language.
+`PostingLineageModel`, `BookOpeningOutcome`, `AccountDeclarationOutcome`,
+`BookLifecycleInspection`, `BookkeepingQueryRejection`, and `BookkeepingPostingRejection` as its
+local language.
 
 The shared kernel in `core/` also owns `CurrencyBalance`, `EffectiveDateRange`, and
 `InteractionLimits`. Those concepts are shared by the public bookkeeping protocol, the public
@@ -96,6 +98,7 @@ The workflow context lives in
 This context owns orchestration semantics for AI-authored or automation-authored plans:
 - ordered steps
 - assertions
+- workflow-owned per-step machine facts
 - local workflow journal descriptors, failures, entries, and execution journals such as
   `BookWorkflowJournalEntry` and `BookWorkflowExecutionJournal`
 - workflow-local plan ids and step ids
@@ -137,12 +140,19 @@ Interpretation:
 - the CLI speaks the public protocol context
 - translator classes are the anti-corruption layer between the published bookkeeping/workflow
   languages and the internal bookkeeping/workflow contexts
-- `BookReadService` translates public read/report DTOs into local bookkeeping criteria and views
+- `BookReadService` is the thin published-language adapter over the local
+  `executor.bookkeeping.read.BookkeepingReadService`
+- `PostingApplicationService` is the thin published-language adapter over the local
+  `executor.bookkeeping.posting.BookkeepingPostingService`
+- `LedgerPlanService` is the thin published-language adapter over the local
+  `executor.workflow.BookWorkflowExecutionService`
+- the local bookkeeping services own inspection, query, reporting, preflight, and commit semantics
+  before any public DTO or public rejection family is projected
 - `execute-plan` enters through the public workflow schema, then runs as internal workflow steps
-  and internal workflow journal entries before the public journal/result surface is projected back
-  out
-- SQLite persists bookkeeping state and serves the executor-owned local read/write models rather
-  than public report DTOs directly
+  plus workflow-owned `BookWorkflowFact` observations before the public journal/result surface is
+  projected back out
+- SQLite persists bookkeeping state and serves the executor-owned local inspection/read/write
+  models rather than public report DTOs directly
 
 ## Ownership Rules
 
@@ -152,6 +162,8 @@ Interpretation:
   the SQLite adapter.
 - Workflow semantics must live with workflow types and services, not inside bookkeeping value
   objects.
+- Workflow facts and failure payloads belong to the workflow context and are translated to public
+  `LedgerFact` and `LedgerStepFailure` only at the published-language edge.
 - Public read/report DTOs and public workflow journal/result DTOs belong only at boundary
   translators and exported application services.
 - New transport layers or tools must translate at the boundary instead of importing protocol DTOs

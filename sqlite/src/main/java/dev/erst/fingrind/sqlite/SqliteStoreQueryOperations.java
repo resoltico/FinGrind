@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
@@ -10,6 +9,7 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.nio.file.Files;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -34,69 +34,17 @@ final class SqliteStoreQueryOperations {
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
-  BookInspection inspectBook() {
+  BookLifecycleInspection inspectBook() {
     lifecycle.ensureOpenSession();
     if (Files.notExists(context.bookPath())) {
-      return new BookInspection.Missing(SqliteBookContract.FORMAT_VERSION);
+      return SqliteBookLifecycleInspectionMapper.fromMissingPath();
     }
     try {
       SqliteNativeDatabase activeDatabase = lifecycle.database();
       SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
-      return switch (snapshot.state()) {
-        case BLANK_SQLITE ->
-            new BookInspection.Existing(
-                BookInspection.Status.BLANK_SQLITE,
-                snapshot.applicationId(),
-                snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION);
-        case INITIALIZED_FINGRIND ->
-            new BookInspection.Initialized(
-                snapshot.applicationId(),
-                snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION,
-                SqliteStatementQueries.loadInitializedAt(activeDatabase).orElseThrow());
-        case FOREIGN_SQLITE ->
-            new BookInspection.Existing(
-                BookInspection.Status.FOREIGN_SQLITE,
-                snapshot.applicationId(),
-                snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION);
-        case UNSUPPORTED_FINGRIND_VERSION ->
-            new BookInspection.Existing(
-                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
-                snapshot.applicationId(),
-                snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION);
-        case INCOMPLETE_FINGRIND ->
-            new BookInspection.Existing(
-                BookInspection.Status.INCOMPLETE_FINGRIND,
-                snapshot.applicationId(),
-                snapshot.userVersion(),
-                SqliteBookContract.FORMAT_VERSION);
-      };
+      return SqliteBookLifecycleInspectionMapper.fromSnapshot(snapshot, activeDatabase);
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to inspect SQLite book.", exception);
-    }
-  }
-
-  boolean isInitialized() {
-    lifecycle.ensureOpenSession();
-    if (Files.notExists(context.bookPath())) {
-      return false;
-    }
-    try {
-      SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(lifecycle.database());
-      return switch (snapshot.state()) {
-        case BLANK_SQLITE -> false;
-        case INITIALIZED_FINGRIND -> true;
-        case FOREIGN_SQLITE -> throw SqliteStoreOperations.foreignBookFailure();
-        case UNSUPPORTED_FINGRIND_VERSION ->
-            throw SqliteStoreOperations.unsupportedBookVersionFailure(
-                snapshot.userVersion(), SqliteBookContract.FORMAT_VERSION);
-        case INCOMPLETE_FINGRIND -> throw SqliteStoreOperations.incompleteBookFailure();
-      };
-    } catch (SqliteNativeException exception) {
-      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 

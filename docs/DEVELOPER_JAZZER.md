@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -26,8 +26,8 @@ That separation is deliberate:
 - committed regression replay remains explicit
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
-- the nested build compiles and injects its own managed SQLite 3.53.0 / SQLite3 Multiple Ciphers
-  2.3.3 runtime from the same vendored source used by the root build
+- the nested build compiles and injects its own managed SQLite 3.53.1 / SQLite3 Multiple Ciphers
+  2.3.4 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:
@@ -60,6 +60,8 @@ For active fuzzing, use only:
 - `jazzer/bin/fuzz-all`
 - `jazzer/bin/replay`
 - `jazzer/bin/list-findings`
+- `jazzer/bin/promote-seed`
+- `jazzer/bin/seed-audit`
 
 Do not run Jazzer workflows through raw `./gradlew -p jazzer ...` task invocations. Those nested
 build tasks exist as wrapper internals, but they are not the supported Jazzer operator surface.
@@ -73,10 +75,12 @@ that raw Gradle does not communicate clearly enough on its own:
 - only one FinGrind verification command runs at a time through the repo-wide verification lock
 - active runs write per-target `latest.log` plus timestamped history logs
 - wrapper-owned interrupt handling tears down the launched Gradle client tree
-- wrapper-owned duration watchdogs enforce the requested max duration plus a fixed grace window
-- the all-target wrapper now keeps pure timeout exits moving, but stops immediately after an
-  actionable harness failure and prints replay-classified findings before control returns to the
-  shell
+- wrapper-owned duration watchdogs wait for libFuzzer startup, then enforce the requested max
+  duration plus a fixed grace window while also guarding startup hangs with a separate startup
+  ceiling
+- the all-target wrapper stops immediately after an actionable harness failure and prints
+  replay-classified findings before control returns to the shell, while wrapper-enforced timeout
+  teardown remains distinct from ordinary bounded Jazzer completion
 - replay-backed operator commands classify raw libFuzzer artifacts before humans or agents treat
   them as bugs
 - active fuzzing preloads a tiny project-owned premain agent so Java 26 does not depend on late
@@ -117,9 +121,20 @@ jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/fuzz-all -PjazzerMaxDuration=30s --console=plain
 jazzer/bin/replay cli-request jazzer/.local/runs/cli-request/crash-<sha1> --console=plain
 jazzer/bin/list-findings cli-request --console=plain
+jazzer/bin/seed-audit --console=plain
+jazzer/bin/promote-seed cli-request jazzer/.local/runs/cli-request/crash-<sha1> --name seed_name --intent "coverage intent" --console=plain
 jazzer/bin/clean-local-findings
 jazzer/bin/clean-local-corpus
 ```
+
+For committed seeds:
+- `--name` must use lower_snake_case ASCII letters, digits, and underscores
+- `--intent` must describe one committed behavior or invariant uniquely across the corpus
+- `--json` returns structured success output on success and a structured error payload on
+  deterministic operator failures, including wrapper-side target and input validation, without
+  leaking Gradle task boilerplate
+- `jazzer/bin/promote-seed --help` and `jazzer/bin/seed-audit --help` now print the supported
+  replayable `<target-key>` values directly from the committed topology contract
 
 The cleanup wrappers are intentionally best-effort around preserved corpus directories: they skip
 corpus subtrees when clearing findings, and they emit warnings instead of aborting if the host
@@ -158,19 +173,32 @@ test suites.
 |:--------|:------|:---------------|
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
 | `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
-| `posting-workflow` | `5` | explicit lifecycle setup plus success, invalid actor, exponent rejection, invalid missing reversal reason, missing reversal target |
-| `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success, nested path, invalid Unicode account-code rejection, exponent rejection, invalid type, invalid missing reversal reason, missing reversal target; valid parsed seeds also drive executed read/report rendering, corrupt pre-schema path failures, concurrent contenders, and derived reversal near-miss coverage |
+| `posting-workflow` | `5` | explicit lifecycle setup plus four-line success with optional correlation id, invalid actor, exponent rejection with reversal payload present, invalid missing reversal reason, missing reversal target |
+| `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success with distinct system provenance, nested path, invalid Unicode account-code rejection, exponent rejection with optional provenance correlation, invalid type, invalid missing reversal reason, missing reversal target; valid parsed seeds also drive executed read/report rendering, corrupt pre-schema path failures, concurrent contenders, and derived reversal near-miss coverage |
 
 ## Regression Philosophy
 
 Regression metadata is committed on purpose.
 It makes the currently expected replay result explicit and reviewable:
+- each committed seed now carries one required coverage-intent string
+- that coverage-intent string is unique across the committed corpus so one intent maps to one
+  pinned behavior
+- `jazzer/bin/promote-seed` is the project-owned path for adding that seed plus metadata together
+- `jazzer/bin/seed-audit` is the project-owned proof that the committed floor has no duplicate raw
+  inputs, no orphaned committed inputs, no metadata entries that encode `unexpected-failure`, no
+  escaped or missing metadata input references, and no malformed committed `.json` seed bodies
+- the deterministic Jazzer test floor keeps a second guard on committed `.json` seed syntax, so
+  broken raw inputs fail before a later replay pass has to rediscover them indirectly
+- processed Jazzer resource outputs are pruned before each real resource sync, so renaming or
+  deleting one committed seed cannot leave an older packaged corpus entry behind in
+  `jazzer-build/resources/`
 - successful parses are treated as contract
 - expected invalid requests are treated as stable contract, not as noise
 - deterministic rejections are replayed as success-path contract outcomes
 - raw local `crash-*` / `timeout-*` / `oom-*` / `leak-*` / `slow-unit-*` files stay disposable
   until `jazzer/bin/replay` or `jazzer/bin/list-findings` classifies them
 - only replayed `unexpected-failure` findings should be treated as bugs
+- `jazzer/bin/promote-seed` refuses replayed `unexpected-failure` findings until the bug is fixed
 - replay-clean and expected-invalid raw artifacts should be cleaned before final verification
 
 ## Coverage Authority

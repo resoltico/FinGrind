@@ -2,11 +2,9 @@ package dev.erst.fingrind.contract;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-/** Canonical human-readable rejection prose and compact journal facts. */
+/** Canonical human-readable rejection prose for public rejection contracts. */
 public final class RejectionNarrative {
   private static final String OPEN_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.OPEN_BOOK);
@@ -73,76 +71,5 @@ public final class RejectionNarrative {
           "Reversal candidate does not negate posting '%s'."
               .formatted(reversalDoesNotNegateTarget.priorPostingId().value());
     };
-  }
-
-  /** Returns rejection-specific facts suitable for ledger-plan step failures. */
-  public static List<LedgerFact> facts(BookAdministrationRejection rejection) {
-    return switch (Objects.requireNonNull(rejection, "rejection")) {
-      case BookAdministrationRejection.BookAlreadyInitialized _ -> List.of();
-      case BookAdministrationRejection.BookNotInitialized _ -> List.of();
-      case BookAdministrationRejection.BookContainsSchema _ -> List.of();
-      case BookAdministrationRejection.NormalBalanceConflict conflict ->
-          List.of(
-              LedgerFact.text("accountCode", conflict.accountCode().value()),
-              LedgerFact.text(
-                  "existingNormalBalance", conflict.existingNormalBalance().wireValue()),
-              LedgerFact.text(
-                  "requestedNormalBalance", conflict.requestedNormalBalance().wireValue()));
-    };
-  }
-
-  /** Returns rejection-specific facts suitable for ledger-plan step failures. */
-  public static List<LedgerFact> facts(BookQueryRejection rejection) {
-    return switch (Objects.requireNonNull(rejection, "rejection")) {
-      case BookQueryRejection.BookNotInitialized _ -> List.of();
-      case BookQueryRejection.UnknownAccount unknownAccount ->
-          List.of(LedgerFact.text("accountCode", unknownAccount.accountCode().value()));
-      case BookQueryRejection.PostingNotFound postingNotFound ->
-          List.of(LedgerFact.text("postingId", postingNotFound.postingId().value()));
-    };
-  }
-
-  /** Returns rejection-specific facts suitable for ledger-plan step failures. */
-  public static List<LedgerFact> facts(PostingRejection rejection) {
-    return switch (Objects.requireNonNull(rejection, "rejection")) {
-      case PostingRejection.BookNotInitialized _ -> List.of();
-      case PostingRejection.AccountStateViolations violations -> accountStateFacts(violations);
-      case PostingRejection.DuplicateIdempotencyKey _ -> List.of();
-      case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
-          priorPostingFacts(reversalTargetNotFound.priorPostingId().value());
-      case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
-          priorPostingFacts(reversalAlreadyExists.priorPostingId().value());
-      case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
-          priorPostingFacts(reversalDoesNotNegateTarget.priorPostingId().value());
-    };
-  }
-
-  private static List<LedgerFact> accountStateFacts(
-      PostingRejection.AccountStateViolations violations) {
-    List<LedgerFact> facts = new ArrayList<>();
-    facts.add(LedgerFact.count("violationCount", violations.violations().size()));
-    for (PostingRejection.AccountStateViolation violation : violations.violations()) {
-      switch (violation) {
-        case PostingRejection.UnknownAccount unknownAccount ->
-            facts.add(
-                LedgerFact.group(
-                    "violation",
-                    List.of(
-                        LedgerFact.text("code", PostingRejection.wireCode(unknownAccount)),
-                        LedgerFact.text("accountCode", unknownAccount.accountCode().value()))));
-        case PostingRejection.InactiveAccount inactiveAccount ->
-            facts.add(
-                LedgerFact.group(
-                    "violation",
-                    List.of(
-                        LedgerFact.text("code", PostingRejection.wireCode(inactiveAccount)),
-                        LedgerFact.text("accountCode", inactiveAccount.accountCode().value()))));
-      }
-    }
-    return List.copyOf(facts);
-  }
-
-  private static List<LedgerFact> priorPostingFacts(String priorPostingId) {
-    return List.of(LedgerFact.text("priorPostingId", priorPostingId));
   }
 }

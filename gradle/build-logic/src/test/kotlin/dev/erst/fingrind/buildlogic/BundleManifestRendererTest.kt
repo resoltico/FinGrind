@@ -44,7 +44,9 @@ class BundleManifestRendererTest {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
                     "requiredSqlite3mcVersion": "sqlite3mcVersion",
                     "requiredSqliteSourceId": "sqliteSourceId",
-                    "requiredCompileOptions": "compileOptions"
+                    "requiredCompileOptions": "compileOptions",
+                    "forbiddenCompileOptions": "forbiddenCompileOptions",
+                    "requiresSecureMemorySupport": "requiresSecureMemorySupport"
                   },
                   "bundleLayout": {
                     "bundleTargets": "bundleTargets",
@@ -99,10 +101,12 @@ class BundleManifestRendererTest {
                 "managed-sqlite-contract.json",
                 """
                 {
-                  "minimumSqliteVersion": "3.53.0",
-                  "sqlite3mcVersion": "2.3.3",
+                  "minimumSqliteVersion": "3.53.1",
+                  "sqlite3mcVersion": "2.3.4",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
-                  "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"]
+                  "compileOptions": ["THREADSAFE=1", "SECURE_DELETE"],
+                  "forbiddenCompileOptions": ["USE_URI"],
+                  "requiresSecureMemorySupport": true
                 }
                 """.trimIndent(),
             )
@@ -177,11 +181,11 @@ class BundleManifestRendererTest {
                 manifest.path("managedSqlite").path("storageDriver").requireText(),
             )
             assertEquals(
-                "3.53.0",
+                "3.53.1",
                 manifest.path("managedSqlite").path("requiredMinimumSqliteVersion").requireText(),
             )
             assertEquals(
-                "2.3.3",
+                "2.3.4",
                 manifest.path("managedSqlite").path("requiredSqlite3mcVersion").requireText(),
             )
             assertEquals(
@@ -191,6 +195,13 @@ class BundleManifestRendererTest {
             assertEquals(
                 listOf("THREADSAFE=1", "SECURE_DELETE"),
                 manifest.path("managedSqlite").path("requiredCompileOptions").toList().map { it.requireText() },
+            )
+            assertEquals(
+                listOf("USE_URI"),
+                manifest.path("managedSqlite").path("forbiddenCompileOptions").toList().map { it.requireText() },
+            )
+            assertTrue(
+                manifest.path("managedSqlite").path("requiresSecureMemorySupport").booleanValue(),
             )
             assertEquals(
                 "print-plan-template",

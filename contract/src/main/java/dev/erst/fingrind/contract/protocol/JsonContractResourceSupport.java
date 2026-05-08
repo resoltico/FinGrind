@@ -9,6 +9,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.MissingNode;
 
 /** Shared JSON resource loading helpers for protocol-owned contract snapshots. */
 final class JsonContractResourceSupport {
@@ -40,18 +41,42 @@ final class JsonContractResourceSupport {
 
   private static JsonNode parseDocument(
       byte[] resourceBytes, String resourcePath, String contractLabel) {
+    if (resourceBytes.length == 0) {
+      throw new IllegalArgumentException(
+          contractLabel + " resource must not be empty: " + resourcePath);
+    }
+    final JsonNode document;
     try {
-      return Objects.requireNonNull(JSON_MAPPER.readTree(resourceBytes), contractLabel);
+      document =
+          Objects.requireNonNullElseGet(
+              JSON_MAPPER.readTree(resourceBytes), MissingNode::getInstance);
     } catch (RuntimeException exception) {
       throw new IllegalArgumentException(
           "Failed to parse " + contractLabel + " resource: " + resourcePath, exception);
     }
+    if (document.isMissingNode() || document.isNull()) {
+      throw new IllegalArgumentException(
+          contractLabel + " resource must not be empty: " + resourcePath);
+    }
+    return document;
+  }
+
+  static @Nullable JsonNode nullableField(JsonNode document, String key) {
+    Objects.requireNonNull(document, "document");
+    Objects.requireNonNull(key, "key");
+    return document.get(key);
+  }
+
+  static JsonNode requireObject(JsonNode document, String key, String message) {
+    @Nullable JsonNode value = nullableField(document, key);
+    if (value == null || !value.isObject()) {
+      throw new IllegalArgumentException(message);
+    }
+    return value;
   }
 
   static String requireText(JsonNode document, String key) {
-    Objects.requireNonNull(document, "document");
-    Objects.requireNonNull(key, "key");
-    JsonNode value = document.get(key);
+    @Nullable JsonNode value = nullableField(document, key);
     String normalized =
         value == null || value.isNull() || !value.isString() ? "" : value.stringValue().trim();
     if (normalized.isEmpty()) {
@@ -61,9 +86,7 @@ final class JsonContractResourceSupport {
   }
 
   static boolean requireBoolean(JsonNode document, String key) {
-    Objects.requireNonNull(document, "document");
-    Objects.requireNonNull(key, "key");
-    JsonNode value = document.get(key);
+    @Nullable JsonNode value = nullableField(document, key);
     if (value == null || value.isNull() || !value.isBoolean()) {
       throw new IllegalArgumentException(key + " must be one JSON boolean.");
     }
@@ -71,9 +94,7 @@ final class JsonContractResourceSupport {
   }
 
   static int requireInt(JsonNode document, String key) {
-    Objects.requireNonNull(document, "document");
-    Objects.requireNonNull(key, "key");
-    JsonNode value = document.get(key);
+    @Nullable JsonNode value = nullableField(document, key);
     if (value == null || value.isNull() || !value.canConvertToInt()) {
       throw new IllegalArgumentException(key + " must be one JSON integer.");
     }
@@ -81,12 +102,22 @@ final class JsonContractResourceSupport {
   }
 
   static List<String> optionalStringArray(JsonNode document, String key) {
-    Objects.requireNonNull(document, "document");
-    Objects.requireNonNull(key, "key");
-    JsonNode value = document.get(key);
+    @Nullable JsonNode value = nullableField(document, key);
     if (value == null || value.isNull()) {
       return List.of();
     }
+    return requireStringArrayValue(value, key);
+  }
+
+  static List<String> requireStringArray(JsonNode document, String key) {
+    @Nullable JsonNode value = nullableField(document, key);
+    if (value == null || value.isNull()) {
+      throw new IllegalArgumentException(key + " must be a JSON array of strings.");
+    }
+    return requireStringArrayValue(value, key);
+  }
+
+  private static List<String> requireStringArrayValue(JsonNode value, String key) {
     if (!value.isArray()) {
       throw new IllegalArgumentException(key + " must be a JSON array of strings.");
     }

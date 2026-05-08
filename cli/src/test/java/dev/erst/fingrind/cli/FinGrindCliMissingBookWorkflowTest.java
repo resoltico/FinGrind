@@ -8,11 +8,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Real-workflow CLI tests for missing-book deterministic rejections. */
-@NullUnmarked
 class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
   @Test
   void run_returnsAdministrationBookNotInitializedWhenDeclareAccountTargetsMissingBook()
@@ -23,7 +21,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
         writeNamedRequest(
             "missing-admin-declare.json", declareAccountJson("1000", "Cash", "DEBIT"));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(
@@ -36,7 +33,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
                   "--request-file",
                   declareAccountFile.toString()
                 });
-
     assertEquals(2, exitCode);
     assertTrue(
         outputStream
@@ -49,7 +45,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("missing-query.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(
@@ -60,7 +55,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
                   "--book-key-file",
                   bookKeyFilePath.toString()
                 });
-
     assertEquals(2, exitCode);
     assertTrue(
         outputStream
@@ -74,7 +68,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     Path requestFile = writeRequest(validRequestJson());
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(
@@ -87,7 +80,6 @@ class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
                   "--request-file",
                   requestFile.toString()
                 });
-
     assertEquals(2, exitCode);
     assertTrue(
         outputStream

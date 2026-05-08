@@ -16,7 +16,8 @@ import org.jspecify.annotations.Nullable;
 public interface CliPlanJsonModels {
 
   record LedgerPlanPayload(
-      String planId, LedgerPlanStatus status, LedgerExecutionJournalPayload journal) {
+      String planId, LedgerPlanStatus status, LedgerExecutionJournalPayload journal)
+      implements CliSuccessPayload {
     public LedgerPlanPayload {
       planId = requireText(planId, "planId");
       status = requireValue(status, "status");
@@ -29,7 +30,7 @@ public interface CliPlanJsonModels {
     public LedgerExecutionJournalPayload {
       startedAt = requireText(startedAt, "startedAt");
       finishedAt = requireText(finishedAt, "finishedAt");
-      steps = copyList(steps);
+      steps = copyList(steps, "steps");
       if (steps.isEmpty()) {
         throw new IllegalArgumentException("steps must not be empty.");
       }
@@ -52,7 +53,7 @@ public interface CliPlanJsonModels {
       status = requireValue(status, "status");
       startedAt = requireText(startedAt, "startedAt");
       finishedAt = requireText(finishedAt, "finishedAt");
-      facts = copyList(facts);
+      facts = copyList(facts, "facts");
     }
   }
 
@@ -60,7 +61,7 @@ public interface CliPlanJsonModels {
     public LedgerStepFailurePayload {
       code = requireText(code, "code");
       message = requireText(message, "message");
-      facts = copyList(facts);
+      facts = copyList(facts, "facts");
     }
   }
 
@@ -100,7 +101,7 @@ public interface CliPlanJsonModels {
     public GroupLedgerFactPayload {
       kind = requireText(kind, "kind");
       name = requireText(name, "name");
-      facts = copyList(facts);
+      facts = copyList(facts, "facts");
       if (facts.isEmpty()) {
         throw new IllegalArgumentException("facts must not be empty.");
       }

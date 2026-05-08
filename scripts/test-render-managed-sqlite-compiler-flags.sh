@@ -43,4 +43,26 @@ if [[ "${actual_from_explicit_contract}" != "${expected}" ]]; then
     exit 1
 fi
 
+temporary_directory="$(mktemp -d)"
+trap 'rm -rf -- "${temporary_directory}"' EXIT
+contract_without_secure_memory="${temporary_directory}/managed-sqlite-contract.json"
+python3 - "${contract_path}" "${contract_without_secure_memory}" <<'PY'
+import json
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1])
+target = pathlib.Path(sys.argv[2])
+document = json.loads(source.read_text(encoding="utf-8"))
+document["requiresSecureMemorySupport"] = False
+target.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+PY
+without_secure_memory="$(python3 "${renderer}" "${contract_without_secure_memory}")"
+expected_without_secure_memory='-DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_TEMP_STORE=3 -DSQLITE_SECURE_DELETE=1'
+if [[ "${without_secure_memory}" != "${expected_without_secure_memory}" ]]; then
+    printf 'error: secure-memory toggle rendering drifted\nexpected: %s\nactual:   %s\n' \
+        "${expected_without_secure_memory}" "${without_secure_memory}" >&2
+    exit 1
+fi
+
 printf 'managed SQLite compiler-flag rendering: success\n'

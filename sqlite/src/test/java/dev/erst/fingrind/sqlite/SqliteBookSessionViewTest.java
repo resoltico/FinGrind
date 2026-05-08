@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.ContractDecision;
 import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
@@ -21,17 +20,21 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
+import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -39,16 +42,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByIdempotency_requiresInitializedBookWhenPostingIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       IllegalStateException exception =
@@ -65,7 +65,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findByPostingId_requiresInitializedBookWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-posting.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       IllegalStateException exception =
@@ -82,7 +81,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void findReversalFor_requiresInitializedBookWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-reversal.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       IllegalStateException exception =
@@ -99,12 +97,12 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void commit_returnsBookNotInitializedWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("books").resolve("missing-commit.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
-          rejected(new PostingRejection.BookNotInitialized()),
-          postingFactStore.commit(
+          rejected(new BookkeepingPostingRejection.BookNotInitialized()),
+          commitPosting(
+              postingFactStore,
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
       assertFalse(Files.exists(databasePath));
     }
@@ -114,7 +112,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void openBook_rejectsSQLiteFileThatAlreadyContainsSchema() {
     Path databasePath = tempDirectory.resolve("legacy.sqlite");
     createPostingFactOnlyBook(databasePath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       assertEquals(
@@ -127,22 +124,20 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void seamAccessors_returnStoreAsEachNarrowSessionView() {
     Path databasePath = tempDirectory.resolve("seam-accessors.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      assertNotNull(postingFactStore.administrationSession());
-      assertNotNull(postingFactStore.postingSession());
-      assertNotNull(postingFactStore.readSession());
-      assertNotSame(postingFactStore, postingFactStore.administrationSession());
-      assertNotSame(postingFactStore, postingFactStore.postingSession());
-      assertNotSame(postingFactStore, postingFactStore.readSession());
+      assertNotNull((BookStore) postingFactStore);
+      assertNotNull((PostingValidationStore) postingFactStore);
+      assertNotNull((AtomicBookStore) postingFactStore);
+      assertSame(postingFactStore, (BookStore) postingFactStore);
+      assertSame(postingFactStore, (PostingValidationStore) postingFactStore);
+      assertSame(postingFactStore, (AtomicBookStore) postingFactStore);
     }
   }
 
   @Test
   void openResolved_transfersStoreOwnershipToCallerAfterSuccessfulPriming() {
     Path databasePath = tempDirectory.resolve("open-resolved.sqlite");
-
     try (SqliteBookPassphrase bookPassphrase =
         SqliteBookPassphrase.fromCharacters("open resolved", TEST_BOOK_KEY.toCharArray())) {
       ContractDecision<SqlitePostingFactStore> decision =
@@ -153,7 +148,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                 SqlitePostingFactStore postingFactStore) -> {
           try (postingFactStore) {
             assertTrue(Files.exists(databasePath));
-            assertFalse(postingFactStore.isInitialized());
+            assertFalse(postingFactStore.inspectBook().initialized());
           }
         }
         case ContractDecision.Rejected<SqlitePostingFactStore>(var failure) ->
@@ -166,7 +161,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void openResolved_rejectsWrongPassphraseWithoutLeakingStoreOwnership() throws Exception {
     Path databasePath = tempDirectory.resolve("open-resolved-wrong-passphrase.sqlite");
     initializeBookOnDisk(databasePath);
-
     try (SqliteBookPassphrase wrongPassphrase =
         SqliteBookPassphrase.fromCharacters(
             "open resolved wrong passphrase", "wrong-passphrase".toCharArray())) {
@@ -186,23 +180,20 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                 failure.code());
       }
     }
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      assertTrue(postingFactStore.isInitialized());
+      assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
 
   @Test
   void administrationView_delegatesMutationsWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("administration-view.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      var administrationView = postingFactStore.administrationSession();
       assertEquals(
           new BookOpeningOutcome.Opened(Instant.parse("2026-04-07T10:15:30Z")),
-          administrationView.openBook(Instant.parse("2026-04-07T10:15:30Z")));
+          ((BookStore) postingFactStore).openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               new RegisteredAccount(
@@ -211,90 +202,90 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
-          administrationView.declareAccount(
-              new AccountCode("1000"),
-              new AccountName("Cash"),
-              NormalBalance.DEBIT,
-              Instant.parse("2026-04-07T10:15:30Z")));
-      assertTrue(postingFactStore.isInitialized());
+          ((BookStore) postingFactStore)
+              .declareAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  NormalBalance.DEBIT,
+                  Instant.parse("2026-04-07T10:15:30Z")));
+      assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
 
   @Test
   void postingView_delegatesReadsWritesWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("posting-view.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
-          postingFactStore.commit(
+          commitPosting(
+              postingFactStore,
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
-
-      var postingView = postingFactStore.postingSession();
-      assertTrue(postingView.isInitialized());
+      assertTrue(((BookStore) postingFactStore).inspectBook().initialized());
       assertEquals(
           postingFactStore.findAccount(new AccountCode("1000")),
-          postingView.findAccount(new AccountCode("1000")));
+          ((BookStore) postingFactStore).findAccount(new AccountCode("1000")));
       assertEquals(
           postingFactStore.findAccounts(Set.of(new AccountCode("1000"), new AccountCode("2000"))),
-          postingView.findAccounts(Set.of(new AccountCode("1000"), new AccountCode("2000"))));
+          ((BookStore) postingFactStore)
+              .findAccounts(Set.of(new AccountCode("1000"), new AccountCode("2000"))));
       assertEquals(
           postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")),
-          postingView.findExistingPosting(new IdempotencyKey("idem-1")));
+          ((BookStore) postingFactStore).findExistingPosting(new IdempotencyKey("idem-1")));
       assertEquals(
           postingFactStore.findPosting(new PostingId("posting-1")),
-          postingView.findPosting(new PostingId("posting-1")));
+          ((BookStore) postingFactStore).findPosting(new PostingId("posting-1")));
       assertEquals(
           postingFactStore.findReversalFor(new PostingId("posting-1")),
-          postingView.findReversalFor(new PostingId("posting-1")));
+          ((BookStore) postingFactStore).findReversalFor(new PostingId("posting-1")));
       assertEquals(
           new PostingCommitResult.Committed(
               postingFact("posting-2", "idem-2", Optional.empty(), Optional.empty())),
-          postingView.commit(
-              postingDraft("posting-2", "idem-2", Optional.empty(), Optional.empty()),
-              () -> new PostingId("posting-2")));
-      assertTrue(postingFactStore.isInitialized());
+          ((BookStore) postingFactStore)
+              .commit(
+                  postingDraft("posting-2", "idem-2", Optional.empty(), Optional.empty()),
+                  () -> new PostingId("posting-2")));
+      assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
 
   @Test
   void queryView_delegatesQueriesWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("query-view.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
-          postingFactStore.commit(
+          commitPosting(
+              postingFactStore,
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
-
       PostingHistoryQuery postingsQuery =
           new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
       AccountBalanceCriteria balanceQuery =
           new AccountBalanceCriteria(new AccountCode("1000"), null, null);
-
-      var queryView = postingFactStore.readSession();
-      assertEquals(postingFactStore.inspectBook(), queryView.inspectBook());
-      assertTrue(queryView.isInitialized());
+      assertEquals(postingFactStore.inspectBook(), ((BookStore) postingFactStore).inspectBook());
+      assertTrue(((BookStore) postingFactStore).inspectBook().initialized());
       assertEquals(
           postingFactStore.listAccounts(firstAccountPage()),
-          queryView.listAccounts(firstAccountPage()));
+          ((BookStore) postingFactStore).listAccounts(firstAccountPage()));
       assertEquals(
           postingFactStore.findAccount(new AccountCode("1000")),
-          queryView.findAccount(new AccountCode("1000")));
+          ((BookStore) postingFactStore).findAccount(new AccountCode("1000")));
       assertEquals(
           postingFactStore.findPosting(new PostingId("posting-1")),
-          queryView.findPosting(new PostingId("posting-1")));
+          ((BookStore) postingFactStore).findPosting(new PostingId("posting-1")));
       assertEquals(
-          postingFactStore.listPostings(postingsQuery), queryView.listPostings(postingsQuery));
+          postingFactStore.listPostings(postingsQuery),
+          ((BookStore) postingFactStore).listPostings(postingsQuery));
       assertEquals(
-          postingFactStore.accountBalance(balanceQuery), queryView.accountBalance(balanceQuery));
-      assertEquals(postingFactStore.inspectBook(), queryView.inspectBook());
+          postingFactStore.accountBalance(balanceQuery),
+          ((BookStore) postingFactStore).accountBalance(balanceQuery));
+      assertEquals(postingFactStore.inspectBook(), ((BookStore) postingFactStore).inspectBook());
     }
   }
 
@@ -319,24 +310,22 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(openingPosting);
-      postingFactStore.commit(zeroingPosting);
-
+      commitPosting(postingFactStore, openingPosting);
+      commitPosting(postingFactStore, zeroingPosting);
       RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
       RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
-
-      var reportView = postingFactStore.readSession();
-      assertTrue(reportView.isInitialized());
-      assertEquals(Optional.of(cashAccount), reportView.findAccount(new AccountCode("1000")));
+      assertTrue(postingFactStore.inspectBook().initialized());
+      assertEquals(
+          Optional.of(cashAccount),
+          ((BookStore) postingFactStore).findAccount(new AccountCode("1000")));
       assertEquals(
           postingFactStore.trialBalance(new TrialBalanceCriteria(Optional.empty())),
-          reportView.trialBalance(new TrialBalanceCriteria(Optional.empty())));
+          ((BookStore) postingFactStore).trialBalance(new TrialBalanceCriteria(Optional.empty())));
       assertEquals(
           new AccountLedgerReport(
               publishedAccount(revenueAccount),
@@ -368,18 +357,20 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                       money("EUR", "0.00"),
                       BalanceSide.ZERO))),
           published(
-              reportView.accountLedger(
-                  new AccountLedgerCriteria(
-                      new AccountCode("2000"), EffectiveDateRange.unbounded()),
-                  revenueAccount)));
+              ((BookStore) postingFactStore)
+                  .accountLedger(
+                      new AccountLedgerCriteria(
+                          new AccountCode("2000"), EffectiveDateRange.unbounded()),
+                      revenueAccount)));
       assertEquals(
           postingFactStore.periodSummary(
               new PeriodSummaryCriteria(
                   LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))),
-          reportView.periodSummary(
-              new PeriodSummaryCriteria(
-                  LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))));
-      assertTrue(postingFactStore.isInitialized());
+          ((BookStore) postingFactStore)
+              .periodSummary(
+                  new PeriodSummaryCriteria(
+                      LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08"))));
+      assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
 
@@ -393,7 +384,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       IllegalStateException trialBalanceFailure =
@@ -413,7 +403,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   postingFactStore.periodSummary(
                       new PeriodSummaryCriteria(
                           LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"))));
-
       assertEquals(
           "The selected SQLite file is not initialized as a FinGrind book.",
           trialBalanceFailure.getMessage());
@@ -432,54 +421,48 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty());
     AccountBalanceCriteria balanceQuery =
         new AccountBalanceCriteria(new AccountCode("1000"), null, null);
-
     Path missingBookPath = tempDirectory.resolve("query-view-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
-      var queryView = postingFactStore.readSession();
-      assertFalse(queryView.isInitialized());
+      assertFalse(postingFactStore.inspectBook().initialized());
       assertInitializedQueryViewFailure(
-          () -> queryView.listAccounts(firstAccountPage()),
-          () -> queryView.findAccount(new AccountCode("1000")),
-          () -> queryView.findPosting(new PostingId("posting-1")),
-          () -> queryView.listPostings(postingsQuery),
-          () -> queryView.accountBalance(balanceQuery));
+          () -> ((BookStore) postingFactStore).listAccounts(firstAccountPage()),
+          () -> ((BookStore) postingFactStore).findAccount(new AccountCode("1000")),
+          () -> ((BookStore) postingFactStore).findPosting(new PostingId("posting-1")),
+          () -> ((BookStore) postingFactStore).listPostings(postingsQuery),
+          () -> ((BookStore) postingFactStore).accountBalance(balanceQuery));
     }
-
     Path rawSqlitePath = tempDirectory.resolve("query-view-uninitialized.sqlite");
     createEmptySqliteFile(rawSqlitePath);
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(rawSqlitePath))) {
-      var queryView = postingFactStore.readSession();
-      assertFalse(queryView.isInitialized());
+      assertFalse(postingFactStore.inspectBook().initialized());
       assertInitializedQueryViewFailure(
-          () -> queryView.listAccounts(firstAccountPage()),
-          () -> queryView.findAccount(new AccountCode("1000")),
-          () -> queryView.findPosting(new PostingId("posting-1")),
-          () -> queryView.listPostings(postingsQuery),
-          () -> queryView.accountBalance(balanceQuery));
+          () -> ((BookStore) postingFactStore).listAccounts(firstAccountPage()),
+          () -> ((BookStore) postingFactStore).findAccount(new AccountCode("1000")),
+          () -> ((BookStore) postingFactStore).findPosting(new PostingId("posting-1")),
+          () -> ((BookStore) postingFactStore).listPostings(postingsQuery),
+          () -> ((BookStore) postingFactStore).accountBalance(balanceQuery));
     }
   }
 
   @Test
   void queryView_wrapsNativeFailuresFromDirectQueryCalls() throws Exception {
     Path databasePath = tempDirectory.resolve("query-view-native-failure.sqlite");
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
-      var queryView = postingFactStore.readSession();
       setStoreDatabase(postingFactStore, staleDatabaseHandle(databasePath));
-
       assertWrappedQueryViewNativeFailure(
-          () -> queryView.listAccounts(firstAccountPage()),
-          () -> queryView.findAccount(new AccountCode("1000")),
-          () -> queryView.findPosting(new PostingId("posting-1")),
+          () -> ((BookStore) postingFactStore).listAccounts(firstAccountPage()),
+          () -> ((BookStore) postingFactStore).findAccount(new AccountCode("1000")),
+          () -> ((BookStore) postingFactStore).findPosting(new PostingId("posting-1")),
           () ->
-              queryView.listPostings(
-                  new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty())),
+              ((BookStore) postingFactStore)
+                  .listPostings(
+                      new PostingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty())),
           () ->
-              queryView.accountBalance(
-                  new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
+              ((BookStore) postingFactStore)
+                  .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
       setStoreDatabase(postingFactStore, null);
     }
   }

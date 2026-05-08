@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.executor.PostingValidationBook;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +15,10 @@ public final class PostingAcceptancePolicy {
 
   /** Returns the first deterministic rejection for the supplied posting attempt, if any. */
   public static Optional<BookkeepingPostingRejection> rejectionFor(
-      PostingRequestModel postingRequest, PostingValidationBook book) {
+      PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
-    if (!book.isInitialized()) {
+    if (!book.inspectBook().allowsInitializedWorkflow()) {
       return Optional.of(new BookkeepingPostingRejection.BookNotInitialized());
     }
     if (book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey()).isPresent()) {
@@ -33,7 +32,7 @@ public final class PostingAcceptancePolicy {
   }
 
   private static Optional<BookkeepingPostingRejection> accountRejection(
-      PostingRequestModel postingRequest, PostingValidationBook book) {
+      PostingRequestModel postingRequest, PostingValidationStore book) {
     Set<AccountCode> requestedAccounts = new LinkedHashSet<>();
     for (JournalLine line : postingRequest.journalEntry().lines()) {
       requestedAccounts.add(line.accountCode());

@@ -21,10 +21,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 
 /** Shared contract-model fixtures for split behavior-owned tests. */
-@NullUnmarked
 class ContractTestSupport {
   protected LedgerPlanId planId(String value) {
     return new LedgerPlanId(value);

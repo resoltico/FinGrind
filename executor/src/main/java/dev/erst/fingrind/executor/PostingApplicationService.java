@@ -4,56 +4,51 @@ import dev.erst.fingrind.contract.CommitEntryResult;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.PreflightEntryResult;
-import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
-import java.time.Clock;
+import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
+import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
+import dev.erst.fingrind.executor.spi.BookStore;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.util.Objects;
-import java.util.Optional;
 
 /** Application service that owns preflight and commit behavior for posting entries. */
 public final class PostingApplicationService {
-  private final PostingBookSession bookSession;
-  private final PostingIdGenerator postingIdGenerator;
-  private final Clock clock;
+  private final BookkeepingPostingService bookkeepingPostingService;
 
   /** Creates the posting application service with its application-owned seams. */
   public PostingApplicationService(
-      PostingBookSession bookSession, PostingIdGenerator postingIdGenerator, Clock clock) {
-    this.bookSession = Objects.requireNonNull(bookSession, "bookSession");
-    this.postingIdGenerator = Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-    this.clock = Objects.requireNonNull(clock, "clock");
+      BookStore bookStore, PostingIdGenerator postingIdGenerator, java.time.Clock clock) {
+    this.bookkeepingPostingService =
+        new BookkeepingPostingService(
+            Objects.requireNonNull(bookStore, "bookStore"),
+            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
+            Objects.requireNonNull(clock, "clock"));
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
   public PreflightEntryResult preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<BookkeepingPostingRejection> rejection =
-        PostingAcceptancePolicy.rejectionFor(command, bookSession);
-    if (rejection.isPresent()) {
-      return rejectedPreflight(
-          command, BookkeepingPublishedLanguageTranslator.toPublished(rejection.orElseThrow()));
-    }
-    return new PostEntryResult.PreflightAccepted(
-        command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
+    return switch (bookkeepingPostingService.preflight(command)) {
+      case PostingPreflightOutcome.Accepted accepted ->
+          new PostEntryResult.PreflightAccepted(
+              accepted.idempotencyKey(), accepted.effectiveDate());
+      case PostingPreflightOutcome.Rejected rejected ->
+          rejectedPreflight(
+              command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
+    };
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
   public CommitEntryResult commit(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    PostingDraft postingDraft =
-        new PostingDraft(
-            command.journalEntry(),
-            command.postingLineage(),
-            new CommittedProvenance(
-                command.requestProvenance(), clock.instant(), command.sourceChannel()));
-
-    return switch (bookSession.commit(postingDraft, postingIdGenerator)) {
+    return switch (bookkeepingPostingService.commit(command)) {
       case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
-      case PostingCommitResult.Rejected rejected -> rejectedCommit(command, rejected.rejection());
+      case PostingCommitResult.Rejected rejected ->
+          rejectedCommit(
+              command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
     };
   }
 

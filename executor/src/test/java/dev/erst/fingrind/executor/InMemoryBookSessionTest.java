@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
@@ -40,6 +39,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
@@ -53,6 +53,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -68,10 +69,10 @@ class InMemoryBookSessionTest {
   @Test
   void openBook_marksSessionInitializedAndRejectsSecondOpen() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      assertFalse(bookSession.isInitialized());
+      assertFalse(bookSession.inspectBook().initialized());
       assertEquals(
           new BookOpeningOutcome.Opened(FIXED_INSTANT), bookSession.openBook(FIXED_INSTANT));
-      assertTrue(bookSession.isInitialized());
+      assertTrue(bookSession.inspectBook().initialized());
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookAlreadyInitialized()),
@@ -214,7 +215,7 @@ class InMemoryBookSessionTest {
   void commit_requiresInitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertEquals(
-          new PostingCommitResult.Rejected(new PostingRejection.BookNotInitialized()),
+          new PostingCommitResult.Rejected(new BookkeepingPostingRejection.BookNotInitialized()),
           bookSession.commit(postingFact("idem-1")));
     }
   }
@@ -225,10 +226,10 @@ class InMemoryBookSessionTest {
       bookSession.openBook(FIXED_INSTANT);
       assertEquals(
           new PostingCommitResult.Rejected(
-              new PostingRejection.AccountStateViolations(
+              new BookkeepingPostingRejection.AccountStateViolations(
                   List.of(
-                      new PostingRejection.UnknownAccount(new AccountCode("1000")),
-                      new PostingRejection.UnknownAccount(new AccountCode("2000"))))),
+                      new BookkeepingPostingRejection.UnknownAccount(new AccountCode("1000")),
+                      new BookkeepingPostingRejection.UnknownAccount(new AccountCode("2000"))))),
           bookSession.commit(postingFact("idem-1")));
 
       declareDefaultAccounts(bookSession);
@@ -236,8 +237,9 @@ class InMemoryBookSessionTest {
 
       assertEquals(
           new PostingCommitResult.Rejected(
-              new PostingRejection.AccountStateViolations(
-                  List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))),
+              new BookkeepingPostingRejection.AccountStateViolations(
+                  List.of(
+                      new BookkeepingPostingRejection.InactiveAccount(new AccountCode("1000"))))),
           bookSession.commit(postingFact("idem-2")));
     }
   }
@@ -260,7 +262,8 @@ class InMemoryBookSessionTest {
           Optional.of(originalPosting),
           bookSession.findPosting(new PostingId("posting-idem-original")));
       assertEquals(
-          new PostingCommitResult.Rejected(new PostingRejection.DuplicateIdempotencyKey()),
+          new PostingCommitResult.Rejected(
+              new BookkeepingPostingRejection.DuplicateIdempotencyKey()),
           bookSession.commit(postingFact("idem-original")));
 
       assertEquals(
@@ -270,7 +273,8 @@ class InMemoryBookSessionTest {
           bookSession.findReversalFor(new PostingId("posting-idem-original")));
       assertEquals(
           new PostingCommitResult.Rejected(
-              new PostingRejection.ReversalAlreadyExists(new PostingId("posting-idem-original"))),
+              new BookkeepingPostingRejection.ReversalAlreadyExists(
+                  new PostingId("posting-idem-original"))),
           bookSession.commit(secondReversal));
       assertEquals(
           Optional.empty(), bookSession.findExistingPosting(new IdempotencyKey("idem-reversal-2")));

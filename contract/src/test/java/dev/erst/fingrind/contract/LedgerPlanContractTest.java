@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,17 +20,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the canonical ledger-plan contract. */
-@NullUnmarked
 class LedgerPlanContractTest {
   @Test
   void ledgerPlan_validatesMandatoryShape() {
     LedgerStep step = new LedgerStep.OpenBook(stepId("open"));
     LedgerPlan plan = new LedgerPlan(planId("plan-1"), List.of(step));
-
     assertEquals(planId("plan-1"), plan.planId());
     assertTrue(plan.beginsWithOpenBook());
     assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId(""), List.of(step)));
@@ -97,7 +95,8 @@ class LedgerPlanContractTest {
                 stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .detailKind());
     assertThrows(IllegalArgumentException.class, () -> new LedgerStep.OpenBook(stepId(" ")));
-    assertThrows(NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), null));
+    assertThrows(
+        NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), nullOf()));
   }
 
   @Test
@@ -109,7 +108,6 @@ class LedgerPlanContractTest {
             LocalDate.parse("2026-04-30"),
             new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
             BalanceSide.DEBIT);
-
     assertEquals(new AccountCode("1000"), assertion.query().accountCode());
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), assertion.query().effectiveDateFrom());
     assertEquals(
@@ -128,9 +126,9 @@ class LedgerPlanContractTest {
                 LocalDate.parse("2026-04-30"),
                 new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
                 BalanceSide.DEBIT));
-    assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountDeclared(null));
-    assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountActive(null));
-    assertThrows(NullPointerException.class, () -> new LedgerAssertion.PostingExists(null));
+    assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountDeclared(nullOf()));
+    assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountActive(nullOf()));
+    assertThrows(NullPointerException.class, () -> new LedgerAssertion.PostingExists(nullOf()));
   }
 
   @Test
@@ -168,7 +166,6 @@ class LedgerPlanContractTest {
         new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejected));
     LedgerExecutionJournal assertionFailedJournal =
         new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionFailed));
-
     assertEquals(List.of(fact), success.facts());
     assertEquals(failure, ((LedgerJournalEntry.Rejected) rejected).failure());
     assertEquals(LedgerPlanStatus.REJECTED, rejectedJournal.status());
@@ -178,7 +175,7 @@ class LedgerPlanContractTest {
         planId("plan-1"), new LedgerPlanResult.Succeeded(planId("plan-1"), journal).planId());
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("", "value"));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("count", " "));
-    assertThrows(NullPointerException.class, () -> LedgerFact.text("count", null));
+    assertThrows(NullPointerException.class, () -> LedgerFact.text("count", nullOf()));
     assertThrows(
         IllegalArgumentException.class, () -> new LedgerStepFailure("", "Rejected.", List.of()));
     assertThrows(
@@ -212,7 +209,6 @@ class LedgerPlanContractTest {
         IntStream.rangeClosed(0, InteractionLimits.LEDGER_PLAN_STEP_MAX)
             .mapToObj(index -> (LedgerStep) new LedgerStep.InspectBook(stepId("inspect-" + index)))
             .toList();
-
     assertThrows(
         IllegalArgumentException.class, () -> new LedgerPlan(planId("plan-too-large"), steps));
   }

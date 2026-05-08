@@ -8,17 +8,13 @@ import dev.erst.fingrind.contract.ContractErrors;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests the priming-handoff ownership boundary around store opening. */
-@NullUnmarked
 class SqliteStoreOpeningTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void ownershipTransfer_reportsCleanupFailureWhenStoreCloseThrows() throws Exception {
     List<String> cleanupReports = new ArrayList<>();
-
     try (SqliteBookPassphrase bookPassphrase =
         SqliteBookPassphrase.fromCharacters(
             "ownership transfer cleanup", TEST_BOOK_KEY.toCharArray())) {
@@ -29,10 +25,8 @@ class SqliteStoreOpeningTest extends SqlitePostingFactStoreTestSupport {
               SqliteStoreAccessMode.READ_WRITE_CREATE,
               ThrowingOwnershipTransferStore::new,
               (action, exception) -> cleanupReports.add(action + "|" + exception.getMessage()));
-
       assertTrue(decision instanceof ContractDecision.Rejected<SqlitePostingFactStore>);
     }
-
     assertEquals(
         List.of(
             "closing one SQLite session during priming handoff|Simulated ownership-transfer close failure."),

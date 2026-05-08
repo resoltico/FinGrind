@@ -8,12 +8,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
   @Test
   void run_queryCommandsThroughDefaultSqliteWorkflow() throws IOException {
@@ -25,7 +23,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
             "query-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
     Path bookFilePath = tempDirectory.resolve("query-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-
     assertEquals(
         0,
         cli(
@@ -72,7 +69,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                   "--request-file",
                   declareRevenueFile.toString()
                 }));
-
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
@@ -92,7 +88,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
             .path("postingId")
             .stringValue();
-
     ByteArrayOutputStream inspectOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
@@ -107,7 +102,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 }));
     assertTrue(
         inspectOutput.toString(StandardCharsets.UTF_8).contains("\"state\":\"initialized\""));
-
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
@@ -123,7 +117,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                   postingId
                 }));
     assertTrue(getPostingOutput.toString(StandardCharsets.UTF_8).contains(postingId));
-
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
@@ -142,7 +135,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                   "10"
                 }));
     assertTrue(listPostingsOutput.toString(StandardCharsets.UTF_8).contains(postingId));
-
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
         0,

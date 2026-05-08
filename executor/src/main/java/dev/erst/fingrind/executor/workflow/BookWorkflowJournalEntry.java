@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.LedgerFact;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -22,7 +21,7 @@ public sealed interface BookWorkflowJournalEntry
   Instant finishedAt();
 
   /** Returns the compact machine facts gathered while executing the unit. */
-  List<LedgerFact> facts();
+  List<BookWorkflowFact> facts();
 
   /** Returns the optional failure payload. */
   default Optional<BookWorkflowFailure> optionalFailure() {
@@ -46,7 +45,7 @@ public sealed interface BookWorkflowJournalEntry
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
-      List<LedgerFact> facts)
+      List<BookWorkflowFact> facts)
       implements BookWorkflowJournalEntry {
     public Succeeded {
       requireCommon(stepId, descriptor, startedAt, finishedAt, facts);
@@ -64,7 +63,7 @@ public sealed interface BookWorkflowJournalEntry
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
-      List<LedgerFact> facts,
+      List<BookWorkflowFact> facts,
       BookWorkflowFailure failure)
       implements Failed {
     public Rejected {
@@ -80,7 +79,7 @@ public sealed interface BookWorkflowJournalEntry
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
-      List<LedgerFact> facts,
+      List<BookWorkflowFact> facts,
       BookWorkflowFailure failure)
       implements Failed {
     public AssertionFailed {
@@ -100,7 +99,7 @@ public sealed interface BookWorkflowJournalEntry
       BookWorkflowJournalDescriptor descriptor,
       Instant startedAt,
       Instant finishedAt,
-      List<LedgerFact> facts) {
+      List<BookWorkflowFact> facts) {
     Objects.requireNonNull(stepId, "stepId");
     Objects.requireNonNull(descriptor, "descriptor");
     Objects.requireNonNull(startedAt, "startedAt");

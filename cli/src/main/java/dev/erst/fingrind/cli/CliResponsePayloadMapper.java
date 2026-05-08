@@ -22,6 +22,7 @@ import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.protocol.ProtocolFailureStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
 import java.nio.file.Path;
 
@@ -29,7 +30,8 @@ import java.nio.file.Path;
 final class CliResponsePayloadMapper {
   private CliResponsePayloadMapper() {}
 
-  static CliEnvelopeJsonModels.SuccessEnvelope successEnvelope(Object payload) {
+  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> successEnvelope(
+      ProtocolSuccessPayload payload) {
     return new CliEnvelopeJsonModels.SuccessEnvelope(ProtocolSuccessStatus.OK, payload);
   }
 
@@ -77,7 +79,8 @@ final class CliResponsePayloadMapper {
     return CliRejectionPayloadMapper.queryRejectedEnvelope(rejection);
   }
 
-  static Object bookInspectionPayload(Path bookFilePath, BookInspection inspection) {
+  static ProtocolSuccessPayload bookInspectionPayload(
+      Path bookFilePath, BookInspection inspection) {
     return CliBookPayloadMapper.bookInspectionPayload(bookFilePath, inspection);
   }
 

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -29,6 +29,10 @@ If either command fails — `gh` is not installed, or `gh auth status` reports "
 > logged-in account with repo access, tell me to resume.
 
 Do not attempt to resolve missing `gh` or authentication failures autonomously.
+
+This document is the operator procedure. For publication topology, attestation invariants,
+cross-platform canary behavior, and safe post-tag repair theory, use
+[DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md).
 
 ---
 
@@ -103,6 +107,13 @@ If the unpublished payload includes new untracked release files, move them expli
 by committing them on the bootstrap branch or copying them into the release worktree before the
 Step 2 staging checkpoint. Never fall back to running release verification from the dirty or
 problematic primary checkout just because the unpublished release payload currently lives there.
+
+If the primary checkout is blocked by another **live** FinGrind verification owner — for example
+`./check.sh`, `./scripts/docker-smoke.sh`, or a long-running Jazzer wrapper already holds the
+repo-wide verification lock — do not delete the lock by hand and do not start competing
+verification in the same checkout. Either wait for the active owner to finish, or bootstrap the
+release payload into a clean worktree and run the release gate there. A live lock owner is a
+checkout-availability problem, not proof that the release payload is bad.
 
 Run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repository's exact pinned JaCoCo snapshot coordinate still resolves

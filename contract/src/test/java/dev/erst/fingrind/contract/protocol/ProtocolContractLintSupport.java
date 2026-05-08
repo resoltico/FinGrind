@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.ContractErrors;
 import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.RequestFieldPresence;
+import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.WorkflowSurface;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -396,15 +397,22 @@ class ProtocolContractLintSupport {
                 "duplicate-idempotency-key",
                 "expected-invalid",
                 "export-ignore",
+                "fuzz-all",
+                "fuzz-cli-request",
+                "fuzz-ledger-plan-request",
+                "fuzz-posting-workflow",
+                "fuzz-sqlite-book-roundtrip",
                 "inactive-account",
                 "invalid-request",
                 "json-envelope",
                 "ledger-plan-request",
+                "list-findings",
                 "owner-only-acl",
                 "posting-not-found",
                 "posting-book-not-initialized",
                 "query-book-not-initialized",
                 "posting-workflow",
+                "promote-seed",
                 "replace-before-commit-effective-date",
                 "regression-input",
                 "semver-major",
@@ -414,6 +422,7 @@ class ProtocolContractLintSupport {
                 "reversal-does-not-negate-target",
                 "reversal-target-not-found",
                 "runtime-failure",
+                "seed-audit",
                 "sqlite-book-roundtrip",
                 "sqlite-jdbc",
                 "test-complete",
@@ -448,6 +457,7 @@ class ProtocolContractLintSupport {
     ids.addAll(SqliteRuntimeProvenance.wireValues());
     ids.addAll(SqliteRuntimeStatus.wireValues());
     ids.addAll(SqliteRuntimeTrustBasis.wireValues());
+    ids.addAll(SqliteCompileOptionsVerificationStatus.wireValues());
     ids.addAll(WorkflowSurface.wireValues());
     ids.addAll(ProtocolSuccessStatus.wireValues());
     ids.addAll(ProtocolRejectionStatus.wireValues());

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -7,18 +8,15 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.time.LocalDate;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostEntryResult}. */
-@NullUnmarked
 class PostEntryResultTest {
   @Test
   void preflightAccepted_holdsItsPayload() {
     PostEntryResult.PreflightAccepted result =
         new PostEntryResult.PreflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07"));
-
     assertEquals("idem-1", result.idempotencyKey().value());
   }
 
@@ -30,7 +28,6 @@ class PostEntryResultTest {
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T10:15:30Z"));
-
     assertEquals("posting-1", result.postingId().value());
   }
 
@@ -39,7 +36,6 @@ class PostEntryResultTest {
     PostEntryResult.PreflightRejected result =
         new PostEntryResult.PreflightRejected(
             new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey());
-
     assertEquals(new PostingRejection.DuplicateIdempotencyKey(), result.rejection());
   }
 
@@ -47,6 +43,6 @@ class PostEntryResultTest {
   void commitRejected_rejectsNullRejection() {
     assertThrows(
         NullPointerException.class,
-        () -> new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), null));
+        () -> new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), nullOf()));
   }
 }

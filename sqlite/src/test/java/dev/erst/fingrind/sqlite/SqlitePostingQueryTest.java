@@ -12,35 +12,30 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.PostingCommitResult;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
-@NullUnmarked
 class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
-
   @Test
   void listPostings_requiresInitializedBookForMissingAndBlankBooks() throws Exception {
     PostingHistoryQuery firstPage =
         new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
-
     Path missingBookPath = tempDirectory.resolve("list-postings-missing.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(missingBookPath))) {
       assertInitializedQueryViewFailure(() -> postingFactStore.listPostings(firstPage));
     }
-
     Path blankBookPath = tempDirectory.resolve("list-postings-blank.sqlite");
     createEmptySqliteFile(blankBookPath);
     try (SqlitePostingFactStore postingFactStore =
@@ -79,7 +74,6 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "30.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "30.00")));
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
@@ -97,12 +91,14 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
-          new PostingCommitResult.Committed(postingOne), postingFactStore.commit(postingOne));
+          new PostingCommitResult.Committed(postingOne),
+          commitPosting(postingFactStore, postingOne));
       assertEquals(
-          new PostingCommitResult.Committed(postingTwo), postingFactStore.commit(postingTwo));
+          new PostingCommitResult.Committed(postingTwo),
+          commitPosting(postingFactStore, postingTwo));
       assertEquals(
-          new PostingCommitResult.Committed(postingThree), postingFactStore.commit(postingThree));
-
+          new PostingCommitResult.Committed(postingThree),
+          commitPosting(postingFactStore, postingThree));
       assertEquals(
           new PostingPage(
               List.of(publishedPostingFact(postingThree), publishedPostingFact(postingTwo)),
@@ -139,12 +135,10 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
     Path databasePath = tempDirectory.resolve("books").resolve("entity-a.sqlite");
     CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
-      postingFactStore.commit(postingFact);
-
+      commitPosting(postingFactStore, postingFact);
       assertEquals(
           Optional.empty(), postingFactStore.findPosting(new PostingId("posting-missing")));
     }
@@ -154,14 +148,12 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
   void findByIdempotency_rejectsForeignSqliteFileWithPostingLikeSchema() {
     Path bookPath = tempDirectory.resolve("missing-line-table.sqlite");
     createPostingFactOnlyBook(bookPath);
-
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("idem-partial")));
-
       assertEquals("The selected SQLite file is not a FinGrind book.", exception.getMessage());
     }
   }

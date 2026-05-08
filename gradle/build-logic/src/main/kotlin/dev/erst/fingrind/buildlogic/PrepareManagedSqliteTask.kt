@@ -50,6 +50,9 @@ abstract class PrepareManagedSqliteTask
         @get:Input
         abstract val requiredCompileOptions: ListProperty<String>
 
+        @get:Input
+        abstract val requiresSecureMemorySupport: Property<Boolean>
+
         @get:OutputFile
         abstract val outputFile: RegularFileProperty
 
@@ -66,6 +69,7 @@ abstract class PrepareManagedSqliteTask
                 compileWindowsLibrary(
                     compiler = compiler.get(),
                     sourceFilePath = sourceFile.get().asFile.absolutePath,
+                    requiresSecureMemorySupport = requiresSecureMemorySupport.get(),
                     outputLibraryFile = outputLibraryFile,
                 )
                 return
@@ -77,6 +81,7 @@ abstract class PrepareManagedSqliteTask
                         operatingSystemId = activeOperatingSystemId,
                         sqliteVersion = sqliteVersion.get(),
                         requiredCompileOptions = requiredCompileOptions.get(),
+                        requiresSecureMemorySupport = requiresSecureMemorySupport.get(),
                         sourceFilePath = sourceFile.get().asFile.absolutePath,
                         outputFilePath = outputLibraryFile.absolutePath,
                     ),
@@ -88,6 +93,7 @@ abstract class PrepareManagedSqliteTask
         private fun compileWindowsLibrary(
             compiler: String,
             sourceFilePath: String,
+            requiresSecureMemorySupport: Boolean,
             outputLibraryFile: java.io.File,
         ) {
             val buildDirectory = temporaryDir.resolve("windows-shared-library")
@@ -102,6 +108,7 @@ abstract class PrepareManagedSqliteTask
                         compiler = compiler,
                         sourceFilePath = sourceFilePath,
                         requiredCompileOptions = requiredCompileOptions.get(),
+                        requiresSecureMemorySupport = requiresSecureMemorySupport,
                         outputFilePath = compiledLibraryFile.absolutePath,
                         importLibraryFilePath = importLibraryFile.absolutePath,
                         objectFilePath = objectFile.absolutePath,
@@ -117,6 +124,7 @@ abstract class PrepareManagedSqliteTask
             operatingSystemId: String,
             sqliteVersion: String,
             requiredCompileOptions: List<String>,
+            requiresSecureMemorySupport: Boolean,
             sourceFilePath: String,
             outputFilePath: String,
         ): List<String> =
@@ -124,7 +132,7 @@ abstract class PrepareManagedSqliteTask
                 add(compiler)
                 add("-O2")
                 add("-fPIC")
-                addAll(unixCompilerDefines(requiredCompileOptions))
+                addAll(unixCompilerDefines(requiredCompileOptions, requiresSecureMemorySupport))
                 if (operatingSystemId == "macos") {
                     add("-dynamiclib")
                     add("-current_version")
@@ -148,6 +156,7 @@ abstract class PrepareManagedSqliteTask
             compiler: String,
             sourceFilePath: String,
             requiredCompileOptions: List<String>,
+            requiresSecureMemorySupport: Boolean,
             outputFilePath: String,
             importLibraryFilePath: String,
             objectFilePath: String,
@@ -157,7 +166,8 @@ abstract class PrepareManagedSqliteTask
                 "/nologo",
                 "/O2",
                 "/LD",
-                *windowsCompilerDefines(requiredCompileOptions).toTypedArray(),
+                *windowsCompilerDefines(requiredCompileOptions, requiresSecureMemorySupport)
+                    .toTypedArray(),
                 "/DSQLITE_API=__declspec(dllexport)",
                 "/Fo\"$objectFilePath\"",
                 sourceFilePath,
@@ -168,14 +178,25 @@ abstract class PrepareManagedSqliteTask
                 "/IMPLIB:\"$importLibraryFilePath\"",
             )
 
-        private fun unixCompilerDefines(requiredCompileOptions: List<String>): List<String> =
-            compilerDefines(requiredCompileOptions) { option -> "-D$option" }
+        private fun unixCompilerDefines(
+            requiredCompileOptions: List<String>,
+            requiresSecureMemorySupport: Boolean,
+        ): List<String> =
+            compilerDefines(requiredCompileOptions, requiresSecureMemorySupport) {
+                option -> "-D$option"
+            }
 
-        private fun windowsCompilerDefines(requiredCompileOptions: List<String>): List<String> =
-            compilerDefines(requiredCompileOptions) { option -> "/D$option" }
+        private fun windowsCompilerDefines(
+            requiredCompileOptions: List<String>,
+            requiresSecureMemorySupport: Boolean,
+        ): List<String> =
+            compilerDefines(requiredCompileOptions, requiresSecureMemorySupport) {
+                option -> "/D$option"
+            }
 
         private fun compilerDefines(
             requiredCompileOptions: List<String>,
+            requiresSecureMemorySupport: Boolean,
             flagBuilder: (String) -> String,
         ): List<String> =
             requiredCompileOptions.map { option ->
@@ -190,7 +211,13 @@ abstract class PrepareManagedSqliteTask
                         "$normalized=1"
                     }
                 flagBuilder("SQLITE_$sqliteOption")
-            } + flagBuilder("SQLITE3MC_SECURE_MEMORY=1")
+            } + listOfNotNull(
+                if (requiresSecureMemorySupport) {
+                    flagBuilder("SQLITE3MC_SECURE_MEMORY=1")
+                } else {
+                    null
+                },
+            )
 
         private fun writeChecksumFile(outputLibraryFile: java.io.File, checksumOutputFile: java.io.File) {
             val digest = MessageDigest.getInstance("SHA-256").digest(outputLibraryFile.readBytes())

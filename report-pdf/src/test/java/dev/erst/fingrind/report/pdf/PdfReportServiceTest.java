@@ -39,7 +39,6 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,18 +51,14 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link PdfReportService}. */
-@NullUnmarked
 class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
-  private static final Path BOOK_PATH =
-      Path.of("/tmp/Rīga büro/2026 Q2 close/Ops & Sales [April] #1.sqlite");
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.32.0", CLOCK);
+      new PdfReportService("FinGrind", "0.33.0", CLOCK);
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -74,7 +69,6 @@ class PdfReportServiceTest {
   void renderAccountBalanceAndTrialBalanceIncludeMetadataAndExpectedText() throws IOException {
     byte[] accountBalancePdf =
         PDF_REPORT_SERVICE.renderAccountBalance(
-            BOOK_PATH,
             new AccountBalanceSnapshot(
                 CASH_ACCOUNT,
                 Optional.of(LocalDate.parse("2026-04-01")),
@@ -84,7 +78,6 @@ class PdfReportServiceTest {
                     balance("USD", "500.00", "100.00", "400.00", BalanceSide.DEBIT))));
     byte[] trialBalancePdf =
         PDF_REPORT_SERVICE.renderTrialBalance(
-            BOOK_PATH,
             new TrialBalanceReport(
                 Optional.of(LocalDate.parse("2026-04-30")),
                 List.of(
@@ -94,7 +87,6 @@ class PdfReportServiceTest {
                     new TrialBalanceRow(
                         REVENUE_ACCOUNT,
                         balance("EUR", "10.00", "1250.00", "1240.00", BalanceSide.CREDIT)))));
-
     assertPdfMetadata(accountBalancePdf, "Account Balance", true);
     assertPdfMetadata(trialBalancePdf, "Trial Balance", false);
     assertTrue(extractedText(accountBalancePdf).contains("Cash on Hand and Bank Balances"));
@@ -126,12 +118,8 @@ class PdfReportServiceTest {
                 new PeriodCurrencySummary(
                     balance("EUR", "3600.00", "3600.00", "0.00", BalanceSide.ZERO))),
             accountActivityRows(72));
-
-    byte[] accountLedgerPdf =
-        PDF_REPORT_SERVICE.renderAccountLedger(BOOK_PATH, accountLedgerReport);
-    byte[] periodSummaryPdf =
-        PDF_REPORT_SERVICE.renderPeriodSummary(BOOK_PATH, periodSummaryReport);
-
+    byte[] accountLedgerPdf = PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport);
+    byte[] periodSummaryPdf = PDF_REPORT_SERVICE.renderPeriodSummary(periodSummaryReport);
     assertPdfPageCountAtLeast(accountLedgerPdf, 2);
     assertPdfPageCountAtLeast(periodSummaryPdf, 2);
     assertTrue(extractedText(accountLedgerPdf).contains("Ledger Entries"));
@@ -141,24 +129,16 @@ class PdfReportServiceTest {
   }
 
   @Test
+  @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.32.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.33.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.32.0", null));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            PDF_REPORT_SERVICE.renderAccountBalance(
-                null,
-                new AccountBalanceSnapshot(
-                    CASH_ACCOUNT, Optional.empty(), Optional.empty(), List.of())));
-    assertThrows(
-        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(BOOK_PATH, null));
-    assertThrows(
-        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(BOOK_PATH, null));
-    assertThrows(
-        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderPeriodSummary(BOOK_PATH, null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.33.0", null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderPeriodSummary(null));
   }
 
   private static void assertPdfMetadata(byte[] pdfBytes, String title, boolean portrait)
@@ -167,8 +147,8 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.32.0", information.getCreator());
-      assertEquals(BOOK_PATH.toAbsolutePath().normalize().toString(), information.getSubject());
+      assertEquals("FinGrind 0.33.0", information.getCreator());
+      assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
   }

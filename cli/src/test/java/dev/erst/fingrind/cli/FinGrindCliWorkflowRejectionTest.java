@@ -48,11 +48,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link FinGrindCli}. */
-@NullUnmarked
 class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
   @Test
   void run_mapsAssertionFailedPlansToExitCodeThree() throws IOException {
@@ -80,7 +78,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")));
     workflow.setExecutePlanResult(assertionFailedPlanResult("plan-1"));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
     int exitCode =
         cli(
                 new ByteArrayInputStream(new byte[0]),
@@ -97,7 +94,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                   "--request-file",
                   planFile.toString()
                 });
-
     assertEquals(3, exitCode);
     assertTrue(
         outputStream
@@ -124,7 +120,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("reject.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     Path requestFile = writeRequest(validRequestJson());
-
     assertEquals(
         2,
         cli(
@@ -319,7 +314,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
             throw new AssertionError("commit should not be called in this test");
           }
         };
-
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
@@ -342,7 +336,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
         getPostingOutput
             .toString(StandardCharsets.UTF_8)
             .contains("\"code\":\"posting-not-found\""));
-
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
         2,
@@ -363,7 +356,6 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
         listPostingsOutput
             .toString(StandardCharsets.UTF_8)
             .contains("\"code\":\"unknown-account\""));
-
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
         2,

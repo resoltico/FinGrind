@@ -22,11 +22,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for derived accessors across date-range, posting, and ledger-plan models. */
-@NullUnmarked
 class ContractDerivedAccessorsTest extends ContractTestSupport {
   @Test
   void dateRangesLineagesPostingShapesAndPlanResultsExposeDerivedAccessors() {
@@ -127,7 +125,6 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
                         finishedAt,
                         List.of(),
                         new LedgerStepFailure("assertion-failed", "Mismatch.", List.of())))));
-
     assertEquals(Optional.empty(), unbounded.effectiveDateFrom());
     assertTrue(unbounded.contains(LocalDate.parse("2026-04-15")));
     assertTrue(from.contains(LocalDate.parse("2026-04-15")));
@@ -137,14 +134,12 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     assertTrue(bounded.contains(LocalDate.parse("2026-04-15")));
     assertFalse(bounded.contains(LocalDate.parse("2026-05-01")));
     assertEquals(List.of("unbounded", "from", "to", "bounded"), EffectiveDateRange.variantNames());
-
     assertFalse(direct.isReversal());
     assertEquals(Optional.empty(), direct.reversalReference());
     assertEquals(Optional.empty(), direct.reversalReason());
     assertTrue(reversal.isReversal());
     assertEquals(Optional.of(reversalReference), reversal.reversalReference());
     assertEquals(Optional.of(reversalReason), reversal.reversalReason());
-
     assertEquals(Optional.of(reversalReference), command.reversalReference());
     assertEquals(Optional.of(reversalReason), command.reversalReason());
     assertEquals(Optional.of(reversalReference), ((PostingRequest) command).reversalReference());
@@ -157,7 +152,6 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), assertion.effectiveDateTo());
     assertEquals(bounded, assertion.query().effectiveDateRange());
     assertEquals(new IdempotencyKey("idem-1"), commitRejected.requestIdempotencyKey());
-
     assertEquals(LedgerPlanStatus.SUCCEEDED, succeededResult.status());
     assertEquals(LedgerPlanStatus.REJECTED, rejectedResult.status());
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, assertionFailedResult.status());

@@ -29,25 +29,15 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
-import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
-import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -99,9 +89,8 @@ final class LedgerPlanServiceTestSupport {
     return bookSession;
   }
 
-  static PublishedLedgerPlanService service(LedgerPlanSession bookSession) {
-    return new PublishedLedgerPlanService(
-        new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK));
+  static LedgerPlanService service(AtomicBookStore bookSession) {
+    return new LedgerPlanService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK);
   }
 
   static LedgerPlanId planId(String value) {
@@ -177,63 +166,124 @@ final class LedgerPlanServiceTestSupport {
     return BookkeepingPublishedLanguageTranslator.fromPublished(postEntryCommand(idempotencyKey));
   }
 
-  /** Test-only adapter that accepts published plan fixtures while the service stays internal. */
-  static final class PublishedLedgerPlanService {
-    private final LedgerPlanService delegate;
+  /** Shared delegating atomic store so failure fixtures only override the behavior under test. */
+  abstract static class DelegatingAtomicBookStore implements AtomicBookStore, AutoCloseable {
+    protected final InMemoryBookSession delegate = new InMemoryBookSession();
 
-    private PublishedLedgerPlanService(LedgerPlanService delegate) {
-      this.delegate = delegate;
+    @Override
+    public BookLifecycleInspection inspectBook() {
+      return delegate.inspectBook();
     }
 
-    LedgerPlanResult execute(LedgerPlan plan) {
-      return delegate.execute(BookWorkflowPublishedLanguageTranslator.fromPublished(plan));
+    @Override
+    public BookOpeningOutcome openBook(Instant initializedAt) {
+      return delegate.openBook(initializedAt);
+    }
+
+    @Override
+    public AccountDeclarationOutcome declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
+      return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+    }
+
+    @Override
+    public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.RegisteredAccount> findAccount(
+        AccountCode accountCode) {
+      return delegate.findAccount(accountCode);
+    }
+
+    @Override
+    public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+        findExistingPosting(dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
+      return delegate.findExistingPosting(idempotencyKey);
+    }
+
+    @Override
+    public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> findPosting(
+        PostingId postingId) {
+      return delegate.findPosting(postingId);
+    }
+
+    @Override
+    public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+        findReversalFor(PostingId priorPostingId) {
+      return delegate.findReversalFor(priorPostingId);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage listAccounts(
+        dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery query) {
+      return delegate.listAccounts(query);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage listPostings(
+        dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery query) {
+      return delegate.listPostings(query);
+    }
+
+    @Override
+    public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.AccountBalanceView>
+        accountBalance(dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria query) {
+      return delegate.accountBalance(query);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.TrialBalanceView trialBalance(
+        dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria query) {
+      return delegate.trialBalance(query);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.AccountLedgerView accountLedger(
+        dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria query,
+        dev.erst.fingrind.executor.bookkeeping.RegisteredAccount account) {
+      return delegate.accountLedger(query, account);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView periodSummary(
+        dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria query) {
+      return delegate.periodSummary(query);
+    }
+
+    @Override
+    public PostingCommitResult commit(
+        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      return delegate.commit(postingDraft, postingIdGenerator);
+    }
+
+    @Override
+    public void beginLedgerPlanTransaction() {
+      delegate.beginLedgerPlanTransaction();
+    }
+
+    @Override
+    public void commitLedgerPlanTransaction() {
+      delegate.commitLedgerPlanTransaction();
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    @Override
+    public void close() {
+      delegate.close();
     }
   }
 
   /** In-memory session that throws during open-book to exercise rollback-on-runtime-failure. */
-  static final class ThrowingLedgerPlanSession implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-    private final BookAdministrationSession throwingAdministrationSession =
-        new BookAdministrationSession() {
-          @Override
-          public BookOpeningOutcome openBook(Instant initializedAt) {
-            throw new IllegalStateException("boom");
-          }
-
-          @Override
-          public AccountDeclarationOutcome declareAccount(
-              AccountCode accountCode,
-              AccountName accountName,
-              NormalBalance normalBalance,
-              Instant declaredAt) {
-            return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
-          }
-        };
+  static final class ThrowingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
     @Override
-    public BookAdministrationSession administrationSession() {
-      return throwingAdministrationSession;
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return delegate.readSession();
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
+    public BookOpeningOutcome openBook(Instant initializedAt) {
+      throw new IllegalStateException("boom");
     }
 
     @Override
@@ -244,59 +294,20 @@ final class LedgerPlanServiceTestSupport {
 
     boolean rollbackCalled() {
       return rollbackCalled;
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
     }
   }
 
   /** Test-only seam split that throws during declare-account after a successful open-book step. */
-  static final class DeclareRuntimeFailingLedgerPlanSession
-      implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-    private final BookAdministrationSession throwingAdministrationSession =
-        new BookAdministrationSession() {
-          @Override
-          public BookOpeningOutcome openBook(Instant initializedAt) {
-            return delegate.openBook(initializedAt);
-          }
-
-          @Override
-          public AccountDeclarationOutcome declareAccount(
-              AccountCode accountCode,
-              AccountName accountName,
-              NormalBalance normalBalance,
-              Instant declaredAt) {
-            throw new IllegalStateException("declare boom");
-          }
-        };
+  static final class DeclareRuntimeFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
     @Override
-    public BookAdministrationSession administrationSession() {
-      return throwingAdministrationSession;
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return delegate.readSession();
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
+    public AccountDeclarationOutcome declareAccount(
+        AccountCode accountCode,
+        AccountName accountName,
+        NormalBalance normalBalance,
+        Instant declaredAt) {
+      throw new IllegalStateException("declare boom");
     }
 
     @Override
@@ -307,136 +318,24 @@ final class LedgerPlanServiceTestSupport {
 
     boolean rollbackCalled() {
       return rollbackCalled;
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
     }
   }
 
   /** Test-only seam split that throws before any ledger-plan transaction begins. */
-  static final class BeginFailingLedgerPlanSession implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-
-    @Override
-    public BookAdministrationSession administrationSession() {
-      return delegate.administrationSession();
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return delegate.readSession();
-    }
-
+  static final class BeginFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public void beginLedgerPlanTransaction() {
       throw new IllegalStateException("begin boom");
     }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
-    }
-
-    @Override
-    public void rollbackLedgerPlanTransaction() {
-      delegate.rollbackLedgerPlanTransaction();
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
-    }
   }
 
   /** Test-only seam split that throws while checking initialization before the first step runs. */
-  static final class InitializationCheckFailingLedgerPlanSession
-      implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-    private final BookReadSession throwingReadSession =
-        new BookReadSession() {
-          @Override
-          public dev.erst.fingrind.contract.BookInspection inspectBook() {
-            return delegate.inspectBook();
-          }
-
-          @Override
-          public boolean isInitialized() {
-            throw new IllegalStateException("initialization boom");
-          }
-
-          @Override
-          public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
-            return delegate.listAccounts(query);
-          }
-
-          @Override
-          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-            return delegate.findAccount(accountCode);
-          }
-
-          @Override
-          public Optional<CommittedPosting> findPosting(PostingId postingId) {
-            return delegate.findPosting(postingId);
-          }
-
-          @Override
-          public PostingHistoryPage listPostings(PostingHistoryQuery query) {
-            return delegate.listPostings(query);
-          }
-
-          @Override
-          public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
-            return delegate.accountBalance(query);
-          }
-
-          @Override
-          public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
-            return delegate.trialBalance(query);
-          }
-
-          @Override
-          public AccountLedgerView accountLedger(
-              AccountLedgerCriteria query, RegisteredAccount account) {
-            return delegate.accountLedger(query, account);
-          }
-
-          @Override
-          public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
-            return delegate.periodSummary(query);
-          }
-        };
+  static final class InitializationCheckFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
     @Override
-    public BookAdministrationSession administrationSession() {
-      return delegate.administrationSession();
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return throwingReadSession;
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
+    public BookLifecycleInspection inspectBook() {
+      throw new IllegalStateException("initialization boom");
     }
 
     @Override
@@ -448,131 +347,19 @@ final class LedgerPlanServiceTestSupport {
     boolean rollbackCalled() {
       return rollbackCalled;
     }
-
-    @Override
-    public void close() {
-      delegate.close();
-    }
   }
 
   /** Test-only seam split that keeps queries uninitialized after a successful open-book step. */
-  static final class ListAccountsRejectingLedgerPlanSession
-      implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-    private final BookReadSession rejectingQuerySession =
-        new BookReadSession() {
-          @Override
-          public dev.erst.fingrind.contract.BookInspection inspectBook() {
-            return delegate.inspectBook();
-          }
-
-          @Override
-          public boolean isInitialized() {
-            return false;
-          }
-
-          @Override
-          public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
-            return delegate.listAccounts(query);
-          }
-
-          @Override
-          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-            return delegate.findAccount(accountCode);
-          }
-
-          @Override
-          public Optional<CommittedPosting> findPosting(PostingId postingId) {
-            return delegate.findPosting(postingId);
-          }
-
-          @Override
-          public PostingHistoryPage listPostings(PostingHistoryQuery query) {
-            return delegate.listPostings(query);
-          }
-
-          @Override
-          public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
-            return delegate.accountBalance(query);
-          }
-
-          @Override
-          public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
-            return delegate.trialBalance(query);
-          }
-
-          @Override
-          public AccountLedgerView accountLedger(
-              AccountLedgerCriteria query, RegisteredAccount account) {
-            return delegate.accountLedger(query, account);
-          }
-
-          @Override
-          public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
-            return delegate.periodSummary(query);
-          }
-        };
-
+  static final class ListAccountsRejectingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
-    public BookAdministrationSession administrationSession() {
-      return delegate.administrationSession();
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return rejectingQuerySession;
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
-    }
-
-    @Override
-    public void rollbackLedgerPlanTransaction() {
-      delegate.rollbackLedgerPlanTransaction();
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
+    public BookLifecycleInspection inspectBook() {
+      return new BookLifecycleInspection.Missing(1);
     }
   }
 
   /** Test-only seam split that throws during commit so the outer finally rollback path runs. */
-  static final class CommitFailingLedgerPlanSession implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
+  static final class CommitFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
-
-    @Override
-    public BookAdministrationSession administrationSession() {
-      return delegate.administrationSession();
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return delegate.readSession();
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
 
     @Override
     public void commitLedgerPlanTransaction() {
@@ -588,109 +375,29 @@ final class LedgerPlanServiceTestSupport {
     boolean rollbackCalled() {
       return rollbackCalled;
     }
-
-    @Override
-    public void close() {
-      delegate.close();
-    }
   }
 
   /** Test-only seam split that throws during rollback after a deterministic plan failure. */
-  static final class RollbackFailingLedgerPlanSession implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-
-    @Override
-    public BookAdministrationSession administrationSession() {
-      return delegate.administrationSession();
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return delegate.readSession();
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
-    }
-
+  static final class RollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public void rollbackLedgerPlanTransaction() {
       throw new IllegalStateException("rollback boom");
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
     }
   }
 
   /**
    * Test-only seam split that throws during step execution and then throws again during rollback.
    */
-  static final class RuntimeRollbackFailingLedgerPlanSession
-      implements LedgerPlanSession, AutoCloseable {
-    private final InMemoryBookSession delegate = new InMemoryBookSession();
-    private final BookAdministrationSession throwingAdministrationSession =
-        new BookAdministrationSession() {
-          @Override
-          public BookOpeningOutcome openBook(Instant initializedAt) {
-            throw new IllegalStateException("boom");
-          }
-
-          @Override
-          public AccountDeclarationOutcome declareAccount(
-              AccountCode accountCode,
-              AccountName accountName,
-              NormalBalance normalBalance,
-              Instant declaredAt) {
-            return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
-          }
-        };
+  static final class RuntimeRollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
 
     @Override
-    public BookAdministrationSession administrationSession() {
-      return throwingAdministrationSession;
-    }
-
-    @Override
-    public PostingBookSession postingSession() {
-      return delegate.postingSession();
-    }
-
-    @Override
-    public BookReadSession readSession() {
-      return delegate.readSession();
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
-    }
-
-    @Override
-    public void commitLedgerPlanTransaction() {
-      delegate.commitLedgerPlanTransaction();
+    public BookOpeningOutcome openBook(Instant initializedAt) {
+      throw new IllegalStateException("boom");
     }
 
     @Override
     public void rollbackLedgerPlanTransaction() {
       throw new IllegalStateException("rollback boom");
-    }
-
-    @Override
-    public void close() {
-      delegate.close();
     }
   }
 }

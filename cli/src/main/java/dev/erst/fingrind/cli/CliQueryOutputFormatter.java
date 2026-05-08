@@ -12,8 +12,8 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /** Shared row and text helpers for query/report human and CSV renderers. */
 final class CliQueryOutputFormatter {
@@ -111,10 +111,10 @@ final class CliQueryOutputFormatter {
   }
 
   static String dateRange(
-      Optional<LocalDate> effectiveDateFrom, Optional<LocalDate> effectiveDateTo) {
-    return effectiveDateFrom.map(LocalDate::toString).orElse("(start)")
+      @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
+    return (effectiveDateFrom == null ? "(start)" : effectiveDateFrom.toString())
         + " to "
-        + effectiveDateTo.map(LocalDate::toString).orElse("(current)");
+        + (effectiveDateTo == null ? "(current)" : effectiveDateTo.toString());
   }
 
   static String absolutePath(Path bookFilePath) {

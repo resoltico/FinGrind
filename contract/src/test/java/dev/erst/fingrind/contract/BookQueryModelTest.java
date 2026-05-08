@@ -1,7 +1,9 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,11 +35,9 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for query-side model records and sealed families. */
-@NullUnmarked
 class BookQueryModelTest {
   @Test
   void accountBalanceQuery_acceptsNullableBoundsAndRejectsDescendingDateRange() {
@@ -47,7 +47,6 @@ class BookQueryModelTest {
     AccountBalanceQuery orderedRangeQuery =
         new AccountBalanceQuery(
             new AccountCode("1000"), LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09"));
-
     assertTrue(query.effectiveDateFrom().isEmpty());
     assertTrue(query.effectiveDateTo().isEmpty());
     assertEquals(Optional.of(LocalDate.parse("2026-04-08")), lowerBoundedQuery.effectiveDateFrom());
@@ -62,7 +61,7 @@ class BookQueryModelTest {
                 LocalDate.parse("2026-04-08")));
     assertThrows(
         NullPointerException.class,
-        () -> new AccountBalanceQuery(new AccountCode("1000"), (EffectiveDateRange) null));
+        () -> new AccountBalanceQuery(new AccountCode("1000"), nullOf()));
   }
 
   @Test
@@ -72,7 +71,7 @@ class BookQueryModelTest {
     assertThrows(IllegalArgumentException.class, () -> new ListAccountsQuery(0, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class, () -> new ListAccountsQuery(201, Optional.empty()));
-    assertThrows(NullPointerException.class, () -> new ListAccountsQuery(1, nullOptional()));
+    assertThrows(NullPointerException.class, () -> new ListAccountsQuery(1, nullOf()));
   }
 
   @Test
@@ -89,7 +88,6 @@ class BookQueryModelTest {
             LocalDate.parse("2026-04-09"),
             50,
             Optional.empty());
-
     assertTrue(query.accountCode().isEmpty());
     assertTrue(query.cursor().isEmpty());
     assertTrue(query.effectiveDateFrom().isEmpty());
@@ -100,9 +98,7 @@ class BookQueryModelTest {
     assertEquals(200, ListPostingsQuery.maxLimit());
     assertThrows(
         NullPointerException.class,
-        () ->
-            new ListPostingsQuery(
-                nullOptional(), EffectiveDateRange.unbounded(), 1, Optional.empty()));
+        () -> new ListPostingsQuery(nullOf(), EffectiveDateRange.unbounded(), 1, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
         () -> new ListPostingsQuery(Optional.empty(), null, null, 0, Optional.empty()));
@@ -111,7 +107,7 @@ class BookQueryModelTest {
         () -> new ListPostingsQuery(Optional.empty(), null, null, 201, Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () -> new ListPostingsQuery(Optional.empty(), null, null, 1, nullOptional()));
+        () -> new ListPostingsQuery(Optional.empty(), null, null, 1, nullOf()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -123,9 +119,7 @@ class BookQueryModelTest {
                 Optional.empty()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new ListPostingsQuery(
-                Optional.empty(), (EffectiveDateRange) null, 1, Optional.empty()));
+        () -> new ListPostingsQuery(Optional.empty(), nullOf(), 1, Optional.empty()));
   }
 
   @Test
@@ -143,8 +137,7 @@ class BookQueryModelTest {
     assertTrue(nextAccountPage.hasMore());
     assertThrows(
         IllegalArgumentException.class, () -> new AccountPage(List.of(), 0, Optional.empty()));
-    assertThrows(NullPointerException.class, () -> new AccountPage(List.of(), 1, null));
-
+    assertThrows(NullPointerException.class, () -> new AccountPage(List.of(), 1, nullOf()));
     List<PostingFact> postings = new ArrayList<>(List.of(postingFact("posting-1", "idem-1")));
     PostingPage postingPage = new PostingPage(postings, 50, Optional.empty());
     postings.clear();
@@ -152,20 +145,18 @@ class BookQueryModelTest {
     assertFalse(postingPage.hasMore());
     assertThrows(
         IllegalArgumentException.class, () -> new PostingPage(List.of(), 0, Optional.empty()));
-    assertThrows(NullPointerException.class, () -> new PostingPage(List.of(), 1, null));
+    assertThrows(NullPointerException.class, () -> new PostingPage(List.of(), 1, nullOf()));
   }
 
   @Test
   void postingPageCursor_roundTripsStableWireValues() {
     PostingFact postingFact = postingFact("posting-1", "idem-1");
     PostingFact multilinePostingFact = postingFact("posting\n1", "idem-2");
-
     PostingPageCursor cursor = PostingPageCursor.fromPosting(postingFact);
     PostingPageCursor multilineCursor = PostingPageCursor.fromPosting(multilinePostingFact);
-
     assertEquals(cursor, PostingPageCursor.fromWireValue(cursor.wireValue()));
     assertEquals(multilineCursor, PostingPageCursor.fromWireValue(multilineCursor.wireValue()));
-    assertThrows(NullPointerException.class, () -> PostingPageCursor.fromWireValue(null));
+    assertThrows(NullPointerException.class, () -> PostingPageCursor.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> PostingPageCursor.fromWireValue("%"));
     assertThrows(
         IllegalArgumentException.class, () -> PostingPageCursor.fromWireValue("not-a-cursor"));
@@ -217,9 +208,8 @@ class BookQueryModelTest {
   void accountPageCursor_roundTripsStableWireValues() {
     DeclaredAccount account = declaredAccount("1000");
     AccountPageCursor cursor = AccountPageCursor.fromAccount(account);
-
     assertEquals(cursor, AccountPageCursor.fromWireValue(cursor.wireValue()));
-    assertThrows(NullPointerException.class, () -> AccountPageCursor.fromWireValue(null));
+    assertThrows(NullPointerException.class, () -> AccountPageCursor.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> AccountPageCursor.fromWireValue("%"));
     assertThrows(
         IllegalArgumentException.class, () -> AccountPageCursor.fromWireValue("not-a-cursor"));
@@ -260,11 +250,9 @@ class BookQueryModelTest {
             List.of(
                 new CurrencyBalance(
                     money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
-
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             declaredAccount("1000"), Optional.empty(), Optional.empty(), balances);
-
     balances.clear();
     assertTrue(snapshot.effectiveDateFrom().isEmpty());
     assertTrue(snapshot.effectiveDateTo().isEmpty());
@@ -273,24 +261,24 @@ class BookQueryModelTest {
         NullPointerException.class,
         () ->
             new AccountBalanceSnapshot(
-                declaredAccount("1000"), nullOptional(), Optional.empty(), List.of()));
+                declaredAccount("1000"), nullOf(), Optional.empty(), List.of()));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountBalanceSnapshot(
-                declaredAccount("1000"), Optional.empty(), nullOptional(), List.of()));
+                declaredAccount("1000"), Optional.empty(), nullOf(), List.of()));
   }
 
   @Test
   void resultRecords_rejectNullPayloads() {
-    assertThrows(NullPointerException.class, () -> new ListAccountsResult.Listed(null));
-    assertThrows(NullPointerException.class, () -> new ListAccountsResult.Rejected(null));
-    assertThrows(NullPointerException.class, () -> new GetPostingResult.Found(null));
-    assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(null));
-    assertThrows(NullPointerException.class, () -> new ListPostingsResult.Listed(null));
-    assertThrows(NullPointerException.class, () -> new ListPostingsResult.Rejected(null));
-    assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Reported(null));
-    assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Rejected(null));
+    assertThrows(NullPointerException.class, () -> new ListAccountsResult.Listed(nullOf()));
+    assertThrows(NullPointerException.class, () -> new ListAccountsResult.Rejected(nullOf()));
+    assertThrows(NullPointerException.class, () -> new GetPostingResult.Found(nullOf()));
+    assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(nullOf()));
+    assertThrows(NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf()));
+    assertThrows(NullPointerException.class, () -> new ListPostingsResult.Rejected(nullOf()));
+    assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Rejected(nullOf()));
   }
 
   @Test
@@ -321,7 +309,8 @@ class BookQueryModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 0, -1, 1));
-    assertThrows(NullPointerException.class, () -> new BookInspection.Initialized(1, 1, 1, null));
+    assertThrows(
+        NullPointerException.class, () -> new BookInspection.Initialized(1, 1, 1, nullOf()));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
   }
 
@@ -343,8 +332,9 @@ class BookQueryModelTest {
     assertEquals(
         BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
         BookQueryRejection.bookNotInitializedCode());
-    assertThrows(NullPointerException.class, () -> new BookQueryRejection.UnknownAccount(null));
-    assertThrows(NullPointerException.class, () -> new BookQueryRejection.PostingNotFound(null));
+    assertThrows(NullPointerException.class, () -> new BookQueryRejection.UnknownAccount(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new BookQueryRejection.PostingNotFound(nullOf()));
   }
 
   @Test
@@ -353,8 +343,9 @@ class BookQueryModelTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new PostingRejection.AccountStateViolations(List.of()));
-
-    assertFalse(thrown.getMessage().isBlank());
+    assertNotNull(thrown.getMessage());
+    String message = java.util.Objects.requireNonNull(thrown.getMessage());
+    assertFalse(message.isBlank());
   }
 
   private static DeclaredAccount declaredAccount(String accountCode) {
@@ -389,10 +380,6 @@ class BookQueryModelTest {
 
   private static Money money(String amount) {
     return new Money(new CurrencyCode("EUR"), new BigDecimal(amount));
-  }
-
-  private static <T> Optional<T> nullOptional() {
-    return null;
   }
 
   private static CommittedProvenance committedProvenance(String idempotencyKey) {

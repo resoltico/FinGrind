@@ -22,11 +22,12 @@ final class ProtocolQueryOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Inspect one selected book for lifecycle state, format version, and compatibility.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
-                    .formatted(
-                        OperationId.INSPECT_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
+                        .formatted(
+                            OperationId.INSPECT_BOOK.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE)))),
         ProtocolOperationDefinitions.operation(
             OperationId.LIST_ACCOUNTS,
             OperationCategory.QUERY,
@@ -43,13 +44,14 @@ final class ProtocolQueryOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
             "List one stable page of declared accounts in the selected book using keyset pagination.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
-                    .formatted(
-                        OperationId.LIST_ACCOUNTS.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.LIMIT,
-                        InteractionLimits.DEFAULT_PAGE_LIMIT))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
+                        .formatted(
+                            OperationId.LIST_ACCOUNTS.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.LIMIT,
+                            InteractionLimits.DEFAULT_PAGE_LIMIT)))),
         ProtocolOperationDefinitions.operation(
             OperationId.GET_POSTING,
             OperationCategory.QUERY,
@@ -64,12 +66,13 @@ final class ProtocolQueryOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN),
             "Return one committed posting by durable posting identifier.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 018f0e6d-7f7e-7b04-b93f-bc0b69f19d5b"
-                    .formatted(
-                        OperationId.GET_POSTING.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.POSTING_ID))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 018f0e6d-7f7e-7b04-b93f-bc0b69f19d5b"
+                        .formatted(
+                            OperationId.GET_POSTING.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.POSTING_ID)))),
         ProtocolOperationDefinitions.operation(
             OperationId.LIST_POSTINGS,
             OperationCategory.QUERY,
@@ -89,13 +92,14 @@ final class ProtocolQueryOperations {
             List.of(OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV),
             "List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.",
             List.of(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 25"
-                    .formatted(
-                        OperationId.LIST_POSTINGS.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.ACCOUNT_CODE,
-                        ProtocolOptions.LIMIT))),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 25"
+                        .formatted(
+                            OperationId.LIST_POSTINGS.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.ACCOUNT_CODE,
+                            ProtocolOptions.LIMIT)))),
         ProtocolOperationDefinitions.operation(
             new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.ACCOUNT_BALANCE,
@@ -116,13 +120,14 @@ final class ProtocolQueryOperations {
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute grouped per-currency balances for one declared account.",
                 List.of(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s ./reports/cash-balance.pdf"
-                        .formatted(
-                            OperationId.ACCOUNT_BALANCE.wireName(),
-                            ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.ACCOUNT_CODE,
-                            ProtocolOptions.PDF_OUT)))),
+                    ProtocolExampleStep.command(
+                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s ./reports/cash-balance.pdf"
+                            .formatted(
+                                OperationId.ACCOUNT_BALANCE.wireName(),
+                                ProtocolOptions.BOOK_FILE,
+                                ProtocolOptions.BOOK_KEY_FILE,
+                                ProtocolOptions.ACCOUNT_CODE,
+                                ProtocolOptions.PDF_OUT))))),
         ProtocolOperationDefinitions.operation(
             new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.TRIAL_BALANCE,
@@ -141,14 +146,15 @@ final class ProtocolQueryOperations {
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute one book-wide trial balance as of the selected effective date or the current durable posting horizon when no date filter is supplied.",
                 List.of(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/trial-balance.pdf %s human"
-                        .formatted(
-                            OperationId.TRIAL_BALANCE.wireName(),
-                            ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.EFFECTIVE_DATE_TO,
-                            ProtocolOptions.PDF_OUT,
-                            ProtocolOptions.OUTPUT)))),
+                    ProtocolExampleStep.command(
+                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/trial-balance.pdf %s human"
+                            .formatted(
+                                OperationId.TRIAL_BALANCE.wireName(),
+                                ProtocolOptions.BOOK_FILE,
+                                ProtocolOptions.BOOK_KEY_FILE,
+                                ProtocolOptions.EFFECTIVE_DATE_TO,
+                                ProtocolOptions.PDF_OUT,
+                                ProtocolOptions.OUTPUT))))),
         ProtocolOperationDefinitions.operation(
             new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.ACCOUNT_LEDGER,
@@ -169,16 +175,17 @@ final class ProtocolQueryOperations {
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.",
                 List.of(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 2026-04-01 %s 2026-04-30 %s ./reports/cash-ledger.pdf %s human"
-                        .formatted(
-                            OperationId.ACCOUNT_LEDGER.wireName(),
-                            ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.ACCOUNT_CODE,
-                            ProtocolOptions.EFFECTIVE_DATE_FROM,
-                            ProtocolOptions.EFFECTIVE_DATE_TO,
-                            ProtocolOptions.PDF_OUT,
-                            ProtocolOptions.OUTPUT)))),
+                    ProtocolExampleStep.command(
+                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 2026-04-01 %s 2026-04-30 %s ./reports/cash-ledger.pdf %s human"
+                            .formatted(
+                                OperationId.ACCOUNT_LEDGER.wireName(),
+                                ProtocolOptions.BOOK_FILE,
+                                ProtocolOptions.BOOK_KEY_FILE,
+                                ProtocolOptions.ACCOUNT_CODE,
+                                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                                ProtocolOptions.EFFECTIVE_DATE_TO,
+                                ProtocolOptions.PDF_OUT,
+                                ProtocolOptions.OUTPUT))))),
         ProtocolOperationDefinitions.operation(
             new ProtocolOperationDefinitions.OperationDefinition(
                 OperationId.PERIOD_SUMMARY,
@@ -198,14 +205,15 @@ final class ProtocolQueryOperations {
                 List.of(ProtocolArtifactOutput.pdf()),
                 "Compute one bounded office-work period summary with posting totals, currency totals, and per-account activity.",
                 List.of(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/april-summary.pdf %s human"
-                        .formatted(
-                            OperationId.PERIOD_SUMMARY.wireName(),
-                            ProtocolOptions.BOOK_FILE,
-                            ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.EFFECTIVE_DATE_FROM,
-                            ProtocolOptions.EFFECTIVE_DATE_TO,
-                            ProtocolOptions.PDF_OUT,
-                            ProtocolOptions.OUTPUT)))));
+                    ProtocolExampleStep.command(
+                        "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/april-summary.pdf %s human"
+                            .formatted(
+                                OperationId.PERIOD_SUMMARY.wireName(),
+                                ProtocolOptions.BOOK_FILE,
+                                ProtocolOptions.BOOK_KEY_FILE,
+                                ProtocolOptions.EFFECTIVE_DATE_FROM,
+                                ProtocolOptions.EFFECTIVE_DATE_TO,
+                                ProtocolOptions.PDF_OUT,
+                                ProtocolOptions.OUTPUT))))));
   }
 }

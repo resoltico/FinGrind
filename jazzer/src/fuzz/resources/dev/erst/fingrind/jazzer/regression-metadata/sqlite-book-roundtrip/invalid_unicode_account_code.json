@@ -1,6 +1,7 @@
 {
   "targetKey": "sqlite-book-roundtrip",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook/invalid_unicode_account_code.json",
+  "coverageIntent": "invalid Unicode account-code rejection through the strict SQLite request path",
   "expectation": {
     "outcomeKind": "expected-invalid",
     "message": "Account code must use ASCII letters or digits and may contain only '.', '_', ':', '/', or '-'.",

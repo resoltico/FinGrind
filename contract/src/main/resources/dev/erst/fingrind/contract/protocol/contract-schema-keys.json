@@ -30,7 +30,9 @@
     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
     "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
     "requiredSqliteSourceId": "requiredSqliteSourceId",
-    "requiredCompileOptions": "requiredCompileOptions"
+    "requiredCompileOptions": "requiredCompileOptions",
+    "forbiddenCompileOptions": "forbiddenCompileOptions",
+    "requiresSecureMemorySupport": "requiresSecureMemorySupport"
   },
   "runtimeEnvironment": {
     "sourceCheckoutJava": "sourceCheckoutJava"

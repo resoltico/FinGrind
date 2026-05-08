@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 /** Protocol-owned per-target bundle layout facts shared by build and operator surfaces. */
@@ -25,8 +24,7 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
   }
 
   BundleTarget bundleTarget(PublicCliBundleTarget target) {
-    PublicCliBundleTarget requiredTarget = Objects.requireNonNull(target, "target");
-    return Optional.ofNullable(bundleTargets.get(requiredTarget)).orElseThrow();
+    return requireBundleTarget(bundleTargets, target);
   }
 
   /** One canonical self-contained bundle layout descriptor. */
@@ -48,5 +46,17 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
       sqliteLibraryFileName =
           ContractDescriptorValidation.requireText(sqliteLibraryFileName, "sqliteLibraryFileName");
     }
+  }
+
+  static BundleTarget requireBundleTarget(
+      Map<PublicCliBundleTarget, BundleTarget> bundleTargets, PublicCliBundleTarget target) {
+    Objects.requireNonNull(bundleTargets, "bundleTargets");
+    PublicCliBundleTarget requiredTarget = Objects.requireNonNull(target, "target");
+    BundleTarget bundleTarget = bundleTargets.get(requiredTarget);
+    if (bundleTarget == null) {
+      throw new IllegalStateException(
+          "No bundle-layout contract is registered for bundle target " + requiredTarget + ".");
+    }
+    return bundleTarget;
   }
 }

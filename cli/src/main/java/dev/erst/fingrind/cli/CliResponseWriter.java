@@ -86,6 +86,14 @@ final class CliResponseWriter {
     outputChannel.writeEnvelope(CliResponsePayloadMapper.failureEnvelope(failure));
   }
 
+  void writeDeterministicFailure(CliFailure failure, OutputMode outputMode) {
+    if (outputMode == OutputMode.HUMAN) {
+      outputChannel.writeText(CliFailureOutputRenderer.renderDeterministicFailureHuman(failure));
+      return;
+    }
+    outputChannel.writeEnvelope(CliResponsePayloadMapper.failureEnvelope(failure));
+  }
+
   void writeFailure(String code, String message) {
     writeFailure(new CliFailure(code, message, null, null));
   }

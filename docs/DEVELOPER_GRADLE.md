@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -132,10 +132,13 @@ one place to fix infrastructure concerns such as test pulses or managed-SQLite p
 
 The included build now relies on Gradle's normal up-to-date and incremental Kotlin compilation
 behavior. It no longer force-disables Kotlin incremental compilation or wipes its own compile
-output directories before every build. The nested Jazzer build is the one deliberate exception on
-the Java side: its `compileJava` task prunes the cached main source-set destination directory
-before recompiling so removed helper types cannot linger as orphaned `.class` files in the
-wrapper-owned project cache and poison coverage verification.
+output directories before every build. On the Java side, both the shared product-module
+conventions and the nested Jazzer build prune the main source-set destination directory before
+each real `compileJava` run so removed helper types cannot linger as orphaned `.class` files in
+the wrapper-owned project cache and poison coverage verification. The nested Jazzer build also
+prunes each processed-resource destination directory before real resource syncs so renamed or
+removed committed seeds cannot linger in `jazzer-build/resources/` and skew replay or packaged
+corpus behavior away from `src/fuzz/resources`.
 Its own Kotlin compiler is now pinned explicitly in
 `gradle/build-logic/build.gradle.kts` at `2.4.0-Beta2` so the shared build logic can compile
 against Gradle's Kotlin DSL APIs while still emitting JVM 26 bytecode.
@@ -168,22 +171,23 @@ avoids silent version skew between the main product modules and Jazzer support c
 The shared repository owner now also lives in `gradle/build-logic`: FinGrind uses Maven Central as
 the default repository and scopes the Sonatype Maven snapshots repository to `org.jacoco` only.
 FinGrind pins JaCoCo directly to the exact Java-26-ready snapshot artifact
-`0.8.15-20260429.155228-97` in the version catalog instead of resolving through the mutable
+`0.8.15-20260506.113836-98` in the version catalog instead of resolving through the mutable
 `0.8.15-SNAPSHOT` alias. That keeps the catalog, the effective build, IDE resolution, and CI on one
 deterministic coordinate.
 
 ### One managed-SQLite contract
 
-Both the root build and the nested Jazzer build compile the managed SQLite 3.53.0 / SQLite3
-Multiple Ciphers 2.3.3 runtime from the same vendored official amalgamation, through the same
+Both the root build and the nested Jazzer build compile the managed SQLite 3.53.1 / SQLite3
+Multiple Ciphers 2.3.4 runtime from the same vendored official amalgamation, through the same
 typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
 of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
 
 That contract now has a few explicit rules:
-- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.3-sqlite-3530000/`
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/`
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
-  `SQLITE_TEMP_STORE=3`, and `SQLITE_SECURE_DELETE=1`
+  `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
+- managed/runtime compatibility also forbids the SQLite compile option `USE_URI`
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint; it assembles the app JAR,
   private Java runtime image, managed native library, launcher, and checksum, then prints the
   exact archive/checksum paths it produced under the active CLI build directory
@@ -191,6 +195,13 @@ That contract now has a few explicit rules:
   `cli/build/docker-context/` directory containing `fingrind.jar`, `runtime-modules.txt`,
   `docker-entrypoint.sh`, `managed-sqlite-contract.json`, and
   `docker-build-context-manifest.json`
+- that staged manifest now also fingerprints the current CLI, contract, core, executor,
+  report-PDF, SQLite, and Gradle build inputs; Docker build verifies that fingerprint against the
+  current repository copy so stale staged contexts fail loudly instead of silently shipping old
+  launcher or jar bytes
+- when Gradle uses a relocated build root, the same staging task also mirrors the fresh Docker
+  context back into `cli/build/docker-context/` so repository-root `docker build` consumes the
+  same current payload
 - `:cli:shadowJar` remains an internal assembly input for `:cli:stageDockerBuildContext` and
   advanced contributor debugging; it does not build a native library on its own
 - `prepareManagedSqlite` is the separate Gradle step that produces the managed host library under
@@ -393,8 +404,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are root and nested verification scopes still cleanly separated?
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
-- Are root and nested builds still using the same managed SQLite 3.53.0 / SQLite3 Multiple
-  Ciphers 2.3.3 runtime contract?
+- Are root and nested builds still using the same managed SQLite 3.53.1 / SQLite3 Multiple
+  Ciphers 2.3.4 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
 - Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional

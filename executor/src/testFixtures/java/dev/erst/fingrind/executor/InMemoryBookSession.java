@@ -1,8 +1,6 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.BookFormatContract;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
@@ -27,7 +25,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
@@ -41,6 +38,11 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
@@ -55,12 +57,7 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** In-memory book session for tests and non-durable harness composition. */
-public final class InMemoryBookSession
-    implements LedgerPlanSession,
-        BookAdministrationSession,
-        PostingBookSession,
-        BookReadSession,
-        AutoCloseable {
+public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable {
   private final ReentrantLock lock = new ReentrantLock();
   private final Map<AccountCode, RegisteredAccount> accountsByCode = mutableMap();
   private final Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey = mutableMap();
@@ -71,38 +68,18 @@ public final class InMemoryBookSession
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
 
   @Override
-  public BookAdministrationSession administrationSession() {
-    return this;
-  }
-
-  @Override
-  public PostingBookSession postingSession() {
-    return this;
-  }
-
-  @Override
-  public BookReadSession readSession() {
-    return this;
-  }
-
-  @Override
-  public BookInspection inspectBook() {
+  public BookLifecycleInspection inspectBook() {
     return withLock(
         () -> {
           if (!initialized) {
-            return new BookInspection.Missing(BookFormatContract.FORMAT_VERSION);
+            return new BookLifecycleInspection.Missing(BookFormatContract.FORMAT_VERSION);
           }
-          return new BookInspection.Initialized(
+          return new BookLifecycleInspection.Initialized(
               BookFormatContract.APPLICATION_ID,
               BookFormatContract.FORMAT_VERSION,
               BookFormatContract.FORMAT_VERSION,
               initializedAt);
         });
-  }
-
-  @Override
-  public boolean isInitialized() {
-    return withLock(() -> initialized);
   }
 
   @Override
@@ -202,8 +179,7 @@ public final class InMemoryBookSession
           Optional<BookkeepingPostingRejection> rejection =
               PostingAcceptancePolicy.rejectionFor(postingDraft, this);
           if (rejection.isPresent()) {
-            return new PostingCommitResult.Rejected(
-                BookkeepingPublishedLanguageTranslator.toPublished(rejection.orElseThrow()));
+            return new PostingCommitResult.Rejected(rejection.orElseThrow());
           }
           CommittedPosting postingFact =
               postingDraft.materialize(postingIdGenerator.nextPostingId());
@@ -212,7 +188,8 @@ public final class InMemoryBookSession
           CommittedPosting existingPosting =
               postingsByIdempotencyKey.putIfAbsent(idempotencyKey, postingFact);
           if (existingPosting != null) {
-            return new PostingCommitResult.Rejected(new PostingRejection.DuplicateIdempotencyKey());
+            return new PostingCommitResult.Rejected(
+                new BookkeepingPostingRejection.DuplicateIdempotencyKey());
           }
           postingsByPostingId.put(postingFact.postingId(), postingFact);
 
@@ -228,11 +205,20 @@ public final class InMemoryBookSession
               postingsByIdempotencyKey.remove(idempotencyKey, postingFact);
               postingsByPostingId.remove(postingFact.postingId(), postingFact);
               return new PostingCommitResult.Rejected(
-                  new PostingRejection.ReversalAlreadyExists(priorPostingId));
+                  new BookkeepingPostingRejection.ReversalAlreadyExists(priorPostingId));
             }
           }
           return new PostingCommitResult.Committed(postingFact);
         });
+  }
+
+  /** Fixture helper that commits one fully materialized posting with its predefined posting id. */
+  public PostingCommitResult commit(CommittedPosting postingFact) {
+    Objects.requireNonNull(postingFact, "postingFact");
+    return commit(
+        new PostingDraft(
+            postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
+        postingFact::postingId);
   }
 
   @Override

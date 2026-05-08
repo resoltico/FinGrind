@@ -5,23 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link UnsupportedSqliteCompileOptionsException}. */
-@NullUnmarked
 class UnsupportedSqliteCompileOptionsExceptionTest {
   @Test
   void constructor_exposesStableValueSemantics() {
     UnsupportedSqliteCompileOptionsException exception =
         new UnsupportedSqliteCompileOptionsException(
-            "3.53.0", "2.3.3", "managed-only", List.of("SECURE_DELETE", "TEMP_STORE=3"));
-
-    assertEquals("3.53.0", exception.loadedSqliteVersion());
-    assertEquals("2.3.3", exception.loadedSqlite3mcVersion());
+            "3.53.1", "2.3.4", "managed-only", List.of("SECURE_DELETE", "TEMP_STORE=3"));
+    assertEquals("3.53.1", exception.loadedSqliteVersion());
+    assertEquals("2.3.4", exception.loadedSqlite3mcVersion());
     assertEquals("managed-only", exception.libraryMode());
     assertEquals(List.of("SECURE_DELETE", "TEMP_STORE=3"), exception.missingCompileOptions());
-    assertTrue(exception.getMessage().contains("missing required compile options"));
+    assertTrue(NullTestSupport.messageOf(exception).contains("missing required compile options"));
   }
 
   @Test
@@ -30,23 +27,27 @@ class UnsupportedSqliteCompileOptionsExceptionTest {
         IllegalArgumentException.class,
         () ->
             new UnsupportedSqliteCompileOptionsException(
-                " ", "2.3.3", "managed-only", List.of("X")));
+                " ", "2.3.4", "managed-only", List.of("X")));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new UnsupportedSqliteCompileOptionsException(
-                "3.53.0", " ", "managed-only", List.of("X")));
+                "3.53.1", " ", "managed-only", List.of("X")));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", " ", List.of("X")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new UnsupportedSqliteCompileOptionsException("3.53.0", "2.3.3", "managed-only", null));
+        () -> new UnsupportedSqliteCompileOptionsException("3.53.1", "2.3.4", " ", List.of("X")));
+    assertEquals(
+        "missingCompileOptions",
+        assertThrows(
+                NullPointerException.class,
+                () ->
+                    new UnsupportedSqliteCompileOptionsException(
+                        "3.53.1", "2.3.4", "managed-only", NullTestSupport.nullOf(List.class)))
+            .getMessage());
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new UnsupportedSqliteCompileOptionsException(
-                "3.53.0", "2.3.3", "managed-only", List.of()));
+                "3.53.1", "2.3.4", "managed-only", List.of()));
   }
 }

@@ -33,12 +33,18 @@ public sealed interface LedgerJournalEntry
     return journalStep().kind();
   }
 
-  /** Returns the nested assertion kind for assertion steps only. */
+  /**
+   * Returns the nested assertion kind for assertion journal entries, or {@code null} for standard
+   * and boundary journal entries.
+   */
   default @Nullable LedgerAssertionKind detailKind() {
     return journalStep().detailKind();
   }
 
-  /** Returns the nested boundary phase for plan-boundary journal entries only. */
+  /**
+   * Returns the nested boundary phase for plan-boundary journal entries, or {@code null} for
+   * standard and assertion journal entries.
+   */
   default @Nullable LedgerBoundaryPhase boundaryPhase() {
     return journalStep().boundaryPhase();
   }

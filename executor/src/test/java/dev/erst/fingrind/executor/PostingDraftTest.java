@@ -20,16 +20,15 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the executor-owned posting draft. */
-@NullUnmarked
 class PostingDraftTest {
   @Test
   void postingDraft_keepsExplicitMissingReversalAndMaterializesPostingFacts() {
@@ -37,7 +36,6 @@ class PostingDraftTest {
         new PostingDraft(
             journalEntry(), PostingLineageModel.direct(), committedProvenance("idem-1"));
     CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
-
     assertTrue(postingDraft.reversalReference().isEmpty());
     assertEquals(postingDraft.provenance().requestProvenance(), postingDraft.requestProvenance());
     assertEquals(new PostingId("posting-1"), postingFact.postingId());
@@ -47,6 +45,7 @@ class PostingDraftTest {
   }
 
   @Test
+  @org.jspecify.annotations.NullUnmarked
   void postingDraft_rejectsNullPostingLineage() {
     assertThrows(
         NullPointerException.class,

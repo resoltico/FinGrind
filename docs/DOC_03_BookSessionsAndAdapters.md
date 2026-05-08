@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: ADAPTERS
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -79,69 +79,100 @@ public record RegisteredAccount(...)
 - `RegisteredAccount`: local registry snapshot that owns redeclare/reactivate semantics and
   preserves declared-at time
 
-## `BookAdministrationSession`
+## `BookStore`
 
-`BookAdministrationSession` is the executor-owned account-registry write seam over an already-open
-book boundary.
-
-```java
-public interface BookAdministrationSession
-```
-
-- Surface: `openBook(...)`, `declareAccount(...)`
-- Purpose: separate book initialization and account declaration from posting and reporting work
-- Lifecycle: the outer workflow or store owns `close()`, not the narrowed session view
-
-## `PostingValidationBook`
-
-`PostingValidationBook` is the minimal lookup seam shared by preflight and transactional commit
-validation.
+`BookStore` is the executor-owned public application seam for one selected book boundary.
 
 ```java
-public interface PostingValidationBook
+public interface BookStore extends PostingValidationStore
 ```
 
-- Surface: `isInitialized()`, `findAccount(...)`, `findExistingPosting(...)`, `findPosting(...)`,
-  `findReversalFor(...)`
-- Purpose: let application preflight and commit-time validation reuse the same contract
+- Surface: `inspectBook()`, `openBook(...)`, `declareAccount(...)`, `listAccounts(...)`,
+  `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`,
+  `periodSummary(...)`, and durable `commit(PostingDraft, PostingIdGenerator)`
+- Purpose: keep initialization, administration, read/report, lookup, and ordinary posting commit
+  on one explicit selected-book seam instead of fragmenting them into parallel narrow interfaces
+- Lifecycle: the outer workflow or adapter owns `close()`, not this executor seam
 
-## `PostingBookSession`
+## `PostingValidationStore`
 
-`PostingBookSession` is the executor-owned posting seam over an already-open book boundary.
+`PostingValidationStore` is the minimal lookup and lifecycle seam shared by preflight and
+transactional commit validation.
 
 ```java
-public interface PostingBookSession extends PostingValidationBook
+public interface PostingValidationStore
 ```
 
-- Surface: `commit(PostingDraft, PostingIdGenerator)`, fixture-oriented `commit(CommittedPosting)`
-- Purpose: keep durable commit explicit and allow the store to allocate `postingId` only after
-  acceptance
-- Lifecycle: the outer workflow or store owns `close()`, not the narrowed session view
+- Surface: `inspectBook()`, `findAccount(...)`, `findExistingPosting(...)`, `findPosting(...)`,
+  and `findReversalFor(...)`
+- Purpose: let application preflight and commit-time validation reuse one authoritative
+  initialized-book lookup contract
 
-## `BookReadSession`
+## `AtomicBookStore`
 
-`BookReadSession` is the executor-owned unified read seam for lifecycle inspection, listings,
-posting history, balances, and office-worker reports over an already-open book boundary.
+`AtomicBookStore` extends `BookStore` with the ledger-plan transaction boundary.
 
 ```java
-public interface BookReadSession
+public interface AtomicBookStore extends BookStore
 ```
 
-- Surface: `inspectBook()`, `isInitialized()`, `listAccounts(...)`, `findAccount(...)`,
-  `findPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`,
-  `accountLedger(...)`, `periodSummary(...)`
-- Purpose: expose one authoritative local bookkeeping read model without splitting query and
-  reporting families into parallel seams
-- Boundary: this seam consumes local bookkeeping read criteria and returns local bookkeeping page
-  and view models; `BookReadService` is the anti-corruption layer that maps those local types to
-  the public read/report DTOs
-- Lifecycle: the outer workflow or store owns `close()`, not the narrowed session view
+- Surface: `beginLedgerPlanTransaction()`, `commitLedgerPlanTransaction()`,
+  `rollbackLedgerPlanTransaction()`
+- Purpose: keep atomic plan execution explicit without leaking transaction control into ordinary
+  administration or reporting workflows
+
+## `BookLifecycleInspection` And `BookInspectionPublishedLanguageTranslator`
+
+`BookLifecycleInspection` is the executor-owned local lifecycle snapshot, and
+`BookInspectionPublishedLanguageTranslator` is the exported boundary translator that projects it
+into the published runtime/discovery contract.
+
+```java
+public sealed interface BookLifecycleInspection
+public final class BookInspectionPublishedLanguageTranslator
+```
+
+- `BookLifecycleInspection`: local lifecycle/compatibility family with `Missing`, `Existing`, and
+  `Initialized` variants plus the local `Status` vocabulary that drives read gating and workflow
+  inspect steps; the type itself owns `allowsInitializedWorkflow()` so initialized-book
+  admissibility comes from one canonical local state family
+- `BookInspectionPublishedLanguageTranslator`: projects this local inspection family into the
+  public `BookInspection` contract
+
+## `BookkeepingReadService` And `BookkeepingLookupOutcome`
+
+`BookkeepingReadService` owns local bookkeeping inspection, lookup, query, and reporting semantics,
+and `BookkeepingLookupOutcome` preserves lifecycle rejection, ordinary absence, and presence
+distinctly for internal callers.
+
+```java
+public final class BookkeepingReadService
+public sealed interface BookkeepingLookupOutcome<T>
+```
+
+- `BookkeepingReadService`: keeps local read/report behavior inside the bookkeeping context before
+  any public DTO or public query-rejection family is projected
+- `BookkeepingLookupOutcome`: `Found`, `Missing`, and `Rejected` variants keep “book not
+  initialized” distinct from ordinary account/posting absence in internal workflow and assertion
+  helpers
+
+## `BookkeepingQueryRejection`
+
+`BookkeepingQueryRejection` is the local bookkeeping refusal family for query and report commands.
+
+```java
+public sealed interface BookkeepingQueryRejection
+```
+
+- Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
+- Purpose: keep local read/report refusals inside the bookkeeping context until
+  `BookkeepingReadPublishedLanguageTranslator` projects them into public `BookQueryRejection`
 
 ## `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView`
 
 These exported `executor.bookkeeping` types are the local bookkeeping read model used by
-`BookReadSession`, SQLite read helpers, and workflow/query execution before any public report DTOs
-are projected.
+`BookStore`, `BookkeepingReadService`, SQLite read helpers, and workflow/query execution before any
+public report DTOs are projected.
 
 ```java
 public record AccountRegistryCursor(...)
@@ -173,29 +204,25 @@ public record PeriodSummaryView(...)
   `AccountPage`, `PostingPage`, `AccountBalanceSnapshot`, `TrialBalanceReport`,
   `AccountLedgerReport`, and `PeriodSummaryReport`
 
-## `LedgerPlanSession`
+## `PostingDraft`, `PostingCommitResult`, And `PostingIdGenerator`
 
-`LedgerPlanSession` is the atomic transaction seam used by `LedgerPlanService`.
-
-```java
-public interface LedgerPlanSession
-```
-
-- Views: exposes `administrationSession()`, `postingSession()`, and `readSession()` as narrow
-  operation seams bound to the same transaction boundary
-- Surface: `beginLedgerPlanTransaction()`, `commitLedgerPlanTransaction()`,
-  `rollbackLedgerPlanTransaction()`
-
-## `PostingCommitResult`
-
-`PostingCommitResult` is the closed family of ordinary posting-session commit outcomes.
+These exported `executor.spi` types keep durable posting commit explicit at the store seam.
 
 ```java
+public record PostingDraft(...)
 public sealed interface PostingCommitResult
+public interface PostingIdGenerator
 ```
 
+- `PostingDraft`: commit-ready posting material that defers durable posting-id allocation until the
+  store accepts the write
 - Variants: `Committed`, `Rejected`
-- Purpose: distinguish accepted durable writes from ordinary domain rejections without throwing
+- `PostingCommitResult`: distinguishes accepted durable writes from ordinary domain rejections
+  without throwing
+- Boundary: `Rejected` carries local `BookkeepingPostingRejection` values until an outer
+  application service translates them into public `PostingRejection`
+- `PostingIdGenerator`: keeps posting-id allocation explicit and injectable at the durable commit
+  boundary
 
 ## `SqliteBookPassphrase`
 
@@ -296,7 +323,7 @@ public final class SqliteStorageFailureException extends IllegalStateException
 and `SqliteBookSessions` owns session creation.
 
 ```java
-public interface SqliteBookSession extends LedgerPlanSession, AutoCloseable
+public interface SqliteBookSession extends AtomicBookStore, AutoCloseable
 public enum SqliteBookSessionMode
 public enum SqlitePassphraseIntent
 public interface SqlitePassphraseResolver
@@ -327,9 +354,11 @@ public final class SqliteBookSessions
   policy applies to both open and rotate flows
 - Internal split: `SqlitePostingFactStore` is now a thin session wrapper over one immutable
   `SqliteStoreContext` dependency bundle plus one mutable `SqliteStoreLifecycle` state owner;
-  `SqliteSessionSecret` owns the reusable session secret, `SqliteStoreReadOperations` delegates
-  query/report reads through focused readers, and `SqliteStoreMutationOperations` owns durable
-  mutation and rekey flows behind the public session API
+  `SqliteSessionSecret` owns the reusable session secret, `SqliteBookLifecycleInspectionMapper`
+  owns local lifecycle projection, `SqliteTransactionValidationBook` owns focused validation
+  lookups, `SqliteStoreReadOperations` delegates query/report reads through focused readers, and
+  `SqliteStoreMutationOperations` owns durable mutation and rekey flows behind the public session
+  API
 
 ## Protection Boundary
 

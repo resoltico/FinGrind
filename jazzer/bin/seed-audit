@@ -1,0 +1,61 @@
+#!/bin/bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+readonly usage='Usage: jazzer/bin/seed-audit [<target-key>] [--json] [supported Gradle options]'
+
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/seed-audit [<target-key>] [--json] [supported Gradle options]
+
+Summarizes the committed Jazzer seed floor and reports corpus-integrity defects.
+EOF
+    fg_print_replayable_target_key_help_block
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+
+json_output=false
+for argument in "$@"; do
+    if [[ "${argument}" == "--json" ]]; then
+        json_output=true
+        break
+    fi
+done
+
+target_key=""
+if [[ $# -gt 0 && "${1}" != "--json" && "${1}" != -* ]]; then
+    target_key=$1
+    shift
+fi
+
+if [[ $# -gt 0 && "${1}" == "--json" ]]; then
+    shift
+fi
+
+fg_initialize_wrapper "$0"
+gradle_args=()
+if [[ -n "${target_key}" ]]; then
+    validation_message=''
+    if ! validation_message="$(fg_require_replayable_target_key "${target_key}" 2>&1 1>/dev/null)"; then
+        fg_fail_wrapper_command \
+            "${json_output}" \
+            "seed-audit" \
+            "${usage}" \
+            "${validation_message}" \
+            "$(fg_replayable_target_keys_shell_json)"
+    fi
+    gradle_args+=("-PjazzerTarget=${target_key}")
+fi
+if [[ "${json_output}" == "true" ]]; then
+    gradle_args+=("-PjazzerJsonOutput=true")
+    fg_run_machine_json_read_only_command \
+        "jazzerSeedAudit" \
+        ${gradle_args[@]+"${gradle_args[@]}"} \
+        "$@"
+    exit 0
+fi
+fg_run_read_only_command "jazzerSeedAudit" ${gradle_args[@]+"${gradle_args[@]}"} "$@"

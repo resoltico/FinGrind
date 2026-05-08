@@ -1,44 +1,41 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.LedgerFact;
+import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
+import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
 import java.util.ArrayList;
 import java.util.List;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Covers constructor invariants for internal ledger-plan step outcomes. */
-@NullUnmarked
 class LedgerPlanStepOutcomeTest {
   @Test
-  void succeeded_coalescesNullFactsToEmptyImmutableList() {
-    LedgerPlanStepOutcome.Succeeded outcome = new LedgerPlanStepOutcome.Succeeded(null);
-
-    assertEquals(List.of(), outcome.facts());
-    assertThrows(
-        UnsupportedOperationException.class,
-        () -> outcome.facts().add(LedgerFact.text("ignored", "ignored")));
+  void succeeded_rejectsNullFactsWithContext() {
+    assertEquals(
+        "facts",
+        assertThrows(
+                NullPointerException.class, () -> new LedgerPlanStepOutcome.Succeeded(nullOf()))
+            .getMessage());
   }
 
   @Test
   void succeeded_defensivelyCopiesFacts() {
-    List<LedgerFact> facts = new ArrayList<>(List.of(LedgerFact.text("postingId", "posting-1")));
-
+    List<BookWorkflowFact> facts =
+        new ArrayList<>(List.of(BookWorkflowFact.text("postingId", "posting-1")));
     LedgerPlanStepOutcome.Succeeded outcome = new LedgerPlanStepOutcome.Succeeded(facts);
     facts.clear();
-
-    assertEquals(List.of(LedgerFact.text("postingId", "posting-1")), outcome.facts());
+    assertEquals(List.of(BookWorkflowFact.text("postingId", "posting-1")), outcome.facts());
   }
 
   @Test
   void failureOutcomes_delegateFactsFromFailurePayload() {
     BookWorkflowFailure failure =
         new BookWorkflowFailure(
-            "rejected", "Rejected.", List.of(LedgerFact.text("code", "unknown")));
-
+            "rejected", "Rejected.", List.of(BookWorkflowFact.text("code", "unknown")));
     assertEquals(failure.facts(), new LedgerPlanStepOutcome.Rejected(failure).facts());
     assertEquals(failure.facts(), new LedgerPlanStepOutcome.AssertionFailed(failure).facts());
   }

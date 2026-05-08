@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Optional;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link RequestProvenance}. */
-@NullUnmarked
 class RequestProvenanceTest {
   @Test
   void constructor_acceptsNormalizedBoundaryValues() {
@@ -20,7 +18,6 @@ class RequestProvenanceTest {
             new IdempotencyKey(" idem-1 "),
             new CausationId(" cause-1 "),
             Optional.of(new CorrelationId(" corr-1 ")));
-
     assertEquals("actor-1", requestProvenance.actorId().value());
     assertEquals("command-1", requestProvenance.commandId().value());
     assertEquals("idem-1", requestProvenance.idempotencyKey().value());
@@ -29,6 +26,7 @@ class RequestProvenanceTest {
   }
 
   @Test
+  @org.jspecify.annotations.NullUnmarked
   void constructor_rejectsNullOptionalFields() {
     assertThrows(
         NullPointerException.class,
@@ -43,6 +41,7 @@ class RequestProvenanceTest {
   }
 
   @Test
+  @org.jspecify.annotations.NullUnmarked
   void constructor_rejectsNullActorId() {
     assertThrows(
         NullPointerException.class,
@@ -56,6 +55,7 @@ class RequestProvenanceTest {
                 Optional.empty()));
   }
 
+  @org.jspecify.annotations.NullUnmarked
   private static Optional<CorrelationId> nullCorrelationIdOptional() {
     return null;
   }

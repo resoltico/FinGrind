@@ -7,14 +7,12 @@ import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.Test;
 
 /** Tests for the SQLite FFM binding layer. */
-@NullUnmarked
 class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
-
   @Test
   void close_rethrowsSqliteNativeExceptionFromNativeFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("close-native-failure.sqlite");
@@ -27,7 +25,6 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
             SqliteNativeConnections.open(
                 bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi)) {
       SqliteNativeException exception = assertThrows(SqliteNativeException.class, database::close);
-
       assertEquals("SQLITE_CANTOPEN", exception.resultName());
     }
   }
@@ -38,20 +35,16 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
     int initialActiveConnections = SqliteNativeBootstrap.activeConnectionCount();
     AtomicInteger closeCalls = new AtomicInteger();
     SqliteNativeApi sqliteApi = closeBehaviorApi("failThenDelegateCloseCall", closeCalls);
-
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters("close active count", TEST_BOOK_KEY.toCharArray());
         SqliteNativeDatabase database =
             SqliteNativeConnections.open(
                 bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi)) {
       assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-
       assertThrows(SqliteNativeException.class, database::close);
       assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
-
       assertEquals(initialActiveConnections + 1, SqliteNativeBootstrap.activeConnectionCount());
     }
-
     assertEquals(initialActiveConnections, SqliteNativeBootstrap.activeConnectionCount());
   }
 
@@ -67,9 +60,8 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
             SqliteNativeConnections.open(
                 bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi)) {
       IllegalStateException exception = assertThrows(IllegalStateException.class, database::close);
-
       assertEquals("Failed to close the SQLite native library bridge.", exception.getMessage());
-      assertEquals("boom", exception.getCause().getMessage());
+      assertEquals("boom", Objects.requireNonNull(exception.getCause()).getMessage());
     }
   }
 
@@ -84,7 +76,6 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
             SqliteNativeConnections.open(
                 bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi)) {
       AssertionError error = assertThrows(AssertionError.class, database::close);
-
       assertEquals("boom", error.getMessage());
     }
   }
@@ -92,10 +83,8 @@ class SqliteNativeCloseBehaviorTest extends SqliteNativeBridgeTestSupport {
   @Test
   void recordClosedConnection_rejectsCounterUnderflow() {
     assertEquals(0, SqliteNativeBootstrap.activeConnectionCount());
-
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, SqliteNativeBootstrap::recordClosedConnection);
-
     assertEquals("SQLite active connection count underflow.", exception.getMessage());
     assertEquals(0, SqliteNativeBootstrap.activeConnectionCount());
   }

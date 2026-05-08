@@ -69,11 +69,6 @@ final class SqlitePostingMapper {
         postingId, journalEntry, readPostingLineageModel(postingRow), provenance);
   }
 
-  static dev.erst.fingrind.contract.PostingFact postingFact(
-      SqliteNativeStatement postingRow, List<JournalLine> lines) {
-    return BookkeepingPublishedLanguageTranslator.toPublished(committedPosting(postingRow, lines));
-  }
-
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
     List<JournalLine> lines = new ArrayList<>();
     while (lineRows.step() == SqliteNativeResultCodes.ROW) {
@@ -116,7 +111,8 @@ final class SqlitePostingMapper {
 
   static String requiredText(SqliteNativeStatement row, int columnIndex) {
     String value = row.columnText(columnIndex);
-    return Objects.requireNonNull(value, "Null SQLite column index: " + columnIndex);
+    return Objects.requireNonNull(
+        value, "Required value at SQLite column index " + columnIndex + " is null.");
   }
 
   static Optional<String> optionalText(SqliteNativeStatement row, int columnIndex) {
