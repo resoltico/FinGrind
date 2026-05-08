@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-05-08
+
 ### Added
 
 - Added `docs/DEVELOPER_RELEASE_PUBLICATION.md` as the maintainer reference for GitHub Release
@@ -78,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failure instead of looping through opaque download failures.
 - Raised the release verifier job timeout to fit its explicit GitHub-release propagation retry
   budget, and documented that timeout/retry alignment as part of the release protocol contract.
+- Clarified the public release protocol's worktree/bootstrap handoff for cases where a live
+  FinGrind verification owner already holds the repo-wide verification lock, so release operators
+  are told to wait or bootstrap into a clean worktree instead of deleting a live lock or starting
+  competing verification in the same checkout.
 - Hardened the tag-publication release workflow so published-asset attestation now runs on one
   dedicated neutral post-upload job with the exact OIDC, attestation, and artifact-metadata
   permissions required by `actions/attest`, and clarified the release protocol's recovery path
@@ -1496,7 +1502,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.33.0
 [0.32.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.32.0
 [0.31.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.31.0
 [0.30.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.30.0

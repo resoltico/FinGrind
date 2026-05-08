@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-06"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]

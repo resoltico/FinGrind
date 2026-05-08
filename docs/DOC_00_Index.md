@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: INDEX
-updated: "2026-05-07"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]

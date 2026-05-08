@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.32.0"
+version: "0.33.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-07"
+updated: "2026-05-08"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
