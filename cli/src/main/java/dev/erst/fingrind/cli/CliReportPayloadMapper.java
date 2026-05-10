@@ -4,6 +4,7 @@ import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.AccountLedgerEntry;
 import dev.erst.fingrind.contract.AccountLedgerReport;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.contract.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.PeriodSummaryReport;
 import dev.erst.fingrind.contract.TrialBalanceReport;
@@ -58,10 +59,9 @@ final class CliReportPayloadMapper {
         row.account().normalBalance().wireValue(),
         row.account().active(),
         row.account().declaredAt().toString(),
-        row.balance().netAmount().currencyCode().value(),
-        row.balance().debitTotal().amount().toPlainString(),
-        row.balance().creditTotal().amount().toPlainString(),
-        row.balance().netAmount().amount().toPlainString(),
+        MonetaryAmount.of(row.balance().debitTotal()),
+        MonetaryAmount.of(row.balance().creditTotal()),
+        MonetaryAmount.of(row.balance().netAmount()),
         row.balance().balanceSide().wireValue());
   }
 
@@ -71,10 +71,9 @@ final class CliReportPayloadMapper {
         entry.postingFact().postingId().value(),
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
-        entry.movement().netAmount().currencyCode().value(),
-        entry.movement().debitTotal().amount().toPlainString(),
-        entry.movement().creditTotal().amount().toPlainString(),
-        entry.runningNetAmount().amount().toPlainString(),
+        MonetaryAmount.of(entry.movement().debitTotal()),
+        MonetaryAmount.of(entry.movement().creditTotal()),
+        MonetaryAmount.of(entry.runningNetAmount()),
         entry.runningBalanceSide().wireValue(),
         CliBookPayloadMapper.counterpartAccounts(account, entry.postingFact()));
   }
@@ -87,10 +86,9 @@ final class CliReportPayloadMapper {
         row.account().normalBalance().wireValue(),
         row.account().active(),
         row.account().declaredAt().toString(),
-        row.movement().netAmount().currencyCode().value(),
-        row.movement().debitTotal().amount().toPlainString(),
-        row.movement().creditTotal().amount().toPlainString(),
-        row.movement().netAmount().amount().toPlainString(),
+        MonetaryAmount.of(row.movement().debitTotal()),
+        MonetaryAmount.of(row.movement().creditTotal()),
+        MonetaryAmount.of(row.movement().netAmount()),
         row.movement().balanceSide().wireValue());
   }
 }

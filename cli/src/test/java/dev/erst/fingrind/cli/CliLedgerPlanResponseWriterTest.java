@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.LedgerJournalStep;
 import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepFailure;
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
@@ -57,8 +58,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
                 LedgerFact.group(
                     "balance",
                     List.of(
-                        LedgerFact.text("currencyCode", "EUR"),
-                        LedgerFact.text("netAmount", "10.00"),
+                        LedgerFact.money("netAmount", new MonetaryAmount("EUR", "1000")),
                         LedgerFact.text("balanceSide", "DEBIT")))));
     responseWriter.writeLedgerPlanResult(
         new LedgerPlanResult.Succeeded(
@@ -73,8 +73,10 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(1, facts.get(1).path("value").asInt());
     assertEquals("group", facts.get(2).path("kind").stringValue());
     assertEquals("balance", facts.get(2).path("name").stringValue());
-    assertEquals("currencyCode", facts.get(2).path("facts").get(0).path("name").stringValue());
-    assertEquals("EUR", facts.get(2).path("facts").get(0).path("value").stringValue());
+    assertEquals("money", facts.get(2).path("facts").get(0).path("kind").stringValue());
+    assertEquals("netAmount", facts.get(2).path("facts").get(0).path("name").stringValue());
+    assertEquals(
+        "1000", facts.get(2).path("facts").get(0).path("value").path("minorUnits").stringValue());
   }
 
   @Test

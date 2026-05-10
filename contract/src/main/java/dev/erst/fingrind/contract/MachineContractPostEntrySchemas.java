@@ -89,15 +89,10 @@ final class MachineContractPostEntrySchemas {
             MachineContractSchemaSupport.enumStringSchema(
                 "Journal side that carries the line amount.", JournalLine.EntrySide.wireValues())),
         MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.JournalLine.CURRENCY_CODE,
-            "Three-letter ISO currency code shared by every line in the entry.",
-            MachineContractSchemaSupport.nonBlankStringSchema(
-                "Three-letter ISO currency code shared by every line in the entry.")),
-        MachineContractFieldSpec.required(
             ProtocolPostEntryFields.JournalLine.AMOUNT,
-            "Plain decimal string greater than zero without exponent notation.",
-            MachineContractSchemaSupport.decimalAmountStringSchema(
-                "Plain decimal string greater than zero without exponent notation.")));
+            "Exact positive money object for this journal line. Every line in one entry must resolve to the same currency unit.",
+            MachineContractSchemaSupport.moneyObjectSchema(
+                "Exact positive money object for this journal line.", true)));
   }
 
   private static List<MachineContractFieldSpec> provenanceFields() {

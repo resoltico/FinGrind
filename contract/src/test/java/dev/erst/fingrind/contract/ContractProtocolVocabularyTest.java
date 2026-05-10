@@ -39,7 +39,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(1, BookFormatContract.FORMAT_VERSION);
+    assertEquals(2, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -189,7 +189,7 @@ class ContractProtocolVocabularyTest {
                 "2026-04-25",
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
-                        "1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")),
+                        "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000"))),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
                 null));
@@ -209,14 +209,7 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.LedgerAssertionTemplateDescriptor(
-                LedgerAssertionKind.POSTING_EXISTS,
-                "1000",
-                null,
-                null,
-                null,
-                null,
-                null,
-                "posting-1"));
+                LedgerAssertionKind.POSTING_EXISTS, "1000", null, null, null, null, "posting-1"));
     assertThrows(
         IllegalArgumentException.class,
         () -> new ContractTemplates.LedgerPlanQueryTemplateDescriptor(null, null, null, 999, null));

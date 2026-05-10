@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.math.BigDecimal;
+import dev.erst.fingrind.core.Money;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -39,9 +39,10 @@ class CliTextFormatTest {
         "name,value\nnewline-only,\"Line 1\nLine 2\"",
         CliTextFormat.renderCsv(
             List.of("name", "value"), List.of(List.of("newline-only", "Line 1\nLine 2"))));
-    assertEquals("1.20", CliTextFormat.displayAmount("EUR", new BigDecimal("1.2")));
-    assertEquals("1.234", CliTextFormat.displayAmount("ZZZ", new BigDecimal("1.234")));
-    assertEquals("1.00", CliTextFormat.displayAmount("XAU", BigDecimal.ONE));
+    assertEquals("1.20", CliTextFormat.displayMoney(Money.parse("EUR", "1.20")));
+    assertEquals("1", CliTextFormat.displayMoney(Money.parse("JPY", "1")));
+    assertEquals("1.250", CliTextFormat.displayMoney(Money.parse("BHD", "1.25")));
+    assertEquals("1.000", CliTextFormat.displayMoney(Money.parse("KWD", "1.000")));
     assertEquals("alpha, beta", CliTextFormat.joined(List.of("alpha", "", "  ", "beta")));
   }
 }

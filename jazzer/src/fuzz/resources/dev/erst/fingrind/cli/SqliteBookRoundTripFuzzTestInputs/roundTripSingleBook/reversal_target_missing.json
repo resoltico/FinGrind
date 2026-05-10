@@ -4,14 +4,18 @@
     {
       "accountCode": "3000",
       "side": "CREDIT",
-      "currencyCode": "USD",
-      "amount": "99.95"
+      "amount": {
+        "currencyCode": "USD",
+        "minorUnits": "9995"
+      }
     },
     {
       "accountCode": "4000",
       "side": "DEBIT",
-      "currencyCode": "USD",
-      "amount": "99.95"
+      "amount": {
+        "currencyCode": "USD",
+        "minorUnits": "9995"
+      }
     }
   ],
   "reversal": {

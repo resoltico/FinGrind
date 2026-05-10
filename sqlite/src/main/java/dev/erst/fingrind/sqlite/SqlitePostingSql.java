@@ -9,6 +9,7 @@ import java.util.Collections;
 /** Canonical SQL statements for the SQLite posting adapter. */
 final class SqlitePostingSql {
   static final String INITIALIZED_AT_META_KEY = "initialized_at";
+  static final String SCHEMA_FINGERPRINT_META_KEY = "schema_fingerprint_sha256";
 
   static final int COL_POSTING_ID = 0;
   static final int COL_EFFECTIVE_DATE = 1;
@@ -26,7 +27,7 @@ final class SqlitePostingSql {
   static final int COL_LINE_ACCOUNT_CODE = 0;
   static final int COL_LINE_ENTRY_SIDE = 1;
   static final int COL_LINE_CURRENCY_CODE = 2;
-  static final int COL_LINE_AMOUNT = 3;
+  static final int COL_LINE_AMOUNT_MINOR = 3;
 
   static final int COL_ACCOUNT_CODE = 0;
   static final int COL_ACCOUNT_NAME = 1;
@@ -36,7 +37,7 @@ final class SqlitePostingSql {
   static final int COL_REPORT_POSTING_ID = 5;
   static final int COL_REPORT_ENTRY_SIDE = 6;
   static final int COL_REPORT_CURRENCY_CODE = 7;
-  static final int COL_REPORT_AMOUNT = 8;
+  static final int COL_REPORT_AMOUNT_MINOR = 8;
 
   private static final String BASE_POSTING_SELECT =
       """
@@ -101,6 +102,35 @@ final class SqlitePostingSql {
       limit 1
       """;
 
+  static final String FIND_BOOK_META_VALUE =
+      """
+      select value
+      from book_meta
+      where key = ?
+      limit 1
+      """;
+
+  static final String PRAGMA_INTEGRITY_CHECK = "pragma integrity_check";
+  static final String PRAGMA_FOREIGN_KEY_CHECK = "pragma foreign_key_check";
+
+  static final String LOAD_CANONICAL_SCHEMA_OBJECTS =
+      """
+      select type, name, ifnull(sql, '')
+      from sqlite_schema
+      where type in ('table', 'index')
+        and name in (
+            'book_meta',
+            'account',
+            'posting_fact',
+            'journal_line',
+            'posting_fact_by_prior_posting_id',
+            'posting_fact_by_effective_recorded_posting',
+            'journal_line_by_account_code',
+            'posting_fact_one_reversal_per_target'
+        )
+      order by type, name
+      """;
+
   static final String FIND_ACCOUNT_BY_CODE =
       BASE_ACCOUNT_SELECT + " where account_code = ? limit 1";
 
@@ -120,7 +150,7 @@ final class SqlitePostingSql {
 
   static final String LOAD_LINES =
       """
-      select account_code, entry_side, currency_code, amount
+      select account_code, entry_side, currency_code, amount_minor
       from journal_line
       where posting_id = ?
       order by line_order
@@ -128,7 +158,10 @@ final class SqlitePostingSql {
 
   static final String LOAD_ACCOUNT_LINES_FOR_BALANCE =
       """
-      select journal_line.entry_side, journal_line.currency_code, journal_line.amount
+      select
+          journal_line.entry_side,
+          journal_line.currency_code,
+          journal_line.amount_minor
       from journal_line
       join posting_fact on posting_fact.posting_id = journal_line.posting_id
       where journal_line.account_code = ?
@@ -145,7 +178,7 @@ final class SqlitePostingSql {
           posting_fact.posting_id,
           journal_line.entry_side,
           journal_line.currency_code,
-          journal_line.amount
+          journal_line.amount_minor
       from journal_line
       join posting_fact on posting_fact.posting_id = journal_line.posting_id
       join account on account.account_code = journal_line.account_code
@@ -177,8 +210,97 @@ final class SqlitePostingSql {
           account_code,
           entry_side,
           currency_code,
-          amount
+          amount_minor
       ) values (?, ?, ?, ?, ?, ?)
+      """;
+
+  static final String CREATE_PENDING_JOURNAL_LINE =
+      """
+      create temporary table if not exists pending_journal_line (
+          line_order integer not null check (line_order >= 0),
+          account_code text not null,
+          entry_side text not null check (entry_side in ('DEBIT', 'CREDIT')),
+          currency_code text not null,
+          amount_minor integer not null check (amount_minor > 0)
+      ) strict
+      """;
+
+  static final String CLEAR_PENDING_JOURNAL_LINE = "delete from pending_journal_line";
+
+  static final String INSERT_PENDING_JOURNAL_LINE =
+      """
+      insert into pending_journal_line (
+          line_order,
+          account_code,
+          entry_side,
+          currency_code,
+          amount_minor
+      ) values (?, ?, ?, ?, ?)
+      """;
+
+  static final String VALID_PENDING_JOURNAL_LINE =
+      """
+      select 1
+      from (
+          select
+              count(*) as line_count,
+              sum(case when entry_side = 'DEBIT' then 1 else 0 end) as debit_count,
+              sum(case when entry_side = 'CREDIT' then 1 else 0 end) as credit_count,
+              count(distinct currency_code) as currency_bucket_count,
+              sum(case when entry_side = 'DEBIT' then amount_minor else -amount_minor end) as signed_minor_total
+          from pending_journal_line
+      )
+      where line_count >= 2
+        and debit_count >= 1
+        and credit_count >= 1
+        and currency_bucket_count = 1
+        and signed_minor_total = 0
+      limit 1
+      """;
+
+  static final String PERSIST_PENDING_JOURNAL_LINE =
+      """
+      insert into journal_line (
+          posting_id,
+          line_order,
+          account_code,
+          entry_side,
+          currency_code,
+          amount_minor
+      )
+      select ?, line_order, account_code, entry_side, currency_code, amount_minor
+      from pending_journal_line
+      order by line_order
+      """;
+
+  static final String FIND_UNBALANCED_POSTING =
+      """
+      select posting_id
+      from journal_line
+      group by posting_id
+      having count(*) < 2
+          or sum(case when entry_side = 'DEBIT' then 1 else 0 end) = 0
+          or sum(case when entry_side = 'CREDIT' then 1 else 0 end) = 0
+          or count(distinct currency_code) <> 1
+          or sum(case when entry_side = 'DEBIT' then amount_minor else -amount_minor end) <> 0
+      limit 1
+      """;
+
+  static final String FIND_POSTING_WITHOUT_JOURNAL_LINES =
+      """
+      select posting_fact.posting_id
+      from posting_fact
+      left join journal_line on journal_line.posting_id = posting_fact.posting_id
+      group by posting_fact.posting_id
+      having count(journal_line.line_order) = 0
+      limit 1
+      """;
+
+  static final String LOAD_PERSISTED_MONEY_AUDIT_ROWS =
+      """
+      select currency_code, amount_minor
+      from journal_line
+      order by posting_id, line_order
       """;
 
   static final String INSERT_BOOK_INITIALIZED_AT =

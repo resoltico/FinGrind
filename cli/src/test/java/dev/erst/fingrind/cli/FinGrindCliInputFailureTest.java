@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayInputStream;
@@ -151,6 +152,70 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_reportsOversizedRequestFilesAsInvalidRequestWithoutInvokingWorkflow()
+      throws IOException {
+    Path requestFile =
+        writeNamedRequest(
+            "oversized-declare-account.json",
+            "{\"padding\":\"" + "a".repeat(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) + "\"}");
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    RecordingWorkflow workflow =
+        new RecordingWorkflow(
+            new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new DeclareAccountResult.Declared(
+                new DeclaredAccount(
+                    new AccountCode("1000"),
+                    new AccountName("Cash"),
+                    NormalBalance.DEBIT,
+                    true,
+                    Instant.parse("2026-04-07T12:00:00Z"))),
+            new ListAccountsResult.Listed(new AccountPage(List.of(), 50, Optional.empty())),
+            new PostEntryResult.PreflightAccepted(
+                new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+            new PostEntryResult.Committed(
+                new PostingId("posting-1"),
+                new IdempotencyKey("idem-1"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z")));
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "declare-account",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              requestFile.toString()
+            });
+
+    assertEquals(1, exitCode);
+    JsonNode failureEnvelope =
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals(
+        "Request file exceeded the supported "
+            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + "-byte UTF-8 limit: "
+            + requestFile.toAbsolutePath().normalize()
+            + ".",
+        failureEnvelope.path("message").stringValue());
+    assertTrue(failureEnvelope.path("hint").stringValue().contains("split the work into smaller"));
+    assertFalse(workflow.workflowInvoked());
+  }
+
+  @Test
   void run_rendersCliRequestExceptionInHumanMode() throws IOException {
     Path requestFile = writeNamedRequest("broken-declare-account-human.json", "{");
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
@@ -215,20 +280,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             """
             {
               "effectiveDate": "2026-04-07",
-              "lines": [
-                {
-                  "accountCode": "1000",
-                  "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
-                },
-                {
-                  "accountCode": "2000",
-                  "side": "DEBIT",
-                  "currencyCode": "USD",
-                  "amount": "5.00"
-                }
-              ],
+              "lines": %s,
               "provenance": {
                 "actorId": "actor-1",
                 "actorType": "AGENT",
@@ -237,7 +289,15 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 "causationId": "cause-1"
               }
             }
-            """);
+            """
+                .formatted(
+                    CliRequestReaderTestSupport.journalLinesJson(
+                        "1000",
+                        "DEBIT",
+                        CliRequestReaderTestSupport.eurMoneyJson("1000"),
+                        "2000",
+                        "DEBIT",
+                        CliRequestReaderTestSupport.moneyJson("USD", "500"))));
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =

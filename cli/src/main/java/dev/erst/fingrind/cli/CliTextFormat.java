@@ -1,12 +1,9 @@
 package dev.erst.fingrind.cli;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import dev.erst.fingrind.core.Money;
 import java.util.ArrayList;
-import java.util.Currency;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -89,11 +86,9 @@ final class CliTextFormat {
     return document.toString().stripTrailing();
   }
 
-  static String displayAmount(String currencyCode, BigDecimal amount) {
-    Objects.requireNonNull(currencyCode, "currencyCode");
-    Objects.requireNonNull(amount, "amount");
-    int displayScale = Math.max(amount.scale(), currencyFractionDigits(currencyCode));
-    return amount.setScale(displayScale, RoundingMode.UNNECESSARY).toPlainString();
+  static String displayMoney(Money money) {
+    Objects.requireNonNull(money, "money");
+    return money.canonicalDecimal();
   }
 
   static String joined(List<String> values) {
@@ -147,15 +142,5 @@ final class CliTextFormat {
       return "\"" + escaped + "\"";
     }
     return escaped;
-  }
-
-  private static int currencyFractionDigits(String currencyCode) {
-    try {
-      int digits =
-          Currency.getInstance(currencyCode.toUpperCase(Locale.ROOT)).getDefaultFractionDigits();
-      return digits < 0 ? 2 : digits;
-    } catch (IllegalArgumentException exception) {
-      return 2;
-    }
   }
 }

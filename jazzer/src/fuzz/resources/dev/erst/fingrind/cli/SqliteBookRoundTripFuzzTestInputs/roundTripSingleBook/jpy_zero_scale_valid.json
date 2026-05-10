@@ -1,0 +1,28 @@
+{
+  "effectiveDate": "2026-06-14",
+  "lines": [
+    {
+      "accountCode": "5110",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "JPY",
+        "minorUnits": "300"
+      }
+    },
+    {
+      "accountCode": "6110",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "JPY",
+        "minorUnits": "300"
+      }
+    }
+  ],
+  "provenance": {
+    "actorId": "seed-sqlite-jpy-1",
+    "actorType": "SYSTEM",
+    "commandId": "seed-sqlite-jpy-command-1",
+    "idempotencyKey": "seed-sqlite-jpy-idem-1",
+    "causationId": "seed-sqlite-jpy-cause-1"
+  }
+}

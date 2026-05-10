@@ -47,6 +47,74 @@ final class CliFuzzHarnessTestSupport {
     return SqliteRoundTripWorkflowTestSupport.basicValidRequest().getBytes(UTF_8);
   }
 
+  static byte[] validJpyRequestBytes() {
+    return """
+        {
+          "effectiveDate": "2026-06-01",
+          "lines": [
+            {
+              "accountCode": "1100",
+              "side": "DEBIT",
+              "amount": {
+                "currencyCode": "JPY",
+                "minorUnits": "100"
+              }
+            },
+            {
+              "accountCode": "2100",
+              "side": "CREDIT",
+              "amount": {
+                "currencyCode": "JPY",
+                "minorUnits": "100"
+              }
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-jpy-1",
+            "actorType": "AGENT",
+            "commandId": "command-jpy-1",
+            "idempotencyKey": "idem-jpy-1",
+            "causationId": "cause-jpy-1"
+          }
+        }
+        """
+        .getBytes(UTF_8);
+  }
+
+  static byte[] validBhdRequestBytes() {
+    return """
+        {
+          "effectiveDate": "2026-06-02",
+          "lines": [
+            {
+              "accountCode": "1200",
+              "side": "DEBIT",
+              "amount": {
+                "currencyCode": "BHD",
+                "minorUnits": "1250"
+              }
+            },
+            {
+              "accountCode": "2200",
+              "side": "CREDIT",
+              "amount": {
+                "currencyCode": "BHD",
+                "minorUnits": "1250"
+              }
+            }
+          ],
+          "provenance": {
+            "actorId": "actor-bhd-1",
+            "actorType": "AGENT",
+            "commandId": "command-bhd-1",
+            "idempotencyKey": "idem-bhd-1",
+            "causationId": "cause-bhd-1"
+          }
+        }
+        """
+        .getBytes(UTF_8);
+  }
+
   static byte[] invalidExponentAmountRequestBytes() {
     return """
         {
@@ -55,14 +123,18 @@ final class CliFuzzHarnessTestSupport {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "1e1000000100"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1e1000000100"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "1.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "100"
+              }
             }
           ],
           "provenance": {
@@ -85,14 +157,18 @@ final class CliFuzzHarnessTestSupport {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -115,14 +191,18 @@ final class CliFuzzHarnessTestSupport {
             {
               "accountCode": "5000",
               "side": "CREDIT",
-              "currencyCode": "GBP",
-              "amount": "123.45"
+              "amount": {
+                "currencyCode": "GBP",
+                "minorUnits": "12345"
+              }
             },
             {
               "accountCode": "6000",
               "side": "DEBIT",
-              "currencyCode": "GBP",
-              "amount": "123.45"
+              "amount": {
+                "currencyCode": "GBP",
+                "minorUnits": "12345"
+              }
             }
           ],
           "reversal": {
@@ -148,14 +228,18 @@ final class CliFuzzHarnessTestSupport {
             {
               "accountCode": "5000",
               "side": "CREDIT",
-              "currencyCode": "GBP",
-              "amount": "123.45"
+              "amount": {
+                "currencyCode": "GBP",
+                "minorUnits": "12345"
+              }
             },
             {
               "accountCode": "6000",
               "side": "DEBIT",
-              "currencyCode": "GBP",
-              "amount": "123.45"
+              "amount": {
+                "currencyCode": "GBP",
+                "minorUnits": "12345"
+              }
             }
           ],
           "reversal": {
@@ -204,6 +288,162 @@ final class CliFuzzHarnessTestSupport {
                 "accountCode": "1000",
                 "accountName": "Cash",
                 "normalBalance": "DEBIT"
+              }
+            }
+          ]
+        }
+        """
+        .getBytes(UTF_8);
+  }
+
+  static byte[] validJpyLedgerPlanBytes() {
+    return """
+        {
+          "planId": "plan-jpy-1",
+          "steps": [
+            {
+              "stepId": "open",
+              "kind": "open-book"
+            },
+            {
+              "stepId": "declare-cash-jpy",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "1100",
+                "accountName": "Cash JPY",
+                "normalBalance": "DEBIT"
+              }
+            },
+            {
+              "stepId": "declare-sales-jpy",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "2100",
+                "accountName": "Sales JPY",
+                "normalBalance": "CREDIT"
+              }
+            },
+            {
+              "stepId": "post-jpy",
+              "kind": "post-entry",
+              "posting": {
+                "effectiveDate": "2026-06-03",
+                "lines": [
+                  {
+                    "accountCode": "1100",
+                    "side": "DEBIT",
+                    "amount": {
+                      "currencyCode": "JPY",
+                      "minorUnits": "100"
+                    }
+                  },
+                  {
+                    "accountCode": "2100",
+                    "side": "CREDIT",
+                    "amount": {
+                      "currencyCode": "JPY",
+                      "minorUnits": "100"
+                    }
+                  }
+                ],
+                "provenance": {
+                  "actorId": "agent-jpy-plan-1",
+                  "actorType": "AGENT",
+                  "commandId": "command-jpy-plan-1",
+                  "idempotencyKey": "idem-jpy-plan-1",
+                  "causationId": "cause-jpy-plan-1"
+                }
+              }
+            },
+            {
+              "stepId": "assert-jpy",
+              "kind": "assert",
+              "assertion": {
+                "kind": "assert-account-balance",
+                "accountCode": "1100",
+                "netAmount": {
+                  "currencyCode": "JPY",
+                  "minorUnits": "100"
+                },
+                "balanceSide": "DEBIT"
+              }
+            }
+          ]
+        }
+        """
+        .getBytes(UTF_8);
+  }
+
+  static byte[] validBhdLedgerPlanBytes() {
+    return """
+        {
+          "planId": "plan-bhd-1",
+          "steps": [
+            {
+              "stepId": "open",
+              "kind": "open-book"
+            },
+            {
+              "stepId": "declare-cash-bhd",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "1200",
+                "accountName": "Cash BHD",
+                "normalBalance": "DEBIT"
+              }
+            },
+            {
+              "stepId": "declare-sales-bhd",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "2200",
+                "accountName": "Sales BHD",
+                "normalBalance": "CREDIT"
+              }
+            },
+            {
+              "stepId": "post-bhd",
+              "kind": "post-entry",
+              "posting": {
+                "effectiveDate": "2026-06-04",
+                "lines": [
+                  {
+                    "accountCode": "1200",
+                    "side": "DEBIT",
+                    "amount": {
+                      "currencyCode": "BHD",
+                      "minorUnits": "1250"
+                    }
+                  },
+                  {
+                    "accountCode": "2200",
+                    "side": "CREDIT",
+                    "amount": {
+                      "currencyCode": "BHD",
+                      "minorUnits": "1250"
+                    }
+                  }
+                ],
+                "provenance": {
+                  "actorId": "agent-bhd-plan-1",
+                  "actorType": "AGENT",
+                  "commandId": "command-bhd-plan-1",
+                  "idempotencyKey": "idem-bhd-plan-1",
+                  "causationId": "cause-bhd-plan-1"
+                }
+              }
+            },
+            {
+              "stepId": "assert-bhd",
+              "kind": "assert",
+              "assertion": {
+                "kind": "assert-account-balance",
+                "accountCode": "1200",
+                "netAmount": {
+                  "currencyCode": "BHD",
+                  "minorUnits": "1250"
+                },
+                "balanceSide": "DEBIT"
               }
             }
           ]

@@ -115,6 +115,7 @@ public final class BookWorkflowPublishedLanguageTranslator {
       case BookWorkflowFact.Text text -> LedgerFact.text(text.name(), text.value());
       case BookWorkflowFact.Flag flag -> LedgerFact.flag(flag.name(), flag.value());
       case BookWorkflowFact.Count count -> LedgerFact.count(count.name(), count.value());
+      case BookWorkflowFact.Money money -> LedgerFact.money(money.name(), money.value());
       case BookWorkflowFact.Group group ->
           LedgerFact.group(
               group.name(),

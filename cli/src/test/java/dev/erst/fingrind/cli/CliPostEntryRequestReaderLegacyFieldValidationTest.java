@@ -19,20 +19,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -43,6 +30,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "reversal": "posting-0"
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -60,20 +48,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -84,6 +59,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "correction": null
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -115,20 +91,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "reversal": {
                     "kind": "REVERSAL",
                     "priorPostingId": "posting-0"
@@ -142,6 +105,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -159,20 +123,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -183,6 +134,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -200,20 +152,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -224,6 +163,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -241,20 +181,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -265,6 +192,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -282,20 +210,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -306,6 +221,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

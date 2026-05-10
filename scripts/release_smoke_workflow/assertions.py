@@ -11,7 +11,6 @@ from .support import (
     require,
     require_bool,
     require_match,
-    require_no_match,
     require_string,
     required_list,
     required_mapping,
@@ -34,7 +33,9 @@ def assert_capabilities_payload(
     response_model = required_mapping(payload, "responseModel")
     query_commands = required_list(commands, "query")
     query_commands_by_name = {
-        require_string(command, "name"): command for command in query_commands if isinstance(command, dict)
+        require_string(command, "name"): command
+        for command in query_commands
+        if isinstance(command, dict)
     }
     error_descriptors = required_list(response_model, "errorDescriptors")
     error_codes = {
@@ -69,7 +70,8 @@ def assert_capabilities_payload(
         f"{config.label} capabilities output did not report the current unsupported public bundle targets",
     )
     require(
-        require_string(storage, "storageDriver") == require_string(runtime_surface, "storageDriver"),
+        require_string(storage, "storageDriver")
+        == require_string(runtime_surface, "storageDriver"),
         f"{config.label} capabilities output did not report the SQLite3 Multiple Ciphers storage driver",
     )
     require(
@@ -79,8 +81,7 @@ def assert_capabilities_payload(
     )
     storage_format = required_mapping(storage, "defaultProtectedBookFormat")
     require(
-        require_string(storage_format, "cipher")
-        == require_string(protected_book_format, "cipher"),
+        require_string(storage_format, "cipher") == require_string(protected_book_format, "cipher"),
         f"{config.label} capabilities output did not report the canonical default book cipher",
     )
     require(
@@ -105,9 +106,15 @@ def assert_capabilities_payload(
         f"{config.label} capabilities output did not report the canonical --output selector",
     )
 
-    trial_balance = required_mapping(query_commands_by_name, require_string(operation_ids, "trialBalance"))
-    account_ledger = required_mapping(query_commands_by_name, require_string(operation_ids, "accountLedger"))
-    period_summary = required_mapping(query_commands_by_name, require_string(operation_ids, "periodSummary"))
+    trial_balance = required_mapping(
+        query_commands_by_name, require_string(operation_ids, "trialBalance")
+    )
+    account_ledger = required_mapping(
+        query_commands_by_name, require_string(operation_ids, "accountLedger")
+    )
+    period_summary = required_mapping(
+        query_commands_by_name, require_string(operation_ids, "periodSummary")
+    )
     require(
         required_list(trial_balance, "outputModes") == ["json", "human", "csv"],
         f"{config.label} trial-balance did not report json,human,csv stdout modes",

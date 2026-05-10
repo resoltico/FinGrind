@@ -15,6 +15,14 @@ class CliRequestFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             CliRequestFuzzAssertions.readPostEntryCommand(
+                CliFuzzHarnessTestSupport.validJpyRequestBytes()));
+    assertDoesNotThrow(
+        () ->
+            CliRequestFuzzAssertions.readPostEntryCommand(
+                CliFuzzHarnessTestSupport.validBhdRequestBytes()));
+    assertDoesNotThrow(
+        () ->
+            CliRequestFuzzAssertions.readPostEntryCommand(
                 CliFuzzHarnessTestSupport.invalidExponentAmountRequestBytes()));
   }
 
@@ -26,6 +34,16 @@ class CliRequestFuzzAssertionsTest {
             harness.readPostEntryCommand(
                 CliFuzzHarnessTestSupport.fuzzedBytes(
                     CliFuzzHarnessTestSupport.basicValidRequestBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.readPostEntryCommand(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validJpyRequestBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.readPostEntryCommand(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validBhdRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.readPostEntryCommand(

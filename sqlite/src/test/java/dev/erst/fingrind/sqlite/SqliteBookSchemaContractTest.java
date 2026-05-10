@@ -177,16 +177,17 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     }
     Path unsupportedBookPath = tempDirectory.resolve("unsupported-version.sqlite");
     initializeBookOnDisk(unsupportedBookPath);
+    int unsupportedVersion = SqliteBookContract.FORMAT_VERSION + 1;
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
-        database -> database.executeStatement("pragma user_version = 2"));
+        database -> database.executeStatement("pragma user_version = " + unsupportedVersion));
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
               SqliteBookContract.APPLICATION_ID,
-              2,
+              unsupportedVersion,
               SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
       IllegalStateException openException =
@@ -194,13 +195,15 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () -> postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertTrue(
-          NullTestSupport.messageOf(openException).contains("format version 2 is unsupported"));
+          NullTestSupport.messageOf(openException)
+              .contains("format version " + unsupportedVersion + " is unsupported"));
       IllegalStateException accountException =
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findAccount(new AccountCode("1000")));
       assertTrue(
-          NullTestSupport.messageOf(accountException).contains("format version 2 is unsupported"));
+          NullTestSupport.messageOf(accountException)
+              .contains("format version " + unsupportedVersion + " is unsupported"));
     }
   }
 
@@ -309,7 +312,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 bookAccess(bookPath),
                 database -> {
                   SqliteBookSchemaBootstrap.initializeBook(database);
-                  insertInitializedAtRow(database);
+                  insertCanonicalInitializedBookMetadata(database);
                   insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
                   insertPostingFactRow(database, "posting-1", "idem-1");
                   SqliteNativeException exception =
@@ -324,14 +327,14 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                                       account_code,
                                       entry_side,
                                       currency_code,
-                                      amount
+                                      amount_minor
                                   ) values (
                                       'posting-1',
                                       'not-an-integer',
                                       '1000',
                                       'DEBIT',
                                       'EUR',
-                                      '10.00'
+                                      1000
                                   )
                                   """));
                   assertEquals(SqliteNativeResultCodes.CONSTRAINT_DATATYPE, exception.resultCode());
@@ -349,7 +352,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 bookAccess(bookPath),
                 database -> {
                   SqliteBookSchemaBootstrap.initializeBook(database);
-                  insertInitializedAtRow(database);
+                  insertCanonicalInitializedBookMetadata(database);
                   SqliteNativeException invalidAccountCode =
                       assertThrows(
                           SqliteNativeException.class,

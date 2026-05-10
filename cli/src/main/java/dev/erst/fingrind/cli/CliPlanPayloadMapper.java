@@ -100,6 +100,8 @@ final class CliPlanPayloadMapper {
           new CliPlanJsonModels.FlagLedgerFactPayload("flag", flag.name(), flag.value());
       case LedgerFact.Count count ->
           new CliPlanJsonModels.CountLedgerFactPayload("count", count.name(), count.value());
+      case LedgerFact.Money money ->
+          new CliPlanJsonModels.MoneyLedgerFactPayload("money", money.name(), money.value());
       case LedgerFact.Group group ->
           new CliPlanJsonModels.GroupLedgerFactPayload(
               "group", group.name(), factPayloads(group.facts()));

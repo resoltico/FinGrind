@@ -182,4 +182,3 @@ def verify_operator_queries_and_reports(
         account_ledger_csv_output,
         period_summary_human_output,
     )
-

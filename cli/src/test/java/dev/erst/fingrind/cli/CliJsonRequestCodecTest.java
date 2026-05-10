@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -104,6 +105,39 @@ class CliJsonRequestCodecTest {
     assertTrue(
         Objects.requireNonNull(exception.failure().hint())
             .contains("Provide one readable JSON document on standard input"));
+  }
+
+  @Test
+  void requestReadFailure_reportsOversizedRequestPayloadsWithLimitAwareDiagnostics() {
+    CliRequestException stdinException =
+        CliJsonRequestFailures.requestReadFailure(
+            Path.of("-"),
+            new CliRequestPayloadTooLargeException(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES),
+            "unused hint");
+
+    assertEquals(
+        "Request JSON from standard input exceeded the supported "
+            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + "-byte UTF-8 limit.",
+        stdinException.getMessage());
+    assertTrue(
+        Objects.requireNonNull(stdinException.failure().hint())
+            .contains("split the work into smaller"));
+
+    Path requestFile = Path.of("oversized-request.json");
+    CliRequestException fileException =
+        CliJsonRequestFailures.requestReadFailure(
+            requestFile,
+            new CliRequestPayloadTooLargeException(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES),
+            "unused hint");
+
+    assertEquals(
+        "Request file exceeded the supported "
+            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + "-byte UTF-8 limit: "
+            + requestFile.toAbsolutePath().normalize()
+            + ".",
+        fileException.getMessage());
   }
 
   @Test

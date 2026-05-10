@@ -4,6 +4,7 @@ import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.BookFormatContract;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.time.Instant;
@@ -19,25 +20,44 @@ class BookInspectionPublishedLanguageTranslatorTest {
             new BookLifecycleInspection.Missing(3)));
 
     assertEquals(
-        new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 7, 2, 3),
+        new BookInspection.Existing(
+            BookInspection.Status.BLANK_SQLITE, 7, 2, BookFormatContract.FORMAT_VERSION),
         BookInspectionPublishedLanguageTranslator.toPublished(
             new BookLifecycleInspection.Existing(
-                BookLifecycleInspection.Status.BLANK_SQLITE, 7, 2, 3)));
+                BookLifecycleInspection.Status.BLANK_SQLITE,
+                7,
+                2,
+                BookFormatContract.FORMAT_VERSION)));
     assertEquals(
-        new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 7, 2, 3),
+        new BookInspection.Existing(
+            BookInspection.Status.FOREIGN_SQLITE, 7, 2, BookFormatContract.FORMAT_VERSION),
         BookInspectionPublishedLanguageTranslator.toPublished(
             new BookLifecycleInspection.Existing(
-                BookLifecycleInspection.Status.FOREIGN_SQLITE, 7, 2, 3)));
+                BookLifecycleInspection.Status.FOREIGN_SQLITE,
+                7,
+                2,
+                BookFormatContract.FORMAT_VERSION)));
     assertEquals(
-        new BookInspection.Existing(BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 7, 2, 3),
+        new BookInspection.Existing(
+            BookInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+            7,
+            2,
+            BookFormatContract.FORMAT_VERSION),
         BookInspectionPublishedLanguageTranslator.toPublished(
             new BookLifecycleInspection.Existing(
-                BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION, 7, 2, 3)));
+                BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+                7,
+                2,
+                BookFormatContract.FORMAT_VERSION)));
     assertEquals(
-        new BookInspection.Existing(BookInspection.Status.INCOMPLETE_FINGRIND, 7, 2, 3),
+        new BookInspection.Existing(
+            BookInspection.Status.INCOMPLETE_FINGRIND, 7, 2, BookFormatContract.FORMAT_VERSION),
         BookInspectionPublishedLanguageTranslator.toPublished(
             new BookLifecycleInspection.Existing(
-                BookLifecycleInspection.Status.INCOMPLETE_FINGRIND, 7, 2, 3)));
+                BookLifecycleInspection.Status.INCOMPLETE_FINGRIND,
+                7,
+                2,
+                BookFormatContract.FORMAT_VERSION)));
 
     Instant initializedAt = Instant.parse("2026-05-07T10:15:30Z");
     assertEquals(

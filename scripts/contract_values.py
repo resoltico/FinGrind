@@ -268,9 +268,7 @@ def required_string(document: dict[str, object], key: str) -> str:
     return normalized
 
 
-def load_operation_ids(
-    document: dict[str, object], schema: dict[str, object]
-) -> dict[str, str]:
+def load_operation_ids(document: dict[str, object], schema: dict[str, object]) -> dict[str, str]:
     operation_ids: dict[str, str] = {}
     declared_enum_names: set[str] = set()
     for semantic_key, raw_enum_name in schema.items():
@@ -282,12 +280,8 @@ def load_operation_ids(
                 "operation-id schema keys must be non-blank lower-camel semantic names"
             )
         normalized_enum_name = raw_enum_name.strip() if isinstance(raw_enum_name, str) else ""
-        if not normalized_enum_name or not re.fullmatch(
-            r"[A-Z][A-Z0-9_]*", normalized_enum_name
-        ):
-            raise ValueError(
-                "operation-id schema values must be non-blank upper-snake enum names"
-            )
+        if not normalized_enum_name or not re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized_enum_name):
+            raise ValueError("operation-id schema values must be non-blank upper-snake enum names")
         if normalized_semantic_key in operation_ids:
             raise ValueError(
                 f"operation-id contract semantic key must be unique: {normalized_semantic_key}"
@@ -302,9 +296,7 @@ def load_operation_ids(
     for enum_name, wire_name in document.items():
         normalized_enum_name = enum_name.strip() if isinstance(enum_name, str) else ""
         if not normalized_enum_name or not re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized_enum_name):
-            raise ValueError(
-                "operation-id contract keys must be non-blank upper-snake enum names"
-            )
+            raise ValueError("operation-id contract keys must be non-blank upper-snake enum names")
         if normalized_enum_name not in declared_enum_names:
             raise ValueError(
                 f"operation-id contract declared an enum without one canonical semantic key: {normalized_enum_name}"
@@ -362,13 +354,9 @@ def load_bundle_layout_targets(
             "archiveFormat": required_value(raw_target, archive_format_key),
             "launcherPath": required_value(raw_target, launcher_path_key),
             "launcherCommand": required_value(raw_target, launcher_command_key),
-            "sqliteLibraryFileName": required_value(
-                raw_target, sqlite_library_file_name_key
-            ),
+            "sqliteLibraryFileName": required_value(raw_target, sqlite_library_file_name_key),
         }
-        recomposed_classifier = (
-            target["operatingSystemId"] + "-" + target["architectureId"]
-        )
+        recomposed_classifier = target["operatingSystemId"] + "-" + target["architectureId"]
         if normalized_classifier != recomposed_classifier:
             raise ValueError(
                 f"bundle layout target {normalized_classifier} must agree with {recomposed_classifier}"
@@ -423,7 +411,9 @@ def load_host_bundle_target(
     try:
         target = bundle_layout_targets[classifier]
     except KeyError as exc:
-        raise ValueError(f"host bundle target is not declared in the bundle layout contract: {classifier}") from exc
+        raise ValueError(
+            f"host bundle target is not declared in the bundle layout contract: {classifier}"
+        ) from exc
     return {"classifier": classifier, **target}
 
 

@@ -56,14 +56,12 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     {
                       "accountCode": "1000",
                       "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": %s
                     },
                     {
                       "accountCode": "2000",
                       "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": %s
                     }
                   ],
                   "provenance": {
@@ -76,6 +74,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   "reversal": null
                 }
                 """
+                    .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"))
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
@@ -95,14 +94,12 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     {
                       "accountCode": "1000",
                       "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": %s
                     },
                     {
                       "accountCode": "2000",
                       "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": %s
                     }
                   ],
                   "provenance": {
@@ -115,6 +112,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   }
                 }
                 """
+                    .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"))
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));

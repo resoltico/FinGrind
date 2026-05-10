@@ -2,12 +2,11 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
-import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -19,22 +18,21 @@ import java.util.Set;
 /** Shared accumulation and row-mapping helpers for SQLite-backed report readers. */
 final class SqliteReportRowValues {
   static final Comparator<CurrencyBalance> BALANCE_ORDER =
-      Comparator.comparing(balance -> balance.netAmount().currencyCode().value());
+      Comparator.comparing(balance -> balance.netAmount().currencyUnit().code());
   static final Comparator<AccountCode> ACCOUNT_CODE_ORDER =
       Comparator.comparing(AccountCode::value);
-  static final Comparator<CurrencyCode> CURRENCY_CODE_ORDER =
-      Comparator.comparing(CurrencyCode::value);
+  static final Comparator<CurrencyUnit> CURRENCY_CODE_ORDER =
+      Comparator.comparing(CurrencyUnit::code);
 
   private SqliteReportRowValues() {}
 
-  static CurrencyCode reportCurrencyCode(SqliteNativeStatement statement) {
-    return new CurrencyCode(
-        SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_CURRENCY_CODE));
+  static CurrencyUnit reportCurrencyCode(SqliteNativeStatement statement) {
+    return SqlitePersistedMoneyCodec.readCurrencyUnit(
+        statement, SqlitePostingSql.COL_REPORT_CURRENCY_CODE);
   }
 
-  static BigDecimal reportAmount(SqliteNativeStatement statement) {
-    return new BigDecimal(
-        SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_AMOUNT));
+  static long reportAmountMinor(SqliteNativeStatement statement) {
+    return statement.columnLong(SqlitePostingSql.COL_REPORT_AMOUNT_MINOR);
   }
 
   static <K, V> Map<K, V> insertionOrderedMap() {
@@ -45,7 +43,7 @@ final class SqliteReportRowValues {
     return new LinkedHashSet<>();
   }
 
-  static Totals totalsFor(Map<CurrencyCode, Totals> totalsByCurrency, CurrencyCode currencyCode) {
+  static Totals totalsFor(Map<CurrencyUnit, Totals> totalsByCurrency, CurrencyUnit currencyCode) {
     return totalsByCurrency.computeIfAbsent(currencyCode, ignored -> new Totals());
   }
 
@@ -58,14 +56,14 @@ final class SqliteReportRowValues {
   /** Exact per-account currency totals accumulated while building report rows. */
   static final class AccountTotals {
     private final RegisteredAccount account;
-    private final Map<CurrencyCode, Totals> totalsByCurrency = insertionOrderedMap();
+    private final Map<CurrencyUnit, Totals> totalsByCurrency = insertionOrderedMap();
 
     private AccountTotals(RegisteredAccount account) {
       this.account = Objects.requireNonNull(account, "account");
     }
 
-    void add(CurrencyCode currencyCode, JournalLine.EntrySide entrySide, BigDecimal amount) {
-      totalsFor(totalsByCurrency, currencyCode).add(entrySide, amount);
+    void add(CurrencyUnit currencyCode, JournalLine.EntrySide entrySide, long amountMinor) {
+      totalsFor(totalsByCurrency, currencyCode).add(entrySide, amountMinor);
     }
 
     List<TrialBalanceRowView> trialBalanceRows() {
@@ -95,22 +93,22 @@ final class SqliteReportRowValues {
 
   /** Running debit and credit totals for one account/currency bucket. */
   static final class Totals {
-    private BigDecimal debit = BigDecimal.ZERO;
-    private BigDecimal credit = BigDecimal.ZERO;
+    private long debit;
+    private long credit;
 
-    void add(JournalLine.EntrySide entrySide, BigDecimal amount) {
+    void add(JournalLine.EntrySide entrySide, long amountMinor) {
       if (entrySide == JournalLine.EntrySide.DEBIT) {
-        debit = debit.add(amount);
+        debit = Math.addExact(debit, amountMinor);
       } else {
-        credit = credit.add(amount);
+        credit = Math.addExact(credit, amountMinor);
       }
     }
 
-    BigDecimal debit() {
+    long debit() {
       return debit;
     }
 
-    BigDecimal credit() {
+    long credit() {
       return credit;
     }
   }

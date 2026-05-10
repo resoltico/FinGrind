@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -26,6 +26,9 @@ source:
   input
 - `--book-passphrase-prompt` with an interactive non-echo terminal prompt whose normalized UTF-8
   payload must also fit within the same 4096-byte limit
+
+Every request JSON document must fit within FinGrind's `1048576`-byte UTF-8 payload limit whether
+it comes from `--request-file <path>` or `--request-file -`.
 
 `rekey-book` reuses those current-book routes and additionally requires exactly one replacement
 passphrase source: `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, or
@@ -51,15 +54,20 @@ replace-before-submit placeholders. Replace every placeholder before committing.
 `idempotencyKey` becomes single-use per book after the first committed posting.
 
 Current posting-request rules:
-- all scalar fields are JSON strings, including dates, enums, and `amount`
-- `lines[].amount` must be a plain decimal string greater than zero, such as `10.00`; exponent
-  notation such as `1e6` is rejected
+- all top-level date, enum, identifier, and provenance fields are JSON strings
+- `lines[].amount` is one exact money object with `currencyCode` and `minorUnits`
+- `lines[].amount.currencyCode` must be one canonical three-letter uppercase ISO 4217 code
+  supported by FinGrind's pinned currency registry
+- `lines[].amount.minorUnits` must contain ASCII digits only, must not contain redundant leading
+  zeroes, must not exceed 19 digits, and must fit inside FinGrind's exact supported minor-unit
+  range
+- `lines[].amount` must decode to one strictly positive posted amount
 - `effectiveDate`, `lines`, and `provenance` are required
 - `lines` must contain at least one journal line
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
   letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every entry must contain at least one `DEBIT` line and at least one `CREDIT` line
-- every line inside one entry must share the same `currencyCode`
+- every line inside one entry must share the same `lines[].amount.currencyCode`
 - `reversal` is optional
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
 - `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only
@@ -131,7 +139,7 @@ Current ledger-plan rules:
 - supported assertion kinds are `assert-account-declared`, `assert-account-active`,
   `assert-posting-exists`, and `assert-account-balance`
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
-  optional `effectiveDateTo`, `currencyCode`, `netAmount`, and `balanceSide`
+  optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
 - `print-plan-template` emits the canonical `execute-plan` scaffold shape, but the emitted
   placeholder values must be replaced before the request is accepted
@@ -143,6 +151,8 @@ Current ledger-plan rules:
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal facts are typed objects with `kind`, `name`, and either `value` or nested `facts`
+- money-bearing plan-journal facts use `kind: "money"` with a `value` object carrying
+  `currencyCode` and `minorUnits`
 - successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
   `hasMore`, and repeated grouped `account` facts
 - successful `list-postings` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
@@ -267,6 +277,8 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 
 `get-posting` success returns:
 - one committed posting payload with `postingId`, `effectiveDate`, `recordedAt`, request-provenance fields, `sourceChannel`, optional `reversal`, and `lines[]`
+- each `lines[].amount` value reuses the same exact money object shape with `currencyCode`,
+  `minorUnits`
 
 `list-postings` success returns:
 - `payload.limit`
@@ -276,22 +288,26 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 `account-balance` success returns:
 - declared-account identity fields: `accountCode`, `accountName`, `normalBalance`, `active`, `declaredAt`
 - optional query filters: `effectiveDateFrom`, `effectiveDateTo`
-- `balances[]`, where each bucket includes `currencyCode`, `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
+- `balances[]`, where each bucket includes typed `debitTotal`, `creditTotal`, `netAmount`, and
+  `balanceSide`
+- every response-side money object uses the same exact money shape with `currencyCode`,
+  `minorUnits`
 
 ## Report Responses
 
 `trial-balance` success returns:
 - optional `payload.effectiveDateTo`
 - `payload.rows[]`, where each row includes `accountCode`, `accountName`, `normalBalance`, `active`,
-  `declaredAt`, `currencyCode`, `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
+  `declaredAt`, typed `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
 
 `account-ledger` success returns:
 - declared-account identity fields: `accountCode`, `accountName`, `normalBalance`, `active`, `declaredAt`
 - optional date filters: `effectiveDateFrom`, `effectiveDateTo`
-- `openingBalances[]` and `closingBalances[]`, where each bucket includes `currencyCode`,
-  `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
-- `entries[]`, where each row includes `postingId`, `effectiveDate`, `recordedAt`, `currencyCode`,
-  `debitAmount`, `creditAmount`, `runningBalance`, `runningBalanceSide`, and `counterpartAccounts[]`
+- `openingBalances[]` and `closingBalances[]`, where each bucket includes typed `debitTotal`,
+  `creditTotal`, `netAmount`, and `balanceSide`
+- `entries[]`, where each row includes `postingId`, `effectiveDate`, `recordedAt`, typed
+  `debitAmount`, `creditAmount`, `runningBalance`, `runningBalanceSide`, and
+  `counterpartAccounts[]`
 
 `period-summary` success returns:
 - `payload.effectiveDateFrom`
@@ -299,11 +315,11 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.postingCount`
 - `payload.postingLineCount`
 - `payload.accountsTouched`
-- `payload.currencyTotals[]`, where each row includes `currencyCode`, `debitTotal`, `creditTotal`,
+- `payload.currencyTotals[]`, where each row includes typed `debitTotal`, `creditTotal`,
   `netAmount`, and `balanceSide`
 - `payload.accountActivity[]`, where each row includes `accountCode`, `accountName`,
-  `normalBalance`, `active`, `declaredAt`, `currencyCode`, `debitTotal`, `creditTotal`,
-  `netAmount`, and `balanceSide`
+  `normalBalance`, `active`, `declaredAt`, typed `debitTotal`, `creditTotal`, `netAmount`, and
+  `balanceSide`
 
 Commands that advertise `--output` keep JSON as the default machine surface for successful
 results. Discovery, administration, write, and read/report commands can also render

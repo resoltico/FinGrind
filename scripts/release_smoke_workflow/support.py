@@ -130,5 +130,7 @@ def is_windows_like_path(path_text: str) -> bool:
 def normalized_path_components(path_text: str) -> tuple[str, ...]:
     normalized = normalize_reported_path(path_text)
     if is_windows_like_path(path_text):
-        return tuple(component for component in normalized.replace("\\", "/").split("/") if component)
+        return tuple(
+            component for component in normalized.replace("\\", "/").split("/") if component
+        )
     return tuple(component for component in normalized.split("/") if component)

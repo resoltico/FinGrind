@@ -14,6 +14,14 @@ class PostingWorkflowFuzzAssertionsTest {
             PostingWorkflowFuzzAssertions.exerciseParsedPostingWorkflow(
                 SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
                 CliFuzzHarnessTestSupport.basicValidRequestBytes()));
+    assertDoesNotThrow(
+        () ->
+            PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
+                CliFuzzHarnessTestSupport.validJpyRequestBytes()));
+    assertDoesNotThrow(
+        () ->
+            PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
+                CliFuzzHarnessTestSupport.validBhdRequestBytes()));
   }
 
   @Test
@@ -46,6 +54,16 @@ class PostingWorkflowFuzzAssertionsTest {
             harness.exercisePostingWorkflow(
                 CliFuzzHarnessTestSupport.fuzzedBytes(
                     CliFuzzHarnessTestSupport.basicValidRequestBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.exercisePostingWorkflow(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validJpyRequestBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.exercisePostingWorkflow(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validBhdRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.exercisePostingWorkflow(

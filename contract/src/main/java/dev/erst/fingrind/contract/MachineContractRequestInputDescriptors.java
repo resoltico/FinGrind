@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Builds request-input descriptors for the machine-readable contract. */
@@ -31,6 +32,9 @@ final class MachineContractRequestInputDescriptors {
             "all passphrase routes strip one trailing LF or CRLF, reject empty secrets, reject control characters, and reject UTF-8 payloads larger than 4096 bytes so one secret remains reproducible across file, stdin, and prompt usage"),
         List.of(
             "request JSON must be one object document",
+            "request JSON must fit within the "
+                + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+                + "-byte UTF-8 payload limit whether it comes from a file or standard input",
             "unknown request fields are rejected at every object level",
             "duplicate JSON object keys are rejected",
             "legacy forbidden fields such as correction, reversal.kind, provenance.recordedAt, and provenance.sourceChannel remain hard-broken"));

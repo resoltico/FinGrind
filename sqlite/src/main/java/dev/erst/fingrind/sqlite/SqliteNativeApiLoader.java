@@ -138,12 +138,14 @@ final class SqliteNativeApiLoader {
           statements.sqlite3PrepareV2(),
           statements.sqlite3BindNull(),
           statements.sqlite3BindInt(),
+          statements.sqlite3BindInt64(),
           statements.sqlite3BindText(),
           statements.sqlite3Step(),
           statements.sqlite3Finalize(),
           statements.sqlite3ColumnText(),
           statements.sqlite3ColumnBytes(),
           statements.sqlite3ColumnInt(),
+          statements.sqlite3ColumnInt64(),
           errors.sqlite3Errmsg(),
           errors.sqlite3Errstr(),
           errors.sqlite3ExtendedErrcode(),
@@ -263,12 +265,14 @@ final class SqliteNativeApiLoader {
       MethodHandle sqlite3PrepareV2,
       MethodHandle sqlite3BindNull,
       MethodHandle sqlite3BindInt,
+      MethodHandle sqlite3BindInt64,
       MethodHandle sqlite3BindText,
       MethodHandle sqlite3Step,
       MethodHandle sqlite3Finalize,
       MethodHandle sqlite3ColumnText,
       MethodHandle sqlite3ColumnBytes,
-      MethodHandle sqlite3ColumnInt) {
+      MethodHandle sqlite3ColumnInt,
+      MethodHandle sqlite3ColumnInt64) {
     private static SqliteStatementCalls bind(SymbolLookup lookup) {
       return new SqliteStatementCalls(
           downcall(
@@ -294,6 +298,14 @@ final class SqliteNativeApiLoader {
                   ValueLayout.ADDRESS,
                   ValueLayout.JAVA_INT,
                   ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3_bind_int64",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.JAVA_INT,
+                  ValueLayout.JAVA_LONG)),
           downcall(
               lookup,
               "sqlite3_bind_text",
@@ -326,7 +338,12 @@ final class SqliteNativeApiLoader {
               lookup,
               "sqlite3_column_int",
               FunctionDescriptor.of(
-                  ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)));
+                  ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3_column_int64",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)));
     }
   }
 

@@ -24,20 +24,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorType": "AGENT",
                     "commandId": "command-1",
@@ -46,6 +33,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -63,20 +51,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": null,
                     "actorType": "AGENT",
@@ -86,6 +61,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -103,20 +79,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": 20260407,
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -126,6 +89,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -143,20 +107,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-02-30",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -166,6 +117,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -183,20 +135,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "1e1000000100"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "1.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -206,15 +145,21 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(
+                        journalLinesJson(
+                            "1000",
+                            "DEBIT",
+                            moneyJson("EUR", "1e1000000100"),
+                            "2000",
+                            "CREDIT",
+                            eurMoneyJson("100")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals(
-        "Money amount must be a plain decimal string without exponent notation.",
-        exception.getMessage());
+    assertEquals("minorUnits must contain ASCII decimal digits only.", exception.getMessage());
   }
 
   @Test
@@ -225,20 +170,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "1E6"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "1.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -248,15 +180,21 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(
+                        journalLinesJson(
+                            "1000",
+                            "DEBIT",
+                            moneyJson("EUR", "1E6"),
+                            "2000",
+                            "CREDIT",
+                            eurMoneyJson("100")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals(
-        "Money amount must be a plain decimal string without exponent notation.",
-        exception.getMessage());
+    assertEquals("minorUnits must contain ASCII decimal digits only.", exception.getMessage());
   }
 
   @Test
@@ -267,20 +205,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "abc"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "1.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -290,13 +215,21 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(
+                        journalLinesJson(
+                            "1000",
+                            "DEBIT",
+                            moneyJson("EUR", "abc"),
+                            "2000",
+                            "CREDIT",
+                            eurMoneyJson("100")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("Money amount must be a valid decimal string.", exception.getMessage());
+    assertEquals("minorUnits must contain ASCII decimal digits only.", exception.getMessage());
   }
 
   @Test
@@ -307,14 +240,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -324,6 +250,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(singleJournalLineJson("1000", "DEBIT", eurMoneyJson("1000")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -343,20 +270,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -370,6 +284,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -387,20 +302,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -411,6 +313,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(standardBalancedLinesJson())
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -476,20 +379,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 """
                 {
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
-                    },
-                    {
-                      "accountCode": "2000",
-                      "side": "DEBIT",
-                      "currencyCode": "USD",
-                      "amount": "5.00"
-                    }
-                  ],
+                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -499,6 +389,14 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   }
                 }
                 """
+                    .formatted(
+                        journalLinesJson(
+                            "1000",
+                            "DEBIT",
+                            eurMoneyJson("1000"),
+                            "2000",
+                            "DEBIT",
+                            moneyJson("USD", "500")))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

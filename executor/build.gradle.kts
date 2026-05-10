@@ -6,4 +6,8 @@ plugins {
 
 description = "FinGrind execution boundary and book workflow orchestration"
 
-dependencies { api(project(":contract")); api(project(":core")) }
+dependencies {
+    api(project(":contract"))
+    api(project(":core"))
+    testFixturesApi(project(":contract"))
+}

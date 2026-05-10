@@ -5,11 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.RequestProvenance;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,15 +28,15 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                     new JournalLine(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
-                        new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                        Money.parse("EUR", "10.00")),
                     new JournalLine(
                         new AccountCode("1100"),
                         JournalLine.EntrySide.DEBIT,
-                        new Money(new CurrencyCode("EUR"), new BigDecimal("1.00"))),
+                        Money.parse("EUR", "1.00")),
                     new JournalLine(
                         new AccountCode("2000"),
                         JournalLine.EntrySide.CREDIT,
-                        new Money(new CurrencyCode("EUR"), new BigDecimal("11.00")))))
+                        Money.parse("EUR", "11.00"))))
             .size());
 
     IllegalStateException oneSided =
@@ -50,7 +48,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                         new JournalLine(
                             new AccountCode("1000"),
                             JournalLine.EntrySide.DEBIT,
-                            new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))))));
+                            Money.parse("EUR", "10.00")))));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         oneSided, "at least one line on each side");
 

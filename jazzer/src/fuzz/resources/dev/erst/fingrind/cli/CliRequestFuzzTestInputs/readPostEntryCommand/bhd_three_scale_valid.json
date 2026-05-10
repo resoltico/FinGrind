@@ -1,0 +1,28 @@
+{
+  "effectiveDate": "2026-06-11",
+  "lines": [
+    {
+      "accountCode": "1120",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "BHD",
+        "minorUnits": "1250"
+      }
+    },
+    {
+      "accountCode": "2120",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "BHD",
+        "minorUnits": "1250"
+      }
+    }
+  ],
+  "provenance": {
+    "actorId": "seed-cli-bhd-1",
+    "actorType": "AGENT",
+    "commandId": "seed-cli-bhd-command-1",
+    "idempotencyKey": "seed-cli-bhd-idem-1",
+    "causationId": "seed-cli-bhd-cause-1"
+  }
+}

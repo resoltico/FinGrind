@@ -2,7 +2,6 @@ package dev.erst.fingrind.buildlogic
 
 import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.spotless.LineEnding
-import java.math.BigDecimal
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -164,6 +163,11 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 }
                 doFirst {
                     jacocoDestinationFile.parentFile.mkdirs()
+                    if (jacocoDestinationFile.exists() && !jacocoDestinationFile.delete()) {
+                        throw IllegalStateException(
+                            "Unable to reset stale JaCoCo execution data at ${jacocoDestinationFile.absolutePath}.",
+                        )
+                    }
                 }
 
                 val progressPulseEnabled =
@@ -209,6 +213,7 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                     ?: throw IllegalStateException(
                         "FinGrind Java conventions require a Java main source set for JaCoCo configuration.",
                     )
+            val jacocoXmlReport = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
             tasks.named<JacocoReport>("jacocoTestReport") {
                 dependsOn(testTasks)
                 executionData.from(jacocoExecutionData)
@@ -216,28 +221,18 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
                 sourceDirectories.setFrom(mainSourceSet.allJava.srcDirs)
                 reports {
                     xml.required.set(true)
+                    xml.outputLocation.set(jacocoXmlReport)
                     html.required.set(true)
                 }
             }
 
             tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
-                dependsOn(testTasks)
+                dependsOn("jacocoTestReport")
                 executionData.from(jacocoExecutionData)
                 classDirectories.setFrom(mainSourceSet.output.classesDirs)
                 sourceDirectories.setFrom(mainSourceSet.allJava.srcDirs)
-                violationRules {
-                    rule {
-                        limit {
-                            counter = "LINE"
-                            value = "COVEREDRATIO"
-                            minimum = BigDecimal("1.0")
-                        }
-                        limit {
-                            counter = "BRANCH"
-                            value = "COVEREDRATIO"
-                            minimum = BigDecimal("1.0")
-                        }
-                    }
+                doLast {
+                    JacocoXmlCoverageVerifier.verifyReport(jacocoXmlReport.get().asFile)
                 }
             }
 

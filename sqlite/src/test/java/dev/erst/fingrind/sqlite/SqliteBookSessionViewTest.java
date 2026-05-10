@@ -334,28 +334,15 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               List.of(
                   new AccountLedgerEntry(
                       publishedPostingFact(openingPosting),
-                      new CurrencyBalance(
-                          money("EUR", "0.00"),
-                          money("EUR", "10.00"),
-                          money("EUR", "10.00"),
-                          BalanceSide.CREDIT),
+                      balance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT),
                       money("EUR", "10.00"),
                       BalanceSide.CREDIT),
                   new AccountLedgerEntry(
                       publishedPostingFact(zeroingPosting),
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "0.00"),
-                          money("EUR", "10.00"),
-                          BalanceSide.DEBIT),
+                      balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                       money("EUR", "0.00"),
                       BalanceSide.ZERO)),
-              List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "10.00"),
-                      money("EUR", "0.00"),
-                      BalanceSide.ZERO))),
+              List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
           published(
               ((BookStore) postingFactStore)
                   .accountLedger(
@@ -465,5 +452,20 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null)));
       setStoreDatabase(postingFactStore, null);
     }
+  }
+
+  private static CurrencyBalance balance(
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      BalanceSide balanceSide) {
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 }

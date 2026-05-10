@@ -196,6 +196,24 @@ final class SqliteStatementQueries {
         });
   }
 
+  static Optional<String> loadOptionalText(
+      SqliteNativeDatabase activeDatabase, String sql, Binder binder) {
+    return withStatement(
+        activeDatabase,
+        sql,
+        statement -> {
+          binder.bind(statement);
+          if (statement.step() != SqliteNativeResultCodes.ROW) {
+            return Optional.empty();
+          }
+          String value = statement.columnText(0);
+          if (statement.step() != SqliteNativeResultCodes.DONE) {
+            throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
+          }
+          return Optional.ofNullable(value);
+        });
+  }
+
   private static <T> T withStatement(
       SqliteNativeDatabase activeDatabase, String sql, StatementQuery<T> query) {
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {

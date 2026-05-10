@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 1;
+pragma user_version = 2;
 
 create table if not exists book_meta (
     key text primary key,
@@ -53,8 +53,11 @@ create table if not exists journal_line (
         and account_code not glob '*[^A-Za-z0-9._:/-]*'
     ),
     entry_side text not null check (entry_side in ('DEBIT', 'CREDIT')),
-    currency_code text not null,
-    amount text not null,
+    currency_code text not null check (
+        length(currency_code) = 3
+        and currency_code glob '[A-Z][A-Z][A-Z]'
+    ),
+    amount_minor integer not null check (amount_minor > 0),
     primary key (posting_id, line_order),
     foreign key (posting_id) references posting_fact(posting_id),
     foreign key (account_code) references account(account_code)

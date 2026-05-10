@@ -5,7 +5,9 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.contract.MonetaryAmount;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Posting, account, and query JSON records emitted by the CLI transport layer. */
@@ -62,12 +64,11 @@ public interface CliBookQueryJsonModels {
     }
   }
 
-  record JournalLinePayload(String accountCode, String side, String currencyCode, String amount) {
+  record JournalLinePayload(String accountCode, String side, MonetaryAmount amount) {
     public JournalLinePayload {
       accountCode = requireText(accountCode, "accountCode");
       side = requireText(side, "side");
-      currencyCode = requireText(currencyCode, "currencyCode");
-      amount = requireText(amount, "amount");
+      Objects.requireNonNull(amount, "amount");
     }
   }
 
@@ -112,16 +113,14 @@ public interface CliBookQueryJsonModels {
   }
 
   record BalanceBucketPayload(
-      String currencyCode,
-      String debitTotal,
-      String creditTotal,
-      String netAmount,
+      MonetaryAmount debitTotal,
+      MonetaryAmount creditTotal,
+      MonetaryAmount netAmount,
       String balanceSide) {
     public BalanceBucketPayload {
-      currencyCode = requireText(currencyCode, "currencyCode");
-      debitTotal = requireText(debitTotal, "debitTotal");
-      creditTotal = requireText(creditTotal, "creditTotal");
-      netAmount = requireText(netAmount, "netAmount");
+      Objects.requireNonNull(debitTotal, "debitTotal");
+      Objects.requireNonNull(creditTotal, "creditTotal");
+      Objects.requireNonNull(netAmount, "netAmount");
       balanceSide = requireText(balanceSide, "balanceSide");
     }
   }

@@ -34,14 +34,18 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
                 {
                     "accountCode": "1000",
                     "side": "DEBIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00",
+                    "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "1000",
+                    },
                 },
                 {
                     "accountCode": "2000",
                     "side": "CREDIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00",
+                    "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "1000",
+                    },
                 },
             ],
             "provenance": {
@@ -61,14 +65,18 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
                 {
                     "accountCode": "1000",
                     "side": "CREDIT",
-                    "currencyCode": "EUR",
-                    "amount": "4.00",
+                    "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "400",
+                    },
                 },
                 {
                     "accountCode": "2000",
                     "side": "DEBIT",
-                    "currencyCode": "EUR",
-                    "amount": "4.00",
+                    "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "400",
+                    },
                 },
             ],
             "provenance": {
@@ -102,4 +110,3 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
 
 def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-

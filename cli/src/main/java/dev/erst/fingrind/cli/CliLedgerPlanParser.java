@@ -8,7 +8,6 @@ import static dev.erst.fingrind.cli.CliJsonFieldAccess.requireObjectNode;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredArray;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
-import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseAmount;
 import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 
 import dev.erst.fingrind.contract.AccountBalanceQuery;
@@ -26,9 +25,7 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.InteractionLimits;
-import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -213,12 +210,8 @@ final class CliLedgerPlanParser {
               optionalText(assertionNode, ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO)
                   .map(LocalDate::parse)
                   .orElse(null),
-              new Money(
-                  new CurrencyCode(
-                      requiredText(
-                          assertionNode, ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE)),
-                  parseAmount(
-                      requiredText(assertionNode, ProtocolLedgerPlanFields.Assertion.NET_AMOUNT))),
+              CliJsonMoneyParser.requiredMoney(
+                  assertionNode, ProtocolLedgerPlanFields.Assertion.NET_AMOUNT),
               parseWireValue(
                   requiredText(assertionNode, ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE),
                   ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE,

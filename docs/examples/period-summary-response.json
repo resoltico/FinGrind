@@ -8,10 +8,18 @@
     "accountsTouched": 2,
     "currencyTotals": [
       {
-        "currencyCode": "EUR",
-        "debitTotal": "10",
-        "creditTotal": "10",
-        "netAmount": "0",
+        "debitTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "creditTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "netAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "0"
+        },
         "balanceSide": "ZERO"
       }
     ],
@@ -22,10 +30,18 @@
         "normalBalance": "DEBIT",
         "active": true,
         "declaredAt": "2026-04-21T01:37:10.306917Z",
-        "currencyCode": "EUR",
-        "debitTotal": "10",
-        "creditTotal": "0",
-        "netAmount": "10",
+        "debitTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "creditTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "0"
+        },
+        "netAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "balanceSide": "DEBIT"
       },
       {
@@ -34,10 +50,18 @@
         "normalBalance": "CREDIT",
         "active": true,
         "declaredAt": "2026-04-21T01:37:10.707292Z",
-        "currencyCode": "EUR",
-        "debitTotal": "0",
-        "creditTotal": "10",
-        "netAmount": "10",
+        "debitTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "0"
+        },
+        "creditTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "netAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "balanceSide": "CREDIT"
       }
     ]

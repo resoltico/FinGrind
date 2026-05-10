@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: DEVELOPER
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -14,8 +14,10 @@ route:
 **Prerequisites**: Either the preferred committed devcontainer path from
 [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md), or the host-native Java 26 setup from
 [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) plus Docker in the active shell as codified in
-[DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). No global Gradle install is required for repo work;
-use `./gradlew`.
+[DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). Root verification also depends on a working
+`python3` plus `pip` surface for the repo-owned Python tools in
+[`requirements-python-tools.txt`](../requirements-python-tools.txt). No global Gradle install is
+required for repo work; use `./gradlew`.
 
 The preferred contributor path is the committed devcontainer in
 [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md). VS Code is one supported client, not the
@@ -184,6 +186,7 @@ FinGrind's current public model is:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
+| Python helper toolchain | 3.12 in CI, plus repo-owned tools from `requirements-python-tools.txt` |
 | Gradle Wrapper | 9.5.0 |
 | Kotlin build logic | 2.4.0-Beta2 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
@@ -236,7 +239,9 @@ Root verification and packaging:
 
 ```bash
 java --version
+python3 -m pip install --user -r requirements-python-tools.txt
 ./gradlew verifyManagedSqliteSource
+./gradlew ruffCheck ruffFormatCheck
 ./gradlew prepareManagedSqlite
 ./gradlew check
 ./gradlew coverage
@@ -289,6 +294,7 @@ Local CLI usage from source:
 
 `./gradlew check` is the root CI gate. It runs:
 - Spotless formatting checks
+- Ruff lint and formatting checks for `scripts/**/*.py`
 - Error Prone compile-time checks
 - PMD on main and test sources
 - unit tests
@@ -296,7 +302,10 @@ Local CLI usage from source:
 
 Coverage-gate protocol:
 - never rely on JaCoCo defaults for verification semantics
-- per-module verification must set both `LINE` and `BRANCH` counters explicitly
+- per-module verification must enforce zero missed `LINE` and zero missed `BRANCH` counters from
+  the generated `jacocoTestReport.xml` surface
+- each `Test` task must reset its own JaCoCo `.exec` file before execution and may append within
+  that one task run only, so coverage truth cannot inherit stale data from earlier sessions
 - per-module reports and verification must read all local `build/jacoco/*.exec` files, not only
   `test.exec`
 - aggregated root coverage must read all subproject `build/jacoco/*.exec` files as well

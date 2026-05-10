@@ -4,14 +4,18 @@
     {
       "accountCode": "5100",
       "side": "CREDIT",
-      "currencyCode": "GBP",
-      "amount": "1e1000000100"
+      "amount": {
+        "currencyCode": "GBP",
+        "minorUnits": "1e1000000100"
+      }
     },
     {
       "accountCode": "6100",
       "side": "DEBIT",
-      "currencyCode": "GBP",
-      "amount": "123.45"
+      "amount": {
+        "currencyCode": "GBP",
+        "minorUnits": "12345"
+      }
     }
   ],
   "reversal": {

@@ -32,7 +32,7 @@ final class AccountLedgerPdfRenderer {
             .map(
                 balance ->
                     List.of(
-                        balance.netAmount().currencyCode().value(),
+                        balance.netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(balance.debitTotal()),
                         PdfValueFormatter.displayMoney(balance.creditTotal()),
                         PdfValueFormatter.displayMoney(balance.netAmount()),
@@ -57,7 +57,7 @@ final class AccountLedgerPdfRenderer {
                         entry.postingFact().journalEntry().effectiveDate().toString(),
                         entry.postingFact().postingId().value(),
                         PdfValueFormatter.reversalTarget(entry.postingFact()),
-                        entry.movement().netAmount().currencyCode().value(),
+                        entry.movement().netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(entry.movement().debitTotal()),
                         PdfValueFormatter.displayMoney(entry.movement().creditTotal()),
                         PdfValueFormatter.displayMoney(entry.movement().netAmount()),
@@ -76,7 +76,7 @@ final class AccountLedgerPdfRenderer {
             .map(
                 balance ->
                     List.of(
-                        balance.netAmount().currencyCode().value(),
+                        balance.netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(balance.debitTotal()),
                         PdfValueFormatter.displayMoney(balance.creditTotal()),
                         PdfValueFormatter.displayMoney(balance.netAmount()),

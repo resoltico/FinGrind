@@ -54,9 +54,7 @@ def main() -> None:
     sqlite = require_mapping(environment.get("sqlite"), "payload.environment.sqlite")
     runtime = require_mapping(sqlite.get("runtime"), "payload.environment.sqlite.runtime")
 
-    expected_runtime_distribution = runtime_surface.get(
-        args.expected_runtime_distribution_key
-    )
+    expected_runtime_distribution = runtime_surface.get(args.expected_runtime_distribution_key)
 
     checks = [
         (
@@ -82,28 +80,23 @@ def main() -> None:
             f"{args.label} missing loaded SQLite version",
         ),
         (
-            runtime.get("loadedSqlite3mcVersion")
-            == managed_sqlite.get("requiredSqlite3mcVersion"),
+            runtime.get("loadedSqlite3mcVersion") == managed_sqlite.get("requiredSqlite3mcVersion"),
             f"{args.label} missing loaded SQLite3 Multiple Ciphers version",
         ),
         (
-            sqlite.get("requiredSqliteSourceId")
-            == managed_sqlite.get("requiredSqliteSourceId"),
+            sqlite.get("requiredSqliteSourceId") == managed_sqlite.get("requiredSqliteSourceId"),
             f"{args.label} missing required SQLite source id",
         ),
         (
-            runtime.get("loadedSqliteSourceId")
-            == managed_sqlite.get("requiredSqliteSourceId"),
+            runtime.get("loadedSqliteSourceId") == managed_sqlite.get("requiredSqliteSourceId"),
             f"{args.label} missing loaded SQLite source id",
         ),
         (
-            sqlite.get("requiredCompileOptions")
-            == managed_sqlite.get("requiredCompileOptions"),
+            sqlite.get("requiredCompileOptions") == managed_sqlite.get("requiredCompileOptions"),
             f"{args.label} missing canonical SQLite compile options",
         ),
         (
-            sqlite.get("forbiddenCompileOptions")
-            == managed_sqlite.get("forbiddenCompileOptions"),
+            sqlite.get("forbiddenCompileOptions") == managed_sqlite.get("forbiddenCompileOptions"),
             f"{args.label} missing canonical forbidden SQLite compile options",
         ),
         (

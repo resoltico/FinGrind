@@ -3,9 +3,8 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.BookFormatContract;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
@@ -43,7 +42,6 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -264,7 +262,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           if (account == null) {
             return Optional.empty();
           }
-          Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+          Map<CurrencyUnit, Totals> totalsByCurrency = mutableMap();
           postingsByPostingId.values().stream()
               .filter(
                   posting ->
@@ -277,7 +275,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
               .forEach(line -> accumulate(totalsByCurrency, line));
           List<CurrencyBalance> balances =
               totalsByCurrency.entrySet().stream()
-                  .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+                  .sorted(Comparator.comparing(entry -> entry.getKey().code()))
                   .map(entry -> balance(entry.getKey(), entry.getValue()))
                   .toList();
           return Optional.of(new AccountBalanceView(account, query.effectiveDateRange(), balances));
@@ -343,7 +341,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                                               .effectiveDate()
                                               .isBefore(lowerBound)))
                       .toList());
-          Map<CurrencyCode, Totals> runningTotals = totalsMap(openingBalances);
+          Map<CurrencyUnit, Totals> runningTotals = totalsMap(openingBalances);
           List<AccountLedgerEntryView> entries = new java.util.ArrayList<>();
           orderedPostings.stream()
               .filter(posting -> range.contains(posting.journalEntry().effectiveDate()))
@@ -352,11 +350,12 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                     CurrencyBalance movement = movementFor(account, posting);
                     Totals totals =
                         runningTotals.computeIfAbsent(
-                            movement.netAmount().currencyCode(), ignored -> new Totals());
-                    totals.debit = totals.debit.add(movement.debitTotal().amount());
-                    totals.credit = totals.credit.add(movement.creditTotal().amount());
+                            movement.netAmount().currencyUnit(), ignored -> new Totals());
+                    totals.debit = Math.addExact(totals.debit, movement.debitTotal().minorUnits());
+                    totals.credit =
+                        Math.addExact(totals.credit, movement.creditTotal().minorUnits());
                     dev.erst.fingrind.core.CurrencyBalance runningBalance =
-                        balance(movement.netAmount().currencyCode(), totals);
+                        balance(movement.netAmount().currencyUnit(), totals);
                     entries.add(
                         new AccountLedgerEntryView(
                             posting,
@@ -386,8 +385,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                                   .effectiveDate()
                                   .isAfter(query.effectiveDateTo()))
                   .toList();
-          Map<CurrencyCode, Totals> currencyTotals = mutableMap();
-          Map<AccountCode, Map<CurrencyCode, Totals>> accountTotals = mutableMap();
+          Map<CurrencyUnit, Totals> currencyTotals = mutableMap();
+          Map<AccountCode, Map<CurrencyUnit, Totals>> accountTotals = mutableMap();
           postings.stream()
               .flatMap(posting -> posting.journalEntry().lines().stream())
               .forEach(
@@ -395,12 +394,12 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                     accumulate(currencyTotals, line);
                     accountTotals
                         .computeIfAbsent(line.accountCode(), ignored -> mutableMap())
-                        .computeIfAbsent(line.amount().currencyCode(), ignored -> new Totals());
+                        .computeIfAbsent(line.amount().currencyUnit(), ignored -> new Totals());
                     accumulate(accountTotals.get(line.accountCode()), line);
                   });
           List<PeriodCurrencySummaryView> currencySummaries =
               currencyTotals.entrySet().stream()
-                  .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+                  .sorted(Comparator.comparing(entry -> entry.getKey().code()))
                   .map(
                       entry ->
                           new PeriodCurrencySummaryView(balance(entry.getKey(), entry.getValue())))
@@ -413,7 +412,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                         RegisteredAccount account =
                             Objects.requireNonNull(accountsByCode.get(entry.getKey()), "account");
                         return entry.getValue().entrySet().stream()
-                            .sorted(Comparator.comparing(currency -> currency.getKey().value()))
+                            .sorted(Comparator.comparing(currency -> currency.getKey().code()))
                             .map(
                                 currencyEntry ->
                                     new PeriodAccountActivityView(
@@ -554,34 +553,26 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
             && postingId.compareTo(pageCursor.postingId().value()) < 0);
   }
 
-  private static void accumulate(Map<CurrencyCode, Totals> totalsByCurrency, JournalLine line) {
+  private static void accumulate(Map<CurrencyUnit, Totals> totalsByCurrency, JournalLine line) {
     Totals totals =
         totalsByCurrency.computeIfAbsent(
-            line.amount().currencyCode(), ignoredCurrencyCode -> new Totals());
+            line.amount().currencyUnit(), ignoredCurrencyCode -> new Totals());
     if (line.side() == JournalLine.EntrySide.DEBIT) {
-      totals.debit = totals.debit.add(line.amount().amount());
+      totals.debit = Math.addExact(totals.debit, line.amount().minorUnits());
       return;
     }
-    totals.credit = totals.credit.add(line.amount().amount());
+    totals.credit = Math.addExact(totals.credit, line.amount().minorUnits());
   }
 
-  private static CurrencyBalance balance(CurrencyCode currencyCode, Totals totals) {
-    BigDecimal net = totals.debit.subtract(totals.credit);
-    BigDecimal absoluteNet = net.abs();
-    BalanceSide balanceSide = net.signum() > 0 ? BalanceSide.DEBIT : BalanceSide.CREDIT;
-    if (absoluteNet.signum() == 0) {
-      balanceSide = BalanceSide.ZERO;
-    }
-    return new CurrencyBalance(
-        new Money(currencyCode, totals.debit),
-        new Money(currencyCode, totals.credit),
-        new Money(currencyCode, absoluteNet),
-        balanceSide);
+  private static CurrencyBalance balance(CurrencyUnit currencyUnit, Totals totals) {
+    return CurrencyBalance.ofTotals(
+        Money.ofMinorUnits(currencyUnit, totals.debit),
+        Money.ofMinorUnits(currencyUnit, totals.credit));
   }
 
   private static List<CurrencyBalance> balancesFor(
       RegisteredAccount account, List<CommittedPosting> postings) {
-    Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+    Map<CurrencyUnit, Totals> totalsByCurrency = mutableMap();
     postings.stream()
         .flatMap(posting -> posting.journalEntry().lines().stream())
         .filter(line -> line.accountCode().equals(account.accountCode()))
@@ -590,31 +581,31 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   }
 
   private static List<CurrencyBalance> balancesFromTotals(
-      Map<CurrencyCode, Totals> totalsByCurrency) {
+      Map<CurrencyUnit, Totals> totalsByCurrency) {
     return totalsByCurrency.entrySet().stream()
-        .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+        .sorted(Comparator.comparing(entry -> entry.getKey().code()))
         .map(entry -> balance(entry.getKey(), entry.getValue()))
         .toList();
   }
 
-  private static Map<CurrencyCode, Totals> totalsMap(List<CurrencyBalance> balances) {
-    Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+  private static Map<CurrencyUnit, Totals> totalsMap(List<CurrencyBalance> balances) {
+    Map<CurrencyUnit, Totals> totalsByCurrency = mutableMap();
     for (CurrencyBalance balance : balances) {
-      totalsByCurrency.put(balance.netAmount().currencyCode(), totalsFrom(balance));
+      totalsByCurrency.put(balance.netAmount().currencyUnit(), totalsFrom(balance));
     }
     return totalsByCurrency;
   }
 
   private static Totals totalsFrom(CurrencyBalance balance) {
     Totals totals = new Totals();
-    totals.debit = balance.debitTotal().amount();
-    totals.credit = balance.creditTotal().amount();
+    totals.debit = balance.debitTotal().minorUnits();
+    totals.credit = balance.creditTotal().minorUnits();
     return totals;
   }
 
   private static CurrencyBalance movementFor(
       RegisteredAccount account, CommittedPosting postingFact) {
-    Map<CurrencyCode, Totals> totalsByCurrency = mutableMap();
+    Map<CurrencyUnit, Totals> totalsByCurrency = mutableMap();
     postingFact.journalEntry().lines().stream()
         .filter(line -> line.accountCode().equals(account.accountCode()))
         .forEach(line -> accumulate(totalsByCurrency, line));
@@ -655,8 +646,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
 
   /** Mutable debit and credit accumulators for one currency bucket. */
   private static final class Totals {
-    private BigDecimal debit = BigDecimal.ZERO;
-    private BigDecimal credit = BigDecimal.ZERO;
+    private long debit;
+    private long credit;
   }
 
   private record Snapshot(

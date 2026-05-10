@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented"]
@@ -272,11 +272,7 @@ public record AccountBalanceQuery(AccountCode accountCode, EffectiveDateRange ef
 [DOC_01_Core.md](./DOC_01_Core.md).
 
 ```java
-public record CurrencyBalance(
-    Money debitTotal,
-    Money creditTotal,
-    Money netAmount,
-    BalanceSide balanceSide)
+public final class CurrencyBalance
 ```
 
 - Purpose: reuse one grouped balance concept across public reports and local bookkeeping views

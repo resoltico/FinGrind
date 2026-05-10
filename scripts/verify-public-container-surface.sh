@@ -77,8 +77,16 @@ JSON
 {
   "effectiveDate": "2026-04-08",
   "lines": [
-    {"accountCode":"1000","side":"DEBIT","currencyCode":"EUR","amount":"10.00"},
-    {"accountCode":"2000","side":"CREDIT","currencyCode":"EUR","amount":"10.00"}
+    {
+      "accountCode":"1000",
+      "side":"DEBIT",
+      "amount":{"currencyCode":"EUR","minorUnits":"1000"}
+    },
+    {
+      "accountCode":"2000",
+      "side":"CREDIT",
+      "amount":{"currencyCode":"EUR","minorUnits":"1000"}
+    }
   ],
   "provenance": {
     "actorId": "release-protocol",
@@ -142,4 +150,3 @@ verify_mounted_book_surface() {
 verify_ref "${expected_version}"
 verify_ref latest
 verify_mounted_book_surface
-

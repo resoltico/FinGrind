@@ -4,26 +4,34 @@
     {
       "accountCode": "1100",
       "side": "DEBIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     },
     {
       "accountCode": "1200",
       "side": "DEBIT",
-      "currencyCode": "EUR",
-      "amount": "15.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1500"
+      }
     },
     {
       "accountCode": "2100",
       "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     },
     {
       "accountCode": "2200",
       "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "15.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1500"
+      }
     }
   ],
   "provenance": {

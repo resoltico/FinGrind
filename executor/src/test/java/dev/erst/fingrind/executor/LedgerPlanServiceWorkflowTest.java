@@ -29,11 +29,9 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -85,7 +83,7 @@ class LedgerPlanServiceWorkflowTest {
                                   new AccountCode("1000"),
                                   null,
                                   null,
-                                  new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+                                  Money.parse("EUR", "10.00"),
                                   BalanceSide.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());

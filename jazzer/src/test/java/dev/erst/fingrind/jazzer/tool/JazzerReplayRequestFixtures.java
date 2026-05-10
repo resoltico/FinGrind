@@ -11,14 +11,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -40,14 +44,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -70,14 +78,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ]
         }
@@ -92,14 +104,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "1e1000000100"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1e1000000100"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "1.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "100"
+              }
             }
           ],
           "provenance": {
@@ -121,14 +137,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -151,14 +171,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -181,14 +205,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -211,14 +239,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
             }
           ],
           "provenance": {
@@ -240,14 +272,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "5000",
               "side": "CREDIT",
-              "currencyCode": "GBP",
-              "amount": "123.45"
+              "amount": {
+                "currencyCode": "GBP",
+                "minorUnits": "12345"
+              }
             },
             {
               "accountCode": "6000",
               "side": "DEBIT",
-              "currencyCode": "GBP",
-              "amount": "123.45"
+              "amount": {
+                "currencyCode": "GBP",
+                "minorUnits": "12345"
+              }
             }
           ],
           "reversal": {
@@ -273,14 +309,18 @@ final class JazzerReplayRequestFixtures {
             {
               "accountCode": "3000",
               "side": "CREDIT",
-              "currencyCode": "USD",
-              "amount": "99.95"
+              "amount": {
+                "currencyCode": "USD",
+                "minorUnits": "9995"
+              }
             },
             {
               "accountCode": "4000",
               "side": "DEBIT",
-              "currencyCode": "USD",
-              "amount": "99.95"
+              "amount": {
+                "currencyCode": "USD",
+                "minorUnits": "9995"
+              }
             }
           ],
           "reversal": {

@@ -2,22 +2,19 @@ package dev.erst.fingrind.report.pdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 /** Focused branch coverage tests for {@link PdfValueFormatter}. */
 class PdfValueFormatterTest {
   @Test
-  void displayMoneyAndAmountStripTrailingZeros() {
-    assertEquals("12.5", PdfValueFormatter.displayAmount(new BigDecimal("12.500")));
-    assertEquals(
-        "42",
-        PdfValueFormatter.displayMoney(
-            new Money(new CurrencyCode("EUR"), new BigDecimal("42.0000"))));
+  void displayMoneyUsesCanonicalCurrencyScale() {
+    assertEquals("12.50", PdfValueFormatter.displayMoney(Money.parse("EUR", "12.50")));
+    assertEquals("42.00", PdfValueFormatter.displayMoney(Money.parse("EUR", "42.00")));
+    assertEquals("100", PdfValueFormatter.displayMoney(Money.parse("JPY", "100")));
+    assertEquals("1.250", PdfValueFormatter.displayMoney(Money.parse("BHD", "1.25")));
   }
 
   @Test

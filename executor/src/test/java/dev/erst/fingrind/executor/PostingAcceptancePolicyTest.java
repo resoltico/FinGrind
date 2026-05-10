@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -27,7 +26,6 @@ import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -151,10 +149,7 @@ class PostingAcceptancePolicyTest {
   }
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(
-        new AccountCode(accountCode),
-        side,
-        new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
   }
 
   /** Validation-book double that exposes the batch account lookup path explicitly. */

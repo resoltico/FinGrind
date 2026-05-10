@@ -157,7 +157,6 @@ final class MachineContractLedgerPlanVariantSchemas {
                       .optionalAssertionEffectiveDateFromField(),
                   MachineContractLedgerPlanAssertionFieldSpecs
                       .optionalAssertionEffectiveDateToField(),
-                  MachineContractLedgerPlanAssertionFieldSpecs.requiredAssertionCurrencyCodeField(),
                   MachineContractLedgerPlanAssertionFieldSpecs.requiredAssertionNetAmountField(),
                   MachineContractLedgerPlanAssertionFieldSpecs
                       .requiredAssertionBalanceSideField()));

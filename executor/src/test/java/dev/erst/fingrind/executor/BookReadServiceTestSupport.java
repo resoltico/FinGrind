@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -42,7 +41,6 @@ import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -153,20 +151,18 @@ final class BookReadServiceTestSupport {
   }
 
   static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(
-        new AccountCode(accountCode),
-        side,
-        new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
   }
 
   static CurrencyBalance currencyBalance(
       String debitAmount, String creditAmount, String netAmount, BalanceSide balanceSide) {
-    CurrencyCode currencyCode = new CurrencyCode("EUR");
-    return new CurrencyBalance(
-        new Money(currencyCode, new BigDecimal(debitAmount)),
-        new Money(currencyCode, new BigDecimal(creditAmount)),
-        new Money(currencyCode, new BigDecimal(netAmount)),
-        balanceSide);
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(Money.parse("EUR", debitAmount), Money.parse("EUR", creditAmount));
+    if (!balance.netAmount().equals(Money.parse("EUR", netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 
   /** Counts account lookups so account-balance tests can assert the read seam stays single-read. */

@@ -120,6 +120,7 @@ docker run --rm "${image_tag}" bash -lc '
     gh --version >/dev/null
     jq --version >/dev/null
     python3 --version >/dev/null
+    python3 -m pip --version >/dev/null
     shellcheck --version >/dev/null
     fc-match "DejaVu Sans" >/dev/null
 '

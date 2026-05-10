@@ -34,7 +34,7 @@ final class AccountBalancePdfRenderer {
             .map(
                 balance ->
                     List.of(
-                        balance.netAmount().currencyCode().value(),
+                        balance.netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(balance.debitTotal()),
                         PdfValueFormatter.displayMoney(balance.creditTotal()),
                         PdfValueFormatter.displayMoney(balance.netAmount()),

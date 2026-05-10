@@ -1,0 +1,20 @@
+{
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/bhd_three_scale_valid.json",
+  "coverageIntent" : "BHD three-scale request parsing",
+  "expectation" : {
+    "outcomeKind" : "success",
+    "message" : "Replay completed without surfacing a bug.",
+    "details" : {
+      "type" : "CLI_REQUEST",
+      "request" : {
+        "effectiveDate" : "2026-06-11",
+        "idempotencyKey" : "seed-cli-bhd-idem-1",
+        "lineCount" : 2,
+        "reversalPresent" : false
+      },
+      "actorType" : "AGENT",
+      "sourceChannel" : "CLI"
+    }
+  }
+}

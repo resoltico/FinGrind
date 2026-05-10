@@ -8,7 +8,6 @@ import json
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 from contract_values import load_contract_values
@@ -103,7 +102,9 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
     assert isinstance(host_bundle_target, dict)
     launcher_path = joined_path(bundle_root, str(host_bundle_target["launcherPath"]))
     application_jar = bundle_root / "lib" / "app" / "fingrind.jar"
-    native_library = bundle_root / "lib" / "native" / str(host_bundle_target["sqliteLibraryFileName"])
+    native_library = (
+        bundle_root / "lib" / "native" / str(host_bundle_target["sqliteLibraryFileName"])
+    )
     native_library_checksum = (
         bundle_root
         / "lib"
@@ -130,22 +131,37 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         require(required_file.is_file(), f"missing bundle file at {required_file}")
 
     if os.name != "nt":
-        require(os.access(launcher_path, os.X_OK), f"missing executable bundle launcher at {launcher_path}")
-        require(os.access(java_command, os.X_OK), f"missing executable bundled Java runtime at {java_command}")
+        require(
+            os.access(launcher_path, os.X_OK),
+            f"missing executable bundle launcher at {launcher_path}",
+        )
+        require(
+            os.access(java_command, os.X_OK),
+            f"missing executable bundled Java runtime at {java_command}",
+        )
 
 
 def verify_bundle_manifest(bundle_root: Path, contract: dict[str, object]) -> None:
     readme_text = normalize_newlines((bundle_root / "README.md").read_text(encoding="utf-8"))
-    require_match(readme_text, r"^# FinGrind ", "bundle README did not start with the FinGrind title")
+    require_match(
+        readme_text, r"^# FinGrind ", "bundle README did not start with the FinGrind title"
+    )
     require_match(
         readme_text,
         r"bundle-manifest\.json",
         "bundle README did not mention the machine-readable bundle manifest",
     )
 
-    manifest_text = normalize_newlines((bundle_root / "bundle-manifest.json").read_text(encoding="utf-8"))
+    manifest_text = normalize_newlines(
+        (bundle_root / "bundle-manifest.json").read_text(encoding="utf-8")
+    )
     compact_manifest_text = re.sub(r"\s+", "", manifest_text)
-    for forbidden_key in ("discoveryCommands", "administrationCommands", "queryCommands", "writeCommands"):
+    for forbidden_key in (
+        "discoveryCommands",
+        "administrationCommands",
+        "queryCommands",
+        "writeCommands",
+    ):
         require_no_match(
             compact_manifest_text,
             '"' + forbidden_key + '":',
@@ -183,7 +199,8 @@ def verify_bundle_manifest(bundle_root: Path, contract: dict[str, object]) -> No
             "bundle manifest did not report the canonical storage engine",
         ),
         (
-            manifest["managedSqlite"]["bookProtectionMode"] == runtime_surface["bookProtectionMode"],
+            manifest["managedSqlite"]["bookProtectionMode"]
+            == runtime_surface["bookProtectionMode"],
             "bundle manifest did not report the canonical book protection mode",
         ),
         (
@@ -251,11 +268,13 @@ def verify_bundle_manifest(bundle_root: Path, contract: dict[str, object]) -> No
             "bundle manifest did not publish the canonical bootstrap help command",
         ),
         (
-            manifest["bootstrap"]["machineReadableContractCommand"][-1] == operation_ids["capabilities"],
+            manifest["bootstrap"]["machineReadableContractCommand"][-1]
+            == operation_ids["capabilities"],
             "bundle manifest did not publish the canonical machine-readable contract command",
         ),
         (
-            manifest["bootstrap"]["requestTemplateCommand"][-1] == operation_ids["printRequestTemplate"],
+            manifest["bootstrap"]["requestTemplateCommand"][-1]
+            == operation_ids["printRequestTemplate"],
             "bundle manifest did not publish the canonical request-template bootstrap command",
         ),
         (

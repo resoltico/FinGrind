@@ -384,9 +384,10 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         });
     Path unsupportedBookPath = tempDirectory.resolve("helper-unsupported.sqlite");
     initializeBookOnDisk(unsupportedBookPath);
+    int unsupportedVersion = SqliteBookContract.FORMAT_VERSION + 1;
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
-        database -> database.executeStatement("pragma user_version = 2"));
+        database -> database.executeStatement("pragma user_version = " + unsupportedVersion));
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
         database -> {

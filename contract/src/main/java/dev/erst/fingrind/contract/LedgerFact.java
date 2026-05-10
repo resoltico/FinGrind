@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /** One compact name/value fact recorded for a ledger-plan step. */
 public sealed interface LedgerFact
-    permits LedgerFact.Text, LedgerFact.Flag, LedgerFact.Count, LedgerFact.Group {
+    permits LedgerFact.Text, LedgerFact.Flag, LedgerFact.Count, LedgerFact.Money, LedgerFact.Group {
   /** Stable fact name within a step journal entry. */
   String name();
 
@@ -23,6 +23,11 @@ public sealed interface LedgerFact
   /** Creates one integer-valued fact. */
   static Count count(String name, int value) {
     return new Count(name, value);
+  }
+
+  /** Creates one exact-money-valued fact. */
+  static Money money(String name, MonetaryAmount value) {
+    return new Money(name, value);
   }
 
   /** Creates one grouped fact that nests a structured set of child facts. */
@@ -62,6 +67,15 @@ public sealed interface LedgerFact
     /** Validates one integer-valued journal fact. */
     public Count {
       requireName(name);
+    }
+  }
+
+  /** Exact-money-valued journal fact. */
+  record Money(String name, MonetaryAmount value) implements LedgerFact {
+    /** Validates one exact-money-valued journal fact. */
+    public Money {
+      requireName(name);
+      Objects.requireNonNull(value, "value");
     }
   }
 

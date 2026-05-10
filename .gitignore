@@ -1,5 +1,6 @@
 # Gradle caches and build outputs
 .gradle/
+.ruff_cache/
 build/
 **/build/
 out/

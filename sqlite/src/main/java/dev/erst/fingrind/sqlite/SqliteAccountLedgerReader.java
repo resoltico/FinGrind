@@ -2,7 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
@@ -12,7 +12,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerEntryView;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,20 +30,20 @@ final class SqliteAccountLedgerReader {
   AccountLedgerView accountLedger(
       SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
     List<CurrencyBalance> openingBalances = openingBalances(activeDatabase, query, account);
-    Map<CurrencyCode, BigDecimal> runningTotals = signedRunningTotals(openingBalances);
+    Map<CurrencyUnit, Long> runningTotals = signedRunningTotals(openingBalances);
     List<AccountLedgerEntryView> entries = new ArrayList<>();
     for (CommittedPosting posting : postingsForAccountLedger(activeDatabase, query)) {
       LedgerMovement movement = ledgerMovement(posting, account);
-      BigDecimal signedNet = movement.debit.subtract(movement.credit);
-      BigDecimal runningSigned =
-          runningTotals.merge(movement.currencyCode, signedNet, BigDecimal::add);
+      long signedNet = Math.subtractExact(movement.debit, movement.credit);
+      long runningSigned = runningTotals.merge(movement.currencyCode, signedNet, Math::addExact);
       entries.add(
           new AccountLedgerEntryView(
               posting,
               SqliteBalanceMath.currencyBalance(
                   movement.currencyCode, movement.debit, movement.credit),
-              new Money(movement.currencyCode, runningSigned.abs()),
-              runningBalanceSide(runningSigned)));
+              Money.ofMinorUnits(
+                  movement.currencyCode, SqliteBalanceMath.absoluteMinorUnits(runningSigned)),
+              SqliteBalanceMath.balanceSide(runningSigned)));
     }
     return new AccountLedgerView(
         account,
@@ -113,45 +112,36 @@ final class SqliteAccountLedgerReader {
         posting.journalEntry().lines().stream()
             .filter(line -> line.accountCode().equals(account.accountCode()))
             .toList();
-    CurrencyCode currencyCode = matchingLines.getFirst().amount().currencyCode();
-    BigDecimal debit = BigDecimal.ZERO;
-    BigDecimal credit = BigDecimal.ZERO;
+    CurrencyUnit currencyCode = posting.journalEntry().currencyUnit();
+    long debit = 0L;
+    long credit = 0L;
     for (JournalLine line : matchingLines) {
       if (line.side() == JournalLine.EntrySide.DEBIT) {
-        debit = debit.add(line.amount().amount());
+        debit = Math.addExact(debit, line.amount().minorUnits());
       } else {
-        credit = credit.add(line.amount().amount());
+        credit = Math.addExact(credit, line.amount().minorUnits());
       }
     }
     return new LedgerMovement(currencyCode, debit, credit);
   }
 
-  private static Map<CurrencyCode, BigDecimal> signedRunningTotals(
+  private static Map<CurrencyUnit, Long> signedRunningTotals(
       List<CurrencyBalance> openingBalances) {
-    Map<CurrencyCode, BigDecimal> runningTotals = SqliteReportRowValues.insertionOrderedMap();
+    Map<CurrencyUnit, Long> runningTotals = SqliteReportRowValues.insertionOrderedMap();
     for (CurrencyBalance balance :
         openingBalances.stream().sorted(SqliteReportRowValues.BALANCE_ORDER).toList()) {
-      BigDecimal signedNet =
+      long signedNet =
           balance.balanceSide() == BalanceSide.DEBIT
-              ? balance.netAmount().amount()
-              : balance.netAmount().amount().negate();
-      runningTotals.put(balance.netAmount().currencyCode(), signedNet);
+              ? balance.netAmount().minorUnits()
+              : -balance.netAmount().minorUnits();
+      runningTotals.put(balance.netAmount().currencyUnit(), signedNet);
     }
     return runningTotals;
   }
 
-  private static BalanceSide runningBalanceSide(BigDecimal signedBalance) {
-    if (signedBalance.signum() == 0) {
-      return BalanceSide.ZERO;
-    }
-    return signedBalance.signum() > 0 ? BalanceSide.DEBIT : BalanceSide.CREDIT;
-  }
-
-  private record LedgerMovement(CurrencyCode currencyCode, BigDecimal debit, BigDecimal credit) {
+  private record LedgerMovement(CurrencyUnit currencyCode, long debit, long credit) {
     private LedgerMovement {
       Objects.requireNonNull(currencyCode, "currencyCode");
-      Objects.requireNonNull(debit, "debit");
-      Objects.requireNonNull(credit, "credit");
     }
   }
 }

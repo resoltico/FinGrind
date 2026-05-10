@@ -16,6 +16,14 @@ class SqliteBookRoundTripFuzzAssertionsTest {
                 CliFuzzHarnessTestSupport.basicValidRequestBytes()));
     assertDoesNotThrow(
         () ->
+            SqliteBookRoundTripFuzzAssertions.roundTripSingleBook(
+                CliFuzzHarnessTestSupport.validJpyRequestBytes()));
+    assertDoesNotThrow(
+        () ->
+            SqliteBookRoundTripFuzzAssertions.roundTripSingleBook(
+                CliFuzzHarnessTestSupport.validBhdRequestBytes()));
+    assertDoesNotThrow(
+        () ->
             SqliteBookRoundTripFuzzAssertions.roundTripParsedCommand(
                 CliFuzzFixtures.readPostEntryCommand(
                     CliFuzzHarnessTestSupport.reversalTargetMissingRequest().getBytes(UTF_8)),
@@ -34,6 +42,16 @@ class SqliteBookRoundTripFuzzAssertionsTest {
             harness.roundTripSingleBook(
                 CliFuzzHarnessTestSupport.fuzzedBytes(
                     CliFuzzHarnessTestSupport.basicValidRequestBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.roundTripSingleBook(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validJpyRequestBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.roundTripSingleBook(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validBhdRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.roundTripSingleBook(

@@ -1,4 +1,5 @@
 import dev.erst.fingrind.buildlogic.DistributionContractReader
+import org.gradle.api.tasks.JavaExec
 
 plugins {
     `java-library`
@@ -28,4 +29,22 @@ tasks.named<ProcessResources>("processResources") {
         into("META-INF/fingrind")
         rename { "managed-sqlite.sha256" }
     }
+}
+
+tasks.register<JavaExec>("refreshProtectedBookFixture") {
+    group = "verification"
+    description = "Regenerates the committed protected-book compatibility fixture and metadata."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("dev.erst.fingrind.sqlite.SqliteProtectedBookFixtureGenerator")
+    args(
+        project.layout.projectDirectory
+            .file("src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite")
+            .asFile
+            .absolutePath,
+        project.layout.projectDirectory
+            .file("src/test/resources/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.metadata.json")
+            .asFile
+            .absolutePath,
+    )
 }

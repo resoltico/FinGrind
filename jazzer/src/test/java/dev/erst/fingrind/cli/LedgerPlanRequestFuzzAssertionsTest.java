@@ -15,6 +15,14 @@ class LedgerPlanRequestFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             LedgerPlanRequestFuzzAssertions.readLedgerPlan(
+                CliFuzzHarnessTestSupport.validJpyLedgerPlanBytes()));
+    assertDoesNotThrow(
+        () ->
+            LedgerPlanRequestFuzzAssertions.readLedgerPlan(
+                CliFuzzHarnessTestSupport.validBhdLedgerPlanBytes()));
+    assertDoesNotThrow(
+        () ->
+            LedgerPlanRequestFuzzAssertions.readLedgerPlan(
                 CliFuzzHarnessTestSupport.rejectedMissingBookListPostingsLedgerPlanBytes()));
     assertDoesNotThrow(
         () ->
@@ -30,6 +38,16 @@ class LedgerPlanRequestFuzzAssertionsTest {
             harness.readLedgerPlan(
                 CliFuzzHarnessTestSupport.fuzzedBytes(
                     CliFuzzHarnessTestSupport.basicValidLedgerPlanBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.readLedgerPlan(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validJpyLedgerPlanBytes())));
+    assertDoesNotThrow(
+        () ->
+            harness.readLedgerPlan(
+                CliFuzzHarnessTestSupport.fuzzedBytes(
+                    CliFuzzHarnessTestSupport.validBhdLedgerPlanBytes())));
     assertDoesNotThrow(
         () ->
             harness.readLedgerPlan(

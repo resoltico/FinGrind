@@ -119,8 +119,8 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
   void writeReportResults_supportsJsonHumanAndCsvVariants() {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
     CurrencyBalance eurDebitBalance =
-        new CurrencyBalance(
-            money("EUR", "10.00"), money("EUR", "4.00"), money("EUR", "6.00"), BalanceSide.DEBIT);
+        CliResponseWriterTestSupport.currencyBalance(
+            "EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT);
     PostingFact postingFact = reversalPostingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(

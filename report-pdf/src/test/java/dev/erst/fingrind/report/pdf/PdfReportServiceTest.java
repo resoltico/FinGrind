@@ -25,7 +25,6 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -38,7 +37,6 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -58,7 +56,7 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.33.0", CLOCK);
+      new PdfReportService("FinGrind", "0.34.0", CLOCK);
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -131,10 +129,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.33.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.34.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.33.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.34.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
@@ -147,7 +145,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.33.0", information.getCreator());
+      assertEquals("FinGrind 0.34.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -209,13 +207,11 @@ class PdfReportServiceTest {
             effectiveDate,
             List.of(
                 new JournalLine(
-                    CASH_ACCOUNT.accountCode(),
-                    JournalLine.EntrySide.DEBIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal(amount))),
+                    CASH_ACCOUNT.accountCode(), JournalLine.EntrySide.DEBIT, money("EUR", amount)),
                 new JournalLine(
                     REVENUE_ACCOUNT.accountCode(),
                     JournalLine.EntrySide.CREDIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal(amount))))),
+                    money("EUR", amount)))),
         index % 5 == 0
             ? PostingLineage.reversal(
                 new ReversalReference(new PostingId("prior-%03d".formatted(index))),
@@ -249,14 +245,16 @@ class PdfReportServiceTest {
       String creditTotal,
       String netAmount,
       BalanceSide balanceSide) {
-    return new CurrencyBalance(
-        money(currencyCode, debitTotal),
-        money(currencyCode, creditTotal),
-        money(currencyCode, netAmount),
-        balanceSide);
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 
   private static Money money(String currencyCode, String amount) {
-    return new Money(new CurrencyCode(currencyCode), new BigDecimal(amount));
+    return Money.parse(currencyCode, amount);
   }
 }

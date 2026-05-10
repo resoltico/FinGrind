@@ -13,15 +13,12 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
 /** Derives deterministic workflow variants for SQLite round-trip coverage. */
 final class SqliteRoundTripWorkflowCommandDerivation {
-  private static final BigDecimal ONE_CENT = new BigDecimal("0.01");
-
   private SqliteRoundTripWorkflowCommandDerivation() {}
 
   static PostEntryCommand syntheticDirectCommand(PostEntryCommand command, String scenario) {
@@ -61,9 +58,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
         .map(
             line ->
                 new JournalLine(
-                    line.accountCode(),
-                    oppositeSide(line.side()),
-                    new Money(line.amount().currencyCode(), line.amount().amount())))
+                    line.accountCode(), oppositeSide(line.side()), line.amount().money()))
         .toList();
   }
 
@@ -110,7 +105,8 @@ final class SqliteRoundTripWorkflowCommandDerivation {
     return new JournalLine(
         line.accountCode(),
         line.side(),
-        new Money(line.amount().currencyCode(), line.amount().amount().add(ONE_CENT)));
+        Money.ofMinorUnits(
+            line.amount().currencyUnit(), Math.addExact(line.amount().minorUnits(), 1L)));
   }
 
   private static JournalLine.EntrySide oppositeSide(JournalLine.EntrySide side) {

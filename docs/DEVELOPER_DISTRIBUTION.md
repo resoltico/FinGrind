@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]

@@ -9,7 +9,6 @@ import sys
 import tarfile
 import zipfile
 
-
 FORBIDDEN_EXACT = {"AGENTS.md", ".codex"}
 FORBIDDEN_SEGMENTS = ("/AGENTS.md", "/.codex", "/.codex/")
 

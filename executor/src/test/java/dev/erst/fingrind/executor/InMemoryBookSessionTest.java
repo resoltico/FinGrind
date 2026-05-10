@@ -16,7 +16,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -54,7 +53,6 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -456,12 +454,12 @@ class InMemoryBookSessionTest {
                   new AccountLedgerEntryView(
                       periodUsd,
                       currencyBalance("USD", "0.00", "2.00", "2.00", BalanceSide.CREDIT),
-                      new Money(new CurrencyCode("USD"), new BigDecimal("3.00")),
+                      Money.parse("USD", "3.00"),
                       BalanceSide.DEBIT),
                   new AccountLedgerEntryView(
                       periodEur,
                       currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
-                      new Money(new CurrencyCode("EUR"), new BigDecimal("13.00")),
+                      Money.parse("EUR", "13.00"),
                       BalanceSide.DEBIT)),
               closingBalances),
           bookSession.accountLedger(
@@ -659,10 +657,7 @@ class InMemoryBookSessionTest {
 
   private static JournalLine line(
       String accountCode, String currencyCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(
-        new AccountCode(accountCode),
-        side,
-        new Money(new CurrencyCode(currencyCode), new BigDecimal(amount)));
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse(currencyCode, amount));
   }
 
   private static CurrencyBalance currencyBalance(
@@ -671,11 +666,13 @@ class InMemoryBookSessionTest {
       String creditAmount,
       String netAmount,
       BalanceSide balanceSide) {
-    CurrencyCode code = new CurrencyCode(currencyCode);
-    return new CurrencyBalance(
-        new Money(code, new BigDecimal(debitAmount)),
-        new Money(code, new BigDecimal(creditAmount)),
-        new Money(code, new BigDecimal(netAmount)),
-        balanceSide);
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(
+            Money.parse(currencyCode, debitAmount), Money.parse(currencyCode, creditAmount));
+    if (!balance.netAmount().equals(Money.parse(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 }

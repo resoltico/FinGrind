@@ -1,30 +1,60 @@
 package dev.erst.fingrind.core;
 
-import java.math.BigDecimal;
 import java.util.Objects;
 
-/** Exact strictly positive monetary value in one declared currency. */
-public record PositiveMoney(Money value) {
-  /** Validates one strictly positive monetary value. */
-  public PositiveMoney {
-    Objects.requireNonNull(value, "value");
-    if (value.amount().signum() == 0) {
+/** Strictly positive posted money value used for journal-line amounts. */
+public final class PositiveMoney {
+  private final Money value;
+
+  private PositiveMoney(Money value) {
+    this.value = Objects.requireNonNull(value, "value");
+    if (!value.isPositive()) {
       throw new IllegalArgumentException("Journal line amount must be greater than zero.");
     }
   }
 
-  /** Creates one strictly positive monetary value directly from currency and amount inputs. */
-  public PositiveMoney(CurrencyCode currencyCode, BigDecimal amount) {
-    this(new Money(currencyCode, amount));
+  /** Lifts one exact money value into a journal-line-positive money value. */
+  public static PositiveMoney of(Money value) {
+    return new PositiveMoney(value);
   }
 
-  /** Returns the currency carried by the positive money value. */
-  public CurrencyCode currencyCode() {
-    return value.currencyCode();
+  /** Parses one positive money amount for one selected currency unit. */
+  public static PositiveMoney parse(CurrencyUnit currencyUnit, String amountText) {
+    return new PositiveMoney(Money.parse(currencyUnit, amountText));
   }
 
-  /** Returns the exact positive decimal amount. */
-  public BigDecimal amount() {
-    return value.amount();
+  /** Returns the exact underlying non-negative money value. */
+  public Money money() {
+    return value;
+  }
+
+  /** Returns the journal-line currency unit. */
+  public CurrencyUnit currencyUnit() {
+    return value.currencyUnit();
+  }
+
+  /** Returns the exact positive minor units. */
+  public long minorUnits() {
+    return value.minorUnits();
+  }
+
+  /** Returns one exact canonical decimal string at the currency unit's scale. */
+  public String canonicalDecimal() {
+    return value.canonicalDecimal();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return this == other || (other instanceof PositiveMoney that && value.equals(that.value));
+  }
+
+  @Override
+  public int hashCode() {
+    return value.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return "PositiveMoney[value=" + value + "]";
   }
 }

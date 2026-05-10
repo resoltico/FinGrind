@@ -28,7 +28,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -107,22 +106,17 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z")),
             java.util.Optional.of(LocalDate.parse("2026-04-01")),
             java.util.Optional.of(LocalDate.parse("2026-04-30")),
-            List.of(
-                new CurrencyBalance(
-                    money("EUR", "10.00"),
-                    money("EUR", "4.00"),
-                    money("EUR", "6.00"),
-                    BalanceSide.DEBIT)));
+            List.of(currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)));
     ByteArrayOutputStream inspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter inspectionWriter = new CliResponseWriter(utf8PrintStream(inspectionOutput));
     inspectionWriter.writeBookInspection(
         Path.of("book.sqlite"),
-        new BookInspection.Initialized(1_179_079_236, 1, 1, Instant.parse("2026-04-07T10:15:30Z")));
+        new BookInspection.Initialized(1_179_079_236, 2, 2, Instant.parse("2026-04-07T10:15:30Z")));
     ByteArrayOutputStream missingInspectionOutput = new ByteArrayOutputStream();
     CliResponseWriter missingInspectionWriter =
         new CliResponseWriter(utf8PrintStream(missingInspectionOutput));
     missingInspectionWriter.writeBookInspection(
-        Path.of("missing.sqlite"), new BookInspection.Missing(1));
+        Path.of("missing.sqlite"), new BookInspection.Missing(2));
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
     CliResponseWriter getPostingWriter = new CliResponseWriter(utf8PrintStream(getPostingOutput));
     getPostingWriter.writeGetPostingResult(new GetPostingResult.Found(postingFact));
@@ -290,8 +284,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         "1000",
         trialBalanceJson.path("payload").path("rows").get(0).path("accountCode").stringValue());
     assertEquals(
-        "10",
-        trialBalanceJson.path("payload").path("rows").get(0).path("debitTotal").stringValue());
+        "1000",
+        trialBalanceJson
+            .path("payload")
+            .path("rows")
+            .get(0)
+            .path("debitTotal")
+            .path("minorUnits")
+            .stringValue());
     assertFalse(trialBalanceJson.toString().contains("\"value\""));
     ByteArrayOutputStream trialBalanceHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(trialBalanceHumanOutput))
@@ -389,12 +389,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   void writeBookInspection_writesEveryExistingBookVariant() throws IOException {
     List<BookInspection> inspections =
         List.of(
-            new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 1_179_079_236, 0, 1),
-            new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 1_179_079_236, 0, 1),
+            new BookInspection.Existing(BookInspection.Status.BLANK_SQLITE, 1_179_079_236, 0, 2),
+            new BookInspection.Existing(BookInspection.Status.FOREIGN_SQLITE, 1_179_079_236, 0, 2),
             new BookInspection.Existing(
-                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1_179_079_236, 2, 1),
+                BookInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1_179_079_236, 1, 2),
             new BookInspection.Existing(
-                BookInspection.Status.INCOMPLETE_FINGRIND, 1_179_079_236, 1, 1));
+                BookInspection.Status.INCOMPLETE_FINGRIND, 1_179_079_236, 2, 2));
     List<String> states =
         List.of(
             "blank-sqlite", "foreign-sqlite", "unsupported-format-version", "incomplete-fingrind");
@@ -402,7 +402,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
       JsonNode payload = writeInspection(inspections.get(index));
       assertEquals(states.get(index), payload.path("state").stringValue());
       assertEquals(1_179_079_236, payload.path("applicationId").asInt());
-      assertEquals(1, payload.path("supportedBookFormatVersion").asInt());
+      assertEquals(2, payload.path("supportedBookFormatVersion").asInt());
       assertFalse(payload.has("migrationPolicy"));
       assertFalse(payload.has("initializedAt"));
     }

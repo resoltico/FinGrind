@@ -27,13 +27,13 @@ class SqliteNativeBridgeTestSupport {
   static final int SQLITE_API_ARGUMENT_BUSY_TIMEOUT = 6;
   static final int SQLITE_API_ARGUMENT_EXTENDED_RESULT_CODES = 7;
   static final int SQLITE_API_ARGUMENT_EXEC = 12;
-  static final int SQLITE_API_ARGUMENT_ERRMSG = 23;
-  static final int SQLITE_API_ARGUMENT_ERRSTR = 24;
-  static final int SQLITE_API_ARGUMENT_EXTENDED_ERRCODE = 25;
-  static final int SQLITE_API_ARGUMENT_LOADED_VERSION = 26;
-  static final int SQLITE_API_ARGUMENT_LOADED_SQLITE3MC_VERSION = 27;
-  static final int SQLITE_API_ARGUMENT_LOADED_SOURCE_ID = 28;
-  static final int SQLITE_API_ARGUMENT_LOADED_LIBRARY_PATH = 30;
+  static final int SQLITE_API_ARGUMENT_ERRMSG = 25;
+  static final int SQLITE_API_ARGUMENT_ERRSTR = 26;
+  static final int SQLITE_API_ARGUMENT_EXTENDED_ERRCODE = 27;
+  static final int SQLITE_API_ARGUMENT_LOADED_VERSION = 28;
+  static final int SQLITE_API_ARGUMENT_LOADED_SQLITE3MC_VERSION = 29;
+  static final int SQLITE_API_ARGUMENT_LOADED_SOURCE_ID = 30;
+  static final int SQLITE_API_ARGUMENT_LOADED_LIBRARY_PATH = 32;
 
   protected SqliteNativeBridgeTestSupport() {}
 
@@ -103,6 +103,7 @@ class SqliteNativeBridgeTestSupport {
           MemorySegment.class),
       constantMethodHandle(0, MemorySegment.class, int.class),
       constantMethodHandle(0, MemorySegment.class, int.class, int.class),
+      constantMethodHandle(0L, MemorySegment.class, int.class, long.class),
       constantMethodHandle(
           0, MemorySegment.class, int.class, MemorySegment.class, int.class, MemorySegment.class),
       constantMethodHandle(0, MemorySegment.class),
@@ -110,6 +111,7 @@ class SqliteNativeBridgeTestSupport {
       constantMethodHandle(MemorySegment.NULL, MemorySegment.class, int.class),
       constantMethodHandle(0, MemorySegment.class, int.class),
       constantMethodHandle(0, MemorySegment.class, int.class),
+      constantMethodHandle(0L, MemorySegment.class, int.class),
       constantMethodHandle(MemorySegment.NULL, MemorySegment.class),
       constantMethodHandle(MemorySegment.NULL, int.class),
       constantMethodHandle(0, MemorySegment.class),
@@ -149,11 +151,13 @@ class SqliteNativeBridgeTestSupport {
         (MethodHandle) sqliteApiArguments[23],
         (MethodHandle) sqliteApiArguments[24],
         (MethodHandle) sqliteApiArguments[25],
-        (String) sqliteApiArguments[26],
-        (String) sqliteApiArguments[27],
+        (MethodHandle) sqliteApiArguments[26],
+        (MethodHandle) sqliteApiArguments[27],
         (String) sqliteApiArguments[28],
-        (SqliteRuntimeProvenance) sqliteApiArguments[29],
-        (String) sqliteApiArguments[30]);
+        (String) sqliteApiArguments[29],
+        (String) sqliteApiArguments[30],
+        (SqliteRuntimeProvenance) sqliteApiArguments[31],
+        (String) sqliteApiArguments[32]);
   }
 
   BookAccess bookAccess(Path bookPath) {

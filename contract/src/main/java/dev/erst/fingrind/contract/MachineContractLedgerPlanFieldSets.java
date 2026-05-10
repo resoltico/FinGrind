@@ -39,7 +39,6 @@ final class MachineContractLedgerPlanFieldSets {
         MachineContractLedgerPlanAssertionFieldSpecs.conditionalAssertionPostingIdField(),
         MachineContractLedgerPlanAssertionFieldSpecs.conditionalAssertionEffectiveDateFromField(),
         MachineContractLedgerPlanAssertionFieldSpecs.conditionalAssertionEffectiveDateToField(),
-        MachineContractLedgerPlanAssertionFieldSpecs.conditionalAssertionCurrencyCodeField(),
         MachineContractLedgerPlanAssertionFieldSpecs.conditionalAssertionNetAmountField(),
         MachineContractLedgerPlanAssertionFieldSpecs.conditionalAssertionBalanceSideField());
   }

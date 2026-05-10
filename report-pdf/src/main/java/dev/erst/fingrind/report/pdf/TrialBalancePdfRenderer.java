@@ -36,7 +36,7 @@ final class TrialBalancePdfRenderer {
                         row.account().accountName().value(),
                         row.account().normalBalance().wireValue(),
                         Boolean.toString(row.account().active()),
-                        row.balance().netAmount().currencyCode().value(),
+                        row.balance().netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(row.balance().debitTotal()),
                         PdfValueFormatter.displayMoney(row.balance().creditTotal()),
                         PdfValueFormatter.displayMoney(row.balance().netAmount()),

@@ -14,10 +14,18 @@
         "postingId": "019dadaf-2bec-7888-a1d8-544eb843fd3d",
         "effectiveDate": "2026-04-08",
         "recordedAt": "2026-04-21T01:37:11.549110Z",
-        "currencyCode": "EUR",
-        "debitAmount": "10",
-        "creditAmount": "0",
-        "runningBalance": "10",
+        "debitAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "creditAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "0"
+        },
+        "runningBalance": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "runningBalanceSide": "DEBIT",
         "counterpartAccounts": [
           "2000"
@@ -26,10 +34,18 @@
     ],
     "closingBalances": [
       {
-        "currencyCode": "EUR",
-        "debitTotal": "10",
-        "creditTotal": "0",
-        "netAmount": "10",
+        "debitTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "creditTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "0"
+        },
+        "netAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "balanceSide": "DEBIT"
       }
     ]

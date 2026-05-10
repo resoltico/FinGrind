@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import java.io.IOException;
@@ -17,7 +16,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -106,6 +104,9 @@ class SqliteNativeInteropTest {
           assertThrows(
               SqliteNativeException.class,
               () -> SqliteNativeStatements.bindText(statementHandle, 0, textPointer, 1));
+          assertThrows(
+              SqliteNativeException.class,
+              () -> SqliteNativeStatements.bindLong(statementHandle, 0, 7L));
         }
       }
       assertThrows(
@@ -262,11 +263,11 @@ class SqliteNativeInteropTest {
                 new JournalLine(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                    Money.parse("EUR", "10.00")),
                 new JournalLine(
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
+                    Money.parse("EUR", "10.00")));
         assertEquals(
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(SqlitePostingMapper.committedPosting(postingRow, lines)),

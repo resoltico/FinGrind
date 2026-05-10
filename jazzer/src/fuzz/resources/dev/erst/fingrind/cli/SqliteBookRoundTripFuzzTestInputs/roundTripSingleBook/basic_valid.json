@@ -4,14 +4,18 @@
     {
       "accountCode": "3100",
       "side": "DEBIT",
-      "currencyCode": "USD",
-      "amount": "88.40"
+      "amount": {
+        "currencyCode": "USD",
+        "minorUnits": "8840"
+      }
     },
     {
       "accountCode": "4100",
       "side": "CREDIT",
-      "currencyCode": "USD",
-      "amount": "88.40"
+      "amount": {
+        "currencyCode": "USD",
+        "minorUnits": "8840"
+      }
     }
   ],
   "provenance": {

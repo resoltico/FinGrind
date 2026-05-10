@@ -43,14 +43,12 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 {
                   "accountCode": "1000",
                   "side": "DEBIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
+                  "amount": %s
                 },
                 {
                   "accountCode": "2000",
                   "side": "CREDIT",
-                  "currencyCode": "EUR",
-                  "amount": "10.00"
+                  "amount": %s
                 }
               ],
               "provenance": {
@@ -64,7 +62,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             %s
             }
             """
-        .formatted(reversalBlock);
+        .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"), reversalBlock);
   }
 
   static String validLegacyCorrectionRequestJson() {
@@ -75,14 +73,12 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             {
               "accountCode": "1000",
               "side": "DEBIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": %s
             },
             {
               "accountCode": "2000",
               "side": "CREDIT",
-              "currencyCode": "EUR",
-              "amount": "10.00"
+              "amount": %s
             }
           ],
           "correction": {
@@ -98,7 +94,8 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             "reason": "operator correction"
           }
         }
-        """;
+        """
+        .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"));
   }
 
   static LedgerAssertion assertionAt(LedgerPlan plan, int index) {
@@ -202,8 +199,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "accountCode": "1000",
                 "effectiveDateFrom": "2026-04-01",
                 "effectiveDateTo": "2026-04-30",
-                "currencyCode": "EUR",
-                "netAmount": "10.00",
+                "netAmount": %s,
                 "balanceSide": "DEBIT"
               }
             }
@@ -214,7 +210,76 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             validRequestJson(false),
             validRequestJson(false),
             validAccountCursor(),
-            validPostingCursor());
+            validPostingCursor(),
+            eurMoneyJson("1000"));
+  }
+
+  static String moneyJson(String currencyCode, String minorUnits) {
+    return """
+        {
+          "currencyCode": "%s",
+          "minorUnits": "%s"
+        }
+        """
+        .formatted(currencyCode, minorUnits)
+        .indent(18)
+        .stripLeading();
+  }
+
+  static String eurMoneyJson(String minorUnits) {
+    return moneyJson("EUR", minorUnits);
+  }
+
+  static String standardBalancedLinesJson() {
+    return journalLinesJson(
+        "1000", "DEBIT", eurMoneyJson("1000"), "2000", "CREDIT", eurMoneyJson("1000"));
+  }
+
+  static String journalLinesJson(
+      String firstAccountCode,
+      String firstSide,
+      String firstMoneyJson,
+      String secondAccountCode,
+      String secondSide,
+      String secondMoneyJson) {
+    return """
+        [
+          {
+            "accountCode": "%s",
+            "side": "%s",
+            "amount": %s
+          },
+          {
+            "accountCode": "%s",
+            "side": "%s",
+            "amount": %s
+          }
+        ]
+        """
+        .formatted(
+            firstAccountCode,
+            firstSide,
+            firstMoneyJson,
+            secondAccountCode,
+            secondSide,
+            secondMoneyJson)
+        .indent(18)
+        .stripLeading();
+  }
+
+  static String singleJournalLineJson(String accountCode, String side, String moneyJson) {
+    return """
+        [
+          {
+            "accountCode": "%s",
+            "side": "%s",
+            "amount": %s
+          }
+        ]
+        """
+        .formatted(accountCode, side, moneyJson)
+        .indent(18)
+        .stripLeading();
   }
 
   static String validAccountCursor() {
