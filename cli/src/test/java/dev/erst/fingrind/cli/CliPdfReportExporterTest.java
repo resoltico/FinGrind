@@ -23,7 +23,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -35,7 +34,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +72,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportMethodsWritePdfArtifacts() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.33.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK));
 
     Path accountBalancePdf = tempDirectory.resolve("balance.pdf");
     Path trialBalancePdf = tempDirectory.resolve("trial.pdf");
@@ -95,7 +93,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportWrapsFilesystemFailuresInCliPdfExportException() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.33.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK));
     Path blockedParent = tempDirectory.resolve("not-a-directory");
     Files.writeString(blockedParent, "nope", StandardCharsets.UTF_8);
     Path outputPath = blockedParent.resolve("trial-balance.pdf");
@@ -112,7 +110,7 @@ class CliPdfReportExporterTest {
   void exportFallsBackToNonAtomicMoveWhenAtomicMoveIsUnsupported() {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.33.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK), fileOperations);
 
     exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport());
 
@@ -126,7 +124,7 @@ class CliPdfReportExporterTest {
     fileOperations.failDuringMove = true;
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.33.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK), fileOperations);
 
     CliPdfExportException exception =
         assertThrows(
@@ -147,7 +145,7 @@ class CliPdfReportExporterTest {
   @Test
   void deleteIfPresentRemovesExistingTemporaryFiles() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.33.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK));
     Path temporaryFile = Files.createTempFile(tempDirectory, "delete-me", ".tmp");
 
     exporter.deleteIfPresent(temporaryFile);
@@ -160,7 +158,7 @@ class CliPdfReportExporterTest {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.33.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK), fileOperations);
 
     exporter.deleteIfPresent(Path.of("temporary.pdf"));
 
@@ -248,15 +246,17 @@ class CliPdfReportExporterTest {
       String creditTotal,
       String netAmount,
       BalanceSide balanceSide) {
-    return new CurrencyBalance(
-        money(currencyCode, debitTotal),
-        money(currencyCode, creditTotal),
-        money(currencyCode, netAmount),
-        balanceSide);
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 
   private static Money money(String currencyCode, String amount) {
-    return new Money(new CurrencyCode(currencyCode), new BigDecimal(amount));
+    return Money.parse(currencyCode, amount);
   }
 
   /** Minimal fake filesystem adapter for focused PDF export tests. */

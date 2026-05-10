@@ -14,7 +14,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -33,7 +32,6 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -100,9 +98,7 @@ class LedgerPlanFactMapperTest {
         new AccountBalanceView(
             account,
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-            List.of(
-                new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
+            List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)));
 
     List<BookWorkflowFact> facts = LedgerPlanFactMapper.balanceFacts(snapshot);
 
@@ -150,13 +146,17 @@ class LedgerPlanFactMapperTest {
   }
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(
-        new AccountCode(accountCode),
-        side,
-        new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
   }
 
-  private static Money money(String amount) {
-    return new Money(new CurrencyCode("EUR"), new BigDecimal(amount));
+  private static CurrencyBalance currencyBalance(
+      String debitAmount, String creditAmount, String netAmount, BalanceSide balanceSide) {
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(Money.parse("EUR", debitAmount), Money.parse("EUR", creditAmount));
+    if (!balance.netAmount().equals(Money.parse("EUR", netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 }

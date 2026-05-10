@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -100,13 +101,13 @@ public final class LedgerPlanAssertionEvaluator {
         view.balances().stream()
             .filter(
                 balance ->
-                    balance.netAmount().currencyCode().equals(assertion.netAmount().currencyCode()))
+                    balance.netAmount().currencyUnit().equals(assertion.netAmount().currencyUnit()))
             .findFirst();
     if (matchingBalance.isEmpty()) {
       return LedgerPlanOutcomeMapper.assertionFailure(
           "Expected currency balance bucket does not exist.",
           BookWorkflowFact.text("accountCode", assertion.accountCode().value()),
-          BookWorkflowFact.text("currencyCode", assertion.netAmount().currencyCode().value()));
+          BookWorkflowFact.money("expectedNetAmount", MonetaryAmount.of(assertion.netAmount())));
     }
     CurrencyBalance balance = matchingBalance.orElseThrow();
     boolean matchesAmount = balance.netAmount().equals(assertion.netAmount());
@@ -117,9 +118,8 @@ public final class LedgerPlanAssertionEvaluator {
     return LedgerPlanOutcomeMapper.assertionFailure(
         "Account balance does not match expected value.",
         BookWorkflowFact.text("accountCode", assertion.accountCode().value()),
-        BookWorkflowFact.text("currencyCode", assertion.netAmount().currencyCode().value()),
-        BookWorkflowFact.text("expectedNetAmount", assertion.netAmount().amount().toPlainString()),
-        BookWorkflowFact.text("actualNetAmount", balance.netAmount().amount().toPlainString()),
+        BookWorkflowFact.money("expectedNetAmount", MonetaryAmount.of(assertion.netAmount())),
+        BookWorkflowFact.money("actualNetAmount", MonetaryAmount.of(balance.netAmount())),
         BookWorkflowFact.text("expectedBalanceSide", assertion.balanceSide().wireValue()),
         BookWorkflowFact.text("actualBalanceSide", balance.balanceSide().wireValue()));
   }

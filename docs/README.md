@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -84,6 +84,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
+- [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)

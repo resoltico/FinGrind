@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.MonetaryAmount;
 import java.util.List;
 import java.util.Objects;
 
@@ -8,6 +9,7 @@ public sealed interface BookWorkflowFact
     permits BookWorkflowFact.Text,
         BookWorkflowFact.Flag,
         BookWorkflowFact.Count,
+        BookWorkflowFact.Money,
         BookWorkflowFact.Group {
   /** Stable fact name within one workflow journal entry. */
   String name();
@@ -25,6 +27,11 @@ public sealed interface BookWorkflowFact
   /** Creates one integer-valued fact. */
   static Count count(String name, int value) {
     return new Count(name, value);
+  }
+
+  /** Creates one exact-money-valued fact. */
+  static Money money(String name, MonetaryAmount value) {
+    return new Money(name, value);
   }
 
   /** Creates one structured fact group. */
@@ -70,6 +77,16 @@ public sealed interface BookWorkflowFact
       requireName(name);
       this.name = name;
       this.value = value;
+    }
+  }
+
+  /** Exact-money-valued workflow fact. */
+  record Money(String name, MonetaryAmount value) implements BookWorkflowFact {
+    /** Creates one validated exact-money-valued workflow fact. */
+    public Money(String name, MonetaryAmount value) {
+      requireName(name);
+      this.name = name;
+      this.value = Objects.requireNonNull(value, "value");
     }
   }
 

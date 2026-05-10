@@ -4,21 +4,24 @@
     {
       "accountCode": "1000",
       "side": "DEBIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     },
     {
       "accountCode": "2000",
       "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     }
   ],
   "provenance": {
     "actorId": "actor-7",
     "actorType": "AGENT",
     "commandId": "command-7",
-    "idempotencyKey": "idem-7-a",
     "idempotencyKey": "idem-7-b",
     "causationId": "cause-7"
   }

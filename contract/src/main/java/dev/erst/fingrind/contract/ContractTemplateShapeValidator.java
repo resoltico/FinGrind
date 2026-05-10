@@ -44,15 +44,13 @@ final class ContractTemplateShapeValidator {
       @Nullable String accountCode,
       @Nullable String effectiveDateFrom,
       @Nullable String effectiveDateTo,
-      @Nullable String currencyCode,
-      @Nullable String netAmount,
+      @Nullable MonetaryAmount netAmount,
       @Nullable BalanceSide balanceSide,
       @Nullable String postingId) {
     ContractTemplateAssertionShapeRequirements requirements = assertionRequirements(kind);
     requirePresence(kind, "accountCode", accountCode, requirements.accountCode());
     requirePresence(kind, "effectiveDateFrom", effectiveDateFrom, requirements.effectiveDateFrom());
     requirePresence(kind, "effectiveDateTo", effectiveDateTo, requirements.effectiveDateTo());
-    requirePresence(kind, "currencyCode", currencyCode, requirements.currencyCode());
     requirePresence(kind, "netAmount", netAmount, requirements.netAmount());
     requirePresence(kind, "balanceSide", balanceSide, requirements.balanceSide());
     requirePresence(kind, "postingId", postingId, requirements.postingId());

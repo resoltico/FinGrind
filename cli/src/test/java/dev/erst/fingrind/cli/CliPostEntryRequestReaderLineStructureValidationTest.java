@@ -23,15 +23,13 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                     {
                       "accountCode": "1000",
                       "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00",
+                      "amount": %s,
                       "ignoredByParser": "yes"
                     },
                     {
                       "accountCode": "2000",
                       "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": %s
                     }
                   ],
                   "provenance": {
@@ -43,6 +41,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                   }
                 }
                 """
+                    .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"))
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =

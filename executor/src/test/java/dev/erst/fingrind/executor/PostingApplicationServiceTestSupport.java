@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -43,7 +42,6 @@ import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -175,10 +173,7 @@ final class PostingApplicationServiceTestSupport {
   }
 
   static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(
-        new AccountCode(accountCode),
-        side,
-        new Money(new CurrencyCode("EUR"), new BigDecimal(amount)));
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
   }
 
   static BookStore mappedOutcomeBookSession() {

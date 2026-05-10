@@ -29,9 +29,7 @@ def run_cli_allow_failure(
     stdin_text: str | None = None,
 ) -> tuple[str, int]:
     if config.command_bridge_prefix:
-        return run_cli_allow_failure_via_bridge(
-            config, *arguments, stdin_text=stdin_text
-        )
+        return run_cli_allow_failure_via_bridge(config, *arguments, stdin_text=stdin_text)
     completed = subprocess.run(
         [*config.command_prefix, *arguments],
         cwd=config.command_cwd,
@@ -72,9 +70,7 @@ def run_cli_with_split_streams(
     stdin_text: str | None = None,
 ) -> tuple[str, str]:
     if config.command_bridge_prefix:
-        return run_cli_with_split_streams_via_bridge(
-            config, *arguments, stdin_text=stdin_text
-        )
+        return run_cli_with_split_streams_via_bridge(config, *arguments, stdin_text=stdin_text)
     completed = subprocess.run(
         [*config.command_prefix, *arguments],
         cwd=config.command_cwd,

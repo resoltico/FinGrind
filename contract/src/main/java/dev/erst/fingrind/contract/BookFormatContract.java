@@ -6,7 +6,7 @@ public final class BookFormatContract {
   public static final int APPLICATION_ID = 1_179_079_236; // "FGRD"
 
   /** Stable on-disk FinGrind book-format version supported by the current public line. */
-  public static final int FORMAT_VERSION = 1;
+  public static final int FORMAT_VERSION = 2;
 
   private BookFormatContract() {}
 }

@@ -28,9 +28,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             declaredAccount,
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.of(LocalDate.parse("2026-04-30")),
-            List.of(
-                new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
+            List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
         new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z")).initializedAt());
@@ -78,9 +76,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             declaredAccount("1000"),
             Optional.of(LocalDate.parse("2026-04-01")),
             Optional.of(LocalDate.parse("2026-04-30")),
-            List.of(
-                new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
+            List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     LedgerAssertion.AccountActive active =
         new LedgerAssertion.AccountActive(new AccountCode("1000"));
     LedgerAssertion.PostingExists postingExists =

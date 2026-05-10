@@ -7,7 +7,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -16,7 +15,6 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -68,6 +66,10 @@ class ContractTestSupport {
   }
 
   protected Money money(String amount) {
-    return new Money(new CurrencyCode("EUR"), new BigDecimal(amount));
+    return Money.parse("EUR", amount);
+  }
+
+  protected MonetaryAmount monetaryAmount(String currencyCode, String amountText) {
+    return MonetaryAmount.of(Money.parse(currencyCode, amountText));
   }
 }

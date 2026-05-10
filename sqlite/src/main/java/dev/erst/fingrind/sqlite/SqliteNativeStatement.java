@@ -47,6 +47,10 @@ final class SqliteNativeStatement implements AutoCloseable {
     SqliteNativeStatements.bindInt(statementHandle, parameterIndex, value);
   }
 
+  void bindLong(int parameterIndex, long value) {
+    SqliteNativeStatements.bindLong(statementHandle, parameterIndex, value);
+  }
+
   int step() {
     return SqliteNativeStatements.step(database.handle(), statementHandle);
   }
@@ -57,6 +61,10 @@ final class SqliteNativeStatement implements AutoCloseable {
 
   int columnInt(int columnIndex) {
     return SqliteNativeStatements.columnInt(statementHandle, columnIndex);
+  }
+
+  long columnLong(int columnIndex) {
+    return SqliteNativeStatements.columnLong(statementHandle, columnIndex);
   }
 
   MemorySegment handle() {

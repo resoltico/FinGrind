@@ -11,12 +11,10 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
-import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -26,7 +24,6 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -246,10 +243,7 @@ class BookQueryModelTest {
   @Test
   void accountBalanceSnapshot_rejectsNullOptionalsAndCopiesBalances() {
     List<CurrencyBalance> balances =
-        new ArrayList<>(
-            List.of(
-                new CurrencyBalance(
-                    money("10.00"), money("0.00"), money("10.00"), BalanceSide.DEBIT)));
+        new ArrayList<>(List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             declaredAccount("1000"), Optional.empty(), Optional.empty(), balances);
@@ -379,7 +373,7 @@ class BookQueryModelTest {
   }
 
   private static Money money(String amount) {
-    return new Money(new CurrencyCode("EUR"), new BigDecimal(amount));
+    return Money.parse("EUR", amount);
   }
 
   private static CommittedProvenance committedProvenance(String idempotencyKey) {

@@ -101,8 +101,6 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
-    assertEquals(
-        "Money amount must be a plain decimal string without exponent notation.",
-        invalid.message());
+    assertEquals("minorUnits must contain ASCII decimal digits only.", invalid.message());
   }
 }

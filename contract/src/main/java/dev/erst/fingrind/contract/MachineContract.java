@@ -112,9 +112,9 @@ public final class MachineContract {
         ScaffoldPlaceholders.EFFECTIVE_DATE,
         List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(
-                "1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
             new ContractTemplates.JournalLineTemplateDescriptor(
-                "2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")),
+                "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
         new ContractTemplates.ProvenanceTemplateDescriptor(
             ScaffoldPlaceholders.ACTOR_ID,
             ActorType.AGENT,
@@ -169,8 +169,7 @@ public final class MachineContract {
                     "1000",
                     null,
                     null,
-                    "EUR",
-                    "10.00",
+                    new MonetaryAmount("EUR", "1000"),
                     BalanceSide.DEBIT,
                     null),
                 null)));

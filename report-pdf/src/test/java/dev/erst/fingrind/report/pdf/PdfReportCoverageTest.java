@@ -13,12 +13,10 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -45,7 +43,7 @@ class PdfReportCoverageTest {
             CLOCK,
             new PdfDocumentFactory(
                 "FinGrind",
-                "0.33.0",
+                "0.34.0",
                 resourcePath ->
                     new ByteArrayInputStream(
                         ("not-a-font:" + resourcePath).getBytes(StandardCharsets.UTF_8))));
@@ -61,7 +59,7 @@ class PdfReportCoverageTest {
 
   @Test
   void createRejectsMissingBundledFontResources() {
-    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.33.0", resourcePath -> null);
+    PdfDocumentFactory factory = new PdfDocumentFactory("FinGrind", "0.34.0", resourcePath -> null);
 
     IllegalStateException exception =
         assertThrows(
@@ -162,7 +160,7 @@ class PdfReportCoverageTest {
   }
 
   private static PdfDocumentFactory standardFactory() {
-    return new PdfDocumentFactory("FinGrind", "0.33.0");
+    return new PdfDocumentFactory("FinGrind", "0.34.0");
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -177,12 +175,7 @@ class PdfReportCoverageTest {
         Optional.of(LocalDate.parse("2026-04-30")),
         List.of(
             new TrialBalanceRow(
-                cashAccount,
-                new CurrencyBalance(
-                    money("EUR", "1250.00"),
-                    money("EUR", "10.00"),
-                    money("EUR", "1240.00"),
-                    BalanceSide.DEBIT))));
+                cashAccount, balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))));
   }
 
   private static List<List<String>> paginatedKeyValueRows() {
@@ -198,6 +191,21 @@ class PdfReportCoverageTest {
   }
 
   private static Money money(String currencyCode, String amount) {
-    return new Money(new CurrencyCode(currencyCode), new BigDecimal(amount));
+    return Money.parse(currencyCode, amount);
+  }
+
+  private static CurrencyBalance balance(
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      BalanceSide balanceSide) {
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 }

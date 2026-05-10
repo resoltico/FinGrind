@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -39,6 +39,8 @@ public record PostEntryCommand(
 ```
 
 - Purpose: carry the write-boundary payload after CLI parsing and request validation
+- Money policy: journal lines arrive with exact `PositiveMoney` amounts whose currency, scale, and
+  minor-unit representation have already been validated by the shared-kernel money model
 
 ## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
 
@@ -173,6 +175,8 @@ public sealed interface LedgerAssertion
 
 - Families: `AccountDeclared`, `AccountActive`, `PostingExists`, `AccountBalanceEquals`
 - Purpose: let one plan assert intended outcomes without inventing CLI-local test commands
+- Money policy: `AccountBalanceEquals` uses the same exact-money contract as posted journal lines,
+  so workflow assertions cannot express amounts that the posting boundary would reject
 - Boundary: executor evaluates assertions inside the internal workflow context after translating
   the published DTO family
 
@@ -243,9 +247,12 @@ public final class BookWorkflowPublishedLanguageTranslator
 public sealed interface LedgerFact
 ```
 
-- Families: `Text`, `Flag`, `Count`, `Group`
+- Families: `Text`, `Flag`, `Count`, `Money`, `Group`
 - Purpose: keep published step observations machine-readable without collapsing everything to
   strings after the local workflow facts have crossed the translator boundary
+- Money facts: `LedgerFact.Money` carries the same public `MonetaryAmount` shape used by request,
+  template, and response contracts, so agent consumers do not have to infer money semantics from
+  free-form text
 
 ## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus`
 

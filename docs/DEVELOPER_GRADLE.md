@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -22,6 +22,8 @@ FinGrind's machine-level setup rule is simple:
 - use `./gradlew` for every repo build command
 - treat `gradle` on `PATH` as outside the supported FinGrind workflow
 - let the wrapper download the official Gradle distribution pinned by the repository
+- keep the repo-owned Python tools installed for the active shell's Python surface when you run
+  root verification, because `check` now includes Ruff over `scripts/**/*.py`
 - prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
   cache relocation
 
@@ -149,8 +151,18 @@ the live plugin/classpath surface.
 The consumer scripts are intentionally thin now:
 - root `build.gradle.kts` is a single root-conventions plugin application
 - Java module policy lives in `FinGrindJavaConventionsPlugin`
-- repository-wide formatting, aggregated coverage, and managed-SQLite root wiring live in
-  `FinGrindRootConventionsPlugin`
+- repository-wide formatting, aggregated coverage, managed-SQLite root wiring, and Python helper
+  linting live in `FinGrindRootConventionsPlugin`
+
+Root verification now has one explicit Python-tooling contract:
+- the pinned CI interpreter version is `fingrindPythonVersion` from
+  [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
+- the pinned lint-tool manifest is
+  [../requirements-python-tools.txt](../requirements-python-tools.txt)
+- the repo-owned Ruff configuration is [../ruff.toml](../ruff.toml)
+- contributors can override the executable Gradle uses with
+  `-PfingrindPythonExecutable=/absolute/path/to/python3` when the desired interpreter is not the
+  default `python3` on Unix-like hosts or `python` on Windows
 
 ### Composite build for Jazzer
 
@@ -235,11 +247,13 @@ FinGrind's JaCoCo wiring is intentionally stricter than JaCoCo's defaults becaus
 silently under-enforce the documented coverage contract.
 
 Rules:
-- never rely on an unnamed JaCoCo `limit {}` block for coverage meaning
-- always set `counter = "LINE"` and `counter = "BRANCH"` explicitly for verification rules
-- always set `value = "COVEREDRATIO"` explicitly for those rules
-- treat omitted `counter` as invalid build logic because JaCoCo defaults that case to
-  instruction coverage, and 100% instruction coverage does not prove 100% branch coverage
+- never rely on JaCoCo's built-in verification defaults or unnamed `limit {}` semantics for
+  FinGrind's quality gate meaning
+- treat the generated `jacocoTestReport.xml` counters as the authoritative module coverage truth
+  and fail the gate when that report shows any missed `LINE` or `BRANCH` coverage
+- each `Test` task must delete its own destination `.exec` file before execution and use
+  `append=true` only within that one task run, so cross-run coverage drift cannot survive into the
+  next verification pass
 - wire both `jacocoTestReport` and `jacocoTestCoverageVerification` to the same execution-data
   scope so reporting and verification cannot disagree
 - collect every local `build/jacoco/*.exec` file for a module instead of hardcoding only
@@ -252,10 +266,12 @@ Rules:
 Why this rule exists:
 - if a project later adds `integrationTest`, `parityTest`, or any other extra `Test` task, a
   hardcoded `test.exec` assumption can silently exclude real execution data from the gate
-- if a project omits `limit.counter`, JaCoCo can appear green while whole conditional branches are
-  still untested
+- if a project reuses stale `.exec` files across separate test runs, the report can inherit dead
+  execution data and stop describing the current tree honestly
 - when previously unseen uncovered code appears after fixing JaCoCo wiring, treat that as the gate
   becoming truthful rather than as the code suddenly regressing
+- if the toolchain's built-in verification task disagrees with the generated report counters, trust
+  the generated report and fix the verification wiring rather than weakening the coverage bar
 
 Repository-specific note:
 - FinGrind's product modules currently use only the default Gradle `test` task

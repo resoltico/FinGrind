@@ -8,8 +8,10 @@ import dev.erst.fingrind.contract.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.LedgerJournalKind;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStepStatus;
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Ledger-plan JSON records emitted by the CLI transport layer. */
@@ -70,6 +72,7 @@ public interface CliPlanJsonModels {
       permits TextLedgerFactPayload,
           FlagLedgerFactPayload,
           CountLedgerFactPayload,
+          MoneyLedgerFactPayload,
           GroupLedgerFactPayload {}
 
   record TextLedgerFactPayload(String kind, String name, String value)
@@ -93,6 +96,15 @@ public interface CliPlanJsonModels {
     public CountLedgerFactPayload {
       kind = requireText(kind, "kind");
       name = requireText(name, "name");
+    }
+  }
+
+  record MoneyLedgerFactPayload(String kind, String name, MonetaryAmount value)
+      implements LedgerFactPayload {
+    public MoneyLedgerFactPayload {
+      kind = requireText(kind, "kind");
+      name = requireText(name, "name");
+      Objects.requireNonNull(value, "value");
     }
   }
 

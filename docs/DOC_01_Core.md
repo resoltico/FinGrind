@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: CORE
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
-  keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-code, idempotency]
+  keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
 ---
 
@@ -126,17 +126,22 @@ public record CorrelationId(String value)
 - Purpose: correlate related commands without overloading `CommandId`
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
-## `CurrencyCode`
+## `CurrencyUnit`
 
-`CurrencyCode` is the canonical three-letter currency identifier used by `Money`.
+`CurrencyUnit` is the canonical ISO-backed currency owner used by `Money` and `PositiveMoney`.
 
 ```java
-public record CurrencyCode(String value)
+public final class CurrencyUnit
 ```
 
-- Purpose: keep currency explicit and normalized
-- Normalization: strips whitespace and uppercases with `Locale.ROOT`
-- Validation: accepts exactly three uppercase ASCII letters
+- Purpose: keep currency identity and exact minor-unit scale structural instead of treating them as
+  free-form strings plus formatter policy
+- Construction: `CurrencyUnit.of(String)` resolves one supported ISO 4217 code from FinGrind's
+  pinned repository-owned currency-unit registry snapshot and publishes its exact
+  `minorUnitScale()`
+- Validation: rejects whitespace-padded, non-uppercase, non-ISO, or unsupported currency-unit
+  codes, and rejects units whose published scale falls outside FinGrind's supported exact-money
+  range of `0..9`
 
 ## `EffectiveDateRange`
 
@@ -163,8 +168,8 @@ public final class InteractionLimits
 
 - Purpose: keep paging defaults, paging hard limits, and ledger-plan step limits in one shared
   owner instead of duplicating them between public protocol helpers and local executor models
-- Current contract: `PAGE_LIMIT_MIN = 1`, `DEFAULT_PAGE_LIMIT = 50`, `PAGE_LIMIT_MAX = 200`,
-  `LEDGER_PLAN_STEP_MAX = 100`
+- Current contract: `REQUEST_PAYLOAD_MAX_BYTES = 1048576`, `PAGE_LIMIT_MIN = 1`,
+  `DEFAULT_PAGE_LIMIT = 50`, `PAGE_LIMIT_MAX = 200`, `LEDGER_PLAN_STEP_MAX = 100`
 
 ## `IdempotencyKey`
 
@@ -235,40 +240,58 @@ public enum EntrySide implements WireValue {
 
 ## `Money`
 
-`Money` is an exact non-negative decimal amount in one declared currency.
+`Money` is the canonical exact non-negative posted-money value encoded in one currency unit's
+minor units.
 
 ```java
-public record Money(CurrencyCode currencyCode, BigDecimal amount)
+public final class Money implements Comparable<Money>
 ```
 
-- Purpose: preserve exact decimal semantics without floating-point behavior
-- Normalization: strips trailing zeroes and normalizes negative scale to zero
-- Validation: rejects `null` fields and negative amounts
+- Purpose: close the money invariant inside the shared kernel instead of exposing `BigDecimal`
+  state through the public API
+- Construction: `ofMinorUnits(...)`, `zero(...)`, and `parse(...)` are the only public creation
+  seams
+- Grammar: parsing accepts only canonical unsigned plain-decimal text, rejects exponent notation,
+  rejects redundant leading zeroes, and enforces the selected currency unit's exact fractional
+  scale
+- Representation: the authoritative stored state is `minorUnits()` plus `currencyUnit()`, while
+  `canonicalDecimal()` projects the stable human/machine decimal form at the currency unit's scale
+- Bounds: parsing and arithmetic reject values outside FinGrind's supported exact minor-unit range
 - Usage: reused by balances and reports that legitimately need zero-valued totals
+- Boundary: `Money` is only for posted monetary facts; future tax rates, percentages, exchange
+  rates, and allocation ratios must enter as separate exact types instead of reusing this model.
+  See [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md).
 
 ## `CurrencyBalance`
 
-`CurrencyBalance` is one shared per-currency grouped balance bucket.
+`CurrencyBalance` is one shared per-currency grouped balance bucket derived from debit and credit
+totals.
 
 ```java
-public record CurrencyBalance(
-    Money debitTotal, Money creditTotal, Money netAmount, BalanceSide balanceSide)
+public final class CurrencyBalance
 ```
 
 - Purpose: keep grouped per-currency balance math in the shared kernel instead of embedding that
   shape in one protocol context
-- Validation: rejects `null` totals, `null` balance side, and mixed currencies across the totals
+- Construction: `CurrencyBalance.ofTotals(...)` is the canonical factory; callers do not supply
+  `netAmount` or `balanceSide` directly
+- Invariant: the balance side and absolute net amount are derived from the debit and credit totals,
+  so mathematically false grouped balances cannot be forged
 
 ## `PositiveMoney`
 
-`PositiveMoney` is an exact strictly positive amount in one declared currency.
+`PositiveMoney` is the journal-line-specific exact strictly positive money value.
 
 ```java
-public record PositiveMoney(Money value)
+public final class PositiveMoney
 ```
 
-- Purpose: make the journal-line positivity invariant structural instead of duplicating it
-- Construction: accepts either a fully formed `Money` or direct currency-and-amount inputs
+- Purpose: make journal-line positivity structural instead of duplicating that rule across
+  posting, persistence, and workflow surfaces
+- Construction: `PositiveMoney.of(Money)` lifts an exact money value after `Money` has already
+  closed currency and scale semantics; `parse(...)` is available for direct positive parsing
+- Surface: `money()`, `currencyUnit()`, `minorUnits()`, and `canonicalDecimal()` expose the exact
+  posted amount without reopening the invariant
 - Validation: rejects zero-valued amounts with the canonical journal-line error
 
 ## `NormalBalance`

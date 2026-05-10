@@ -54,7 +54,7 @@ final class CliAccountBalanceOutputRenderer {
                         snapshot.account().normalBalance().wireValue(),
                         snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
                         snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),
-                        balance.netAmount().currencyCode().value(),
+                        balance.netAmount().currencyUnit().code(),
                         CliQueryOutputFormatter.displayMoney(balance.debitTotal()),
                         CliQueryOutputFormatter.displayMoney(balance.creditTotal()),
                         CliQueryOutputFormatter.displayMoney(balance.netAmount()),

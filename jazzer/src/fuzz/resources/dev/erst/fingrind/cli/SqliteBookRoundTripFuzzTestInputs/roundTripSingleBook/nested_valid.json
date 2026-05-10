@@ -4,14 +4,18 @@
     {
       "accountCode": "7000",
       "side": "DEBIT",
-      "currencyCode": "USD",
-      "amount": "75.00"
+      "amount": {
+        "currencyCode": "USD",
+        "minorUnits": "7500"
+      }
     },
     {
       "accountCode": "8000",
       "side": "CREDIT",
-      "currencyCode": "USD",
-      "amount": "75.00"
+      "amount": {
+        "currencyCode": "USD",
+        "minorUnits": "7500"
+      }
     }
   ],
   "provenance": {

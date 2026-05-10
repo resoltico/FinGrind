@@ -57,12 +57,11 @@ class MachineContractPlanTemplateTest {
     assertEquals(LedgerStepKind.ASSERT, assertCashBalance.kind());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertCashBalanceTemplate.kind());
     assertEquals("1000", assertCashBalanceTemplate.accountCode());
-    assertEquals("EUR", assertCashBalanceTemplate.currencyCode());
-    assertEquals("10.00", assertCashBalanceTemplate.netAmount());
+    assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.33.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.34.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());

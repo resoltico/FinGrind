@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: USER_CLI
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -245,6 +245,8 @@ prepared checkout.
 `--request-file -` means read the request JSON from standard input.
 `--book-passphrase-stdin` means read the book passphrase from standard input instead.
 Those two stdin modes cannot be combined in one invocation.
+Whether it comes from a file or standard input, one request JSON document must fit within the
+`1048576`-byte UTF-8 payload limit.
 Use the extracted bundle launcher or `java -jar` for real process exit codes;
 `./gradlew :cli:run` wraps non-zero application exits as a Gradle task failure.
 
@@ -272,6 +274,7 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 | multiple replacement passphrase sources on `rekey-book` | `1` | `invalid-request` | `Exactly one replacement book passphrase source is permitted per command.` |
 | same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `1` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
+| oversized request JSON payload from file or standard input | `1` | `invalid-request` | `Request file exceeded the supported 1048576-byte UTF-8 limit: ...` or `Request JSON from standard input exceeded the supported 1048576-byte UTF-8 limit.` |
 | unreadable or missing `--request-file` payload | `1` | `invalid-request` | `Request file does not exist: ...`, `Request file is not readable: ...`, or `Failed to read request file: ...` |
 | malformed JSON or invalid request shape | `1` | `invalid-request` | `Failed to read request JSON at line ..., column ....`, `Failed to read request JSON from standard input.`, or domain-validation text; malformed JSON also publishes `details.parseMessage`, `details.line`, and `details.column`, and journal grammar failures publish `details.violations` |
 | malformed `list-accounts --cursor` or `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported account page cursor: ...` or `Unsupported posting page cursor: ...` |
@@ -314,6 +317,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   passphrase literal in shell history.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo, and
   the accepted prompt payload is also capped at 4096 UTF-8 bytes after normalization.
+- `--request-file <path>` reads one UTF-8 JSON object document capped at `1048576` bytes.
+- `--request-file -` reads one UTF-8 JSON object document from standard input under that same
+  `1048576`-byte limit.
 - `rekey-book` requires one current passphrase source plus one replacement passphrase source.
   The replacement options are `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, and
   `--replacement-book-passphrase-prompt`.
@@ -363,9 +369,9 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
   output mode. If the primary report succeeds, diagnostics emit a human info block with code
   `pdf-exported` and the normalized written path. If the PDF artifact fails, stdout still carries
   the report result and diagnostics emit a human warning with code `pdf-export-warning`.
-- JSON amount fields remain canonical decimal strings without forced display scale, while
-  `--output human` and `--output csv` render accounting-grade currency scale for operators and
-  spreadsheet import.
+- JSON money fields are typed exact-money objects with `currencyCode` and `minorUnits`,
+  while `--output human` and `--output csv` render accounting-grade currency scale for operators
+  and spreadsheet import.
 - `print-plan-template` emits the accepted `execute-plan` request shape, including the generic
   nested `assertion` object for assertion steps.
 - `execute-plan` reuses the same posting and query rules as the single-command surface, but runs

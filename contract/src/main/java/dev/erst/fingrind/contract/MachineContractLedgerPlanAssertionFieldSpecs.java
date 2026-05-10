@@ -89,34 +89,15 @@ final class MachineContractLedgerPlanAssertionFieldSpecs {
             conditionalAssertionEffectiveDateToField()));
   }
 
-  static MachineContractFieldSpec conditionalAssertionCurrencyCodeField() {
-    String description =
-        "Currency bucket expected by "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.ACCOUNT_BALANCE)
-            + " assertions.";
-    return MachineContractFieldSpec.conditional(
-        ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE,
-        description,
-        MachineContractSchemaSupport.nonBlankStringSchema(description));
-  }
-
-  static MachineContractFieldSpec requiredAssertionCurrencyCodeField() {
-    return MachineContractFieldSpec.required(
-        conditionalAssertionCurrencyCodeField().name(),
-        conditionalAssertionCurrencyCodeField().description(),
-        MachineContractLedgerPlanFieldSupport.acceptedSchema(
-            conditionalAssertionCurrencyCodeField()));
-  }
-
   static MachineContractFieldSpec conditionalAssertionNetAmountField() {
     String description =
-        "Plain decimal expected net amount for "
+        "Exact expected net money object for "
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.ACCOUNT_BALANCE)
             + " assertions.";
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Assertion.NET_AMOUNT,
         description,
-        MachineContractSchemaSupport.decimalAmountStringSchema(description));
+        MachineContractSchemaSupport.moneyObjectSchema(description, false));
   }
 
   static MachineContractFieldSpec requiredAssertionNetAmountField() {

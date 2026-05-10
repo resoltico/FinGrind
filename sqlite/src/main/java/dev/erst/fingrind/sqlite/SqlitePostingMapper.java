@@ -8,11 +8,9 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -23,7 +21,6 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTransl
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -77,9 +74,10 @@ final class SqlitePostingMapper {
               new AccountCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_ACCOUNT_CODE)),
               JournalLine.EntrySide.fromWireValue(
                   requiredText(lineRows, SqlitePostingSql.COL_LINE_ENTRY_SIDE)),
-              new Money(
-                  new CurrencyCode(requiredText(lineRows, SqlitePostingSql.COL_LINE_CURRENCY_CODE)),
-                  new BigDecimal(requiredText(lineRows, SqlitePostingSql.COL_LINE_AMOUNT)))));
+              SqlitePersistedMoneyCodec.readMoney(
+                  lineRows,
+                  SqlitePostingSql.COL_LINE_CURRENCY_CODE,
+                  SqlitePostingSql.COL_LINE_AMOUNT_MINOR)));
     }
     return lines;
   }

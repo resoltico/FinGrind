@@ -96,6 +96,21 @@ final class SqliteNativeStatements {
         });
   }
 
+  static void bindLong(MemorySegment statementHandle, int parameterIndex, long value) {
+    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+    SqliteNativeInvocation.runSqlite(
+        "Failed to bind a SQLite integer parameter.",
+        () -> {
+          int resultCode =
+              SqliteNativeCalls.addressIntLongToInt(sqliteApi.sqlite3BindInt64())
+                  .invoke(statementHandle, parameterIndex, value);
+          if (resultCode != SqliteNativeResultCodes.OK) {
+            throw new SqliteNativeException(
+                resultCode, "Failed to bind a SQLite integer parameter.");
+          }
+        });
+  }
+
   static void bindText(
       MemorySegment statementHandle,
       int parameterIndex,
@@ -163,6 +178,15 @@ final class SqliteNativeStatements {
         "Failed to read a SQLite integer column.",
         () ->
             SqliteNativeCalls.addressIntToInt(sqliteApi.sqlite3ColumnInt())
+                .invoke(statementHandle, columnIndex));
+  }
+
+  static long columnLong(MemorySegment statementHandle, int columnIndex) {
+    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+    return SqliteNativeInvocation.invoke(
+        "Failed to read a SQLite integer column.",
+        () ->
+            SqliteNativeCalls.addressIntToLong(sqliteApi.sqlite3ColumnInt64())
                 .invoke(statementHandle, columnIndex));
   }
 

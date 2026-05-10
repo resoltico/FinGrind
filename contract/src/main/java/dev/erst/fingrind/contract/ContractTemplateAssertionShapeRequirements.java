@@ -5,7 +5,6 @@ record ContractTemplateAssertionShapeRequirements(
     ContractTemplateFieldPresence accountCode,
     ContractTemplateFieldPresence effectiveDateFrom,
     ContractTemplateFieldPresence effectiveDateTo,
-    ContractTemplateFieldPresence currencyCode,
     ContractTemplateFieldPresence netAmount,
     ContractTemplateFieldPresence balanceSide,
     ContractTemplateFieldPresence postingId) {}

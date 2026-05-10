@@ -38,6 +38,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
         lsof \
         procps \
         python3 \
+        python3-pip \
         shellcheck \
         unzip \
         zip \

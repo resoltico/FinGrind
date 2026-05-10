@@ -31,7 +31,6 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -43,7 +42,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -62,7 +60,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   }
 
   protected static Money money(String currencyCode, String amount) {
-    return new Money(new CurrencyCode(currencyCode), new BigDecimal(amount));
+    return Money.parse(currencyCode, amount);
   }
 
   protected static PostingFact reversalPostingFact() {
@@ -113,8 +111,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   }
 
   protected static CurrencyBalance eurDebitBalance() {
-    return new CurrencyBalance(
-        money("EUR", "10.00"), money("EUR", "4.00"), money("EUR", "6.00"), BalanceSide.DEBIT);
+    return CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "4.00"));
   }
 
   protected static AccountBalanceSnapshot accountBalanceSnapshot(
@@ -152,11 +149,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(
             new AccountLedgerEntry(
                 postingFact,
-                new CurrencyBalance(
-                    money("EUR", "5.00"),
-                    money("EUR", "5.00"),
-                    money("EUR", "0.00"),
-                    BalanceSide.ZERO),
+                CurrencyBalance.ofTotals(money("EUR", "5.00"), money("EUR", "5.00")),
                 money("EUR", "0.00"),
                 BalanceSide.ZERO)),
         List.of());
@@ -185,11 +178,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z")),
-                new dev.erst.fingrind.core.CurrencyBalance(
-                    new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                    new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                    new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                    BalanceSide.DEBIT))));
+                CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))));
   }
 
   protected static dev.erst.fingrind.contract.AccountBalanceSnapshot
@@ -205,12 +194,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         cashAccount,
         Optional.of(LocalDate.parse("2026-04-01")),
         Optional.of(LocalDate.parse("2026-04-30")),
-        List.of(
-            new dev.erst.fingrind.core.CurrencyBalance(
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                BalanceSide.DEBIT)));
+        List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
   }
 
   protected static dev.erst.fingrind.contract.AccountLedgerReport sampleAccountLedgerReport() {
@@ -225,19 +209,9 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         cashAccount,
         new dev.erst.fingrind.core.EffectiveDateRange.Bounded(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-        List.of(
-            new dev.erst.fingrind.core.CurrencyBalance(
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                BalanceSide.ZERO)),
+        List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"))),
         List.of(),
-        List.of(
-            new dev.erst.fingrind.core.CurrencyBalance(
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                BalanceSide.DEBIT)));
+        List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
   }
 
   protected static dev.erst.fingrind.contract.PeriodSummaryReport samplePeriodSummaryReport() {
@@ -249,11 +223,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         1,
         List.of(
             new dev.erst.fingrind.contract.PeriodCurrencySummary(
-                new dev.erst.fingrind.core.CurrencyBalance(
-                    new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                    new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("10.00")),
-                    new Money(new CurrencyCode("EUR"), new java.math.BigDecimal("0.00")),
-                    BalanceSide.ZERO))),
+                CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "10.00")))),
         List.of());
   }
 

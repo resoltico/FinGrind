@@ -18,7 +18,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -47,7 +46,6 @@ import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
 import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
 import dev.erst.fingrind.executor.workflow.LedgerPlanOutcomeMapper;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -203,9 +201,7 @@ class LedgerPlanOutcomeMapperTest {
                     new dev.erst.fingrind.core.AccountCode("1000"),
                     null,
                     null,
-                    new dev.erst.fingrind.core.Money(
-                        new dev.erst.fingrind.core.CurrencyCode("EUR"),
-                        new java.math.BigDecimal("10.00")),
+                    dev.erst.fingrind.core.Money.parse("EUR", "10.00"),
                     dev.erst.fingrind.core.BalanceSide.DEBIT)));
 
     var journalEntry =
@@ -472,7 +468,7 @@ class LedgerPlanOutcomeMapperTest {
                     new AccountCode("1000"),
                     null,
                     null,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+                    Money.parse("EUR", "10.00"),
                     BalanceSide.DEBIT))));
   }
 
@@ -497,11 +493,11 @@ class LedgerPlanOutcomeMapperTest {
                 new JournalLine(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                    Money.parse("EUR", "10.00")),
                 new JournalLine(
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))))),
+                    Money.parse("EUR", "10.00")))),
         PostingLineageModel.direct(),
         new RequestProvenance(
             new ActorId("actor-1"),

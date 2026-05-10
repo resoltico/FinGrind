@@ -1,14 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,7 +18,7 @@ final class SqlitePeriodSummaryReader {
       SqliteNativeDatabase activeDatabase, PeriodSummaryCriteria query) {
     Map<AccountCode, SqliteReportRowValues.AccountTotals> accountActivity =
         SqliteReportRowValues.insertionOrderedMap();
-    Map<CurrencyCode, SqliteReportRowValues.Totals> currencyTotals =
+    Map<CurrencyUnit, SqliteReportRowValues.Totals> currencyTotals =
         SqliteReportRowValues.insertionOrderedMap();
     Set<String> postingIds = SqliteReportRowValues.insertionOrderedSet();
     int postingLineCount = 0;
@@ -32,15 +31,15 @@ final class SqlitePeriodSummaryReader {
             SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_POSTING_ID));
         postingLineCount++;
         RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);
-        CurrencyCode currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
-        BigDecimal amount = SqliteReportRowValues.reportAmount(statement);
+        CurrencyUnit currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
+        long amountMinor = SqliteReportRowValues.reportAmountMinor(statement);
         JournalLine.EntrySide entrySide =
             JournalLine.EntrySide.fromWireValue(
                 SqlitePostingMapper.requiredText(
                     statement, SqlitePostingSql.COL_REPORT_ENTRY_SIDE));
         SqliteReportRowValues.accountTotalsFor(accountActivity, account)
-            .add(currencyCode, entrySide, amount);
-        SqliteReportRowValues.totalsFor(currencyTotals, currencyCode).add(entrySide, amount);
+            .add(currencyCode, entrySide, amountMinor);
+        SqliteReportRowValues.totalsFor(currencyTotals, currencyCode).add(entrySide, amountMinor);
       }
     }
     List<PeriodCurrencySummaryView> currencySummaryRows =

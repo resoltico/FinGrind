@@ -1,37 +1,37 @@
 {
-  "targetKey": "posting-workflow",
-  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/basic_valid.json",
-  "coverageIntent": "successful four-line preflight then commit with optional correlation id",
-  "expectation": {
-    "outcomeKind": "success",
-    "message": "Replay completed without surfacing a bug.",
-    "details": {
-      "type": "POSTING_WORKFLOW",
-      "request": {
-        "effectiveDate": "2026-04-10",
-        "idempotencyKey": "idem-posting-4",
-        "lineCount": 4,
-        "reversalPresent": false
+  "targetKey" : "posting-workflow",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/basic_valid.json",
+  "coverageIntent" : "successful four-line preflight then commit with optional correlation id",
+  "expectation" : {
+    "outcomeKind" : "success",
+    "message" : "Replay completed without surfacing a bug.",
+    "details" : {
+      "type" : "POSTING_WORKFLOW",
+      "request" : {
+        "effectiveDate" : "2026-04-10",
+        "idempotencyKey" : "idem-posting-4",
+        "lineCount" : 4,
+        "reversalPresent" : false
       },
-      "lifecycle": {
-        "uninitialized": {
-          "preflightStatus": "posting-book-not-initialized",
-          "commitStatus": "posting-book-not-initialized"
+      "lifecycle" : {
+        "uninitialized" : {
+          "preflightStatus" : "posting-book-not-initialized",
+          "commitStatus" : "posting-book-not-initialized"
         },
-        "undeclared": {
-          "preflightStatus": "unknown-account",
-          "commitStatus": "unknown-account"
+        "undeclared" : {
+          "preflightStatus" : "unknown-account",
+          "commitStatus" : "unknown-account"
         },
-        "inactive": {
-          "preflightStatus": "inactive-account",
-          "commitStatus": "inactive-account"
+        "inactive" : {
+          "preflightStatus" : "inactive-account",
+          "commitStatus" : "inactive-account"
         }
       },
-      "outcome": {
-        "finalPreflightStatus": "preflight-accepted",
-        "finalCommitStatus": "committed",
-        "duplicateStatus": "duplicate-idempotency-key",
-        "storedFactPresent": true
+      "outcome" : {
+        "finalPreflightStatus" : "preflight-accepted",
+        "finalCommitStatus" : "committed",
+        "duplicateStatus" : "duplicate-idempotency-key",
+        "storedFactPresent" : true
       }
     }
   }

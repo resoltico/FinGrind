@@ -1,12 +1,12 @@
 {
-  "targetKey": "cli-request",
-  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_forbidden_recorded_at.json",
-  "coverageIntent": "removed recordedAt field rejection",
-  "expectation": {
-    "outcomeKind": "expected-invalid",
-    "message": "Field is no longer accepted: recordedAt",
-    "details": {
-      "type": "CLI_REQUEST_UNPARSED"
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_forbidden_recorded_at.json",
+  "coverageIntent" : "removed recordedAt field rejection",
+  "expectation" : {
+    "outcomeKind" : "expected-invalid",
+    "message" : "Field is no longer accepted: recordedAt",
+    "details" : {
+      "type" : "CLI_REQUEST_UNPARSED"
     }
   }
 }

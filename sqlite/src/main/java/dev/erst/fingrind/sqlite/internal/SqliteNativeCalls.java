@@ -29,6 +29,20 @@ public final class SqliteNativeCalls {
     int invoke(MemorySegment value, int intValue);
   }
 
+  /** Functional view of one {@code (address, int) -> long} native call. */
+  @FunctionalInterface
+  public interface AddressIntToLongCall {
+    /** Invokes the adapted native call. */
+    long invoke(MemorySegment value, int intValue);
+  }
+
+  /** Functional view of one {@code (address, int, long) -> int} native call. */
+  @FunctionalInterface
+  public interface AddressIntLongToIntCall {
+    /** Invokes the adapted native call. */
+    int invoke(MemorySegment value, int intValue, long longValue);
+  }
+
   /** Functional view of one {@code (address, address, int) -> int} native call. */
   @FunctionalInterface
   public interface AddressAddressIntToIntCall {
@@ -159,6 +173,16 @@ public final class SqliteNativeCalls {
   /** Adapts one raw method handle to the typed {@code (address, int) -> int} view. */
   public static AddressIntToIntCall addressIntToInt(MethodHandle handle) {
     return adapt(AddressIntToIntCall.class, handle);
+  }
+
+  /** Adapts one raw method handle to the typed {@code (address, int) -> long} view. */
+  public static AddressIntToLongCall addressIntToLong(MethodHandle handle) {
+    return adapt(AddressIntToLongCall.class, handle);
+  }
+
+  /** Adapts one raw method handle to the typed {@code (address, int, long) -> int} view. */
+  public static AddressIntLongToIntCall addressIntLongToInt(MethodHandle handle) {
+    return adapt(AddressIntLongToIntCall.class, handle);
   }
 
   /** Adapts one raw method handle to the typed {@code (address, address, int) -> int} view. */

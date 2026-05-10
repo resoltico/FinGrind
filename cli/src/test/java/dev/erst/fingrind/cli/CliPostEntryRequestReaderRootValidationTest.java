@@ -44,14 +44,18 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
                     {
                       "accountCode": "1000",
                       "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "1000"
+                      }
                     },
                     {
                       "accountCode": "2000",
                       "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "1000"
+                      }
                     }
                   ],
                   "provenance": {
@@ -85,14 +89,18 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
                     {
                       "accountCode": "1000",
                       "side": "DEBIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "1000"
+                      }
                     },
                     {
                       "accountCode": "2000",
                       "side": "CREDIT",
-                      "currencyCode": "EUR",
-                      "amount": "10.00"
+                      "amount": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "1000"
+                      }
                     }
                   ],
                   "provenance": {

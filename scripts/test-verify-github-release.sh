@@ -46,7 +46,7 @@ grep -Fq 'Publication convergence is by asset name and digest' "${repo_root}/doc
     "release protocol no longer documents digest-aware release-asset convergence"
 grep -Fq 'gh attestation verify' "${verifier}" || die \
     "release verifier no longer verifies published bundle attestations"
-grep -Fq 'actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb' "${release_workflow}" || die \
+grep -Fq 'actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26' "${release_workflow}" || die \
     "release workflow no longer pins the published bundle attestation action"
 python3 - <<'PY' "${release_workflow}" || die \
     "release workflow no longer isolates published-asset attestation to the neutral post-upload job"
@@ -61,7 +61,7 @@ job_end = workflow.find("\n  attest-release-assets:\n", job_start)
 if job_end < 0:
     raise SystemExit("missing attest-release-assets job delimiter")
 job_text = workflow[job_start:job_end]
-if "actions/attest@281a49d4cbb0a72c9575a50d18f6deb515a11deb" in job_text:
+if "actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26" in job_text:
     raise SystemExit("build-bundles job is attesting local artifacts instead of only publishing them")
 required_lines = (
     "    permissions:\n",

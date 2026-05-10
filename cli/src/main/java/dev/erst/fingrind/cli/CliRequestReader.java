@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.DeclareAccountCommand;
 import dev.erst.fingrind.contract.LedgerPlan;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalEntryValidationException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -115,8 +116,18 @@ final class CliRequestReader {
 
   private byte[] readRequestBytes(Path requestFile) throws IOException {
     if (ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())) {
-      return inputStream.readAllBytes();
+      return readBoundedBytes(inputStream);
     }
-    return Files.readAllBytes(requestFile);
+    try (InputStream fileStream = Files.newInputStream(requestFile)) {
+      return readBoundedBytes(fileStream);
+    }
+  }
+
+  private static byte[] readBoundedBytes(InputStream stream) throws IOException {
+    byte[] requestBytes = stream.readNBytes(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES + 1);
+    if (requestBytes.length > InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) {
+      throw new CliRequestPayloadTooLargeException(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES);
+    }
+    return requestBytes;
   }
 }

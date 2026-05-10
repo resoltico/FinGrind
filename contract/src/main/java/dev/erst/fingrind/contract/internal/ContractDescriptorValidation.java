@@ -32,6 +32,16 @@ public final class ContractDescriptorValidation {
     return requireText(value, fieldName);
   }
 
+  /**
+   * Requires one optional descriptor-owned reference field to be returned unchanged when present.
+   */
+  public static <T> @Nullable T requireOptionalValue(@Nullable T value, String fieldName) {
+    if (value == null) {
+      return null;
+    }
+    return requireValue(value, fieldName);
+  }
+
   /** Copies one descriptor-owned list defensively. */
   public static <T> List<T> copyList(List<T> values, String fieldName) {
     Objects.requireNonNull(fieldName, "fieldName");

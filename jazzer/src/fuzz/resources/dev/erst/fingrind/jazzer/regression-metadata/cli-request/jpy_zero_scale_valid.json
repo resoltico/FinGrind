@@ -1,0 +1,20 @@
+{
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/jpy_zero_scale_valid.json",
+  "coverageIntent" : "JPY zero-scale request parsing",
+  "expectation" : {
+    "outcomeKind" : "success",
+    "message" : "Replay completed without surfacing a bug.",
+    "details" : {
+      "type" : "CLI_REQUEST",
+      "request" : {
+        "effectiveDate" : "2026-06-10",
+        "idempotencyKey" : "seed-cli-jpy-idem-1",
+        "lineCount" : 2,
+        "reversalPresent" : false
+      },
+      "actorType" : "AGENT",
+      "sourceChannel" : "CLI"
+    }
+  }
+}

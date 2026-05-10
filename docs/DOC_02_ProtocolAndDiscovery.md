@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -311,6 +311,21 @@ public record PlanExecutionFacts(...)
   `BookCredentialFact`, `BookInitializationFact`, `BookAccountRegistryFact`,
   and `BookCurrencyScopeFact` are the semantic text wrappers carried by `BookModelFacts`
 
+## `MonetaryAmount`
+
+`MonetaryAmount` is the canonical machine-facing exact-money object reused by posting,
+ledger-plan, discovery, and response contracts.
+
+```java
+public record MonetaryAmount(String currencyCode, String minorUnits)
+```
+
+- Purpose: keep public money facts typed at the machine boundary instead of routing them through
+  free-form money strings
+- Shape: one ISO currency code plus one exact non-negative minor-unit string
+- Validation: rejects non-ISO currencies, redundant leading zeroes, non-digit minor-unit text,
+  minor-unit strings longer than 19 digits, and out-of-range exact amounts
+
 ## `ProtocolSharedRequestFields`
 
 `ProtocolSharedRequestFields` owns the cross-request field names reused by declare-account,
@@ -322,6 +337,18 @@ public final class ProtocolSharedRequestFields
 
 - Purpose: give shared request vocabulary one canonical owner before surface-specific field classes
   project it into their local JSON scopes
+
+## `ProtocolMoneyFields`
+
+`ProtocolMoneyFields` owns the canonical JSON field names for nested exact-money objects.
+
+```java
+public final class ProtocolMoneyFields
+```
+
+- Purpose: keep public exact-money object fields in one canonical owner shared by machine
+  contracts, request parsing, templates, response renderers, and docs
+- Current fields: `currencyCode` and `minorUnits`, returned in stable wire order by `fields()`
 
 ## `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
 
@@ -337,9 +364,11 @@ public final class ProtocolLedgerPlanFields
 - Purpose: prevent request parsing, templates, capabilities, and docs from carrying divergent
   field-name registries
 - `ProtocolPostEntryFields.TopLevel`, `.JournalLine`, `.Provenance`, and `.Reversal` group the
-  canonical posting-request field families by JSON object scope
+  canonical posting-request field families by JSON object scope; journal-line `amount` is one
+  nested exact-money object keyed by `ProtocolMoneyFields`
 - `ProtocolLedgerPlanFields.Plan`, `.Step`, `.Query`, and `.Assertion` group the canonical
-  ledger-plan field families by JSON object scope
+  ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
+  exact-money object shape
 
 ## `MachineContract`
 
@@ -455,8 +484,8 @@ public final class ContractTemplates
   `.LedgerPlanQueryTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed template descriptors
 - Template descriptors keep actor type, entry side, normal balance, step kind, assertion kind,
-  and balance side typed at the public boundary, and they reject structurally impossible ledger
-  plan step or assertion combinations before any renderer publishes them
+  balance side, and exact money typed at the public boundary, and they reject structurally
+  impossible ledger plan step or assertion combinations before any renderer publishes them
 
 ## `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException`
 
@@ -496,7 +525,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 1`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 2`
 
 ## `ProtectedBookFormatContract`
 

@@ -32,7 +32,6 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -47,7 +46,6 @@ import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -100,15 +98,17 @@ class CliResponseWriterTestSupport {
       String creditTotal,
       String netAmount,
       BalanceSide balanceSide) {
-    return new CurrencyBalance(
-        money(currencyCode, debitTotal),
-        money(currencyCode, creditTotal),
-        money(currencyCode, netAmount),
-        balanceSide);
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 
   static Money money(String currencyCode, String amount) {
-    return new Money(new CurrencyCode(currencyCode), new BigDecimal(amount));
+    return Money.parse(currencyCode, amount);
   }
 
   static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {

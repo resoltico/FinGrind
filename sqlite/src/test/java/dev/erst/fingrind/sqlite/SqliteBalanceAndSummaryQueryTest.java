@@ -123,16 +123,8 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                   Optional.empty(),
                   Optional.empty(),
                   List.of(
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "12.00"),
-                          money("EUR", "2.00"),
-                          BalanceSide.CREDIT),
-                      new CurrencyBalance(
-                          money("USD", "7.00"),
-                          money("USD", "7.00"),
-                          money("USD", "0.00"),
-                          BalanceSide.ZERO)))),
+                      balance("EUR", "10.00", "12.00", "2.00", BalanceSide.CREDIT),
+                      balance("USD", "7.00", "7.00", "0.00", BalanceSide.ZERO)))),
           postingFactStore
               .accountBalance(new AccountBalanceCriteria(new AccountCode("1000"), null, null))
               .map(SqliteStoreTestIntrospectionSupport::published));
@@ -142,12 +134,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                   publishedAccount(cashAccount),
                   Optional.empty(),
                   Optional.of(LocalDate.parse("2026-04-08")),
-                  List.of(
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "4.00"),
-                          money("EUR", "6.00"),
-                          BalanceSide.DEBIT)))),
+                  List.of(balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)))),
           postingFactStore
               .accountBalance(
                   new AccountBalanceCriteria(
@@ -159,12 +146,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                   publishedAccount(cashAccount),
                   Optional.of(LocalDate.parse("2026-04-10")),
                   Optional.of(LocalDate.parse("2026-04-11")),
-                  List.of(
-                      new CurrencyBalance(
-                          money("USD", "7.00"),
-                          money("USD", "7.00"),
-                          money("USD", "0.00"),
-                          BalanceSide.ZERO)))),
+                  List.of(balance("USD", "7.00", "7.00", "0.00", BalanceSide.ZERO)))),
           postingFactStore
               .accountBalance(
                   new AccountBalanceCriteria(
@@ -221,18 +203,10 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               List.of(
                   new TrialBalanceRow(
                       publishedAccount(cashAccount),
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "4.00"),
-                          money("EUR", "6.00"),
-                          BalanceSide.DEBIT)),
+                      balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)),
                   new TrialBalanceRow(
                       publishedAccount(revenueAccount),
-                      new CurrencyBalance(
-                          money("EUR", "4.00"),
-                          money("EUR", "10.00"),
-                          money("EUR", "6.00"),
-                          BalanceSide.CREDIT)))),
+                      balance("EUR", "4.00", "10.00", "6.00", BalanceSide.CREDIT)))),
           published(
               postingFactStore.trialBalance(
                   new TrialBalanceCriteria(Optional.of(LocalDate.parse("2026-04-08"))))));
@@ -245,30 +219,33 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
               2,
               List.of(
                   new PeriodCurrencySummary(
-                      new CurrencyBalance(
-                          money("EUR", "14.00"),
-                          money("EUR", "14.00"),
-                          money("EUR", "0.00"),
-                          BalanceSide.ZERO))),
+                      balance("EUR", "14.00", "14.00", "0.00", BalanceSide.ZERO))),
               List.of(
                   new PeriodAccountActivityRow(
                       publishedAccount(cashAccount),
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "4.00"),
-                          money("EUR", "6.00"),
-                          BalanceSide.DEBIT)),
+                      balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT)),
                   new PeriodAccountActivityRow(
                       publishedAccount(revenueAccount),
-                      new CurrencyBalance(
-                          money("EUR", "4.00"),
-                          money("EUR", "10.00"),
-                          money("EUR", "6.00"),
-                          BalanceSide.CREDIT)))),
+                      balance("EUR", "4.00", "10.00", "6.00", BalanceSide.CREDIT)))),
           published(
               postingFactStore.periodSummary(
                   new PeriodSummaryCriteria(
                       LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08")))));
     }
+  }
+
+  private static CurrencyBalance balance(
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      BalanceSide balanceSide) {
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 }

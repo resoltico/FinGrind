@@ -29,18 +29,30 @@ jobs:
         run: |
           set -euo pipefail
           java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           [ -n "${java_version}" ]
+          [ -n "${python_version}" ]
           echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
+          echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
 
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
+          cache: 'pip'
+          cache-dependency-path: requirements-python-tools.txt
+
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
         with:
           # On PRs, only read from the cache to avoid cache poisoning from untrusted code.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Install repo-owned Python tools
+        run: python -m pip install --user -r requirements-python-tools.txt
 
       - name: Run root quality gates and included build-logic tests
         # Active Jazzer fuzzing is intentionally local-only and hard-fails under GITHUB_ACTIONS.
@@ -78,13 +90,22 @@ jobs:
         run: |
           set -euo pipefail
           java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           [ -n "${java_version}" ]
+          [ -n "${python_version}" ]
           echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
+          echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
+          cache: 'pip'
+          cache-dependency-path: requirements-python-tools.txt
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
         with:
@@ -99,6 +120,10 @@ jobs:
         run: |
           Add-MpPreference -ExclusionPath "${{ github.workspace }}"
           Add-MpPreference -ExclusionPath "$env:USERPROFILE\.gradle"
+
+      - name: Install repo-owned Python tools
+        shell: pwsh
+        run: python -m pip install --user -r requirements-python-tools.txt
 
       - name: Run root quality gates and included build-logic tests on Windows
         shell: pwsh
@@ -144,13 +169,20 @@ jobs:
         run: |
           set -euo pipefail
           java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           [ -n "${java_version}" ]
+          [ -n "${python_version}" ]
           echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
+          echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
         with:
@@ -205,6 +237,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Resolve Python toolchain version
+        id: build-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${python_version}" ]
+          echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
 
       - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 

@@ -13,8 +13,7 @@ public final class ProtocolPostEntryFields {
 
   /** Returns journal-line request fields in stable wire order. */
   public static List<String> journalLineFields() {
-    return List.of(
-        JournalLine.ACCOUNT_CODE, JournalLine.SIDE, JournalLine.CURRENCY_CODE, JournalLine.AMOUNT);
+    return List.of(JournalLine.ACCOUNT_CODE, JournalLine.SIDE, JournalLine.AMOUNT);
   }
 
   /** Returns provenance request fields in stable wire order. */
@@ -48,7 +47,6 @@ public final class ProtocolPostEntryFields {
   public static final class JournalLine {
     public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
     public static final String SIDE = "side";
-    public static final String CURRENCY_CODE = ProtocolSharedRequestFields.CURRENCY_CODE;
     public static final String AMOUNT = "amount";
 
     private JournalLine() {}

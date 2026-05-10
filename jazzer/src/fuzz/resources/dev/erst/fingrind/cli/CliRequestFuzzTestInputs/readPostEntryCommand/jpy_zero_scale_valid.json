@@ -1,0 +1,28 @@
+{
+  "effectiveDate": "2026-06-10",
+  "lines": [
+    {
+      "accountCode": "1110",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "JPY",
+        "minorUnits": "100"
+      }
+    },
+    {
+      "accountCode": "2110",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "JPY",
+        "minorUnits": "100"
+      }
+    }
+  ],
+  "provenance": {
+    "actorId": "seed-cli-jpy-1",
+    "actorType": "AGENT",
+    "commandId": "seed-cli-jpy-command-1",
+    "idempotencyKey": "seed-cli-jpy-idem-1",
+    "causationId": "seed-cli-jpy-cause-1"
+  }
+}

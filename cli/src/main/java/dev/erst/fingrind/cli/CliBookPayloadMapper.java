@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.AccountPage;
 import dev.erst.fingrind.contract.AccountPageCursor;
 import dev.erst.fingrind.contract.BookInspection;
 import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.contract.PostingPage;
 import dev.erst.fingrind.contract.PostingPageCursor;
@@ -130,8 +131,7 @@ final class CliBookPayloadMapper {
     return new CliBookQueryJsonModels.JournalLinePayload(
         line.accountCode().value(),
         line.side().wireValue(),
-        line.amount().currencyCode().value(),
-        line.amount().amount().toPlainString());
+        MonetaryAmount.of(line.amount().money()));
   }
 
   private static String absolutePath(Path bookFilePath) {

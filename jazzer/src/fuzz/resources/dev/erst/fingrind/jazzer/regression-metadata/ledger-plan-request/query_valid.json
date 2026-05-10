@@ -1,25 +1,25 @@
 {
-  "targetKey": "ledger-plan-request",
-  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/query_valid.json",
-  "coverageIntent": "valid plan with successful structured list-query journal facts",
-  "expectation": {
-    "outcomeKind": "success",
-    "message": "Replay completed without surfacing a bug.",
-    "details": {
-      "type": "LEDGER_PLAN_REQUEST",
-      "plan": {
-        "planId": "plan-query-1",
-        "stepCount": 6,
-        "firstStepKind": "open-book",
-        "lastStepKind": "list-postings",
-        "assertionStepCount": 0,
-        "beginsWithOpenBook": true
+  "targetKey" : "ledger-plan-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/query_valid.json",
+  "coverageIntent" : "valid plan with successful structured list-query journal facts",
+  "expectation" : {
+    "outcomeKind" : "success",
+    "message" : "Replay completed without surfacing a bug.",
+    "details" : {
+      "type" : "LEDGER_PLAN_REQUEST",
+      "plan" : {
+        "planId" : "plan-query-1",
+        "stepCount" : 6,
+        "firstStepKind" : "open-book",
+        "lastStepKind" : "list-postings",
+        "assertionStepCount" : 0,
+        "beginsWithOpenBook" : true
       },
-      "execution": {
-        "executionStatus": "succeeded",
-        "journalStepCount": 6,
-        "listQueryStepCount": 2,
-        "structuredListQueryStepCount": 2
+      "execution" : {
+        "executionStatus" : "succeeded",
+        "journalStepCount" : 6,
+        "listQueryStepCount" : 2,
+        "structuredListQueryStepCount" : 2
       }
     }
   }

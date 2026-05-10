@@ -4,21 +4,25 @@
     {
       "accountCode": "1000-kase",
       "side": "DEBIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     },
     {
-      "accountCode": "2000-ieņēmumi",
+      "accountCode": "2000-ie\u0146\u0113mumi",
       "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     }
   ],
   "provenance": {
-    "actorId": "aktieris-ā",
+    "actorId": "aktieris-\u0101",
     "actorType": "AGENT",
-    "commandId": "komanda-漢字",
+    "commandId": "komanda-\u6f22\u5b57",
     "idempotencyKey": "idem-unicode-1",
-    "causationId": "cause-€-1"
+    "causationId": "cause-\u20ac-1"
   }
 }

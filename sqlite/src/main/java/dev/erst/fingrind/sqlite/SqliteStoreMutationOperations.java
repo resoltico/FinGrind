@@ -55,6 +55,7 @@ final class SqliteStoreMutationOperations {
 
             transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
             SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
+            SqliteBookIntegrityVerifier.recordSchemaFingerprint(activeDatabase);
             SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             lifecycle.cacheState(

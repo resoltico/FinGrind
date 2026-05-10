@@ -2,9 +2,8 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.Money;
-import java.math.BigDecimal;
 import java.util.Objects;
 
 /** Exact balance arithmetic shared by SQLite-backed balance and reporting reads. */
@@ -12,20 +11,26 @@ final class SqliteBalanceMath {
   private SqliteBalanceMath() {}
 
   static CurrencyBalance currencyBalance(
-      CurrencyCode currencyCode, BigDecimal debitTotal, BigDecimal creditTotal) {
+      CurrencyUnit currencyCode, long debitTotal, long creditTotal) {
     Objects.requireNonNull(currencyCode, "currencyCode");
-    Objects.requireNonNull(debitTotal, "debitTotal");
-    Objects.requireNonNull(creditTotal, "creditTotal");
-    BigDecimal net = debitTotal.subtract(creditTotal);
-    BigDecimal absoluteNet = net.abs();
-    BalanceSide balanceSide = net.signum() > 0 ? BalanceSide.DEBIT : BalanceSide.CREDIT;
-    if (absoluteNet.signum() == 0) {
-      balanceSide = BalanceSide.ZERO;
+    Money debitMoney = Money.ofMinorUnits(currencyCode, debitTotal);
+    Money creditMoney = Money.ofMinorUnits(currencyCode, creditTotal);
+    return CurrencyBalance.ofTotals(debitMoney, creditMoney);
+  }
+
+  static BalanceSide balanceSide(long signedMinorUnits) {
+    if (signedMinorUnits == 0L) {
+      return BalanceSide.ZERO;
     }
-    return new CurrencyBalance(
-        new Money(currencyCode, debitTotal),
-        new Money(currencyCode, creditTotal),
-        new Money(currencyCode, absoluteNet),
-        balanceSide);
+    return signedMinorUnits > 0L ? BalanceSide.DEBIT : BalanceSide.CREDIT;
+  }
+
+  static long absoluteMinorUnits(long signedMinorUnits) {
+    try {
+      return Math.absExact(signedMinorUnits);
+    } catch (ArithmeticException exception) {
+      throw new IllegalStateException(
+          "SQLite running balance exceeded the supported exact money range.", exception);
+    }
   }
 }

@@ -24,12 +24,14 @@ record SqliteNativeApi(
     MethodHandle sqlite3PrepareV2,
     MethodHandle sqlite3BindNull,
     MethodHandle sqlite3BindInt,
+    MethodHandle sqlite3BindInt64,
     MethodHandle sqlite3BindText,
     MethodHandle sqlite3Step,
     MethodHandle sqlite3Finalize,
     MethodHandle sqlite3ColumnText,
     MethodHandle sqlite3ColumnBytes,
     MethodHandle sqlite3ColumnInt,
+    MethodHandle sqlite3ColumnInt64,
     MethodHandle sqlite3Errmsg,
     MethodHandle sqlite3Errstr,
     MethodHandle sqlite3ExtendedErrcode,
@@ -56,12 +58,14 @@ record SqliteNativeApi(
     Objects.requireNonNull(sqlite3PrepareV2, "sqlite3PrepareV2");
     Objects.requireNonNull(sqlite3BindNull, "sqlite3BindNull");
     Objects.requireNonNull(sqlite3BindInt, "sqlite3BindInt");
+    Objects.requireNonNull(sqlite3BindInt64, "sqlite3BindInt64");
     Objects.requireNonNull(sqlite3BindText, "sqlite3BindText");
     Objects.requireNonNull(sqlite3Step, "sqlite3Step");
     Objects.requireNonNull(sqlite3Finalize, "sqlite3Finalize");
     Objects.requireNonNull(sqlite3ColumnText, "sqlite3ColumnText");
     Objects.requireNonNull(sqlite3ColumnBytes, "sqlite3ColumnBytes");
     Objects.requireNonNull(sqlite3ColumnInt, "sqlite3ColumnInt");
+    Objects.requireNonNull(sqlite3ColumnInt64, "sqlite3ColumnInt64");
     Objects.requireNonNull(sqlite3Errmsg, "sqlite3Errmsg");
     Objects.requireNonNull(sqlite3Errstr, "sqlite3Errstr");
     Objects.requireNonNull(sqlite3ExtendedErrcode, "sqlite3ExtendedErrcode");

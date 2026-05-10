@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,7 +34,7 @@ final class CliQueryOutputFormatter {
 
   static List<String> balanceRow(CurrencyBalance balance) {
     return List.of(
-        balance.netAmount().currencyCode().value(),
+        balance.netAmount().currencyUnit().code(),
         displayMoney(balance.debitTotal()),
         displayMoney(balance.creditTotal()),
         displayMoney(balance.netAmount()),
@@ -48,7 +47,7 @@ final class CliQueryOutputFormatter {
         row.account().accountName().value(),
         row.account().normalBalance().wireValue(),
         Boolean.toString(row.account().active()),
-        row.balance().netAmount().currencyCode().value(),
+        row.balance().netAmount().currencyUnit().code(),
         displayMoney(row.balance().debitTotal()),
         displayMoney(row.balance().creditTotal()),
         displayMoney(row.balance().netAmount()),
@@ -60,7 +59,7 @@ final class CliQueryOutputFormatter {
         entry.postingFact().journalEntry().effectiveDate().toString(),
         entry.postingFact().provenance().recordedAt().toString(),
         entry.postingFact().postingId().value(),
-        entry.movement().netAmount().currencyCode().value(),
+        entry.movement().netAmount().currencyUnit().code(),
         displayMoney(entry.movement().debitTotal()),
         displayMoney(entry.movement().creditTotal()),
         displayMoney(entry.runningNetAmount()),
@@ -73,7 +72,7 @@ final class CliQueryOutputFormatter {
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().normalBalance().wireValue(),
-        row.movement().netAmount().currencyCode().value(),
+        row.movement().netAmount().currencyUnit().code(),
         displayMoney(row.movement().debitTotal()),
         displayMoney(row.movement().creditTotal()),
         displayMoney(row.movement().netAmount()),
@@ -98,7 +97,7 @@ final class CliQueryOutputFormatter {
     return balances.stream()
         .map(
             balance ->
-                balance.netAmount().currencyCode().value()
+                balance.netAmount().currencyUnit().code()
                     + " "
                     + displayMoney(balance.netAmount())
                     + " "
@@ -107,7 +106,7 @@ final class CliQueryOutputFormatter {
   }
 
   static String displayMoney(Money money) {
-    return CliTextFormat.displayAmount(money.currencyCode().value(), money.amount());
+    return CliTextFormat.displayMoney(money);
   }
 
   static String dateRange(
@@ -130,16 +129,16 @@ final class CliQueryOutputFormatter {
   }
 
   private static String postingCurrency(PostingFact postingFact) {
-    return postingFact.journalEntry().lines().getFirst().amount().currencyCode().value();
+    return postingFact.journalEntry().currencyUnit().code();
   }
 
   private static String postingTotalAmount(PostingFact postingFact) {
-    JournalLine firstLine = postingFact.journalEntry().lines().getFirst();
-    BigDecimal debitTotal =
+    long debitTotalMinorUnits =
         postingFact.journalEntry().lines().stream()
             .filter(line -> line.side() == JournalLine.EntrySide.DEBIT)
-            .map(line -> line.amount().amount())
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    return CliTextFormat.displayAmount(firstLine.amount().currencyCode().value(), debitTotal);
+            .mapToLong(line -> line.amount().minorUnits())
+            .sum();
+    return CliTextFormat.displayMoney(
+        Money.ofMinorUnits(postingFact.journalEntry().currencyUnit(), debitTotalMinorUnits));
   }
 }

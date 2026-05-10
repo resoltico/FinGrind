@@ -4,7 +4,6 @@ import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +17,13 @@ class JournalEntryTest {
     JournalEntry journalEntry = new JournalEntry(LocalDate.parse("2026-04-07"), lines);
     lines.clear();
     assertEquals(2, journalEntry.lines().size());
+  }
+
+  @Test
+  void currencyUnit_returnsTheEntryWideCurrencyInvariant() {
+    JournalEntry journalEntry = new JournalEntry(LocalDate.parse("2026-04-07"), balancedLines());
+
+    assertEquals(CurrencyUnit.of("EUR"), journalEntry.currencyUnit());
   }
 
   @Test
@@ -41,13 +47,11 @@ class JournalEntryTest {
     List<JournalLine> lines =
         List.of(
             new JournalLine(
-                new AccountCode("1000"),
-                JournalLine.EntrySide.DEBIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                new AccountCode("1000"), JournalLine.EntrySide.DEBIT, Money.parse("EUR", "10.00")),
             new JournalLine(
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
-                new Money(new CurrencyCode("USD"), new BigDecimal("10.00"))));
+                Money.parse("USD", "10.00")));
     assertThrows(
         IllegalArgumentException.class,
         () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
@@ -58,13 +62,9 @@ class JournalEntryTest {
     List<JournalLine> lines =
         List.of(
             new JournalLine(
-                new AccountCode("1000"),
-                JournalLine.EntrySide.DEBIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                new AccountCode("1000"), JournalLine.EntrySide.DEBIT, Money.parse("EUR", "10.00")),
             new JournalLine(
-                new AccountCode("2000"),
-                JournalLine.EntrySide.CREDIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("9.00"))));
+                new AccountCode("2000"), JournalLine.EntrySide.CREDIT, Money.parse("EUR", "9.00")));
     assertThrows(
         IllegalArgumentException.class,
         () -> new JournalEntry(LocalDate.parse("2026-04-07"), lines));
@@ -75,9 +75,7 @@ class JournalEntryTest {
     List<JournalLine> lines =
         List.of(
             new JournalLine(
-                new AccountCode("1000"),
-                JournalLine.EntrySide.DEBIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
+                new AccountCode("1000"), JournalLine.EntrySide.DEBIT, Money.parse("EUR", "10.00")));
     JournalEntryValidationException exception =
         assertThrows(
             JournalEntryValidationException.class,
@@ -99,7 +97,7 @@ class JournalEntryTest {
             new JournalLine(
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
+                Money.parse("EUR", "10.00")));
     JournalEntryValidationException exception =
         assertThrows(
             JournalEntryValidationException.class,
@@ -133,12 +131,8 @@ class JournalEntryTest {
   private static List<JournalLine> balancedLines() {
     return List.of(
         new JournalLine(
-            new AccountCode("1000"),
-            JournalLine.EntrySide.DEBIT,
-            new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+            new AccountCode("1000"), JournalLine.EntrySide.DEBIT, Money.parse("EUR", "10.00")),
         new JournalLine(
-            new AccountCode("2000"),
-            JournalLine.EntrySide.CREDIT,
-            new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))));
+            new AccountCode("2000"), JournalLine.EntrySide.CREDIT, Money.parse("EUR", "10.00")));
   }
 }

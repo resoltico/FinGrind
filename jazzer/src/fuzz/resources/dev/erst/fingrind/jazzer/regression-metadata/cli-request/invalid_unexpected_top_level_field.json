@@ -1,12 +1,12 @@
 {
-  "targetKey": "cli-request",
-  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_unexpected_top_level_field.json",
-  "coverageIntent": "unexpected request field rejection",
-  "expectation": {
-    "outcomeKind": "expected-invalid",
-    "message": "Unexpected field: unexpectedField",
-    "details": {
-      "type": "CLI_REQUEST_UNPARSED"
+  "targetKey" : "cli-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/invalid_unexpected_top_level_field.json",
+  "coverageIntent" : "unexpected request field rejection",
+  "expectation" : {
+    "outcomeKind" : "expected-invalid",
+    "message" : "Unexpected field: unexpectedField",
+    "details" : {
+      "type" : "CLI_REQUEST_UNPARSED"
     }
   }
 }

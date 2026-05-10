@@ -430,4 +430,17 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     assertEquals(OptionalInt.empty(), CliJsonFieldAccess.optionalInt(rootNode, "explicitNull"));
     assertEquals(OptionalInt.of(25), CliJsonFieldAccess.optionalInt(rootNode, "limit"));
   }
+
+  @Test
+  void requiredInt_rejectsMissingField() throws IOException {
+    var rootNode =
+        CliJsonFieldAccess.requireRootObject(
+            CliJsonObjectMappers.configuredObjectMapper().readTree("{\"limit\": 25}"));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredInt(rootNode, "cursor"));
+    assertEquals("Missing required field: cursor", exception.getMessage());
+  }
 }

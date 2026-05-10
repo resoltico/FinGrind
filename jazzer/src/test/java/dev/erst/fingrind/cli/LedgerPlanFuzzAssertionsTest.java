@@ -68,14 +68,18 @@ class LedgerPlanFuzzAssertionsTest {
                       {
                         "accountCode": "1000",
                         "side": "DEBIT",
-                        "currencyCode": "EUR",
-                        "amount": "10.00"
+                        "amount": {
+                          "currencyCode": "EUR",
+                          "minorUnits": "1000"
+                        }
                       },
                       {
                         "accountCode": "2000",
                         "side": "CREDIT",
-                        "currencyCode": "EUR",
-                        "amount": "10.00"
+                        "amount": {
+                          "currencyCode": "EUR",
+                          "minorUnits": "1000"
+                        }
                       }
                     ],
                     "provenance": {
@@ -93,8 +97,10 @@ class LedgerPlanFuzzAssertionsTest {
                   "assertion": {
                     "kind": "assert-account-balance",
                     "accountCode": "1000",
-                    "currencyCode": "EUR",
-                    "netAmount": "11.00",
+                    "netAmount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1100"
+                    },
                     "balanceSide": "DEBIT"
                   }
                 }
@@ -629,14 +635,18 @@ class LedgerPlanFuzzAssertionsTest {
                   {
                     "accountCode": "1000",
                     "side": "DEBIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00"
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
                   },
                   {
                     "accountCode": "2000",
                     "side": "CREDIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00"
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
                   }
                 ],
                 "provenance": {
@@ -694,14 +704,18 @@ class LedgerPlanFuzzAssertionsTest {
                   {
                     "accountCode": "1000",
                     "side": "DEBIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00"
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
                   },
                   {
                     "accountCode": "2000",
                     "side": "CREDIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00"
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
                   }
                 ],
                 "provenance": {
@@ -722,14 +736,18 @@ class LedgerPlanFuzzAssertionsTest {
                   {
                     "accountCode": "1000",
                     "side": "DEBIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00"
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
                   },
                   {
                     "accountCode": "2000",
                     "side": "CREDIT",
-                    "currencyCode": "EUR",
-                    "amount": "10.00"
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
                   }
                 ],
                 "provenance": {
@@ -781,8 +799,10 @@ class LedgerPlanFuzzAssertionsTest {
                 "accountCode": "1000",
                 "effectiveDateFrom": "2026-04-01",
                 "effectiveDateTo": "2026-04-30",
-                "currencyCode": "EUR",
-                "netAmount": "10.00",
+                "netAmount": {
+                  "currencyCode": "EUR",
+                  "minorUnits": "1000"
+                },
                 "balanceSide": "DEBIT"
               }
             }

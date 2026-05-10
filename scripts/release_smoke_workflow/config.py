@@ -79,9 +79,7 @@ def require_bool(name: str) -> bool:
         return True
     if value == "false":
         return False
-    raise ReleaseSmokeFailure(
-        f"environment variable {name} must be one of: true, false"
-    )
+    raise ReleaseSmokeFailure(f"environment variable {name} must be one of: true, false")
 
 
 def require_json_array(name: str, default: list[str] | None = None) -> list[str]:
@@ -94,7 +92,9 @@ def require_json_array(name: str, default: list[str] | None = None) -> list[str]
         raise ReleaseSmokeFailure(
             f"environment variable {name} must contain one JSON array"
         ) from exc
-    if not isinstance(parsed, list) or any(not isinstance(item, str) or not item for item in parsed):
+    if not isinstance(parsed, list) or any(
+        not isinstance(item, str) or not item for item in parsed
+    ):
         raise ReleaseSmokeFailure(
             f"environment variable {name} must contain one JSON array of non-blank strings"
         )
@@ -112,9 +112,7 @@ def require_json_object(name: str, default: dict[str, str] | None = None) -> dic
             f"environment variable {name} must contain one JSON object"
         ) from exc
     if not isinstance(parsed, dict):
-        raise ReleaseSmokeFailure(
-            f"environment variable {name} must contain one JSON object"
-        )
+        raise ReleaseSmokeFailure(f"environment variable {name} must contain one JSON object")
     normalized: dict[str, str] = {}
     for key, value in parsed.items():
         if not isinstance(key, str) or not key or not isinstance(value, str):

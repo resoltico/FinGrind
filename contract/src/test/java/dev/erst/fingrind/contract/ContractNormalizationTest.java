@@ -6,13 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -158,33 +155,16 @@ class ContractNormalizationTest {
   }
 
   @Test
-  void reportingFixtures_stillProvideConcreteBalances() {
+  void reportingFixtures_provideConcreteBalances() {
     CurrencyBalance balance =
-        new CurrencyBalance(
-            new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-            new Money(new CurrencyCode("EUR"), BigDecimal.ZERO),
-            new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-            BalanceSide.DEBIT);
-    assertEquals("EUR", balance.netAmount().currencyCode().value());
+        CurrencyBalance.ofTotals(Money.parse("EUR", "15.00"), Money.parse("EUR", "0.00"));
+    assertEquals("EUR", balance.netAmount().currencyUnit().code());
   }
 
   @Test
   void currencyBalance_rejectsMixedCurrencies() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new CurrencyBalance(
-                new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-                new Money(new CurrencyCode("USD"), BigDecimal.ZERO),
-                new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-                BalanceSide.DEBIT));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CurrencyBalance(
-                new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-                new Money(new CurrencyCode("EUR"), BigDecimal.ZERO),
-                new Money(new CurrencyCode("USD"), new BigDecimal("15.00")),
-                BalanceSide.DEBIT));
+        () -> CurrencyBalance.ofTotals(Money.parse("EUR", "15.00"), Money.parse("USD", "0.00")));
   }
 }

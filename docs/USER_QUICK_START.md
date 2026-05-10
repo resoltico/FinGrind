@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: USER_QUICK_START
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -121,14 +121,18 @@ Replace the contents of `./request.json` with one balanced entry, for example:
     {
       "accountCode": "1000",
       "side": "DEBIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     },
     {
       "accountCode": "2000",
       "side": "CREDIT",
-      "currencyCode": "EUR",
-      "amount": "10.00"
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
     }
   ],
   "provenance": {

@@ -38,6 +38,11 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(fixtureCopy))) {
       assertTrue(postingFactStore.inspectBook().initialized());
+      assertEquals(SqliteBookContract.FORMAT_VERSION, fixtureMetadataBookFormatVersion());
+      assertEquals(
+          fixtureMetadataSchemaFingerprint(),
+          SqliteBookIntegrityVerifier.liveSchemaFingerprint(
+              requireStoreDatabase(postingFactStore)));
       assertEquals(
           expectedFormat,
           SqliteProtectedBookFormatIntrospection.openedBookFormat(
@@ -139,6 +144,26 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
   }
 
   private static ProtectedBookFormatContract fixtureMetadataFormat() throws IOException {
+    JsonNode formatNode = fixtureMetadataDocument().path("protectedBookFormat");
+    return new ProtectedBookFormatContract(
+        BookCipher.fromWireValue(requiredTextField(formatNode, "cipher")),
+        formatNode.path("legacyMode").booleanValue(),
+        formatNode.path("pageSize").intValue(),
+        formatNode.path("reservedBytes").intValue(),
+        formatNode.path("legacyPageSize").intValue(),
+        formatNode.path("kdfIter").intValue(),
+        formatNode.path("plaintextHeaderSize").intValue());
+  }
+
+  private static int fixtureMetadataBookFormatVersion() throws IOException {
+    return requiredIntField(fixtureMetadataDocument(), "bookFormatVersion");
+  }
+
+  private static String fixtureMetadataSchemaFingerprint() throws IOException {
+    return requiredTextField(fixtureMetadataDocument(), "schemaFingerprintSha256");
+  }
+
+  private static JsonNode fixtureMetadataDocument() throws IOException {
     try (InputStream resourceStream =
         SqliteProtectedBookCompatibilityFixtureTest.class.getResourceAsStream(
             CURRENT_DEFAULT_FIXTURE_METADATA_RESOURCE)) {
@@ -147,17 +172,7 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
             "Missing committed protected-book fixture metadata: "
                 + CURRENT_DEFAULT_FIXTURE_METADATA_RESOURCE);
       }
-      JsonNode document =
-          Objects.requireNonNull(JSON_MAPPER.readTree(resourceStream), "fixture metadata");
-      JsonNode formatNode = document.path("protectedBookFormat");
-      return new ProtectedBookFormatContract(
-          BookCipher.fromWireValue(requiredTextField(formatNode, "cipher")),
-          formatNode.path("legacyMode").booleanValue(),
-          formatNode.path("pageSize").intValue(),
-          formatNode.path("reservedBytes").intValue(),
-          formatNode.path("legacyPageSize").intValue(),
-          formatNode.path("kdfIter").intValue(),
-          formatNode.path("plaintextHeaderSize").intValue());
+      return Objects.requireNonNull(JSON_MAPPER.readTree(resourceStream), "fixture metadata");
     }
   }
 
@@ -168,5 +183,13 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
     }
     return Objects.requireNonNull(
         fieldNode.stringValue(), "fixture metadata field `" + fieldName + "`");
+  }
+
+  private static int requiredIntField(JsonNode node, String fieldName) throws IOException {
+    JsonNode fieldNode = node.path(fieldName);
+    if (!fieldNode.isInt()) {
+      throw new IOException("Fixture metadata field `" + fieldName + "` must be a JSON integer.");
+    }
+    return fieldNode.intValue();
   }
 }

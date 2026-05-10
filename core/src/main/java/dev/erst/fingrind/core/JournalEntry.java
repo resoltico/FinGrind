@@ -1,6 +1,5 @@
 package dev.erst.fingrind.core;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,28 +17,33 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
     }
   }
 
+  /** Returns the one shared currency unit guaranteed by the journal-entry invariant. */
+  public CurrencyUnit currencyUnit() {
+    return lines.getFirst().amount().currencyUnit();
+  }
+
   private static List<String> validate(List<JournalLine> lines) {
     if (lines.isEmpty()) {
       return List.of("Journal entry must contain at least one line.");
     }
     List<String> violations = new ArrayList<>();
-    CurrencyCode expectedCurrency = lines.getFirst().amount().currencyCode();
+    CurrencyUnit expectedCurrency = lines.getFirst().amount().currencyUnit();
     boolean mixedCurrency = false;
     boolean hasDebit = false;
     boolean hasCredit = false;
-    BigDecimal debitTotal = BigDecimal.ZERO;
-    BigDecimal creditTotal = BigDecimal.ZERO;
+    long debitTotal = 0L;
+    long creditTotal = 0L;
     for (JournalLine line : lines) {
-      CurrencyCode currency = line.amount().currencyCode();
+      CurrencyUnit currency = line.amount().currencyUnit();
       if (!currency.equals(expectedCurrency)) {
         mixedCurrency = true;
       }
       if (line.side() == JournalLine.EntrySide.DEBIT) {
         hasDebit = true;
-        debitTotal = debitTotal.add(line.amount().amount());
+        debitTotal = Math.addExact(debitTotal, line.amount().minorUnits());
       } else {
         hasCredit = true;
-        creditTotal = creditTotal.add(line.amount().amount());
+        creditTotal = Math.addExact(creditTotal, line.amount().minorUnits());
       }
     }
     if (mixedCurrency) {
@@ -48,7 +52,7 @@ public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines) {
     if (!hasDebit || !hasCredit) {
       violations.add("Journal entry must contain at least one debit line and one credit line.");
     }
-    if (debitTotal.compareTo(creditTotal) != 0) {
+    if (debitTotal != creditTotal) {
       violations.add("Journal entry must balance debits and credits.");
     }
     return List.copyOf(violations);

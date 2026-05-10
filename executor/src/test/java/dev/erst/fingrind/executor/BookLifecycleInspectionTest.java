@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.BookFormatContract;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.time.Instant;
 import java.util.List;
@@ -199,12 +200,15 @@ class BookLifecycleInspectionTest {
                         .allowsInitializedWorkflow())
             .getMessage());
     assertEquals(
-        "The selected FinGrind book format version 7 is unsupported. Expected version 3.",
+        "The selected FinGrind book format version 7 is unsupported. Expected version 2.",
         assertThrows(
                 IllegalStateException.class,
                 () ->
                     new BookLifecycleInspection.Existing(
-                            BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1, 7, 3)
+                            BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+                            1,
+                            7,
+                            BookFormatContract.FORMAT_VERSION)
                         .allowsInitializedWorkflow())
             .getMessage());
     assertEquals(

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: INDEX
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -25,6 +25,10 @@ route:
 - Runtime/discovery contract:
   use [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md) for machine-contract
   descriptors, runtime/distribution/storage facts, discovery metadata, and templates.
+- Decimal-boundary design:
+  use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary
+  and the future split between money, rates, percentages, exchange rates, and other decimal
+  factors.
 - Local bookkeeping context:
   use [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md) for executor-owned
   sessions plus local bookkeeping read/write models that cross those seams.
@@ -42,6 +46,7 @@ route:
 | File | Scope |
 |:-----|:------|
 | `DOC_01_Core.md` | exported accounting vocabulary and invariants from the `core` module |
+| `DOC_01_DecimalBoundaries.md` | exact-money boundary and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, discovery namespaces, request/response descriptors, deterministic contract errors, and workflow/discovery owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
@@ -62,7 +67,7 @@ route:
 | `CommandId` | `DOC_01_Core.md` | `CommandId` |
 | `CommittedProvenance` | `DOC_01_Core.md` | `CommittedProvenance` |
 | `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
-| `CurrencyCode` | `DOC_01_Core.md` | `CurrencyCode` |
+| `CurrencyUnit` | `DOC_01_Core.md` | `CurrencyUnit` |
 | `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
 | `JournalEntry` | `DOC_01_Core.md` | `JournalEntry` |
 | `JournalEntryValidationException` | `DOC_01_Core.md` | `JournalEntryValidationException` |
@@ -121,7 +126,9 @@ route:
 | `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `PreflightFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `PlanExecutionFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
+| `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
 | `ProtocolSharedRequestFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSharedRequestFields` |
+| `ProtocolMoneyFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolMoneyFields` |
 | `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |

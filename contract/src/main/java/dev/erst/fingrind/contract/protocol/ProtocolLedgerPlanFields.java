@@ -41,7 +41,6 @@ public final class ProtocolLedgerPlanFields {
         Assertion.POSTING_ID,
         Assertion.EFFECTIVE_DATE_FROM,
         Assertion.EFFECTIVE_DATE_TO,
-        Assertion.CURRENCY_CODE,
         Assertion.NET_AMOUNT,
         Assertion.BALANCE_SIDE);
   }
@@ -121,9 +120,6 @@ public final class ProtocolLedgerPlanFields {
 
     /** Inclusive effective-date upper bound. */
     public static final String EFFECTIVE_DATE_TO = ProtocolSharedRequestFields.EFFECTIVE_DATE_TO;
-
-    /** Currency bucket identifier. */
-    public static final String CURRENCY_CODE = ProtocolSharedRequestFields.CURRENCY_CODE;
 
     /** Expected net amount. */
     public static final String NET_AMOUNT = "netAmount";

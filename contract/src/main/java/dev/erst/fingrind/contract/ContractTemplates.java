@@ -54,15 +54,17 @@ public final class ContractTemplates {
 
   /** Canonical request-template journal-line descriptor. */
   public record JournalLineTemplateDescriptor(
-      String accountCode, JournalLine.EntrySide side, String currencyCode, String amount)
+      String accountCode, JournalLine.EntrySide side, MonetaryAmount amount)
       implements TemplateDescriptorType {
     /** Validates one journal-line template descriptor payload. */
     public JournalLineTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
       new AccountCode(accountCode);
       side = ContractDescriptorValidation.requireValue(side, "side");
-      currencyCode = ContractDescriptorValidation.requireText(currencyCode, "currencyCode");
-      amount = ContractDescriptorValidation.requireText(amount, "amount");
+      amount = ContractDescriptorValidation.requireValue(amount, "amount");
+      if (!amount.toMoney().isPositive()) {
+        throw new IllegalArgumentException("amount must carry one positive minor-unit value.");
+      }
     }
   }
 
@@ -180,8 +182,7 @@ public final class ContractTemplates {
       @Nullable String accountCode,
       @Nullable String effectiveDateFrom,
       @Nullable String effectiveDateTo,
-      @Nullable String currencyCode,
-      @Nullable String netAmount,
+      @Nullable MonetaryAmount netAmount,
       @Nullable BalanceSide balanceSide,
       @Nullable String postingId)
       implements TemplateDescriptorType {
@@ -193,18 +194,10 @@ public final class ContractTemplates {
           ContractDescriptorValidation.requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
       effectiveDateTo =
           ContractDescriptorValidation.requireOptionalText(effectiveDateTo, "effectiveDateTo");
-      currencyCode = ContractDescriptorValidation.requireOptionalText(currencyCode, "currencyCode");
-      netAmount = ContractDescriptorValidation.requireOptionalText(netAmount, "netAmount");
+      netAmount = ContractDescriptorValidation.requireOptionalValue(netAmount, "netAmount");
       postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
       ContractTemplateShapeValidator.validateAssertionShape(
-          kind,
-          accountCode,
-          effectiveDateFrom,
-          effectiveDateTo,
-          currencyCode,
-          netAmount,
-          balanceSide,
-          postingId);
+          kind, accountCode, effectiveDateFrom, effectiveDateTo, netAmount, balanceSide, postingId);
     }
   }
 }

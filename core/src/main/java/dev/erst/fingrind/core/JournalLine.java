@@ -32,7 +32,7 @@ public record JournalLine(AccountCode accountCode, EntrySide side, PositiveMoney
 
   /** Convenience overload that upgrades a general money value into a journal-line amount. */
   public JournalLine(AccountCode accountCode, EntrySide side, Money amount) {
-    this(accountCode, side, new PositiveMoney(amount));
+    this(accountCode, side, PositiveMoney.of(amount));
   }
 
   /** Validates a journal line while keeping side and amount explicit. */

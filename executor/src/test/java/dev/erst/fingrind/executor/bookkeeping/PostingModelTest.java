@@ -9,7 +9,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -17,7 +16,6 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -80,11 +78,11 @@ class PostingModelTest {
             new JournalLine(
                 new dev.erst.fingrind.core.AccountCode("1000"),
                 JournalLine.EntrySide.DEBIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                Money.parse("EUR", "10.00")),
             new JournalLine(
                 new dev.erst.fingrind.core.AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")))));
+                Money.parse("EUR", "10.00"))));
   }
 
   private static RequestProvenance requestProvenance(String idempotencyKey) {

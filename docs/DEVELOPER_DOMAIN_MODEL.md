@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -13,6 +13,7 @@ route:
 **Purpose**: Canonical domain language, bounded contexts, and context-map reference for FinGrind.
 **Companion documents**:
 - [DEVELOPER.md](./DEVELOPER.md)
+- [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
@@ -90,6 +91,12 @@ The shared kernel in `core/` also owns `CurrencyBalance`, `EffectiveDateRange`, 
 workflow protocol, and the local bookkeeping/workflow contexts without making `contract` the owner
 of the internal read model.
 
+Exact money belongs in that shared kernel. Future tax rates, exchange rates, percentages, and
+other non-money decimal factors do not. When those domains arrive, they must enter as separate
+closed types in their owning contexts instead of reusing `Money` or `MonetaryAmount`.
+The shared-kernel `CurrencyUnit` truth is a repository-owned currency registry snapshot rather than
+mutable host-JVM currency runtime data.
+
 ### Workflow Context
 
 The workflow context lives in
@@ -160,6 +167,8 @@ Interpretation:
   workflow code.
 - Bookkeeping invariants must live with bookkeeping aggregates or bookkeeping policies, not inside
   the SQLite adapter.
+- `Money` / `PositiveMoney` / `MonetaryAmount` are only for posted monetary facts, not for tax
+  rates, percentages, exchange rates, or generic decimal factors.
 - Workflow semantics must live with workflow types and services, not inside bookkeeping value
   objects.
 - Workflow facts and failure payloads belong to the workflow context and are translated to public

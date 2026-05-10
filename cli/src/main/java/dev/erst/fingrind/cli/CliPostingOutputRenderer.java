@@ -57,9 +57,8 @@ final class CliPostingOutputRenderer {
                         List.of(
                             line.accountCode().value(),
                             line.side().wireValue(),
-                            line.amount().currencyCode().value(),
-                            CliTextFormat.displayAmount(
-                                line.amount().currencyCode().value(), line.amount().amount())))
+                            line.amount().currencyUnit().code(),
+                            CliTextFormat.displayMoney(line.amount().money())))
                 .toList(),
             3);
     return CliTextFormat.renderTitledBlock(

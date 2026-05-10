@@ -250,16 +250,17 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     }
     Path unsupportedBookPath = tempDirectory.resolve("inspect-unsupported.sqlite");
     initializeBookOnDisk(unsupportedBookPath);
+    int unsupportedVersion = SqliteBookContract.FORMAT_VERSION + 1;
     withStandaloneDatabase(
         bookAccess(unsupportedBookPath),
-        database -> database.executeStatement("pragma user_version = 2"));
+        database -> database.executeStatement("pragma user_version = " + unsupportedVersion));
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(unsupportedBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
               SqliteBookContract.APPLICATION_ID,
-              2,
+              unsupportedVersion,
               SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }

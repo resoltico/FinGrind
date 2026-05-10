@@ -4,6 +4,7 @@ import com.diffplug.gradle.spotless.SpotlessExtension
 import com.diffplug.spotless.LineEnding
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.FileTree
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
@@ -46,8 +47,10 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                                 ".gitignore",
                                 ".dockerignore",
                                 "Dockerfile",
+                                "*.toml",
                                 "**/*.gradle.kts",
                                 "**/*.md",
+                                "requirements*.txt",
                                 "**/*.yml",
                                 "gradle.properties",
                                 "gradle/**/*.toml",
@@ -68,8 +71,73 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 }
             }
 
+            val pythonScripts = pythonScripts()
+            val ruffConfig = layout.projectDirectory.file("ruff.toml")
+            val requirementsFilePath = layout.projectDirectory.file("requirements-python-tools.txt")
+            val pythonExecutableProvider =
+                providers
+                    .gradleProperty("fingrindPythonExecutable")
+                    .orElse(defaultPythonExecutable())
+            val ruffInstallHint =
+                "Install the repo-owned Python tools with `${pythonExecutableProvider.get()} -m pip install --user -r ${requirementsFilePath.asFile.name}`."
+
+            fun registerRuffTask(
+                name: String,
+                taskGroup: String,
+                taskDescription: String,
+                arguments: List<String>,
+            ) = tasks.register<RuffTask>(name) {
+                group = taskGroup
+                description = taskDescription
+                pythonExecutable.set(pythonExecutableProvider)
+                ruffArguments.set(arguments)
+                targetPaths.set(listOf("scripts"))
+                installHint.set(ruffInstallHint)
+                configFile.set(ruffConfig)
+                requirementsFile.set(requirementsFilePath)
+                sourceFiles.from(pythonScripts)
+                workingDirectory.set(layout.projectDirectory)
+                pythonPycacheDirectory.set(layout.buildDirectory.dir("tmp/python-pycache/$name"))
+                ruffCacheDirectory.set(layout.buildDirectory.dir("tmp/ruff-cache/$name"))
+            }
+
+            val ruffCheck =
+                registerRuffTask(
+                    name = "ruffCheck",
+                    taskGroup = "verification",
+                    taskDescription = "Lint Python helper scripts with Ruff.",
+                    arguments = listOf("check"),
+                )
+            val ruffFormatCheck =
+                registerRuffTask(
+                    name = "ruffFormatCheck",
+                    taskGroup = "verification",
+                    taskDescription = "Check Python helper script formatting with Ruff.",
+                    arguments = listOf("format", "--check"),
+                )
+            registerRuffTask(
+                name = "ruffFix",
+                taskGroup = "formatting",
+                taskDescription = "Apply safe Ruff lint fixes to Python helper scripts.",
+                arguments = listOf("check", "--fix"),
+            )
+            registerRuffTask(
+                name = "ruffFormat",
+                taskGroup = "formatting",
+                taskDescription = "Format Python helper scripts with Ruff.",
+                arguments = listOf("format"),
+            )
+            val ruff =
+                tasks.register("ruff") {
+                    group = "verification"
+                    description = "Runs all Ruff verification checks."
+                    dependsOn(ruffCheck)
+                    dependsOn(ruffFormatCheck)
+                }
+
             tasks.named("check") {
                 dependsOn("spotlessCheck")
+                dependsOn(ruff)
             }
 
             val managedSqlitePackageId = requiredGradleProperty("fingrindManagedSqlitePackageId")
@@ -141,7 +209,20 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
         }
     }
 
+    private fun Project.pythonScripts(): FileTree =
+        fileTree(layout.projectDirectory.dir("scripts")) {
+            include("**/*.py")
+            exclude("**/__pycache__/**")
+        }
+
     private fun Project.requiredGradleProperty(name: String): String =
         providers.gradleProperty(name).orNull
             ?: throw IllegalArgumentException("Missing Gradle property: $name")
+
+    private fun defaultPythonExecutable(): String =
+        if (System.getProperty("os.name").lowercase().contains("windows")) {
+            "python"
+        } else {
+            "python3"
+        }
 }

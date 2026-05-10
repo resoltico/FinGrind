@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
@@ -105,12 +106,9 @@ public final class LedgerPlanFactMapper {
           BookWorkflowFact.group(
               "balance",
               List.of(
-                  BookWorkflowFact.text("currencyCode", balance.netAmount().currencyCode().value()),
-                  BookWorkflowFact.text(
-                      "debitTotal", balance.debitTotal().amount().toPlainString()),
-                  BookWorkflowFact.text(
-                      "creditTotal", balance.creditTotal().amount().toPlainString()),
-                  BookWorkflowFact.text("netAmount", balance.netAmount().amount().toPlainString()),
+                  BookWorkflowFact.money("debitTotal", MonetaryAmount.of(balance.debitTotal())),
+                  BookWorkflowFact.money("creditTotal", MonetaryAmount.of(balance.creditTotal())),
+                  BookWorkflowFact.money("netAmount", MonetaryAmount.of(balance.netAmount())),
                   BookWorkflowFact.text("balanceSide", balance.balanceSide().wireValue()))));
     }
     return List.copyOf(facts);
@@ -143,7 +141,6 @@ public final class LedgerPlanFactMapper {
     return List.of(
         BookWorkflowFact.text("accountCode", line.accountCode().value()),
         BookWorkflowFact.text("side", line.side().wireValue()),
-        BookWorkflowFact.text("currencyCode", line.amount().currencyCode().value()),
-        BookWorkflowFact.text("amount", line.amount().amount().toPlainString()));
+        BookWorkflowFact.money("amount", MonetaryAmount.of(line.amount().money())));
   }
 }

@@ -1,0 +1,72 @@
+{
+  "planId": "seed-plan-bhd-1",
+  "steps": [
+    {
+      "stepId": "open-bhd",
+      "kind": "open-book"
+    },
+    {
+      "stepId": "declare-cash-bhd",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "7120",
+        "accountName": "Cash BHD Seed",
+        "normalBalance": "DEBIT"
+      }
+    },
+    {
+      "stepId": "declare-sales-bhd",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "8120",
+        "accountName": "Sales BHD Seed",
+        "normalBalance": "CREDIT"
+      }
+    },
+    {
+      "stepId": "post-bhd",
+      "kind": "post-entry",
+      "posting": {
+        "effectiveDate": "2026-06-17",
+        "lines": [
+          {
+            "accountCode": "7120",
+            "side": "DEBIT",
+            "amount": {
+              "currencyCode": "BHD",
+              "minorUnits": "4321"
+            }
+          },
+          {
+            "accountCode": "8120",
+            "side": "CREDIT",
+            "amount": {
+              "currencyCode": "BHD",
+              "minorUnits": "4321"
+            }
+          }
+        ],
+        "provenance": {
+          "actorId": "seed-plan-bhd-actor-1",
+          "actorType": "AGENT",
+          "commandId": "seed-plan-bhd-command-1",
+          "idempotencyKey": "seed-plan-bhd-idem-1",
+          "causationId": "seed-plan-bhd-cause-1"
+        }
+      }
+    },
+    {
+      "stepId": "assert-bhd-balance",
+      "kind": "assert",
+      "assertion": {
+        "kind": "assert-account-balance",
+        "accountCode": "7120",
+        "netAmount": {
+          "currencyCode": "BHD",
+          "minorUnits": "4321"
+        },
+        "balanceSide": "DEBIT"
+      }
+    }
+  ]
+}

@@ -62,42 +62,21 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
           new AccountLedgerReport(
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09")),
-              List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "0.00"),
-                      money("EUR", "10.00"),
-                      BalanceSide.DEBIT)),
+              List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
               List.of(
                   new AccountLedgerEntry(
                       publishedPostingFact(postingTwo),
-                      new CurrencyBalance(
-                          money("EUR", "0.00"),
-                          money("EUR", "4.00"),
-                          money("EUR", "4.00"),
-                          BalanceSide.CREDIT),
+                      balance("EUR", "0.00", "4.00", "4.00", BalanceSide.CREDIT),
                       money("EUR", "6.00"),
                       BalanceSide.DEBIT),
                   new AccountLedgerEntry(
                       publishedPostingFact(postingThree),
-                      new CurrencyBalance(
-                          money("USD", "8.00"),
-                          money("USD", "0.00"),
-                          money("USD", "8.00"),
-                          BalanceSide.DEBIT),
+                      balance("USD", "8.00", "0.00", "8.00", BalanceSide.DEBIT),
                       money("USD", "8.00"),
                       BalanceSide.DEBIT)),
               List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "4.00"),
-                      money("EUR", "6.00"),
-                      BalanceSide.DEBIT),
-                  new CurrencyBalance(
-                      money("USD", "8.00"),
-                      money("USD", "0.00"),
-                      money("USD", "8.00"),
-                      BalanceSide.DEBIT))),
+                  balance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT),
+                  balance("USD", "8.00", "0.00", "8.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
@@ -134,19 +113,10 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               List.of(
                   new AccountLedgerEntry(
                       publishedPostingFact(posting),
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "0.00"),
-                          money("EUR", "10.00"),
-                          BalanceSide.DEBIT),
+                      balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                       money("EUR", "10.00"),
                       BalanceSide.DEBIT)),
-              List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "0.00"),
-                      money("EUR", "10.00"),
-                      BalanceSide.DEBIT))),
+              List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(new AccountCode("1000"), LocalDate.MIN, null),
@@ -186,28 +156,14 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
           new AccountLedgerReport(
               publishedAccount(revenueAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-08")),
-              List.of(
-                  new CurrencyBalance(
-                      money("EUR", "0.00"),
-                      money("EUR", "10.00"),
-                      money("EUR", "10.00"),
-                      BalanceSide.CREDIT)),
+              List.of(balance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT)),
               List.of(
                   new AccountLedgerEntry(
                       publishedPostingFact(inRangePosting),
-                      new CurrencyBalance(
-                          money("EUR", "10.00"),
-                          money("EUR", "0.00"),
-                          money("EUR", "10.00"),
-                          BalanceSide.DEBIT),
+                      balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                       money("EUR", "0.00"),
                       BalanceSide.ZERO)),
-              List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "10.00"),
-                      money("EUR", "0.00"),
-                      BalanceSide.ZERO))),
+              List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
           published(
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
@@ -251,28 +207,12 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
               List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "0.00"),
-                      money("EUR", "10.00"),
-                      BalanceSide.DEBIT),
-                  new CurrencyBalance(
-                      money("USD", "7.00"),
-                      money("USD", "0.00"),
-                      money("USD", "7.00"),
-                      BalanceSide.DEBIT)),
+                  balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
+                  balance("USD", "7.00", "0.00", "7.00", BalanceSide.DEBIT)),
               List.of(),
               List.of(
-                  new CurrencyBalance(
-                      money("EUR", "10.00"),
-                      money("EUR", "0.00"),
-                      money("EUR", "10.00"),
-                      BalanceSide.DEBIT),
-                  new CurrencyBalance(
-                      money("USD", "7.00"),
-                      money("USD", "0.00"),
-                      money("USD", "7.00"),
-                      BalanceSide.DEBIT))),
+                  balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
+                  balance("USD", "7.00", "0.00", "7.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
@@ -281,5 +221,20 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       LocalDate.parse("2026-04-09")),
                   cashAccount)));
     }
+  }
+
+  private static CurrencyBalance balance(
+      String currencyCode,
+      String debitTotal,
+      String creditTotal,
+      String netAmount,
+      BalanceSide balanceSide) {
+    CurrencyBalance balance =
+        CurrencyBalance.ofTotals(money(currencyCode, debitTotal), money(currencyCode, creditTotal));
+    if (!balance.netAmount().equals(money(currencyCode, netAmount))
+        || balance.balanceSide() != balanceSide) {
+      throw new IllegalArgumentException("Test fixture balance does not match derived totals.");
+    }
+    return balance;
   }
 }

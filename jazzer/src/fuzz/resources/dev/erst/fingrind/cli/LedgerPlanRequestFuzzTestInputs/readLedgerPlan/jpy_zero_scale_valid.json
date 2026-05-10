@@ -1,0 +1,72 @@
+{
+  "planId": "seed-plan-jpy-1",
+  "steps": [
+    {
+      "stepId": "open-jpy",
+      "kind": "open-book"
+    },
+    {
+      "stepId": "declare-cash-jpy",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "7110",
+        "accountName": "Cash JPY Seed",
+        "normalBalance": "DEBIT"
+      }
+    },
+    {
+      "stepId": "declare-sales-jpy",
+      "kind": "declare-account",
+      "declareAccount": {
+        "accountCode": "8110",
+        "accountName": "Sales JPY Seed",
+        "normalBalance": "CREDIT"
+      }
+    },
+    {
+      "stepId": "post-jpy",
+      "kind": "post-entry",
+      "posting": {
+        "effectiveDate": "2026-06-16",
+        "lines": [
+          {
+            "accountCode": "7110",
+            "side": "DEBIT",
+            "amount": {
+              "currencyCode": "JPY",
+              "minorUnits": "400"
+            }
+          },
+          {
+            "accountCode": "8110",
+            "side": "CREDIT",
+            "amount": {
+              "currencyCode": "JPY",
+              "minorUnits": "400"
+            }
+          }
+        ],
+        "provenance": {
+          "actorId": "seed-plan-jpy-actor-1",
+          "actorType": "AGENT",
+          "commandId": "seed-plan-jpy-command-1",
+          "idempotencyKey": "seed-plan-jpy-idem-1",
+          "causationId": "seed-plan-jpy-cause-1"
+        }
+      }
+    },
+    {
+      "stepId": "assert-jpy-balance",
+      "kind": "assert",
+      "assertion": {
+        "kind": "assert-account-balance",
+        "accountCode": "7110",
+        "netAmount": {
+          "currencyCode": "JPY",
+          "minorUnits": "400"
+        },
+        "balanceSide": "DEBIT"
+      }
+    }
+  ]
+}

@@ -40,7 +40,9 @@ final class SqliteBookStateReader {
         return new SqliteBookStateSnapshot(
             applicationId, userVersion, SqliteBookState.UNSUPPORTED_FINGRIND_VERSION);
       }
-      if (hasCanonicalTables(activeDatabase) && hasInitializedMarker(activeDatabase)) {
+      if (hasCanonicalTables(activeDatabase)
+          && hasInitializedMarker(activeDatabase)
+          && hasCanonicalInitializedBookSemantics(activeDatabase)) {
         return new SqliteBookStateSnapshot(
             applicationId, userVersion, SqliteBookState.INITIALIZED_FINGRIND);
       }
@@ -68,6 +70,18 @@ final class SqliteBookStateReader {
             activeDatabase,
             SqlitePostingSql.BOOK_INITIALIZED_EXISTS,
             statement -> statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY));
+  }
+
+  private boolean hasCanonicalInitializedBookSemantics(SqliteNativeDatabase activeDatabase) {
+    try {
+      return SqliteBookIntegrityVerifier.passesIntegrityCheck(activeDatabase)
+          && SqliteBookIntegrityVerifier.passesForeignKeyCheck(activeDatabase)
+          && SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(activeDatabase)
+          && SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(activeDatabase)
+          && SqliteBookIntegrityVerifier.hasValidPersistedMoney(activeDatabase);
+    } catch (RuntimeException exception) {
+      return false;
+    }
   }
 
   private boolean existsTable(SqliteNativeDatabase activeDatabase, String tableName) {

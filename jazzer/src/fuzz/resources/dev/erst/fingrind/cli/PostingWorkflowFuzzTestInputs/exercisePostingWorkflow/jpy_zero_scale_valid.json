@@ -1,0 +1,28 @@
+{
+  "effectiveDate": "2026-06-12",
+  "lines": [
+    {
+      "accountCode": "3110",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "JPY",
+        "minorUnits": "250"
+      }
+    },
+    {
+      "accountCode": "4110",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "JPY",
+        "minorUnits": "250"
+      }
+    }
+  ],
+  "provenance": {
+    "actorId": "seed-posting-jpy-1",
+    "actorType": "AGENT",
+    "commandId": "seed-posting-jpy-command-1",
+    "idempotencyKey": "seed-posting-jpy-idem-1",
+    "causationId": "seed-posting-jpy-cause-1"
+  }
+}

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.33.0"
+version: "0.34.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-05-08"
+updated: "2026-05-10"
 route:
   keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, contributor container, local repo mount, tooling agnostic]
   questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode"]
@@ -46,6 +46,10 @@ This is a contributor environment, not the published runtime image. The contribu
 glibc-based and ships a full Azul Zulu 26 JDK plus verification tooling. The published runtime
 image stays a separate minimal execution artifact for released bundles and public container
 distribution.
+
+The contributor image also ships `python3` plus `python3 -m pip` so the repo-owned Python helper
+tools can be installed from [`requirements-python-tools.txt`](../requirements-python-tools.txt)
+before running the root verification gate.
 
 The committed owner files are:
 
@@ -102,9 +106,17 @@ longer needs to share the same Java extension daemons and attach tooling with th
 ```bash
 java --version
 javac --version
+python3 -m pip --version
 docker version --format '{{.Server.Version}}'
 ./gradlew --version --console=plain
 ./scripts/validate-devcontainer.sh
+```
+
+7. Install the repo-owned Python helper tools once for the container user before the first root
+   `check` run:
+
+```bash
+python3 -m pip install --user -r requirements-python-tools.txt
 ```
 
 Expected contributor shape:
@@ -112,6 +124,7 @@ Expected contributor shape:
 - `java` and `javac` report Java 26
 - Java vendor is Azul Zulu inside the container
 - `docker version` reaches the host Docker Desktop engine
+- `python3 -m pip` is available for the repo-owned Ruff tooling bootstrap
 - `./scripts/validate-devcontainer.sh` succeeds
 
 This remains the most integrated path because the Java, Gradle, and Java-test extensions are all

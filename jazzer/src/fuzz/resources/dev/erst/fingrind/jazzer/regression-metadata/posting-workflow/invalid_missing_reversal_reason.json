@@ -1,12 +1,12 @@
 {
-  "targetKey": "posting-workflow",
-  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_missing_reversal_reason.json",
-  "coverageIntent": "posting workflow rejects reversal without a reason",
-  "expectation": {
-    "outcomeKind": "expected-invalid",
-    "message": "Missing required field: reason",
-    "details": {
-      "type": "POSTING_WORKFLOW_UNPARSED"
+  "targetKey" : "posting-workflow",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_missing_reversal_reason.json",
+  "coverageIntent" : "posting workflow rejects reversal without a reason",
+  "expectation" : {
+    "outcomeKind" : "expected-invalid",
+    "message" : "Missing required field: reason",
+    "details" : {
+      "type" : "POSTING_WORKFLOW_UNPARSED"
     }
   }
 }

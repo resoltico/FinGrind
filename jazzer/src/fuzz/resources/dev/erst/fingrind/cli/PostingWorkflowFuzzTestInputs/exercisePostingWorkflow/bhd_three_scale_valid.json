@@ -1,0 +1,29 @@
+{
+  "effectiveDate": "2026-06-13",
+  "lines": [
+    {
+      "accountCode": "3120",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "BHD",
+        "minorUnits": "2750"
+      }
+    },
+    {
+      "accountCode": "4120",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "BHD",
+        "minorUnits": "2750"
+      }
+    }
+  ],
+  "provenance": {
+    "actorId": "seed-posting-bhd-1",
+    "actorType": "AGENT",
+    "commandId": "seed-posting-bhd-command-1",
+    "idempotencyKey": "seed-posting-bhd-idem-1",
+    "causationId": "seed-posting-bhd-cause-1",
+    "correlationId": "seed-posting-bhd-corr-1"
+  }
+}

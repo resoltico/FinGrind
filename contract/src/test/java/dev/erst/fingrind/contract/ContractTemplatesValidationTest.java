@@ -99,8 +99,7 @@ class ContractTemplatesValidationTest {
                   "1000",
                   null,
                   null,
-                  "EUR",
-                  "10.00",
+                  new MonetaryAmount("EUR", "1000"),
                   BalanceSide.DEBIT,
                   null),
               null);
@@ -126,27 +125,33 @@ class ContractTemplatesValidationTest {
         () ->
             new ContractTemplates.LedgerPlanStepTemplateDescriptor(
                 "missing-posting-id", LedgerStepKind.GET_POSTING, null, null, null, null, null));
+    IllegalArgumentException zeroAmount =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.JournalLineTemplateDescriptor(
+                    "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "0")));
+    assertEquals("amount must carry one positive minor-unit value.", zeroAmount.getMessage());
   }
 
   @Test
   void ledgerAssertionTemplates_coverEveryCanonicalShape() {
     ContractTemplates.LedgerAssertionTemplateDescriptor accountDeclared =
         new ContractTemplates.LedgerAssertionTemplateDescriptor(
-            LedgerAssertionKind.ACCOUNT_DECLARED, "1000", null, null, null, null, null, null);
+            LedgerAssertionKind.ACCOUNT_DECLARED, "1000", null, null, null, null, null);
     ContractTemplates.LedgerAssertionTemplateDescriptor accountActive =
         new ContractTemplates.LedgerAssertionTemplateDescriptor(
-            LedgerAssertionKind.ACCOUNT_ACTIVE, "2000", null, null, null, null, null, null);
+            LedgerAssertionKind.ACCOUNT_ACTIVE, "2000", null, null, null, null, null);
     ContractTemplates.LedgerAssertionTemplateDescriptor postingExists =
         new ContractTemplates.LedgerAssertionTemplateDescriptor(
-            LedgerAssertionKind.POSTING_EXISTS, null, null, null, null, null, null, "posting-1");
+            LedgerAssertionKind.POSTING_EXISTS, null, null, null, null, null, "posting-1");
     ContractTemplates.LedgerAssertionTemplateDescriptor balanceEquals =
         new ContractTemplates.LedgerAssertionTemplateDescriptor(
             LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
             "3000",
             null,
             null,
-            "EUR",
-            "10.00",
+            new MonetaryAmount("EUR", "1000"),
             BalanceSide.CREDIT,
             null);
     assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, accountDeclared.kind());
@@ -161,7 +166,7 @@ class ContractTemplatesValidationTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.LedgerAssertionTemplateDescriptor(
-                LedgerAssertionKind.ACCOUNT_DECLARED, null, null, null, null, null, null, null));
+                LedgerAssertionKind.ACCOUNT_DECLARED, null, null, null, null, null, null));
   }
 
   @Test
@@ -198,7 +203,6 @@ class ContractTemplatesValidationTest {
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
-                            ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN)),
                     LedgerAssertionKind.POSTING_EXISTS));
     assertEquals(
@@ -211,9 +215,9 @@ class ContractTemplatesValidationTest {
         "2026-04-25",
         java.util.List.of(
             new ContractTemplates.JournalLineTemplateDescriptor(
-                "1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
             new ContractTemplates.JournalLineTemplateDescriptor(
-                "2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")),
+                "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
         new ContractTemplates.ProvenanceTemplateDescriptor(
             "actor-1", ActorType.HUMAN, "command-1", "idem-1", "cause-1", null),
         null);

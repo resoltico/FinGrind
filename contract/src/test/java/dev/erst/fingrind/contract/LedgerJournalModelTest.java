@@ -24,9 +24,11 @@ class LedgerJournalModelTest extends ContractTestSupport {
     LedgerJournalStep assertionStep =
         LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_DECLARED);
     LedgerJournalStep boundaryStep = LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT);
+    MonetaryAmount amount = monetaryAmount("EUR", "10.00");
     assertEquals("value", LedgerFact.text("text", "value").value());
     assertTrue(LedgerFact.flag("flag", true).value());
     assertEquals(7, LedgerFact.count("count", 7).value());
+    assertEquals(amount, LedgerFact.money("amount", amount).value());
     assertEquals(
         List.of(LedgerFact.text("currencyCode", "EUR")),
         LedgerFact.group("balance", List.of(LedgerFact.text("currencyCode", "EUR"))).facts());
@@ -39,6 +41,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerBoundaryPhase.COMMIT, boundaryStep.boundaryPhase());
     assertThrows(NullPointerException.class, () -> new LedgerFact.Text("null", nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.count(" ", 7));
+    assertThrows(NullPointerException.class, () -> LedgerFact.money("amount", nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.group("balance", List.of()));
     assertThrows(
         IllegalArgumentException.class, () -> LedgerJournalStep.standard(LedgerStepKind.ASSERT));

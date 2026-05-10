@@ -1,0 +1,28 @@
+{
+  "effectiveDate": "2026-06-15",
+  "lines": [
+    {
+      "accountCode": "5120",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "BHD",
+        "minorUnits": "9876"
+      }
+    },
+    {
+      "accountCode": "6120",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "BHD",
+        "minorUnits": "9876"
+      }
+    }
+  ],
+  "provenance": {
+    "actorId": "seed-sqlite-bhd-1",
+    "actorType": "SYSTEM",
+    "commandId": "seed-sqlite-bhd-command-1",
+    "idempotencyKey": "seed-sqlite-bhd-idem-1",
+    "causationId": "seed-sqlite-bhd-cause-1"
+  }
+}

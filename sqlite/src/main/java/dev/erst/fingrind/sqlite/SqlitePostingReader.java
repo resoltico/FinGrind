@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -11,10 +11,8 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -91,27 +89,27 @@ final class SqlitePostingReader {
   private List<CurrencyBalance> loadCurrencyBalances(
       SqliteNativeDatabase activeDatabase, AccountBalanceCriteria query) {
     String sql = SqlitePostingSql.loadAccountLinesForBalance(query);
-    Map<CurrencyCode, Totals> totalsByCurrency = mutableTotalsByCurrency();
+    Map<CurrencyUnit, Totals> totalsByCurrency = mutableTotalsByCurrency();
     try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
       bindAccountBalanceQuery(statement, query);
       while (statement.step() == SqliteNativeResultCodes.ROW) {
         JournalLine.EntrySide side = readEntrySide(statement);
-        CurrencyCode currencyCode = readCurrencyCode(statement);
-        BigDecimal amount = readAmount(statement);
+        CurrencyUnit currencyCode = readCurrencyCode(statement);
+        long amountMinor = readAmountMinor(statement);
         Totals totals = totalsFor(totalsByCurrency, currencyCode);
         if (side == JournalLine.EntrySide.DEBIT) {
-          totals.debit = totals.debit.add(amount);
+          totals.debit = Math.addExact(totals.debit, amountMinor);
         } else {
-          totals.credit = totals.credit.add(amount);
+          totals.credit = Math.addExact(totals.credit, amountMinor);
         }
       }
     }
     List<CurrencyBalance> balances = new ArrayList<>();
-    List<Map.Entry<CurrencyCode, Totals>> orderedTotals =
+    List<Map.Entry<CurrencyUnit, Totals>> orderedTotals =
         totalsByCurrency.entrySet().stream()
-            .sorted(Comparator.comparing(entry -> entry.getKey().value()))
+            .sorted(Comparator.comparing(entry -> entry.getKey().code()))
             .toList();
-    for (Map.Entry<CurrencyCode, Totals> entry : orderedTotals) {
+    for (Map.Entry<CurrencyUnit, Totals> entry : orderedTotals) {
       balances.add(balance(entry.getKey(), entry.getValue()));
     }
     return List.copyOf(balances);
@@ -153,12 +151,12 @@ final class SqlitePostingReader {
   }
 
   private static Totals totalsFor(
-      Map<CurrencyCode, Totals> totalsByCurrency, CurrencyCode currencyCode) {
+      Map<CurrencyUnit, Totals> totalsByCurrency, CurrencyUnit currencyCode) {
     return totalsByCurrency.computeIfAbsent(currencyCode, _ -> new Totals());
   }
 
-  private static Map<CurrencyCode, Totals> mutableTotalsByCurrency() {
-    return new HashMap<>();
+  private static Map<CurrencyUnit, Totals> mutableTotalsByCurrency() {
+    return SqliteReportRowValues.insertionOrderedMap();
   }
 
   private static void bindAccountBalanceQuery(
@@ -181,15 +179,15 @@ final class SqlitePostingReader {
     return JournalLine.EntrySide.fromWireValue(SqlitePostingMapper.requiredText(statement, 0));
   }
 
-  private static CurrencyCode readCurrencyCode(SqliteNativeStatement statement) {
-    return new CurrencyCode(SqlitePostingMapper.requiredText(statement, 1));
+  private static CurrencyUnit readCurrencyCode(SqliteNativeStatement statement) {
+    return SqlitePersistedMoneyCodec.readCurrencyUnit(statement, 1);
   }
 
-  private static BigDecimal readAmount(SqliteNativeStatement statement) {
-    return new BigDecimal(SqlitePostingMapper.requiredText(statement, 2));
+  private static long readAmountMinor(SqliteNativeStatement statement) {
+    return statement.columnLong(2);
   }
 
-  private static CurrencyBalance balance(CurrencyCode currencyCode, Totals totals) {
+  private static CurrencyBalance balance(CurrencyUnit currencyCode, Totals totals) {
     return SqliteBalanceMath.currencyBalance(currencyCode, totals.debit, totals.credit);
   }
 
@@ -202,7 +200,7 @@ final class SqlitePostingReader {
 
   /** Running debit and credit totals for one account/currency balance bucket. */
   private static final class Totals {
-    private BigDecimal debit = BigDecimal.ZERO;
-    private BigDecimal credit = BigDecimal.ZERO;
+    private long debit;
+    private long credit;
   }
 }

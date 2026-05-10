@@ -8,7 +8,6 @@ import static dev.erst.fingrind.cli.CliJsonFieldAccess.requireObjectNode;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredArray;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
-import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseAmount;
 import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 
 import dev.erst.fingrind.contract.DeclareAccountCommand;
@@ -24,11 +23,9 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -135,11 +132,8 @@ final class CliPostingRequestParser {
                   ProtocolPostEntryFields.JournalLine.SIDE,
                   JournalLine.EntrySide.wireValues(),
                   JournalLine.EntrySide::fromWireValue),
-              new Money(
-                  new CurrencyCode(
-                      requiredText(lineObject, ProtocolPostEntryFields.JournalLine.CURRENCY_CODE)),
-                  parseAmount(
-                      requiredText(lineObject, ProtocolPostEntryFields.JournalLine.AMOUNT)))));
+              CliJsonMoneyParser.requiredPositiveMoney(
+                  lineObject, ProtocolPostEntryFields.JournalLine.AMOUNT)));
       index++;
     }
     return lines;

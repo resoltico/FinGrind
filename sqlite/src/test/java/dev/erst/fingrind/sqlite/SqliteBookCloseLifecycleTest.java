@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.BookFormatContract;
 import dev.erst.fingrind.core.IdempotencyKey;
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;
@@ -62,8 +63,9 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.",
         SqliteStoreOperations.incompleteBookFailure().getMessage());
     assertEquals(
-        "The selected FinGrind book format version 7 is unsupported. Expected version 3.",
-        SqliteStoreOperations.unsupportedBookVersionFailure(7, 3).getMessage());
+        "The selected FinGrind book format version 7 is unsupported. Expected version 2.",
+        SqliteStoreOperations.unsupportedBookVersionFailure(7, BookFormatContract.FORMAT_VERSION)
+            .getMessage());
   }
 
   @Test

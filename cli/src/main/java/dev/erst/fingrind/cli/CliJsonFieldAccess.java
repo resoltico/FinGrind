@@ -111,6 +111,14 @@ final class CliJsonFieldAccess {
     return OptionalInt.of(fieldNode.intValue());
   }
 
+  static int requiredInt(ObjectNode rootNode, String fieldName) {
+    OptionalInt value = optionalInt(rootNode, fieldName);
+    if (value.isEmpty()) {
+      throw new IllegalArgumentException("Missing required field: " + fieldName);
+    }
+    return value.orElseThrow();
+  }
+
   static Optional<ObjectNode> optionalObject(ObjectNode rootNode, String fieldName) {
     @Nullable JsonNode fieldNode = nullableField(rootNode, fieldName);
     if (fieldNode == null || fieldNode.isNull()) {

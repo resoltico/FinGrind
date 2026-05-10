@@ -59,6 +59,11 @@ class SqliteStoreFixtureSupport {
         """);
   }
 
+  static void insertCanonicalInitializedBookMetadata(SqliteNativeDatabase database) {
+    SqliteBookIntegrityVerifier.recordSchemaFingerprint(database);
+    insertInitializedAtRow(database);
+  }
+
   static void insertAccountRow(
       SqliteNativeDatabase database,
       String accountCode,
@@ -83,6 +88,35 @@ class SqliteStoreFixtureSupport {
         )
         """
             .formatted(accountCode, accountName, normalBalance, active, declaredAt));
+  }
+
+  static void insertJournalLineRow(
+      SqliteNativeDatabase database,
+      String postingId,
+      int lineOrder,
+      String accountCode,
+      String entrySide,
+      String currencyCode,
+      long amountMinor) {
+    database.executeStatement(
+        """
+        insert into journal_line (
+            posting_id,
+            line_order,
+            account_code,
+            entry_side,
+            currency_code,
+            amount_minor
+        ) values (
+            '%s',
+            %d,
+            '%s',
+            '%s',
+            '%s',
+            %d
+        )
+        """
+            .formatted(postingId, lineOrder, accountCode, entrySide, currencyCode, amountMinor));
   }
 
   static SqliteNativeDatabase staleDatabaseHandle(Path bookPath) throws IOException {
@@ -309,7 +343,7 @@ class SqliteStoreFixtureSupport {
         staticBookAccess(bookPath),
         database -> {
           SqliteBookSchemaBootstrap.initializeBook(database);
-          insertInitializedAtRow(database);
+          insertCanonicalInitializedBookMetadata(database);
           insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
           insertAccountRow(database, "2000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");
         });

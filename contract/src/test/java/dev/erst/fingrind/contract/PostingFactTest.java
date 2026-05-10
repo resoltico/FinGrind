@@ -11,7 +11,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -19,7 +18,6 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -62,13 +60,11 @@ class PostingFactTest {
         LocalDate.parse("2026-04-07"),
         List.of(
             new JournalLine(
-                new AccountCode("1000"),
-                JournalLine.EntrySide.DEBIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                new AccountCode("1000"), JournalLine.EntrySide.DEBIT, Money.parse("EUR", "10.00")),
             new JournalLine(
                 new AccountCode("2000"),
                 JournalLine.EntrySide.CREDIT,
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")))));
+                Money.parse("EUR", "10.00"))));
   }
 
   private static CommittedProvenance provenance(String idempotencyKey) {

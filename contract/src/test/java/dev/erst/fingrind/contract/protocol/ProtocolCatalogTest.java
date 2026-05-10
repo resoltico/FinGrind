@@ -428,7 +428,6 @@ class ProtocolCatalogTest {
             "postingId",
             "effectiveDateFrom",
             "effectiveDateTo",
-            "currencyCode",
             "netAmount",
             "balanceSide"),
         ProtocolLedgerPlanFields.assertionFields());
@@ -451,15 +450,13 @@ class ProtocolCatalogTest {
     assertEquals("postingId", ProtocolLedgerPlanFields.Assertion.POSTING_ID);
     assertEquals("effectiveDateFrom", ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_FROM);
     assertEquals("effectiveDateTo", ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO);
-    assertEquals("currencyCode", ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE);
     assertEquals("netAmount", ProtocolLedgerPlanFields.Assertion.NET_AMOUNT);
     assertEquals("balanceSide", ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE);
     assertEquals(
         List.of("effectiveDate", "lines", "provenance", "reversal"),
         ProtocolPostEntryFields.topLevelFields());
     assertEquals(
-        List.of("accountCode", "side", "currencyCode", "amount"),
-        ProtocolPostEntryFields.journalLineFields());
+        List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());
     assertEquals(
         List.of(
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
@@ -473,9 +470,6 @@ class ProtocolCatalogTest {
         ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolDeclareAccountFields.ACCOUNT_CODE);
     assertEquals(
         ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolPostEntryFields.JournalLine.ACCOUNT_CODE);
-    assertEquals(
-        ProtocolSharedRequestFields.CURRENCY_CODE,
-        ProtocolPostEntryFields.JournalLine.CURRENCY_CODE);
     assertEquals(
         ProtocolSharedRequestFields.ACCOUNT_CODE, ProtocolLedgerPlanFields.Query.ACCOUNT_CODE);
     assertEquals(
@@ -492,9 +486,9 @@ class ProtocolCatalogTest {
     assertEquals(
         ProtocolSharedRequestFields.EFFECTIVE_DATE_TO,
         ProtocolLedgerPlanFields.Assertion.EFFECTIVE_DATE_TO);
-    assertEquals(
-        ProtocolSharedRequestFields.CURRENCY_CODE,
-        ProtocolLedgerPlanFields.Assertion.CURRENCY_CODE);
+    assertEquals(List.of("currencyCode", "minorUnits"), ProtocolMoneyFields.fields());
+    assertEquals(ProtocolSharedRequestFields.CURRENCY_CODE, ProtocolMoneyFields.CURRENCY_CODE);
+    assertEquals("minorUnits", ProtocolMoneyFields.MINOR_UNITS);
     assertThrows(
         NullPointerException.class,
         () ->

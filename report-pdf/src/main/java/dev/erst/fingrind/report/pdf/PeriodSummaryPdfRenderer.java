@@ -30,7 +30,7 @@ final class PeriodSummaryPdfRenderer {
             .map(
                 summary ->
                     List.of(
-                        summary.totals().netAmount().currencyCode().value(),
+                        summary.totals().netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(summary.totals().debitTotal()),
                         PdfValueFormatter.displayMoney(summary.totals().creditTotal()),
                         PdfValueFormatter.displayMoney(summary.totals().netAmount()),
@@ -56,7 +56,7 @@ final class PeriodSummaryPdfRenderer {
                         row.account().accountName().value(),
                         row.account().normalBalance().wireValue(),
                         Boolean.toString(row.account().active()),
-                        row.movement().netAmount().currencyCode().value(),
+                        row.movement().netAmount().currencyUnit().code(),
                         PdfValueFormatter.displayMoney(row.movement().debitTotal()),
                         PdfValueFormatter.displayMoney(row.movement().creditTotal()),
                         PdfValueFormatter.displayMoney(row.movement().netAmount()),

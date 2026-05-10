@@ -170,4 +170,3 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
     raise ReleaseSmokeFailure(
         f"{config.label} configured unsupported open-book mode: {config.open_book_mode}"
     )
-

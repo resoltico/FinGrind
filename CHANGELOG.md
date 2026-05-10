@@ -5,6 +5,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-05-10
+
+### Changed
+
+- Replaced the public decimal-string money seam with one exact-money model across core,
+  contracts, CLI, workflow facts, reporting, and PDF rendering: `CurrencyUnit` now owns
+  ISO-backed currency semantics and minor-unit scale from FinGrind's pinned registry snapshot,
+  `Money` and `PositiveMoney` now store exact minor units instead of `BigDecimal`, public request
+  and response payloads now use typed money objects with `currencyCode` and `minorUnits`, and
+  journal-entry/report rendering now projects one shared canonical money model instead of mixing
+  free-form decimal text with formatter-local fallback rules.
+- Promoted the protected-book format to schema version 2 and broke durable journal-line storage
+  from free-form decimal text to exact `amount_minor` plus `currency_code`, while SQLite
+  open-time verification now proves the schema fingerprint,
+  `integrity_check`, `foreign_key_check`, persisted money integrity, and durable double-entry
+  balance instead of trusting only table presence and initialization markers.
+- Added explicit exact-money transport bounds at the machine and CLI edge: `minorUnits` is capped
+  at the 19-digit signed-64-bit non-negative range, and every request JSON document is capped at
+  `1048576` UTF-8 bytes whether it is read from a file or standard input.
+- Expanded the exact-money regression floor across zero-digit, two-digit, and three-digit currency
+  scale buckets: committed Jazzer replay seeds now cover JPY and BHD request parsing, posting
+  workflow, ledger-plan assertion execution, and SQLite round-trip durability, while focused core,
+  CLI, PDF, and SQLite tests now prove exact parse/persist/render behavior across those same
+  currency-scale families.
+- Added a dedicated decimal-boundary reference and a repository guardrail that keeps product Java
+  surfaces free of generic `BigDecimal` seams, so future tax rates, percentages, exchange rates,
+  discounts, and allocation ratios must arrive as their own exact domain types instead of
+  reusing the posted-money model.
+- Hardened the shared Java coverage gate so each `Test` task now starts from a fresh JaCoCo
+  execution-data file and module verification now fails on any missed line or branch reported in
+  `jacocoTestReport.xml`, eliminating false negative drift between stale `.exec` files,
+  generated reports, and the named coverage-verification task under the Java 26 toolchain.
+- Promoted the repo-owned Python helper scripts into the canonical root verification surface:
+  `check` now runs Ruff lint plus format checks over `scripts/**/*.py` through the shared root
+  Gradle conventions, CI now pins Python explicitly with `actions/setup-python`, the contributor
+  devcontainer now includes `python3 -m pip`, and the repo now ships pinned Ruff configuration and
+  tool-manifest files instead of relying on ambient runner tooling.
+
+### Fixed
+
+- Removed the remaining dead string-money seams from committed Jazzer request corpora and replay
+  metadata, regenerated the committed deterministic replay floor from the typed money contract, and
+  aligned exponent-invalid replay assertions with the new authoritative `minorUnits` rejection
+  boundary instead of the retired free-form `amount` parser message.
+- Updated the shared release-smoke fixture generator, bundle acceptance workflow, and public
+  container surface verifier to submit typed money request bodies with nested `amount`
+  objects instead of the retired line-level `currencyCode` plus decimal-string `amount` shape,
+  so shipped bundle and container acceptance now exercise the same exact-money contract that the
+  CLI, workflow engine, and published examples describe.
+- Replaced the hand-maintained SQLite schema reference with one generated document derived from the
+  canonical `book_schema.sql`, so schema checks, durable money columns, version markers, indexes,
+  and integrity posture cannot drift between the source schema and the published reference.
+- Rewrote the remaining operator and machine-contract wording that implied the retired decimal
+  money seam, so CLI help and contract schema descriptions now describe typed exact-money objects
+  and ASCII-digit `minorUnits` instead of vague decimal-string amounts.
+
 ## [0.33.0] - 2026-05-08
 
 ### Added
@@ -1502,7 +1558,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.34.0...HEAD
+[0.34.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.34.0
 [0.33.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.33.0
 [0.32.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.32.0
 [0.31.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.31.0

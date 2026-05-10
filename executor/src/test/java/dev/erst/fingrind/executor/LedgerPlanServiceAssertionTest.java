@@ -5,6 +5,8 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.assertAssertionFailure;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.bookWithCommittedPosting;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.moneyFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
@@ -21,7 +23,7 @@ import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CurrencyCode;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -30,7 +32,6 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookStore;
 import dev.erst.fingrind.executor.workflow.LedgerPlanAssertionEvaluator;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
-import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -93,7 +94,7 @@ class LedgerPlanServiceAssertionTest {
               new AccountCode("1000"),
               null,
               null,
-              new Money(new CurrencyCode("USD"), BigDecimal.ZERO),
+              Money.zero(CurrencyUnit.of("USD")),
               BalanceSide.ZERO));
     }
   }
@@ -113,7 +114,7 @@ class LedgerPlanServiceAssertionTest {
                                   new AccountCode("9999"),
                                   null,
                                   null,
-                                  new Money(new CurrencyCode("EUR"), BigDecimal.TEN),
+                                  Money.parse("EUR", "10.00"),
                                   BalanceSide.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, rejectedQueryResult.status());
@@ -136,7 +137,7 @@ class LedgerPlanServiceAssertionTest {
                                   new AccountCode("1000"),
                                   null,
                                   null,
-                                  new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+                                  Money.parse("EUR", "10.00"),
                                   BalanceSide.CREDIT)))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, mismatchResult.status());
@@ -144,7 +145,8 @@ class LedgerPlanServiceAssertionTest {
           "assertion-failed", mismatchResult.journal().steps().getLast().requiredFailure().code());
       assertTrue(
           mismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "expectedNetAmount", "10")));
+              .anyMatch(
+                  fact -> moneyFact(fact, "expectedNetAmount", monetaryAmount("EUR", "10.00"))));
       assertTrue(
           mismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
               .anyMatch(fact -> textFact(fact, "expectedBalanceSide", "CREDIT")));
@@ -163,13 +165,14 @@ class LedgerPlanServiceAssertionTest {
                                   new AccountCode("1000"),
                                   null,
                                   null,
-                                  new Money(new CurrencyCode("EUR"), new BigDecimal("9.00")),
+                                  Money.parse("EUR", "9.00"),
                                   BalanceSide.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, amountMismatchResult.status());
       assertTrue(
           amountMismatchResult.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "actualNetAmount", "10")));
+              .anyMatch(
+                  fact -> moneyFact(fact, "actualNetAmount", monetaryAmount("EUR", "10.00"))));
     }
   }
 

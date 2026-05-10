@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.LedgerPlanResult;
 import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.LedgerStep;
 import dev.erst.fingrind.contract.LedgerStepId;
+import dev.erst.fingrind.contract.MonetaryAmount;
 import dev.erst.fingrind.contract.PostEntryCommand;
 import dev.erst.fingrind.contract.PostEntryResult;
 import dev.erst.fingrind.core.AccountCode;
@@ -20,7 +21,6 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -38,7 +38,6 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -107,6 +106,12 @@ final class LedgerPlanServiceTestSupport {
         && value.equals(text.value());
   }
 
+  static boolean moneyFact(LedgerFact fact, String name, MonetaryAmount value) {
+    return fact instanceof LedgerFact.Money money
+        && name.equals(money.name())
+        && value.equals(money.value());
+  }
+
   static boolean countFact(LedgerFact fact, String name, int value) {
     return fact instanceof LedgerFact.Count count
         && name.equals(count.name())
@@ -132,6 +137,19 @@ final class LedgerPlanServiceTestSupport {
         && group.facts().stream().anyMatch(child -> textFact(child, secondName, secondValue));
   }
 
+  static boolean groupFact(
+      LedgerFact fact,
+      String groupName,
+      String firstName,
+      String firstValue,
+      String secondName,
+      MonetaryAmount secondValue) {
+    return fact instanceof LedgerFact.Group group
+        && groupName.equals(group.name())
+        && group.facts().stream().anyMatch(child -> textFact(child, firstName, firstValue))
+        && group.facts().stream().anyMatch(child -> moneyFact(child, secondName, secondValue));
+  }
+
   static DeclareAccountCommand account(
       String accountCode, String accountName, NormalBalance normalBalance) {
     return new DeclareAccountCommand(
@@ -146,11 +164,11 @@ final class LedgerPlanServiceTestSupport {
                 new JournalLine(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))),
+                    Money.parse("EUR", "10.00")),
                 new JournalLine(
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("10.00"))))),
+                    Money.parse("EUR", "10.00")))),
         dev.erst.fingrind.contract.PostingLineage.direct(),
         new RequestProvenance(
             new ActorId("actor-1"),
@@ -164,6 +182,10 @@ final class LedgerPlanServiceTestSupport {
 
   static PostingCommand postingCommand(String idempotencyKey) {
     return BookkeepingPublishedLanguageTranslator.fromPublished(postEntryCommand(idempotencyKey));
+  }
+
+  static MonetaryAmount monetaryAmount(String currencyCode, String amountText) {
+    return MonetaryAmount.of(Money.parse(currencyCode, amountText));
   }
 
   /** Shared delegating atomic store so failure fixtures only override the behavior under test. */

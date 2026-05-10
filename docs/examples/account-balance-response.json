@@ -8,10 +8,18 @@
     "declaredAt": "2026-04-13T11:58:35.809263Z",
     "balances": [
       {
-        "currencyCode": "EUR",
-        "debitTotal": "10",
-        "creditTotal": "0",
-        "netAmount": "10",
+        "debitTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
+        "creditTotal": {
+          "currencyCode": "EUR",
+          "minorUnits": "0"
+        },
+        "netAmount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "balanceSide": "DEBIT"
       }
     ]

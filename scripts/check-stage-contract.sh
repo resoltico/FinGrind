@@ -47,6 +47,8 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-jazzer-active-wrapper-timeout.sh
     scripts/test-jazzer-replay-wrapper.sh
     scripts/test-jazzer-seed-wrapper.sh
+    scripts/test-no-product-bigdecimal.sh
+    scripts/test-render-sqlite-schema-doc.sh
     scripts/test-source-checkout-launcher.sh
     scripts/test-publish-github-release.sh
     scripts/test-verify-github-release.sh

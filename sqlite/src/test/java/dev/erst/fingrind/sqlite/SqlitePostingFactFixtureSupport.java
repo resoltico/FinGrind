@@ -11,7 +11,6 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -143,10 +142,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   }
 
   static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
-    return new JournalLine(
-        new AccountCode(accountCode),
-        side,
-        new Money(new CurrencyCode("EUR"), new java.math.BigDecimal(amount)));
+    return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
   }
 
   static JournalLine line(
@@ -155,7 +151,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   }
 
   static Money money(String currencyCode, String amount) {
-    return new Money(new CurrencyCode(currencyCode), new java.math.BigDecimal(amount));
+    return Money.parse(currencyCode, amount);
   }
 
   static void insertPostingFactRow(

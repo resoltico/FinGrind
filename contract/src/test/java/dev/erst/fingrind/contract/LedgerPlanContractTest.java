@@ -9,12 +9,10 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -106,7 +104,7 @@ class LedgerPlanContractTest {
             new AccountCode("1000"),
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
-            new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+            Money.parse("EUR", "10.00"),
             BalanceSide.DEBIT);
     assertEquals(new AccountCode("1000"), assertion.query().accountCode());
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), assertion.query().effectiveDateFrom());
@@ -124,7 +122,7 @@ class LedgerPlanContractTest {
                 new AccountCode("1000"),
                 LocalDate.parse("2026-05-01"),
                 LocalDate.parse("2026-04-30"),
-                new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+                Money.parse("EUR", "10.00"),
                 BalanceSide.DEBIT));
     assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountDeclared(nullOf()));
     assertThrows(NullPointerException.class, () -> new LedgerAssertion.AccountActive(nullOf()));

@@ -1,12 +1,12 @@
 {
-  "targetKey": "ledger-plan-request",
-  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/invalid_execution_policy.json",
-  "coverageIntent": "removed execution-policy block rejection",
-  "expectation": {
-    "outcomeKind": "expected-invalid",
-    "message": "Unexpected field: executionPolicy",
-    "details": {
-      "type": "LEDGER_PLAN_REQUEST_UNPARSED"
+  "targetKey" : "ledger-plan-request",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/cli/LedgerPlanRequestFuzzTestInputs/readLedgerPlan/invalid_execution_policy.json",
+  "coverageIntent" : "removed execution-policy block rejection",
+  "expectation" : {
+    "outcomeKind" : "expected-invalid",
+    "message" : "Unexpected field: executionPolicy",
+    "details" : {
+      "type" : "LEDGER_PLAN_REQUEST_UNPARSED"
     }
   }
 }

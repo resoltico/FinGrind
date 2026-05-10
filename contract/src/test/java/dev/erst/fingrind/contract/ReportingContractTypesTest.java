@@ -16,7 +16,6 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -26,7 +25,6 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,11 +42,7 @@ class ReportingContractTypesTest {
           true,
           Instant.parse("2026-04-07T10:15:30Z"));
   private static final CurrencyBalance EUR_DEBIT_BALANCE =
-      new CurrencyBalance(
-          new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-          new Money(new CurrencyCode("EUR"), BigDecimal.ZERO),
-          new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
-          BalanceSide.DEBIT);
+      CurrencyBalance.ofTotals(Money.parse("EUR", "15.00"), Money.parse("EUR", "0.00"));
 
   @Test
   void reportingQueriesReportsAndResults_preserveCanonicalState() {
@@ -71,7 +65,7 @@ class ReportingContractTypesTest {
         new AccountLedgerEntry(
             postingFact("posting-1", "idem-1"),
             EUR_DEBIT_BALANCE,
-            new Money(new CurrencyCode("EUR"), new BigDecimal("15.00")),
+            Money.parse("EUR", "15.00"),
             BalanceSide.DEBIT);
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
@@ -365,11 +359,11 @@ class ReportingContractTypesTest {
                 new JournalLine(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("15.00"))),
+                    Money.parse("EUR", "15.00")),
                 new JournalLine(
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
-                    new Money(new CurrencyCode("EUR"), new BigDecimal("15.00"))))),
+                    Money.parse("EUR", "15.00")))),
         PostingLineage.direct(),
         new CommittedProvenance(
             new RequestProvenance(

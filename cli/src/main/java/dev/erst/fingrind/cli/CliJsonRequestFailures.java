@@ -37,7 +37,7 @@ final class CliJsonRequestFailures {
     return new CliRequestException(
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         requestTransportFailureMessage(requestFile, exception),
-        requestTransportFailureHint(requestFile),
+        requestTransportFailureHint(requestFile, exception),
         exception);
   }
 
@@ -94,6 +94,19 @@ final class CliJsonRequestFailures {
   }
 
   private static String requestTransportFailureMessage(Path requestFile, Exception exception) {
+    if (exception instanceof CliRequestPayloadTooLargeException tooLargeException) {
+      if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
+          requestFile.toString())) {
+        return "Request JSON from standard input exceeded the supported "
+            + tooLargeException.maxBytes()
+            + "-byte UTF-8 limit.";
+      }
+      return "Request file exceeded the supported "
+          + tooLargeException.maxBytes()
+          + "-byte UTF-8 limit: "
+          + requestFile.toAbsolutePath().normalize()
+          + ".";
+    }
     if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
         requestFile.toString())) {
       return "Failed to read request JSON from standard input.";
@@ -108,7 +121,12 @@ final class CliJsonRequestFailures {
     return "Failed to read request file: " + normalizedPath + ".";
   }
 
-  private static String requestTransportFailureHint(Path requestFile) {
+  private static String requestTransportFailureHint(Path requestFile, Exception exception) {
+    if (exception instanceof CliRequestPayloadTooLargeException tooLargeException) {
+      return "Reduce the request JSON payload to within the supported "
+          + tooLargeException.maxBytes()
+          + "-byte UTF-8 limit, or split the work into smaller request documents.";
+    }
     if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
         requestFile.toString())) {
       return "Provide one readable JSON document on standard input, or pass --request-file <path> to read it from a file.";

@@ -6,6 +6,7 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.countFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.flagFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.postEntryCommand;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
@@ -93,7 +94,15 @@ class LedgerPlanServiceQueryTest {
                       groupFact(fact, "provenance", "actorId", "actor-1", "sourceChannel", "CLI")));
       assertTrue(
           getPostingFacts.stream()
-              .anyMatch(fact -> groupFact(fact, "line", "accountCode", "1000", "amount", "10")));
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "line",
+                          "accountCode",
+                          "1000",
+                          "amount",
+                          monetaryAmount("EUR", "10.00"))));
 
       List<LedgerFact> listPostingFacts = result.journal().steps().get(2).facts();
       assertTrue(listPostingFacts.stream().anyMatch(fact -> countFact(fact, "count", 1)));

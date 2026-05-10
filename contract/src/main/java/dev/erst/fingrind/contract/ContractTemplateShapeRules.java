@@ -113,13 +113,11 @@ final class ContractTemplateShapeRules {
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN)),
         Map.entry(
             LedgerAssertionKind.ACCOUNT_ACTIVE,
             new ContractTemplateAssertionShapeRequirements(
                 ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
@@ -133,7 +131,6 @@ final class ContractTemplateShapeRules {
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.REQUIRED)),
         Map.entry(
             LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
@@ -141,7 +138,6 @@ final class ContractTemplateShapeRules {
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN,
                 ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN)));

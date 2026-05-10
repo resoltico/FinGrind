@@ -3,7 +3,6 @@ package dev.erst.fingrind.report.pdf;
 import dev.erst.fingrind.contract.PostingFact;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.jspecify.annotations.Nullable;
 
@@ -12,11 +11,7 @@ final class PdfValueFormatter {
   private PdfValueFormatter() {}
 
   static String displayMoney(Money money) {
-    return displayAmount(money.amount());
-  }
-
-  static String displayAmount(BigDecimal amount) {
-    return amount.stripTrailingZeros().toPlainString();
+    return money.canonicalDecimal();
   }
 
   static String optionalDate(@Nullable LocalDate date) {

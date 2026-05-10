@@ -27,11 +27,9 @@ import dev.erst.fingrind.contract.TrialBalanceReport;
 import dev.erst.fingrind.contract.TrialBalanceResult;
 import dev.erst.fingrind.contract.TrialBalanceRow;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CurrencyCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -107,7 +105,7 @@ class BookReadServiceReportQueryTest {
                       new AccountLedgerEntry(
                           publishedPostingFact,
                           EUR_DEBIT_BALANCE,
-                          new Money(new CurrencyCode("EUR"), new BigDecimal("10.00")),
+                          Money.parse("EUR", "10.00"),
                           BalanceSide.DEBIT)),
                   List.of(EUR_DEBIT_BALANCE))),
           service.accountLedger(
