@@ -116,6 +116,7 @@ The main executable evidence owners for this surface are:
 - `./scripts/verify-github-release.sh`
 - `./scripts/verify-public-container-surface.sh`
 - `./scripts/test-verify-github-release.sh`
+- `./scripts/test-verify-public-container-surface.sh`
 - `./scripts/verify-release-primary-checkout.sh`
 
 The minimum operator proof after a public release is:
@@ -127,3 +128,8 @@ gh release view vX.Y.Z
 ```
 
 If those checks disagree with a green workflow badge, trust the direct verification.
+
+`verify-public-container-surface.sh` also owns part of the public statement contract. It proves
+that the published image can render the current human `trial-balance` layout for one mounted-book
+workflow. When that human report layout changes, repair the verifier and its mock-backed shell
+regression harness together before trusting the release protocol again.

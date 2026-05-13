@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Repaired the operator-side public container verifier so release publication now checks the
+  current human `trial-balance` surface, including the first-class `Account type` and
+  `Account role` columns, and aligned the mock-backed shell regression harness to the same
+  mounted-book statement contract.
+
 ## [0.35.0] - 2026-05-13
 
 ### Changed

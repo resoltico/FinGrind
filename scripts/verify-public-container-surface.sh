@@ -105,10 +105,13 @@ verify_human_trial_balance() {
     require_match "${human_output}" '^Trial Balance$' || die \
         "published human trial balance did not render the report header"
     require_match "${human_output}" \
-        '^1000[[:space:]]+\|[[:space:]]+Cash[[:space:]]+\|[[:space:]]+DEBIT[[:space:]]+\|[[:space:]]+true[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+DEBIT[[:space:]]*$' \
+        '^Account[[:space:]]+\|[[:space:]]+Name[[:space:]]+\|[[:space:]]+Account type[[:space:]]+\|[[:space:]]+Account role[[:space:]]+\|[[:space:]]+Normal balance[[:space:]]+\|[[:space:]]+Active[[:space:]]+\|[[:space:]]+Currency[[:space:]]+\|[[:space:]]+Debit total[[:space:]]+\|[[:space:]]+Credit total[[:space:]]+\|[[:space:]]+Net amount[[:space:]]+\|[[:space:]]+Balance side[[:space:]]*$' \
+        || die "published human trial balance did not render the expected column header"
+    require_match "${human_output}" \
+        '^1000[[:space:]]+\|[[:space:]]+Cash[[:space:]]+\|[[:space:]]+ASSET[[:space:]]+\|[[:space:]]+ORDINARY[[:space:]]+\|[[:space:]]+DEBIT[[:space:]]+\|[[:space:]]+true[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+DEBIT[[:space:]]*$' \
         || die "published human trial balance did not report the expected Cash trial-balance row"
     require_match "${human_output}" \
-        '^2000[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+CREDIT[[:space:]]+\|[[:space:]]+true[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+CREDIT[[:space:]]*$' \
+        '^2000[[:space:]]+\|[[:space:]]+Revenue[[:space:]]+\|[[:space:]]+REVENUE[[:space:]]+\|[[:space:]]+ORDINARY[[:space:]]+\|[[:space:]]+CREDIT[[:space:]]+\|[[:space:]]+true[[:space:]]+\|[[:space:]]+EUR[[:space:]]+\|[[:space:]]+0\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+10\.00[[:space:]]+\|[[:space:]]+CREDIT[[:space:]]*$' \
         || die "published human trial balance did not report the expected Revenue trial-balance row"
 }
 
