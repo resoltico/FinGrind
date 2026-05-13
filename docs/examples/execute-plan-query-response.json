@@ -40,6 +40,16 @@
             },
             {
               "kind": "text",
+              "name": "accountType",
+              "value": "ASSET"
+            },
+            {
+              "kind": "text",
+              "name": "accountRole",
+              "value": "ORDINARY"
+            },
+            {
+              "kind": "text",
               "name": "normalBalance",
               "value": "DEBIT"
             },
@@ -71,6 +81,16 @@
               "kind": "text",
               "name": "accountName",
               "value": "Revenue"
+            },
+            {
+              "kind": "text",
+              "name": "accountType",
+              "value": "REVENUE"
+            },
+            {
+              "kind": "text",
+              "name": "accountRole",
+              "value": "ORDINARY"
             },
             {
               "kind": "text",
@@ -158,6 +178,16 @@
                   "kind": "text",
                   "name": "accountName",
                   "value": "Cash"
+                },
+                {
+                  "kind": "text",
+                  "name": "accountType",
+                  "value": "ASSET"
+                },
+                {
+                  "kind": "text",
+                  "name": "accountRole",
+                  "value": "ORDINARY"
                 },
                 {
                   "kind": "text",
@@ -280,14 +310,12 @@
                       "value": "DEBIT"
                     },
                     {
-                      "kind": "text",
-                      "name": "currencyCode",
-                      "value": "EUR"
-                    },
-                    {
-                      "kind": "text",
+                      "kind": "money",
                       "name": "amount",
-                      "value": "10"
+                      "value": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "10"
+                      }
                     }
                   ]
                 },
@@ -306,14 +334,12 @@
                       "value": "CREDIT"
                     },
                     {
-                      "kind": "text",
-                      "name": "currencyCode",
-                      "value": "EUR"
-                    },
-                    {
-                      "kind": "text",
+                      "kind": "money",
                       "name": "amount",
-                      "value": "10"
+                      "value": {
+                        "currencyCode": "EUR",
+                        "minorUnits": "10"
+                      }
                     }
                   ]
                 }

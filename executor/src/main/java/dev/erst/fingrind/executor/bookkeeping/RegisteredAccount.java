@@ -2,6 +2,9 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import java.util.Objects;
@@ -11,15 +14,23 @@ import org.jspecify.annotations.Nullable;
 public record RegisteredAccount(
     AccountCode accountCode,
     AccountName accountName,
-    NormalBalance normalBalance,
+    AccountType accountType,
+    AccountRole accountRole,
     boolean active,
     Instant declaredAt) {
   /** Validates one registered-account snapshot. */
   public RegisteredAccount {
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(accountName, "accountName");
-    Objects.requireNonNull(normalBalance, "normalBalance");
+    Objects.requireNonNull(accountType, "accountType");
+    Objects.requireNonNull(accountRole, "accountRole");
     Objects.requireNonNull(declaredAt, "declaredAt");
+    AccountSemantics.validate(accountType, accountRole);
+  }
+
+  /** Returns the doctrinal journal side that increases this account. */
+  public NormalBalance normalBalance() {
+    return AccountSemantics.normalBalance(accountType, accountRole);
   }
 
   /**
@@ -39,22 +50,27 @@ public record RegisteredAccount(
           new RegisteredAccount(
               declaration.accountCode(),
               declaration.accountName(),
-              declaration.normalBalance(),
+              declaration.accountType(),
+              declaration.accountRole(),
               true,
               declaredAt));
     }
-    if (existingAccount.normalBalance() != declaration.normalBalance()) {
+    if (existingAccount.accountType() != declaration.accountType()) {
       return new AccountDeclarationOutcome.Rejected(
-          new BookkeepingAdministrationRejection.NormalBalanceConflict(
-              declaration.accountCode(),
-              existingAccount.normalBalance(),
-              declaration.normalBalance()));
+          new BookkeepingAdministrationRejection.AccountTypeConflict(
+              declaration.accountCode(), existingAccount.accountType(), declaration.accountType()));
+    }
+    if (existingAccount.accountRole() != declaration.accountRole()) {
+      return new AccountDeclarationOutcome.Rejected(
+          new BookkeepingAdministrationRejection.AccountRoleConflict(
+              declaration.accountCode(), existingAccount.accountRole(), declaration.accountRole()));
     }
     return new AccountDeclarationOutcome.Declared(
         new RegisteredAccount(
             existingAccount.accountCode(),
             declaration.accountName(),
-            existingAccount.normalBalance(),
+            existingAccount.accountType(),
+            existingAccount.accountRole(),
             true,
             declaredAt));
   }

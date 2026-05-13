@@ -40,6 +40,16 @@
             },
             {
               "kind": "text",
+              "name": "accountType",
+              "value": "ASSET"
+            },
+            {
+              "kind": "text",
+              "name": "accountRole",
+              "value": "ORDINARY"
+            },
+            {
+              "kind": "text",
               "name": "normalBalance",
               "value": "DEBIT"
             },
@@ -71,6 +81,16 @@
               "kind": "text",
               "name": "accountName",
               "value": "Revenue"
+            },
+            {
+              "kind": "text",
+              "name": "accountType",
+              "value": "REVENUE"
+            },
+            {
+              "kind": "text",
+              "name": "accountRole",
+              "value": "ORDINARY"
             },
             {
               "kind": "text",
@@ -142,6 +162,16 @@
                 },
                 {
                   "kind": "text",
+                  "name": "accountType",
+                  "value": "ASSET"
+                },
+                {
+                  "kind": "text",
+                  "name": "accountRole",
+                  "value": "ORDINARY"
+                },
+                {
+                  "kind": "text",
                   "name": "normalBalance",
                   "value": "DEBIT"
                 },
@@ -167,24 +197,28 @@
               "name": "balance",
               "facts": [
                 {
-                  "kind": "text",
-                  "name": "currencyCode",
-                  "value": "EUR"
-                },
-                {
-                  "kind": "text",
+                  "kind": "money",
                   "name": "debitTotal",
-                  "value": "10"
+                  "value": {
+                    "currencyCode": "EUR",
+                    "minorUnits": "10"
+                  }
                 },
                 {
-                  "kind": "text",
+                  "kind": "money",
                   "name": "creditTotal",
-                  "value": "0"
+                  "value": {
+                    "currencyCode": "EUR",
+                    "minorUnits": "0"
+                  }
                 },
                 {
-                  "kind": "text",
+                  "kind": "money",
                   "name": "netAmount",
-                  "value": "10"
+                  "value": {
+                    "currencyCode": "EUR",
+                    "minorUnits": "10"
+                  }
                 },
                 {
                   "kind": "text",

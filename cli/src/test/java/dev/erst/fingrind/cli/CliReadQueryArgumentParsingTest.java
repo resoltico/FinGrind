@@ -3,14 +3,14 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PostingPageCursor;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
@@ -124,6 +124,46 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
             10,
             Optional.of(cursor)),
         command.query());
+  }
+
+  @Test
+  void parse_acceptsOneSidedEffectiveDateRangesForPostingAndAccountQueries() {
+    ListPostings listPostings =
+        assertInstanceOf(
+            ListPostings.class,
+            CliArguments.parse(
+                new String[] {
+                  "list-postings",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-01"
+                }));
+    AccountBalance accountBalance =
+        assertInstanceOf(
+            AccountBalance.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--effective-date-from",
+                  "2026-04-01"
+                }));
+
+    assertEquals(
+        new ListPostingsQuery(
+            Optional.empty(), LocalDate.parse("2026-04-01"), null, 50, Optional.empty()),
+        listPostings.query());
+    assertEquals(
+        new AccountBalanceQuery(new AccountCode("1000"), LocalDate.parse("2026-04-01"), null),
+        accountBalance.query());
   }
 
   @Test

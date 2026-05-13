@@ -8,6 +8,7 @@
   "OPEN_BOOK": "open-book",
   "REKEY_BOOK": "rekey-book",
   "DECLARE_ACCOUNT": "declare-account",
+  "CLOSE_PERIOD": "close-period",
   "INSPECT_BOOK": "inspect-book",
   "LIST_ACCOUNTS": "list-accounts",
   "GET_POSTING": "get-posting",
@@ -16,6 +17,9 @@
   "TRIAL_BALANCE": "trial-balance",
   "ACCOUNT_LEDGER": "account-ledger",
   "PERIOD_SUMMARY": "period-summary",
+  "FINANCIAL_POSITION": "financial-position",
+  "INCOME_STATEMENT": "income-statement",
+  "CHANGES_IN_EQUITY": "changes-in-equity",
   "EXECUTE_PLAN": "execute-plan",
   "PREFLIGHT_ENTRY": "preflight-entry",
   "POST_ENTRY": "post-entry"

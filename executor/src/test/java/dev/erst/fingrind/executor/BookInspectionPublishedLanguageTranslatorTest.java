@@ -4,8 +4,8 @@ import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookFormatContract;
-import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookFormatContract;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

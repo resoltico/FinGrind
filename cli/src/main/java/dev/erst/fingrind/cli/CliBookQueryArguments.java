@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
@@ -126,13 +126,14 @@ final class CliBookQueryArguments {
               CliArgumentValueParser.supportedOutputModes(
                   OutputMode.JSON, OutputMode.HUMAN, OutputMode.CSV));
     }
-    int resolvedLimit = limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit;
+    int resolvedLimit =
+        CliArgumentValueParser.requirePageLimit(
+            limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit, ProtocolOptions.LIMIT);
     Optional<AccountPageCursor> resolvedCursor =
         Optional.ofNullable(cursor).map(CliArgumentValueParser::accountPageCursor);
     return new ListAccounts(
         parsedArguments.bookAccess(),
-        CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.LIMIT, () -> new ListAccountsQuery(resolvedLimit, resolvedCursor)),
+        new ListAccountsQuery(resolvedLimit, resolvedCursor),
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 
@@ -212,7 +213,9 @@ final class CliBookQueryArguments {
     String resolvedAccountCodeValue = accountCodeValue;
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
-    int resolvedLimit = limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit;
+    int resolvedLimit =
+        CliArgumentValueParser.requirePageLimit(
+            limit == null ? InteractionLimits.DEFAULT_PAGE_LIMIT : limit, ProtocolOptions.LIMIT);
     String resolvedCursor = cursor;
     Optional<AccountCode> resolvedAccountCode =
         Optional.ofNullable(resolvedAccountCodeValue)
@@ -220,22 +223,24 @@ final class CliBookQueryArguments {
                 value ->
                     CliArgumentValueParser.requireValidArgument(
                         ProtocolOptions.ACCOUNT_CODE, () -> new AccountCode(value)));
+    if (resolvedEffectiveDateFrom != null && resolvedEffectiveDateTo != null) {
+      CliArgumentValueParser.requireOrderedDateRange(
+          resolvedEffectiveDateFrom,
+          resolvedEffectiveDateTo,
+          ProtocolOptions.EFFECTIVE_DATE_FROM,
+          ProtocolOptions.EFFECTIVE_DATE_TO);
+    }
     EffectiveDateRange resolvedEffectiveDateRange =
-        CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.EFFECTIVE_DATE_FROM,
-            () -> EffectiveDateRange.of(resolvedEffectiveDateFrom, resolvedEffectiveDateTo));
-    Optional<dev.erst.fingrind.contract.PostingPageCursor> resolvedPostingPageCursor =
+        EffectiveDateRange.of(resolvedEffectiveDateFrom, resolvedEffectiveDateTo);
+    Optional<dev.erst.fingrind.contract.bookkeeping.PostingPageCursor> resolvedPostingPageCursor =
         Optional.ofNullable(resolvedCursor).map(CliArgumentValueParser::postingPageCursor);
     return new ListPostings(
         parsedArguments.bookAccess(),
-        CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.LIMIT,
-            () ->
-                new ListPostingsQuery(
-                    resolvedAccountCode,
-                    resolvedEffectiveDateRange,
-                    resolvedLimit,
-                    resolvedPostingPageCursor)),
+        new ListPostingsQuery(
+            resolvedAccountCode,
+            resolvedEffectiveDateRange,
+            resolvedLimit,
+            resolvedPostingPageCursor),
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 }

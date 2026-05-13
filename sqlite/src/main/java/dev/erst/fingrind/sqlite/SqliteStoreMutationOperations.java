@@ -1,15 +1,20 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
@@ -17,6 +22,7 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -32,10 +38,19 @@ final class SqliteStoreMutationOperations {
 
   private final SqliteStoreContext context;
   private final SqliteStoreLifecycle lifecycle;
+  private final SqliteCommitFaultHook commitFaultHook;
 
   SqliteStoreMutationOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
+    this(context, lifecycle, SqliteCommitFaultHook.NONE);
+  }
+
+  SqliteStoreMutationOperations(
+      SqliteStoreContext context,
+      SqliteStoreLifecycle lifecycle,
+      SqliteCommitFaultHook commitFaultHook) {
     this.context = Objects.requireNonNull(context, "context");
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
+    this.commitFaultHook = Objects.requireNonNull(commitFaultHook, "commitFaultHook");
   }
 
   BookOpeningOutcome openBook(Instant initializedAt) {
@@ -57,6 +72,8 @@ final class SqliteStoreMutationOperations {
             SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
             SqliteBookIntegrityVerifier.recordSchemaFingerprint(activeDatabase);
             SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
+            SqliteAuditEventWriter.insertAuditEvent(
+                activeDatabase, BookAuditEvent.bookOpened(initializedAt));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             lifecycle.cacheState(
                 new SqliteBookStateSnapshot(
@@ -68,6 +85,9 @@ final class SqliteStoreMutationOperations {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to initialize SQLite book.", exception);
+          } catch (RuntimeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw exception;
           }
         });
   }
@@ -75,7 +95,8 @@ final class SqliteStoreMutationOperations {
   AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
-      NormalBalance normalBalance,
+      AccountType accountType,
+      AccountRole accountRole,
       Instant declaredAt) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
@@ -98,7 +119,7 @@ final class SqliteStoreMutationOperations {
             AccountDeclarationOutcome declarationOutcome =
                 RegisteredAccount.declare(
                     existingAccount.orElse(null),
-                    new AccountDeclaration(accountCode, accountName, normalBalance),
+                    new AccountDeclaration(accountCode, accountName, accountType, accountRole),
                     declaredAt);
             if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
@@ -107,12 +128,21 @@ final class SqliteStoreMutationOperations {
             RegisteredAccount declaredAccount =
                 ((AccountDeclarationOutcome.Declared) declarationOutcome).account();
             SqliteMutationWriter.upsertAccount(activeDatabase, declaredAccount);
+            SqliteAuditEventWriter.insertAuditEvent(
+                activeDatabase,
+                BookAuditEvent.accountDeclared(
+                    declaredAt,
+                    declaredAccount.accountCode(),
+                    existingAccount.isPresent() && !existingAccount.orElseThrow().active()));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             return new AccountDeclarationOutcome.Declared(declaredAccount);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to declare SQLite book account.", exception);
+          } catch (RuntimeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw exception;
           }
         });
   }
@@ -137,22 +167,86 @@ final class SqliteStoreMutationOperations {
               return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
             }
             CommittedPosting postingFact =
-                postingDraft.materialize(
-                    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator")
-                        .nextPostingId());
-            SqliteMutationWriter.insertPostingFact(activeDatabase, postingFact);
-            SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact);
+                persistAcceptedPosting(
+                    activeDatabase,
+                    postingDraft,
+                    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             return new PostingCommitResult.Committed(postingFact);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to commit SQLite posting fact.", exception);
+          } catch (RuntimeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw exception;
           }
         });
   }
 
-  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase) {
+  PeriodCloseOutcome closePeriod(
+      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    if (Files.notExists(context.bookPath())) {
+      return new PeriodCloseOutcome.Rejected(
+          new BookkeepingAdministrationRejection.BookNotInitialized());
+    }
+    return withBorrowedDatabase(
+        activeDatabase -> {
+          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
+          boolean committed = false;
+          try {
+            if (!lifecycle.isInitializedBook(activeDatabase)) {
+              return new PeriodCloseOutcome.Rejected(
+                  new BookkeepingAdministrationRejection.BookNotInitialized());
+            }
+
+            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            SqliteTransactionValidationBook validationBook =
+                new SqliteTransactionValidationBook(activeDatabase, context.postingReader());
+            PostingIdGenerator requiredPostingIdGenerator =
+                Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+            List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
+            for (PostingDraft closingPostingDraft : periodCloseDraft.closingPostings()) {
+              Optional<BookkeepingPostingRejection> rejection =
+                  PostingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
+              if (rejection.isPresent()) {
+                throw new IllegalStateException(
+                    "Generated period-close posting failed bookkeeping acceptance: "
+                        + rejection.orElseThrow());
+              }
+              closingPostings.add(
+                  persistAcceptedPosting(
+                      activeDatabase, closingPostingDraft, requiredPostingIdGenerator));
+            }
+            ClosedPeriod closedPeriod =
+                SqliteMutationWriter.insertPeriodClose(
+                    activeDatabase,
+                    periodCloseDraft.reportingPeriod(),
+                    periodCloseDraft.retainedEarningsAccountCode(),
+                    periodCloseDraft.closedTotals(),
+                    periodCloseDraft.closedAt(),
+                    closingPostings);
+            SqliteAuditEventWriter.insertAuditEvent(
+                activeDatabase,
+                BookAuditEvent.periodClosed(
+                    periodCloseDraft.closedAt(), closedPeriod.closeOrder()));
+            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+            committed = true;
+            return new PeriodCloseOutcome.Closed(closedPeriod);
+          } catch (SqliteNativeException exception) {
+            throw SqliteStoreOperations.sqliteFailure(
+                "Failed to close one SQLite reporting period.", exception);
+          } finally {
+            if (!committed) {
+              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            }
+          }
+        });
+  }
+
+  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     try (SqliteOwnedPassphrase activeReplacementPassphrase =
@@ -160,13 +254,15 @@ final class SqliteStoreMutationOperations {
             Objects.requireNonNull(replacementPassphrase, "replacementPassphrase"))) {
       if (Files.notExists(context.bookPath())) {
         return new RekeyBookResult.Rejected(
-            new dev.erst.fingrind.contract.BookAdministrationRejection.BookNotInitialized());
+            new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
+                .BookNotInitialized());
       }
       return withBorrowedDatabase(
           activeDatabase -> {
             if (!lifecycle.isInitializedBook(activeDatabase)) {
               return new RekeyBookResult.Rejected(
-                  new dev.erst.fingrind.contract.BookAdministrationRejection.BookNotInitialized());
+                  new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
+                      .BookNotInitialized());
             }
             SqliteRekeyRollbackFile rollbackFile =
                 SqliteRekeyRollbackFile.create(context.bookPath());
@@ -174,7 +270,10 @@ final class SqliteStoreMutationOperations {
                 activeDatabase, activeReplacementPassphrase.nativePassphrase());
             try {
               return publishRekeyedDatabase(
-                  activeDatabase, activeReplacementPassphrase.nativePassphrase(), rollbackFile);
+                  activeDatabase,
+                  activeReplacementPassphrase.nativePassphrase(),
+                  rollbackFile,
+                  rekeyedAt);
             } catch (RuntimeException exception) {
               RuntimeException closeFailure =
                   captureBestEffortRuntimeFailure(
@@ -194,11 +293,23 @@ final class SqliteStoreMutationOperations {
   RekeyBookResult publishRekeyedDatabase(
       SqliteNativeDatabase activeDatabase,
       SqliteBookPassphrase replacementPassphrase,
-      SqliteRekeyRollbackFile rollbackFile) {
-    SqliteNativeDatabase reopenedDatabase = context.openConfiguredDatabase(replacementPassphrase);
+      SqliteRekeyRollbackFile rollbackFile,
+      Instant rekeyedAt) {
+    SqliteNativeDatabase reopenedDatabase =
+        context.openConfiguredDatabaseWithoutRollbackArtifactWarning(replacementPassphrase);
     boolean published = false;
     try {
       lifecycle.requireInitializedBook(reopenedDatabase);
+      SqliteTransactionOwnership transactionOwnership =
+          lifecycle.beginImmediateIfNeeded(reopenedDatabase);
+      try {
+        SqliteAuditEventWriter.insertAuditEvent(
+            reopenedDatabase, BookAuditEvent.bookRekeyed(rekeyedAt));
+        SqliteStoreOperations.commitIfOwned(reopenedDatabase, transactionOwnership);
+      } catch (RuntimeException exception) {
+        SqliteStoreOperations.rollbackIfOwned(reopenedDatabase, transactionOwnership);
+        throw exception;
+      }
       SqliteStoreContext.closeOwnedDatabase(activeDatabase);
       lifecycle.clearDatabaseState();
       lifecycle.publishDatabase(reopenedDatabase);
@@ -215,6 +326,21 @@ final class SqliteStoreMutationOperations {
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {
     return action.run(lifecycle.database());
+  }
+
+  private CommittedPosting persistAcceptedPosting(
+      SqliteNativeDatabase activeDatabase,
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator) {
+    CommittedPosting postingFact =
+        postingDraft.materialize(
+            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId());
+    SqliteMutationWriter.insertPostingFact(activeDatabase, postingFact);
+    commitFaultHook.afterPostingFactInserted(postingFact);
+    SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact, commitFaultHook);
+    SqliteAuditEventWriter.insertAuditEvent(
+        activeDatabase, BookAuditEvent.postingCommitted(postingFact));
+    return postingFact;
   }
 
   static @Nullable RuntimeException captureBestEffortRuntimeFailure(

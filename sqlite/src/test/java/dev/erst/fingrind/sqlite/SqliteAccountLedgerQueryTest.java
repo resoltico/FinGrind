@@ -2,8 +2,8 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;

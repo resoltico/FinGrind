@@ -1,0 +1,247 @@
+package dev.erst.fingrind.contract;
+
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingPeriod;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+
+/** Direct contract-model coverage for statement and close-period public bookkeeping types. */
+class StatementAndCloseContractTypesTest {
+  @Test
+  void statementAndCloseContractTypes_preserveCanonicalPayloads() {
+    FinancialPositionRow financialPositionRow =
+        new FinancialPositionRow(
+            "1000", "Cash", AccountType.ASSET, false, balance("EUR", "15.00", "0.00"));
+    FinancialPositionSection financialPositionSection =
+        new FinancialPositionSection(
+            AccountType.ASSET,
+            new ArrayList<>(List.of(financialPositionRow)),
+            new ArrayList<>(List.of(balance("EUR", "15.00", "0.00"))));
+    FinancialPositionReport financialPositionReport =
+        new FinancialPositionReport(
+            Optional.of(LocalDate.parse("2026-04-30")),
+            new ArrayList<>(List.of(financialPositionSection)));
+    FinancialPositionResult.Reported reportedFinancialPosition =
+        new FinancialPositionResult.Reported(financialPositionReport);
+    BookQueryRejection.BookNotInitialized financialPositionRejection =
+        new BookQueryRejection.BookNotInitialized();
+    FinancialPositionResult.Rejected rejectedFinancialPosition =
+        new FinancialPositionResult.Rejected(financialPositionRejection);
+
+    IncomeStatementRow incomeStatementRow =
+        new IncomeStatementRow(
+            "4000", "Revenue", AccountType.REVENUE, false, balance("EUR", "0.00", "10.00"));
+    IncomeStatementSection incomeStatementSection =
+        new IncomeStatementSection(
+            AccountType.REVENUE,
+            new ArrayList<>(List.of(incomeStatementRow)),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))));
+    IncomeStatementReport incomeStatementReport =
+        new IncomeStatementReport(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            new ArrayList<>(List.of(incomeStatementSection)),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))));
+    IncomeStatementResult.Reported reportedIncomeStatement =
+        new IncomeStatementResult.Reported(incomeStatementReport);
+    BookQueryRejection.BookNotInitialized incomeStatementRejection =
+        new BookQueryRejection.BookNotInitialized();
+    IncomeStatementResult.Rejected rejectedIncomeStatement =
+        new IncomeStatementResult.Rejected(incomeStatementRejection);
+
+    ChangesInEquityRow changesRow =
+        new ChangesInEquityRow(
+            "3000",
+            "Owner Capital",
+            false,
+            balance("EUR", "0.00", "100.00"),
+            balance("EUR", "0.00", "10.00"),
+            balance("EUR", "0.00", "110.00"));
+    ChangesInEquityReport changesReport =
+        new ChangesInEquityReport(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            new ArrayList<>(List.of(changesRow)),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "100.00"))),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "110.00"))));
+    ChangesInEquityResult.Reported reportedChanges =
+        new ChangesInEquityResult.Reported(changesReport);
+    BookQueryRejection.BookNotInitialized changesInEquityRejection =
+        new BookQueryRejection.BookNotInitialized();
+    ChangesInEquityResult.Rejected rejectedChanges =
+        new ChangesInEquityResult.Rejected(changesInEquityRejection);
+
+    ReportingPeriod reportingPeriod =
+        new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+    ClosePeriodCommand closePeriodCommand = new ClosePeriodCommand(reportingPeriod);
+    ClosedPeriod closedPeriod =
+        new ClosedPeriod(
+            1,
+            reportingPeriod,
+            new AccountCode("3000"),
+            new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
+            Instant.parse("2026-05-12T12:34:56Z"),
+            new ArrayList<>(List.of(new PostingId("posting-1"))));
+    ClosePeriodResult.Closed closePeriodClosed = new ClosePeriodResult.Closed(closedPeriod);
+    BookAdministrationRejection.BookNotInitialized closePeriodRejection =
+        new BookAdministrationRejection.BookNotInitialized();
+    ClosePeriodResult.Rejected closePeriodRejected =
+        new ClosePeriodResult.Rejected(closePeriodRejection);
+
+    DeclaredAccount declaredAccount =
+        new DeclaredAccount(
+            new AccountCode("1090"),
+            new AccountName("Accumulated Depreciation"),
+            AccountType.ASSET,
+            AccountRole.CONTRA,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+
+    FinancialPositionQuery financialPositionQuery =
+        new FinancialPositionQuery(Optional.of(LocalDate.parse("2026-04-30")));
+    IncomeStatementQuery incomeStatementQuery =
+        new IncomeStatementQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+    ChangesInEquityQuery changesInEquityQuery =
+        new ChangesInEquityQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+
+    assertEquals(
+        Optional.of(LocalDate.parse("2026-04-30")), financialPositionQuery.effectiveDateTo());
+    assertSame(financialPositionReport, reportedFinancialPosition.report());
+    assertSame(financialPositionRejection, rejectedFinancialPosition.rejection());
+    assertSame(incomeStatementReport, reportedIncomeStatement.report());
+    assertSame(incomeStatementRejection, rejectedIncomeStatement.rejection());
+    assertSame(changesReport, reportedChanges.report());
+    assertSame(changesInEquityRejection, rejectedChanges.rejection());
+    assertEquals(LocalDate.parse("2026-04-01"), incomeStatementQuery.effectiveDateFrom());
+    assertEquals(LocalDate.parse("2026-04-30"), incomeStatementQuery.effectiveDateTo());
+    assertEquals(LocalDate.parse("2026-04-01"), changesInEquityQuery.effectiveDateFrom());
+    assertEquals(LocalDate.parse("2026-04-30"), changesInEquityQuery.effectiveDateTo());
+    assertEquals(reportingPeriod, closePeriodCommand.reportingPeriod());
+    assertSame(closedPeriod, closePeriodClosed.closedPeriod());
+    assertSame(closePeriodRejection, closePeriodRejected.rejection());
+    assertEquals(dev.erst.fingrind.core.NormalBalance.CREDIT, declaredAccount.normalBalance());
+  }
+
+  @Test
+  void statementAndCloseContractTypes_rejectInvalidInputs() {
+    assertThrows(NullPointerException.class, () -> new FinancialPositionQuery(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new FinancialPositionReport(Optional.empty(), nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new FinancialPositionSection(nullOf(), List.of(), List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new FinancialPositionRow(
+                nullOf(), "Cash", AccountType.ASSET, false, balance("EUR", "1.00", "0.00")));
+    assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new FinancialPositionResult.Rejected(nullOf()));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new IncomeStatementQuery(LocalDate.parse("2026-04-30"), LocalDate.parse("2026-04-01")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new IncomeStatementReport(
+                LocalDate.parse("2026-04-30"),
+                LocalDate.parse("2026-04-01"),
+                List.of(),
+                List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new IncomeStatementSection(nullOf(), List.of(), List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new IncomeStatementRow(
+                "4000", nullOf(), AccountType.REVENUE, false, balance("EUR", "0.00", "1.00")));
+    assertThrows(NullPointerException.class, () -> new IncomeStatementResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new IncomeStatementResult.Rejected(nullOf()));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ChangesInEquityQuery(LocalDate.parse("2026-04-30"), LocalDate.parse("2026-04-01")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ChangesInEquityReport(
+                LocalDate.parse("2026-04-30"),
+                LocalDate.parse("2026-04-01"),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new ChangesInEquityRow(
+                "3000",
+                "Capital",
+                false,
+                nullOf(),
+                balance("EUR", "0.00", "1.00"),
+                balance("EUR", "0.00", "1.00")));
+    assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Reported(nullOf()));
+    assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Rejected(nullOf()));
+
+    assertThrows(NullPointerException.class, () -> new ClosePeriodCommand(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ClosedPeriod(
+                0,
+                new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                new AccountCode("3000"),
+                List.of(balance("EUR", "0.00", "1.00")),
+                Instant.parse("2026-05-12T12:34:56Z"),
+                List.of()));
+    assertThrows(NullPointerException.class, () -> new ClosePeriodResult.Closed(nullOf()));
+    assertThrows(NullPointerException.class, () -> new ClosePeriodResult.Rejected(nullOf()));
+  }
+
+  private static CurrencyBalance balance(
+      String currencyCode, String debitAmount, String creditAmount) {
+    return CurrencyBalance.ofTotals(
+        Money.parse(currencyCode, debitAmount), Money.parse(currencyCode, creditAmount));
+  }
+}

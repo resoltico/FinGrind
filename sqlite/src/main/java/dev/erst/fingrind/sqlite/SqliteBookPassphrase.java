@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -196,13 +196,13 @@ public final class SqliteBookPassphrase implements AutoCloseable {
   }
 
   private static ContractDecision<SqliteBookPassphrase> rejectedAfterZeroizing(
-      byte[] loadedBytes, dev.erst.fingrind.contract.ContractFailure failure) {
+      byte[] loadedBytes, dev.erst.fingrind.contract.runtime.ContractFailure failure) {
     Arrays.fill(loadedBytes, (byte) 0);
     return ContractDecision.rejected(failure);
   }
 
-  private static dev.erst.fingrind.contract.ContractFailure oversizedPassphraseSourceFailure(
-      String sourceDescription) {
+  private static dev.erst.fingrind.contract.runtime.ContractFailure
+      oversizedPassphraseSourceFailure(String sourceDescription) {
     return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
         "The FinGrind book passphrase source exceeded the %d-byte UTF-8 limit: %s"
             .formatted(MAX_UTF8_SOURCE_BYTES, sourceDescription),
@@ -290,8 +290,8 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     }
   }
 
-  private static dev.erst.fingrind.contract.ContractFailure invalidUtf8PassphraseSourceFailure(
-      String sourceDescription) {
+  private static dev.erst.fingrind.contract.runtime.ContractFailure
+      invalidUtf8PassphraseSourceFailure(String sourceDescription) {
     return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
         "The FinGrind book passphrase source must contain a UTF-8 passphrase: " + sourceDescription,
         "Provide one UTF-8 passphrase payload through the selected passphrase source and rerun the command.",

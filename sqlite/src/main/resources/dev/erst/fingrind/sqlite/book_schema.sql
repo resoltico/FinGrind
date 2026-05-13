@@ -13,13 +13,20 @@ create table if not exists account (
         and account_code not glob '*[^A-Za-z0-9._:/-]*'
     ),
     account_name text not null check (length(trim(account_name)) > 0),
-    normal_balance text not null check (normal_balance in ('DEBIT', 'CREDIT')),
+    account_type text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
+    account_role text not null check (account_role in ('ORDINARY', 'CONTRA', 'RETAINED_EARNINGS')),
     active integer not null check (active in (0, 1)),
-    declared_at text not null
+    declared_at text not null,
+    check (
+        (account_role = 'RETAINED_EARNINGS' and account_type = 'EQUITY')
+        or
+        (account_role in ('ORDINARY', 'CONTRA'))
+    )
 ) strict;
 
 create table if not exists posting_fact (
     posting_id text primary key,
+    posting_kind text not null check (posting_kind in ('STANDARD', 'PERIOD_CLOSE')),
     effective_date text not null,
     recorded_at text not null,
     actor_id text not null check (length(trim(actor_id)) > 0),
@@ -63,6 +70,53 @@ create table if not exists journal_line (
     foreign key (account_code) references account(account_code)
 ) strict;
 
+create table if not exists period_close (
+    period_close_order integer primary key,
+    effective_date_from text not null,
+    effective_date_to text not null,
+    closed_at text not null,
+    check (effective_date_from <= effective_date_to)
+) strict;
+
+create table if not exists period_close_posting (
+    period_close_order integer not null,
+    posting_id text not null,
+    primary key (period_close_order, posting_id),
+    foreign key (period_close_order) references period_close(period_close_order),
+    foreign key (posting_id) references posting_fact(posting_id)
+) strict;
+
+create table if not exists audit_event (
+    audit_event_order integer primary key,
+    recorded_at text not null check (length(trim(recorded_at)) > 0),
+    event_kind text not null check (
+        event_kind in (
+            'BOOK_OPENED',
+            'ACCOUNT_DECLARED',
+            'ACCOUNT_REACTIVATED',
+            'POSTING_COMMITTED',
+            'POSTING_REVERSED',
+            'BOOK_REKEYED',
+            'PERIOD_CLOSED'
+        )
+    ),
+    account_code text,
+    posting_id text,
+    period_close_order integer,
+    foreign key (account_code) references account(account_code),
+    foreign key (posting_id) references posting_fact(posting_id),
+    foreign key (period_close_order) references period_close(period_close_order),
+    check (
+        (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null and period_close_order is null)
+        or
+        (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null and period_close_order is null)
+        or
+        (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null and period_close_order is null)
+        or
+        (event_kind = 'PERIOD_CLOSED' and account_code is null and posting_id is null and period_close_order is not null)
+    )
+) strict;
+
 create index if not exists posting_fact_by_prior_posting_id
     on posting_fact (prior_posting_id);
 
@@ -72,6 +126,79 @@ create index if not exists posting_fact_by_effective_recorded_posting
 create index if not exists journal_line_by_account_code
     on journal_line (account_code, posting_id, line_order);
 
+create index if not exists audit_event_by_recorded_at
+    on audit_event (recorded_at, audit_event_order);
+
+create index if not exists period_close_by_effective_date_to
+    on period_close (effective_date_to desc, period_close_order desc);
+
+create index if not exists period_close_posting_by_posting_id
+    on period_close_posting (posting_id, period_close_order);
+
+create unique index if not exists account_one_retained_earnings
+    on account (account_role)
+    where account_role = 'RETAINED_EARNINGS';
+
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
     where prior_posting_id is not null;
+
+create trigger if not exists posting_fact_reject_update
+before update on posting_fact
+begin
+    select raise(fail, 'posting_fact rows are append-only.');
+end;
+
+create trigger if not exists posting_fact_reject_delete
+before delete on posting_fact
+begin
+    select raise(fail, 'posting_fact rows are append-only.');
+end;
+
+create trigger if not exists journal_line_reject_update
+before update on journal_line
+begin
+    select raise(fail, 'journal_line rows are append-only.');
+end;
+
+create trigger if not exists journal_line_reject_delete
+before delete on journal_line
+begin
+    select raise(fail, 'journal_line rows are append-only.');
+end;
+
+create trigger if not exists audit_event_reject_update
+before update on audit_event
+begin
+    select raise(fail, 'audit_event rows are append-only.');
+end;
+
+create trigger if not exists audit_event_reject_delete
+before delete on audit_event
+begin
+    select raise(fail, 'audit_event rows are append-only.');
+end;
+
+create trigger if not exists period_close_reject_update
+before update on period_close
+begin
+    select raise(fail, 'period_close rows are append-only.');
+end;
+
+create trigger if not exists period_close_reject_delete
+before delete on period_close
+begin
+    select raise(fail, 'period_close rows are append-only.');
+end;
+
+create trigger if not exists period_close_posting_reject_update
+before update on period_close_posting
+begin
+    select raise(fail, 'period_close_posting rows are append-only.');
+end;
+
+create trigger if not exists period_close_posting_reject_delete
+before delete on period_close_posting
+begin
+    select raise(fail, 'period_close_posting rows are append-only.');
+end;

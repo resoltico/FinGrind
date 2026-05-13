@@ -1,14 +1,14 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.cli.LedgerPlanFuzzAssertions;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
-import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -89,6 +89,10 @@ final class JazzerReplayDetailsMapper {
           accountStateViolationStatus(accountStateViolations);
       case PostingRejection.DuplicateIdempotencyKey _ ->
           PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
+      case PostingRejection.ClosedPeriodViolation _ ->
+          PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.RetainedEarningsAccountReserved _ ->
+          PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ ->
           PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ ->

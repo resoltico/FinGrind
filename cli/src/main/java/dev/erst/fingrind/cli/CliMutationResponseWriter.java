@@ -1,10 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
@@ -140,6 +141,44 @@ final class CliMutationResponseWriter {
                     CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
               });
       case DeclareAccountResult.Rejected rejected ->
+          outputChannel.writeMutationRejection(
+              outputMode,
+              CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              null);
+    }
+  }
+
+  void writeClosePeriodResult(ClosePeriodResult result, OutputMode outputMode) {
+    switch (result) {
+      case ClosePeriodResult.Closed closed ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          new CliAdministrationJsonModels.ClosedPeriodPayload(
+                              closed.closedPeriod().closeOrder(),
+                              closed
+                                  .closedPeriod()
+                                  .reportingPeriod()
+                                  .effectiveDateFrom()
+                                  .toString(),
+                              closed.closedPeriod().reportingPeriod().effectiveDateTo().toString(),
+                              closed.closedPeriod().retainedEarningsAccountCode().value(),
+                              closed.closedPeriod().closedTotals().stream()
+                                  .map(CliPayloadAssembler::balancePayload)
+                                  .toList(),
+                              closed.closedPeriod().closedAt().toString(),
+                              closed.closedPeriod().closingPostingIds().stream()
+                                  .map(dev.erst.fingrind.core.PostingId::value)
+                                  .toList()))),
+              () ->
+                  outputChannel.writeText(
+                      CliMutationOutputRenderer.renderClosedPeriodHuman(closed.closedPeriod())),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.CLOSE_PERIOD));
+              });
+      case ClosePeriodResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
               outputMode,
               CliResponsePayloadMapper.administrationRejectedEnvelope(rejected.rejection()),

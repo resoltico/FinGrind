@@ -66,11 +66,11 @@ verify_ref() {
 
 seed_public_fixture() {
     cat > "${report_root}/declare-cash.json" <<'JSON'
-{"accountCode":"1000","accountName":"Cash","normalBalance":"DEBIT"}
+{"accountCode":"1000","accountName":"Cash","accountType":"ASSET","accountRole":"ORDINARY"}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
-{"accountCode":"2000","accountName":"Revenue","normalBalance":"CREDIT"}
+{"accountCode":"2000","accountName":"Revenue","accountType":"REVENUE","accountRole":"ORDINARY"}
 JSON
 
     cat > "${report_root}/posting.json" <<'JSON'

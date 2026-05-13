@@ -3,32 +3,40 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PreflightEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -136,7 +144,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "accountCode,accountName,normalBalance,active,declaredAt");
+        "accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
     assertCommandOutputContains(
         new String[] {
           "get-posting",
@@ -186,7 +194,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "effectiveDateTo,accountCode,accountName,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "effectiveDateTo,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -215,6 +223,166 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "csv"
         },
         "effectiveDateFrom,effectiveDateTo,postingCount,postingLineCount,accountsTouched,accountCode");
+  }
+
+  @Test
+  void run_executesClosePeriodAndPrimaryStatementCommandsAgainstDefaultSqliteWorkflow()
+      throws IOException {
+    Path requestFile = writeRequest(validRequestJson());
+    Path declareCashFile =
+        writeNamedRequest("close-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
+    Path declareRevenueFile =
+        writeNamedRequest(
+            "close-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
+    Path declareRetainedEarningsFile =
+        writeNamedRequest(
+            "close-declare-retained-earnings.json",
+            declareAccountJson("3200", "Retained Earnings", "EQUITY", "RETAINED_EARNINGS"));
+    Path bookFilePath = tempDirectory.resolve("statement-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString()
+                }));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  declareCashFile.toString()
+                }));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  declareRevenueFile.toString()
+                }));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  declareRetainedEarningsFile.toString()
+                }));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "post-entry",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  requestFile.toString()
+                }));
+
+    ByteArrayOutputStream closeOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(closeOutput), fixedClock())
+            .run(
+                new String[] {
+                  "close-period",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--effective-date-from",
+                  "2026-04-07",
+                  "--effective-date-to",
+                  "2026-04-07",
+                  "--output",
+                  "human"
+                }));
+    assertTrue(closeOutput.toString(StandardCharsets.UTF_8).contains("Period Closed"));
+
+    assertCommandOutputContains(
+        new String[] {
+          "financial-position",
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--effective-date-to",
+          "2026-04-07",
+          "--output",
+          "human"
+        },
+        "Financial Position");
+    assertCommandOutputContains(
+        new String[] {
+          "income-statement",
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--effective-date-from",
+          "2026-04-07",
+          "--effective-date-to",
+          "2026-04-07",
+          "--output",
+          "csv"
+        },
+        "effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName");
+    assertCommandOutputContains(
+        new String[] {
+          "changes-in-equity",
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--effective-date-from",
+          "2026-04-07",
+          "--effective-date-to",
+          "2026-04-07",
+          "--output",
+          "json"
+        },
+        "\"status\":\"ok\"");
   }
 
   @Test
@@ -298,6 +466,12 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     }
 
     @Override
+    public ContractDecision<ClosePeriodResult> closePeriod(
+        BookAccess bookAccess, ClosePeriodCommand command) {
+      throw new AssertionError("closePeriod should not be called in this test");
+    }
+
+    @Override
     public ContractDecision<BookInspection> inspectBook(BookAccess bookAccess) {
       throw new AssertionError("inspectBook should not be called in this test");
     }
@@ -344,6 +518,24 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         BookAccess bookAccess, PeriodSummaryQuery query) {
       return accepted(
           new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()));
+    }
+
+    @Override
+    public ContractDecision<FinancialPositionResult> financialPosition(
+        BookAccess bookAccess, FinancialPositionQuery query) {
+      throw new AssertionError("financialPosition should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<IncomeStatementResult> incomeStatement(
+        BookAccess bookAccess, IncomeStatementQuery query) {
+      throw new AssertionError("incomeStatement should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<ChangesInEquityResult> changesInEquity(
+        BookAccess bookAccess, ChangesInEquityQuery query) {
+      throw new AssertionError("changesInEquity should not be called in this test");
     }
 
     @Override

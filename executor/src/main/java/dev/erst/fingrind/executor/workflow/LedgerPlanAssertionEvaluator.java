@@ -1,6 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;

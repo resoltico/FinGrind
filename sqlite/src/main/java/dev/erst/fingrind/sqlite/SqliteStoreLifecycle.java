@@ -1,8 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractFailure;
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;

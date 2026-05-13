@@ -1,29 +1,37 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PreflightEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -93,6 +101,12 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
+    public ContractDecision<ClosePeriodResult> closePeriod(
+        BookAccess bookAccess, ClosePeriodCommand command) {
+      throw new AssertionError("closePeriod should not be called in this test");
+    }
+
+    @Override
     public ContractDecision<ListAccountsResult> listAccounts(
         BookAccess bookAccess, ListAccountsQuery query) {
       listAccountAccesses.add(bookAccess);
@@ -125,7 +139,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<TrialBalanceResult> trialBalance(
-        BookAccess bookAccess, dev.erst.fingrind.contract.TrialBalanceQuery query) {
+        BookAccess bookAccess, dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery query) {
       throw new AssertionError("trialBalance should not be called in this test");
     }
 
@@ -139,6 +153,24 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     public ContractDecision<PeriodSummaryResult> periodSummary(
         BookAccess bookAccess, PeriodSummaryQuery query) {
       throw new AssertionError("periodSummary should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<FinancialPositionResult> financialPosition(
+        BookAccess bookAccess, FinancialPositionQuery query) {
+      throw new AssertionError("financialPosition should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<IncomeStatementResult> incomeStatement(
+        BookAccess bookAccess, IncomeStatementQuery query) {
+      throw new AssertionError("incomeStatement should not be called in this test");
+    }
+
+    @Override
+    public ContractDecision<ChangesInEquityResult> changesInEquity(
+        BookAccess bookAccess, ChangesInEquityQuery query) {
+      throw new AssertionError("changesInEquity should not be called in this test");
     }
 
     @Override
@@ -239,6 +271,12 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
+    public ContractDecision<ClosePeriodResult> closePeriod(
+        BookAccess bookAccess, ClosePeriodCommand command) {
+      throw failure;
+    }
+
+    @Override
     public ContractDecision<ListAccountsResult> listAccounts(
         BookAccess bookAccess, ListAccountsQuery query) {
       throw failure;
@@ -269,7 +307,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<TrialBalanceResult> trialBalance(
-        BookAccess bookAccess, dev.erst.fingrind.contract.TrialBalanceQuery query) {
+        BookAccess bookAccess, dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery query) {
       throw failure;
     }
 
@@ -282,6 +320,24 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     @Override
     public ContractDecision<PeriodSummaryResult> periodSummary(
         BookAccess bookAccess, PeriodSummaryQuery query) {
+      throw failure;
+    }
+
+    @Override
+    public ContractDecision<FinancialPositionResult> financialPosition(
+        BookAccess bookAccess, FinancialPositionQuery query) {
+      throw failure;
+    }
+
+    @Override
+    public ContractDecision<IncomeStatementResult> incomeStatement(
+        BookAccess bookAccess, IncomeStatementQuery query) {
+      throw failure;
+    }
+
+    @Override
+    public ContractDecision<ChangesInEquityResult> changesInEquity(
+        BookAccess bookAccess, ChangesInEquityQuery query) {
       throw failure;
     }
 
@@ -323,6 +379,12 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     }
 
     @Override
+    public ContractDecision<ClosePeriodResult> closePeriod(
+        BookAccess bookAccess, ClosePeriodCommand command) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
     public ContractDecision<ListAccountsResult> listAccounts(
         BookAccess bookAccess, ListAccountsQuery query) {
       throw new IllegalArgumentException("workflow boom");
@@ -353,7 +415,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
     @Override
     public ContractDecision<TrialBalanceResult> trialBalance(
-        BookAccess bookAccess, dev.erst.fingrind.contract.TrialBalanceQuery query) {
+        BookAccess bookAccess, dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
@@ -366,6 +428,24 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     @Override
     public ContractDecision<PeriodSummaryResult> periodSummary(
         BookAccess bookAccess, PeriodSummaryQuery query) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
+    public ContractDecision<FinancialPositionResult> financialPosition(
+        BookAccess bookAccess, FinancialPositionQuery query) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
+    public ContractDecision<IncomeStatementResult> incomeStatement(
+        BookAccess bookAccess, IncomeStatementQuery query) {
+      throw new IllegalArgumentException("workflow boom");
+    }
+
+    @Override
+    public ContractDecision<ChangesInEquityResult> changesInEquity(
+        BookAccess bookAccess, ChangesInEquityQuery query) {
       throw new IllegalArgumentException("workflow boom");
     }
 
@@ -390,12 +470,18 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
   protected static CliBookWorkflow reportingWorkflow(TrialBalanceResult trialBalanceResult) {
     return reportingWorkflow(
         new AccountBalanceResult.Rejected(
-            new dev.erst.fingrind.contract.BookQueryRejection.BookNotInitialized()),
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
         trialBalanceResult,
         new AccountLedgerResult.Rejected(
-            new dev.erst.fingrind.contract.BookQueryRejection.BookNotInitialized()),
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
         new PeriodSummaryResult.Rejected(
-            new dev.erst.fingrind.contract.BookQueryRejection.BookNotInitialized()));
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new FinancialPositionResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new IncomeStatementResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new ChangesInEquityResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()));
   }
 
   protected static CliBookWorkflow reportingWorkflow(
@@ -403,6 +489,27 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       TrialBalanceResult trialBalanceResult,
       AccountLedgerResult accountLedgerResult,
       PeriodSummaryResult periodSummaryResult) {
+    return reportingWorkflow(
+        accountBalanceResult,
+        trialBalanceResult,
+        accountLedgerResult,
+        periodSummaryResult,
+        new FinancialPositionResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new IncomeStatementResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new ChangesInEquityResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()));
+  }
+
+  protected static CliBookWorkflow reportingWorkflow(
+      AccountBalanceResult accountBalanceResult,
+      TrialBalanceResult trialBalanceResult,
+      AccountLedgerResult accountLedgerResult,
+      PeriodSummaryResult periodSummaryResult,
+      FinancialPositionResult financialPositionResult,
+      IncomeStatementResult incomeStatementResult,
+      ChangesInEquityResult changesInEquityResult) {
     return new CliBookWorkflow() {
       @Override
       public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess) {
@@ -419,6 +526,12 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       public ContractDecision<DeclareAccountResult> declareAccount(
           BookAccess bookAccess, DeclareAccountCommand command) {
         throw new AssertionError("declareAccount should not be called in this test");
+      }
+
+      @Override
+      public ContractDecision<ClosePeriodResult> closePeriod(
+          BookAccess bookAccess, ClosePeriodCommand command) {
+        throw new AssertionError("closePeriod should not be called in this test");
       }
 
       @Override
@@ -452,7 +565,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
       @Override
       public ContractDecision<TrialBalanceResult> trialBalance(
-          BookAccess bookAccess, dev.erst.fingrind.contract.TrialBalanceQuery query) {
+          BookAccess bookAccess, dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery query) {
         return accepted(trialBalanceResult);
       }
 
@@ -466,6 +579,24 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       public ContractDecision<PeriodSummaryResult> periodSummary(
           BookAccess bookAccess, PeriodSummaryQuery query) {
         return accepted(periodSummaryResult);
+      }
+
+      @Override
+      public ContractDecision<FinancialPositionResult> financialPosition(
+          BookAccess bookAccess, FinancialPositionQuery query) {
+        return accepted(financialPositionResult);
+      }
+
+      @Override
+      public ContractDecision<IncomeStatementResult> incomeStatement(
+          BookAccess bookAccess, IncomeStatementQuery query) {
+        return accepted(incomeStatementResult);
+      }
+
+      @Override
+      public ContractDecision<ChangesInEquityResult> changesInEquity(
+          BookAccess bookAccess, ChangesInEquityQuery query) {
+        return accepted(changesInEquityResult);
       }
 
       @Override

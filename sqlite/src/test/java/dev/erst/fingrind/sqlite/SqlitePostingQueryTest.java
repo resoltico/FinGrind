@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -16,7 +16,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -79,15 +78,18 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("3000"),
                   new AccountName("Receivable"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("3000"),
               new AccountName("Receivable"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(

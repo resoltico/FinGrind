@@ -3,6 +3,8 @@ package dev.erst.fingrind.contract;
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 

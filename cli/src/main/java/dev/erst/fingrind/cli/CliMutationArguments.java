@@ -18,6 +18,10 @@ final class CliMutationArguments {
     return CliRequestMutationArguments.parseDeclareAccountCommand(arguments);
   }
 
+  static CliCommand parseClosePeriodCommand(List<String> arguments) {
+    return CliLifecycleMutationArguments.parseClosePeriodCommand(arguments);
+  }
+
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
     return CliRequestMutationArguments.parseExecutePlanCommand(arguments);
   }

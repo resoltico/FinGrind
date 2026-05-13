@@ -1,9 +1,9 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;

@@ -31,6 +31,27 @@ public interface CliAdministrationJsonModels {
     }
   }
 
+  record ClosedPeriodPayload(
+      int closeOrder,
+      String effectiveDateFrom,
+      String effectiveDateTo,
+      String retainedEarningsAccountCode,
+      java.util.List<CliBookQueryJsonModels.BalanceBucketPayload> closedTotals,
+      String closedAt,
+      java.util.List<String> closingPostingIds)
+      implements CliSuccessPayload {
+    public ClosedPeriodPayload {
+      requirePositive(closeOrder, "closeOrder");
+      effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
+      effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
+      retainedEarningsAccountCode =
+          requireText(retainedEarningsAccountCode, "retainedEarningsAccountCode");
+      closedTotals = CliJsonModelValidation.copyList(closedTotals, "closedTotals");
+      closedAt = requireText(closedAt, "closedAt");
+      closingPostingIds = CliJsonModelValidation.copyList(closingPostingIds, "closingPostingIds");
+    }
+  }
+
   record MissingBookInspectionPayload(
       String bookFile,
       String state,

@@ -4,16 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.NormalBalance;
@@ -42,9 +39,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -103,9 +101,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -165,9 +164,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -225,9 +225,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -305,9 +306,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -369,7 +371,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                   "kind": "declare-account",
                   "accountCode": "1000",
                   "accountName": "Cash",
-                  "normalBalance": "DEBIT"
+                  "accountType": "ASSET",
+                  "accountRole": "ORDINARY"
                 }
               ]
             }
@@ -381,9 +384,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -419,7 +423,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
-        "Fields accountCode, accountName, normalBalance must be nested under declareAccount for declare-account ledger plan steps.",
+        "Fields accountCode, accountName, accountType, accountRole must be nested under declareAccount for declare-account ledger plan steps.",
         failureEnvelope.path("message").stringValue());
     assertTrue(
         failureEnvelope
@@ -438,9 +442,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
@@ -482,7 +487,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertTrue(
         outputStream
             .toString(StandardCharsets.UTF_8)
-            .contains("effectiveDateFrom must be on or before effectiveDateTo."));
+            .contains("--effective-date-from must be on or before --effective-date-to."));
     assertFalse(workflow.workflowInvoked());
   }
 
@@ -495,9 +500,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -11,7 +12,9 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,6 +70,15 @@ final class SqliteStoreQueryOperations {
         activeDatabase -> SqliteStatementQueries.findAccounts(activeDatabase, requestedAccounts));
   }
 
+  List<RegisteredAccount> allAccounts() {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            SqliteStatementQueries.loadAllAccounts(
+                activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS));
+  }
+
   AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
@@ -118,6 +130,53 @@ final class SqliteStoreQueryOperations {
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase -> context.postingReader().loadPostingPage(activeDatabase, query));
+  }
+
+  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+    lifecycle.ensureOpenSession();
+    EffectiveDateRange range = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            context
+                .postingReader()
+                .loadCommittedPostings(
+                    activeDatabase,
+                    SqlitePostingSql.LOAD_POSTINGS_IN_RANGE,
+                    statement -> {
+                      String effectiveDateFrom =
+                          range.effectiveDateFrom().map(LocalDate::toString).orElse(null);
+                      String effectiveDateTo =
+                          range.effectiveDateTo().map(LocalDate::toString).orElse(null);
+                      statement.bindText(1, effectiveDateFrom);
+                      statement.bindText(2, effectiveDateFrom);
+                      statement.bindText(3, effectiveDateTo);
+                      statement.bindText(4, effectiveDateTo);
+                    }));
+  }
+
+  Optional<LocalDate> earliestPostingEffectiveDate() {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            SqliteStatementQueries.loadOptionalText(
+                    activeDatabase,
+                    SqlitePostingSql.FIND_EARLIEST_POSTING_EFFECTIVE_DATE,
+                    statement -> {})
+                .map(LocalDate::parse));
+  }
+
+  Optional<LocalDate> closedThroughEffectiveDate() {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            SqliteStatementQueries.loadOptionalText(
+                    activeDatabase,
+                    SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE,
+                    statement -> {})
+                .map(LocalDate::parse));
   }
 
   private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {

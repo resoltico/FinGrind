@@ -1,9 +1,11 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
 import org.jspecify.annotations.Nullable;
@@ -12,6 +14,13 @@ import org.jspecify.annotations.Nullable;
 final class CliLifecycleMutationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec CLOSE_PERIOD_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.EFFECTIVE_DATE_FROM,
+              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.OUTPUT),
+          List.of());
 
   private CliLifecycleMutationArguments() {}
 
@@ -179,6 +188,58 @@ final class CliLifecycleMutationArguments {
     return new RekeyBook(
         new BookAccess(bookFilePath, currentPassphraseSource),
         replacementPassphraseSource,
+        CliArgumentValueParser.resolvedOutputMode(outputMode));
+  }
+
+  static CliCommand parseClosePeriodCommand(List<String> arguments) {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(arguments, CLOSE_PERIOD_ARGUMENTS);
+    @Nullable LocalDate effectiveDateFrom = null;
+    @Nullable LocalDate effectiveDateTo = null;
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+        effectiveDateFrom =
+            CliReportArguments.requireDateOption(
+                effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
+        continue;
+      }
+      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+        effectiveDateTo =
+            CliReportArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+        continue;
+      }
+      outputMode =
+          CliArgumentValueParser.requireOutputMode(
+              outputMode,
+              CliArgumentValueParser.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliArgumentValueParser.supportedOutputModes(OutputMode.JSON, OutputMode.HUMAN));
+    }
+    if (effectiveDateFrom == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.EFFECTIVE_DATE_FROM,
+          "A " + ProtocolOptions.EFFECTIVE_DATE_FROM + " argument is required.");
+    }
+    if (effectiveDateTo == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.EFFECTIVE_DATE_TO,
+          "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
+    }
+    LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
+    LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    CliArgumentValueParser.requireOrderedDateRange(
+        resolvedEffectiveDateFrom,
+        resolvedEffectiveDateTo,
+        ProtocolOptions.EFFECTIVE_DATE_FROM,
+        ProtocolOptions.EFFECTIVE_DATE_TO);
+    ReportingPeriod reportingPeriod =
+        new ReportingPeriod(resolvedEffectiveDateFrom, resolvedEffectiveDateTo);
+    return new ClosePeriod(
+        parsedArguments.bookAccess(),
+        reportingPeriod,
         CliArgumentValueParser.resolvedOutputMode(outputMode));
   }
 }

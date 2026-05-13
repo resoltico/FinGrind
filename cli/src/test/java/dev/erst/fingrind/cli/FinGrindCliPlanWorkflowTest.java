@@ -269,7 +269,9 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     assertEquals("account", facts.get(4).path("name").stringValue());
     assertEquals("1000", facts.get(4).path("facts").get(0).path("value").stringValue());
     assertEquals("Cash", facts.get(4).path("facts").get(1).path("value").stringValue());
-    assertEquals("DEBIT", facts.get(4).path("facts").get(2).path("value").stringValue());
+    assertEquals("ASSET", facts.get(4).path("facts").get(2).path("value").stringValue());
+    assertEquals("ORDINARY", facts.get(4).path("facts").get(3).path("value").stringValue());
+    assertEquals("DEBIT", facts.get(4).path("facts").get(4).path("value").stringValue());
   }
 
   private static String openThenFailAssertionPlanJson() {
@@ -287,7 +289,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                   "declareAccount": {
                     "accountCode": "1000",
                     "accountName": "Cash",
-                    "normalBalance": "DEBIT"
+                    "accountType": "ASSET",
+                    "accountRole": "ORDINARY"
                   }
                 },
                 {

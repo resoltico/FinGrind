@@ -3,9 +3,15 @@ package dev.erst.fingrind.contract;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.PostingId;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -24,9 +30,27 @@ class RejectionNarrativeTest {
             .contains("schema objects"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.NormalBalanceConflict(
-                    new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT))
+                new BookAdministrationRejection.AccountTypeConflict(
+                    new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY))
+            .contains("account type"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.AccountRoleConflict(
+                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA))
             .contains("1000"));
+    assertTrue(
+        RejectionNarrative.message(new BookAdministrationRejection.RetainedEarningsAccountMissing())
+            .contains("retained-earnings account"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.RetainedEarningsAccountInactive(
+                    new AccountCode("3900")))
+            .contains("3900"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.PeriodCloseMustStartAt(
+                    LocalDate.parse("2026-01-01")))
+            .contains("2026-01-01"));
   }
 
   @Test
@@ -58,6 +82,15 @@ class RejectionNarrativeTest {
     assertTrue(
         RejectionNarrative.message(new PostingRejection.DuplicateIdempotencyKey())
             .contains("same idempotency key"));
+    assertTrue(
+        RejectionNarrative.message(
+                new PostingRejection.ClosedPeriodViolation(
+                    LocalDate.parse("2026-05-01"), LocalDate.parse("2026-04-30")))
+            .contains("closed-through horizon"));
+    assertTrue(
+        RejectionNarrative.message(
+                new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3900")))
+            .contains("3900"));
     assertTrue(
         RejectionNarrative.message(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))

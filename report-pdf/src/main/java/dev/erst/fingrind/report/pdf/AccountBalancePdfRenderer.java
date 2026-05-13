@@ -1,6 +1,6 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;

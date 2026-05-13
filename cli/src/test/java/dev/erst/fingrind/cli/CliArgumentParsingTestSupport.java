@@ -2,7 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 
 /** Shared helpers for split CLI argument parsing tests. */
 class CliArgumentParsingTestSupport {

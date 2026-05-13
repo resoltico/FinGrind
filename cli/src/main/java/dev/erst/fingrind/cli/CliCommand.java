@@ -23,6 +23,7 @@ sealed interface CliCommand
           OpenBook,
           RekeyBook,
           DeclareAccount,
+          ClosePeriod,
           InspectBook,
           ListAccounts,
           GetPosting,
@@ -49,7 +50,13 @@ sealed interface CliCommand
 
   /** Command family whose successful output can target either terminal text/JSON or a PDF file. */
   sealed interface ReportCommand extends CliCommand
-      permits AccountBalance, TrialBalance, AccountLedger, PeriodSummary {
+      permits AccountBalance,
+          TrialBalance,
+          AccountLedger,
+          PeriodSummary,
+          FinancialPosition,
+          IncomeStatement,
+          ChangesInEquity {
     /** Selected report presentation settings for this command. */
     ReportOutput output();
 

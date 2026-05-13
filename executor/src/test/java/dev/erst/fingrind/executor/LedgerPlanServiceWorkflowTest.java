@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
@@ -13,21 +14,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.LedgerAssertion;
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
-import dev.erst.fingrind.contract.LedgerJournalKind;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.LedgerStepFailure;
-import dev.erst.fingrind.contract.LedgerStepStatus;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.workflow.LedgerAssertion;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -49,21 +52,24 @@ class LedgerPlanServiceWorkflowTest {
                       List.of(
                           new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.DeclareAccount(
-                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)),
+                              stepId("cash"),
+                              account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),
                           new LedgerStep.DeclareAccount(
-                              stepId("revenue"), account("2000", "Revenue", NormalBalance.CREDIT)),
+                              stepId("revenue"),
+                              account(
+                                  "2000", "Revenue", AccountType.REVENUE, NormalBalance.CREDIT)),
                           new LedgerStep.PreflightEntry(
                               stepId("preflight"), postEntryCommand("idem-1")),
                           new LedgerStep.PostEntry(stepId("post"), postEntryCommand("idem-1")),
                           new LedgerStep.InspectBook(stepId("inspect")),
                           new LedgerStep.ListAccounts(
                               stepId("accounts"),
-                              new dev.erst.fingrind.contract.ListAccountsQuery(
+                              new dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery(
                                   50, Optional.empty())),
                           new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")),
                           new LedgerStep.ListPostings(
                               stepId("postings"),
-                              new dev.erst.fingrind.contract.ListPostingsQuery(
+                              new dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery(
                                   Optional.empty(), null, null, 50, Optional.empty())),
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
@@ -110,7 +116,8 @@ class LedgerPlanServiceWorkflowTest {
                       planId("plan-1"),
                       List.of(
                           new LedgerStep.DeclareAccount(
-                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+                              stepId("cash"),
+                              account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -189,7 +196,8 @@ class LedgerPlanServiceWorkflowTest {
                       List.of(
                           new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.DeclareAccount(
-                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)),
+                              stepId("cash"),
+                              account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),
                           new LedgerStep.PostEntry(stepId("post"), postEntryCommand("idem-1")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
@@ -230,7 +238,8 @@ class LedgerPlanServiceWorkflowTest {
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
-          NormalBalance.DEBIT,
+          AccountType.ASSET,
+          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
           FIXED_CLOCK.instant());
 
       var redeclareResult =
@@ -240,13 +249,14 @@ class LedgerPlanServiceWorkflowTest {
                       planId("plan-declare"),
                       List.of(
                           new LedgerStep.DeclareAccount(
-                              stepId("cash"), account("1000", "Cash", NormalBalance.CREDIT)))));
+                              stepId("cash"),
+                              account("1000", "Cash", AccountType.ASSET, NormalBalance.CREDIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, redeclareResult.status());
       assertEquals(
           BookAdministrationRejection.wireCode(
-              new BookAdministrationRejection.NormalBalanceConflict(
-                  new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
+              new BookAdministrationRejection.AccountRoleConflict(
+                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA)),
           redeclareResult.journal().steps().getLast().requiredFailure().code());
     }
   }
@@ -293,7 +303,8 @@ class LedgerPlanServiceWorkflowTest {
                   List.of(
                       new LedgerStep.OpenBook(stepId("open")),
                       new LedgerStep.DeclareAccount(
-                          stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+                          stepId("cash"),
+                          account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(2, result.journal().steps().size());
@@ -341,7 +352,8 @@ class LedgerPlanServiceWorkflowTest {
                   planId("plan-1"),
                   List.of(
                       new LedgerStep.DeclareAccount(
-                          stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+                          stepId("cash"),
+                          account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -407,7 +419,8 @@ class LedgerPlanServiceWorkflowTest {
                   planId("plan-1"),
                   List.of(
                       new LedgerStep.DeclareAccount(
-                          stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)))));
+                          stepId("cash"),
+                          account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -422,7 +435,7 @@ class LedgerPlanServiceWorkflowTest {
           result.journal().steps().getLast().requiredFailure().facts().stream()
               .anyMatch(
                   fact ->
-                      fact instanceof dev.erst.fingrind.contract.LedgerFact.Group group
+                      fact instanceof dev.erst.fingrind.contract.workflow.LedgerFact.Group group
                           && "priorFailure".equals(group.name())
                           && group.facts().stream()
                               .anyMatch(

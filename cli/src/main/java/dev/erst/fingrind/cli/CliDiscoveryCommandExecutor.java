@@ -1,11 +1,11 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ApplicationIdentity;
-import dev.erst.fingrind.contract.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.HelpDescriptor;
-import dev.erst.fingrind.contract.MachineContract;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.time.Clock;
 import java.time.Instant;
@@ -69,6 +69,10 @@ final class CliDiscoveryCommandExecutor {
         helpDescriptor.description(),
         usage,
         helpDescriptor.bookModel(),
+        helpDescriptor.requestShapes(),
+        helpDescriptor.requestTemplate(),
+        helpDescriptor.declareAccountTemplate(),
+        helpDescriptor.planTemplate(),
         helpDescriptor.commands(),
         helpDescriptor.quickStart(),
         helpDescriptor.exitCodes(),

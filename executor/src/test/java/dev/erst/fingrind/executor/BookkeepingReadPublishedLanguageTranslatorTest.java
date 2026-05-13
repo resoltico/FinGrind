@@ -12,12 +12,24 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.InteractionLimits;
@@ -29,6 +41,17 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
+import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityRowView;
+import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView;
+import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
+import dev.erst.fingrind.executor.bookkeeping.FinancialPositionRowView;
+import dev.erst.fingrind.executor.bookkeeping.FinancialPositionSectionView;
+import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
+import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
+import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
+import dev.erst.fingrind.executor.bookkeeping.IncomeStatementSectionView;
+import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
@@ -212,5 +235,118 @@ class BookkeepingReadPublishedLanguageTranslatorTest {
                     new PeriodAccountActivityView(
                         REGISTERED_CASH_ACCOUNT,
                         currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
+  }
+
+  @Test
+  void readTranslator_roundTripsStatementQueriesAndReports() {
+    FinancialPositionQuery financialPositionQuery =
+        new FinancialPositionQuery(Optional.of(EFFECTIVE_DATE));
+    IncomeStatementQuery incomeStatementQuery =
+        new IncomeStatementQuery(EFFECTIVE_DATE, EFFECTIVE_DATE);
+    ChangesInEquityQuery changesInEquityQuery =
+        new ChangesInEquityQuery(EFFECTIVE_DATE, EFFECTIVE_DATE);
+    FinancialPositionView financialPositionView =
+        new FinancialPositionView(
+            Optional.of(EFFECTIVE_DATE),
+            List.of(
+                new FinancialPositionSectionView(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRowView(
+                            "1000",
+                            "Cash",
+                            AccountType.ASSET,
+                            false,
+                            currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
+                    List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT)))));
+    IncomeStatementView incomeStatementView =
+        new IncomeStatementView(
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            List.of(
+                new IncomeStatementSectionView(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRowView(
+                            "4000",
+                            "Revenue",
+                            AccountType.REVENUE,
+                            false,
+                            currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+                    List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
+    ChangesInEquityView changesInEquityView =
+        new ChangesInEquityView(
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            List.of(
+                new ChangesInEquityRowView(
+                    "current-earnings",
+                    "Current Earnings",
+                    true,
+                    currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+            List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
+
+    assertEquals(
+        new FinancialPositionCriteria(Optional.of(EFFECTIVE_DATE)),
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(financialPositionQuery));
+    assertEquals(
+        new IncomeStatementCriteria(EFFECTIVE_DATE, EFFECTIVE_DATE),
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(incomeStatementQuery));
+    assertEquals(
+        new ChangesInEquityCriteria(EFFECTIVE_DATE, EFFECTIVE_DATE),
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(changesInEquityQuery));
+    assertEquals(
+        new FinancialPositionReport(
+            Optional.of(EFFECTIVE_DATE),
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Cash",
+                            AccountType.ASSET,
+                            false,
+                            currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
+                    List.of(currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))))),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(financialPositionView));
+    assertEquals(
+        new IncomeStatementReport(
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Revenue",
+                            AccountType.REVENUE,
+                            false,
+                            currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+                    List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)))),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(incomeStatementView));
+    assertEquals(
+        new ChangesInEquityReport(
+            EFFECTIVE_DATE,
+            EFFECTIVE_DATE,
+            List.of(
+                new ChangesInEquityRow(
+                    "current-earnings",
+                    "Current Earnings",
+                    true,
+                    currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
+                    currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+            List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
+            List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
+        BookkeepingReadPublishedLanguageTranslator.toPublished(changesInEquityView));
   }
 }

@@ -37,4 +37,16 @@ final class CliReadArguments {
   static CliCommand parsePeriodSummaryCommand(List<String> arguments) {
     return CliReportArguments.parsePeriodSummaryCommand(arguments);
   }
+
+  static CliCommand parseFinancialPositionCommand(List<String> arguments) {
+    return CliReportArguments.parseFinancialPositionCommand(arguments);
+  }
+
+  static CliCommand parseIncomeStatementCommand(List<String> arguments) {
+    return CliReportArguments.parseIncomeStatementCommand(arguments);
+  }
+
+  static CliCommand parseChangesInEquityCommand(List<String> arguments) {
+    return CliReportArguments.parseChangesInEquityCommand(arguments);
+  }
 }

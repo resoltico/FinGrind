@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 

@@ -1,11 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalEntryValidationException;
 import java.io.IOException;

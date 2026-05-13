@@ -11,7 +11,8 @@
       "declareAccount": {
         "accountCode": "7120",
         "accountName": "Cash BHD Seed",
-        "normalBalance": "DEBIT"
+        "accountType": "ASSET",
+        "accountRole": "ORDINARY"
       }
     },
     {
@@ -20,7 +21,8 @@
       "declareAccount": {
         "accountCode": "8120",
         "accountName": "Sales BHD Seed",
-        "normalBalance": "CREDIT"
+        "accountType": "REVENUE",
+        "accountRole": "ORDINARY"
       }
     },
     {

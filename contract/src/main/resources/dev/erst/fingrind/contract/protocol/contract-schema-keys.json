@@ -56,6 +56,7 @@
     "openBook": "OPEN_BOOK",
     "rekeyBook": "REKEY_BOOK",
     "declareAccount": "DECLARE_ACCOUNT",
+    "closePeriod": "CLOSE_PERIOD",
     "inspectBook": "INSPECT_BOOK",
     "listAccounts": "LIST_ACCOUNTS",
     "getPosting": "GET_POSTING",
@@ -64,6 +65,9 @@
     "trialBalance": "TRIAL_BALANCE",
     "accountLedger": "ACCOUNT_LEDGER",
     "periodSummary": "PERIOD_SUMMARY",
+    "financialPosition": "FINANCIAL_POSITION",
+    "incomeStatement": "INCOME_STATEMENT",
+    "changesInEquity": "CHANGES_IN_EQUITY",
     "executePlan": "EXECUTE_PLAN",
     "preflightEntry": "PREFLIGHT_ENTRY",
     "postEntry": "POST_ENTRY"

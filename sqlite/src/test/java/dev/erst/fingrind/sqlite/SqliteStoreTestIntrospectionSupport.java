@@ -6,14 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.ContractFailureException;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -144,7 +144,10 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     CommittedPosting postingFact =
         postingFact(postingId, idempotencyKey, reversalReference, reason);
     return new PostingDraft(
-        postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance());
+        postingFact.journalEntry(),
+        postingFact.postingLineage(),
+        postingFact.postingKind(),
+        postingFact.provenance());
   }
 
   static BookkeepingPostingRejection.AccountStateViolations accountStateViolations(

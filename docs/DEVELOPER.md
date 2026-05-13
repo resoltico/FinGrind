@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: DEVELOPER
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -27,6 +27,7 @@ the documented default.
 
 Companion documents:
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md)
+- [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md)
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md)
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md)
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md)
@@ -41,17 +42,18 @@ Companion documents:
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md)
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md)
+- [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
 
 ## Context-First Map
 
 Before the module graph, the system is easiest to reason about through its semantic boundaries:
-- Public bookkeeping protocol in `contract`: published commands, read/report DTOs, and
-  deterministic rejection vocabulary
-- Public workflow protocol in `contract`: published `LedgerPlan` requests plus public
+- Public bookkeeping protocol in `contract.bookkeeping`: published commands, read/report DTOs,
+  and deterministic rejection vocabulary
+- Public workflow protocol in `contract.workflow`: published `LedgerPlan` requests plus public
   `LedgerJournal*` and `LedgerPlanResult` outputs
-- Runtime/discovery contract in `contract`: machine-contract descriptors, runtime/distribution
-  facts, and discovery/catalog metadata
+- Runtime/discovery contract in `contract.discovery` and `contract.runtime`: machine-contract
+  descriptors, runtime/distribution facts, and discovery/catalog metadata
 - Local bookkeeping context in `core` + `executor.bookkeeping`: working model for declarations,
   committed postings, read criteria, and report views
 - Local workflow context in `executor.workflow`: ordered steps, assertions, internal journals, and
@@ -170,12 +172,16 @@ FinGrind's current public model is:
 - books are initialized explicitly before any posting
 - preflight is advisory and not a durable commit guarantee
 - one journal entry is exactly one currency
+- declared accounts have immutable `accountType` and immutable `accountRole` once first stored,
+  while `normalBalance` is derived from those two facts
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `1`, owned by `BookFormatContract`, and no historical
-  upgrade steps are bundled yet because the public line starts at that format
+- the current supported on-disk format is `2`, owned by `BookFormatContract`
+- FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
+  directly and rejects older book formats explicitly instead of carrying migration code
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
+- bookkeeping audit events are append-only durable facts in the same protected book
 - `./gradlew` relocates per-checkout project cache, included build output, and JaCoCo execution
   data outside the checkout automatically, and it also relocates the project `build/` tree itself
   when the repo lives on a fragile mounted filesystem such as `smbfs`, so contributor
@@ -499,7 +505,9 @@ FinGrind deliberately keeps several boundaries sharp:
   `key=` / `hexkey=` secret transport.
 - There is no generic database-independence layer.
 - There is one canonical current SQLite schema, with the supported format version owned by
-  `BookFormatContract`; there is no published migration executor or historical upgrade catalog yet.
+  `BookFormatContract`.
+- Alpha schema evolution is direct replacement plus explicit rejection of older formats; there is
+  no migration executor or legacy-compatibility layer.
 - The CLI never bypasses the contract and executor boundary.
 - Caller-supplied request provenance is distinct from committed audit metadata.
 - Deterministic rejections stay separate from malformed requests and runtime failures.

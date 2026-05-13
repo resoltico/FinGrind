@@ -1,20 +1,31 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the bookkeeping published-language translator. */
@@ -42,15 +53,16 @@ class BookkeepingPublishedLanguageTranslatorTest {
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesAccountDeclarationOutcomes() {
     RegisteredAccount account =
-        new RegisteredAccount(
+        registeredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
+            AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-05-05T09:15:30Z"));
     BookkeepingAdministrationRejection rejection =
-        new BookkeepingAdministrationRejection.NormalBalanceConflict(
-            account.accountCode(), NormalBalance.DEBIT, NormalBalance.CREDIT);
+        new BookkeepingAdministrationRejection.AccountRoleConflict(
+            account.accountCode(), AccountRole.ORDINARY, AccountRole.CONTRA);
 
     DeclareAccountResult declared =
         BookkeepingPublishedLanguageTranslator.toPublished(
@@ -63,8 +75,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(account),
         assertInstanceOf(DeclareAccountResult.Declared.class, declared).account());
     assertEquals(
-        new BookAdministrationRejection.NormalBalanceConflict(
-            account.accountCode(), NormalBalance.DEBIT, NormalBalance.CREDIT),
+        new BookAdministrationRejection.AccountRoleConflict(
+            account.accountCode(), AccountRole.ORDINARY, AccountRole.CONTRA),
         assertInstanceOf(DeclareAccountResult.Rejected.class, rejected).rejection());
   }
 
@@ -121,5 +133,96 @@ class BookkeepingPublishedLanguageTranslatorTest {
         PostingLineageModel.reversal(reversalReference, reversalReason),
         BookkeepingPublishedLanguageTranslator.fromPublished(
             PostingLineage.reversal(reversalReference, reversalReason)));
+  }
+
+  @Test
+  void bookkeepingPublishedLanguageTranslator_translatesClosePeriodCommandsAndOutcomes() {
+    ReportingPeriod reportingPeriod =
+        new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+    Instant closedAt = Instant.parse("2026-05-05T09:15:30Z");
+    var closedPeriod =
+        new dev.erst.fingrind.executor.bookkeeping.ClosedPeriod(
+            1,
+            reportingPeriod,
+            new AccountCode("3200"),
+            List.of(
+                CurrencyBalance.ofTotals(Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
+            closedAt,
+            List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
+
+    assertEquals(
+        reportingPeriod,
+        BookkeepingPublishedLanguageTranslator.fromPublished(
+            new ClosePeriodCommand(reportingPeriod)));
+    assertEquals(
+        new ClosePeriodResult.Closed(
+            new dev.erst.fingrind.contract.bookkeeping.ClosedPeriod(
+                1,
+                reportingPeriod,
+                new AccountCode("3200"),
+                List.of(
+                    CurrencyBalance.ofTotals(
+                        Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
+                closedAt,
+                List.of(new dev.erst.fingrind.core.PostingId("posting-1")))),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new PeriodCloseOutcome.Closed(closedPeriod)));
+    assertEquals(
+        new ClosePeriodResult.Rejected(
+            new BookAdministrationRejection.RetainedEarningsAccountMissing()),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new PeriodCloseOutcome.Rejected(
+                new BookkeepingAdministrationRejection.RetainedEarningsAccountMissing())));
+  }
+
+  @Test
+  void
+      bookkeepingPublishedLanguageTranslator_translatesExtendedAdministrationAndPostingRejections() {
+    assertEquals(
+        new BookAdministrationRejection.AccountTypeConflict(
+            new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.AccountTypeConflict(
+                new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY)));
+    assertEquals(
+        new BookAdministrationRejection.RetainedEarningsAccountInactive(new AccountCode("3200")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.RetainedEarningsAccountInactive(
+                new AccountCode("3200"))));
+    assertEquals(
+        new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-08")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingAdministrationRejection.PeriodCloseMustStartAt(
+                LocalDate.parse("2026-04-08"))));
+
+    assertEquals(
+        new PostingRejection.ClosedPeriodViolation(
+            LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ClosedPeriodViolation(
+                LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))));
+    assertEquals(
+        new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3200")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.RetainedEarningsAccountReserved(
+                new AccountCode("3200"))));
+    assertEquals(
+        new PostingRejection.ReversalTargetNotFound(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ReversalTargetNotFound(
+                new dev.erst.fingrind.core.PostingId("posting-1"))));
+    assertEquals(
+        new PostingRejection.ReversalAlreadyExists(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ReversalAlreadyExists(
+                new dev.erst.fingrind.core.PostingId("posting-1"))));
+    assertEquals(
+        new PostingRejection.ReversalDoesNotNegateTarget(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
+                new dev.erst.fingrind.core.PostingId("posting-1"))));
   }
 }

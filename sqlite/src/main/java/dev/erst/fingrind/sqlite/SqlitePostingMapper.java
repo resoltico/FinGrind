@@ -2,6 +2,8 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -11,8 +13,8 @@ import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -36,8 +38,8 @@ final class SqlitePostingMapper {
     return new RegisteredAccount(
         new AccountCode(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_CODE)),
         new AccountName(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NAME)),
-        NormalBalance.fromWireValue(
-            requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_NORMAL_BALANCE)),
+        AccountType.fromWireValue(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_TYPE)),
+        AccountRole.fromWireValue(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_ROLE)),
         requiredInt(accountRow, SqlitePostingSql.COL_ACCOUNT_ACTIVE) == 1,
         Instant.parse(requiredText(accountRow, SqlitePostingSql.COL_ACCOUNT_DECLARED_AT)));
   }
@@ -63,7 +65,11 @@ final class SqlitePostingMapper {
             SourceChannel.fromWireValue(
                 requiredText(postingRow, SqlitePostingSql.COL_SOURCE_CHANNEL)));
     return new CommittedPosting(
-        postingId, journalEntry, readPostingLineageModel(postingRow), provenance);
+        postingId,
+        journalEntry,
+        readPostingLineageModel(postingRow),
+        PostingKind.fromWireValue(requiredText(postingRow, SqlitePostingSql.COL_POSTING_KIND)),
+        provenance);
   }
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
@@ -98,7 +104,7 @@ final class SqlitePostingMapper {
         new ReversalReason(reason.orElseThrow()));
   }
 
-  static dev.erst.fingrind.contract.PostingLineage readPostingLineage(
+  static dev.erst.fingrind.contract.bookkeeping.PostingLineage readPostingLineage(
       SqliteNativeStatement postingRow) {
     return BookkeepingPublishedLanguageTranslator.toPublished(readPostingLineageModel(postingRow));
   }

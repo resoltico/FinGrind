@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -61,6 +63,16 @@ final class CliAdministrativeCommandExecutor {
         bookWorkflow.declareAccount(bookAccess, command),
         outputMode,
         result -> responseWriter.writeDeclareAccountResult(result, outputMode),
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runClosePeriodCommand(
+      BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.closePeriod(bookAccess, new ClosePeriodCommand(reportingPeriod)),
+        outputMode,
+        result -> responseWriter.writeClosePeriodResult(result, outputMode),
         CliExecutionPolicy::exitCodeFor,
         responseWriter);
   }

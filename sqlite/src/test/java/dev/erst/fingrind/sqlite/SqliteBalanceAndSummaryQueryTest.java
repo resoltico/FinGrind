@@ -3,12 +3,12 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;

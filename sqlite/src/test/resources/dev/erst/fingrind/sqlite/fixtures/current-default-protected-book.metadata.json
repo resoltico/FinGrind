@@ -4,7 +4,7 @@
   "testOnlyPassphraseUtf8" : "posting-fact-store-test-book-key",
   "bookFormatVersion" : 2,
   "initializedAt" : "2026-04-07T10:15:30Z",
-  "schemaFingerprintSha256" : "934b88f09977403290dc6315cd8000179dd8ea0ea8f66d239bce4b003251e692",
+  "schemaFingerprintSha256" : "947492c2e6f9d844ca4f164ffc6e48d6e89fc9713ae94718073ac5931746a74f",
   "protectedBookFormat" : {
     "cipher" : "chacha20",
     "legacyMode" : false,

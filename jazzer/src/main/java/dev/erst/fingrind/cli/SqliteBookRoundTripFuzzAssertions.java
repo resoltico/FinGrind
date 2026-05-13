@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import java.io.IOException;
 import java.util.Objects;
 

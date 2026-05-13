@@ -1,26 +1,30 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.LedgerAssertion;
-import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanId;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.LedgerStepId;
-import dev.erst.fingrind.contract.MonetaryAmount;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.workflow.LedgerAssertion;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -32,6 +36,9 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.spi.AtomicBookStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -74,12 +81,14 @@ final class LedgerPlanServiceTestSupport {
     bookSession.declareAccount(
         new AccountCode("1000"),
         new AccountName("Cash"),
-        NormalBalance.DEBIT,
+        AccountType.ASSET,
+        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
         FIXED_CLOCK.instant());
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
-        NormalBalance.CREDIT,
+        AccountType.REVENUE,
+        accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
         FIXED_CLOCK.instant());
     PostEntryResult committed =
         new PostingApplicationService(bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
@@ -151,9 +160,15 @@ final class LedgerPlanServiceTestSupport {
   }
 
   static DeclareAccountCommand account(
-      String accountCode, String accountName, NormalBalance normalBalance) {
+      String accountCode,
+      String accountName,
+      AccountType accountType,
+      NormalBalance normalBalance) {
     return new DeclareAccountCommand(
-        new AccountCode(accountCode), new AccountName(accountName), normalBalance);
+        new AccountCode(accountCode),
+        new AccountName(accountName),
+        accountType,
+        accountRole(accountType, normalBalance));
   }
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
@@ -169,7 +184,7 @@ final class LedgerPlanServiceTestSupport {
                     new AccountCode("2000"),
                     JournalLine.EntrySide.CREDIT,
                     Money.parse("EUR", "10.00")))),
-        dev.erst.fingrind.contract.PostingLineage.direct(),
+        dev.erst.fingrind.contract.bookkeeping.PostingLineage.direct(),
         new RequestProvenance(
             new ActorId("actor-1"),
             ActorType.AGENT,
@@ -206,9 +221,11 @@ final class LedgerPlanServiceTestSupport {
     public AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
-        NormalBalance normalBalance,
+        AccountType accountType,
+        AccountRole accountRole,
         Instant declaredAt) {
-      return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+      return delegate.declareAccount(
+          accountCode, accountName, accountType, accountRole, declaredAt);
     }
 
     @Override
@@ -233,6 +250,26 @@ final class LedgerPlanServiceTestSupport {
     public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
         findReversalFor(PostingId priorPostingId) {
       return delegate.findReversalFor(priorPostingId);
+    }
+
+    @Override
+    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      return delegate.postings(effectiveDateRange);
+    }
+
+    @Override
+    public List<dev.erst.fingrind.executor.bookkeeping.RegisteredAccount> allAccounts() {
+      return delegate.allAccounts();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return delegate.earliestPostingEffectiveDate();
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
+      return delegate.closedThroughEffectiveDate();
     }
 
     @Override
@@ -276,6 +313,12 @@ final class LedgerPlanServiceTestSupport {
     public PostingCommitResult commit(
         PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       return delegate.commit(postingDraft, postingIdGenerator);
+    }
+
+    @Override
+    public PeriodCloseOutcome closePeriod(
+        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+      return delegate.closePeriod(periodCloseDraft, postingIdGenerator);
     }
 
     @Override
@@ -327,7 +370,8 @@ final class LedgerPlanServiceTestSupport {
     public AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
-        NormalBalance normalBalance,
+        AccountType accountType,
+        AccountRole accountRole,
         Instant declaredAt) {
       throw new IllegalStateException("declare boom");
     }

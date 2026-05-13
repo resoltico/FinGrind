@@ -1,8 +1,14 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.declaredAccount;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -16,6 +22,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -27,6 +34,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -51,30 +60,34 @@ final class BookReadServiceTestSupport {
   static final Instant FIXED_INSTANT = Instant.parse("2026-04-07T10:15:30Z");
   static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-04-07");
   static final DeclaredAccount CASH_ACCOUNT =
-      new DeclaredAccount(
+      declaredAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
+          AccountType.ASSET,
           NormalBalance.DEBIT,
           true,
           FIXED_INSTANT);
   static final DeclaredAccount REVENUE_ACCOUNT =
-      new DeclaredAccount(
+      declaredAccount(
           new AccountCode("2000"),
           new AccountName("Revenue"),
+          AccountType.REVENUE,
           NormalBalance.CREDIT,
           true,
           FIXED_INSTANT);
   static final RegisteredAccount REGISTERED_CASH_ACCOUNT =
-      new RegisteredAccount(
+      registeredAccount(
           CASH_ACCOUNT.accountCode(),
           CASH_ACCOUNT.accountName(),
+          CASH_ACCOUNT.accountType(),
           CASH_ACCOUNT.normalBalance(),
           CASH_ACCOUNT.active(),
           CASH_ACCOUNT.declaredAt());
   static final RegisteredAccount REGISTERED_REVENUE_ACCOUNT =
-      new RegisteredAccount(
+      registeredAccount(
           REVENUE_ACCOUNT.accountCode(),
           REVENUE_ACCOUNT.accountName(),
+          REVENUE_ACCOUNT.accountType(),
           REVENUE_ACCOUNT.normalBalance(),
           REVENUE_ACCOUNT.active(),
           REVENUE_ACCOUNT.declaredAt());
@@ -119,12 +132,14 @@ final class BookReadServiceTestSupport {
     bookSession.declareAccount(
         CASH_ACCOUNT.accountCode(),
         CASH_ACCOUNT.accountName(),
-        CASH_ACCOUNT.normalBalance(),
+        CASH_ACCOUNT.accountType(),
+        accountRole(CASH_ACCOUNT.accountType(), CASH_ACCOUNT.normalBalance()),
         FIXED_INSTANT);
     bookSession.declareAccount(
         REVENUE_ACCOUNT.accountCode(),
         REVENUE_ACCOUNT.accountName(),
-        REVENUE_ACCOUNT.normalBalance(),
+        REVENUE_ACCOUNT.accountType(),
+        accountRole(REVENUE_ACCOUNT.accountType(), REVENUE_ACCOUNT.normalBalance()),
         FIXED_INSTANT);
   }
 
@@ -138,6 +153,7 @@ final class BookReadServiceTestSupport {
                 line(
                     REVENUE_ACCOUNT.accountCode().value(), JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -179,9 +195,11 @@ final class BookReadServiceTestSupport {
     public AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
-        NormalBalance normalBalance,
+        AccountType accountType,
+        AccountRole accountRole,
         Instant declaredAt) {
-      return delegate.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+      return delegate.declareAccount(
+          accountCode, accountName, accountType, accountRole, declaredAt);
     }
 
     @Override
@@ -230,6 +248,27 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
+    public List<RegisteredAccount> allAccounts() {
+      return delegate.allAccounts();
+    }
+
+    @Override
+    public List<CommittedPosting> postings(
+        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+      return delegate.postings(effectiveDateRange);
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return delegate.earliestPostingEffectiveDate();
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
+      return delegate.closedThroughEffectiveDate();
+    }
+
+    @Override
     public PostingHistoryPage listPostings(PostingHistoryQuery query) {
       return delegate.listPostings(query);
     }
@@ -252,6 +291,12 @@ final class BookReadServiceTestSupport {
     @Override
     public PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
       return delegate.periodSummary(query);
+    }
+
+    @Override
+    public PeriodCloseOutcome closePeriod(
+        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+      return delegate.closePeriod(periodCloseDraft, postingIdGenerator);
     }
 
     int findAccountCalls() {

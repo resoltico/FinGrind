@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
-  keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, idempotency, canonical-schema, book-file, reversal]
+  keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
 ---
 
@@ -32,6 +32,7 @@ create table if not exists account (
         and account_code not glob '*[^A-Za-z0-9._:/-]*'
     ),
     account_name text not null check (length(trim(account_name)) > 0),
+    account_type text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
     normal_balance text not null check (normal_balance in ('DEBIT', 'CREDIT')),
     active integer not null check (active in (0, 1)),
     declared_at text not null
@@ -82,6 +83,32 @@ create table if not exists journal_line (
     foreign key (account_code) references account(account_code)
 ) strict;
 
+create table if not exists audit_event (
+    audit_event_order integer primary key,
+    recorded_at text not null check (length(trim(recorded_at)) > 0),
+    event_kind text not null check (
+        event_kind in (
+            'BOOK_OPENED',
+            'ACCOUNT_DECLARED',
+            'ACCOUNT_REACTIVATED',
+            'POSTING_COMMITTED',
+            'POSTING_REVERSED',
+            'BOOK_REKEYED'
+        )
+    ),
+    account_code text,
+    posting_id text,
+    foreign key (account_code) references account(account_code),
+    foreign key (posting_id) references posting_fact(posting_id),
+    check (
+        (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null)
+        or
+        (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null)
+        or
+        (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null)
+    )
+) strict;
+
 create index if not exists posting_fact_by_prior_posting_id
     on posting_fact (prior_posting_id);
 
@@ -91,9 +118,48 @@ create index if not exists posting_fact_by_effective_recorded_posting
 create index if not exists journal_line_by_account_code
     on journal_line (account_code, posting_id, line_order);
 
+create index if not exists audit_event_by_recorded_at
+    on audit_event (recorded_at, audit_event_order);
+
 create unique index if not exists posting_fact_one_reversal_per_target
     on posting_fact (prior_posting_id)
     where prior_posting_id is not null;
+
+create trigger if not exists posting_fact_reject_update
+before update on posting_fact
+begin
+    select raise(fail, 'posting_fact rows are append-only.');
+end;
+
+create trigger if not exists posting_fact_reject_delete
+before delete on posting_fact
+begin
+    select raise(fail, 'posting_fact rows are append-only.');
+end;
+
+create trigger if not exists journal_line_reject_update
+before update on journal_line
+begin
+    select raise(fail, 'journal_line rows are append-only.');
+end;
+
+create trigger if not exists journal_line_reject_delete
+before delete on journal_line
+begin
+    select raise(fail, 'journal_line rows are append-only.');
+end;
+
+create trigger if not exists audit_event_reject_update
+before update on audit_event
+begin
+    select raise(fail, 'audit_event rows are append-only.');
+end;
+
+create trigger if not exists audit_event_reject_delete
+before delete on audit_event
+begin
+    select raise(fail, 'audit_event rows are append-only.');
+end;
 ```
 
 ## Durable Tables
@@ -112,6 +178,7 @@ Table-level constraints:
 Columns:
 - `account_code`: `text primary key check ( length(account_code) between 1 and 255 and account_code glob '[A-Za-z0-9]*' and account_code not glob '*[^A-Za-z0-9._:/-]*' )`
 - `account_name`: `text not null check (length(trim(account_name)) > 0)`
+- `account_type`: `text not null check (account_type in ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'))`
 - `normal_balance`: `text not null check (normal_balance in ('DEBIT', 'CREDIT'))`
 - `active`: `integer not null check (active in (0, 1))`
 - `declared_at`: `text not null`
@@ -155,11 +222,26 @@ Table-level constraints:
 - `foreign key (posting_id) references posting_fact(posting_id)`
 - `foreign key (account_code) references account(account_code)`
 
+### `audit_event`
+
+Columns:
+- `audit_event_order`: `integer primary key`
+- `recorded_at`: `text not null check (length(trim(recorded_at)) > 0)`
+- `event_kind`: `text not null check ( event_kind in ( 'BOOK_OPENED', 'ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'POSTING_COMMITTED', 'POSTING_REVERSED', 'BOOK_REKEYED' ) )`
+- `account_code`: `text`
+- `posting_id`: `text`
+
+Table-level constraints:
+- `foreign key (account_code) references account(account_code)`
+- `foreign key (posting_id) references posting_fact(posting_id)`
+- `check ( (event_kind in ('BOOK_OPENED', 'BOOK_REKEYED') and account_code is null and posting_id is null) or (event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED') and account_code is not null and posting_id is null) or (event_kind in ('POSTING_COMMITTED', 'POSTING_REVERSED') and account_code is null and posting_id is not null) )`
+
 ## Durable Indexes
 
 - `posting_fact_by_prior_posting_id` on `posting_fact`: `create index if not exists posting_fact_by_prior_posting_id on posting_fact (prior_posting_id);`
 - `posting_fact_by_effective_recorded_posting` on `posting_fact`: `create index if not exists posting_fact_by_effective_recorded_posting on posting_fact (effective_date desc, recorded_at desc, posting_id desc);`
 - `journal_line_by_account_code` on `journal_line`: `create index if not exists journal_line_by_account_code on journal_line (account_code, posting_id, line_order);`
+- `audit_event_by_recorded_at` on `audit_event`: `create index if not exists audit_event_by_recorded_at on audit_event (recorded_at, audit_event_order);`
 - `posting_fact_one_reversal_per_target` on `posting_fact`: `create unique index if not exists posting_fact_one_reversal_per_target on posting_fact (prior_posting_id) where prior_posting_id is not null;`
 
 ## Runtime Integrity Semantics
@@ -172,8 +254,8 @@ Table-level constraints:
 
 - `application_id`: `1179079236`
 - `user_version`: `2`
-- Canonical durable tables: `book_meta`, `account`, `posting_fact`, `journal_line`
-- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `posting_fact_one_reversal_per_target`
+- Canonical durable tables: `book_meta`, `account`, `posting_fact`, `journal_line`, `audit_event`
+- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.
 - The current public line rejects non-matching book formats instead of upgrading them in place.

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: USER_QUICK_START
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, quick start, first run, open book, declare account, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -78,7 +78,8 @@ Create `./declare-account-cash.json` with:
 {
   "accountCode": "1000",
   "accountName": "Cash",
-  "normalBalance": "DEBIT"
+  "accountType": "ASSET",
+  "accountRole": "ORDINARY"
 }
 ```
 
@@ -88,7 +89,8 @@ Create `./declare-account-revenue.json` with:
 {
   "accountCode": "2000",
   "accountName": "Revenue",
-  "normalBalance": "CREDIT"
+  "accountType": "REVENUE",
+  "accountRole": "ORDINARY"
 }
 ```
 

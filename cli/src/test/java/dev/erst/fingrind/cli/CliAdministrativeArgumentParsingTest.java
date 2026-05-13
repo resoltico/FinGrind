@@ -4,9 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
@@ -103,6 +104,24 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(OutputMode.HUMAN, declareAccount.outputMode());
     assertEquals(OutputMode.HUMAN, rekeyBook.outputMode());
     assertEquals(OutputMode.HUMAN, postEntry.outputMode());
+    ClosePeriod closePeriod =
+        assertInstanceOf(
+            ClosePeriod.class,
+            CliArguments.parse(
+                new String[] {
+                  "close-period",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--output",
+                  "human"
+                }));
+    assertEquals(OutputMode.HUMAN, closePeriod.outputMode());
   }
 
   @Test
@@ -268,6 +287,76 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
     assertEquals(Path.of("request.json"), command.requestFile());
+  }
+
+  @Test
+  void parse_returnsClosePeriodForValidAdministrativeCommand() {
+    ClosePeriod command =
+        assertInstanceOf(
+            ClosePeriod.class,
+            CliArguments.parse(
+                new String[] {
+                  "close-period",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
+    assertEquals(LocalDate.parse("2026-04-01"), command.reportingPeriod().effectiveDateFrom());
+    assertEquals(LocalDate.parse("2026-04-30"), command.reportingPeriod().effectiveDateTo());
+    assertEquals(OutputMode.JSON, command.outputMode());
+  }
+
+  @Test
+  void parse_rejectsInvalidClosePeriodArguments() {
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "close-period",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-to",
+                  "2026-04-30"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "close-period",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-01"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "close-period",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--effective-date-from",
+                  "2026-04-30",
+                  "--effective-date-to",
+                  "2026-04-01"
+                }));
   }
 
   @Test

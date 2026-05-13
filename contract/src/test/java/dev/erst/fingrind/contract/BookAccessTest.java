@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 

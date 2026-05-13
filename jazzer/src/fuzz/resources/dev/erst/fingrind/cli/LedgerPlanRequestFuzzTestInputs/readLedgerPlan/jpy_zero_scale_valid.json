@@ -11,7 +11,8 @@
       "declareAccount": {
         "accountCode": "7110",
         "accountName": "Cash JPY Seed",
-        "normalBalance": "DEBIT"
+        "accountType": "ASSET",
+        "accountRole": "ORDINARY"
       }
     },
     {
@@ -20,7 +21,8 @@
       "declareAccount": {
         "accountCode": "8110",
         "accountName": "Sales JPY Seed",
-        "normalBalance": "CREDIT"
+        "accountType": "REVENUE",
+        "accountRole": "ORDINARY"
       }
     },
     {

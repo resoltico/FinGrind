@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
-import dev.erst.fingrind.contract.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 

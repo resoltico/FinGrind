@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: CORE
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -26,6 +26,39 @@ public record AccountCode(String value)
 - Purpose: represent one book-local account without hard-coding a chart-of-accounts scheme
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
+## `AccountCodePolicy`
+
+`AccountCodePolicy` is the canonical owner for what account-code text means in current FinGrind
+books.
+
+```java
+public final class AccountCodePolicy
+```
+
+- Purpose: keep account-code meaning explicit instead of letting callers infer numeric ranges,
+  parent-child hierarchy, or type semantics from string prefixes
+- Current contract: `meaning() == OPAQUE_BOOK_LOCAL_IDENTIFIER` and
+  `chartStructure() == FLAT`
+- Validation: `validate(AccountCode, AccountType)` currently confirms one declared code and account
+  type pair against the current flat-chart, opaque-identifier policy
+
+## `AccountCodePolicy.Meaning`
+
+`AccountCodePolicy.Meaning` names the semantic contract FinGrind assigns to declared account code
+text.
+
+- Purpose: make it explicit that current books treat account codes as opaque identifiers rather
+  than taxonomy-carrying ranges
+- Current contract: `OPAQUE_BOOK_LOCAL_IDENTIFIER`
+
+## `AccountCodePolicy.ChartStructure`
+
+`AccountCodePolicy.ChartStructure` names the chart topology supported by current FinGrind books.
+
+- Purpose: make the flat-chart policy part of the published model instead of leaving hierarchy
+  support to implication
+- Current contract: `FLAT`
+
 ## `AccountName`
 
 `AccountName` is the non-blank display name stored in the account registry.
@@ -36,6 +69,59 @@ public record AccountName(String value)
 
 - Purpose: keep account display text typed instead of using raw strings
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `AccountType`
+
+`AccountType` is the canonical chart-of-accounts classification for one declared account.
+
+```java
+public enum AccountType implements WireValue {
+  ASSET,
+  LIABILITY,
+  EQUITY,
+  REVENUE,
+  EXPENSE
+}
+```
+
+- Purpose: distinguish account taxonomy from `NormalBalance`, which is only debit-versus-credit
+  increase polarity
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `AccountRole`
+
+`AccountRole` is the doctrinal role that determines whether one account behaves ordinarily, as a
+contra account, or as the retained-earnings sink for period-close postings.
+
+```java
+public enum AccountRole implements WireValue {
+  ORDINARY,
+  CONTRA,
+  RETAINED_EARNINGS
+}
+```
+
+- Purpose: separate account behavior from account classification so FinGrind can model contra
+  accounts and the retained-earnings destination explicitly
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `AccountSemantics`
+
+`AccountSemantics` is the canonical doctrinal owner for account polarity, retained-earnings
+eligibility, and profit-or-loss close behavior.
+
+```java
+public final class AccountSemantics
+```
+
+- Purpose: keep normal-balance derivation, contra inversion, retained-earnings validation, and
+  nominal-account close semantics out of CLI, SQLite, and reporting adapters
+- Surface: `validate(...)`, `normalBalance(...)`, `closesIntoRetainedEarnings(...)`, and
+  `profitAndLossContributionMinorUnits(...)`
+- Doctrine: retained-earnings accounts must be `EQUITY`; ordinary balance polarity is derived from
+  `AccountType`, and `CONTRA` reverses that polarity deliberately
 
 ## `ActorId`
 
@@ -78,6 +164,21 @@ public enum BalanceSide implements WireValue {
 
 - Purpose: represent computed balance polarity for grouped balances and running ledgers
 - Wire contract: `wireValue()` and `fromWireValue(...)` own the stable public vocabulary
+
+## `BalanceMath`
+
+`BalanceMath` is the shared-kernel owner for exact balance arithmetic reused by bookkeeping reads
+and reports.
+
+```java
+public final class BalanceMath
+```
+
+- Purpose: keep running-balance arithmetic and side derivation in the core bookkeeping model
+  instead of inside one SQLite adapter helper
+- Surface: `currencyBalance(...)`, `balanceSide(...)`, and `absoluteMinorUnits(...)`
+- Bounds: overflow during running-balance absolute-value projection is rejected as a deterministic
+  state error
 
 ## `CausationId`
 
@@ -310,6 +411,23 @@ public enum NormalBalance implements WireValue {
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
+## `PostingKind`
+
+`PostingKind` is the durable posting-family discriminator for one committed posting.
+
+```java
+public enum PostingKind implements WireValue {
+  STANDARD,
+  PERIOD_CLOSE
+}
+```
+
+- Purpose: distinguish ordinary business postings from generated period-close postings without
+  leaking implementation-specific marker strings
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+- Surface: `isStandard()` is the doctrinal predicate reused by close and reporting logic
+
 ## `PostingId`
 
 `PostingId` is the stable identifier for one committed posting.
@@ -320,6 +438,20 @@ public record PostingId(String value)
 
 - Purpose: identify durable postings independently of request idempotency
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `ReportingPeriod`
+
+`ReportingPeriod` is the inclusive bounded period used by close-period administration, income
+statements, and statements of changes in equity.
+
+```java
+public record ReportingPeriod(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+```
+
+- Purpose: keep period-close and bounded-report semantics structural instead of treating them as
+  parallel pairs of raw dates
+- Validation: rejects `null` bounds and rejects `effectiveDateFrom` after `effectiveDateTo`
+- Surface: `effectiveDateRange()`, `contains(...)`, and `dayAfter()`
 
 ## `RequestProvenance`
 

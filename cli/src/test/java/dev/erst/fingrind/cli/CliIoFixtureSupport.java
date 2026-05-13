@@ -4,6 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
@@ -170,7 +177,8 @@ class CliIoFixtureSupport {
                   "declareAccount": {
                     "accountCode": "1000",
                     "accountName": "Cash",
-                    "normalBalance": "DEBIT"
+                    "accountType": "ASSET",
+                    "accountRole": "ORDINARY"
                   }
                 }
               ]
@@ -212,14 +220,66 @@ class CliIoFixtureSupport {
 
   protected static String declareAccountJson(
       String accountCode, String accountName, String normalBalance) {
+    return declareAccountJson(
+        accountCode,
+        accountName,
+        fixtureAccountTypeWireValue(normalBalance),
+        fixtureAccountRoleWireValue(normalBalance));
+  }
+
+  protected static String declareAccountJson(
+      String accountCode, String accountName, String accountType, String accountRole) {
     return """
             {
               "accountCode": "%s",
               "accountName": "%s",
-              "normalBalance": "%s"
+              "accountType": "%s",
+              "accountRole": "%s"
             }
             """
-        .formatted(accountCode, accountName, normalBalance);
+        .formatted(accountCode, accountName, accountType, accountRole);
+  }
+
+  private static String fixtureAccountTypeWireValue(String normalBalance) {
+    return switch (normalBalance) {
+      case "DEBIT" -> "ASSET";
+      case "CREDIT" -> "REVENUE";
+      default -> "ASSET";
+    };
+  }
+
+  protected static AccountRole fixtureAccountRole(
+      AccountType accountType, NormalBalance normalBalance) {
+    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.CONTRA)) {
+      if (AccountSemantics.normalBalance(accountType, accountRole) == normalBalance) {
+        return accountRole;
+      }
+    }
+    throw new IllegalArgumentException(
+        "No supported fixture accountRole matches %s/%s."
+            .formatted(accountType.wireValue(), normalBalance.name()));
+  }
+
+  protected static DeclaredAccount declaredAccount(
+      String accountCode,
+      String accountName,
+      AccountType accountType,
+      NormalBalance normalBalance,
+      boolean active,
+      Instant declaredAt) {
+    return new DeclaredAccount(
+        new AccountCode(accountCode),
+        new AccountName(accountName),
+        accountType,
+        fixtureAccountRole(accountType, normalBalance),
+        active,
+        declaredAt);
+  }
+
+  private static String fixtureAccountRoleWireValue(String normalBalance) {
+    AccountType accountType = AccountType.fromWireValue(fixtureAccountTypeWireValue(normalBalance));
+    NormalBalance parsedNormalBalance = NormalBalance.valueOf(normalBalance);
+    return fixtureAccountRole(accountType, parsedNormalBalance).wireValue();
   }
 
   protected static PrintStream utf8PrintStream(ByteArrayOutputStream outputStream) {

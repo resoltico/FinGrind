@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -41,12 +41,41 @@ final class SqliteNativeConnections {
   }
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase) {
-    return open(bookPath, bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE);
+    return open(
+        bookPath,
+        bookPassphrase,
+        SqliteNativeOpenMode.READ_WRITE_CREATE,
+        RollbackArtifactWarningPolicy.REPORT_STALE_ARTIFACTS,
+        SqliteNativeBootstrap.api());
   }
 
   static SqliteNativeDatabase open(
       Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode) {
-    return open(bookPath, bookPassphrase, openMode, SqliteNativeBootstrap.api());
+    return open(
+        bookPath,
+        bookPassphrase,
+        openMode,
+        RollbackArtifactWarningPolicy.REPORT_STALE_ARTIFACTS,
+        SqliteNativeBootstrap.api());
+  }
+
+  static SqliteNativeDatabase openWithoutRollbackArtifactWarning(
+      Path bookPath, SqliteBookPassphrase bookPassphrase, SqliteNativeOpenMode openMode) {
+    return openWithoutRollbackArtifactWarning(
+        bookPath, bookPassphrase, openMode, SqliteNativeBootstrap.api());
+  }
+
+  static SqliteNativeDatabase openWithoutRollbackArtifactWarning(
+      Path bookPath,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteNativeOpenMode openMode,
+      SqliteNativeApi sqliteApi) {
+    return open(
+        bookPath,
+        bookPassphrase,
+        openMode,
+        RollbackArtifactWarningPolicy.SUPPRESS_STALE_ARTIFACTS,
+        sqliteApi);
   }
 
   static SqliteNativeDatabase open(
@@ -54,12 +83,27 @@ final class SqliteNativeConnections {
       SqliteBookPassphrase bookPassphrase,
       SqliteNativeOpenMode openMode,
       SqliteNativeApi sqliteApi) {
+    return open(
+        bookPath,
+        bookPassphrase,
+        openMode,
+        RollbackArtifactWarningPolicy.REPORT_STALE_ARTIFACTS,
+        sqliteApi);
+  }
+
+  static SqliteNativeDatabase open(
+      Path bookPath,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteNativeOpenMode openMode,
+      RollbackArtifactWarningPolicy rollbackArtifactWarningPolicy,
+      SqliteNativeApi sqliteApi) {
     Objects.requireNonNull(bookPath, "bookPath");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
     Objects.requireNonNull(openMode, "openMode");
+    Objects.requireNonNull(rollbackArtifactWarningPolicy, "rollbackArtifactWarningPolicy");
     Objects.requireNonNull(sqliteApi, "sqliteApi");
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
-    SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(normalizedBookPath);
+    rollbackArtifactWarningPolicy.reportIfNeeded(normalizedBookPath);
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
       MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
@@ -131,6 +175,24 @@ final class SqliteNativeConnections {
   interface SqliteBookArtifactHardener {
     /** Hardens the SQLite book file and sidecar artifacts rooted at the given normalized path. */
     void harden(Path normalizedBookPath) throws IOException;
+  }
+
+  /** Policy for whether one native-open call reports sibling rekey rollback artifacts. */
+  enum RollbackArtifactWarningPolicy {
+    REPORT_STALE_ARTIFACTS {
+      @Override
+      void reportIfNeeded(Path normalizedBookPath) {
+        SqliteRekeyRollbackFile.reportStaleRollbackArtifacts(normalizedBookPath);
+      }
+    },
+    SUPPRESS_STALE_ARTIFACTS {
+      @Override
+      void reportIfNeeded(Path normalizedBookPath) {
+        Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+      }
+    };
+
+    abstract void reportIfNeeded(Path normalizedBookPath);
   }
 
   private static int openNativeDatabase(

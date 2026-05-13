@@ -1,10 +1,11 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.InteractionLimits;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -93,6 +94,36 @@ final class CliArgumentValueParser {
           argument,
           Objects.requireNonNullElse(exception.getMessage(), "Invalid argument value."),
           exception);
+    }
+  }
+
+  static int requirePageLimit(int limit, String optionName) {
+    if (limit < InteractionLimits.PAGE_LIMIT_MIN || limit > InteractionLimits.PAGE_LIMIT_MAX) {
+      throw invalid(
+          optionName,
+          optionName
+              + " must be between "
+              + InteractionLimits.PAGE_LIMIT_MIN
+              + " and "
+              + InteractionLimits.PAGE_LIMIT_MAX
+              + ".");
+    }
+    return limit;
+  }
+
+  static void requireOrderedDateRange(
+      LocalDate effectiveDateFrom,
+      LocalDate effectiveDateTo,
+      String effectiveDateFromOption,
+      String effectiveDateToOption) {
+    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
+    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
+    Objects.requireNonNull(effectiveDateFromOption, "effectiveDateFromOption");
+    Objects.requireNonNull(effectiveDateToOption, "effectiveDateToOption");
+    if (effectiveDateFrom.isAfter(effectiveDateTo)) {
+      throw invalid(
+          effectiveDateFromOption,
+          effectiveDateFromOption + " must be on or before " + effectiveDateToOption + ".");
     }
   }
 

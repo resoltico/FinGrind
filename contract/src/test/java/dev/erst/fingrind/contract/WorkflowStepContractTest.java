@@ -6,6 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepKind;
+import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import org.junit.jupiter.api.Test;

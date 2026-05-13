@@ -8,8 +8,6 @@ import java.util.Optional;
 
 /** Verifies that one opened SQLite book matches FinGrind's persisted money and schema contract. */
 final class SqliteBookIntegrityVerifier {
-  private static final int EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT = 8;
-
   private SqliteBookIntegrityVerifier() {}
 
   static boolean passesIntegrityCheck(SqliteNativeDatabase activeDatabase) {
@@ -73,10 +71,10 @@ final class SqliteBookIntegrityVerifier {
         rowCount++;
       }
     }
-    if (rowCount != EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT) {
+    if (rowCount != SqlitePostingSql.EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT) {
       throw new IllegalStateException(
           "SQLite canonical schema fingerprint expected "
-              + EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT
+              + SqlitePostingSql.EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT
               + " objects but found "
               + rowCount
               + ".");
@@ -85,13 +83,9 @@ final class SqliteBookIntegrityVerifier {
   }
 
   private static boolean hasSingleOkResult(SqliteNativeDatabase activeDatabase, String sql) {
-    try (SqliteNativeStatement statement = activeDatabase.prepare(sql)) {
-      if (statement.step() != SqliteNativeResultCodes.ROW) {
-        return false;
-      }
-      String value = statement.columnText(0);
-      return "ok".equals(value) && statement.step() == SqliteNativeResultCodes.DONE;
-    }
+    SqliteStatementQueries.OptionalTextRow row =
+        SqliteStatementQueries.loadOptionalTextRow(activeDatabase, sql, statement -> {});
+    return row.singleRow() && "ok".equals(row.value().orElse(null));
   }
 
   private static String sha256Hex(String value) {

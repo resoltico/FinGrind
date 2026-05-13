@@ -7,14 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.charset.StandardCharsets;
@@ -116,15 +115,18 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("9000"),
                   new AccountName(sentinelAccountName),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-08T12:00:00Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("9000"),
               new AccountName(sentinelAccountName),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-08T12:00:00Z")));
       assertEquals(
@@ -561,11 +563,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             SqliteBookContract.APPLICATION_ID,
             SqliteBookContract.FORMAT_VERSION,
             "account",
+            "audit_event",
             "book_meta",
             "journal_line",
             "posting_fact");
     Path noMetaPath = tempDirectory.resolve("fgrd-no-meta.sqlite");
-    createPartialFinGrindBook(noMetaPath, false, false, false, false, false);
+    createPartialFinGrindBook(noMetaPath, false, false, false, false, false, false);
     BookStateProbe noMetaProbe =
         withStandaloneDatabaseResult(
             bookAccess(noMetaPath),
@@ -578,17 +581,22 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertFalse(noMetaProbe.hasInitializedMarker());
     assertEquals("INCOMPLETE_FINGRIND", noMetaProbe.bookState());
     Path noAccountPath = tempDirectory.resolve("fgrd-no-account.sqlite");
-    createPartialFinGrindBook(noAccountPath, true, false, false, false, false);
+    createPartialFinGrindBook(noAccountPath, true, false, true, false, false, false);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noAccountPath), bookStateReader::hasCanonicalTables));
+    Path noAuditEventPath = tempDirectory.resolve("fgrd-no-audit-event.sqlite");
+    createPartialFinGrindBook(noAuditEventPath, true, true, false, false, false, false);
+    assertFalse(
+        withStandaloneDatabaseResult(
+            bookAccess(noAuditEventPath), bookStateReader::hasCanonicalTables));
     Path noPostingPath = tempDirectory.resolve("fgrd-no-posting.sqlite");
-    createPartialFinGrindBook(noPostingPath, true, true, false, false, false);
+    createPartialFinGrindBook(noPostingPath, true, true, true, false, false, false);
     assertFalse(
         withStandaloneDatabaseResult(
             bookAccess(noPostingPath), bookStateReader::hasCanonicalTables));
     Path noJournalLinePath = tempDirectory.resolve("fgrd-no-journal-line.sqlite");
-    createPartialFinGrindBook(noJournalLinePath, true, true, true, false, false);
+    createPartialFinGrindBook(noJournalLinePath, true, true, true, true, false, false);
     BookStateProbe noJournalLineProbe =
         withStandaloneDatabaseResult(
             bookAccess(noJournalLinePath),
@@ -640,6 +648,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
         """
         insert into posting_fact (
             posting_id,
+            posting_kind,
             effective_date,
             recorded_at,
             actor_id,
@@ -653,6 +662,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             prior_posting_id
         ) values (
             '%s',
+            'STANDARD',
             '2026-04-07',
             '2026-04-07T10:15:30Z',
             '%s',

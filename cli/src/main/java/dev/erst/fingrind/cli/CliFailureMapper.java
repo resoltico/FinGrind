@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.ContractFailure;
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
 import java.util.Objects;
 

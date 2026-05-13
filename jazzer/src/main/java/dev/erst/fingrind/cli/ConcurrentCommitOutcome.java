@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.util.Objects;
 
 /** Typed concurrent-commit outcome for SQLite round-trip coverage. */

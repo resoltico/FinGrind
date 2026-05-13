@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookFormatContract;
+import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.IdempotencyKey;
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;

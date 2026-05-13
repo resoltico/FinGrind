@@ -6,8 +6,40 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -21,8 +53,8 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import java.time.Instant;
@@ -38,7 +70,8 @@ class ReportingContractTypesTest {
       new DeclaredAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
-          NormalBalance.DEBIT,
+          AccountType.ASSET,
+          AccountRole.ORDINARY,
           true,
           Instant.parse("2026-04-07T10:15:30Z"));
   private static final CurrencyBalance EUR_DEBIT_BALANCE =
@@ -365,6 +398,7 @@ class ReportingContractTypesTest {
                     JournalLine.EntrySide.CREDIT,
                     Money.parse("EUR", "15.00")))),
         PostingLineage.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

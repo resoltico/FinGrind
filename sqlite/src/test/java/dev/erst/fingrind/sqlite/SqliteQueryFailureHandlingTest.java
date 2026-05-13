@@ -32,9 +32,10 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
     Path invalidBookPath = tempDirectory.resolve("query-not-a-sqlite-file.sqlite");
     Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
     RegisteredAccount cashAccount =
-        new RegisteredAccount(
+        registeredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
+            dev.erst.fingrind.core.AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -103,9 +104,10 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
         new SqlitePostingFactStore(bookAccess(bookPath))) {
       setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
       RegisteredAccount cashAccount =
-          new RegisteredAccount(
+          registeredAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               true,
               Instant.parse("2026-04-07T10:15:30Z"));
@@ -276,9 +278,11 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.declareAccount(
+                  declareAccount(
+                      postingFactStore,
                       new AccountCode("1000"),
                       new AccountName("Cash"),
+                      dev.erst.fingrind.core.AccountType.ASSET,
                       NormalBalance.DEBIT,
                       Instant.parse("2026-04-07T10:15:30Z")));
       assertTrue(

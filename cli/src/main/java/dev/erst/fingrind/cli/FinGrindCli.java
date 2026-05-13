@@ -1,9 +1,9 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractFailureException;
-import dev.erst.fingrind.contract.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;

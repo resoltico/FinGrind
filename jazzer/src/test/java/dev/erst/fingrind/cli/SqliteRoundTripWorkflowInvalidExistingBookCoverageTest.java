@@ -3,9 +3,9 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -55,7 +55,7 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                 () ->
                     ContractDecision.accepted(
                         new OpenBookResult.Rejected(
-                            new dev.erst.fingrind.contract.BookAdministrationRejection
+                            new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
                                 .BookContainsSchema())),
                 bookPath));
     IllegalStateException openedBook =
@@ -83,7 +83,8 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                 () ->
                     ContractDecision.accepted(
                         SqliteRoundTripWorkflowTestSupport.commitRejected(
-                            new dev.erst.fingrind.contract.PostingRejection.BookNotInitialized())),
+                            new dev.erst.fingrind.contract.bookkeeping.PostingRejection
+                                .BookNotInitialized())),
                 "book-not-initialized"));
     IllegalStateException committedPosting =
         assertThrows(

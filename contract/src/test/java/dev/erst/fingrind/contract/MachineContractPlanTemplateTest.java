@@ -4,13 +4,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -42,10 +48,10 @@ class MachineContractPlanTemplateTest {
     assertEquals(LedgerStepKind.DECLARE_ACCOUNT, declareCash.kind());
     assertEquals("1000", declareCashTemplate.accountCode());
     assertEquals("Cash", declareCashTemplate.accountName());
-    assertEquals(NormalBalance.DEBIT, declareCashTemplate.normalBalance());
+    assertEquals(AccountRole.ORDINARY, declareCashTemplate.accountRole());
     assertEquals("declare-revenue", declareRevenue.stepId());
     assertEquals("2000", declareRevenueTemplate.accountCode());
-    assertEquals(NormalBalance.CREDIT, declareRevenueTemplate.normalBalance());
+    assertEquals(AccountRole.ORDINARY, declareRevenueTemplate.accountRole());
     assertEquals("post-journal", postJournal.stepId());
     assertEquals(LedgerStepKind.POST_ENTRY, postJournal.kind());
     assertEquals(ScaffoldPlaceholders.EFFECTIVE_DATE, postJournalTemplate.effectiveDate());
@@ -61,7 +67,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(
-            new ApplicationIdentity("FinGrind", "0.34.0", "test"),
+            new ApplicationIdentity("FinGrind", "0.35.0", "test"),
             ContractFixtures.environmentDescriptor(),
             Instant.parse("2026-04-17T09:10:11Z"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());

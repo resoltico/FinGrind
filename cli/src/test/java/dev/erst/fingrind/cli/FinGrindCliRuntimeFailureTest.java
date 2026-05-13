@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
 import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.io.ByteArrayInputStream;

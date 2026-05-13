@@ -1,13 +1,16 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import java.nio.file.Path;
 
 /** Facade that routes query and reporting payloads to narrower human/CSV renderers. */
@@ -68,5 +71,29 @@ final class CliQueryOutputRenderer {
 
   static String renderPeriodSummaryCsv(PeriodSummaryReport report) {
     return CliReportOutputRenderer.renderPeriodSummaryCsv(report);
+  }
+
+  static String renderFinancialPositionHuman(FinancialPositionReport report) {
+    return CliReportOutputRenderer.renderFinancialPositionHuman(report);
+  }
+
+  static String renderFinancialPositionCsv(FinancialPositionReport report) {
+    return CliReportOutputRenderer.renderFinancialPositionCsv(report);
+  }
+
+  static String renderIncomeStatementHuman(IncomeStatementReport report) {
+    return CliReportOutputRenderer.renderIncomeStatementHuman(report);
+  }
+
+  static String renderIncomeStatementCsv(IncomeStatementReport report) {
+    return CliReportOutputRenderer.renderIncomeStatementCsv(report);
+  }
+
+  static String renderChangesInEquityHuman(ChangesInEquityReport report) {
+    return CliReportOutputRenderer.renderChangesInEquityHuman(report);
+  }
+
+  static String renderChangesInEquityCsv(ChangesInEquityReport report) {
+    return CliReportOutputRenderer.renderChangesInEquityCsv(report);
   }
 }

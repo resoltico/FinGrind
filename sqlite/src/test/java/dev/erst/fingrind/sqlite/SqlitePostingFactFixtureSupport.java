@@ -2,9 +2,12 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -17,6 +20,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -29,6 +33,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /** Shared SQLite posting/book fixtures and native-handle doubles for split store tests. */
@@ -42,6 +47,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         new PostingId(postingId),
         journalEntry(reversalReference),
         postingLineage(reversalReference, reason),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -64,6 +70,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         new PostingId(postingId),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -84,12 +91,60 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return PostingLineageModel.reversal(reversalReference.orElseThrow(), reason.orElseThrow());
   }
 
-  static dev.erst.fingrind.contract.PostingFact publishedPostingFact(CommittedPosting postingFact) {
+  static dev.erst.fingrind.contract.bookkeeping.PostingFact publishedPostingFact(
+      CommittedPosting postingFact) {
     return BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
   }
 
   static DeclaredAccount publishedAccount(RegisteredAccount account) {
     return BookkeepingPublishedLanguageTranslator.toPublished(account);
+  }
+
+  static AccountRole accountRole(AccountType accountType, NormalBalance normalBalance) {
+    Objects.requireNonNull(accountType, "accountType");
+    Objects.requireNonNull(normalBalance, "normalBalance");
+    return AccountSemantics.normalBalance(accountType, AccountRole.ORDINARY) == normalBalance
+        ? AccountRole.ORDINARY
+        : AccountRole.CONTRA;
+  }
+
+  static RegisteredAccount registeredAccount(
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      NormalBalance normalBalance,
+      boolean active,
+      Instant declaredAt) {
+    return new RegisteredAccount(
+        accountCode,
+        accountName,
+        accountType,
+        accountRole(accountType, normalBalance),
+        active,
+        declaredAt);
+  }
+
+  static DeclaredAccount declaredAccount(
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      NormalBalance normalBalance,
+      boolean active,
+      Instant declaredAt) {
+    return publishedAccount(
+        registeredAccount(
+            accountCode, accountName, accountType, normalBalance, active, declaredAt));
+  }
+
+  static AccountDeclarationOutcome declareAccount(
+      SqlitePostingFactStore postingFactStore,
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      NormalBalance normalBalance,
+      Instant declaredAt) {
+    return postingFactStore.declareAccount(
+        accountCode, accountName, accountType, accountRole(accountType, normalBalance), declaredAt);
   }
 
   static void initializeBookWithDefaultAccounts(SqlitePostingFactStore postingFactStore) {
@@ -100,28 +155,34 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static void declareDefaultAccounts(SqlitePostingFactStore postingFactStore) {
     assertEquals(
         new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
+            registeredAccount(
                 new AccountCode("1000"),
                 new AccountName("Cash"),
+                dev.erst.fingrind.core.AccountType.ASSET,
                 NormalBalance.DEBIT,
                 true,
                 Instant.parse("2026-04-07T10:15:30Z"))),
-        postingFactStore.declareAccount(
+        declareAccount(
+            postingFactStore,
             new AccountCode("1000"),
             new AccountName("Cash"),
+            dev.erst.fingrind.core.AccountType.ASSET,
             NormalBalance.DEBIT,
             Instant.parse("2026-04-07T10:15:30Z")));
     assertEquals(
         new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
+            registeredAccount(
                 new AccountCode("2000"),
                 new AccountName("Revenue"),
+                dev.erst.fingrind.core.AccountType.REVENUE,
                 NormalBalance.CREDIT,
                 true,
                 Instant.parse("2026-04-07T10:15:30Z"))),
-        postingFactStore.declareAccount(
+        declareAccount(
+            postingFactStore,
             new AccountCode("2000"),
             new AccountName("Revenue"),
+            dev.erst.fingrind.core.AccountType.REVENUE,
             NormalBalance.CREDIT,
             Instant.parse("2026-04-07T10:15:30Z")));
   }
@@ -160,6 +221,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         """
         insert into posting_fact (
             posting_id,
+            posting_kind,
             effective_date,
             recorded_at,
             actor_id,
@@ -173,6 +235,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             prior_posting_id
         ) values (
             '%s',
+            'STANDARD',
             '2026-04-07',
             '2026-04-07T10:15:30Z',
             'actor-1',

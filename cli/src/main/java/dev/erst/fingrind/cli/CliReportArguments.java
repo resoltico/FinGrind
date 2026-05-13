@@ -27,6 +27,18 @@ final class CliReportArguments {
     return CliSummaryReportArguments.parsePeriodSummaryCommand(arguments);
   }
 
+  static CliCommand parseFinancialPositionCommand(List<String> arguments) {
+    return CliSummaryReportArguments.parseFinancialPositionCommand(arguments);
+  }
+
+  static CliCommand parseIncomeStatementCommand(List<String> arguments) {
+    return CliSummaryReportArguments.parseIncomeStatementCommand(arguments);
+  }
+
+  static CliCommand parseChangesInEquityCommand(List<String> arguments) {
+    return CliSummaryReportArguments.parseChangesInEquityCommand(arguments);
+  }
+
   static @Nullable LocalDate requireDateOption(
       @Nullable LocalDate currentValue, ListIterator<String> argumentIterator, String optionName) {
     if (currentValue != null) {

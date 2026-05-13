@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import java.util.ArrayList;
 import java.util.List;
 

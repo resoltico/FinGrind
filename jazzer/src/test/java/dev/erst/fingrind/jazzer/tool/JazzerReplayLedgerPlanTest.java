@@ -4,8 +4,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import org.junit.jupiter.api.Test;
 

@@ -40,6 +40,28 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
               SqliteBookState.INCOMPLETE_FINGRIND,
               SqliteBookContract.BOOK_STATE_READER.bookState(database));
         });
+    assertIncompleteStateAfterCorruption(
+        "book-state-only-debit.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-only-debit", "idem-only-debit");
+          insertJournalLineRow(database, "posting-only-debit", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-only-debit", 1, "2000", "DEBIT", "EUR", 1000);
+        });
+    assertIncompleteStateAfterCorruption(
+        "book-state-only-credit.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-only-credit", "idem-only-credit");
+          insertJournalLineRow(database, "posting-only-credit", 0, "1000", "CREDIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-only-credit", 1, "2000", "CREDIT", "EUR", 1000);
+        });
+    assertIncompleteStateAfterCorruption(
+        "book-state-mixed-currency.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-mixed-currency", "idem-mixed-currency");
+          insertJournalLineRow(database, "posting-mixed-currency", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-mixed-currency", 1, "2000", "CREDIT", "USD", 1000);
+        });
 
     Path invalidMoneyPath = tempDirectory.resolve("book-state-invalid-money.sqlite");
     initializeBookOnDisk(invalidMoneyPath);
@@ -94,6 +116,20 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
     insertJournalLineRow(database, "missing-posting", 0, "1000", "DEBIT", "EUR", 1000);
     database.executeStatement("pragma foreign_keys = on");
     return SqliteBookContract.BOOK_STATE_READER.bookState(database);
+  }
+
+  private void assertIncompleteStateAfterCorruption(
+      String filename, SqliteDatabaseAction corruptionAction) {
+    Path bookPath = tempDirectory.resolve(filename);
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          corruptionAction.run(database);
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
   }
 
   /** Test-only wrapper that rewrites or fails one targeted SQL probe while delegating the rest. */

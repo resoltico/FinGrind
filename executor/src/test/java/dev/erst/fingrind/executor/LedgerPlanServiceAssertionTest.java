@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.assertAssertionFailure;
@@ -15,13 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.LedgerAssertion;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.workflow.LedgerAssertion;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.Money;
@@ -56,7 +58,8 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.OpenBook(stepId("open")),
                           new LedgerStep.DeclareAccount(
-                              stepId("cash"), account("1000", "Cash", NormalBalance.DEBIT)),
+                              stepId("cash"),
+                              account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),
                           new LedgerStep.Assert(
                               stepId("missing-posting"),
                               new LedgerAssertion.PostingExists(
@@ -78,7 +81,8 @@ class LedgerPlanServiceAssertionTest {
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
-          NormalBalance.DEBIT,
+          AccountType.ASSET,
+          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
           FIXED_CLOCK.instant());
       bookSession.deactivateAccount(new AccountCode("1000"));
 

@@ -70,7 +70,11 @@ final class CliOutputChannel {
     if (outputMode == OutputMode.HUMAN) {
       writeText(
           CliFailureOutputRenderer.renderRejectedHuman(
-              envelope.code(), envelope.message(), idempotencyKey));
+              envelope.code(),
+              envelope.message(),
+              envelope.hint(),
+              idempotencyKey,
+              envelope.details()));
       return;
     }
     writeEnvelope(envelope);
@@ -82,7 +86,11 @@ final class CliOutputChannel {
         () ->
             writeText(
                 CliFailureOutputRenderer.renderRejectedHuman(
-                    envelope.code(), envelope.message(), envelope.idempotencyKey())),
+                    envelope.code(),
+                    envelope.message(),
+                    envelope.hint(),
+                    envelope.idempotencyKey(),
+                    envelope.details())),
         () -> writeEnvelope(envelope));
   }
 

@@ -1,21 +1,26 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
@@ -163,5 +168,46 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(declaredAccountHuman.contains("Account Declared"));
     assertTrue(preflightHuman.contains("Entry Preflight Accepted"));
     assertTrue(committedHuman.contains("Entry Committed"));
+  }
+
+  @Test
+  void renderStatementAndFormatterHelpers_coverAllAccountTypeAndEmptySectionBranches() {
+    assertEquals(
+        "Assets", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.ASSET));
+    assertEquals(
+        "Liabilities",
+        CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.LIABILITY));
+    assertEquals(
+        "Equity", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.EQUITY));
+    assertEquals(
+        "Revenue", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.REVENUE));
+    assertEquals(
+        "Expenses", CliQueryOutputFormatter.displayAccountTypeSectionLabel(AccountType.EXPENSE));
+    assertEquals("Asset", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.ASSET));
+    assertEquals("Liability", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.LIABILITY));
+    assertEquals("Equity", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.EQUITY));
+    assertEquals("Revenue", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.REVENUE));
+    assertEquals("Expense", CliQueryOutputFormatter.displayLineTypeLabel(AccountType.EXPENSE));
+
+    FinancialPositionReport emptyFinancialPosition =
+        new FinancialPositionReport(Optional.empty(), List.of());
+    IncomeStatementReport emptyIncomeStatement =
+        new IncomeStatementReport(
+            LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"), List.of(), List.of());
+    ChangesInEquityReport changesInEquityReport = sampleChangesInEquityReport();
+
+    String financialPositionHuman =
+        CliReportOutputRenderer.renderFinancialPositionHuman(emptyFinancialPosition);
+    String incomeStatementHuman =
+        CliReportOutputRenderer.renderIncomeStatementHuman(emptyIncomeStatement);
+    String changesInEquityHuman =
+        CliReportOutputRenderer.renderChangesInEquityHuman(changesInEquityReport);
+
+    assertTrue(financialPositionHuman.contains("Financial Position"));
+    assertTrue(financialPositionHuman.contains("(none)"));
+    assertTrue(incomeStatementHuman.contains("Income Statement"));
+    assertTrue(incomeStatementHuman.contains("(none)"));
+    assertTrue(changesInEquityHuman.contains("Changes In Equity"));
+    assertTrue(changesInEquityHuman.contains("Balanced"));
   }
 }

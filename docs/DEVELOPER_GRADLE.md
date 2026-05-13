@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]

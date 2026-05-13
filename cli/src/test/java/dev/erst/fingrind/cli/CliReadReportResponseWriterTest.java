@@ -4,27 +4,27 @@ import static dev.erst.fingrind.cli.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceResult;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -79,7 +79,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListAccountsResult.Listed(
                     new AccountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,normalBalance,active,declaredAt");
+        "accountCode,accountName,accountType,accountRole,normalBalance,active,declaredAt");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(
@@ -163,7 +163,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
+        "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
@@ -199,7 +199,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts");
+        "accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(

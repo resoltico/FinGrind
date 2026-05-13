@@ -1,11 +1,11 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;

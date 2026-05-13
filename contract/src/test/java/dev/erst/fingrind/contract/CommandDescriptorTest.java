@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;

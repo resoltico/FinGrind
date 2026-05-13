@@ -73,6 +73,7 @@ public interface CliEnvelopeJsonModels {
       ProtocolRejectionStatus status,
       String code,
       String message,
+      @Nullable String hint,
       @Nullable String idempotencyKey,
       CliRejectionJsonModels.@Nullable RejectionDetails details) {
     /** Creates one deterministic rejection envelope for machine and human CLI output. */
@@ -80,11 +81,13 @@ public interface CliEnvelopeJsonModels {
         ProtocolRejectionStatus status,
         String code,
         String message,
+        @Nullable String hint,
         @Nullable String idempotencyKey,
         CliRejectionJsonModels.@Nullable RejectionDetails details) {
       this.status = requireValue(status, "status");
       this.code = requireText(code, "code");
       this.message = requireText(message, "message");
+      this.hint = requireOptionalText(hint, "hint");
       this.idempotencyKey = requireOptionalText(idempotencyKey, "idempotencyKey");
       this.details = details;
     }

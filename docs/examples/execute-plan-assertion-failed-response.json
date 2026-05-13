@@ -43,6 +43,16 @@
               },
               {
                 "kind": "text",
+                "name": "accountType",
+                "value": "ASSET"
+              },
+              {
+                "kind": "text",
+                "name": "accountRole",
+                "value": "ORDINARY"
+              },
+              {
+                "kind": "text",
                 "name": "normalBalance",
                 "value": "DEBIT"
               },
@@ -74,6 +84,16 @@
                 "kind": "text",
                 "name": "accountName",
                 "value": "Revenue"
+              },
+              {
+                "kind": "text",
+                "name": "accountType",
+                "value": "REVENUE"
+              },
+              {
+                "kind": "text",
+                "name": "accountRole",
+                "value": "ORDINARY"
               },
               {
                 "kind": "text",
@@ -135,19 +155,20 @@
                 "value": "1000"
               },
               {
-                "kind": "text",
-                "name": "currencyCode",
-                "value": "EUR"
-              },
-              {
-                "kind": "text",
+                "kind": "money",
                 "name": "expectedNetAmount",
-                "value": "11"
+                "value": {
+                  "currencyCode": "EUR",
+                  "minorUnits": "11"
+                }
               },
               {
-                "kind": "text",
+                "kind": "money",
                 "name": "actualNetAmount",
-                "value": "10"
+                "value": {
+                  "currencyCode": "EUR",
+                  "minorUnits": "10"
+                }
               },
               {
                 "kind": "text",
@@ -170,19 +191,20 @@
                   "value": "1000"
                 },
                 {
-                  "kind": "text",
-                  "name": "currencyCode",
-                  "value": "EUR"
-                },
-                {
-                  "kind": "text",
+                  "kind": "money",
                   "name": "expectedNetAmount",
-                  "value": "11"
+                  "value": {
+                    "currencyCode": "EUR",
+                    "minorUnits": "11"
+                  }
                 },
                 {
-                  "kind": "text",
+                  "kind": "money",
                   "name": "actualNetAmount",
-                  "value": "10"
+                  "value": {
+                    "currencyCode": "EUR",
+                    "minorUnits": "10"
+                  }
                 },
                 {
                   "kind": "text",

@@ -1,7 +1,15 @@
 package dev.erst.fingrind.contract;
 
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -11,8 +19,8 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import java.time.Instant;
@@ -34,7 +42,8 @@ class ContractTestSupport {
     return new DeclaredAccount(
         new AccountCode(accountCode),
         new AccountName("Cash"),
-        NormalBalance.DEBIT,
+        AccountType.ASSET,
+        AccountRole.ORDINARY,
         true,
         Instant.parse("2026-04-07T10:15:30Z"));
   }
@@ -44,6 +53,7 @@ class ContractTestSupport {
         new PostingId(postingId),
         journalEntry(),
         PostingLineage.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

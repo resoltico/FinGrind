@@ -12,7 +12,8 @@ final class CliJsonRequestSchemas {
       Set.of(
           ProtocolDeclareAccountFields.ACCOUNT_CODE,
           ProtocolDeclareAccountFields.ACCOUNT_NAME,
-          ProtocolDeclareAccountFields.NORMAL_BALANCE);
+          ProtocolDeclareAccountFields.ACCOUNT_TYPE,
+          ProtocolDeclareAccountFields.ACCOUNT_ROLE);
   static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
   static final Set<String> PROVENANCE_FIELDS =

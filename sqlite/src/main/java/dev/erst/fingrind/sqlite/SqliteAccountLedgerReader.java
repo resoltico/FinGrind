@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -39,11 +40,10 @@ final class SqliteAccountLedgerReader {
       entries.add(
           new AccountLedgerEntryView(
               posting,
-              SqliteBalanceMath.currencyBalance(
-                  movement.currencyCode, movement.debit, movement.credit),
+              BalanceMath.currencyBalance(movement.currencyCode, movement.debit, movement.credit),
               Money.ofMinorUnits(
-                  movement.currencyCode, SqliteBalanceMath.absoluteMinorUnits(runningSigned)),
-              SqliteBalanceMath.balanceSide(runningSigned)));
+                  movement.currencyCode, BalanceMath.absoluteMinorUnits(runningSigned)),
+              BalanceMath.balanceSide(runningSigned)));
     }
     return new AccountLedgerView(
         account,

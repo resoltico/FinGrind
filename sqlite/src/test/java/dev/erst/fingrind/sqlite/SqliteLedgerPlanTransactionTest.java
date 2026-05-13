@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
@@ -40,28 +39,34 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
           postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("2000"),
                   new AccountName("Revenue"),
+                  dev.erst.fingrind.core.AccountType.REVENUE,
                   NormalBalance.CREDIT,
                   true,
                   Instant.parse("2026-04-07T10:15:31Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("2000"),
               new AccountName("Revenue"),
+              dev.erst.fingrind.core.AccountType.REVENUE,
               NormalBalance.CREDIT,
               Instant.parse("2026-04-07T10:15:31Z")));
       assertEquals(
@@ -89,9 +94,11 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
       postingFactStore.beginLedgerPlanTransaction();
       assertThrows(IllegalStateException.class, postingFactStore::beginLedgerPlanTransaction);
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
-      postingFactStore.declareAccount(
+      declareAccount(
+          postingFactStore,
           new AccountCode("1000"),
           new AccountName("Cash"),
+          dev.erst.fingrind.core.AccountType.ASSET,
           NormalBalance.DEBIT,
           Instant.parse("2026-04-07T10:15:30Z"));
       postingFactStore.rollbackLedgerPlanTransaction();
@@ -142,9 +149,11 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       initializeBookWithDefaultAccounts(postingFactStore);
       postingFactStore.beginLedgerPlanTransaction();
-      postingFactStore.declareAccount(
+      declareAccount(
+          postingFactStore,
           deferredAccount,
           new AccountName("Deferred Revenue"),
+          dev.erst.fingrind.core.AccountType.REVENUE,
           NormalBalance.CREDIT,
           Instant.parse("2026-04-07T10:15:32Z"));
       requireStoreDatabase(postingFactStore).executeStatement("rollback");

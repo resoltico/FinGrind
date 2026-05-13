@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;

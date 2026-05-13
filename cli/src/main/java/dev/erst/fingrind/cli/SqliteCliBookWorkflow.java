@@ -1,30 +1,38 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PreflightEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.LedgerPlanService;
@@ -67,7 +75,9 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         bookAccess,
         SqliteBookSessionMode.READ_WRITE_EXISTING,
         SqlitePassphraseIntent.EXISTING_SECRET,
-        bookSession -> bookSession.rekeyBook(replacementPassphraseSource, passphraseResolver));
+        bookSession ->
+            bookSession.rekeyBook(
+                replacementPassphraseSource, passphraseResolver, clock.instant()));
   }
 
   @Override
@@ -82,6 +92,19 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
                 new BookAdministrationService(bookSession, clock)
                     .declareAccount(
                         BookkeepingPublishedLanguageTranslator.fromPublished(command))));
+  }
+
+  @Override
+  public ContractDecision<ClosePeriodResult> closePeriod(
+      BookAccess bookAccess, ClosePeriodCommand command) {
+    return withBookSession(
+        bookAccess,
+        SqliteBookSessionMode.READ_WRITE_EXISTING,
+        SqlitePassphraseIntent.EXISTING_SECRET,
+        bookSession ->
+            BookkeepingPublishedLanguageTranslator.toPublished(
+                new BookAdministrationService(bookSession, clock)
+                    .closePeriod(BookkeepingPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override
@@ -161,6 +184,36 @@ final class SqliteCliBookWorkflow implements CliBookWorkflow {
         SqliteBookSessionMode.READ_ONLY,
         SqlitePassphraseIntent.EXISTING_SECRET,
         bookSession -> new BookReadService(bookSession).periodSummary(query));
+  }
+
+  @Override
+  public ContractDecision<FinancialPositionResult> financialPosition(
+      BookAccess bookAccess, FinancialPositionQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteBookSessionMode.READ_ONLY,
+        SqlitePassphraseIntent.EXISTING_SECRET,
+        bookSession -> new BookReadService(bookSession).financialPosition(query));
+  }
+
+  @Override
+  public ContractDecision<IncomeStatementResult> incomeStatement(
+      BookAccess bookAccess, IncomeStatementQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteBookSessionMode.READ_ONLY,
+        SqlitePassphraseIntent.EXISTING_SECRET,
+        bookSession -> new BookReadService(bookSession).incomeStatement(query));
+  }
+
+  @Override
+  public ContractDecision<ChangesInEquityResult> changesInEquity(
+      BookAccess bookAccess, ChangesInEquityQuery query) {
+    return withBookSession(
+        bookAccess,
+        SqliteBookSessionMode.READ_ONLY,
+        SqlitePassphraseIntent.EXISTING_SECRET,
+        bookSession -> new BookReadService(bookSession).changesInEquity(query));
   }
 
   @Override

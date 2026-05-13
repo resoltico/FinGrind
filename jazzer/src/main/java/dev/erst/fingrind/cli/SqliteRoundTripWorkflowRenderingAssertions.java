@@ -1,10 +1,10 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -93,7 +93,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
   }
 
   static void assertRenderedFailure(
-      dev.erst.fingrind.contract.ContractFailure failure,
+      dev.erst.fingrind.contract.runtime.ContractFailure failure,
       OutputMode outputMode,
       @Nullable String requiredFragment)
       throws IOException {

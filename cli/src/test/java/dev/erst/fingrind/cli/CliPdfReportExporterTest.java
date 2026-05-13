@@ -4,18 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -30,6 +28,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
@@ -53,16 +52,18 @@ class CliPdfReportExporterTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final DeclaredAccount CASH_ACCOUNT =
-      new DeclaredAccount(
-          new AccountCode("1000"),
-          new AccountName("Cash"),
+      CliIoFixtureSupport.declaredAccount(
+          "1000",
+          "Cash",
+          dev.erst.fingrind.core.AccountType.ASSET,
           NormalBalance.DEBIT,
           true,
           Instant.parse("2026-04-07T12:00:00Z"));
   private static final DeclaredAccount REVENUE_ACCOUNT =
-      new DeclaredAccount(
-          new AccountCode("2000"),
-          new AccountName("Revenue"),
+      CliIoFixtureSupport.declaredAccount(
+          "2000",
+          "Revenue",
+          dev.erst.fingrind.core.AccountType.REVENUE,
           NormalBalance.CREDIT,
           true,
           Instant.parse("2026-04-07T12:00:00Z"));
@@ -72,7 +73,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportMethodsWritePdfArtifacts() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.35.0", CLOCK));
 
     Path accountBalancePdf = tempDirectory.resolve("balance.pdf");
     Path trialBalancePdf = tempDirectory.resolve("trial.pdf");
@@ -93,7 +94,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportWrapsFilesystemFailuresInCliPdfExportException() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.35.0", CLOCK));
     Path blockedParent = tempDirectory.resolve("not-a-directory");
     Files.writeString(blockedParent, "nope", StandardCharsets.UTF_8);
     Path outputPath = blockedParent.resolve("trial-balance.pdf");
@@ -110,7 +111,7 @@ class CliPdfReportExporterTest {
   void exportFallsBackToNonAtomicMoveWhenAtomicMoveIsUnsupported() {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.35.0", CLOCK), fileOperations);
 
     exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport());
 
@@ -124,7 +125,7 @@ class CliPdfReportExporterTest {
     fileOperations.failDuringMove = true;
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.35.0", CLOCK), fileOperations);
 
     CliPdfExportException exception =
         assertThrows(
@@ -145,7 +146,7 @@ class CliPdfReportExporterTest {
   @Test
   void deleteIfPresentRemovesExistingTemporaryFiles() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.35.0", CLOCK));
     Path temporaryFile = Files.createTempFile(tempDirectory, "delete-me", ".tmp");
 
     exporter.deleteIfPresent(temporaryFile);
@@ -158,7 +159,7 @@ class CliPdfReportExporterTest {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.34.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.35.0", CLOCK), fileOperations);
 
     exporter.deleteIfPresent(Path.of("temporary.pdf"));
 
@@ -193,7 +194,7 @@ class CliPdfReportExporterTest {
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         List.of(balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO)),
         List.of(
-            new dev.erst.fingrind.contract.AccountLedgerEntry(
+            new dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry(
                 postingFact(),
                 balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                 money("EUR", "10.00"),
@@ -228,6 +229,7 @@ class CliPdfReportExporterTest {
                     JournalLine.EntrySide.CREDIT,
                     money("EUR", "10.00")))),
         PostingLineage.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("operator"),

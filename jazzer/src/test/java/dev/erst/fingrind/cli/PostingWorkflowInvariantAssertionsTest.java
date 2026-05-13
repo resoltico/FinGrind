@@ -5,17 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.jazzer.support.PostingWorkflowInvariantAssertions;
@@ -383,6 +384,7 @@ class PostingWorkflowInvariantAssertionsTest {
         new PostingId(postingId),
         journalEntry,
         postingLineage,
+        PostingKind.STANDARD,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
 

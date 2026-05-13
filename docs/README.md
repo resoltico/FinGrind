@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -65,6 +65,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 
 - [DEVELOPER.md](./DEVELOPER.md): contributor architecture, quality gates, build entrypoints, and cross-module ownership
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md): preferred contributor container workflow and editor-agnostic container use
+- [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md): explicit bookkeeping and workflow consistency boundaries, invariants, and mutation owners
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md): canonical bounded contexts, context map, and accounting-entity vocabulary
 - [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md): bundle layout, public artifact rules, and release-asset expectations
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md): documentation placement, maintenance, and reference-spine rules
@@ -77,6 +78,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md): GitHub Release publication topology, attestation invariants, Windows ZIP canary behavior, and post-tag workflow repair
 - [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md): canonical security model, threat boundary, secret transport, and runtime-identity rules
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary
+- [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md): why FinGrind pins `journal_mode=DELETE` instead of WAL on the current storage line
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag verification, and public artifact publication flow
 

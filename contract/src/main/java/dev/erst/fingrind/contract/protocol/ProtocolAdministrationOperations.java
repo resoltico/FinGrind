@@ -116,6 +116,33 @@ final class ProtocolAdministrationOperations {
                             OperationId.DECLARE_ACCOUNT.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
-                            ProtocolOptions.REQUEST_FILE)))));
+                            ProtocolOptions.REQUEST_FILE)))),
+        ProtocolOperationDefinitions.operation(
+            OperationId.CLOSE_PERIOD,
+            OperationCategory.ADMINISTRATION,
+            "Close Period",
+            List.of(),
+            List.of(
+                ProtocolOptions.BOOK_FILE + " <path>",
+                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
+                ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.HUMAN))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.HUMAN),
+            "Close one contiguous reporting period into the declared retained-earnings account.",
+            List.of(
+                ProtocolExampleStep.note(
+                    "Declare exactly one active retained-earnings account before running close-period. Use accountType EQUITY with accountRole RETAINED_EARNINGS."),
+                ProtocolExampleStep.note(
+                    "The first close may begin before the earliest posting date. After one close is recorded, later closes must start on the day after the closed-through horizon."),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30"
+                        .formatted(
+                            OperationId.CLOSE_PERIOD.wireName(),
+                            ProtocolOptions.BOOK_FILE,
+                            ProtocolOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.EFFECTIVE_DATE_FROM,
+                            ProtocolOptions.EFFECTIVE_DATE_TO)))));
   }
 }

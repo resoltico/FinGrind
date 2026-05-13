@@ -1,12 +1,12 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerJournalEntry;
-import dev.erst.fingrind.contract.LedgerJournalKind;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStepStatus;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import java.util.List;

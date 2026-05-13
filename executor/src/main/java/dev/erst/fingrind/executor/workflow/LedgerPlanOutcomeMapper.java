@@ -1,7 +1,8 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
@@ -152,20 +153,34 @@ public final class LedgerPlanOutcomeMapper {
           "The selected SQLite file already contains schema objects and cannot be initialized as a new book.",
           List.of());
     }
-    BookkeepingAdministrationRejection.NormalBalanceConflict conflict =
-        (BookkeepingAdministrationRejection.NormalBalanceConflict) rejection;
+    if (rejection instanceof BookkeepingAdministrationRejection.AccountTypeConflict conflict) {
+      return new BookWorkflowFailure(
+          "account-type-conflict",
+          accountTypeConflictMessage(
+              conflict.accountCode(),
+              conflict.existingAccountType(),
+              conflict.requestedAccountType()),
+          List.of(
+              BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
+              BookWorkflowFact.text(
+                  "existingAccountType", conflict.existingAccountType().wireValue()),
+              BookWorkflowFact.text(
+                  "requestedAccountType", conflict.requestedAccountType().wireValue())));
+    }
+    BookkeepingAdministrationRejection.AccountRoleConflict conflict =
+        (BookkeepingAdministrationRejection.AccountRoleConflict) rejection;
     return new BookWorkflowFailure(
-        "account-normal-balance-conflict",
-        normalBalanceConflictMessage(
+        "account-role-conflict",
+        accountRoleConflictMessage(
             conflict.accountCode(),
-            conflict.existingNormalBalance(),
-            conflict.requestedNormalBalance()),
+            conflict.existingAccountRole(),
+            conflict.requestedAccountRole()),
         List.of(
             BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
             BookWorkflowFact.text(
-                "existingNormalBalance", conflict.existingNormalBalance().wireValue()),
+                "existingAccountRole", conflict.existingAccountRole().wireValue()),
             BookWorkflowFact.text(
-                "requestedNormalBalance", conflict.requestedNormalBalance().wireValue())));
+                "requestedAccountRole", conflict.requestedAccountRole().wireValue())));
   }
 
   private static BookWorkflowFailure queryFailure(BookkeepingQueryRejection rejection) {
@@ -239,15 +254,18 @@ public final class LedgerPlanOutcomeMapper {
     return "The selected book does not exist or has not been initialized with an open book step.";
   }
 
-  private static String normalBalanceConflictMessage(
-      AccountCode accountCode,
-      NormalBalance existingNormalBalance,
-      NormalBalance requestedNormalBalance) {
-    return "Account '%s' already exists with normal balance '%s'; FinGrind will not amend it to '%s'."
+  private static String accountRoleConflictMessage(
+      AccountCode accountCode, AccountRole existingAccountRole, AccountRole requestedAccountRole) {
+    return "Account '%s' already exists with account role '%s'; FinGrind will not amend it to '%s'."
         .formatted(
-            accountCode.value(),
-            existingNormalBalance.wireValue(),
-            requestedNormalBalance.wireValue());
+            accountCode.value(), existingAccountRole.wireValue(), requestedAccountRole.wireValue());
+  }
+
+  private static String accountTypeConflictMessage(
+      AccountCode accountCode, AccountType existingAccountType, AccountType requestedAccountType) {
+    return "Account '%s' already exists with account type '%s'; FinGrind will not amend it to '%s'."
+        .formatted(
+            accountCode.value(), existingAccountType.wireValue(), requestedAccountType.wireValue());
   }
 
   private static List<BookWorkflowFact> accountStateFacts(

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import java.util.List;
 
 /** Renders declared-account page payloads for human and CSV output modes. */
@@ -18,13 +18,22 @@ final class CliAccountPageOutputRenderer {
                 List.of("Next cursor", nextCursor)));
     String table =
         CliTextFormat.renderTable(
-            List.of("Account", "Name", "Normal balance", "Active", "Declared at"),
+            List.of(
+                "Account",
+                "Name",
+                "Account type",
+                "Account role",
+                "Normal balance",
+                "Active",
+                "Declared at"),
             page.accounts().stream()
                 .map(
                     account ->
                         List.of(
                             account.accountCode().value(),
                             account.accountName().value(),
+                            account.accountType().wireValue(),
+                            account.accountRole().wireValue(),
                             account.normalBalance().wireValue(),
                             Boolean.toString(account.active()),
                             account.declaredAt().toString()))
@@ -35,13 +44,22 @@ final class CliAccountPageOutputRenderer {
 
   static String renderCsv(AccountPage page) {
     return CliTextFormat.renderCsv(
-        List.of("accountCode", "accountName", "normalBalance", "active", "declaredAt"),
+        List.of(
+            "accountCode",
+            "accountName",
+            "accountType",
+            "accountRole",
+            "normalBalance",
+            "active",
+            "declaredAt"),
         page.accounts().stream()
             .map(
                 account ->
                     List.of(
                         account.accountCode().value(),
                         account.accountName().value(),
+                        account.accountType().wireValue(),
+                        account.accountRole().wireValue(),
                         account.normalBalance().wireValue(),
                         Boolean.toString(account.active()),
                         account.declaredAt().toString()))

@@ -49,12 +49,12 @@ class CliReadCommonArgumentValidationTest extends CliArgumentParsingTestSupport 
     assertEquals("invalid-request", accountLedgerException.code());
     assertEquals("--effective-date-from", accountLedgerException.argument());
     assertEquals(
-        "effectiveDateFrom must be on or before effectiveDateTo.",
+        "--effective-date-from must be on or before --effective-date-to.",
         accountLedgerException.getMessage());
     assertEquals("invalid-request", periodSummaryException.code());
     assertEquals("--effective-date-from", periodSummaryException.argument());
     assertEquals(
-        "effectiveDateFrom must be on or before effectiveDateTo.",
+        "--effective-date-from must be on or before --effective-date-to.",
         periodSummaryException.getMessage());
   }
 

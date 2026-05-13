@@ -5,6 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.ArtifactOutputDescriptor;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractDiscovery;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.BookProtectionMode;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
@@ -18,9 +30,19 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.protocol.StorageDriver;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
+import dev.erst.fingrind.contract.runtime.BookFormatContract;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
+import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -201,7 +223,7 @@ class ContractProtocolVocabularyTest {
                 LedgerStepKind.OPEN_BOOK,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "1000", "Cash", NormalBalance.DEBIT),
+                    "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY),
                 null,
                 null,
                 null));

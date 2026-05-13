@@ -1,25 +1,29 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.CapabilitiesDescriptor;
-import dev.erst.fingrind.contract.ContractTemplates;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.HelpDescriptor;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.TrialBalanceResult;
-import dev.erst.fingrind.contract.VersionDescriptor;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -140,6 +144,10 @@ final class CliResponseWriter {
     mutationWriter.writeDeclareAccountResult(result, outputMode);
   }
 
+  void writeClosePeriodResult(ClosePeriodResult result, OutputMode outputMode) {
+    mutationWriter.writeClosePeriodResult(result, outputMode);
+  }
+
   void writeBookInspection(Path bookFilePath, BookInspection inspection) {
     writeBookInspection(bookFilePath, inspection, OutputMode.JSON);
   }
@@ -190,6 +198,18 @@ final class CliResponseWriter {
 
   void writePeriodSummaryResult(PeriodSummaryResult result, OutputMode outputMode) {
     queryWriter.writePeriodSummaryResult(result, outputMode);
+  }
+
+  void writeFinancialPositionResult(FinancialPositionResult result, OutputMode outputMode) {
+    queryWriter.writeFinancialPositionResult(result, outputMode);
+  }
+
+  void writeIncomeStatementResult(IncomeStatementResult result, OutputMode outputMode) {
+    queryWriter.writeIncomeStatementResult(result, outputMode);
+  }
+
+  void writeChangesInEquityResult(ChangesInEquityResult result, OutputMode outputMode) {
+    queryWriter.writeChangesInEquityResult(result, outputMode);
   }
 
   void writeLedgerPlanResult(LedgerPlanResult result) {

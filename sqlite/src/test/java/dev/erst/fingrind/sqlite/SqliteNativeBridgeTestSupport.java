@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.io.IOException;
 import java.io.UncheckedIOException;

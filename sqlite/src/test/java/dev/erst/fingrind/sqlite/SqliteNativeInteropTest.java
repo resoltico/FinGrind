@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
@@ -167,7 +167,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, null, null, null
+                  null, null, null, null, null, null, null, null, null, null, null, null, null
               """)) {
         assertEquals(SqliteNativeResultCodes.ROW, missingPrior.step());
         assertEquals(PostingLineage.direct(), SqlitePostingMapper.readPostingLineage(missingPrior));
@@ -177,7 +177,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, null, null, null
+                  null, null, null, null, null, null, null, null, null, null, null, null, null
               """)) {
         assertEquals(SqliteNativeResultCodes.ROW, missingPriorForWrapper.step());
         assertEquals(
@@ -189,7 +189,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, 'operator reversal', null, 'posting-1'
+                  null, null, null, null, null, null, null, null, null, null, 'operator reversal', null, 'posting-1'
               """)) {
         assertEquals(SqliteNativeResultCodes.ROW, presentPriorPostingId.step());
         assertEquals(
@@ -204,7 +204,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
+                  null, null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
               """)) {
         assertEquals(SqliteNativeResultCodes.ROW, missingReason.step());
         IllegalStateException exception =
@@ -220,7 +220,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  null, null, null, null, null, null, null, null, null, 'operator reversal', null, null
+                  null, null, null, null, null, null, null, null, null, null, 'operator reversal', null, null
               """)) {
         assertEquals(SqliteNativeResultCodes.ROW, missingPriorPostingId.step());
         IllegalStateException exception =
@@ -245,6 +245,7 @@ class SqliteNativeInteropTest {
               """
               select
                   'posting-1',
+                  'STANDARD',
                   '2026-05-05',
                   '2026-05-05T09:15:30Z',
                   'actor-1',

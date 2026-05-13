@@ -105,8 +105,13 @@ class SqliteStoreMutationOperationsTest {
           new SqliteStoreMutationOperations(context, lifecycle);
       SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
       SqliteBookSchemaBootstrap.initializeBook(lifecycle.database());
+      SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
       SqliteMutationWriter.insertInitializedAt(
           lifecycle.database(), Instant.parse("2026-04-29T10:15:30Z"));
+      SqliteAuditEventWriter.insertAuditEvent(
+          lifecycle.database(),
+          dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(
+              Instant.parse("2026-04-29T10:15:30Z")));
       SqliteNativeConnections.rekey(lifecycle.database(), replacementPassphrase);
       SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
       try {
@@ -115,8 +120,65 @@ class SqliteStoreMutationOperationsTest {
                 IllegalStateException.class,
                 () ->
                     operations.publishRekeyedDatabase(
-                        lifecycle.database(), replacementPassphrase, rollbackFile));
+                        lifecycle.database(),
+                        replacementPassphrase,
+                        rollbackFile,
+                        Instant.parse("2026-04-08T10:15:30Z")));
         assertEquals("forced validation failure", failure.getMessage());
+        assertNotNull(context.reopenedDatabase());
+        IllegalStateException closedHandleFailure =
+            assertThrows(IllegalStateException.class, () -> context.reopenedDatabase().handle());
+        assertEquals(
+            "SQLite native database handle is already closed.", closedHandleFailure.getMessage());
+      } finally {
+        rollbackFile.deleteQuietly();
+        assertDoesNotThrow(lifecycle::close);
+      }
+    }
+  }
+
+  @Test
+  void publishRekeyedDatabase_rollsBackAuditInsertionFailuresBeforePublication() {
+    Path bookPath = tempDirectory.resolve("publish-rekeyed-database-audit-failure.sqlite");
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "store mutation audit failure book", "book-key".toCharArray());
+        SqliteBookPassphrase replacementPassphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "store mutation audit failure replacement", "replacement-key".toCharArray())) {
+      AuditFailingStoreContext context =
+          new AuditFailingStoreContext(bookPath, SqliteNativeBootstrap::api);
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, new SqliteSessionSecret(bookPassphrase));
+      SqliteStoreMutationOperations operations =
+          new SqliteStoreMutationOperations(context, lifecycle);
+      SqliteBookSchemaBootstrap.ensureParentDirectory(bookPath);
+      SqliteBookSchemaBootstrap.initializeBook(lifecycle.database());
+      SqliteBookIntegrityVerifier.recordSchemaFingerprint(lifecycle.database());
+      SqliteMutationWriter.insertInitializedAt(
+          lifecycle.database(), Instant.parse("2026-04-29T10:15:30Z"));
+      SqliteAuditEventWriter.insertAuditEvent(
+          lifecycle.database(),
+          dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(
+              Instant.parse("2026-04-29T10:15:30Z")));
+      SqliteNativeConnections.rekey(lifecycle.database(), replacementPassphrase);
+      SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
+      try {
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    operations.publishRekeyedDatabase(
+                        lifecycle.database(),
+                        replacementPassphrase,
+                        rollbackFile,
+                        Instant.parse("2026-04-08T10:15:30Z")));
+        assertEquals("forced audit insert failure", failure.getMessage());
+        assertEquals(
+            0,
+            SqliteStatementQueries.querySingleInt(
+                lifecycle.database(),
+                "select count(*) from audit_event where event_kind = 'BOOK_REKEYED'"));
         assertNotNull(context.reopenedDatabase());
         IllegalStateException closedHandleFailure =
             assertThrows(IllegalStateException.class, () -> context.reopenedDatabase().handle());
@@ -141,6 +203,70 @@ class SqliteStoreMutationOperationsTest {
     @Override
     SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
       reopenedDatabase = super.openConfiguredDatabase(bookPassphrase);
+      return reopenedDatabase;
+    }
+
+    @Override
+    SqliteNativeDatabase openConfiguredDatabaseWithoutRollbackArtifactWarning(
+        SqliteBookPassphrase bookPassphrase) {
+      reopenedDatabase = super.openConfiguredDatabaseWithoutRollbackArtifactWarning(bookPassphrase);
+      return reopenedDatabase;
+    }
+
+    SqliteNativeDatabase reopenedDatabase() {
+      return Objects.requireNonNull(reopenedDatabase, "reopenedDatabase");
+    }
+  }
+
+  /** Test-only context seam that forces the rekey audit insert to fail after reopen. */
+  private static final class AuditFailingStoreContext extends SqliteStoreContext {
+    private int openCount;
+    private @Nullable SqliteNativeDatabase reopenedDatabase;
+
+    AuditFailingStoreContext(
+        Path bookPath, java.util.function.Supplier<SqliteNativeApi> sqliteApiSupplier) {
+      super(bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, sqliteApiSupplier);
+    }
+
+    @Override
+    SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
+      SqliteNativeDatabase delegate = super.openConfiguredDatabase(bookPassphrase);
+      openCount++;
+      if (openCount == 1) {
+        return delegate;
+      }
+      reopenedDatabase =
+          new SqliteStatementRedirectingDatabase(
+              delegate,
+              sql -> {
+                if (SqlitePostingSql.INSERT_AUDIT_EVENT.equals(sql)) {
+                  throw new IllegalStateException("forced audit insert failure");
+                }
+                return delegate.prepare(sql);
+              },
+              delegate::close);
+      return reopenedDatabase;
+    }
+
+    @Override
+    SqliteNativeDatabase openConfiguredDatabaseWithoutRollbackArtifactWarning(
+        SqliteBookPassphrase bookPassphrase) {
+      SqliteNativeDatabase delegate =
+          super.openConfiguredDatabaseWithoutRollbackArtifactWarning(bookPassphrase);
+      openCount++;
+      if (openCount == 1) {
+        return delegate;
+      }
+      reopenedDatabase =
+          new SqliteStatementRedirectingDatabase(
+              delegate,
+              sql -> {
+                if (SqlitePostingSql.INSERT_AUDIT_EVENT.equals(sql)) {
+                  throw new IllegalStateException("forced audit insert failure");
+                }
+                return delegate.prepare(sql);
+              },
+              delegate::close);
       return reopenedDatabase;
     }
 

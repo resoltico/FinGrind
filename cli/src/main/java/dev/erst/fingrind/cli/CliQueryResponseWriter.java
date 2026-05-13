@@ -1,20 +1,23 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessStatus;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -176,6 +179,66 @@ final class CliQueryResponseWriter {
                   outputChannel.writeText(
                       CliQueryOutputRenderer.renderPeriodSummaryCsv(reported.report())));
       case PeriodSummaryResult.Rejected rejected ->
+          outputChannel.writeQueryRejection(
+              outputMode, CliResponsePayloadMapper.queryRejectedEnvelope(rejected.rejection()));
+    }
+  }
+
+  void writeFinancialPositionResult(FinancialPositionResult result, OutputMode outputMode) {
+    switch (result) {
+      case FinancialPositionResult.Reported reported ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          CliResponsePayloadMapper.financialPositionPayload(reported.report()))),
+              () ->
+                  outputChannel.writeText(
+                      CliQueryOutputRenderer.renderFinancialPositionHuman(reported.report())),
+              () ->
+                  outputChannel.writeText(
+                      CliQueryOutputRenderer.renderFinancialPositionCsv(reported.report())));
+      case FinancialPositionResult.Rejected rejected ->
+          outputChannel.writeQueryRejection(
+              outputMode, CliResponsePayloadMapper.queryRejectedEnvelope(rejected.rejection()));
+    }
+  }
+
+  void writeIncomeStatementResult(IncomeStatementResult result, OutputMode outputMode) {
+    switch (result) {
+      case IncomeStatementResult.Reported reported ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          CliResponsePayloadMapper.incomeStatementPayload(reported.report()))),
+              () ->
+                  outputChannel.writeText(
+                      CliQueryOutputRenderer.renderIncomeStatementHuman(reported.report())),
+              () ->
+                  outputChannel.writeText(
+                      CliQueryOutputRenderer.renderIncomeStatementCsv(reported.report())));
+      case IncomeStatementResult.Rejected rejected ->
+          outputChannel.writeQueryRejection(
+              outputMode, CliResponsePayloadMapper.queryRejectedEnvelope(rejected.rejection()));
+    }
+  }
+
+  void writeChangesInEquityResult(ChangesInEquityResult result, OutputMode outputMode) {
+    switch (result) {
+      case ChangesInEquityResult.Reported reported ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliResponsePayloadMapper.successEnvelope(
+                          CliResponsePayloadMapper.changesInEquityPayload(reported.report()))),
+              () ->
+                  outputChannel.writeText(
+                      CliQueryOutputRenderer.renderChangesInEquityHuman(reported.report())),
+              () ->
+                  outputChannel.writeText(
+                      CliQueryOutputRenderer.renderChangesInEquityCsv(reported.report())));
+      case ChangesInEquityResult.Rejected rejected ->
           outputChannel.writeQueryRejection(
               outputMode, CliResponsePayloadMapper.queryRejectedEnvelope(rejected.rejection()));
     }

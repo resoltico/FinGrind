@@ -1,12 +1,3 @@
-[![FinGrind Art](https://raw.githubusercontent.com/resoltico/FinGrind/main/images/FinGrind.png)](https://github.com/resoltico/FinGrind)
-
-[![Release](https://img.shields.io/github/v/release/resoltico/FinGrind?label=release)](https://github.com/resoltico/FinGrind/releases)
-[![CI](https://github.com/resoltico/FinGrind/actions/workflows/ci.yml/badge.svg)](https://github.com/resoltico/FinGrind/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Java 26](https://img.shields.io/badge/java-26-orange.svg)](https://openjdk.org/projects/jdk/26/)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/resoltico/FinGrind/releases)
-[![Encrypted](https://img.shields.io/badge/storage-encrypted%20SQLite-blueviolet.svg)](https://utelle.github.io/SQLite3MultipleCiphers/)
-
 # FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
 
 FinGrind is a command-line bookkeeping tool. Each accounting entity gets one encrypted SQLite
@@ -23,8 +14,6 @@ ever reach the book.
 - Post double-entry journal entries with provenance and idempotency keys
 - Read back account balances, trial balances, account ledgers, and period summaries
 - Export any report as human-readable tables, JSON, CSV, or PDF
-
-[Quick start](docs/USER_QUICK_START.md) · [Command guide](docs/USER_CLI.md)
 
 ## The Daily Grind
 
@@ -57,17 +46,11 @@ Account | Name    | Currency | Debit total | Credit total | Net amount | Balance
 Wrong entries come back as clear errors before they land: unbalanced lines, undeclared accounts,
 duplicate idempotency keys — all rejected at the point where they happen.
 
-## Where It Fits
+## Documentation
 
-Finance-minded owners, small teams, and operators who want explicit bookkeeping without a
-spreadsheet. One book per accounting entity, one tool to post and read back.
+Start with the docs index: [docs/README.md](docs/README.md)
 
-## Get It
-
-[Download for macOS, Linux, or Windows →](https://github.com/resoltico/FinGrind/releases/latest)
-
-The download is self-contained — no separate Java install needed. The
-[quick start](docs/USER_QUICK_START.md) walks from download to first posted entry.
+For deep API and symbol routing, use: [docs/DOC_00_Index.md](docs/DOC_00_Index.md)
 
 ## Legal
 
@@ -75,7 +58,5 @@ FinGrind is MIT-licensed. Its self-contained bundle vendors Jackson and Apache P
 Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers with SQLite (MIT / public domain).
 See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
 patent considerations.
-
-The FinGrind README and first-party project graphics are Copyright (c) 2026 Ervins Strauhmanis.
 
 [LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS)

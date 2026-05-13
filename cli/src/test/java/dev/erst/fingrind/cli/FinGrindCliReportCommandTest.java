@@ -4,11 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -273,6 +276,172 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     assertTrue(Files.exists(balancePdf));
     assertTrue(Files.exists(ledgerPdf));
     assertTrue(Files.exists(summaryPdf));
+  }
+
+  @Test
+  void run_writesPdfArtifactsForPrimaryStatementCommands() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
+    Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
+    Path positionPdf = tempDirectory.resolve("reports").resolve("financial-position.pdf");
+    Path incomePdf = tempDirectory.resolve("reports").resolve("income-statement.pdf");
+    Path equityPdf = tempDirectory.resolve("reports").resolve("changes-in-equity.pdf");
+    CliBookWorkflow workflow =
+        reportingWorkflow(
+            new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
+            new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new FinancialPositionResult.Reported(sampleFinancialPositionReport()),
+            new IncomeStatementResult.Reported(sampleIncomeStatementReport()),
+            new ChangesInEquityResult.Reported(sampleChangesInEquityReport()));
+
+    int positionExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                workflow)
+            .run(
+                new String[] {
+                  "financial-position",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  positionPdf.toString()
+                });
+    int incomeExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                workflow)
+            .run(
+                new String[] {
+                  "income-statement",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  incomePdf.toString()
+                });
+    int equityExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                workflow)
+            .run(
+                new String[] {
+                  "changes-in-equity",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  equityPdf.toString()
+                });
+
+    assertEquals(0, positionExitCode);
+    assertEquals(0, incomeExitCode);
+    assertEquals(0, equityExitCode);
+    assertTrue(Files.exists(positionPdf));
+    assertTrue(Files.exists(incomePdf));
+    assertTrue(Files.exists(equityPdf));
+  }
+
+  @Test
+  void run_skipsPdfArtifactsForRejectedPrimaryStatementCommands() {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
+    Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
+    Path positionPdf = tempDirectory.resolve("reports").resolve("financial-position.pdf");
+    Path incomePdf = tempDirectory.resolve("reports").resolve("income-statement.pdf");
+    Path equityPdf = tempDirectory.resolve("reports").resolve("changes-in-equity.pdf");
+    CliBookWorkflow rejectedWorkflow =
+        reportingWorkflow(
+            new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
+            new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new FinancialPositionResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new IncomeStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new ChangesInEquityResult.Rejected(new BookQueryRejection.BookNotInitialized()));
+
+    int positionExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                rejectedWorkflow)
+            .run(
+                new String[] {
+                  "financial-position",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--pdf-out",
+                  positionPdf.toString()
+                });
+    int incomeExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                rejectedWorkflow)
+            .run(
+                new String[] {
+                  "income-statement",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  incomePdf.toString()
+                });
+    int equityExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                rejectedWorkflow)
+            .run(
+                new String[] {
+                  "changes-in-equity",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--pdf-out",
+                  equityPdf.toString()
+                });
+
+    assertEquals(2, positionExitCode);
+    assertEquals(2, incomeExitCode);
+    assertEquals(2, equityExitCode);
+    assertFalse(Files.exists(positionPdf));
+    assertFalse(Files.exists(incomePdf));
+    assertFalse(Files.exists(equityPdf));
   }
 
   @Test

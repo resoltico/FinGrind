@@ -19,6 +19,56 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
   private static final MethodHandle SHA256_HEX = verifierHelper("sha256Hex");
 
   @Test
+  void integrityAndForeignKeyChecks_acceptHealthyInitializedBooks() {
+    Path bookPath = tempDirectory.resolve("integrity-healthy.sqlite");
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          assertTrue(SqliteBookIntegrityVerifier.passesIntegrityCheck(database));
+          assertTrue(SqliteBookIntegrityVerifier.passesForeignKeyCheck(database));
+        });
+  }
+
+  @Test
+  void integrityCheck_requiresExactlyOneOkRow() {
+    Path bookPath = tempDirectory.resolve("integrity-check-row-shapes.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteStatementRedirectingDatabase noRowDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  database,
+                  sql ->
+                      database.prepare(
+                          SqlitePostingSql.PRAGMA_INTEGRITY_CHECK.equals(sql)
+                              ? "select value from (select 'ok' as value) where 0"
+                              : sql));
+          assertFalse(SqliteBookIntegrityVerifier.passesIntegrityCheck(noRowDatabase));
+
+          SqliteStatementRedirectingDatabase nonOkDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  database,
+                  sql ->
+                      database.prepare(
+                          SqlitePostingSql.PRAGMA_INTEGRITY_CHECK.equals(sql)
+                              ? "select 'corrupt' as value"
+                              : sql));
+          assertFalse(SqliteBookIntegrityVerifier.passesIntegrityCheck(nonOkDatabase));
+
+          SqliteStatementRedirectingDatabase extraRowDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  database,
+                  sql ->
+                      database.prepare(
+                          SqlitePostingSql.PRAGMA_INTEGRITY_CHECK.equals(sql)
+                              ? "select 'ok' as value union all select 'ok'"
+                              : sql));
+          assertFalse(SqliteBookIntegrityVerifier.passesIntegrityCheck(extraRowDatabase));
+        });
+  }
+
+  @Test
   void recordedSchemaFingerprint_requiresPresenceAndMatchingValue() {
     Path bookPath = tempDirectory.resolve("recorded-schema-fingerprint.sqlite");
     initializeBookOnDisk(bookPath);
@@ -41,7 +91,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
   }
 
   @Test
-  void balancedPersistedJournal_rejectsMissingAndUnbalancedJournalLines() {
+  void balancedPersistedJournal_rejectsMissingAndMalformedJournalShapes() {
     Path missingLinesPath = tempDirectory.resolve("persisted-journal-missing-lines.sqlite");
     initializeBookOnDisk(missingLinesPath);
     withStandaloneDatabase(
@@ -51,15 +101,34 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           assertFalse(SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(database));
         });
 
-    Path unbalancedPath = tempDirectory.resolve("persisted-journal-unbalanced.sqlite");
-    initializeBookOnDisk(unbalancedPath);
-    withStandaloneDatabase(
-        bookAccess(unbalancedPath),
+    assertRejectedPersistedJournal(
+        "persisted-journal-only-debit.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-only-debit", "idem-only-debit");
+          insertJournalLineRow(database, "posting-only-debit", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-only-debit", 1, "2000", "DEBIT", "EUR", 1000);
+        });
+    assertRejectedPersistedJournal(
+        "persisted-journal-only-credit.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-only-credit", "idem-only-credit");
+          insertJournalLineRow(database, "posting-only-credit", 0, "1000", "CREDIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-only-credit", 1, "2000", "CREDIT", "EUR", 1000);
+        });
+    assertRejectedPersistedJournal(
+        "persisted-journal-mixed-currency.sqlite",
+        database -> {
+          insertPostingFactRow(database, "posting-mixed-currency", "idem-mixed-currency");
+          insertJournalLineRow(database, "posting-mixed-currency", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(
+              database, "posting-mixed-currency", 1, "2000", "CREDIT", "USD", 1000);
+        });
+    assertRejectedPersistedJournal(
+        "persisted-journal-unbalanced.sqlite",
         database -> {
           insertPostingFactRow(database, "posting-unbalanced", "idem-unbalanced");
           insertJournalLineRow(database, "posting-unbalanced", 0, "1000", "DEBIT", "EUR", 1000);
           insertJournalLineRow(database, "posting-unbalanced", 1, "2000", "CREDIT", "EUR", 900);
-          assertFalse(SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(database));
         });
   }
 
@@ -106,7 +175,10 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   IllegalStateException.class,
                   () -> SqliteBookIntegrityVerifier.liveSchemaFingerprint(database));
           assertEquals(
-              "SQLite canonical schema fingerprint expected 8 objects but found 7.",
+              "SQLite canonical schema fingerprint expected %d objects but found %d."
+                  .formatted(
+                      SqlitePostingSql.EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT,
+                      SqlitePostingSql.EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT - 1),
               exception.getMessage());
         });
   }
@@ -165,5 +237,17 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
     for (int index = 0; index < providers.length; index++) {
       Security.insertProviderAt(providers[index], index + 1);
     }
+  }
+
+  private void assertRejectedPersistedJournal(
+      String filename, SqliteDatabaseAction corruptionAction) {
+    Path bookPath = tempDirectory.resolve(filename);
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          corruptionAction.run(database);
+          assertFalse(SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(database));
+        });
   }
 }

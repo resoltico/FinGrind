@@ -23,6 +23,8 @@ public enum OperationId implements WireValue {
   REKEY_BOOK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
+  /** Closes one contiguous reporting period into retained earnings. */
+  CLOSE_PERIOD,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,
   /** Lists the declared account registry. */
@@ -39,6 +41,12 @@ public enum OperationId implements WireValue {
   ACCOUNT_LEDGER,
   /** Computes the bounded period summary for one book. */
   PERIOD_SUMMARY,
+  /** Computes one statement of financial position. */
+  FINANCIAL_POSITION,
+  /** Computes one bounded income statement. */
+  INCOME_STATEMENT,
+  /** Computes one bounded statement of changes in equity. */
+  CHANGES_IN_EQUITY,
   /** Executes one ordered AI-agent ledger plan transaction. */
   EXECUTE_PLAN,
   /** Validates one posting request without committing it. */

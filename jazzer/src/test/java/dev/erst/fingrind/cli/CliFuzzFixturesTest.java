@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -22,6 +24,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -35,6 +39,7 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -97,6 +102,17 @@ class CliFuzzFixturesTest {
   }
 
   @Test
+  void synthetic_posting_account_commands_never_reserve_retained_earnings() {
+    var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
+
+    assertTrue(
+        CliFuzzFixtures.declarePostingAccountCommands(command).stream()
+            .noneMatch(
+                declareAccountCommand ->
+                    declareAccountCommand.accountRole() == AccountRole.RETAINED_EARNINGS));
+  }
+
+  @Test
   void lifecycle_helpers_reject_uninitialized_service_states() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService administrationService =
@@ -106,7 +122,8 @@ class CliFuzzFixturesTest {
           new DeclaredAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
-              NormalBalance.DEBIT,
+              AccountType.ASSET,
+              AccountRole.ORDINARY,
               false,
               CliFuzzFixtures.fixedClock().instant());
 
@@ -126,7 +143,8 @@ class CliFuzzFixturesTest {
         new DeclaredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
-            NormalBalance.DEBIT,
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
             false,
             CliFuzzFixtures.fixedClock().instant());
 
@@ -146,11 +164,12 @@ class CliFuzzFixturesTest {
               public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
                   AccountName accountName,
-                  NormalBalance normalBalance,
+                  AccountType accountType,
+                  AccountRole accountRole,
                   Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
-                        accountCode, accountName, normalBalance, false, declaredAt));
+                        accountCode, accountName, accountType, accountRole, false, declaredAt));
               }
             },
             CliFuzzFixtures.fixedClock());
@@ -161,11 +180,17 @@ class CliFuzzFixturesTest {
               public AccountDeclarationOutcome declareAccount(
                   AccountCode accountCode,
                   AccountName accountName,
-                  NormalBalance normalBalance,
+                  AccountType accountType,
+                  AccountRole accountRole,
                   Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
-                        accountCode, accountName, normalBalance, true, declaredAt.plusSeconds(1)));
+                        accountCode,
+                        accountName,
+                        accountType,
+                        accountRole,
+                        true,
+                        declaredAt.plusSeconds(1)));
               }
             },
             CliFuzzFixtures.fixedClock());
@@ -186,14 +211,16 @@ class CliFuzzFixturesTest {
         new DeclaredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
-            NormalBalance.DEBIT,
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
             true,
             CliFuzzFixtures.fixedClock().instant());
     DeclaredAccount secondAccount =
         new DeclaredAccount(
             new AccountCode("2000"),
             new AccountName("Revenue"),
-            NormalBalance.CREDIT,
+            AccountType.REVENUE,
+            AccountRole.ORDINARY,
             true,
             CliFuzzFixtures.fixedClock().instant());
     AccountRegistryCursor nextCursor = new AccountRegistryCursor(firstAccount.accountCode());
@@ -234,7 +261,8 @@ class CliFuzzFixturesTest {
     public AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
-        NormalBalance normalBalance,
+        AccountType accountType,
+        AccountRole accountRole,
         Instant declaredAt) {
       throw new UnsupportedOperationException("not used");
     }
@@ -263,6 +291,26 @@ class CliFuzzFixturesTest {
     @Override
     public Optional<CommittedPosting> findReversalFor(
         dev.erst.fingrind.core.PostingId priorPostingId) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public List<RegisteredAccount> allAccounts() {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
       throw new UnsupportedOperationException("not used");
     }
 
@@ -301,13 +349,20 @@ class CliFuzzFixturesTest {
         PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       throw new UnsupportedOperationException("not used");
     }
+
+    @Override
+    public PeriodCloseOutcome closePeriod(
+        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+      throw new UnsupportedOperationException("not used");
+    }
   }
 
   private static RegisteredAccount toRegisteredAccount(DeclaredAccount account) {
     return new RegisteredAccount(
         account.accountCode(),
         account.accountName(),
-        account.normalBalance(),
+        account.accountType(),
+        account.accountRole(),
         account.active(),
         account.declaredAt());
   }

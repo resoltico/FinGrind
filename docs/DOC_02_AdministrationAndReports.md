@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
-  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary]
-  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented"]
+  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, close-period, financial-position, income-statement, changes-in-equity]
+  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is close-period documented", "where are the primary statement models documented"]
 ---
 
 # Administration, Query, And Report Reference
@@ -22,10 +22,11 @@ public final class BookAdministrationService
 ```
 
 - Constructor: requires `BookStore` and `Clock`
-- Surface: `openBook()` and `declareAccount(AccountDeclaration)`
+- Surface: `openBook()`, `declareAccount(AccountDeclaration)`, and
+  `closePeriod(ReportingPeriod)`
 - Policy: stamps lifecycle timestamps from the application clock
 - Boundary: the service operates after the public `DeclareAccountCommand` has crossed the
-  bookkeeping translator edge and become one local `AccountDeclaration`
+  bookkeeping translator edge and become one local `AccountDeclaration` or `ReportingPeriod`
 
 ## `BookReadService`
 
@@ -38,7 +39,8 @@ public final class BookReadService
 
 - Constructor: requires `BookStore`
 - Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`,
-  `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`
+  `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`,
+  `financialPosition(...)`, `incomeStatement(...)`, and `changesInEquity(...)`
 - Boundary: this is the anti-corruption layer between public read/report DTOs and the local
   bookkeeping inspection/query/report model served by one selected `BookStore`
 - Translators: the exported `BookInspectionPublishedLanguageTranslator` in the `executor` package
@@ -61,7 +63,8 @@ public sealed interface BookkeepingLookupOutcome<T>
 - Constructor: requires `BookStore`
 - Surface: `inspectBook()`, `findAccount(...)`, `findPosting(...)`, `listAccounts(...)`,
   `getPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`,
-  `accountLedger(...)`, `periodSummary(...)`
+  `accountLedger(...)`, `periodSummary(...)`, `financialPosition(...)`,
+  `incomeStatement(...)`, and `changesInEquity(...)`
 - Lookup variants: `Found`, `Missing`, `Rejected`
 - Boundary: this service stays inside the bookkeeping context and returns only local lifecycle,
   lookup, query-rejection, and report-view outcomes
@@ -74,10 +77,12 @@ public sealed interface BookkeepingLookupOutcome<T>
 public record DeclareAccountCommand(
     AccountCode accountCode,
     AccountName accountName,
-    NormalBalance normalBalance)
+    AccountType accountType,
+    AccountRole accountRole)
 ```
 
-- Purpose: keep account-registry writes typed at the contract boundary
+- Purpose: keep account-registry writes typed at the contract boundary, including explicit chart
+  classification and doctrinal role
 
 ## `DeclaredAccount`
 
@@ -88,12 +93,33 @@ read/report surfaces.
 public record DeclaredAccount(
     AccountCode accountCode,
     AccountName accountName,
-    NormalBalance normalBalance,
+    AccountType accountType,
+    AccountRole accountRole,
     boolean active,
     Instant declaredAt)
 ```
 
-- Purpose: represent one declared account independently of CLI or SQLite concerns
+- Purpose: represent one declared account independently of CLI or SQLite concerns, including its
+  immutable account classification and doctrinal role
+- Derived fact: `normalBalance()` remains part of the public response surface, but it is derived
+  from `accountType` plus `accountRole` through `AccountSemantics`
+
+## `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod`
+
+These types own the public period-close administration surface.
+
+```java
+public record ClosePeriodCommand(ReportingPeriod reportingPeriod)
+public sealed interface ClosePeriodResult
+public record ClosedPeriod(...)
+```
+
+- Purpose: request and describe one contiguous reporting-period close that writes generated
+  retained-earnings postings
+- Result variants: `Closed`, `Rejected`
+- Durable fact: `ClosedPeriod` carries `closeOrder`, the inclusive `ReportingPeriod`, the
+  retained-earnings account code used for the close, the per-currency closed totals moved into
+  equity, the close timestamp, and every generated closing posting id
 
 ## `OpenBookResult`
 
@@ -349,6 +375,116 @@ public sealed interface PeriodSummaryResult
 - Purpose: request and carry bounded posting counts, currency totals, and flattened account activity
 - Result variants: `Reported`, `Rejected`
 
+## `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult`
+
+These types own the public statement-of-financial-position surface.
+
+```java
+public record FinancialPositionQuery(Optional<LocalDate> effectiveDateTo)
+public record FinancialPositionRow(...)
+public record FinancialPositionSection(...)
+public record FinancialPositionReport(...)
+public sealed interface FinancialPositionResult
+```
+
+- Purpose: request and carry an as-of statement of financial position grouped by account type
+- Result variants: `Reported`, `Rejected`
+- Row semantics: rows may be synthetic where FinGrind derives current earnings into equity for the
+  as-of view
+
+## `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult`
+
+These types own the public bounded income-statement surface.
+
+```java
+public record IncomeStatementQuery(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record IncomeStatementRow(...)
+public record IncomeStatementSection(...)
+public record IncomeStatementReport(...)
+public sealed interface IncomeStatementResult
+```
+
+- Purpose: request and carry one bounded income statement grouped by nominal account type
+- Result variants: `Reported`, `Rejected`
+- Totals: the report includes per-section totals plus book-wide `netIncomeTotals`
+
+## `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult`
+
+These types own the public bounded statement-of-changes-in-equity surface.
+
+```java
+public record ChangesInEquityQuery(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record ChangesInEquityRow(...)
+public record ChangesInEquityReport(...)
+public sealed interface ChangesInEquityResult
+```
+
+- Purpose: request and carry opening, movement, and closing equity balances for one bounded period
+- Result variants: `Reported`, `Rejected`
+- Row semantics: rows may be synthetic where current earnings are projected as one equity movement
+
+## `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView`
+
+These executor-owned local bookkeeping types carry the as-of financial-position model before it is
+projected into public DTOs.
+
+```java
+public record FinancialPositionCriteria(Optional<LocalDate> effectiveDateTo)
+public record FinancialPositionRowView(...)
+public record FinancialPositionSectionView(...)
+public record FinancialPositionView(...)
+```
+
+- Purpose: keep report-shaping semantics local to bookkeeping until the published-language
+  translator renders them outward
+
+## `IncomeStatementCriteria`, `IncomeStatementRowView`, `IncomeStatementSectionView`, And `IncomeStatementView`
+
+These executor-owned local bookkeeping types carry the bounded income-statement model before it is
+projected into public DTOs.
+
+```java
+public record IncomeStatementCriteria(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record IncomeStatementRowView(...)
+public record IncomeStatementSectionView(...)
+public record IncomeStatementView(...)
+```
+
+- Purpose: keep nominal-account movement shaping local to bookkeeping until the published-language
+  translator renders it into public report DTOs
+
+## `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView`
+
+These executor-owned local bookkeeping types carry the bounded changes-in-equity model before it
+is projected into public DTOs.
+
+```java
+public record ChangesInEquityCriteria(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record ChangesInEquityRowView(...)
+public record ChangesInEquityView(...)
+```
+
+- Purpose: keep equity opening/movement/closing shaping local to bookkeeping until the
+  published-language translator renders it into public report DTOs
+
+## `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService`
+
+These executor-owned local bookkeeping types own period-close generation and durable close
+semantics before the public administration surface is projected.
+
+```java
+public record PeriodCloseDraft(...)
+public sealed interface PeriodCloseOutcome
+public final class PeriodCloseService
+```
+
+- `PeriodCloseDraft`: store-ready close payload containing the reporting period, the close time,
+  and every generated posting draft
+- `PeriodCloseOutcome`: closed family of accepted-versus-rejected local close outcomes
+- `PeriodCloseService`: application service that validates retained-earnings configuration,
+  allows the first close to begin before the earliest posting date, enforces strict day-after
+  contiguity once one close is recorded, and generates `PostingKind.PERIOD_CLOSE` postings
+
 ## `BookAdministrationRejection`
 
 `BookAdministrationRejection` is the closed family of deterministic lifecycle and account-registry
@@ -359,7 +495,8 @@ public sealed interface BookAdministrationRejection
 ```
 
 - Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`,
-  `NormalBalanceConflict`
+  `AccountRoleConflict`, `RetainedEarningsAccountMissing`,
+  `RetainedEarningsAccountInactive`, `PeriodCloseMustStartAt`
 
 ## `BookQueryRejection`
 

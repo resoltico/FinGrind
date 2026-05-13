@@ -130,6 +130,72 @@ class CliReportArgumentParsingTest {
                   "--effective-date-to",
                   "2026-04-30"
                 }));
+    FinancialPosition defaultFinancialPosition =
+        assertInstanceOf(
+            FinancialPosition.class,
+            CliArguments.parse(
+                new String[] {
+                  "financial-position",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString()
+                }));
+    FinancialPosition financialPosition =
+        assertInstanceOf(
+            FinancialPosition.class,
+            CliArguments.parse(
+                new String[] {
+                  "financial-position",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--output",
+                  "human",
+                  "--pdf-out",
+                  "reports/position.pdf"
+                }));
+    IncomeStatement incomeStatement =
+        assertInstanceOf(
+            IncomeStatement.class,
+            CliArguments.parse(
+                new String[] {
+                  "income-statement",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--output",
+                  "csv",
+                  "--pdf-out",
+                  "reports/income.pdf"
+                }));
+    ChangesInEquity changesInEquity =
+        assertInstanceOf(
+            ChangesInEquity.class,
+            CliArguments.parse(
+                new String[] {
+                  "changes-in-equity",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--effective-date-from",
+                  "2026-04-01",
+                  "--effective-date-to",
+                  "2026-04-30",
+                  "--output",
+                  "human",
+                  "--pdf-out",
+                  "reports/equity.pdf"
+                }));
     assertEquals(OutputMode.JSON, defaultInspectBook.outputMode());
     assertEquals(OutputMode.HUMAN, inspectBook.outputMode());
     assertEquals(OutputMode.JSON, defaultTrialBalance.output().outputMode());
@@ -140,6 +206,13 @@ class CliReportArgumentParsingTest {
         Optional.of(LocalDate.parse("2026-04-01")), accountLedger.query().effectiveDateFrom());
     assertEquals(OutputMode.JSON, defaultPeriodSummary.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-30"), periodSummary.query().effectiveDateTo());
+    assertEquals(OutputMode.JSON, defaultFinancialPosition.output().outputMode());
+    assertEquals(
+        Optional.of(LocalDate.parse("2026-04-30")), financialPosition.query().effectiveDateTo());
+    assertEquals(OutputMode.CSV, incomeStatement.output().outputMode());
+    assertEquals(LocalDate.parse("2026-04-01"), incomeStatement.query().effectiveDateFrom());
+    assertEquals(OutputMode.HUMAN, changesInEquity.output().outputMode());
+    assertEquals(LocalDate.parse("2026-04-30"), changesInEquity.query().effectiveDateTo());
   }
 
   @Test
@@ -424,6 +497,60 @@ class CliReportArgumentParsingTest {
             CliArguments.parse(
                 new String[] {
                   "period-summary",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--effective-date-to",
+                  "2026-04-30"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "financial-position",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--output",
+                  "pdf"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "income-statement",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--effective-date-from",
+                  "2026-04-01"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "income-statement",
+                  "--book-file",
+                  bookFile.toString(),
+                  "--book-key-file",
+                  keyFile.toString(),
+                  "--effective-date-from",
+                  "2026-04-30",
+                  "--effective-date-to",
+                  "2026-04-01"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "changes-in-equity",
                   "--book-file",
                   bookFile.toString(),
                   "--book-key-file",

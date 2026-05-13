@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

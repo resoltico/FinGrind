@@ -8,6 +8,8 @@ import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;

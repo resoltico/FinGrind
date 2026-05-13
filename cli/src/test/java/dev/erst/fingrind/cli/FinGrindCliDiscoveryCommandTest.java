@@ -5,24 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.RequestFieldPresence;
-import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -192,7 +189,7 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
     assertTrue(json.contains("\"administration-book-not-initialized\""));
     assertTrue(json.contains("\"query-book-not-initialized\""));
     assertTrue(json.contains("\"posting-book-not-initialized\""));
-    assertTrue(json.contains("\"account-normal-balance-conflict\""));
+    assertTrue(json.contains("\"account-role-conflict\""));
     assertTrue(json.contains("\"posting-not-found\""));
     assertCapabilitiesCommandCatalog(payload);
     assertCapabilitiesRequestShapes(payload);
@@ -309,7 +306,8 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
 
   private static void assertCapabilitiesCommandCatalog(JsonNode payload) {
     assertEquals(
-        List.of("generate-book-key-file", "open-book", "rekey-book", "declare-account"),
+        List.of(
+            "generate-book-key-file", "open-book", "rekey-book", "declare-account", "close-period"),
         commandNames(payload.path("commands").path("administration")));
     assertEquals(
         List.of(
@@ -320,7 +318,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             "account-balance",
             "trial-balance",
             "account-ledger",
-            "period-summary"),
+            "period-summary",
+            "financial-position",
+            "income-statement",
+            "changes-in-equity"),
         commandNames(payload.path("commands").path("query")));
     assertEquals(
         "[\"json\",\"human\"]",
@@ -767,9 +768,10 @@ class FinGrindCliDiscoveryCommandTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),

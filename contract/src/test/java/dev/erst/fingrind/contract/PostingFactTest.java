@@ -4,6 +4,8 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -16,6 +18,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import java.time.Instant;
@@ -33,6 +36,7 @@ class PostingFactTest {
             new PostingId("posting-1"),
             journalEntry(),
             PostingLineage.direct(),
+            PostingKind.STANDARD,
             provenance("idem-1"));
     assertEquals("posting-1", postingFact.postingId().value());
   }
@@ -43,7 +47,11 @@ class PostingFactTest {
         NullPointerException.class,
         () ->
             new PostingFact(
-                nullOf(), journalEntry(), PostingLineage.direct(), provenance("idem-1")));
+                nullOf(),
+                journalEntry(),
+                PostingLineage.direct(),
+                PostingKind.STANDARD,
+                provenance("idem-1")));
   }
 
   @Test
@@ -52,7 +60,11 @@ class PostingFactTest {
         NullPointerException.class,
         () ->
             new PostingFact(
-                new PostingId("posting-1"), journalEntry(), nullOf(), provenance("idem-1")));
+                new PostingId("posting-1"),
+                journalEntry(),
+                nullOf(),
+                PostingKind.STANDARD,
+                provenance("idem-1")));
   }
 
   private static JournalEntry journalEntry() {

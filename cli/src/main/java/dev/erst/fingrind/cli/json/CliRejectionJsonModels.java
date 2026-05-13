@@ -12,8 +12,12 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
   /** Sealed marker for machine-readable CLI rejection detail payloads. */
   sealed interface RejectionDetails
       permits AccountStateViolationsDetails,
+          AccountTypeConflictDetails,
           PriorPostingDetails,
-          NormalBalanceConflictDetails,
+          AccountRoleConflictDetails,
+          RetainedEarningsAccountDetails,
+          PeriodCloseStartDetails,
+          ClosedPeriodViolationDetails,
           UnknownAccountDetails,
           PostingNotFoundDetails,
           PlanRejectionDetails {}
@@ -41,13 +45,46 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record NormalBalanceConflictDetails(
-      String accountCode, String existingNormalBalance, String requestedNormalBalance)
+  record AccountRoleConflictDetails(
+      String accountCode, String existingAccountRole, String requestedAccountRole)
       implements RejectionDetails {
-    public NormalBalanceConflictDetails {
+    public AccountRoleConflictDetails {
       accountCode = requireText(accountCode, "accountCode");
-      existingNormalBalance = requireText(existingNormalBalance, "existingNormalBalance");
-      requestedNormalBalance = requireText(requestedNormalBalance, "requestedNormalBalance");
+      existingAccountRole = requireText(existingAccountRole, "existingAccountRole");
+      requestedAccountRole = requireText(requestedAccountRole, "requestedAccountRole");
+    }
+  }
+
+  record AccountTypeConflictDetails(
+      String accountCode, String existingAccountType, String requestedAccountType)
+      implements RejectionDetails {
+    public AccountTypeConflictDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      existingAccountType = requireText(existingAccountType, "existingAccountType");
+      requestedAccountType = requireText(requestedAccountType, "requestedAccountType");
+    }
+  }
+
+  record RetainedEarningsAccountDetails(String accountCode) implements RejectionDetails {
+    public RetainedEarningsAccountDetails {
+      accountCode = requireText(accountCode, "accountCode");
+    }
+  }
+
+  record PeriodCloseStartDetails(String requiredEffectiveDateFrom) implements RejectionDetails {
+    public PeriodCloseStartDetails {
+      requiredEffectiveDateFrom =
+          requireText(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
+    }
+  }
+
+  record ClosedPeriodViolationDetails(
+      String closedThroughEffectiveDate, String attemptedEffectiveDate)
+      implements RejectionDetails {
+    public ClosedPeriodViolationDetails {
+      closedThroughEffectiveDate =
+          requireText(closedThroughEffectiveDate, "closedThroughEffectiveDate");
+      attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");
     }
   }
 

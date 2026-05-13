@@ -11,8 +11,8 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.re
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;

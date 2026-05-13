@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanId;
-import dev.erst.fingrind.contract.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.executor.spi.AtomicBookStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionResult;

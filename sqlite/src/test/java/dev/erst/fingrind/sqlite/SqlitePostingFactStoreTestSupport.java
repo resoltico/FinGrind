@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -58,7 +58,10 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
       SqlitePostingFactStore postingFactStore, CommittedPosting postingFact) {
     return postingFactStore.commit(
         new PostingDraft(
-            postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
+            postingFact.journalEntry(),
+            postingFact.postingLineage(),
+            postingFact.postingKind(),
+            postingFact.provenance()),
         postingFact::postingId);
   }
 }

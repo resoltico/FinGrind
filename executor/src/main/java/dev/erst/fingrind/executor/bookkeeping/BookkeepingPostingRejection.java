@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -10,6 +11,8 @@ public sealed interface BookkeepingPostingRejection
     permits BookkeepingPostingRejection.BookNotInitialized,
         BookkeepingPostingRejection.AccountStateViolations,
         BookkeepingPostingRejection.DuplicateIdempotencyKey,
+        BookkeepingPostingRejection.ClosedPeriodViolation,
+        BookkeepingPostingRejection.RetainedEarningsAccountReserved,
         BookkeepingPostingRejection.ReversalTargetNotFound,
         BookkeepingPostingRejection.ReversalAlreadyExists,
         BookkeepingPostingRejection.ReversalDoesNotNegateTarget {
@@ -50,6 +53,24 @@ public sealed interface BookkeepingPostingRejection
 
   /** Duplicate idempotency refusal for a book-local request identity that already exists. */
   record DuplicateIdempotencyKey() implements BookkeepingPostingRejection {}
+
+  /** Refusal for a posting request whose effective date falls inside one closed period. */
+  record ClosedPeriodViolation(
+      LocalDate closedThroughEffectiveDate, LocalDate attemptedEffectiveDate)
+      implements BookkeepingPostingRejection {
+    public ClosedPeriodViolation {
+      Objects.requireNonNull(closedThroughEffectiveDate, "closedThroughEffectiveDate");
+      Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
+    }
+  }
+
+  /** Refusal for one direct posting that attempts to use the retained-earnings account. */
+  record RetainedEarningsAccountReserved(AccountCode accountCode)
+      implements BookkeepingPostingRejection {
+    public RetainedEarningsAccountReserved {
+      Objects.requireNonNull(accountCode, "accountCode");
+    }
+  }
 
   /** Refusal for a reversal whose referenced prior posting does not exist in this book. */
   record ReversalTargetNotFound(PostingId priorPostingId) implements BookkeepingPostingRejection {

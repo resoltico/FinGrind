@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractFailure;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
 

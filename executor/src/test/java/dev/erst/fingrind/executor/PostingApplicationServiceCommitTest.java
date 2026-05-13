@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
@@ -13,10 +14,11 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.re
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -144,9 +146,10 @@ class PostingApplicationServiceCommitTest {
           @Override
           public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
             return Optional.of(
-                new RegisteredAccount(
+                registeredAccount(
                     accountCode,
                     new AccountName("Synthetic"),
+                    "1000".equals(accountCode.value()) ? AccountType.ASSET : AccountType.REVENUE,
                     "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
                     true,
                     FIXED_CLOCK.instant()));

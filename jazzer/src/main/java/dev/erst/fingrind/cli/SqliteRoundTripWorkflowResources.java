@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;

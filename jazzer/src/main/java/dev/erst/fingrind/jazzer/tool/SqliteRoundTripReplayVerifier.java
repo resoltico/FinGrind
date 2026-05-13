@@ -1,12 +1,12 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import java.util.Optional;
 
 /** Shared invariant checks for SQLite round-trip replay. */

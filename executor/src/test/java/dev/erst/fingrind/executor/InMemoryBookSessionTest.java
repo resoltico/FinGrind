@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -23,6 +27,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -87,7 +92,8 @@ class InMemoryBookSessionTest {
           bookSession.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
-              NormalBalance.DEBIT,
+              AccountType.ASSET,
+              accountRole(AccountType.ASSET, NormalBalance.DEBIT),
               FIXED_INSTANT));
     }
   }
@@ -99,13 +105,18 @@ class InMemoryBookSessionTest {
 
       AccountDeclarationOutcome result =
           bookSession.declareAccount(
-              new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.ASSET,
+              accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+              FIXED_INSTANT);
 
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   FIXED_INSTANT)),
@@ -113,9 +124,10 @@ class InMemoryBookSessionTest {
       assertEquals(
           new AccountRegistryPage(
               List.of(
-                  new RegisteredAccount(
+                  registeredAccount(
                       new AccountCode("1000"),
                       new AccountName("Cash"),
+                      AccountType.ASSET,
                       NormalBalance.DEBIT,
                       true,
                       FIXED_INSTANT)),
@@ -131,18 +143,24 @@ class InMemoryBookSessionTest {
       bookSession.openBook(FIXED_INSTANT);
       RegisteredAccount cash =
           declareAccount(
-              bookSession, new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT);
+              bookSession,
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT);
       RegisteredAccount revenue =
           declareAccount(
               bookSession,
               new AccountCode("2000"),
               new AccountName("Revenue"),
+              AccountType.REVENUE,
               NormalBalance.CREDIT);
       RegisteredAccount receivable =
           declareAccount(
               bookSession,
               new AccountCode("3000"),
               new AccountName("Receivable"),
+              AccountType.ASSET,
               NormalBalance.DEBIT);
 
       AccountRegistryPage firstPage =
@@ -165,21 +183,27 @@ class InMemoryBookSessionTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT);
       bookSession.declareAccount(
-          new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+          new AccountCode("1000"),
+          new AccountName("Cash"),
+          AccountType.ASSET,
+          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          FIXED_INSTANT);
       bookSession.deactivateAccount(new AccountCode("1000"));
 
       AccountDeclarationOutcome result =
           bookSession.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash main"),
-              NormalBalance.DEBIT,
+              AccountType.ASSET,
+              accountRole(AccountType.ASSET, NormalBalance.DEBIT),
               Instant.parse("2026-04-08T11:00:00Z"));
 
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
+                  AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-08T11:00:00Z"))),
@@ -188,23 +212,28 @@ class InMemoryBookSessionTest {
   }
 
   @Test
-  void declareAccount_rejectsNormalBalanceConflict() {
+  void declareAccount_rejectsAccountRoleConflict() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT);
       bookSession.declareAccount(
-          new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+          new AccountCode("1000"),
+          new AccountName("Cash"),
+          AccountType.ASSET,
+          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+          FIXED_INSTANT);
 
       AccountDeclarationOutcome result =
           bookSession.declareAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
-              NormalBalance.CREDIT,
+              AccountType.ASSET,
+              accountRole(AccountType.ASSET, NormalBalance.CREDIT),
               FIXED_INSTANT);
 
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookkeepingAdministrationRejection.NormalBalanceConflict(
-                  new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
+              new BookkeepingAdministrationRejection.AccountRoleConflict(
+                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA)),
           result);
     }
   }
@@ -286,7 +315,11 @@ class InMemoryBookSessionTest {
       bookSession.openBook(FIXED_INSTANT);
       declareDefaultAccounts(bookSession);
       declareAccount(
-          bookSession, new AccountCode("3000"), new AccountName("Bank"), NormalBalance.DEBIT);
+          bookSession,
+          new AccountCode("3000"),
+          new AccountName("Bank"),
+          AccountType.ASSET,
+          NormalBalance.DEBIT);
 
       CommittedPosting olderPosting =
           postingFact(
@@ -520,6 +553,7 @@ class InMemoryBookSessionTest {
               bookSession,
               new AccountCode("3000"),
               new AccountName("Temporary"),
+              AccountType.ASSET,
               NormalBalance.DEBIT);
       CommittedPosting temporaryPosting = postingFact("idem-temporary");
       bookSession.commit(temporaryPosting);
@@ -543,6 +577,7 @@ class InMemoryBookSessionTest {
               bookSession,
               new AccountCode("4000"),
               new AccountName("Committed"),
+              AccountType.ASSET,
               NormalBalance.DEBIT);
       bookSession.commitLedgerPlanTransaction();
 
@@ -573,18 +608,31 @@ class InMemoryBookSessionTest {
 
   private static void declareDefaultAccounts(InMemoryBookSession bookSession) {
     bookSession.declareAccount(
-        new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT, FIXED_INSTANT);
+        new AccountCode("1000"),
+        new AccountName("Cash"),
+        AccountType.ASSET,
+        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
+        FIXED_INSTANT);
     bookSession.declareAccount(
-        new AccountCode("2000"), new AccountName("Revenue"), NormalBalance.CREDIT, FIXED_INSTANT);
+        new AccountCode("2000"),
+        new AccountName("Revenue"),
+        AccountType.REVENUE,
+        accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
+        FIXED_INSTANT);
   }
 
   private static RegisteredAccount declareAccount(
       InMemoryBookSession bookSession,
       AccountCode accountCode,
       AccountName accountName,
+      AccountType accountType,
       NormalBalance normalBalance) {
     return switch (bookSession.declareAccount(
-        accountCode, accountName, normalBalance, FIXED_INSTANT)) {
+        accountCode,
+        accountName,
+        accountType,
+        accountRole(accountType, normalBalance),
+        FIXED_INSTANT)) {
       case AccountDeclarationOutcome.Declared declared -> declared.account();
       case AccountDeclarationOutcome.Rejected rejected ->
           throw new AssertionError("Unexpected declaration rejection: " + rejected.rejection());
@@ -612,6 +660,7 @@ class InMemoryBookSessionTest {
         new PostingId(postingId),
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
+        PostingKind.STANDARD,
         committedProvenance(idempotencyKey, recordedAt));
   }
 
@@ -622,6 +671,7 @@ class InMemoryBookSessionTest {
         PostingLineageModel.reversal(
             new ReversalReference(new PostingId(priorPostingId)),
             new ReversalReason("historical full reversal")),
+        PostingKind.STANDARD,
         committedProvenance(idempotencyKey));
   }
 

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
-import dev.erst.fingrind.contract.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Proxy;

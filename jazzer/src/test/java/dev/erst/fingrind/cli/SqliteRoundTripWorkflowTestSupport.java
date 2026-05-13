@@ -4,20 +4,23 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -27,6 +30,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -41,6 +46,7 @@ import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
 import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -69,13 +75,14 @@ final class SqliteRoundTripWorkflowTestSupport {
         postingId,
         command.journalEntry(),
         command.postingLineage(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             command.requestProvenance(),
             CliFuzzFixtures.fixedClock().instant(),
             command.sourceChannel()));
   }
 
-  static dev.erst.fingrind.contract.ContractFailure contractFailure(String message) {
+  static dev.erst.fingrind.contract.runtime.ContractFailure contractFailure(String message) {
     return ContractErrors.Descriptor.INVALID_REQUEST.failure(
         message, "repair the synthetic request", "--request-file");
   }
@@ -122,7 +129,8 @@ final class SqliteRoundTripWorkflowTestSupport {
     return new DeclaredAccount(
         accountCode,
         new AccountName("Synthetic " + accountCode.value()),
-        NormalBalance.DEBIT,
+        AccountType.ASSET,
+        AccountRole.ORDINARY,
         active,
         CliFuzzFixtures.fixedClock().instant());
   }
@@ -242,7 +250,8 @@ final class SqliteRoundTripWorkflowTestSupport {
     public AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
-        NormalBalance normalBalance,
+        AccountType accountType,
+        AccountRole accountRole,
         Instant declaredAt) {
       throw new UnsupportedOperationException();
     }
@@ -278,6 +287,26 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
+    public java.util.List<RegisteredAccount> allAccounts() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public java.util.List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
       throw new UnsupportedOperationException();
     }
@@ -304,10 +333,18 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
-    public dev.erst.fingrind.contract.ContractDecision<dev.erst.fingrind.contract.RekeyBookResult>
+    public PeriodCloseOutcome closePeriod(
+        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.runtime.ContractDecision<
+            dev.erst.fingrind.contract.bookkeeping.RekeyBookResult>
         rekeyBook(
             BookAccess.PassphraseSource replacementPassphraseSource,
-            SqlitePassphraseResolver passphraseResolver) {
+            SqlitePassphraseResolver passphraseResolver,
+            Instant rekeyedAt) {
       throw new UnsupportedOperationException();
     }
 
@@ -334,7 +371,8 @@ final class SqliteRoundTripWorkflowTestSupport {
     return new RegisteredAccount(
         account.accountCode(),
         account.accountName(),
-        account.normalBalance(),
+        account.accountType(),
+        account.accountRole(),
         account.active(),
         account.declaredAt());
   }

@@ -3,8 +3,8 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;

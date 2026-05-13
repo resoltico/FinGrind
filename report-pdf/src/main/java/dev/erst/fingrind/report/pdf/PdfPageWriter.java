@@ -72,7 +72,7 @@ final class PdfPageWriter implements AutoCloseable {
           rowTop - PdfReportTheme.CELL_PADDING);
       cursorY -= rowHeight;
     }
-    cursorY -= PdfReportTheme.LINE_HEIGHT / 2f;
+    cursorY -= PdfReportTheme.SECTION_AFTER_TABLE_SPACING;
   }
 
   void writeTable(String heading, List<PdfTableColumn> columns, List<List<String>> rows)
@@ -88,7 +88,7 @@ final class PdfPageWriter implements AutoCloseable {
       }
       drawTableRow(row, columns, columnWidths, rowHeight, false);
     }
-    cursorY -= PdfReportTheme.LINE_HEIGHT / 2f;
+    cursorY -= PdfReportTheme.SECTION_AFTER_TABLE_SPACING;
   }
 
   @Override
@@ -144,14 +144,18 @@ final class PdfPageWriter implements AutoCloseable {
   }
 
   private void writeSectionHeading(String heading) throws IOException {
-    ensureSpace(PdfReportTheme.LINE_HEIGHT * 2f);
+    ensureSpace(
+        PdfReportTheme.LINE_HEIGHT * 2f
+            + PdfReportTheme.SECTION_TOP_MARGIN
+            + PdfReportTheme.SECTION_BOTTOM_MARGIN);
+    cursorY -= PdfReportTheme.SECTION_TOP_MARGIN;
     drawText(
         heading,
         fonts.bold(),
         PdfReportTheme.SECTION_TITLE_SIZE,
         PdfReportTheme.PAGE_MARGIN,
         cursorY);
-    cursorY -= PdfReportTheme.LINE_HEIGHT;
+    cursorY -= PdfReportTheme.LINE_HEIGHT + PdfReportTheme.SECTION_BOTTOM_MARGIN;
   }
 
   private void drawTableHeader(List<PdfTableColumn> columns, float[] columnWidths)
@@ -267,6 +271,9 @@ final class PdfPageWriter implements AutoCloseable {
 
   private void drawText(String text, PDFont font, float fontSize, float x, float y)
       throws IOException {
+    float normalizedTextGray = PdfReportTheme.normalizedGray(PdfReportTheme.TEXT_RGB);
+    activeContentStream()
+        .setNonStrokingColor(normalizedTextGray, normalizedTextGray, normalizedTextGray);
     activeContentStream().beginText();
     activeContentStream().setFont(font, fontSize);
     activeContentStream().newLineAtOffset(x, y);

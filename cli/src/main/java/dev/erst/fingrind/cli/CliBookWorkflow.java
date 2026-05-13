@@ -1,30 +1,38 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PreflightEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 
 /** Execution seam for routing CLI commands through the selected book adapter. */
 interface CliBookWorkflow {
@@ -38,6 +46,10 @@ interface CliBookWorkflow {
   /** Declares or reactivates one account inside the selected book. */
   ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command);
+
+  /** Closes one contiguous reporting period into the retained-earnings account. */
+  ContractDecision<ClosePeriodResult> closePeriod(
+      BookAccess bookAccess, ClosePeriodCommand command);
 
   /** Inspects one selected book for lifecycle and compatibility state. */
   ContractDecision<BookInspection> inspectBook(BookAccess bookAccess);
@@ -66,6 +78,18 @@ interface CliBookWorkflow {
   /** Computes the bounded period summary for one selected book. */
   ContractDecision<PeriodSummaryResult> periodSummary(
       BookAccess bookAccess, PeriodSummaryQuery query);
+
+  /** Computes one statement of financial position. */
+  ContractDecision<FinancialPositionResult> financialPosition(
+      BookAccess bookAccess, FinancialPositionQuery query);
+
+  /** Computes one bounded income statement. */
+  ContractDecision<IncomeStatementResult> incomeStatement(
+      BookAccess bookAccess, IncomeStatementQuery query);
+
+  /** Computes one bounded statement of changes in equity. */
+  ContractDecision<ChangesInEquityResult> changesInEquity(
+      BookAccess bookAccess, ChangesInEquityQuery query);
 
   /** Executes one ordered AI-agent ledger plan atomically. */
   ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan);
