@@ -178,9 +178,9 @@ Trial Balance
 
 Effective date to : 2026-04-08
 
-Account | Name | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash | DEBIT          | true   | USD      |       10.00 |         0.00 |      10.00 | DEBIT
+Account | Name | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
+--------+------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
+1000    | Cash | ASSET        | ORDINARY     | DEBIT          | true   | USD      |       10.00 |         0.00 |      10.00 | DEBIT
 TEXT
                 else
                     cat <<TEXT
@@ -189,10 +189,10 @@ Trial Balance
 
 Effective date to : 2026-04-08
 
-Account | Name    | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------------+--------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | DEBIT          | true   | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
-2000    | Revenue | CREDIT         | true   | EUR      |        0.00 |        10.00 |      10.00 | CREDIT
+Account | Name    | Account type | Account role | Normal balance | Active | Currency | Debit total | Credit total | Net amount | Balance side
+--------+---------+--------------+--------------+----------------+--------+----------+-------------+--------------+------------+-------------
+1000    | Cash    | ASSET        | ORDINARY     | DEBIT          | true   | EUR      |       10.00 |         0.00 |      10.00 | DEBIT
+2000    | Revenue | REVENUE      | ORDINARY     | CREDIT         | true   | EUR      |        0.00 |        10.00 |      10.00 | CREDIT
 TEXT
                 fi
                 ;;
@@ -231,4 +231,3 @@ printf '%s\n' "${failure_output}" | grep -Fq \
     "public container surface verifier did not report the broken human trial-balance row"
 
 printf 'public container surface verifier regression: success\n'
-
