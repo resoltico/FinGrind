@@ -7,12 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.PostingId;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -104,20 +104,23 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
             new PostingRejection.DuplicateIdempotencyKey());
     assertTrue(
         duplicateKeyResult
-                instanceof dev.erst.fingrind.contract.PostEntryResult.CommitRejected rejected
+                instanceof
+                dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected
             && rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey);
     CommitEntryResult reversalTargetResult =
         SqliteRoundTripWorkflowTestSupport.commitRejected(
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-duplicate")));
     assertFalse(
         reversalTargetResult
-                instanceof dev.erst.fingrind.contract.PostEntryResult.CommitRejected rejected
+                instanceof
+                dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected
             && rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey);
     CommitEntryResult committedResult =
         SqliteRoundTripWorkflowTestSupport.committed("posting-duplicate");
     assertFalse(
         committedResult
-                instanceof dev.erst.fingrind.contract.PostEntryResult.CommitRejected rejected
+                instanceof
+                dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected
             && rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey);
   }
 

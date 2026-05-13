@@ -1,19 +1,25 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -138,6 +144,57 @@ public final class BookReadService {
       case BookkeepingReadOutcome.Rejected<dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView>
               rejected ->
           new PeriodSummaryResult.Rejected(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));
+    };
+  }
+
+  /** Computes one statement of financial position for the selected book. */
+  public FinancialPositionResult financialPosition(FinancialPositionQuery query) {
+    return switch (bookkeepingReadService.financialPosition(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookkeepingReadOutcome.Reported<
+                  dev.erst.fingrind.executor.bookkeeping.FinancialPositionView>
+              reported ->
+          new FinancialPositionResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookkeepingReadOutcome.Rejected<
+                  dev.erst.fingrind.executor.bookkeeping.FinancialPositionView>
+              rejected ->
+          new FinancialPositionResult.Rejected(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));
+    };
+  }
+
+  /** Computes one income statement for the selected book and reporting period. */
+  public IncomeStatementResult incomeStatement(IncomeStatementQuery query) {
+    return switch (bookkeepingReadService.incomeStatement(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookkeepingReadOutcome.Reported<
+                  dev.erst.fingrind.executor.bookkeeping.IncomeStatementView>
+              reported ->
+          new IncomeStatementResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookkeepingReadOutcome.Rejected<
+                  dev.erst.fingrind.executor.bookkeeping.IncomeStatementView>
+              rejected ->
+          new IncomeStatementResult.Rejected(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));
+    };
+  }
+
+  /** Computes one statement of changes in equity for the selected book and reporting period. */
+  public ChangesInEquityResult changesInEquity(ChangesInEquityQuery query) {
+    return switch (bookkeepingReadService.changesInEquity(
+        BookkeepingReadPublishedLanguageTranslator.fromPublished(query))) {
+      case BookkeepingReadOutcome.Reported<
+                  dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView>
+              reported ->
+          new ChangesInEquityResult.Reported(
+              BookkeepingReadPublishedLanguageTranslator.toPublished(reported.value()));
+      case BookkeepingReadOutcome.Rejected<
+                  dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView>
+              rejected ->
+          new ChangesInEquityResult.Rejected(
               BookkeepingReadPublishedLanguageTranslator.toPublished(rejected.rejection()));
     };
   }

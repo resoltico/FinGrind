@@ -1,9 +1,12 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
@@ -17,6 +20,9 @@ public final class PdfReportService {
   private final TrialBalancePdfRenderer trialBalanceRenderer;
   private final AccountLedgerPdfRenderer accountLedgerRenderer;
   private final PeriodSummaryPdfRenderer periodSummaryRenderer;
+  private final FinancialPositionPdfRenderer financialPositionRenderer;
+  private final IncomeStatementPdfRenderer incomeStatementRenderer;
+  private final ChangesInEquityPdfRenderer changesInEquityRenderer;
 
   /** Creates the public PDF-report adapter service. */
   public PdfReportService(String applicationName, String applicationVersion, Clock clock) {
@@ -28,7 +34,10 @@ public final class PdfReportService {
         new AccountBalancePdfRenderer(),
         new TrialBalancePdfRenderer(),
         new AccountLedgerPdfRenderer(),
-        new PeriodSummaryPdfRenderer());
+        new PeriodSummaryPdfRenderer(),
+        new FinancialPositionPdfRenderer(),
+        new IncomeStatementPdfRenderer(),
+        new ChangesInEquityPdfRenderer());
   }
 
   PdfReportService(Clock clock, PdfDocumentFactory documentFactory) {
@@ -38,7 +47,10 @@ public final class PdfReportService {
         new AccountBalancePdfRenderer(),
         new TrialBalancePdfRenderer(),
         new AccountLedgerPdfRenderer(),
-        new PeriodSummaryPdfRenderer());
+        new PeriodSummaryPdfRenderer(),
+        new FinancialPositionPdfRenderer(),
+        new IncomeStatementPdfRenderer(),
+        new ChangesInEquityPdfRenderer());
   }
 
   private PdfReportService(
@@ -47,7 +59,10 @@ public final class PdfReportService {
       AccountBalancePdfRenderer accountBalanceRenderer,
       TrialBalancePdfRenderer trialBalanceRenderer,
       AccountLedgerPdfRenderer accountLedgerRenderer,
-      PeriodSummaryPdfRenderer periodSummaryRenderer) {
+      PeriodSummaryPdfRenderer periodSummaryRenderer,
+      FinancialPositionPdfRenderer financialPositionRenderer,
+      IncomeStatementPdfRenderer incomeStatementRenderer,
+      ChangesInEquityPdfRenderer changesInEquityRenderer) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.documentFactory = Objects.requireNonNull(documentFactory, "documentFactory");
     this.accountBalanceRenderer =
@@ -58,6 +73,12 @@ public final class PdfReportService {
         Objects.requireNonNull(accountLedgerRenderer, "accountLedgerRenderer");
     this.periodSummaryRenderer =
         Objects.requireNonNull(periodSummaryRenderer, "periodSummaryRenderer");
+    this.financialPositionRenderer =
+        Objects.requireNonNull(financialPositionRenderer, "financialPositionRenderer");
+    this.incomeStatementRenderer =
+        Objects.requireNonNull(incomeStatementRenderer, "incomeStatementRenderer");
+    this.changesInEquityRenderer =
+        Objects.requireNonNull(changesInEquityRenderer, "changesInEquityRenderer");
   }
 
   /** Renders one account-balance snapshot as a portrait PDF artifact. */
@@ -94,6 +115,33 @@ public final class PdfReportService {
         "Period Summary",
         PageOrientation.LANDSCAPE,
         writer -> periodSummaryRenderer.render(writer, report));
+  }
+
+  /** Renders one statement of financial position as a landscape PDF artifact. */
+  public byte[] renderFinancialPosition(FinancialPositionReport report) {
+    Objects.requireNonNull(report, "report");
+    return renderReport(
+        "Financial Position",
+        PageOrientation.LANDSCAPE,
+        writer -> financialPositionRenderer.render(writer, report));
+  }
+
+  /** Renders one income statement as a landscape PDF artifact. */
+  public byte[] renderIncomeStatement(IncomeStatementReport report) {
+    Objects.requireNonNull(report, "report");
+    return renderReport(
+        "Income Statement",
+        PageOrientation.LANDSCAPE,
+        writer -> incomeStatementRenderer.render(writer, report));
+  }
+
+  /** Renders one statement of changes in equity as a landscape PDF artifact. */
+  public byte[] renderChangesInEquity(ChangesInEquityReport report) {
+    Objects.requireNonNull(report, "report");
+    return renderReport(
+        "Changes In Equity",
+        PageOrientation.LANDSCAPE,
+        writer -> changesInEquityRenderer.render(writer, report));
   }
 
   private byte[] renderReport(

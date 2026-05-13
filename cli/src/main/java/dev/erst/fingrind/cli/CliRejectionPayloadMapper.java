@@ -2,14 +2,29 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.RejectionNarrative;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
 
 /** Maps deterministic rejection families into the CLI JSON envelope model. */
 final class CliRejectionPayloadMapper {
+  private static final String OPEN_BOOK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.OPEN_BOOK);
+  private static final String INSPECT_BOOK_OPERATION =
+      ProtocolCatalog.operationName(OperationId.INSPECT_BOOK);
+  private static final String LIST_ACCOUNTS_OPERATION =
+      ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS);
+  private static final String GET_POSTING_OPERATION =
+      ProtocolCatalog.operationName(OperationId.GET_POSTING);
+  private static final String LIST_POSTINGS_OPERATION =
+      ProtocolCatalog.operationName(OperationId.LIST_POSTINGS);
+  private static final String CLOSE_PERIOD_OPERATION =
+      ProtocolCatalog.operationName(OperationId.CLOSE_PERIOD);
+
   private CliRejectionPayloadMapper() {}
 
   static CliEnvelopeJsonModels.RejectedEnvelope postingRejectedEnvelope(
@@ -18,6 +33,7 @@ final class CliRejectionPayloadMapper {
         ProtocolRejectionStatus.REJECTED,
         PostingRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
+        postingRejectionHint(rejection),
         requestIdempotencyKey,
         postingRejectionDetails(rejection));
   }
@@ -28,6 +44,7 @@ final class CliRejectionPayloadMapper {
         ProtocolRejectionStatus.REJECTED,
         BookAdministrationRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
+        administrationRejectionHint(rejection),
         null,
         administrationRejectionDetails(rejection));
   }
@@ -38,8 +55,94 @@ final class CliRejectionPayloadMapper {
         ProtocolRejectionStatus.REJECTED,
         BookQueryRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
+        queryRejectionHint(rejection),
         null,
         queryRejectionDetails(rejection));
+  }
+
+  private static String postingRejectionHint(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.BookNotInitialized _ ->
+          "Run "
+              + OPEN_BOOK_OPERATION
+              + " first for a new book, or verify the selected --book-file and book passphrase source for an existing book.";
+      case PostingRejection.AccountStateViolations _ ->
+          "Declare or reactivate every account named in details.violations, then rerun the request with a fresh provenance.idempotencyKey.";
+      case PostingRejection.DuplicateIdempotencyKey _ ->
+          "Inspect the already-committed posting for this idempotency key instead of retrying the same key, or submit a new posting with a fresh provenance.idempotencyKey.";
+      case PostingRejection.ClosedPeriodViolation _ ->
+          "Use an effective date after the closed-through horizon, or close the next contiguous reporting period before posting into later dates.";
+      case PostingRejection.RetainedEarningsAccountReserved _ ->
+          "Post directly to ordinary accounts only; let "
+              + CLOSE_PERIOD_OPERATION
+              + " generate retained-earnings postings automatically.";
+      case PostingRejection.ReversalTargetNotFound _ ->
+          "Use "
+              + GET_POSTING_OPERATION
+              + " or "
+              + LIST_POSTINGS_OPERATION
+              + " to confirm the prior posting id before retrying the reversal.";
+      case PostingRejection.ReversalAlreadyExists _ ->
+          "Inspect the existing reversal for the referenced posting instead of retrying another reversal.";
+      case PostingRejection.ReversalDoesNotNegateTarget _ ->
+          "Build a full negating journal entry for the referenced posting so every line, amount, and side inverts the original exactly.";
+    };
+  }
+
+  private static String administrationRejectionHint(BookAdministrationRejection rejection) {
+    if (rejection instanceof BookAdministrationRejection.BookAlreadyInitialized) {
+      return "Use "
+          + INSPECT_BOOK_OPERATION
+          + " or the normal read/write commands for this book instead of rerunning "
+          + OPEN_BOOK_OPERATION
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.BookNotInitialized) {
+      return "Run "
+          + OPEN_BOOK_OPERATION
+          + " first for a new book, or verify the selected --book-file and book passphrase source for an existing book.";
+    }
+    if (rejection instanceof BookAdministrationRejection.BookContainsSchema) {
+      return "Select an empty target path, or remove the unintended SQLite file before rerunning "
+          + OPEN_BOOK_OPERATION
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.AccountTypeConflict
+        || rejection instanceof BookAdministrationRejection.AccountRoleConflict) {
+      return "Keep the existing account identity as declared, or choose a different accountCode for a differently classified account.";
+    }
+    if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountMissing) {
+      return "Declare exactly one active retained-earnings account first, using accountType EQUITY and accountRole RETAINED_EARNINGS.";
+    }
+    if (rejection instanceof BookAdministrationRejection.RetainedEarningsAccountInactive) {
+      return "Redeclare the retained-earnings account to reactivate it, or declare the correct retained-earnings account before rerunning "
+          + CLOSE_PERIOD_OPERATION
+          + ".";
+    }
+    BookAdministrationRejection.PeriodCloseMustStartAt ignored =
+        (BookAdministrationRejection.PeriodCloseMustStartAt) rejection;
+    return "Rerun "
+        + CLOSE_PERIOD_OPERATION
+        + " with the required --effective-date-from value and the next contiguous unclosed end date.";
+  }
+
+  private static String queryRejectionHint(BookQueryRejection rejection) {
+    return switch (rejection) {
+      case BookQueryRejection.BookNotInitialized _ ->
+          "Run "
+              + OPEN_BOOK_OPERATION
+              + " first for a new book, or verify the selected --book-file and book passphrase source for an existing book.";
+      case BookQueryRejection.UnknownAccount _ ->
+          "Use "
+              + LIST_ACCOUNTS_OPERATION
+              + " to confirm the account code, or declare the missing account before rerunning the query.";
+      case BookQueryRejection.PostingNotFound _ ->
+          "Use "
+              + LIST_POSTINGS_OPERATION
+              + " or "
+              + GET_POSTING_OPERATION
+              + " with a known posting id from this book before rerunning the query.";
+    };
   }
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
@@ -52,6 +155,13 @@ final class CliRejectionPayloadMapper {
                   .map(CliRejectionPayloadMapper::accountStateViolationPayload)
                   .toList());
       case PostingRejection.DuplicateIdempotencyKey _ -> null;
+      case PostingRejection.ClosedPeriodViolation violation ->
+          new CliRejectionJsonModels.ClosedPeriodViolationDetails(
+              violation.closedThroughEffectiveDate().toString(),
+              violation.attemptedEffectiveDate().toString());
+      case PostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
+          new CliRejectionJsonModels.RetainedEarningsAccountDetails(
+              rejectionReserved.accountCode().value());
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           new CliRejectionJsonModels.PriorPostingDetails(
               reversalTargetNotFound.priorPostingId().value());
@@ -82,11 +192,22 @@ final class CliRejectionPayloadMapper {
       case BookAdministrationRejection.BookAlreadyInitialized _ -> null;
       case BookAdministrationRejection.BookNotInitialized _ -> null;
       case BookAdministrationRejection.BookContainsSchema _ -> null;
-      case BookAdministrationRejection.NormalBalanceConflict conflict ->
-          new CliRejectionJsonModels.NormalBalanceConflictDetails(
+      case BookAdministrationRejection.AccountTypeConflict conflict ->
+          new CliRejectionJsonModels.AccountTypeConflictDetails(
               conflict.accountCode().value(),
-              conflict.existingNormalBalance().wireValue(),
-              conflict.requestedNormalBalance().wireValue());
+              conflict.existingAccountType().wireValue(),
+              conflict.requestedAccountType().wireValue());
+      case BookAdministrationRejection.AccountRoleConflict conflict ->
+          new CliRejectionJsonModels.AccountRoleConflictDetails(
+              conflict.accountCode().value(),
+              conflict.existingAccountRole().wireValue(),
+              conflict.requestedAccountRole().wireValue());
+      case BookAdministrationRejection.RetainedEarningsAccountMissing _ -> null;
+      case BookAdministrationRejection.RetainedEarningsAccountInactive conflict ->
+          new CliRejectionJsonModels.RetainedEarningsAccountDetails(conflict.accountCode().value());
+      case BookAdministrationRejection.PeriodCloseMustStartAt conflict ->
+          new CliRejectionJsonModels.PeriodCloseStartDetails(
+              conflict.requiredEffectiveDateFrom().toString());
     };
   }
 

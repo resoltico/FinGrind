@@ -26,6 +26,7 @@ final class CliCommandParsingRegistry {
       case OPEN_BOOK -> CliMutationArguments::parseOpenBookCommand;
       case REKEY_BOOK -> CliMutationArguments::parseRekeyBookCommand;
       case DECLARE_ACCOUNT -> CliMutationArguments::parseDeclareAccountCommand;
+      case CLOSE_PERIOD -> CliMutationArguments::parseClosePeriodCommand;
       case INSPECT_BOOK -> CliReadArguments::parseInspectBookCommand;
       case LIST_ACCOUNTS -> CliReadArguments::parseListAccountsCommand;
       case GET_POSTING -> CliReadArguments::parseGetPostingCommand;
@@ -34,6 +35,9 @@ final class CliCommandParsingRegistry {
       case TRIAL_BALANCE -> CliReadArguments::parseTrialBalanceCommand;
       case ACCOUNT_LEDGER -> CliReadArguments::parseAccountLedgerCommand;
       case PERIOD_SUMMARY -> CliReadArguments::parsePeriodSummaryCommand;
+      case FINANCIAL_POSITION -> CliReadArguments::parseFinancialPositionCommand;
+      case INCOME_STATEMENT -> CliReadArguments::parseIncomeStatementCommand;
+      case CHANGES_IN_EQUITY -> CliReadArguments::parseChangesInEquityCommand;
       case EXECUTE_PLAN -> CliMutationArguments::parseExecutePlanCommand;
       case PREFLIGHT_ENTRY -> CliMutationArguments::parsePreflightEntryCommand;
       case POST_ENTRY -> CliMutationArguments::parsePostEntryCommand;

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -388,7 +388,9 @@ public final class MachineContract
 - Command-help behavior: `help(OperationId)` and the CLI `<command> --help` alias both scope the
   rendered discovery payload to one selected operation, while the CLI help renderer rewrites
   canonical `fingrind ...` examples and repair hints to the active launcher surface such as
-  `./bin/fingrind` or `.\bin\fingrind.ps1`
+  `./bin/fingrind` or `.\bin\fingrind.ps1`; request-file commands additionally inline the
+  canonical request template, accepted field tables, and enum vocabularies so a caller can form a
+  valid payload from the CLI alone
 - Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic scaffold
   documents with explicit replace-before-submit placeholders for `effectiveDate` and provenance,
   so checked-in template fixtures remain byte-identical to live command output without publishing
@@ -483,9 +485,10 @@ public final class ContractTemplates
   `.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
   `.LedgerPlanQueryTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed template descriptors
-- Template descriptors keep actor type, entry side, normal balance, step kind, assertion kind,
-  balance side, and exact money typed at the public boundary, and they reject structurally
-  impossible ledger plan step or assertion combinations before any renderer publishes them
+- Template descriptors keep actor type, account type, entry side, normal balance, step kind,
+  assertion kind, balance side, and exact money typed at the public boundary, and they reject
+  structurally impossible ledger plan step or assertion combinations before any renderer publishes
+  them
 
 ## `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException`
 
@@ -513,6 +516,19 @@ public final class ContractFailureException extends IllegalStateException
 - `ContractFailureException` is the imperative bridge for seams that still must throw while
   preserving an exact deterministic `ContractFailure` for higher layers to map back into the
   public machine contract
+
+## `DescriptorNamespaceSupport`
+
+`DescriptorNamespaceSupport` is the discovery-namespace helper that enumerates permitted subclasses
+for sealed descriptor roots.
+
+```java
+public final class DescriptorNamespaceSupport
+```
+
+- Purpose: keep descriptor inventory discovery exact and centralized instead of scattering
+  reflection logic across discovery surfaces
+- Validation: rejects descriptor roots that are not sealed before exposing their namespace members
 
 ## `BookFormatContract`
 

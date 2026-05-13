@@ -3,10 +3,10 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -18,6 +18,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -84,6 +85,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                                 JournalLine.EntrySide.CREDIT,
                                 Money.parse("EUR", "11.00")))),
                     baseFact.postingLineage(),
+                    PostingKind.STANDARD,
                     baseFact.provenance()),
                 committed,
                 command));
@@ -97,6 +99,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     PostingLineage.reversal(
                         new ReversalReference(new PostingId("posting-0")),
                         new ReversalReason("unexpected reversal")),
+                    PostingKind.STANDARD,
                     baseFact.provenance()),
                 committed,
                 command));
@@ -108,6 +111,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.postingId(),
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
+                    PostingKind.STANDARD,
                     new CommittedProvenance(
                         new RequestProvenance(
                             new ActorId("actor-2"),
@@ -128,6 +132,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.postingId(),
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
+                    PostingKind.STANDARD,
                     new CommittedProvenance(
                         baseFact.provenance().requestProvenance(),
                         baseFact.provenance().recordedAt().plusSeconds(1),
@@ -164,6 +169,15 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
             new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
+        PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
+        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+            new PostingRejection.ClosedPeriodViolation(
+                java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
+    assertEquals(
+        PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
+        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+            new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3200"))));
+    assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
@@ -183,13 +197,13 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
         IllegalStateException.class,
         () ->
             SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowPreflightRejected(
-                new dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted(
+                new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted(
                     new IdempotencyKey("idem-1"), java.time.LocalDate.parse("2026-04-07"))));
     assertThrows(
         IllegalStateException.class,
         () ->
             SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowPreflightRejected(
-                new dev.erst.fingrind.contract.PostEntryResult.PreflightRejected(
+                new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected(
                     new IdempotencyKey("idem-1"),
                     new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))));
     assertThrows(

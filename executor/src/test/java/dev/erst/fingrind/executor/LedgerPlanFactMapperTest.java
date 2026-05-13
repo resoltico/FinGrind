@@ -1,12 +1,14 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -21,6 +23,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -88,9 +91,10 @@ class LedgerPlanFactMapperTest {
   @Test
   void balanceFacts_includeOptionalDateBoundsWhenPresent() {
     RegisteredAccount account =
-        new RegisteredAccount(
+        registeredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
+            AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             FIXED_INSTANT);
@@ -120,6 +124,20 @@ class LedgerPlanFactMapperTest {
                         && "effectiveDateTo".equals(text.name())
                         && "2026-04-30".equals(text.value()))
             .count());
+    assertEquals(
+        1,
+        facts.stream()
+            .filter(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group
+                        && "account".equals(group.name())
+                        && group.facts().stream()
+                            .anyMatch(
+                                child ->
+                                    child instanceof BookWorkflowFact.Text text
+                                        && "accountType".equals(text.name())
+                                        && "ASSET".equals(text.value())))
+            .count());
   }
 
   private static PostingFact reversalPostingFact() {
@@ -133,6 +151,7 @@ class LedgerPlanFactMapperTest {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("prior-posting")),
             new ReversalReason("operator reversal")),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

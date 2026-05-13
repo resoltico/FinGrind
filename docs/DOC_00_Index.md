@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: INDEX
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSession", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -59,9 +59,16 @@ route:
 | Symbol | File | Section |
 |:-------|:-----|:--------|
 | `AccountCode` | `DOC_01_Core.md` | `AccountCode` |
+| `AccountCodePolicy` | `DOC_01_Core.md` | `AccountCodePolicy` |
+| `AccountCodePolicy.Meaning` | `DOC_01_Core.md` | `AccountCodePolicy.Meaning` |
+| `AccountCodePolicy.ChartStructure` | `DOC_01_Core.md` | `AccountCodePolicy.ChartStructure` |
 | `AccountName` | `DOC_01_Core.md` | `AccountName` |
+| `AccountType` | `DOC_01_Core.md` | `AccountType` |
+| `AccountRole` | `DOC_01_Core.md` | `AccountRole` |
+| `AccountSemantics` | `DOC_01_Core.md` | `AccountSemantics` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
 | `ActorType` | `DOC_01_Core.md` | `ActorType` |
+| `BalanceMath` | `DOC_01_Core.md` | `BalanceMath` |
 | `BalanceSide` | `DOC_01_Core.md` | `BalanceSide` |
 | `CausationId` | `DOC_01_Core.md` | `CausationId` |
 | `CommandId` | `DOC_01_Core.md` | `CommandId` |
@@ -76,7 +83,9 @@ route:
 | `Money` | `DOC_01_Core.md` | `Money` |
 | `PositiveMoney` | `DOC_01_Core.md` | `PositiveMoney` |
 | `NormalBalance` | `DOC_01_Core.md` | `NormalBalance` |
+| `PostingKind` | `DOC_01_Core.md` | `PostingKind` |
 | `PostingId` | `DOC_01_Core.md` | `PostingId` |
+| `ReportingPeriod` | `DOC_01_Core.md` | `ReportingPeriod` |
 | `RequestProvenance` | `DOC_01_Core.md` | `RequestProvenance` |
 | `ReversalReason` | `DOC_01_Core.md` | `ReversalReason` |
 | `ReversalReference` | `DOC_01_Core.md` | `ReversalReference` |
@@ -208,12 +217,16 @@ route:
 | `ContractFailure` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `ContractDecision` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailureException` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
+| `DescriptorNamespaceSupport` | `DOC_02_ProtocolAndDiscovery.md` | `DescriptorNamespaceSupport` |
 | `BookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `BookFormatContract` |
 | `ProtectedBookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `ProtectedBookFormatContract` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookReadService` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
 | `DeclareAccountCommand` | `DOC_02_AdministrationAndReports.md` | `DeclareAccountCommand` |
 | `DeclaredAccount` | `DOC_02_AdministrationAndReports.md` | `DeclaredAccount` |
+| `ClosePeriodCommand` | `DOC_02_AdministrationAndReports.md` | `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod` |
+| `ClosePeriodResult` | `DOC_02_AdministrationAndReports.md` | `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod` |
+| `ClosedPeriod` | `DOC_02_AdministrationAndReports.md` | `ClosePeriodCommand`, `ClosePeriodResult`, And `ClosedPeriod` |
 | `OpenBookResult` | `DOC_02_AdministrationAndReports.md` | `OpenBookResult` |
 | `DeclareAccountResult` | `DOC_02_AdministrationAndReports.md` | `DeclareAccountResult` |
 | `RekeyBookResult` | `DOC_02_AdministrationAndReports.md` | `RekeyBookResult` |
@@ -245,6 +258,34 @@ route:
 | `PeriodAccountActivityRow` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
 | `PeriodSummaryReport` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
 | `PeriodSummaryResult` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
+| `FinancialPositionQuery` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult` |
+| `FinancialPositionRow` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult` |
+| `FinancialPositionSection` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult` |
+| `FinancialPositionReport` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult` |
+| `FinancialPositionResult` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionQuery`, `FinancialPositionRow`, `FinancialPositionSection`, `FinancialPositionReport`, And `FinancialPositionResult` |
+| `IncomeStatementQuery` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
+| `IncomeStatementRow` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
+| `IncomeStatementSection` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
+| `IncomeStatementReport` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
+| `IncomeStatementResult` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
+| `ChangesInEquityQuery` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult` |
+| `ChangesInEquityRow` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult` |
+| `ChangesInEquityReport` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult` |
+| `ChangesInEquityResult` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult` |
+| `FinancialPositionCriteria` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView` |
+| `FinancialPositionRowView` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView` |
+| `FinancialPositionSectionView` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView` |
+| `FinancialPositionView` | `DOC_02_AdministrationAndReports.md` | `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView` |
+| `IncomeStatementCriteria` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementCriteria`, `IncomeStatementRowView`, `IncomeStatementSectionView`, And `IncomeStatementView` |
+| `IncomeStatementRowView` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementCriteria`, `IncomeStatementRowView`, `IncomeStatementSectionView`, And `IncomeStatementView` |
+| `IncomeStatementSectionView` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementCriteria`, `IncomeStatementRowView`, `IncomeStatementSectionView`, And `IncomeStatementView` |
+| `IncomeStatementView` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementCriteria`, `IncomeStatementRowView`, `IncomeStatementSectionView`, And `IncomeStatementView` |
+| `ChangesInEquityCriteria` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
+| `ChangesInEquityRowView` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
+| `ChangesInEquityView` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
+| `PeriodCloseDraft` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService` |
+| `PeriodCloseOutcome` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService` |
+| `PeriodCloseService` | `DOC_02_AdministrationAndReports.md` | `PeriodCloseDraft`, `PeriodCloseOutcome`, And `PeriodCloseService` |
 | `BookAdministrationRejection` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `BookQueryRejection` | `DOC_02_AdministrationAndReports.md` | `BookQueryRejection` |
 | `RejectionNarrative` | `DOC_02_AdministrationAndReports.md` | `RejectionNarrative` |
@@ -285,6 +326,8 @@ route:
 | `CommittedPosting` | `DOC_03_BookSessionsAndAdapters.md` | `CommittedPosting` |
 | `AccountDeclaration` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `AccountDeclarationOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
+| `BookAuditEvent` | `DOC_03_BookSessionsAndAdapters.md` | `BookAuditEvent` And `BookAuditEventKind` |
+| `BookAuditEventKind` | `DOC_03_BookSessionsAndAdapters.md` | `BookAuditEvent` And `BookAuditEventKind` |
 | `BookOpeningOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `RegisteredAccount` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `BookStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookStore` |

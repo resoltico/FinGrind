@@ -3,15 +3,15 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliSuccessPayload;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.MonetaryAmount;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -55,6 +55,8 @@ final class CliBookPayloadMapper {
     return new CliBookQueryJsonModels.DeclaredAccountPayload(
         account.accountCode().value(),
         account.accountName().value(),
+        account.accountType().wireValue(),
+        account.accountRole().wireValue(),
         account.normalBalance().wireValue(),
         account.active(),
         account.declaredAt().toString());
@@ -110,6 +112,8 @@ final class CliBookPayloadMapper {
     return new CliBookQueryJsonModels.AccountBalancePayload(
         snapshot.account().accountCode().value(),
         snapshot.account().accountName().value(),
+        snapshot.account().accountType().wireValue(),
+        snapshot.account().accountRole().wireValue(),
         snapshot.account().normalBalance().wireValue(),
         snapshot.account().active(),
         snapshot.account().declaredAt().toString(),

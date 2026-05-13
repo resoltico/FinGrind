@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -14,6 +14,8 @@ final class CliAccountBalanceOutputRenderer {
             List.of(
                 List.of("Account", snapshot.account().accountCode().value()),
                 List.of("Name", snapshot.account().accountName().value()),
+                List.of("Account type", snapshot.account().accountType().wireValue()),
+                List.of("Account role", snapshot.account().accountRole().wireValue()),
                 List.of("Normal balance", snapshot.account().normalBalance().wireValue()),
                 List.of("Active", Boolean.toString(snapshot.account().active())),
                 List.of(
@@ -37,6 +39,8 @@ final class CliAccountBalanceOutputRenderer {
         List.of(
             "accountCode",
             "accountName",
+            "accountType",
+            "accountRole",
             "normalBalance",
             "effectiveDateFrom",
             "effectiveDateTo",
@@ -51,6 +55,8 @@ final class CliAccountBalanceOutputRenderer {
                     List.of(
                         snapshot.account().accountCode().value(),
                         snapshot.account().accountName().value(),
+                        snapshot.account().accountType().wireValue(),
+                        snapshot.account().accountRole().wireValue(),
                         snapshot.account().normalBalance().wireValue(),
                         snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
                         snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),

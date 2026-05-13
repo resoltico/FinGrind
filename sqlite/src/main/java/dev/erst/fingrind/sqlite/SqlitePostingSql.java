@@ -5,6 +5,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.util.Collections;
+import java.util.List;
 
 /** Canonical SQL statements for the SQLite posting adapter. */
 final class SqlitePostingSql {
@@ -12,17 +13,18 @@ final class SqlitePostingSql {
   static final String SCHEMA_FINGERPRINT_META_KEY = "schema_fingerprint_sha256";
 
   static final int COL_POSTING_ID = 0;
-  static final int COL_EFFECTIVE_DATE = 1;
-  static final int COL_RECORDED_AT = 2;
-  static final int COL_ACTOR_ID = 3;
-  static final int COL_ACTOR_TYPE = 4;
-  static final int COL_COMMAND_ID = 5;
-  static final int COL_IDEMPOTENCY_KEY = 6;
-  static final int COL_CAUSATION_ID = 7;
-  static final int COL_CORRELATION_ID = 8;
-  static final int COL_REASON = 9;
-  static final int COL_SOURCE_CHANNEL = 10;
-  static final int COL_PRIOR_POSTING_ID = 11;
+  static final int COL_POSTING_KIND = 1;
+  static final int COL_EFFECTIVE_DATE = 2;
+  static final int COL_RECORDED_AT = 3;
+  static final int COL_ACTOR_ID = 4;
+  static final int COL_ACTOR_TYPE = 5;
+  static final int COL_COMMAND_ID = 6;
+  static final int COL_IDEMPOTENCY_KEY = 7;
+  static final int COL_CAUSATION_ID = 8;
+  static final int COL_CORRELATION_ID = 9;
+  static final int COL_REASON = 10;
+  static final int COL_SOURCE_CHANNEL = 11;
+  static final int COL_PRIOR_POSTING_ID = 12;
 
   static final int COL_LINE_ACCOUNT_CODE = 0;
   static final int COL_LINE_ENTRY_SIDE = 1;
@@ -31,18 +33,20 @@ final class SqlitePostingSql {
 
   static final int COL_ACCOUNT_CODE = 0;
   static final int COL_ACCOUNT_NAME = 1;
-  static final int COL_ACCOUNT_NORMAL_BALANCE = 2;
-  static final int COL_ACCOUNT_ACTIVE = 3;
-  static final int COL_ACCOUNT_DECLARED_AT = 4;
-  static final int COL_REPORT_POSTING_ID = 5;
-  static final int COL_REPORT_ENTRY_SIDE = 6;
-  static final int COL_REPORT_CURRENCY_CODE = 7;
-  static final int COL_REPORT_AMOUNT_MINOR = 8;
+  static final int COL_ACCOUNT_TYPE = 2;
+  static final int COL_ACCOUNT_ROLE = 3;
+  static final int COL_ACCOUNT_ACTIVE = 4;
+  static final int COL_ACCOUNT_DECLARED_AT = 5;
+  static final int COL_REPORT_POSTING_ID = 6;
+  static final int COL_REPORT_ENTRY_SIDE = 7;
+  static final int COL_REPORT_CURRENCY_CODE = 8;
+  static final int COL_REPORT_AMOUNT_MINOR = 9;
 
   private static final String BASE_POSTING_SELECT =
       """
       select
           posting_id,
+          posting_kind,
           effective_date,
           recorded_at,
           actor_id,
@@ -62,7 +66,8 @@ final class SqlitePostingSql {
       select
           account_code,
           account_name,
-          normal_balance,
+          account_type,
+          account_role,
           active,
           declared_at
       from account
@@ -113,23 +118,47 @@ final class SqlitePostingSql {
   static final String PRAGMA_INTEGRITY_CHECK = "pragma integrity_check";
   static final String PRAGMA_FOREIGN_KEY_CHECK = "pragma foreign_key_check";
 
+  static final List<String> CANONICAL_SCHEMA_OBJECT_NAMES =
+      List.of(
+          "book_meta",
+          "account",
+          "posting_fact",
+          "journal_line",
+          "period_close",
+          "period_close_posting",
+          "audit_event",
+          "posting_fact_by_prior_posting_id",
+          "posting_fact_by_effective_recorded_posting",
+          "journal_line_by_account_code",
+          "audit_event_by_recorded_at",
+          "period_close_by_effective_date_to",
+          "period_close_posting_by_posting_id",
+          "account_one_retained_earnings",
+          "posting_fact_one_reversal_per_target",
+          "posting_fact_reject_update",
+          "posting_fact_reject_delete",
+          "journal_line_reject_update",
+          "journal_line_reject_delete",
+          "period_close_reject_update",
+          "period_close_reject_delete",
+          "period_close_posting_reject_update",
+          "period_close_posting_reject_delete",
+          "audit_event_reject_update",
+          "audit_event_reject_delete");
+
+  static final int EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT = CANONICAL_SCHEMA_OBJECT_NAMES.size();
+
   static final String LOAD_CANONICAL_SCHEMA_OBJECTS =
       """
       select type, name, ifnull(sql, '')
       from sqlite_schema
-      where type in ('table', 'index')
+      where type in ('table', 'index', 'trigger')
         and name in (
-            'book_meta',
-            'account',
-            'posting_fact',
-            'journal_line',
-            'posting_fact_by_prior_posting_id',
-            'posting_fact_by_effective_recorded_posting',
-            'journal_line_by_account_code',
-            'posting_fact_one_reversal_per_target'
+            %s
         )
       order by type, name
-      """;
+      """
+          .formatted("'" + String.join("',\n            '", CANONICAL_SCHEMA_OBJECT_NAMES) + "'");
 
   static final String FIND_ACCOUNT_BY_CODE =
       BASE_ACCOUNT_SELECT + " where account_code = ? limit 1";
@@ -172,7 +201,8 @@ final class SqlitePostingSql {
       select
           account.account_code,
           account.account_name,
-          account.normal_balance,
+          account.account_type,
+          account.account_role,
           account.active,
           account.declared_at,
           posting_fact.posting_id,
@@ -188,6 +218,7 @@ final class SqlitePostingSql {
       """
       insert into posting_fact (
           posting_id,
+          posting_kind,
           effective_date,
           recorded_at,
           actor_id,
@@ -199,7 +230,7 @@ final class SqlitePostingSql {
           reason,
           source_channel,
           prior_posting_id
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_JOURNAL_LINE =
@@ -213,6 +244,61 @@ final class SqlitePostingSql {
           amount_minor
       ) values (?, ?, ?, ?, ?, ?)
       """;
+
+  static final String INSERT_AUDIT_EVENT =
+      """
+      insert into audit_event (
+          recorded_at,
+          event_kind,
+          account_code,
+          posting_id,
+          period_close_order
+      ) values (?, ?, ?, ?, ?)
+      """;
+
+  static final String INSERT_PERIOD_CLOSE =
+      """
+      insert into period_close (
+          effective_date_from,
+          effective_date_to,
+          closed_at
+      ) values (?, ?, ?)
+      returning period_close_order
+      """;
+
+  static final String INSERT_PERIOD_CLOSE_POSTING =
+      """
+      insert into period_close_posting (
+          period_close_order,
+          posting_id
+      ) values (?, ?)
+      """;
+
+  static final String FIND_CLOSED_THROUGH_EFFECTIVE_DATE =
+      """
+      select effective_date_to
+      from period_close
+      order by period_close_order desc
+      limit 1
+      """;
+
+  static final String FIND_EARLIEST_POSTING_EFFECTIVE_DATE =
+      """
+      select effective_date
+      from posting_fact
+      order by effective_date
+      limit 1
+      """;
+
+  static final String LOAD_ALL_ACCOUNTS = BASE_ACCOUNT_SELECT + " order by account_code";
+
+  static final String LOAD_POSTINGS_IN_RANGE =
+      BASE_POSTING_SELECT
+          + """
+             where (? is null or effective_date >= ?)
+               and (? is null or effective_date <= ?)
+             order by effective_date, recorded_at, posting_id
+             """;
 
   static final String CREATE_PENDING_JOURNAL_LINE =
       """
@@ -314,10 +400,11 @@ final class SqlitePostingSql {
       insert into account (
           account_code,
           account_name,
-          normal_balance,
+          account_type,
+          account_role,
           active,
           declared_at
-      ) values (?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
           active = excluded.active,

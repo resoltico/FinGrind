@@ -1,6 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +16,8 @@ public enum PostingLifecycleStatus implements WireValue {
   UNKNOWN_ACCOUNT("unknown-account"),
   INACTIVE_ACCOUNT("inactive-account"),
   DUPLICATE_IDEMPOTENCY_KEY("duplicate-idempotency-key"),
+  CLOSED_PERIOD_VIOLATION("closed-period-violation"),
+  RETAINED_EARNINGS_ACCOUNT_RESERVED("retained-earnings-account-reserved"),
   REVERSAL_TARGET_NOT_FOUND("reversal-target-not-found"),
   REVERSAL_ALREADY_EXISTS("reversal-already-exists"),
   REVERSAL_DOES_NOT_NEGATE_TARGET("reversal-does-not-negate-target");

@@ -42,6 +42,13 @@ final class SqliteStatementQueries {
     T query(SqliteNativeStatement statement);
   }
 
+  /** Single-column text row shape that distinguishes empty, exact-one-row, and multi-row cases. */
+  record OptionalTextRow(Optional<String> value, boolean singleRow) {
+    OptionalTextRow {
+      Objects.requireNonNull(value, "value");
+    }
+  }
+
   private SqliteStatementQueries() {}
 
   static Optional<CommittedPosting> findOneCommittedPosting(
@@ -96,6 +103,19 @@ final class SqliteStatementQueries {
               .collect(
                   Collectors.toUnmodifiableMap(
                       RegisteredAccount::accountCode, Function.identity()));
+        });
+  }
+
+  static List<RegisteredAccount> loadAllAccounts(SqliteNativeDatabase activeDatabase, String sql) {
+    return withStatement(
+        activeDatabase,
+        sql,
+        statement -> {
+          List<RegisteredAccount> accounts = new ArrayList<>();
+          while (statement.step() == SqliteNativeResultCodes.ROW) {
+            accounts.add(SqlitePostingMapper.registeredAccount(statement));
+          }
+          return List.copyOf(accounts);
         });
   }
 
@@ -198,19 +218,26 @@ final class SqliteStatementQueries {
 
   static Optional<String> loadOptionalText(
       SqliteNativeDatabase activeDatabase, String sql, Binder binder) {
+    OptionalTextRow row = loadOptionalTextRow(activeDatabase, sql, binder);
+    if (!row.singleRow()) {
+      throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
+    }
+    return row.value();
+  }
+
+  static OptionalTextRow loadOptionalTextRow(
+      SqliteNativeDatabase activeDatabase, String sql, Binder binder) {
     return withStatement(
         activeDatabase,
         sql,
         statement -> {
           binder.bind(statement);
           if (statement.step() != SqliteNativeResultCodes.ROW) {
-            return Optional.empty();
+            return new OptionalTextRow(Optional.empty(), true);
           }
           String value = statement.columnText(0);
-          if (statement.step() != SqliteNativeResultCodes.DONE) {
-            throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
-          }
-          return Optional.ofNullable(value);
+          return new OptionalTextRow(
+              Optional.ofNullable(value), statement.step() == SqliteNativeResultCodes.DONE);
         });
   }
 

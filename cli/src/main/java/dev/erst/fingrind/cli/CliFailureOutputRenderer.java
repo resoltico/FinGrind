@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -17,7 +18,8 @@ final class CliFailureOutputRenderer {
         failure.hint(),
         failure.argument(),
         null,
-        failure.details());
+        failure.details(),
+        null);
   }
 
   static String renderDeterministicFailureHuman(CliFailure failure) {
@@ -28,7 +30,8 @@ final class CliFailureOutputRenderer {
         failure.hint(),
         failure.argument(),
         null,
-        failure.details());
+        failure.details(),
+        null);
   }
 
   static String renderWarningHuman(CliFailure failure) {
@@ -39,7 +42,8 @@ final class CliFailureOutputRenderer {
         failure.hint(),
         failure.argument(),
         null,
-        failure.details());
+        failure.details(),
+        null);
   }
 
   static String renderInfoHuman(CliFailure failure) {
@@ -50,11 +54,18 @@ final class CliFailureOutputRenderer {
         failure.hint(),
         failure.argument(),
         null,
-        failure.details());
+        failure.details(),
+        null);
   }
 
-  static String renderRejectedHuman(String code, String message, @Nullable String idempotencyKey) {
-    return renderHumanDocument("Rejected", code, message, null, null, idempotencyKey, null);
+  static String renderRejectedHuman(
+      String code,
+      String message,
+      @Nullable String hint,
+      @Nullable String idempotencyKey,
+      CliRejectionJsonModels.@Nullable RejectionDetails details) {
+    return renderHumanDocument(
+        "Rejected", code, message, hint, null, idempotencyKey, null, details);
   }
 
   private static String renderHumanDocument(
@@ -64,7 +75,8 @@ final class CliFailureOutputRenderer {
       @Nullable String hint,
       @Nullable String argument,
       @Nullable String idempotencyKey,
-      CliErrorJsonModels.@Nullable ErrorDetails details) {
+      CliErrorJsonModels.@Nullable ErrorDetails details,
+      CliRejectionJsonModels.@Nullable RejectionDetails rejectionDetails) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Code", code));
     rows.add(List.of("Message", message));
@@ -91,6 +103,49 @@ final class CliFailureOutputRenderer {
                 List.of("Violations", CliTextFormat.joined(invalidRequestDetails.violations())));
       }
     }
+    appendRejectionDetails(rows, rejectionDetails);
     return CliTextFormat.renderTitledBlock(title, CliTextFormat.renderKeyValueBlock(rows));
+  }
+
+  private static void appendRejectionDetails(
+      List<List<String>> rows, CliRejectionJsonModels.@Nullable RejectionDetails rejectionDetails) {
+    if (rejectionDetails == null) {
+      return;
+    }
+    switch (rejectionDetails) {
+      case CliRejectionJsonModels.AccountStateViolationsDetails violations ->
+          rows.add(
+              List.of(
+                  "Violations",
+                  violations.violations().stream()
+                      .map(violation -> violation.code() + " (" + violation.accountCode() + ")")
+                      .collect(java.util.stream.Collectors.joining(", "))));
+      case CliRejectionJsonModels.PriorPostingDetails details ->
+          rows.add(List.of("Prior posting id", details.priorPostingId()));
+      case CliRejectionJsonModels.AccountRoleConflictDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Existing account role", details.existingAccountRole()));
+        rows.add(List.of("Requested account role", details.requestedAccountRole()));
+      }
+      case CliRejectionJsonModels.AccountTypeConflictDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Existing account type", details.existingAccountType()));
+        rows.add(List.of("Requested account type", details.requestedAccountType()));
+      }
+      case CliRejectionJsonModels.RetainedEarningsAccountDetails details ->
+          rows.add(List.of("Account code", details.accountCode()));
+      case CliRejectionJsonModels.PeriodCloseStartDetails details ->
+          rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
+      case CliRejectionJsonModels.ClosedPeriodViolationDetails details -> {
+        rows.add(List.of("Closed through", details.closedThroughEffectiveDate()));
+        rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
+      }
+      case CliRejectionJsonModels.UnknownAccountDetails details ->
+          rows.add(List.of("Account code", details.accountCode()));
+      case CliRejectionJsonModels.PostingNotFoundDetails details ->
+          rows.add(List.of("Posting id", details.postingId()));
+      case CliRejectionJsonModels.PlanRejectionDetails details ->
+          rows.add(List.of("Plan id", details.plan().planId()));
+    }
   }
 }

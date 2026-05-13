@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -22,7 +22,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             {
               "accountCode": "1000",
               "accountName": "Cash",
-              "normalBalance": "DEBIT"
+              "accountType": "ASSET",
+              "accountRole": "ORDINARY"
             }
             """);
     CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
@@ -31,7 +32,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
 
     assertEquals("1000", command.accountCode().value());
     assertEquals("Cash", command.accountName().value());
-    assertEquals("DEBIT", command.normalBalance().name());
+    assertEquals("ASSET", command.accountType().wireValue());
+    assertEquals("ORDINARY", command.accountRole().wireValue());
   }
 
   @Test
@@ -42,7 +44,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                 {
                   "accountCode": "1000",
-                  "normalBalance": "DEBIT"
+                  "accountType": "ASSET",
+                  "accountRole": "ORDINARY"
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
@@ -56,7 +59,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readDeclareAccountCommand_rejectsInvalidNormalBalance() {
+  void readDeclareAccountCommand_rejectsInvalidAccountRole() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -64,7 +67,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                 {
                   "accountCode": "1000",
                   "accountName": "Cash",
-                  "normalBalance": "SIDEWAYS"
+                  "accountType": "ASSET",
+                  "accountRole": "SIDEWAYS"
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
@@ -74,7 +78,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "Unsupported value for normalBalance: SIDEWAYS. Accepted values: DEBIT, CREDIT.",
+        "Unsupported value for accountRole: SIDEWAYS. Accepted values: ORDINARY, CONTRA, RETAINED_EARNINGS.",
         exception.getMessage());
   }
 
@@ -87,7 +91,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                 {
                   "accountCode": "1000",
                   "accountName": "Cash",
-                  "normalBalance": "DEBIT",
+                  "accountType": "ASSET",
+                  "accountRole": "ORDINARY",
                   "ignored": true
                 }
                 """
@@ -109,7 +114,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                 {
                   "accountCode": "1000",
                   "accountName": "Cash",
-                  "normalBalance": "DEBIT",
+                  "accountType": "ASSET",
+                  "accountRole": "ORDINARY",
                   "ignored": true,
                   "alsoIgnored": true
                 }
@@ -133,7 +139,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   {
                     "accountCode": "1000",
                     "accountName": "Cash",
-                    "normalBalance": "DEBIT"
+                    "accountType": "ASSET",
+                    "accountRole": "ORDINARY"
                   }
                 ]
                 """

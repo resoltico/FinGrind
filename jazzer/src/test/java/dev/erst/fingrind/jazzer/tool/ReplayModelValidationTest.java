@@ -3,8 +3,8 @@ package dev.erst.fingrind.jazzer.tool;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.SourceChannel;
 import org.junit.jupiter.api.Test;

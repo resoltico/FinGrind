@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;

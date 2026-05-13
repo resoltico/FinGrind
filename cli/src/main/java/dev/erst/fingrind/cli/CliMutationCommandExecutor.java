@@ -1,9 +1,9 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import java.nio.file.Path;
 import java.util.Objects;
 

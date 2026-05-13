@@ -42,9 +42,11 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
@@ -71,9 +73,11 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
@@ -108,9 +112,11 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           assertThrows(
               IllegalStateException.class,
               () ->
-                  postingFactStore.declareAccount(
+                  declareAccount(
+                      postingFactStore,
                       new AccountCode("1000"),
                       new AccountName("Cash"),
+                      dev.erst.fingrind.core.AccountType.ASSET,
                       NormalBalance.DEBIT,
                       Instant.parse("2026-04-07T10:15:30Z")));
       assertProtectedBookVerificationFailure(exception);

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -18,6 +19,8 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -47,6 +50,10 @@ final class SqliteStoreReadOperations {
     return queryOperations.findAccounts(accountCodes);
   }
 
+  List<RegisteredAccount> allAccounts() {
+    return queryOperations.allAccounts();
+  }
+
   AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     return queryOperations.listAccounts(query);
   }
@@ -65,6 +72,18 @@ final class SqliteStoreReadOperations {
 
   PostingHistoryPage listPostings(PostingHistoryQuery query) {
     return queryOperations.listPostings(query);
+  }
+
+  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+    return queryOperations.postings(effectiveDateRange);
+  }
+
+  Optional<LocalDate> earliestPostingEffectiveDate() {
+    return queryOperations.earliestPostingEffectiveDate();
+  }
+
+  Optional<LocalDate> closedThroughEffectiveDate() {
+    return queryOperations.closedThroughEffectiveDate();
   }
 
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {

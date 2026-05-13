@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.spi;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
@@ -11,12 +12,16 @@ import java.util.Objects;
 
 /** Commit-ready posting draft that defers durable posting-id allocation until store acceptance. */
 public record PostingDraft(
-    JournalEntry journalEntry, PostingLineageModel postingLineage, CommittedProvenance provenance)
+    JournalEntry journalEntry,
+    PostingLineageModel postingLineage,
+    PostingKind postingKind,
+    CommittedProvenance provenance)
     implements PostingRequestModel {
   /** Validates the durable commit draft before one book session materializes it. */
   public PostingDraft {
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(postingLineage, "postingLineage");
+    Objects.requireNonNull(postingKind, "postingKind");
     Objects.requireNonNull(provenance, "provenance");
   }
 
@@ -32,6 +37,6 @@ public record PostingDraft(
 
   /** Materializes one durable posting fact after the store accepts this draft for commit. */
   public CommittedPosting materialize(PostingId postingId) {
-    return new CommittedPosting(postingId, journalEntry, postingLineage, provenance);
+    return new CommittedPosting(postingId, journalEntry, postingLineage, postingKind, provenance);
   }
 }

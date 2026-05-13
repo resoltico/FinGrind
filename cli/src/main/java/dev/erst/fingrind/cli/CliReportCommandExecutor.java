@@ -1,14 +1,20 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerResult;
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryResult;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -83,6 +89,45 @@ final class CliReportCommandExecutor {
         responseWriter);
   }
 
+  int runFinancialPositionCommand(
+      BookAccess bookAccess, FinancialPositionQuery query, CliCommand.ReportOutput output) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.financialPosition(bookAccess, query),
+        output.outputMode(),
+        result -> {
+          responseWriter.writeFinancialPositionResult(result, output.outputMode());
+          exportFinancialPosition(result, output.pdfOutPath());
+        },
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runIncomeStatementCommand(
+      BookAccess bookAccess, IncomeStatementQuery query, CliCommand.ReportOutput output) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.incomeStatement(bookAccess, query),
+        output.outputMode(),
+        result -> {
+          responseWriter.writeIncomeStatementResult(result, output.outputMode());
+          exportIncomeStatement(result, output.pdfOutPath());
+        },
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
+  int runChangesInEquityCommand(
+      BookAccess bookAccess, ChangesInEquityQuery query, CliCommand.ReportOutput output) {
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        bookWorkflow.changesInEquity(bookAccess, query),
+        output.outputMode(),
+        result -> {
+          responseWriter.writeChangesInEquityResult(result, output.outputMode());
+          exportChangesInEquity(result, output.pdfOutPath());
+        },
+        CliExecutionPolicy::exitCodeFor,
+        responseWriter);
+  }
+
   private void exportAccountBalance(AccountBalanceResult result, @Nullable Path outputPath) {
     if (outputPath == null) {
       return;
@@ -132,6 +177,45 @@ final class CliReportCommandExecutor {
               outputPath,
               () -> pdfReportExporter.exportPeriodSummary(outputPath, reported.report()));
       case PeriodSummaryResult.Rejected _ -> {}
+    }
+  }
+
+  private void exportFinancialPosition(FinancialPositionResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    switch (result) {
+      case FinancialPositionResult.Reported reported ->
+          exportPdfWithDiagnostics(
+              outputPath,
+              () -> pdfReportExporter.exportFinancialPosition(outputPath, reported.report()));
+      case FinancialPositionResult.Rejected _ -> {}
+    }
+  }
+
+  private void exportIncomeStatement(IncomeStatementResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    switch (result) {
+      case IncomeStatementResult.Reported reported ->
+          exportPdfWithDiagnostics(
+              outputPath,
+              () -> pdfReportExporter.exportIncomeStatement(outputPath, reported.report()));
+      case IncomeStatementResult.Rejected _ -> {}
+    }
+  }
+
+  private void exportChangesInEquity(ChangesInEquityResult result, @Nullable Path outputPath) {
+    if (outputPath == null) {
+      return;
+    }
+    switch (result) {
+      case ChangesInEquityResult.Reported reported ->
+          exportPdfWithDiagnostics(
+              outputPath,
+              () -> pdfReportExporter.exportChangesInEquity(outputPath, reported.report()));
+      case ChangesInEquityResult.Rejected _ -> {}
     }
   }
 

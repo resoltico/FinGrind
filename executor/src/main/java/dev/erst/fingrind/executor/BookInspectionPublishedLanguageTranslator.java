@@ -1,6 +1,6 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.BookInspection;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.util.Objects;
 

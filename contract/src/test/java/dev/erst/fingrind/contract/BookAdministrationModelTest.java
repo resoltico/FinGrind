@@ -4,9 +4,17 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -19,18 +27,20 @@ class BookAdministrationModelTest {
         new DeclaredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
-            NormalBalance.DEBIT,
+            AccountType.ASSET,
+            AccountRole.ORDINARY,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     assertEquals("1000", account.accountCode().value());
   }
 
   @Test
-  void declareAccountCommand_rejectsNullNormalBalance() {
+  void declareAccountCommand_rejectsNullAccountRole() {
     assertThrows(
         NullPointerException.class,
         () ->
-            new DeclareAccountCommand(new AccountCode("1000"), new AccountName("Cash"), nullOf()));
+            new DeclareAccountCommand(
+                new AccountCode("1000"), new AccountName("Cash"), AccountType.ASSET, nullOf()));
   }
 
   @Test
@@ -58,7 +68,8 @@ class BookAdministrationModelTest {
                 new DeclaredAccount(
                     new AccountCode("1000"),
                     new AccountName("Cash"),
-                    NormalBalance.DEBIT,
+                    AccountType.ASSET,
+                    AccountRole.ORDINARY,
                     true,
                     Instant.parse("2026-04-07T10:15:30Z"))));
     ListAccountsResult.Listed listed =
@@ -68,11 +79,11 @@ class BookAdministrationModelTest {
   }
 
   @Test
-  void normalBalanceConflict_rejectsNullRequestedBalance() {
+  void accountRoleConflict_rejectsNullRequestedRole() {
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookAdministrationRejection.NormalBalanceConflict(
-                new AccountCode("1000"), NormalBalance.DEBIT, nullOf()));
+            new BookAdministrationRejection.AccountRoleConflict(
+                new AccountCode("1000"), AccountRole.ORDINARY, nullOf()));
   }
 }

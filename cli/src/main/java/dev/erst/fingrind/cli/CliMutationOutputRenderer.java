@@ -1,9 +1,10 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
 import java.util.List;
@@ -47,9 +48,36 @@ final class CliMutationOutputRenderer {
             List.of(
                 List.of("Account code", account.accountCode().value()),
                 List.of("Account name", account.accountName().value()),
+                List.of("Account type", account.accountType().wireValue()),
+                List.of("Account role", account.accountRole().wireValue()),
                 List.of("Normal balance", account.normalBalance().wireValue()),
                 List.of("Active", Boolean.toString(account.active())),
                 List.of("Declared at", account.declaredAt().toString()))));
+  }
+
+  static String renderClosedPeriodHuman(ClosedPeriod closedPeriod) {
+    return CliTextFormat.renderTitledBlock(
+        "Period Closed",
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Close order", Integer.toString(closedPeriod.closeOrder())),
+                List.of(
+                    "Effective date range",
+                    closedPeriod.reportingPeriod().effectiveDateFrom()
+                        + " to "
+                        + closedPeriod.reportingPeriod().effectiveDateTo()),
+                List.of(
+                    "Retained earnings account",
+                    closedPeriod.retainedEarningsAccountCode().value()),
+                List.of(
+                    "Closed totals",
+                    CliQueryOutputFormatter.joinedBalances(closedPeriod.closedTotals())),
+                List.of("Closed at", closedPeriod.closedAt().toString()),
+                List.of(
+                    "Closing postings",
+                    closedPeriod.closingPostingIds().stream()
+                        .map(dev.erst.fingrind.core.PostingId::value)
+                        .collect(java.util.stream.Collectors.joining(", "))))));
   }
 
   static String renderPreflightAcceptedHuman(PostEntryResult.PreflightAccepted accepted) {

@@ -8,14 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.io.ByteArrayInputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -55,7 +54,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
       lifecycleMethodHandle(
           "rememberedRejectedFailure",
           MethodType.methodType(
-              ContractFailureException.class, dev.erst.fingrind.contract.ContractFailure.class));
+              ContractFailureException.class,
+              dev.erst.fingrind.contract.runtime.ContractFailure.class));
 
   @Test
   void readSchema_mapsIoFailure() {
@@ -257,15 +257,18 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
                 existingBookPath, bookPassphrase, SqliteStoreAccessMode.READ_WRITE_EXISTING)) {
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("3000"),
                   new AccountName("Equity"),
+                  dev.erst.fingrind.core.AccountType.REVENUE,
                   NormalBalance.CREDIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("3000"),
               new AccountName("Equity"),
+              dev.erst.fingrind.core.AccountType.REVENUE,
               NormalBalance.CREDIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
@@ -306,6 +309,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
             SqliteBookContract.APPLICATION_ID,
             SqliteBookContract.FORMAT_VERSION,
             "account",
+            "audit_event",
             "book_meta",
             "journal_line",
             "posting_fact");
@@ -553,7 +557,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   private static void exerciseRejectedFailureFallbackBranches(SqliteStoreLifecycle lifecycle) {
     ContractFailureException storedContractFailure =
         new ContractFailureException(
-            dev.erst.fingrind.contract.ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
+            dev.erst.fingrind.contract.runtime.ContractErrors.Descriptor
+                .PROTECTED_BOOK_VERIFICATION_FAILED
                 .failure("Rejected.", null, null));
     setLifecycleSessionState(
         lifecycle, lifecycleSessionState("FailedSession", null, null, storedContractFailure));
@@ -561,7 +566,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
         storedContractFailure,
         invokeRememberedRejectedFailure(
             lifecycle,
-            dev.erst.fingrind.contract.ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
+            dev.erst.fingrind.contract.runtime.ContractErrors.Descriptor
+                .PROTECTED_BOOK_VERIFICATION_FAILED
                 .failure("Rejected.", null, null)));
     setLifecycleSessionState(
         lifecycle,
@@ -570,7 +576,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
     ContractFailureException failedFallback =
         invokeRememberedRejectedFailure(
             lifecycle,
-            dev.erst.fingrind.contract.ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
+            dev.erst.fingrind.contract.runtime.ContractErrors.Descriptor
+                .PROTECTED_BOOK_VERIFICATION_FAILED
                 .failure("Rejected plain failed.", null, null));
     assertEquals("Rejected plain failed.", failedFallback.failure().message());
 
@@ -578,7 +585,8 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
     ContractFailureException idleFallback =
         invokeRememberedRejectedFailure(
             lifecycle,
-            dev.erst.fingrind.contract.ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED
+            dev.erst.fingrind.contract.runtime.ContractErrors.Descriptor
+                .PROTECTED_BOOK_VERIFICATION_FAILED
                 .failure("Rejected fallback.", null, null));
     assertEquals("Rejected fallback.", idleFallback.failure().message());
   }
@@ -636,7 +644,7 @@ class SqliteStoreLifecycleAndAccessModeTest extends SqlitePostingFactStoreTestSu
   }
 
   private static ContractFailureException invokeRememberedRejectedFailure(
-      SqliteStoreLifecycle lifecycle, dev.erst.fingrind.contract.ContractFailure failure) {
+      SqliteStoreLifecycle lifecycle, dev.erst.fingrind.contract.runtime.ContractFailure failure) {
     return (ContractFailureException)
         invokeHandle(REMEMBERED_REJECTED_FAILURE_HANDLE, lifecycle, failure);
   }

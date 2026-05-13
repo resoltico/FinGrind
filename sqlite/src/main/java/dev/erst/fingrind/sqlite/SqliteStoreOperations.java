@@ -1,9 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.ContractFailure;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;

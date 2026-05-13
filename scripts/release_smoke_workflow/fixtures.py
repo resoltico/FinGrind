@@ -93,18 +93,29 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
         {
             "accountCode": "1000",
             "accountName": "Cash",
-            "normalBalance": "DEBIT",
+            "accountType": "ASSET",
+            "accountRole": "ORDINARY",
             "nonsenseOne": "unexpected",
             "nonsenseTwo": "unexpected",
         },
     )
     write_json(
         config.declare_cash.local_path,
-        {"accountCode": "1000", "accountName": "Cash", "normalBalance": "DEBIT"},
+        {
+            "accountCode": "1000",
+            "accountName": "Cash",
+            "accountType": "ASSET",
+            "accountRole": "ORDINARY",
+        },
     )
     write_json(
         config.declare_revenue.local_path,
-        {"accountCode": "2000", "accountName": "Revenue", "normalBalance": "CREDIT"},
+        {
+            "accountCode": "2000",
+            "accountName": "Revenue",
+            "accountType": "REVENUE",
+            "accountRole": "ORDINARY",
+        },
     )
 
 

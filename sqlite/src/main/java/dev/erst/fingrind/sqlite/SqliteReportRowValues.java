@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
@@ -73,7 +74,7 @@ final class SqliteReportRowValues {
               entry ->
                   new TrialBalanceRowView(
                       account,
-                      SqliteBalanceMath.currencyBalance(
+                      BalanceMath.currencyBalance(
                           entry.getKey(), entry.getValue().debit, entry.getValue().credit)))
           .toList();
     }
@@ -85,7 +86,7 @@ final class SqliteReportRowValues {
               entry ->
                   new PeriodAccountActivityView(
                       account,
-                      SqliteBalanceMath.currencyBalance(
+                      BalanceMath.currencyBalance(
                           entry.getKey(), entry.getValue().debit, entry.getValue().credit)))
           .toList();
     }

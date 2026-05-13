@@ -5,7 +5,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -16,6 +16,8 @@ public interface CliBookQueryJsonModels {
   record DeclaredAccountPayload(
       String accountCode,
       String accountName,
+      String accountType,
+      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt)
@@ -23,6 +25,8 @@ public interface CliBookQueryJsonModels {
     public DeclaredAccountPayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
+      accountType = requireText(accountType, "accountType");
+      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
     }
@@ -94,6 +98,8 @@ public interface CliBookQueryJsonModels {
   record AccountBalancePayload(
       String accountCode,
       String accountName,
+      String accountType,
+      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -104,6 +110,8 @@ public interface CliBookQueryJsonModels {
     public AccountBalancePayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
+      accountType = requireText(accountType, "accountType");
+      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");

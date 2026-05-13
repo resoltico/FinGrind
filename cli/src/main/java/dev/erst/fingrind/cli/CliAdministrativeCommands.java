@@ -1,7 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -71,5 +72,22 @@ record DeclareAccount(BookAccess bookAccess, Path requestFile, OutputMode output
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
         .runDeclareAccountCommand(bookAccess, requestFile, outputMode);
+  }
+}
+
+/** Administrative CLI command that closes one contiguous reporting period. */
+record ClosePeriod(BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  ClosePeriod {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runClosePeriodCommand(bookAccess, reportingPeriod, outputMode);
   }
 }

@@ -9,7 +9,11 @@ final class PdfReportTheme {
   static final float BODY_FONT_SIZE = 9f;
   static final float SMALL_FONT_SIZE = 8f;
   static final float LINE_HEIGHT = 12f;
-  static final float CELL_PADDING = 4f;
+  static final float CELL_PADDING = 6f;
+  static final float SECTION_TOP_MARGIN = 8f;
+  static final float SECTION_BOTTOM_MARGIN = 4f;
+  static final float SECTION_AFTER_TABLE_SPACING = 10f;
+  static final int TEXT_RGB = 0;
   static final int HEADER_FILL_RGB = 238;
   static final int SECTION_RULE_RGB = 200;
 

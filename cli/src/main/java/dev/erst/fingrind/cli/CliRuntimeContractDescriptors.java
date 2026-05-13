@@ -1,12 +1,12 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.ApplicationIdentity;
-import dev.erst.fingrind.contract.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
-import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
-import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 
 /**

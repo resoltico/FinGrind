@@ -1,6 +1,8 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.contract.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import java.time.LocalDate;
@@ -12,6 +14,28 @@ final class PdfValueFormatter {
 
   static String displayMoney(Money money) {
     return money.canonicalDecimal();
+  }
+
+  static String displayBalanceSide(BalanceSide balanceSide) {
+    return switch (balanceSide) {
+      case DEBIT -> "Debit";
+      case CREDIT -> "Credit";
+      case ZERO -> "Balanced";
+    };
+  }
+
+  static String displayAccountTypeSection(AccountType accountType) {
+    return switch (accountType) {
+      case ASSET -> "Assets";
+      case LIABILITY -> "Liabilities";
+      case EQUITY -> "Equity";
+      case REVENUE -> "Revenue";
+      case EXPENSE -> "Expenses";
+    };
+  }
+
+  static String displayRowKind(boolean synthetic) {
+    return synthetic ? "Synthetic" : "Account";
   }
 
   static String optionalDate(@Nullable LocalDate date) {

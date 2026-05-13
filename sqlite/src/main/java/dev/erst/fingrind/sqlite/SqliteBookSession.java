@@ -1,11 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.AtomicBookStore;
+import java.time.Instant;
 import java.util.Optional;
 
 /** Public SQLite-backed book-session surface for CLI, tooling, and fuzz harnesses. */
@@ -19,9 +20,10 @@ public interface SqliteBookSession extends AtomicBookStore, AutoCloseable {
   Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey);
 
   /** Rekeys one initialized FinGrind book using a contract-level replacement secret source. */
-  dev.erst.fingrind.contract.ContractDecision<RekeyBookResult> rekeyBook(
-      dev.erst.fingrind.contract.BookAccess.PassphraseSource replacementPassphraseSource,
-      SqlitePassphraseResolver passphraseResolver);
+  dev.erst.fingrind.contract.runtime.ContractDecision<RekeyBookResult> rekeyBook(
+      dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource replacementPassphraseSource,
+      SqlitePassphraseResolver passphraseResolver,
+      Instant rekeyedAt);
 
   @Override
   void close();

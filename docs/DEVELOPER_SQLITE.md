@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,14 +44,11 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `1`, owned by `BookFormatContract`
-- there is no published migration executor or historical upgrade catalog yet because the public
-  line starts at format `1`
+- the current supported book format is `3`, owned by `BookFormatContract`
+- FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
+  directly and older formats are rejected instead of being migrated in place
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
-
-Because current FinGrind books start at format `1`, there are no historical upgrade steps bundled
-yet.
 
 ## Current Adapter Choice
 
@@ -65,7 +62,7 @@ The package-private backing implementation remains
 Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
 - express book access explicitly as
-  [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/BookAccess.java)
+  [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/runtime/BookAccess.java)
 - resolve passphrase sources into
   [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java)
   before the storage adapter opens SQLite
@@ -148,7 +145,7 @@ License and attribution stance:
 ## Adapter Composition
 
 The SQLite adapter is split into focused collaborators:
-- [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/BookAccess.java):
+- [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/runtime/BookAccess.java):
   durable book file plus one explicit passphrase-source selection
 - [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
   normalized UTF-8 passphrase bytes after CLI-side source resolution, with best-effort overwrite
@@ -177,7 +174,7 @@ The SQLite adapter is split into focused collaborators:
   and [`SqliteTransactionValidationBook`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteTransactionValidationBook.java):
   focused helpers that keep local lifecycle mapping and validation lookups separate from the outer
   session wrapper instead of layering multiple narrow session-view classes over the same state
-- [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/RekeyBookResult.java):
+- [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
 - [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java),
   [`SqliteNativeConnections`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeConnections.java),
@@ -221,6 +218,8 @@ The SQLite adapter is split into focused collaborators:
   authoritative `book_meta.initialized_at` marker, initializes a protected SQLite3MC book file,
   and hardens the book path plus present sidecar files to owner-only permissions when the host
   filesystem supports that security model
+- `open-book`, account declaration/reactivation, posting commit/reversal, and `rekey-book` append
+  durable audit rows inside the same protected book instead of relying only on posting provenance
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
   `BookNotInitialized`
 - read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
@@ -246,6 +245,8 @@ The SQLite adapter is split into focused collaborators:
 - posting validation is shared between application preflight and transactional SQLite commit, so
   book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
   between the two paths
+- committed `posting_fact`, `journal_line`, and `audit_event` rows are append-only at the schema
+  layer; direct update/delete mutation is rejected by SQLite triggers
 - opened book handles keep `foreign_keys = on`, `trusted_schema = off`, and the expected
   `query_only` setting for the current access mode
 - schema bootstrap is intentionally separate from the posting transaction because it is idempotent
@@ -374,11 +375,11 @@ text or re-querying after rollback.
 - the canonical schema resource is
   [`book_schema.sql`](../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
 - the canonical schema uses SQLite `STRICT` tables for `book_meta`, `account`, `posting_fact`, and
-  `journal_line`
+  `journal_line`, plus `audit_event`
 - there are no versioned migration file names such as `V1__...`
 - `BookFormatContract` is the canonical owner of the supported format version
-- no upgrade step files are bundled yet because there are no earlier FinGrind on-disk versions
-  than the current format `1`
+- current alpha evolution is direct replacement of the canonical schema plus explicit rejection of
+  older book formats; there is no migration executor and no legacy-compatibility upgrade path
 
 ## Why FFM-Backed SQLite
 
@@ -420,6 +421,8 @@ Native bridge notes:
 - opened book sessions pin `journal_mode=DELETE`, `synchronous=EXTRA`, `secure_delete=ON`,
   `temp_store=MEMORY`, `foreign_keys=ON`, and `trusted_schema=OFF`, and FinGrind rejects drift in
   those settings instead of trusting host defaults
+- the rationale for `journal_mode=DELETE` is recorded in
+  [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md)
 - text parameters use SQLite's `SQLITE_TRANSIENT` contract so bound text does not rely on statement
   arena lifetime conventions
 - error messages and SQLite version strings read exact C-string lengths rather than a guessed fixed

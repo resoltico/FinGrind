@@ -1,28 +1,37 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.LedgerExecutionJournal;
-import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerJournalEntry;
-import dev.erst.fingrind.contract.LedgerJournalStep;
-import dev.erst.fingrind.contract.LedgerPlanId;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerStepFailure;
-import dev.erst.fingrind.contract.LedgerStepId;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -38,6 +47,8 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -51,12 +62,20 @@ import java.util.Optional;
 class CliFixtureSupport extends CliIoFixtureSupport {
   protected static DeclaredAccount declaredAccount(
       String accountCode, String accountName, NormalBalance normalBalance) {
-    return new DeclaredAccount(
-        new AccountCode(accountCode),
-        new AccountName(accountName),
+    return declaredAccount(
+        accountCode,
+        accountName,
+        fixtureAccountType(normalBalance),
         normalBalance,
         true,
         Instant.parse("2026-04-07T10:15:30Z"));
+  }
+
+  private static AccountType fixtureAccountType(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case DEBIT -> AccountType.ASSET;
+      case CREDIT -> AccountType.REVENUE;
+    };
   }
 
   protected static Money money(String currencyCode, String amount) {
@@ -75,6 +94,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("Correction")),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -98,6 +118,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("1000"), JournalLine.EntrySide.CREDIT, money("EUR", "5.00")))),
         PostingLineage.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-2"),
@@ -172,40 +193,44 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         Optional.of(LocalDate.parse("2026-04-30")),
         List.of(
             new TrialBalanceRow(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z")),
                 CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))));
   }
 
-  protected static dev.erst.fingrind.contract.AccountBalanceSnapshot
+  protected static dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot
       sampleAccountBalanceSnapshot() {
     DeclaredAccount cashAccount =
-        new DeclaredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
+        declaredAccount(
+            "1000",
+            "Cash",
+            dev.erst.fingrind.core.AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T12:00:00Z"));
-    return new dev.erst.fingrind.contract.AccountBalanceSnapshot(
+    return new dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot(
         cashAccount,
         Optional.of(LocalDate.parse("2026-04-01")),
         Optional.of(LocalDate.parse("2026-04-30")),
         List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
   }
 
-  protected static dev.erst.fingrind.contract.AccountLedgerReport sampleAccountLedgerReport() {
+  protected static dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport
+      sampleAccountLedgerReport() {
     DeclaredAccount cashAccount =
-        new DeclaredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
+        declaredAccount(
+            "1000",
+            "Cash",
+            dev.erst.fingrind.core.AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T12:00:00Z"));
-    return new dev.erst.fingrind.contract.AccountLedgerReport(
+    return new dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport(
         cashAccount,
         new dev.erst.fingrind.core.EffectiveDateRange.Bounded(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
@@ -214,17 +239,93 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
   }
 
-  protected static dev.erst.fingrind.contract.PeriodSummaryReport samplePeriodSummaryReport() {
-    return new dev.erst.fingrind.contract.PeriodSummaryReport(
+  protected static dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport
+      samplePeriodSummaryReport() {
+    return new dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport(
         LocalDate.parse("2026-04-01"),
         LocalDate.parse("2026-04-30"),
         1,
         2,
         1,
         List.of(
-            new dev.erst.fingrind.contract.PeriodCurrencySummary(
+            new dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary(
                 CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "10.00")))),
         List.of());
+  }
+
+  protected static FinancialPositionReport sampleFinancialPositionReport() {
+    return new FinancialPositionReport(
+        Optional.of(LocalDate.parse("2026-04-30")),
+        List.of(
+            new FinancialPositionSection(
+                AccountType.ASSET,
+                List.of(
+                    new FinancialPositionRow(
+                        "1000",
+                        "Cash",
+                        AccountType.ASSET,
+                        false,
+                        CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
+                List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
+            new FinancialPositionSection(
+                AccountType.EQUITY,
+                List.of(
+                    new FinancialPositionRow(
+                        "3200",
+                        "Retained Earnings",
+                        AccountType.EQUITY,
+                        false,
+                        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
+                List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"))))));
+  }
+
+  protected static IncomeStatementReport sampleIncomeStatementReport() {
+    CurrencyBalance revenueMovement =
+        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
+    return new IncomeStatementReport(
+        LocalDate.parse("2026-04-01"),
+        LocalDate.parse("2026-04-30"),
+        List.of(
+            new IncomeStatementSection(
+                AccountType.REVENUE,
+                List.of(
+                    new IncomeStatementRow(
+                        "2000", "Revenue", AccountType.REVENUE, false, revenueMovement)),
+                List.of(revenueMovement))),
+        List.of(revenueMovement));
+  }
+
+  protected static ChangesInEquityReport sampleChangesInEquityReport() {
+    CurrencyBalance openingBalance =
+        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"));
+    CurrencyBalance movementBalance =
+        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
+    CurrencyBalance closingBalance =
+        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
+    return new ChangesInEquityReport(
+        LocalDate.parse("2026-04-01"),
+        LocalDate.parse("2026-04-30"),
+        List.of(
+            new ChangesInEquityRow(
+                "3200",
+                "Retained Earnings",
+                false,
+                openingBalance,
+                movementBalance,
+                closingBalance)),
+        List.of(openingBalance),
+        List.of(movementBalance),
+        List.of(closingBalance));
+  }
+
+  protected static ClosedPeriod sampleClosedPeriod() {
+    return new ClosedPeriod(
+        1,
+        new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+        new AccountCode("3200"),
+        List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"))),
+        Instant.parse("2026-04-30T12:00:00Z"),
+        List.of(new PostingId("posting-close-1")));
   }
 
   protected static LedgerPlanResult successfulPlanResult(LedgerPlanId planId) {

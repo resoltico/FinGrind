@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
@@ -188,7 +189,7 @@ final class SqlitePostingReader {
   }
 
   private static CurrencyBalance balance(CurrencyUnit currencyCode, Totals totals) {
-    return SqliteBalanceMath.currencyBalance(currencyCode, totals.debit, totals.credit);
+    return BalanceMath.currencyBalance(currencyCode, totals.debit, totals.credit);
   }
 
   private static PostingHistoryCursor postingHistoryCursor(CommittedPosting posting) {

@@ -4,7 +4,7 @@ import static dev.erst.fingrind.cli.CliJsonFieldAccess.rejectUnexpectedFields;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
 
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.ProtocolMoneyFields;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PositiveMoney;

@@ -3,7 +3,9 @@ package dev.erst.fingrind.core;
 import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -46,7 +48,7 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void finiteWireVocabulariesParseStableValuesAndRejectUnknownValues() {
+  void coreWireVocabulariesParseStableValuesAndRejectUnknownValues() {
     assertEquals("DEBIT", NormalBalance.DEBIT.wireValue());
     assertEquals("CREDIT", NormalBalance.CREDIT.wireValue());
     assertEquals(NormalBalance.DEBIT, NormalBalance.fromWireValue("DEBIT"));
@@ -86,5 +88,41 @@ class CoreTextValueObjectsTest {
     assertEquals(JournalLine.EntrySide.CREDIT, JournalLine.EntrySide.fromWireValue("CREDIT"));
     assertEquals(java.util.List.of("DEBIT", "CREDIT"), JournalLine.EntrySide.wireValues());
     assertThrows(IllegalArgumentException.class, () -> JournalLine.EntrySide.fromWireValue("LEFT"));
+  }
+
+  @Test
+  void accountTaxonomyWireVocabulariesParseStableValuesAndRejectUnknownValues() {
+    assertEquals("ASSET", AccountType.ASSET.wireValue());
+    assertEquals("LIABILITY", AccountType.LIABILITY.wireValue());
+    assertEquals("EQUITY", AccountType.EQUITY.wireValue());
+    assertEquals("REVENUE", AccountType.REVENUE.wireValue());
+    assertEquals("EXPENSE", AccountType.EXPENSE.wireValue());
+    assertEquals(AccountType.ASSET, AccountType.fromWireValue("ASSET"));
+    assertEquals(AccountType.EXPENSE, AccountType.fromWireValue("EXPENSE"));
+    assertEquals(
+        java.util.List.of("ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"),
+        AccountType.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> AccountType.fromWireValue("asset"));
+
+    assertEquals("ORDINARY", AccountRole.ORDINARY.wireValue());
+    assertEquals("CONTRA", AccountRole.CONTRA.wireValue());
+    assertEquals("RETAINED_EARNINGS", AccountRole.RETAINED_EARNINGS.wireValue());
+    assertEquals(AccountRole.ORDINARY, AccountRole.fromWireValue("ORDINARY"));
+    assertEquals(AccountRole.RETAINED_EARNINGS, AccountRole.fromWireValue("RETAINED_EARNINGS"));
+    assertEquals(
+        java.util.List.of("ORDINARY", "CONTRA", "RETAINED_EARNINGS"), AccountRole.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> AccountRole.fromWireValue("ordinary"));
+  }
+
+  @Test
+  void postingKindWireVocabularyAndClassificationRemainStable() {
+    assertEquals("STANDARD", PostingKind.STANDARD.wireValue());
+    assertEquals("PERIOD_CLOSE", PostingKind.PERIOD_CLOSE.wireValue());
+    assertEquals(PostingKind.STANDARD, PostingKind.fromWireValue("STANDARD"));
+    assertEquals(PostingKind.PERIOD_CLOSE, PostingKind.fromWireValue("PERIOD_CLOSE"));
+    assertEquals(java.util.List.of("STANDARD", "PERIOD_CLOSE"), PostingKind.wireValues());
+    assertThrows(IllegalArgumentException.class, () -> PostingKind.fromWireValue("CLOSING"));
+    assertTrue(PostingKind.STANDARD.isStandard());
+    assertFalse(PostingKind.PERIOD_CLOSE.isStandard());
   }
 }

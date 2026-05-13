@@ -4,12 +4,26 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -22,7 +36,8 @@ class ContractNormalizationTest {
       new DeclaredAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
-          NormalBalance.DEBIT,
+          AccountType.ASSET,
+          AccountRole.ORDINARY,
           true,
           Instant.parse("2026-04-07T10:15:30Z"));
 

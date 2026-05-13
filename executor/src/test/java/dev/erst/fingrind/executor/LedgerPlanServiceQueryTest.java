@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.declaredAccount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.bookWithCommittedPosting;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.countFact;
@@ -15,19 +17,19 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.textFact;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -71,9 +73,10 @@ class LedgerPlanServiceQueryTest {
                           fact,
                           "nextCursor",
                           AccountPageCursor.fromAccount(
-                                  new DeclaredAccount(
+                                  declaredAccount(
                                       new AccountCode("1000"),
                                       new AccountName("Cash"),
+                                      AccountType.ASSET,
                                       NormalBalance.DEBIT,
                                       true,
                                       FIXED_CLOCK.instant()))
@@ -82,7 +85,12 @@ class LedgerPlanServiceQueryTest {
           listAccountFacts.stream()
               .anyMatch(
                   fact ->
-                      groupFact(fact, "account", "accountCode", "1000", "accountName", "Cash")));
+                      fact instanceof LedgerFact.Group group
+                          && "account".equals(group.name())
+                          && groupFact(
+                              fact, "account", "accountCode", "1000", "accountName", "Cash")
+                          && group.facts().stream()
+                              .anyMatch(child -> textFact(child, "accountType", "ASSET"))));
 
       List<LedgerFact> getPostingFacts = result.journal().steps().get(1).facts();
       assertTrue(
@@ -135,7 +143,12 @@ class LedgerPlanServiceQueryTest {
           balanceFacts.stream()
               .anyMatch(
                   fact ->
-                      groupFact(fact, "account", "accountCode", "1000", "accountName", "Cash")));
+                      fact instanceof LedgerFact.Group group
+                          && "account".equals(group.name())
+                          && groupFact(
+                              fact, "account", "accountCode", "1000", "accountName", "Cash")
+                          && group.facts().stream()
+                              .anyMatch(child -> textFact(child, "accountType", "ASSET"))));
       assertTrue(balanceFacts.stream().anyMatch(fact -> countFact(fact, "bucketCount", 1)));
     }
   }
@@ -146,7 +159,8 @@ class LedgerPlanServiceQueryTest {
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
-          NormalBalance.DEBIT,
+          AccountType.ASSET,
+          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
           FIXED_CLOCK.instant());
 
       var preflightResult =
@@ -160,10 +174,10 @@ class LedgerPlanServiceQueryTest {
 
       assertEquals(LedgerPlanStatus.REJECTED, preflightResult.status());
       assertEquals(
-          dev.erst.fingrind.contract.PostingRejection.wireCode(
-              new dev.erst.fingrind.contract.PostingRejection.AccountStateViolations(
+          dev.erst.fingrind.contract.bookkeeping.PostingRejection.wireCode(
+              new dev.erst.fingrind.contract.bookkeeping.PostingRejection.AccountStateViolations(
                   List.of(
-                      new dev.erst.fingrind.contract.PostingRejection.UnknownAccount(
+                      new dev.erst.fingrind.contract.bookkeeping.PostingRejection.UnknownAccount(
                           new AccountCode("2000"))))),
           preflightResult.journal().steps().getLast().requiredFailure().code());
     }

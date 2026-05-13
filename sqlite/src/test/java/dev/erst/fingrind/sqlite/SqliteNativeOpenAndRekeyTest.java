@@ -7,11 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.ContractFailure;
-import dev.erst.fingrind.contract.ContractFailureException;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -212,6 +212,25 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
               SqliteNativeException.class,
               () -> SqliteNativeConnections.open(bookPath, oldPassphrase));
       assertEquals("SQLITE_NOTADB", exception.resultName());
+    }
+  }
+
+  @Test
+  void openWithoutRollbackArtifactWarning_roundTripsThroughNativeOpenOverload() throws Exception {
+    Path bookPath = tempDirectory.resolve("native-round-trip-no-warning.sqlite");
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "native no-warning passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database =
+            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE)) {
+      database.executeStatement("create table sample (id integer primary key, note text not null)");
+      database.executeStatement("insert into sample (id, note) values (1, 'ok')");
+      try (SqliteNativeStatement statement =
+          SqliteNativeStatements.prepare(database, "select count(*) from sample")) {
+        assertEquals(SqliteNativeResultCodes.ROW, statement.step());
+        assertEquals(1, statement.columnInt(0));
+      }
     }
   }
 

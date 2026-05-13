@@ -8,17 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -211,6 +212,15 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         JazzerReplayDetailsMapper.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
+        PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.ClosedPeriodViolation(
+                java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
+    assertEquals(
+        PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
+        JazzerReplayDetailsMapper.rejectionStatus(
+            new PostingRejection.RetainedEarningsAccountReserved(accountCode)));
+    assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayDetailsMapper.rejectionStatus(
             new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))));
@@ -309,6 +319,7 @@ class JazzerReplayInternalsTest {
                     new PostingId("posting-1"),
                     command.journalEntry(),
                     PostingLineage.direct(),
+                    PostingKind.STANDARD,
                     new CommittedProvenance(
                         command.requestProvenance(),
                         CliFuzzFixtures.fixedClock().instant(),
@@ -418,9 +429,17 @@ class JazzerReplayInternalsTest {
         ReplayOutcomeKind.wireValues());
     assertEquals(ReplayOutcomeKind.SUCCESS, ReplayOutcomeKind.fromWireValue("success"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("duplicate-idempotency-key"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("retained-earnings-account-reserved"));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
         PostingLifecycleStatus.fromWireValue("duplicate-idempotency-key"));
+    assertEquals(
+        PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
+        PostingLifecycleStatus.fromWireValue("closed-period-violation"));
+    assertEquals(
+        PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.fromWireValue("retained-earnings-account-reserved"));
     assertEquals(
         Path.of("/tmp/project/src/fuzz/resources/example.json"),
         metadata.inputPath(Path.of("/tmp/project")));
@@ -485,6 +504,7 @@ class JazzerReplayInternalsTest {
         new PostingId(postingId),
         journalEntry,
         postingLineage,
+        PostingKind.STANDARD,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
 

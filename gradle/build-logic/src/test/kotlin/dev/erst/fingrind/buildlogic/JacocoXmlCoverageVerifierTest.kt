@@ -53,6 +53,32 @@ class JacocoXmlCoverageVerifierTest {
     }
 
     @Test
+    fun parseSummary_usesOnlyReportLevelCounters() {
+        val summary =
+            JacocoXmlCoverageVerifier.parseSummary(
+                reportInputStream(
+                    """
+                    <report name="executor">
+                      <package name="dev/erst/fingrind/executor">
+                        <class name="dev/erst/fingrind/executor/Example">
+                          <counter type="LINE" missed="0" covered="12"/>
+                          <counter type="BRANCH" missed="4" covered="8"/>
+                        </class>
+                      </package>
+                      <counter type="LINE" missed="0" covered="42"/>
+                      <counter type="BRANCH" missed="0" covered="17"/>
+                    </report>
+                    """.trimIndent(),
+                ),
+            )
+
+        assertEquals(0, summary.missedLines)
+        assertEquals(42, summary.coveredLines)
+        assertEquals(0, summary.missedBranches)
+        assertEquals(17, summary.coveredBranches)
+    }
+
+    @Test
     fun loadSummary_rejectsMissingReportFile() {
         val missingReport = Files.createTempDirectory("jacoco-coverage-missing").resolve("report.xml").toFile()
 

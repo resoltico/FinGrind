@@ -1,15 +1,16 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.BookFormatContract;
+import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -24,8 +25,11 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
@@ -43,6 +47,8 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +67,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   private final Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey = mutableMap();
   private final Map<PostingId, CommittedPosting> postingsByPostingId = mutableMap();
   private final Map<PostingId, CommittedPosting> reversalsByPriorPostingId = mutableMap();
+  private final List<ClosedPeriod> closedPeriods = new ArrayList<>();
   private @Nullable Snapshot transactionSnapshot;
   private boolean initialized;
   private Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
@@ -114,7 +121,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   public AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
-      NormalBalance normalBalance,
+      AccountType accountType,
+      AccountRole accountRole,
       Instant declaredAt) {
     return withLock(
         () -> {
@@ -125,7 +133,7 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           AccountDeclarationOutcome declarationOutcome =
               RegisteredAccount.declare(
                   accountsByCode.get(accountCode),
-                  new AccountDeclaration(accountCode, accountName, normalBalance),
+                  new AccountDeclaration(accountCode, accountName, accountType, accountRole),
                   declaredAt);
           if (declarationOutcome instanceof AccountDeclarationOutcome.Declared declared) {
             accountsByCode.put(accountCode, declared.account());
@@ -167,6 +175,49 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
   @Override
   public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return withLock(() -> Optional.ofNullable(reversalsByPriorPostingId.get(priorPostingId)));
+  }
+
+  @Override
+  public List<RegisteredAccount> allAccounts() {
+    return withLock(
+        () ->
+            accountsByCode.values().stream()
+                .sorted(Comparator.comparing(account -> account.accountCode().value()))
+                .toList());
+  }
+
+  @Override
+  public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+    Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
+    return withLock(
+        () ->
+            postingsByPostingId.values().stream()
+                .filter(
+                    posting -> effectiveDateRange.contains(posting.journalEntry().effectiveDate()))
+                .sorted(
+                    Comparator.comparing(
+                            (CommittedPosting posting) -> posting.journalEntry().effectiveDate())
+                        .thenComparing(posting -> posting.provenance().recordedAt())
+                        .thenComparing(posting -> posting.postingId().value()))
+                .toList());
+  }
+
+  @Override
+  public Optional<LocalDate> earliestPostingEffectiveDate() {
+    return withLock(
+        () ->
+            postingsByPostingId.values().stream()
+                .map(posting -> posting.journalEntry().effectiveDate())
+                .min(Comparator.naturalOrder()));
+  }
+
+  @Override
+  public Optional<LocalDate> closedThroughEffectiveDate() {
+    return withLock(
+        () ->
+            closedPeriods.stream()
+                .map(closedPeriod -> closedPeriod.reportingPeriod().effectiveDateTo())
+                .max(Comparator.naturalOrder()));
   }
 
   @Override
@@ -215,8 +266,56 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
     Objects.requireNonNull(postingFact, "postingFact");
     return commit(
         new PostingDraft(
-            postingFact.journalEntry(), postingFact.postingLineage(), postingFact.provenance()),
+            postingFact.journalEntry(),
+            postingFact.postingLineage(),
+            postingFact.postingKind(),
+            postingFact.provenance()),
         postingFact::postingId);
+  }
+
+  @Override
+  public PeriodCloseOutcome closePeriod(
+      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+    Objects.requireNonNull(periodCloseDraft, "periodCloseDraft");
+    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    return withLock(
+        () -> {
+          if (!initialized) {
+            return new PeriodCloseOutcome.Rejected(
+                new BookkeepingAdministrationRejection.BookNotInitialized());
+          }
+
+          Snapshot rollbackSnapshot = snapshotState();
+          List<PostingId> closingPostingIds = new ArrayList<>();
+          boolean committed = false;
+          try {
+            for (PostingDraft closingPostingDraft : periodCloseDraft.closingPostings()) {
+              PostingCommitResult commitResult = commit(closingPostingDraft, postingIdGenerator);
+              if (commitResult instanceof PostingCommitResult.Rejected rejected) {
+                throw new IllegalStateException(
+                    "Generated period-close posting failed bookkeeping acceptance: "
+                        + rejected.rejection());
+              }
+              closingPostingIds.add(
+                  ((PostingCommitResult.Committed) commitResult).postingFact().postingId());
+            }
+            ClosedPeriod closedPeriod =
+                new ClosedPeriod(
+                    closedPeriods.size() + 1,
+                    periodCloseDraft.reportingPeriod(),
+                    periodCloseDraft.retainedEarningsAccountCode(),
+                    periodCloseDraft.closedTotals(),
+                    periodCloseDraft.closedAt(),
+                    closingPostingIds);
+            closedPeriods.add(closedPeriod);
+            committed = true;
+            return new PeriodCloseOutcome.Closed(closedPeriod);
+          } finally {
+            if (!committed) {
+              restoreSnapshot(rollbackSnapshot);
+            }
+          }
+        });
   }
 
   @Override
@@ -458,7 +557,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
                   Map.copyOf(accountsByCode),
                   Map.copyOf(postingsByIdempotencyKey),
                   Map.copyOf(postingsByPostingId),
-                  Map.copyOf(reversalsByPriorPostingId));
+                  Map.copyOf(reversalsByPriorPostingId),
+                  List.copyOf(closedPeriods));
         });
   }
 
@@ -491,6 +591,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
           postingsByPostingId.putAll(snapshot.postingsByPostingId());
           reversalsByPriorPostingId.clear();
           reversalsByPriorPostingId.putAll(snapshot.reversalsByPriorPostingId());
+          closedPeriods.clear();
+          closedPeriods.addAll(snapshot.closedPeriods());
           transactionSnapshot = null;
         });
   }
@@ -508,7 +610,8 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
               new RegisteredAccount(
                   existingAccount.accountCode(),
                   existingAccount.accountName(),
-                  existingAccount.normalBalance(),
+                  existingAccount.accountType(),
+                  existingAccount.accountRole(),
                   false,
                   existingAccount.declaredAt()));
         });
@@ -644,6 +747,32 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
     return new ConcurrentHashMap<>();
   }
 
+  private Snapshot snapshotState() {
+    return new Snapshot(
+        initialized,
+        initializedAt,
+        Map.copyOf(accountsByCode),
+        Map.copyOf(postingsByIdempotencyKey),
+        Map.copyOf(postingsByPostingId),
+        Map.copyOf(reversalsByPriorPostingId),
+        List.copyOf(closedPeriods));
+  }
+
+  private void restoreSnapshot(Snapshot snapshot) {
+    initialized = snapshot.initialized();
+    initializedAt = snapshot.initializedAt();
+    accountsByCode.clear();
+    accountsByCode.putAll(snapshot.accountsByCode());
+    postingsByIdempotencyKey.clear();
+    postingsByIdempotencyKey.putAll(snapshot.postingsByIdempotencyKey());
+    postingsByPostingId.clear();
+    postingsByPostingId.putAll(snapshot.postingsByPostingId());
+    reversalsByPriorPostingId.clear();
+    reversalsByPriorPostingId.putAll(snapshot.reversalsByPriorPostingId());
+    closedPeriods.clear();
+    closedPeriods.addAll(snapshot.closedPeriods());
+  }
+
   /** Mutable debit and credit accumulators for one currency bucket. */
   private static final class Totals {
     private long debit;
@@ -656,5 +785,6 @@ public final class InMemoryBookSession implements AtomicBookStore, AutoCloseable
       Map<AccountCode, RegisteredAccount> accountsByCode,
       Map<IdempotencyKey, CommittedPosting> postingsByIdempotencyKey,
       Map<PostingId, CommittedPosting> postingsByPostingId,
-      Map<PostingId, CommittedPosting> reversalsByPriorPostingId) {}
+      Map<PostingId, CommittedPosting> reversalsByPriorPostingId,
+      List<ClosedPeriod> closedPeriods) {}
 }

@@ -4,7 +4,8 @@ package dev.erst.fingrind.contract.protocol;
 public final class ProtocolDeclareAccountFields {
   public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
   public static final String ACCOUNT_NAME = "accountName";
-  public static final String NORMAL_BALANCE = "normalBalance";
+  public static final String ACCOUNT_TYPE = "accountType";
+  public static final String ACCOUNT_ROLE = "accountRole";
 
   private ProtocolDeclareAccountFields() {}
 }

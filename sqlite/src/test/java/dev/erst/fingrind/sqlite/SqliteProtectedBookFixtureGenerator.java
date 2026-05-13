@@ -1,8 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
@@ -71,10 +71,12 @@ public final class SqliteProtectedBookFixtureGenerator {
           postingFactStore,
           new AccountCode("1000"),
           new AccountName("Cash"),
+          dev.erst.fingrind.core.AccountType.ASSET,
           NormalBalance.DEBIT,
-          new RegisteredAccount(
+          SqlitePostingFactFixtureSupport.registeredAccount(
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               true,
               INITIALIZED_AT));
@@ -82,10 +84,12 @@ public final class SqliteProtectedBookFixtureGenerator {
           postingFactStore,
           new AccountCode("2000"),
           new AccountName("Revenue"),
+          dev.erst.fingrind.core.AccountType.REVENUE,
           NormalBalance.CREDIT,
-          new RegisteredAccount(
+          SqlitePostingFactFixtureSupport.registeredAccount(
               new AccountCode("2000"),
               new AccountName("Revenue"),
+              dev.erst.fingrind.core.AccountType.REVENUE,
               NormalBalance.CREDIT,
               true,
               INITIALIZED_AT));
@@ -108,10 +112,16 @@ public final class SqliteProtectedBookFixtureGenerator {
       SqlitePostingFactStore postingFactStore,
       AccountCode accountCode,
       AccountName accountName,
+      dev.erst.fingrind.core.AccountType accountType,
       NormalBalance normalBalance,
       RegisteredAccount expectedAccount) {
     AccountDeclarationOutcome outcome =
-        postingFactStore.declareAccount(accountCode, accountName, normalBalance, INITIALIZED_AT);
+        postingFactStore.declareAccount(
+            accountCode,
+            accountName,
+            accountType,
+            SqlitePostingFactFixtureSupport.accountRole(accountType, normalBalance),
+            INITIALIZED_AT);
     AccountDeclarationOutcome expected = new AccountDeclarationOutcome.Declared(expectedAccount);
     if (!expected.equals(outcome)) {
       throw new IllegalStateException(

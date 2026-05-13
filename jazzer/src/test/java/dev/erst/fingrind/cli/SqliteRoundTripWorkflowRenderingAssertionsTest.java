@@ -5,15 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import java.nio.file.Path;
@@ -112,7 +112,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                 SqliteRoundTripWorkflowRenderingAssertions.assertOpened(
                     ContractDecision.accepted(
                         new OpenBookResult.Rejected(
-                            new dev.erst.fingrind.contract.BookAdministrationRejection
+                            new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
                                 .BookAlreadyInitialized())),
                     bookPath,
                     OutputMode.JSON,
@@ -126,7 +126,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                 SqliteRoundTripWorkflowRenderingAssertions.assertDeclared(
                     ContractDecision.accepted(
                         new DeclareAccountResult.Rejected(
-                            new dev.erst.fingrind.contract.BookAdministrationRejection
+                            new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
                                 .BookNotInitialized())),
                     OutputMode.JSON,
                     "unused"));
@@ -180,7 +180,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
             SqliteRoundTripWorkflowLifecycleAssertions.requireDeclared(
                 ContractDecision.accepted(
                     new DeclareAccountResult.Rejected(
-                        new dev.erst.fingrind.contract.BookAdministrationRejection
+                        new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
                             .BookNotInitialized()))));
   }
 }

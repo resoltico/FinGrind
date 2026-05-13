@@ -3,18 +3,16 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -45,18 +43,20 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(
                 new AccountPage(
                     List.of(
-                        new DeclaredAccount(
-                            new AccountCode("1000"),
-                            new AccountName("Cash"),
+                        declaredAccount(
+                            "1000",
+                            "Cash",
+                            dev.erst.fingrind.core.AccountType.ASSET,
                             NormalBalance.DEBIT,
                             true,
                             Instant.parse("2026-04-07T12:00:00Z"))),
@@ -172,9 +172,10 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
             new OpenBookResult.Opened(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(bookFilePath),
             new DeclareAccountResult.Declared(
-                new DeclaredAccount(
-                    new AccountCode("1000"),
-                    new AccountName("Cash"),
+                declaredAccount(
+                    "1000",
+                    "Cash",
+                    dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),

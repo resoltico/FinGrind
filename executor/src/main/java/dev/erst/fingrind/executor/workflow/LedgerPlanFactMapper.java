@@ -1,6 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
@@ -22,6 +22,8 @@ public final class LedgerPlanFactMapper {
     return List.of(
         BookWorkflowFact.text("accountCode", account.accountCode().value()),
         BookWorkflowFact.text("accountName", account.accountName().value()),
+        BookWorkflowFact.text("accountType", account.accountType().wireValue()),
+        BookWorkflowFact.text("accountRole", account.accountRole().wireValue()),
         BookWorkflowFact.text("normalBalance", account.normalBalance().wireValue()),
         BookWorkflowFact.flag("active", account.active()),
         BookWorkflowFact.text("declaredAt", account.declaredAt().toString()));

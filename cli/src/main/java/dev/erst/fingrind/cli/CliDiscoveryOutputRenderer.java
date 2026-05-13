@@ -1,16 +1,18 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.CapabilitiesDescriptor;
-import dev.erst.fingrind.contract.CommandCatalogDescriptor;
-import dev.erst.fingrind.contract.CommandDescriptor;
-import dev.erst.fingrind.contract.HelpDescriptor;
-import dev.erst.fingrind.contract.StorageSurfaceDescriptor;
-import dev.erst.fingrind.contract.VersionDescriptor;
-import dev.erst.fingrind.contract.WorkflowDescriptor;
-import dev.erst.fingrind.contract.WorkflowStepDescriptor;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
+import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import java.util.List;
 import java.util.Objects;
 
@@ -91,6 +93,7 @@ final class CliDiscoveryOutputRenderer {
         command.options().isEmpty()
             ? "(none)"
             : String.join(System.lineSeparator(), command.options());
+    String requestGuidance = renderRequestGuidance(helpDescriptor, command.name());
     String examples = renderCommandExamples(operation);
     String operatorNotes = renderOperatorNotes(operation);
     String exitCodes =
@@ -107,6 +110,7 @@ final class CliDiscoveryOutputRenderer {
             section("Command", commandDetails),
             section("Usage", usage),
             section("Options", options),
+            requestGuidance,
             section("Examples", examples),
             operatorNotes,
             section("Exit Codes", exitCodes)));
@@ -262,5 +266,149 @@ final class CliDiscoveryOutputRenderer {
         command.artifactOutputs().stream()
             .map(artifact -> artifact.format() + " via " + artifact.option())
             .toList());
+  }
+
+  private static String renderRequestGuidance(
+      HelpDescriptor helpDescriptor, OperationId operationId) {
+    return switch (operationId) {
+      case POST_ENTRY, PREFLIGHT_ENTRY ->
+          section(
+              "Request File",
+              joinSections(
+                  "Provide one JSON object through --request-file <path|->.",
+                  section(
+                      "Template",
+                      renderJsonTemplate(
+                          helpDescriptor.requestTemplate(), OperationId.PRINT_REQUEST_TEMPLATE)),
+                  renderFieldGroup(
+                      "Top-Level Fields",
+                      helpDescriptor.requestShapes().postEntry().topLevelFields()),
+                  renderFieldGroup(
+                      "Journal Line Fields",
+                      helpDescriptor.requestShapes().postEntry().lineFields()),
+                  renderFieldGroup(
+                      "Provenance Fields",
+                      helpDescriptor.requestShapes().postEntry().provenanceFields()),
+                  renderFieldGroup(
+                      "Reversal Fields",
+                      helpDescriptor.requestShapes().postEntry().reversalFields()),
+                  renderEnumVocabularyBlock(
+                      helpDescriptor.requestShapes().postEntry().enumVocabularies())));
+      case DECLARE_ACCOUNT ->
+          section(
+              "Request File",
+              joinSections(
+                  "Provide one JSON object through --request-file <path|->.",
+                  section(
+                      "Template",
+                      renderJsonTemplate(helpDescriptor.declareAccountTemplate(), null)),
+                  renderFieldGroup(
+                      "Top-Level Fields",
+                      helpDescriptor.requestShapes().declareAccount().topLevelFields()),
+                  renderEnumVocabularyBlock(
+                      helpDescriptor.requestShapes().declareAccount().enumVocabularies())));
+      case EXECUTE_PLAN ->
+          section(
+              "Request File",
+              joinSections(
+                  "Provide one ledger plan JSON object through --request-file <path|->.",
+                  section(
+                      "Template",
+                      renderJsonTemplate(
+                          helpDescriptor.planTemplate(), OperationId.PRINT_PLAN_TEMPLATE)),
+                  renderFieldGroup(
+                      "Top-Level Fields",
+                      helpDescriptor.requestShapes().ledgerPlan().topLevelFields()),
+                  renderFieldGroup(
+                      "Step Fields", helpDescriptor.requestShapes().ledgerPlan().stepFields()),
+                  renderFieldGroup(
+                      "Query Fields", helpDescriptor.requestShapes().ledgerPlan().queryFields()),
+                  renderFieldGroup(
+                      "Assertion Fields",
+                      helpDescriptor.requestShapes().ledgerPlan().assertionFields()),
+                  renderLedgerPlanVocabularies(helpDescriptor)));
+      default -> "";
+    };
+  }
+
+  static String renderJsonTemplate(
+      Object templateDescriptor,
+      @org.jspecify.annotations.Nullable OperationId shortcutOperationId) {
+    try {
+      String template =
+          CliJsonObjectMappers.configuredObjectMapper()
+              .writerWithDefaultPrettyPrinter()
+              .writeValueAsString(templateDescriptor);
+      String templateBlock = indent(template, "  ");
+      if (shortcutOperationId == null) {
+        return templateBlock;
+      }
+      return "Shortcut: fingrind "
+          + ProtocolCatalog.operationName(shortcutOperationId)
+          + System.lineSeparator()
+          + System.lineSeparator()
+          + templateBlock;
+    } catch (RuntimeException exception) {
+      throw new IllegalStateException(
+          "Failed to render CLI help request template JSON.", exception);
+    }
+  }
+
+  private static String renderFieldGroup(
+      String title, List<ContractRequestShapes.RequestFieldDescriptor> fields) {
+    return section(
+        title,
+        CliTextFormat.renderTable(
+            List.of("Field", "Presence", "Description"),
+            fields.stream()
+                .map(
+                    field ->
+                        List.of(field.name(), field.presence().wireValue(), field.description()))
+                .toList()));
+  }
+
+  private static String renderEnumVocabularyBlock(
+      List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies) {
+    if (enumVocabularies.isEmpty()) {
+      return "";
+    }
+    return section(
+        "Enum Vocabulary",
+        CliTextFormat.renderKeyValueBlock(
+            enumVocabularies.stream()
+                .map(
+                    vocabulary ->
+                        List.of(vocabulary.name(), String.join(", ", vocabulary.values())))
+                .toList()));
+  }
+
+  private static String renderLedgerPlanVocabularies(HelpDescriptor helpDescriptor) {
+    return section(
+        "Enum Vocabulary",
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "administrationStepKinds",
+                    joinWireValues(
+                        helpDescriptor.requestShapes().ledgerPlan().administrationStepKinds())),
+                List.of(
+                    "queryStepKinds",
+                    joinWireValues(helpDescriptor.requestShapes().ledgerPlan().queryStepKinds())),
+                List.of(
+                    "writeStepKinds",
+                    joinWireValues(helpDescriptor.requestShapes().ledgerPlan().writeStepKinds())),
+                List.of(
+                    "assertStepKind",
+                    helpDescriptor.requestShapes().ledgerPlan().assertStepKind().wireValue()),
+                List.of(
+                    "assertionKinds",
+                    joinWireValues(
+                        helpDescriptor.requestShapes().ledgerPlan().assertionKinds())))));
+  }
+
+  private static String joinWireValues(List<? extends dev.erst.fingrind.core.WireValue> values) {
+    return values.stream()
+        .map(dev.erst.fingrind.core.WireValue::wireValue)
+        .collect(java.util.stream.Collectors.joining(", "));
   }
 }

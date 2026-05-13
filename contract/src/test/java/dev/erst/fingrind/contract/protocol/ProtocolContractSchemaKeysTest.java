@@ -25,7 +25,11 @@ class ProtocolContractSchemaKeysTest {
     assertEquals("VERSION", current.operationIds().version());
     assertEquals("PRINT_PLAN_TEMPLATE", current.operationIds().printPlanTemplate());
     assertEquals("GENERATE_BOOK_KEY_FILE", current.operationIds().generateBookKeyFile());
+    assertEquals("CLOSE_PERIOD", current.operationIds().closePeriod());
     assertEquals("LIST_POSTINGS", current.operationIds().listPostings());
+    assertEquals("FINANCIAL_POSITION", current.operationIds().financialPosition());
+    assertEquals("INCOME_STATEMENT", current.operationIds().incomeStatement());
+    assertEquals("CHANGES_IN_EQUITY", current.operationIds().changesInEquity());
     assertEquals("EXECUTE_PLAN", current.operationIds().executePlan());
     assertEquals("POST_ENTRY", current.operationIds().postEntry());
   }

@@ -4,19 +4,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -32,6 +42,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -56,7 +67,7 @@ class PdfReportServiceTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.34.0", CLOCK);
+      new PdfReportService("FinGrind", "0.35.0", CLOCK);
   private static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   private static final DeclaredAccount REVENUE_ACCOUNT =
@@ -127,16 +138,84 @@ class PdfReportServiceTest {
   }
 
   @Test
+  void renderStatementsIncludeStatementSpecificTablesAndMetadata() throws IOException {
+    FinancialPositionReport financialPositionReport =
+        new FinancialPositionReport(
+            Optional.of(LocalDate.parse("2026-04-30")),
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Cash and Cash Equivalents",
+                            AccountType.ASSET,
+                            false,
+                            balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))));
+    IncomeStatementReport incomeStatementReport =
+        new IncomeStatementReport(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4000",
+                            "Subscription Revenue",
+                            AccountType.REVENUE,
+                            false,
+                            balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
+                    List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
+            List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)));
+    ChangesInEquityReport changesInEquityReport =
+        new ChangesInEquityReport(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            List.of(
+                new ChangesInEquityRow(
+                    "3000",
+                    "Owner Capital",
+                    false,
+                    balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
+                    balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
+                    balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT))),
+            List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)),
+            List.of(balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT)),
+            List.of(balance("EUR", "0.00", "1250.00", "1250.00", BalanceSide.CREDIT)));
+
+    byte[] financialPositionPdf =
+        PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport);
+    byte[] incomeStatementPdf = PDF_REPORT_SERVICE.renderIncomeStatement(incomeStatementReport);
+    byte[] changesInEquityPdf = PDF_REPORT_SERVICE.renderChangesInEquity(changesInEquityReport);
+
+    assertPdfMetadata(financialPositionPdf, "Financial Position", false);
+    assertPdfMetadata(incomeStatementPdf, "Income Statement", false);
+    assertPdfMetadata(changesInEquityPdf, "Changes In Equity", false);
+    assertTrue(extractedText(financialPositionPdf).contains("Cash and Cash Equivalents"));
+    assertTrue(extractedText(financialPositionPdf).contains("Financial Position"));
+    assertTrue(extractedText(incomeStatementPdf).contains("Subscription Revenue"));
+    assertTrue(extractedText(incomeStatementPdf).contains("Income Statement"));
+    assertTrue(extractedText(changesInEquityPdf).contains("Owner Capital"));
+    assertTrue(extractedText(changesInEquityPdf).contains("Changes In Equity"));
+  }
+
+  @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.34.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.35.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.34.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.35.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderPeriodSummary(null));
+    assertThrows(
+        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderFinancialPosition(null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderIncomeStatement(null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderChangesInEquity(null));
   }
 
   private static void assertPdfMetadata(byte[] pdfBytes, String title, boolean portrait)
@@ -145,7 +224,7 @@ class PdfReportServiceTest {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.34.0", information.getCreator());
+      assertEquals("FinGrind 0.35.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -217,6 +296,7 @@ class PdfReportServiceTest {
                 new ReversalReference(new PostingId("prior-%03d".formatted(index))),
                 new ReversalReason("Automated reversal %03d".formatted(index)))
             : PostingLineage.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("office-worker"),
@@ -234,7 +314,8 @@ class PdfReportServiceTest {
     return new DeclaredAccount(
         new AccountCode(code),
         new AccountName(name),
-        normalBalance,
+        normalBalance == NormalBalance.DEBIT ? AccountType.ASSET : AccountType.REVENUE,
+        AccountRole.ORDINARY,
         active,
         Instant.parse("2026-04-01T08:00:00Z"));
   }

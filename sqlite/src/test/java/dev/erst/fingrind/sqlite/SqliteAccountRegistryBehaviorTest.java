@@ -5,9 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
@@ -31,9 +32,11 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertFalse(Files.exists(databasePath));
@@ -48,36 +51,43 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       deactivateAccount(databasePath, "1000");
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-08T10:15:30Z"))),
-          postingFactStore.declareAccount(
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash main"),
+              dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-08T10:15:30Z")));
       assertEquals(
           List.of(
-              new DeclaredAccount(
+              declaredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-08T10:15:30Z"))),
@@ -93,9 +103,10 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
       initializeBookWithDefaultAccounts(postingFactStore);
       assertEquals(
           Optional.of(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
@@ -104,24 +115,55 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void declareAccount_rejectsNormalBalanceConflict() {
+  void declareAccount_rejectsAccountRoleConflict() {
     Path databasePath = tempDirectory.resolve("declare-conflict.sqlite");
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
-      postingFactStore.declareAccount(
+      declareAccount(
+          postingFactStore,
           new AccountCode("1000"),
           new AccountName("Cash"),
+          dev.erst.fingrind.core.AccountType.ASSET,
           NormalBalance.DEBIT,
           Instant.parse("2026-04-07T10:15:30Z"));
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookkeepingAdministrationRejection.NormalBalanceConflict(
-                  new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)),
-          postingFactStore.declareAccount(
+              new BookkeepingAdministrationRejection.AccountRoleConflict(
+                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA)),
+          declareAccount(
+              postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
+              AccountType.ASSET,
               NormalBalance.CREDIT,
+              Instant.parse("2026-04-08T10:15:30Z")));
+    }
+  }
+
+  @Test
+  void declareAccount_rejectsAccountTypeConflict() {
+    Path databasePath = tempDirectory.resolve("declare-account-type-conflict.sqlite");
+    try (SqlitePostingFactStore postingFactStore =
+        new SqlitePostingFactStore(bookAccess(databasePath))) {
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
+      declareAccount(
+          postingFactStore,
+          new AccountCode("1000"),
+          new AccountName("Cash"),
+          AccountType.ASSET,
+          NormalBalance.DEBIT,
+          Instant.parse("2026-04-07T10:15:30Z"));
+      assertEquals(
+          new AccountDeclarationOutcome.Rejected(
+              new BookkeepingAdministrationRejection.AccountTypeConflict(
+                  new AccountCode("1000"), AccountType.ASSET, AccountType.EXPENSE)),
+          declareAccount(
+              postingFactStore,
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.EXPENSE,
+              NormalBalance.DEBIT,
               Instant.parse("2026-04-08T10:15:30Z")));
     }
   }
@@ -132,19 +174,25 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     try (SqlitePostingFactStore postingFactStore =
         new SqlitePostingFactStore(bookAccess(databasePath))) {
       postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"));
-      postingFactStore.declareAccount(
+      declareAccount(
+          postingFactStore,
           new AccountCode("1000"),
           new AccountName("Cash"),
+          dev.erst.fingrind.core.AccountType.ASSET,
           NormalBalance.DEBIT,
           Instant.parse("2026-04-07T10:15:30Z"));
-      postingFactStore.declareAccount(
+      declareAccount(
+          postingFactStore,
           new AccountCode("2000"),
           new AccountName("Revenue"),
+          dev.erst.fingrind.core.AccountType.REVENUE,
           NormalBalance.CREDIT,
           Instant.parse("2026-04-07T10:15:30Z"));
-      postingFactStore.declareAccount(
+      declareAccount(
+          postingFactStore,
           new AccountCode("3000"),
           new AccountName("Receivable"),
+          dev.erst.fingrind.core.AccountType.ASSET,
           NormalBalance.DEBIT,
           Instant.parse("2026-04-07T10:15:30Z"));
       assertEquals(
@@ -175,7 +223,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void mutationWriterUpsertAccount_preservesImmutableBalanceAndUpdatesRedeclarationTimestamp() {
+  void mutationWriterUpsertAccount_preservesImmutableTypeAndBalanceAndUpdatesTimestamp() {
     Path databasePath = tempDirectory.resolve("upsert-account-columns.sqlite");
     assertDoesNotThrow(
         () ->
@@ -185,17 +233,19 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                   SqliteBookSchemaBootstrap.initializeBook(database);
                   SqliteMutationWriter.upsertAccount(
                       database,
-                      new RegisteredAccount(
+                      registeredAccount(
                           new AccountCode("1000"),
                           new AccountName("Cash"),
+                          dev.erst.fingrind.core.AccountType.ASSET,
                           NormalBalance.DEBIT,
                           true,
                           Instant.parse("2026-04-07T10:15:30Z")));
                   SqliteMutationWriter.upsertAccount(
                       database,
-                      new RegisteredAccount(
+                      registeredAccount(
                           new AccountCode("1000"),
                           new AccountName("Cash Renamed"),
+                          dev.erst.fingrind.core.AccountType.REVENUE,
                           NormalBalance.CREDIT,
                           true,
                           Instant.parse("2026-04-08T10:15:30Z")));
@@ -205,10 +255,15 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           database,
                           "select account_name from account where account_code = '1000'"));
                   assertEquals(
-                      "DEBIT",
+                      "ORDINARY",
                       queryText(
                           database,
-                          "select normal_balance from account where account_code = '1000'"));
+                          "select account_role from account where account_code = '1000'"));
+                  assertEquals(
+                      "ASSET",
+                      queryText(
+                          database,
+                          "select account_type from account where account_code = '1000'"));
                   assertEquals(
                       "2026-04-08T10:15:30Z",
                       queryText(

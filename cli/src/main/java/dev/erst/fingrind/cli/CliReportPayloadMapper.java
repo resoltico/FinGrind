@@ -1,14 +1,22 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.MonetaryAmount;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 
 /** Maps report-domain payloads into CLI JSON report models. */
 final class CliReportPayloadMapper {
@@ -24,6 +32,8 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.AccountLedgerPayload(
         report.account().accountCode().value(),
         report.account().accountName().value(),
+        report.account().accountType().wireValue(),
+        report.account().accountRole().wireValue(),
         report.account().normalBalance().wireValue(),
         report.account().active(),
         report.account().declaredAt().toString(),
@@ -51,11 +61,44 @@ final class CliReportPayloadMapper {
             .toList());
   }
 
+  static CliReportJsonModels.FinancialPositionPayload financialPositionPayload(
+      FinancialPositionReport report) {
+    return new CliReportJsonModels.FinancialPositionPayload(
+        report.effectiveDateTo().map(Object::toString).orElse(null),
+        report.sections().stream()
+            .map(CliReportPayloadMapper::financialPositionSectionPayload)
+            .toList());
+  }
+
+  static CliReportJsonModels.IncomeStatementPayload incomeStatementPayload(
+      IncomeStatementReport report) {
+    return new CliReportJsonModels.IncomeStatementPayload(
+        report.effectiveDateFrom().toString(),
+        report.effectiveDateTo().toString(),
+        report.sections().stream()
+            .map(CliReportPayloadMapper::incomeStatementSectionPayload)
+            .toList(),
+        report.netIncomeTotals().stream().map(CliPayloadAssembler::balancePayload).toList());
+  }
+
+  static CliReportJsonModels.ChangesInEquityPayload changesInEquityPayload(
+      ChangesInEquityReport report) {
+    return new CliReportJsonModels.ChangesInEquityPayload(
+        report.effectiveDateFrom().toString(),
+        report.effectiveDateTo().toString(),
+        report.rows().stream().map(CliReportPayloadMapper::changesInEquityRowPayload).toList(),
+        report.openingTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.movementTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.closingTotals().stream().map(CliPayloadAssembler::balancePayload).toList());
+  }
+
   private static CliReportJsonModels.TrialBalanceRowPayload trialBalanceRowPayload(
       TrialBalanceRow row) {
     return new CliReportJsonModels.TrialBalanceRowPayload(
         row.account().accountCode().value(),
         row.account().accountName().value(),
+        row.account().accountType().wireValue(),
+        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         row.account().active(),
         row.account().declaredAt().toString(),
@@ -83,6 +126,8 @@ final class CliReportPayloadMapper {
     return new CliReportJsonModels.PeriodAccountActivityPayload(
         row.account().accountCode().value(),
         row.account().accountName().value(),
+        row.account().accountType().wireValue(),
+        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         row.account().active(),
         row.account().declaredAt().toString(),
@@ -90,5 +135,52 @@ final class CliReportPayloadMapper {
         MonetaryAmount.of(row.movement().creditTotal()),
         MonetaryAmount.of(row.movement().netAmount()),
         row.movement().balanceSide().wireValue());
+  }
+
+  private static CliReportJsonModels.FinancialPositionSectionPayload
+      financialPositionSectionPayload(FinancialPositionSection section) {
+    return new CliReportJsonModels.FinancialPositionSectionPayload(
+        section.accountType().wireValue(),
+        section.rows().stream().map(CliReportPayloadMapper::financialPositionRowPayload).toList(),
+        section.totals().stream().map(CliPayloadAssembler::balancePayload).toList());
+  }
+
+  private static CliReportJsonModels.FinancialPositionRowPayload financialPositionRowPayload(
+      FinancialPositionRow row) {
+    return new CliReportJsonModels.FinancialPositionRowPayload(
+        row.lineCode(),
+        row.lineName(),
+        row.lineType().wireValue(),
+        row.synthetic(),
+        CliPayloadAssembler.balancePayload(row.balance()));
+  }
+
+  private static CliReportJsonModels.IncomeStatementSectionPayload incomeStatementSectionPayload(
+      IncomeStatementSection section) {
+    return new CliReportJsonModels.IncomeStatementSectionPayload(
+        section.accountType().wireValue(),
+        section.rows().stream().map(CliReportPayloadMapper::incomeStatementRowPayload).toList(),
+        section.totals().stream().map(CliPayloadAssembler::balancePayload).toList());
+  }
+
+  private static CliReportJsonModels.IncomeStatementRowPayload incomeStatementRowPayload(
+      IncomeStatementRow row) {
+    return new CliReportJsonModels.IncomeStatementRowPayload(
+        row.lineCode(),
+        row.lineName(),
+        row.lineType().wireValue(),
+        row.synthetic(),
+        CliPayloadAssembler.balancePayload(row.movement()));
+  }
+
+  private static CliReportJsonModels.ChangesInEquityRowPayload changesInEquityRowPayload(
+      ChangesInEquityRow row) {
+    return new CliReportJsonModels.ChangesInEquityRowPayload(
+        row.lineCode(),
+        row.lineName(),
+        row.synthetic(),
+        CliPayloadAssembler.balancePayload(row.openingBalance()),
+        CliPayloadAssembler.balancePayload(row.movement()),
+        CliPayloadAssembler.balancePayload(row.closingBalance()));
   }
 }

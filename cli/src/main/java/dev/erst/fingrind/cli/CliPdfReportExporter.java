@@ -1,9 +1,12 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -42,6 +45,18 @@ final class CliPdfReportExporter {
 
   void exportPeriodSummary(Path outputPath, PeriodSummaryReport report) {
     writePdf(outputPath, pdfReportService.renderPeriodSummary(report));
+  }
+
+  void exportFinancialPosition(Path outputPath, FinancialPositionReport report) {
+    writePdf(outputPath, pdfReportService.renderFinancialPosition(report));
+  }
+
+  void exportIncomeStatement(Path outputPath, IncomeStatementReport report) {
+    writePdf(outputPath, pdfReportService.renderIncomeStatement(report));
+  }
+
+  void exportChangesInEquity(Path outputPath, ChangesInEquityReport report) {
+    writePdf(outputPath, pdfReportService.renderChangesInEquity(report));
   }
 
   private void writePdf(Path outputPath, byte[] pdfBytes) {

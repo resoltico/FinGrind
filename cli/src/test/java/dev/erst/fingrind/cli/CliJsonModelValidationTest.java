@@ -9,8 +9,8 @@ import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
-import dev.erst.fingrind.contract.BookAccess;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -24,15 +24,19 @@ class CliJsonModelValidationTest {
             ProtocolRejectionStatus.REJECTED,
             " query-book-not-initialized ",
             " The book is not initialized. ",
+            " Repair hint. ",
             " idem-1 ",
             null);
     assertEquals(ProtocolRejectionStatus.REJECTED, envelope.status());
     assertEquals("query-book-not-initialized", envelope.code());
     assertEquals("The book is not initialized.", envelope.message());
+    assertEquals("Repair hint.", envelope.hint());
     assertEquals("idem-1", envelope.idempotencyKey());
     assertThrows(
         NullPointerException.class,
-        () -> new CliEnvelopeJsonModels.RejectedEnvelope(nullOf(), "code", "message", null, null));
+        () ->
+            new CliEnvelopeJsonModels.RejectedEnvelope(
+                nullOf(), "code", "message", null, null, null));
   }
 
   @Test

@@ -1,5 +1,6 @@
 {
   "accountCode": "2000",
   "accountName": "Revenue",
-  "normalBalance": "CREDIT"
+  "accountType": "REVENUE",
+  "accountRole": "ORDINARY"
 }

@@ -5,6 +5,7 @@ final class SqliteBookStateReader {
   private final int bookApplicationId;
   private final int bookFormatVersion;
   private final String accountTable;
+  private final String auditEventTable;
   private final String bookMetaTable;
   private final String journalLineTable;
   private final String postingFactTable;
@@ -13,12 +14,14 @@ final class SqliteBookStateReader {
       int bookApplicationId,
       int bookFormatVersion,
       String accountTable,
+      String auditEventTable,
       String bookMetaTable,
       String journalLineTable,
       String postingFactTable) {
     this.bookApplicationId = bookApplicationId;
     this.bookFormatVersion = bookFormatVersion;
     this.accountTable = accountTable;
+    this.auditEventTable = auditEventTable;
     this.bookMetaTable = bookMetaTable;
     this.journalLineTable = journalLineTable;
     this.postingFactTable = postingFactTable;
@@ -60,6 +63,7 @@ final class SqliteBookStateReader {
   boolean hasCanonicalTables(SqliteNativeDatabase activeDatabase) {
     return existsTable(activeDatabase, bookMetaTable)
         && existsTable(activeDatabase, accountTable)
+        && existsTable(activeDatabase, auditEventTable)
         && existsTable(activeDatabase, postingFactTable)
         && existsTable(activeDatabase, journalLineTable);
   }

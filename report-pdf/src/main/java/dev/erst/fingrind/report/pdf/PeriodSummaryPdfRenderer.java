@@ -1,6 +1,6 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.contract.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;

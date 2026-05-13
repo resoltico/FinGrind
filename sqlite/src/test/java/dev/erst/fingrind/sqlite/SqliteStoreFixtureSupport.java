@@ -2,8 +2,13 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.erst.fingrind.contract.BookAccess;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.BookAuditEventKind;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -11,6 +16,7 @@ import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /** Shared SQLite store/bootstrap fixtures and native-handle doubles for split store tests. */
@@ -71,15 +77,35 @@ class SqliteStoreFixtureSupport {
       String normalBalance,
       int active,
       String declaredAt) {
+    insertAccountRow(
+        database,
+        accountCode,
+        accountName,
+        impliedAccountType(normalBalance).wireValue(),
+        normalBalance,
+        active,
+        declaredAt);
+  }
+
+  static void insertAccountRow(
+      SqliteNativeDatabase database,
+      String accountCode,
+      String accountName,
+      String accountType,
+      String normalBalance,
+      int active,
+      String declaredAt) {
     database.executeStatement(
         """
         insert into account (
             account_code,
             account_name,
-            normal_balance,
+            account_type,
+            account_role,
             active,
             declared_at
         ) values (
+            '%s',
             '%s',
             '%s',
             '%s',
@@ -87,7 +113,36 @@ class SqliteStoreFixtureSupport {
             '%s'
         )
         """
-            .formatted(accountCode, accountName, normalBalance, active, declaredAt));
+            .formatted(
+                accountCode,
+                accountName,
+                accountType,
+                impliedAccountRole(accountType, normalBalance),
+                active,
+                declaredAt));
+  }
+
+  private static AccountType impliedAccountType(String normalBalance) {
+    return switch (normalBalance) {
+      case "DEBIT" -> AccountType.ASSET;
+      case "CREDIT" -> AccountType.REVENUE;
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported fixture normal balance for implied account type: " + normalBalance);
+    };
+  }
+
+  private static String impliedAccountRole(String accountType, String normalBalance) {
+    AccountType parsedAccountType = AccountType.fromWireValue(accountType);
+    NormalBalance parsedNormalBalance = NormalBalance.valueOf(normalBalance);
+    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.CONTRA)) {
+      if (AccountSemantics.normalBalance(parsedAccountType, accountRole) == parsedNormalBalance) {
+        return accountRole.wireValue();
+      }
+    }
+    throw new IllegalArgumentException(
+        "Unsupported fixture account semantics for %s/%s."
+            .formatted(parsedAccountType.wireValue(), parsedNormalBalance.name()));
   }
 
   static void insertJournalLineRow(
@@ -117,6 +172,29 @@ class SqliteStoreFixtureSupport {
         )
         """
             .formatted(postingId, lineOrder, accountCode, entrySide, currencyCode, amountMinor));
+  }
+
+  static void insertAuditEventRow(
+      SqliteNativeDatabase database,
+      String recordedAt,
+      String eventKind,
+      String accountCodeSqlLiteral,
+      String postingIdSqlLiteral) {
+    database.executeStatement(
+        """
+        insert into audit_event (
+            recorded_at,
+            event_kind,
+            account_code,
+            posting_id
+        ) values (
+            '%s',
+            '%s',
+            %s,
+            %s
+        )
+        """
+            .formatted(recordedAt, eventKind, accountCodeSqlLiteral, postingIdSqlLiteral));
   }
 
   static SqliteNativeDatabase staleDatabaseHandle(Path bookPath) throws IOException {
@@ -276,6 +354,7 @@ class SqliteStoreFixtureSupport {
       Path bookPath,
       boolean includeBookMeta,
       boolean includeAccount,
+      boolean includeAuditEvent,
       boolean includePostingFact,
       boolean includeJournalLine,
       boolean includeInitializedMarker) {
@@ -294,9 +373,21 @@ class SqliteStoreFixtureSupport {
                 create table account (
                     account_code text primary key,
                     account_name text not null,
+                    account_type text not null,
                     normal_balance text not null,
                     active integer not null,
                     declared_at text not null
+                )
+                """);
+          }
+          if (includeAuditEvent) {
+            database.executeStatement(
+                """
+                create table audit_event (
+                    recorded_at text not null,
+                    event_kind text not null,
+                    account_code text,
+                    posting_id text
                 )
                 """);
           }
@@ -344,6 +435,12 @@ class SqliteStoreFixtureSupport {
         database -> {
           SqliteBookSchemaBootstrap.initializeBook(database);
           insertCanonicalInitializedBookMetadata(database);
+          insertAuditEventRow(
+              database,
+              "2026-04-07T10:15:30Z",
+              BookAuditEventKind.BOOK_OPENED.wireValue(),
+              "null",
+              "null");
           insertAccountRow(database, "1000", "Cash", "DEBIT", 1, "2026-04-07T10:15:30Z");
           insertAccountRow(database, "2000", "Revenue", "CREDIT", 1, "2026-04-07T10:15:30Z");
         });

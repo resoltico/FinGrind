@@ -4,12 +4,12 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
-import dev.erst.fingrind.contract.LedgerJournalKind;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStepStatus;
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;

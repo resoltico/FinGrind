@@ -1,10 +1,13 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -16,6 +19,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
@@ -26,6 +30,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -56,9 +61,10 @@ class PostingAcceptancePolicyTest {
     book.initialized = true;
     book.accounts.put(
         new AccountCode("1000"),
-        new RegisteredAccount(
+        registeredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
+            AccountType.ASSET,
             NormalBalance.DEBIT,
             false,
             Instant.parse("2026-04-07T10:15:30Z")));
@@ -91,9 +97,10 @@ class PostingAcceptancePolicyTest {
     AccountCode cash = new AccountCode("1000");
     AccountCode revenue = new AccountCode("2000");
     RegisteredAccount cashAccount =
-        new RegisteredAccount(
+        registeredAccount(
             cash,
             new AccountName("Cash"),
+            AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -103,6 +110,136 @@ class PostingAcceptancePolicyTest {
         Map.of(cash, cashAccount),
         book.findAccounts(new java.util.LinkedHashSet<>(List.of(cash, revenue))));
     assertEquals(List.of(cash, revenue), book.requestedAccounts);
+  }
+
+  @Test
+  void rejectionFor_rejectsClosedPeriodAttemptsBeforeAccountChecks() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    book.closedThrough = Optional.of(LocalDate.parse("2026-04-07"));
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(command("idem-closed"), book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.ClosedPeriodViolation(
+                LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))),
+        rejection);
+    assertEquals(0, book.findAccountsCalls);
+  }
+
+  @Test
+  void rejectionFor_rejectsRetainedEarningsAccountOutsidePeriodClosePosting() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount retainedEarnings =
+        new RegisteredAccount(
+            new AccountCode("3200"),
+            new AccountName("Retained Earnings"),
+            AccountType.EQUITY,
+            AccountRole.RETAINED_EARNINGS,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount balancingAccount =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(retainedEarnings.accountCode(), retainedEarnings);
+    book.accounts.put(balancingAccount.accountCode(), balancingAccount);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        PostingAcceptancePolicy.rejectionFor(
+            command(
+                "idem-retained",
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.RetainedEarningsAccountReserved(
+                retainedEarnings.accountCode())),
+        rejection);
+  }
+
+  @Test
+  void rejectionFor_allowsRetainedEarningsAccountInsidePeriodClosePosting() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount retainedEarnings =
+        new RegisteredAccount(
+            new AccountCode("3200"),
+            new AccountName("Retained Earnings"),
+            AccountType.EQUITY,
+            AccountRole.RETAINED_EARNINGS,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount revenue =
+        registeredAccount(
+            new AccountCode("4000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(retainedEarnings.accountCode(), retainedEarnings);
+    book.accounts.put(revenue.accountCode(), revenue);
+
+    PostingDraft closingCommand =
+        new PostingDraft(
+            new JournalEntry(
+                LocalDate.parse("2026-04-07"),
+                List.of(
+                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
+            PostingLineageModel.direct(),
+            PostingKind.PERIOD_CLOSE,
+            new dev.erst.fingrind.core.CommittedProvenance(
+                new RequestProvenance(
+                    new ActorId("actor-1"),
+                    ActorType.SYSTEM,
+                    new CommandId("command-close"),
+                    new IdempotencyKey("idem-close"),
+                    new CausationId("cause-close"),
+                    Optional.of(new CorrelationId("corr-close"))),
+                Instant.parse("2026-04-07T10:15:30Z"),
+                SourceChannel.CLI));
+
+    assertEquals(Optional.empty(), PostingAcceptancePolicy.rejectionFor(closingCommand, book));
+  }
+
+  @Test
+  void rejectionFor_acceptsActiveOrdinaryAccountsAfterTheClosedThroughBoundary() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    book.closedThrough = Optional.of(LocalDate.parse("2026-04-06"));
+    RegisteredAccount cash =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount revenue =
+        registeredAccount(
+            new AccountCode("2000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(cash.accountCode(), cash);
+    book.accounts.put(revenue.accountCode(), revenue);
+
+    assertEquals(
+        Optional.empty(), PostingAcceptancePolicy.rejectionFor(command("idem-open"), book));
   }
 
   private static PostingCommand command(String idempotencyKey) {
@@ -136,6 +273,7 @@ class PostingAcceptancePolicyTest {
                 line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
+        PostingKind.STANDARD,
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -157,6 +295,7 @@ class PostingAcceptancePolicyTest {
     private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
     private boolean initialized;
     private Optional<CommittedPosting> existingPosting = Optional.empty();
+    private Optional<LocalDate> closedThrough = Optional.empty();
     private int findAccountsCalls;
     private List<AccountCode> requestedAccounts = List.of();
 
@@ -202,6 +341,27 @@ class PostingAcceptancePolicyTest {
     public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
       return Optional.empty();
     }
+
+    @Override
+    public List<RegisteredAccount> allAccounts() {
+      return List.copyOf(accounts.values());
+    }
+
+    @Override
+    public List<CommittedPosting> postings(
+        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+      return List.of();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
+      return closedThrough;
+    }
   }
 
   /** Validation-book double that exercises the default single-account fallback lookup path. */
@@ -236,6 +396,27 @@ class PostingAcceptancePolicyTest {
 
     @Override
     public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public List<RegisteredAccount> allAccounts() {
+      return List.copyOf(accounts.values());
+    }
+
+    @Override
+    public List<CommittedPosting> postings(
+        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+      return List.of();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
       return Optional.empty();
     }
   }

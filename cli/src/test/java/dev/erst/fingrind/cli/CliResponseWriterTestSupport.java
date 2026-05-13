@@ -1,29 +1,28 @@
 package dev.erst.fingrind.cli;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
-import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
-import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
-import dev.erst.fingrind.contract.LedgerPlanId;
-import dev.erst.fingrind.contract.LedgerStepId;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -38,6 +37,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -71,6 +71,7 @@ class CliResponseWriterTestSupport {
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),
@@ -84,9 +85,10 @@ class CliResponseWriterTestSupport {
   }
 
   static DeclaredAccount declaredCashAccount() {
-    return new DeclaredAccount(
-        new AccountCode("1000"),
-        new AccountName("Cash"),
+    return CliIoFixtureSupport.declaredAccount(
+        "1000",
+        "Cash",
+        dev.erst.fingrind.core.AccountType.ASSET,
         NormalBalance.DEBIT,
         true,
         Instant.parse("2026-04-07T10:15:30Z"));

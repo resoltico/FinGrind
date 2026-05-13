@@ -5,20 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
-import dev.erst.fingrind.contract.LedgerExecutionJournal;
-import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerJournalEntry;
-import dev.erst.fingrind.contract.LedgerJournalKind;
-import dev.erst.fingrind.contract.LedgerJournalStep;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerPlanId;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStepFailure;
-import dev.erst.fingrind.contract.LedgerStepId;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -47,7 +47,8 @@ class LedgerPlanFuzzAssertionsTest {
                   "declareAccount": {
                     "accountCode": "1000",
                     "accountName": "Cash",
-                    "normalBalance": "DEBIT"
+                    "accountType": "ASSET",
+                    "accountRole": "ORDINARY"
                   }
                 },
                 {
@@ -56,7 +57,8 @@ class LedgerPlanFuzzAssertionsTest {
                   "declareAccount": {
                     "accountCode": "2000",
                     "accountName": "Revenue",
-                    "normalBalance": "CREDIT"
+                    "accountType": "REVENUE",
+                    "accountRole": "ORDINARY"
                   }
                 },
                 {
@@ -231,7 +233,8 @@ class LedgerPlanFuzzAssertionsTest {
             new LedgerExecutionJournal(
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
-                java.util.stream.Stream.<dev.erst.fingrind.contract.LedgerJournalEntry>concat(
+                java.util.stream.Stream
+                    .<dev.erst.fingrind.contract.workflow.LedgerJournalEntry>concat(
                         plan.steps().stream()
                             .map(
                                 step ->
@@ -591,7 +594,8 @@ class LedgerPlanFuzzAssertionsTest {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             }
           ]
@@ -614,7 +618,8 @@ class LedgerPlanFuzzAssertionsTest {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -623,7 +628,8 @@ class LedgerPlanFuzzAssertionsTest {
               "declareAccount": {
                 "accountCode": "2000",
                 "accountName": "Revenue",
-                "normalBalance": "CREDIT"
+                "accountType": "REVENUE",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -692,7 +698,8 @@ class LedgerPlanFuzzAssertionsTest {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {

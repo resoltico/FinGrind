@@ -1,16 +1,19 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.LedgerJournalKind;
-import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -25,6 +28,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -121,7 +125,8 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("unexpected-plan-failure", journalEntry.failure().code());
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, publishedEntry.kind());
     assertEquals(
-        dev.erst.fingrind.contract.LedgerBoundaryPhase.COMMIT, publishedEntry.boundaryPhase());
+        dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase.COMMIT,
+        publishedEntry.boundaryPhase());
     assertTrue(journalEntry.failure().message().contains("during commit after step 'open'"));
     assertTrue(
         journalEntry.failure().facts().stream()
@@ -197,7 +202,7 @@ class LedgerPlanOutcomeMapperTest {
         workflowStep(
             new LedgerStep.Assert(
                 stepId("assert-balance"),
-                new dev.erst.fingrind.contract.LedgerAssertion.AccountBalanceEquals(
+                new dev.erst.fingrind.contract.workflow.LedgerAssertion.AccountBalanceEquals(
                     new dev.erst.fingrind.core.AccountCode("1000"),
                     null,
                     null,
@@ -325,12 +330,18 @@ class LedgerPlanOutcomeMapperTest {
             LedgerPlanOutcomeMapper.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .BookContainsSchema());
-    var normalBalanceConflict =
+    var accountTypeConflict =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanOutcomeMapper.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
-                    .NormalBalanceConflict(
-                    new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT));
+                    .AccountTypeConflict(
+                    new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY));
+    var accountRoleConflict =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanOutcomeMapper.administrationRejection(
+                new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
+                    .AccountRoleConflict(
+                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA));
 
     assertEquals("administration-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals(
@@ -340,13 +351,20 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         "The selected SQLite file already contains schema objects and cannot be initialized as a new book.",
         bookContainsSchema.failure().message());
-    assertEquals("account-normal-balance-conflict", normalBalanceConflict.failure().code());
+    assertEquals("account-type-conflict", accountTypeConflict.failure().code());
     assertEquals(
         List.of(
             BookWorkflowFact.text("accountCode", "1000"),
-            BookWorkflowFact.text("existingNormalBalance", "DEBIT"),
-            BookWorkflowFact.text("requestedNormalBalance", "CREDIT")),
-        normalBalanceConflict.failure().facts());
+            BookWorkflowFact.text("existingAccountType", "ASSET"),
+            BookWorkflowFact.text("requestedAccountType", "LIABILITY")),
+        accountTypeConflict.failure().facts());
+    assertEquals("account-role-conflict", accountRoleConflict.failure().code());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("accountCode", "1000"),
+            BookWorkflowFact.text("existingAccountRole", "ORDINARY"),
+            BookWorkflowFact.text("requestedAccountRole", "CONTRA")),
+        accountRoleConflict.failure().facts());
   }
 
   @Test
@@ -475,14 +493,17 @@ class LedgerPlanOutcomeMapperTest {
   private static BookWorkflowStep workflowStep(LedgerStep step) {
     BookWorkflowPlan plan =
         BookWorkflowPublishedLanguageTranslator.fromPublished(
-            new dev.erst.fingrind.contract.LedgerPlan(
+            new dev.erst.fingrind.contract.workflow.LedgerPlan(
                 LedgerPlanServiceTestSupport.planId("plan"), java.util.List.of(step)));
     return plan.steps().getFirst();
   }
 
   private static AccountDeclaration accountDeclaration() {
     return new AccountDeclaration(
-        new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT);
+        new AccountCode("1000"),
+        new AccountName("Cash"),
+        AccountType.ASSET,
+        accountRole(AccountType.ASSET, NormalBalance.DEBIT));
   }
 
   private static PostingCommand postingCommand(String idempotencyKey) {
@@ -514,6 +535,7 @@ class LedgerPlanOutcomeMapperTest {
         new PostingId("posting-1"),
         postingCommand("idem-3").journalEntry(),
         PostingLineageModel.direct(),
+        PostingKind.STANDARD,
         new CommittedProvenance(
             new RequestProvenance(
                 new ActorId("actor-1"),

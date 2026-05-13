@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -205,6 +205,8 @@ Current evidence that this model is implemented:
   rejects mismatched verification, and restores from a closed-book encrypted copy
 - the CLI and store tests cover wrong-key, corrupted-book, and truncated-book failures through the
   deterministic `protected-book-verification-failed` contract
+- `SqliteAuditEventStreamTest` proves durable bookkeeping audit rows are appended in the same book
+  as the protected facts they describe and are rejected for in-place update/delete mutation
 - `SqliteManagedLibraryIdentityTest` proves publisher-owned managed runtimes require the trusted
   embedded digest contract, while `environment-configured` runtimes require a matching sibling
   `.sha256` sidecar for local consistency

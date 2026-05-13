@@ -3,7 +3,7 @@ package dev.erst.fingrind.jazzer.tool;
 import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.cli.SqliteRoundTripWorkflowAssertions;
 import dev.erst.fingrind.cli.SqliteRoundTripWorkflowAssertions.SqliteRoundTripWorkflowSnapshot;
-import dev.erst.fingrind.contract.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.IOException;
 

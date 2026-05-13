@@ -1,21 +1,22 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.InteractionLimits;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
@@ -128,7 +129,8 @@ public final class CliFuzzFixtures {
             new DeclareAccountCommand(
                 account.accountCode(),
                 new AccountName(account.accountName().value() + " restored"),
-                account.normalBalance()));
+                account.accountType(),
+                account.accountRole()));
     DeclaredAccount restoredAccount = requireDeclaredAccount(result);
     if (!restoredAccount.active()) {
       throw new IllegalStateException("Account reactivation did not restore the active flag.");
@@ -225,13 +227,29 @@ public final class CliFuzzFixtures {
   }
 
   private static DeclareAccountCommand syntheticDeclareAccountCommand(AccountCode accountCode) {
+    AccountRole accountRole = syntheticAccountRole(accountCode);
     return new DeclareAccountCommand(
-        accountCode, syntheticAccountName(accountCode), syntheticNormalBalance(accountCode));
+        accountCode,
+        syntheticAccountName(accountCode),
+        syntheticAccountType(accountCode),
+        accountRole);
   }
 
-  private static NormalBalance syntheticNormalBalance(AccountCode accountCode) {
-    return Math.floorMod(accountCode.value().hashCode(), 2) == 0
-        ? NormalBalance.DEBIT
-        : NormalBalance.CREDIT;
+  private static AccountRole syntheticAccountRole(AccountCode accountCode) {
+    int bucket = Math.floorMod(accountCode.value().hashCode(), 4);
+    if (bucket == 0) {
+      return AccountRole.CONTRA;
+    }
+    return AccountRole.ORDINARY;
+  }
+
+  private static AccountType syntheticAccountType(AccountCode accountCode) {
+    return switch (Math.floorMod(accountCode.value().hashCode(), 5)) {
+      case 0 -> AccountType.ASSET;
+      case 1 -> AccountType.LIABILITY;
+      case 2 -> AccountType.EQUITY;
+      case 3 -> AccountType.REVENUE;
+      default -> AccountType.EXPENSE;
+    };
   }
 }

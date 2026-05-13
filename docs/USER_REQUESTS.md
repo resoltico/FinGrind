@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: HUMAN_REQUESTS
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -53,6 +53,10 @@ The scaffold is intentionally agent-first: `provenance.actorType` is `AGENT`, an
 replace-before-submit placeholders. Replace every placeholder before committing. On one book, an
 `idempotencyKey` becomes single-use per book after the first committed posting.
 
+The packaged CLI can surface the same request-shape truth without leaving the terminal:
+`help post-entry`, `help declare-account`, and `help execute-plan` inline one canonical template
+plus the accepted fields and enum vocabularies for their `--request-file` payloads.
+
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
 - `lines[].amount` is one exact money object with `currencyCode` and `minorUnits`
@@ -90,18 +94,24 @@ Current posting-request rules:
 {
   "accountCode": "1000",
   "accountName": "Cash",
-  "normalBalance": "DEBIT"
+  "accountType": "ASSET",
+  "accountRole": "ORDINARY"
 }
 ```
 
 Current account-declaration rules:
-- `accountCode`, `accountName`, and `normalBalance` are required
+- `accountCode`, `accountName`, `accountType`, and `accountRole` are required
 - `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
   digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
+- `accountCode` is an opaque book-local identifier today; FinGrind does not infer account class or
+  hierarchy from numeric ranges or prefixes
 - `accountName` must be a non-blank string
-- `normalBalance` must describe the side that increases the account
+- `accountType` must be one of the canonical chart classifications supported by FinGrind
+- `accountRole` must be one of `ORDINARY`, `CONTRA`, or `RETAINED_EARNINGS`
+- `RETAINED_EARNINGS` is valid only with `accountType: "EQUITY"`
 - redeclaring an existing account may update the display name and reactivate the account
-- redeclaring an existing account with a different `normalBalance` is rejected
+- redeclaring an existing account with a different `accountType` is rejected
+- redeclaring an existing account with a different `accountRole` is rejected
 
 ## Ledger-Plan Request Shape
 
@@ -159,13 +169,19 @@ Current ledger-plan rules:
   `hasMore`, and repeated grouped `posting` facts with nested `provenance`, `line`, and optional
   `reversal` groups
 
+Human rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
+top-level `message`, optional `hint`, and any typed rejection details that identify the failing
+posting id, retained-earnings account, account-state violation set, or related deterministic
+repair data.
+
 ## Accepted Values
 
 | Field | Accepted Values |
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
 | `provenance.actorType` | `HUMAN`, `SYSTEM`, `AGENT` |
-| `normalBalance` | `DEBIT`, `CREDIT` |
+| `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
+| `accountRole` | `ORDINARY`, `CONTRA`, `RETAINED_EARNINGS` |
 
 ## CLI Output Shapes
 
@@ -200,8 +216,8 @@ Dynamic fields:
   FinGrind execution clock
 - plan-journal facts carry explicit `kind` metadata (`text`, `flag`, `count`, `group`), and grouped
   facts nest their child observations under `facts`
-- successful `declare-account` plan steps emit `accountCode`, `accountName`, `normalBalance`,
-  `active`, and `declaredAt`
+- successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
+  `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `assert-account-balance` plan steps emit grouped `account` facts plus grouped
   `balance` buckets
 - `execute-plan` accepts at most 100 steps, so returned plan journals are complete but bounded
@@ -273,7 +289,8 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 `list-accounts` success returns:
 - `payload.limit`
 - optional `payload.nextCursor`
-- `payload.accounts[]`, where each entry includes `accountCode`, `accountName`, `normalBalance`, `active`, and `declaredAt`
+- `payload.accounts[]`, where each entry includes `accountCode`, `accountName`, `accountType`,
+  `accountRole`, derived `normalBalance`, `active`, and `declaredAt`
 
 `get-posting` success returns:
 - one committed posting payload with `postingId`, `effectiveDate`, `recordedAt`, request-provenance fields, `sourceChannel`, optional `reversal`, and `lines[]`
@@ -286,7 +303,8 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.postings[]`, where each posting has the same shape as `get-posting`
 
 `account-balance` success returns:
-- declared-account identity fields: `accountCode`, `accountName`, `normalBalance`, `active`, `declaredAt`
+- declared-account identity fields: `accountCode`, `accountName`, `accountType`,
+  `accountRole`, derived `normalBalance`, `active`, `declaredAt`
 - optional query filters: `effectiveDateFrom`, `effectiveDateTo`
 - `balances[]`, where each bucket includes typed `debitTotal`, `creditTotal`, `netAmount`, and
   `balanceSide`
@@ -297,11 +315,13 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 
 `trial-balance` success returns:
 - optional `payload.effectiveDateTo`
-- `payload.rows[]`, where each row includes `accountCode`, `accountName`, `normalBalance`, `active`,
-  `declaredAt`, typed `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
+- `payload.rows[]`, where each row includes `accountCode`, `accountName`, `accountType`,
+  `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed `debitTotal`,
+  `creditTotal`, `netAmount`, and `balanceSide`
 
 `account-ledger` success returns:
-- declared-account identity fields: `accountCode`, `accountName`, `normalBalance`, `active`, `declaredAt`
+- declared-account identity fields: `accountCode`, `accountName`, `accountType`,
+  `accountRole`, derived `normalBalance`, `active`, `declaredAt`
 - optional date filters: `effectiveDateFrom`, `effectiveDateTo`
 - `openingBalances[]` and `closingBalances[]`, where each bucket includes typed `debitTotal`,
   `creditTotal`, `netAmount`, and `balanceSide`
@@ -318,8 +338,8 @@ path directly. The current public line reports `true` for `missing` and `blank-s
 - `payload.currencyTotals[]`, where each row includes typed `debitTotal`, `creditTotal`,
   `netAmount`, and `balanceSide`
 - `payload.accountActivity[]`, where each row includes `accountCode`, `accountName`,
-  `normalBalance`, `active`, `declaredAt`, typed `debitTotal`, `creditTotal`, `netAmount`, and
-  `balanceSide`
+  `accountType`, `accountRole`, derived `normalBalance`, `active`, `declaredAt`, typed
+  `debitTotal`, `creditTotal`, `netAmount`, and `balanceSide`
 
 Commands that advertise `--output` keep JSON as the default machine surface for successful
 results. Discovery, administration, write, and read/report commands can also render
@@ -370,7 +390,8 @@ Checked-in template and ledger-plan examples:
 | `administration-book-not-initialized` | an administration command targeted a book that does not exist or has not been opened yet | none |
 | `query-book-not-initialized` | a query command targeted a book that does not exist or has not been opened yet | none |
 | `posting-book-not-initialized` | a posting command targeted a book that does not exist or has not been opened yet | none |
-| `account-normal-balance-conflict` | `declare-account` attempted to amend an existing account's normal balance | `accountCode`, `existingNormalBalance`, `requestedNormalBalance` |
+| `account-type-conflict` | `declare-account` attempted to amend an existing account's immutable classification | `accountCode`, `existingAccountType`, `requestedAccountType` |
+| `account-role-conflict` | `declare-account` attempted to amend an existing account's immutable doctrinal role | `accountCode`, `existingAccountRole`, `requestedAccountRole` |
 | `unknown-account` | a query named an undeclared account | `accountCode` |
 | `posting-not-found` | `get-posting` targeted a posting id that does not exist in the selected book | `postingId` |
 | `account-state-violations` | `preflight-entry` or `post-entry` found one or more undeclared or inactive accounts | `violations[]`, where each item includes `code` and `accountCode` |

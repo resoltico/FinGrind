@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping.posting;
 
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
@@ -45,6 +46,7 @@ public final class BookkeepingPostingService {
         new PostingDraft(
             command.journalEntry(),
             command.postingLineage(),
+            PostingKind.STANDARD,
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));
     return bookStore.commit(postingDraft, postingIdGenerator);

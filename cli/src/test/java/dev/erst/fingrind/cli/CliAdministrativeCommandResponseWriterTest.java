@@ -1,22 +1,23 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -51,14 +52,19 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeDeclareAccountResult(
         new DeclareAccountResult.Declared(
-            new DeclaredAccount(
-                new AccountCode("1000"),
-                new AccountName("Cash"),
+            CliIoFixtureSupport.declaredAccount(
+                "1000",
+                "Cash",
+                dev.erst.fingrind.core.AccountType.ASSET,
                 NormalBalance.DEBIT,
                 true,
                 Instant.parse("2026-04-17T10:15:30Z"))),
         OutputMode.HUMAN);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Account Declared"));
+    outputStream.reset();
+    responseWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.HUMAN);
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Period Closed"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightAccepted(
@@ -104,12 +110,19 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         () ->
             responseWriter.writeDeclareAccountResult(
                 new DeclareAccountResult.Declared(
-                    new DeclaredAccount(
-                        new AccountCode("1000"),
-                        new AccountName("Cash"),
+                    CliIoFixtureSupport.declaredAccount(
+                        "1000",
+                        "Cash",
+                        dev.erst.fingrind.core.AccountType.ASSET,
                         NormalBalance.DEBIT,
                         true,
                         Instant.parse("2026-04-17T10:15:30Z"))),
+                OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            responseWriter.writeClosePeriodResult(
+                new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()),
                 OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -147,6 +160,15 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         OutputMode.HUMAN);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Idempotency key"));
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("duplicate-idempotency-key"));
+    outputStream.reset();
+    responseWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Rejected(
+            new BookAdministrationRejection.RetainedEarningsAccountMissing()),
+        OutputMode.HUMAN);
+    assertTrue(
+        outputStream
+            .toString(StandardCharsets.UTF_8)
+            .contains("retained-earnings-account-missing"));
   }
 
   @Test
@@ -194,9 +216,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   @Test
   void writeDeclareAccountAndListAccountsResults_writeSuccessAndRejectionEnvelopes() {
     DeclaredAccount declaredAccount =
-        new DeclaredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
+        CliIoFixtureSupport.declaredAccount(
+            "1000",
+            "Cash",
+            dev.erst.fingrind.core.AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -227,8 +250,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new CliResponseWriter(utf8PrintStream(declareConflictOutput));
     declareConflictWriter.writeDeclareAccountResult(
         new DeclareAccountResult.Rejected(
-            new BookAdministrationRejection.NormalBalanceConflict(
-                new AccountCode("1000"), NormalBalance.DEBIT, NormalBalance.CREDIT)));
+            new BookAdministrationRejection.AccountRoleConflict(
+                new AccountCode("1000"),
+                dev.erst.fingrind.core.AccountRole.ORDINARY,
+                dev.erst.fingrind.core.AccountRole.CONTRA)));
     ByteArrayOutputStream listRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter listRejectionWriter =
         new CliResponseWriter(utf8PrintStream(listRejectionOutput));
@@ -239,14 +264,102 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
             .toString(StandardCharsets.UTF_8)
             .contains("\"code\":\"administration-book-not-initialized\""));
     String declareConflictJson = declareConflictOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(declareConflictJson.contains("\"code\":\"account-normal-balance-conflict\""));
+    assertTrue(declareConflictJson.contains("\"code\":\"account-role-conflict\""));
     assertTrue(declareConflictJson.contains("\"accountCode\":\"1000\""));
-    assertTrue(declareConflictJson.contains("\"existingNormalBalance\":\"DEBIT\""));
-    assertTrue(declareConflictJson.contains("\"requestedNormalBalance\":\"CREDIT\""));
-    assertTrue(declareConflictJson.contains("already exists with normal balance"));
+    assertTrue(declareConflictJson.contains("\"existingAccountRole\":\"ORDINARY\""));
+    assertTrue(declareConflictJson.contains("\"requestedAccountRole\":\"CONTRA\""));
+    assertTrue(declareConflictJson.contains("already exists with account role"));
     assertTrue(
         listRejectionOutput
             .toString(StandardCharsets.UTF_8)
             .contains("\"code\":\"query-book-not-initialized\""));
+  }
+
+  @Test
+  void writeClosePeriodResult_writesSuccessAndDetailedRejectionEnvelopes() {
+    ByteArrayOutputStream successOutput = new ByteArrayOutputStream();
+    CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
+    successWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Closed(CliFixtureSupport.sampleClosedPeriod()), OutputMode.JSON);
+    String successJson = successOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(successJson.contains("\"status\":\"ok\""));
+    assertTrue(successJson.contains("\"closeOrder\":1"));
+    assertTrue(successJson.contains("\"closingPostingIds\":[\"posting-close-1\"]"));
+
+    ByteArrayOutputStream missingOutput = new ByteArrayOutputStream();
+    CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
+    missingWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Rejected(
+            new BookAdministrationRejection.RetainedEarningsAccountMissing()),
+        OutputMode.JSON);
+    assertTrue(
+        missingOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("\"code\":\"retained-earnings-account-missing\""));
+
+    ByteArrayOutputStream horizonOutput = new ByteArrayOutputStream();
+    CliResponseWriter horizonWriter = new CliResponseWriter(utf8PrintStream(horizonOutput));
+    horizonWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Rejected(
+            new BookAdministrationRejection.PeriodCloseMustStartAt(LocalDate.parse("2026-04-01"))),
+        OutputMode.JSON);
+    String horizonJson = horizonOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(horizonJson.contains("\"code\":\"period-close-must-start-at\""));
+    assertTrue(horizonJson.contains("\"requiredEffectiveDateFrom\":\"2026-04-01\""));
+
+    ByteArrayOutputStream typeConflictOutput = new ByteArrayOutputStream();
+    CliResponseWriter typeConflictWriter =
+        new CliResponseWriter(utf8PrintStream(typeConflictOutput));
+    typeConflictWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Rejected(
+            new BookAdministrationRejection.AccountTypeConflict(
+                new AccountCode("3200"),
+                dev.erst.fingrind.core.AccountType.EQUITY,
+                dev.erst.fingrind.core.AccountType.LIABILITY)),
+        OutputMode.JSON);
+    String typeConflictJson = typeConflictOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(typeConflictJson.contains("\"existingAccountType\":\"EQUITY\""));
+    assertTrue(typeConflictJson.contains("\"requestedAccountType\":\"LIABILITY\""));
+
+    ByteArrayOutputStream inactiveOutput = new ByteArrayOutputStream();
+    CliResponseWriter inactiveWriter = new CliResponseWriter(utf8PrintStream(inactiveOutput));
+    inactiveWriter.writeClosePeriodResult(
+        new ClosePeriodResult.Rejected(
+            new BookAdministrationRejection.RetainedEarningsAccountInactive(
+                new AccountCode("3200"))),
+        OutputMode.JSON);
+    assertTrue(
+        inactiveOutput.toString(StandardCharsets.UTF_8).contains("\"accountCode\":\"3200\""));
+    assertEquals(
+        2,
+        CliExecutionPolicy.exitCodeFor(
+            new ClosePeriodResult.Rejected(
+                new BookAdministrationRejection.RetainedEarningsAccountMissing())));
+  }
+
+  @Test
+  void writePostingRejections_includesStructuredCloseAndReversalDetails() {
+    String closedPeriodJson =
+        rejectedJson(
+            new PostingRejection.ClosedPeriodViolation(
+                LocalDate.parse("2026-04-30"), LocalDate.parse("2026-05-01")));
+    assertTrue(closedPeriodJson.contains("\"closedThroughEffectiveDate\":\"2026-04-30\""));
+    assertTrue(closedPeriodJson.contains("\"attemptedEffectiveDate\":\"2026-05-01\""));
+
+    String retainedEarningsJson =
+        rejectedJson(new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3200")));
+    assertTrue(retainedEarningsJson.contains("\"accountCode\":\"3200\""));
+
+    String missingPriorPostingJson =
+        rejectedJson(new PostingRejection.ReversalTargetNotFound(new PostingId("posting-9")));
+    assertTrue(missingPriorPostingJson.contains("\"priorPostingId\":\"posting-9\""));
+
+    String existingReversalJson =
+        rejectedJson(new PostingRejection.ReversalAlreadyExists(new PostingId("posting-8")));
+    assertTrue(existingReversalJson.contains("\"priorPostingId\":\"posting-8\""));
+
+    String negateTargetJson =
+        rejectedJson(new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-7")));
+    assertTrue(negateTargetJson.contains("\"priorPostingId\":\"posting-7\""));
   }
 }

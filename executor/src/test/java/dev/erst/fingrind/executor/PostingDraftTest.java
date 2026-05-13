@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -32,7 +33,10 @@ class PostingDraftTest {
   void postingDraft_keepsExplicitMissingReversalAndMaterializesPostingFacts() {
     PostingDraft postingDraft =
         new PostingDraft(
-            journalEntry(), PostingLineageModel.direct(), committedProvenance("idem-1"));
+            journalEntry(),
+            PostingLineageModel.direct(),
+            PostingKind.STANDARD,
+            committedProvenance("idem-1"));
     CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
     assertTrue(postingDraft.reversalReference().isEmpty());
     assertEquals(postingDraft.provenance().requestProvenance(), postingDraft.requestProvenance());
@@ -47,7 +51,9 @@ class PostingDraftTest {
   void postingDraft_rejectsNullPostingLineage() {
     assertThrows(
         NullPointerException.class,
-        () -> new PostingDraft(journalEntry(), null, committedProvenance("idem-1")));
+        () ->
+            new PostingDraft(
+                journalEntry(), null, PostingKind.STANDARD, committedProvenance("idem-1")));
   }
 
   private static JournalEntry journalEntry() {

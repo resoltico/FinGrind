@@ -1,21 +1,28 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.PostEntryResult;
-import dev.erst.fingrind.contract.PostingRejection;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -28,6 +35,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
@@ -66,12 +75,14 @@ final class PostingApplicationServiceTestSupport {
     bookSession.declareAccount(
         new AccountCode("1000"),
         new AccountName("Cash"),
-        NormalBalance.DEBIT,
+        AccountType.ASSET,
+        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
         FIXED_CLOCK.instant());
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
-        NormalBalance.CREDIT,
+        AccountType.REVENUE,
+        accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
         FIXED_CLOCK.instant());
   }
 
@@ -122,6 +133,7 @@ final class PostingApplicationServiceTestSupport {
         new PostingId(postingId),
         journalEntry(),
         PostingLineageModel.direct(),
+        PostingKind.STANDARD,
         committedProvenance(idempotencyKey));
   }
 
@@ -186,9 +198,10 @@ final class PostingApplicationServiceTestSupport {
       @Override
       public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
         return Optional.of(
-            new RegisteredAccount(
+            registeredAccount(
                 accountCode,
                 new AccountName("Synthetic"),
+                "1000".equals(accountCode.value()) ? AccountType.ASSET : AccountType.REVENUE,
                 "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
                 true,
                 FIXED_CLOCK.instant()));
@@ -246,7 +259,8 @@ final class PostingApplicationServiceTestSupport {
     public dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
         AccountCode accountCode,
         AccountName accountName,
-        NormalBalance normalBalance,
+        AccountType accountType,
+        AccountRole accountRole,
         Instant declaredAt) {
       throw new AssertionError("declareAccount should not be called in this test");
     }
@@ -273,6 +287,26 @@ final class PostingApplicationServiceTestSupport {
 
     @Override
     public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public List<RegisteredAccount> allAccounts() {
+      return List.of();
+    }
+
+    @Override
+    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      return List.of();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<LocalDate> closedThroughEffectiveDate() {
       return Optional.empty();
     }
 
@@ -310,6 +344,12 @@ final class PostingApplicationServiceTestSupport {
     public PostingCommitResult commit(
         PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
       throw new AssertionError("commit should not be called in this test");
+    }
+
+    @Override
+    public PeriodCloseOutcome closePeriod(
+        PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
+      throw new AssertionError("closePeriod should not be called in this test");
     }
   }
 }

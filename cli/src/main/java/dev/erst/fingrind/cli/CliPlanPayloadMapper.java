@@ -3,16 +3,16 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
-import dev.erst.fingrind.contract.LedgerExecutionJournal;
-import dev.erst.fingrind.contract.LedgerFact;
-import dev.erst.fingrind.contract.LedgerJournalEntry;
-import dev.erst.fingrind.contract.LedgerJournalStep;
-import dev.erst.fingrind.contract.LedgerPlanResult;
-import dev.erst.fingrind.contract.LedgerPlanStatus;
-import dev.erst.fingrind.contract.LedgerStepFailure;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -33,6 +33,7 @@ final class CliPlanPayloadMapper {
         status,
         failure.code(),
         failure.message(),
+        null,
         null,
         new CliRejectionJsonModels.PlanRejectionDetails(payload));
   }

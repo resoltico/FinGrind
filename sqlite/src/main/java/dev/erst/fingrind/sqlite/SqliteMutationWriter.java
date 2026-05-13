@@ -1,7 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.executor.bookkeeping.ClosedPeriod;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Instant;
@@ -31,9 +34,10 @@ final class SqliteMutationWriter {
         activeDatabase.prepare(SqlitePostingSql.UPSERT_ACCOUNT)) {
       statement.bindText(1, account.accountCode().value());
       statement.bindText(2, account.accountName().value());
-      statement.bindText(3, account.normalBalance().wireValue());
-      statement.bindInt(4, Boolean.compare(account.active(), false));
-      statement.bindText(5, account.declaredAt().toString());
+      statement.bindText(3, account.accountType().wireValue());
+      statement.bindText(4, account.accountRole().wireValue());
+      statement.bindInt(5, Boolean.compare(account.active(), false));
+      statement.bindText(6, account.declaredAt().toString());
       statement.step();
     }
   }
@@ -43,23 +47,26 @@ final class SqliteMutationWriter {
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
       statement.bindText(1, postingFact.postingId().value());
-      statement.bindText(2, postingFact.journalEntry().effectiveDate().toString());
-      statement.bindText(3, postingFact.provenance().recordedAt().toString());
-      statement.bindText(4, requestProvenance.actorId().value());
-      statement.bindText(5, requestProvenance.actorType().wireValue());
-      statement.bindText(6, requestProvenance.commandId().value());
-      statement.bindText(7, requestProvenance.idempotencyKey().value());
-      statement.bindText(8, requestProvenance.causationId().value());
-      bindOptionalText(
-          statement, 9, requestProvenance.correlationId().map(value -> value.value()).orElse(null));
+      statement.bindText(2, postingFact.postingKind().wireValue());
+      statement.bindText(3, postingFact.journalEntry().effectiveDate().toString());
+      statement.bindText(4, postingFact.provenance().recordedAt().toString());
+      statement.bindText(5, requestProvenance.actorId().value());
+      statement.bindText(6, requestProvenance.actorType().wireValue());
+      statement.bindText(7, requestProvenance.commandId().value());
+      statement.bindText(8, requestProvenance.idempotencyKey().value());
+      statement.bindText(9, requestProvenance.causationId().value());
       bindOptionalText(
           statement,
           10,
-          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
-      statement.bindText(11, postingFact.provenance().sourceChannel().wireValue());
+          requestProvenance.correlationId().map(value -> value.value()).orElse(null));
       bindOptionalText(
           statement,
-          12,
+          11,
+          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
+      statement.bindText(12, postingFact.provenance().sourceChannel().wireValue());
+      bindOptionalText(
+          statement,
+          13,
           postingFact
               .postingLineage()
               .reversalReference()
@@ -70,7 +77,9 @@ final class SqliteMutationWriter {
   }
 
   static void insertJournalLines(
-      SqliteNativeDatabase activeDatabase, CommittedPosting postingFact) {
+      SqliteNativeDatabase activeDatabase,
+      CommittedPosting postingFact,
+      SqliteCommitFaultHook commitFaultHook) {
     preparePendingJournalLineTable(activeDatabase);
     clearPendingJournalLineTable(activeDatabase);
     List<JournalLine> lines = postingFact.journalEntry().lines();
@@ -86,8 +95,48 @@ final class SqliteMutationWriter {
       }
     }
     requireBalancedPendingJournalLineTable(activeDatabase);
+    commitFaultHook.beforePersistJournalLines(postingFact);
     persistPendingJournalLineTable(activeDatabase, postingFact.postingId().value());
     clearPendingJournalLineTable(activeDatabase);
+  }
+
+  static ClosedPeriod insertPeriodClose(
+      SqliteNativeDatabase activeDatabase,
+      dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+      AccountCode retainedEarningsAccountCode,
+      List<CurrencyBalance> closedTotals,
+      Instant closedAt,
+      List<CommittedPosting> closingPostings) {
+    int closeOrder;
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE)) {
+      statement.bindText(1, reportingPeriod.effectiveDateFrom().toString());
+      statement.bindText(2, reportingPeriod.effectiveDateTo().toString());
+      statement.bindText(3, closedAt.toString());
+      if (statement.step() != SqliteNativeResultCodes.ROW) {
+        throw new IllegalStateException("SQLite period close insert returned no close order.");
+      }
+      closeOrder = statement.columnInt(0);
+      if (statement.step() != SqliteNativeResultCodes.DONE) {
+        throw new IllegalStateException(
+            "SQLite period close insert returned more than one close order.");
+      }
+    }
+    for (CommittedPosting closingPosting : closingPostings) {
+      try (SqliteNativeStatement statement =
+          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_CLOSE_POSTING)) {
+        statement.bindInt(1, closeOrder);
+        statement.bindText(2, closingPosting.postingId().value());
+        statement.step();
+      }
+    }
+    return new ClosedPeriod(
+        closeOrder,
+        reportingPeriod,
+        retainedEarningsAccountCode,
+        closedTotals,
+        closedAt,
+        closingPostings.stream().map(CommittedPosting::postingId).toList());
   }
 
   private static void preparePendingJournalLineTable(SqliteNativeDatabase activeDatabase) {

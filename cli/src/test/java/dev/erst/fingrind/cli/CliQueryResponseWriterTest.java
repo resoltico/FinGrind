@@ -5,28 +5,29 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
-import dev.erst.fingrind.contract.AccountBalanceResult;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.GetPostingResult;
-import dev.erst.fingrind.contract.ListAccountsResult;
-import dev.erst.fingrind.contract.ListPostingsResult;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceResult;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolRejectionStatus;
+import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.NormalBalance;
@@ -78,6 +79,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             "query-book-not-initialized",
             "The book is not initialized.",
             null,
+            null,
             null);
     outputChannel.writeQueryRejection(OutputMode.HUMAN, envelope);
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
@@ -98,9 +100,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(
-            new DeclaredAccount(
-                new AccountCode("1000"),
-                new AccountName("Cash"),
+            CliIoFixtureSupport.declaredAccount(
+                "1000",
+                "Cash",
+                dev.erst.fingrind.core.AccountType.ASSET,
                 NormalBalance.DEBIT,
                 true,
                 Instant.parse("2026-04-07T10:15:30Z")),
@@ -232,9 +235,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         balanceCsv.startsWith(
-            "accountCode,accountName,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
     assertTrue(
-        balanceCsv.contains("1000,Cash,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT"));
+        balanceCsv.contains(
+            "1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT"));
   }
 
   @Test
@@ -304,7 +308,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream accountLedgerHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerHumanOutput))
         .writeAccountLedgerResult(
-            new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
+            new dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult.Reported(
+                accountLedgerReport),
             OutputMode.HUMAN);
     String accountLedgerHuman = accountLedgerHumanOutput.toString(StandardCharsets.UTF_8);
     assertTrue(accountLedgerHuman.contains("Opening balances : EUR 10.00 DEBIT"));
@@ -313,7 +318,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
         .writeAccountLedgerResult(
-            new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
+            new dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult.Reported(
+                accountLedgerReport),
             OutputMode.JSON);
     JsonNode accountLedgerJson = readJson(accountLedgerJsonOutput);
     assertEquals("1000", accountLedgerJson.path("payload").path("accountCode").stringValue());
@@ -335,19 +341,21 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream accountLedgerCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerCsvOutput))
         .writeAccountLedgerResult(
-            new dev.erst.fingrind.contract.AccountLedgerResult.Reported(accountLedgerReport),
+            new dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult.Reported(
+                accountLedgerReport),
             OutputMode.CSV);
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts"));
+            "accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts"));
     assertTrue(
         accountLedgerCsv.contains(
-            "1000,Cash,2026-04-01,2026-04-30,posting-1,2026-04-07,2026-04-07T10:15:30Z,EUR,10.00,0.00,10.00,DEBIT,2000"));
+            "1000,Cash,ASSET,ORDINARY,2026-04-01,2026-04-30,posting-1,2026-04-07,2026-04-07T10:15:30Z,EUR,10.00,0.00,10.00,DEBIT,2000"));
     ByteArrayOutputStream periodSummaryHumanOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryHumanOutput))
         .writePeriodSummaryResult(
-            new dev.erst.fingrind.contract.PeriodSummaryResult.Reported(periodSummaryReport),
+            new dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult.Reported(
+                periodSummaryReport),
             OutputMode.HUMAN);
     String periodSummaryHuman = periodSummaryHumanOutput.toString(StandardCharsets.UTF_8);
     assertTrue(periodSummaryHuman.contains("Posting count"));
@@ -356,7 +364,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream periodSummaryJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryJsonOutput))
         .writePeriodSummaryResult(
-            new dev.erst.fingrind.contract.PeriodSummaryResult.Reported(periodSummaryReport),
+            new dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult.Reported(
+                periodSummaryReport),
             OutputMode.JSON);
     JsonNode periodSummaryJson = readJson(periodSummaryJsonOutput);
     assertEquals(
@@ -374,15 +383,173 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream periodSummaryCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryCsvOutput))
         .writePeriodSummaryResult(
-            new dev.erst.fingrind.contract.PeriodSummaryResult.Reported(periodSummaryReport),
+            new dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult.Reported(
+                periodSummaryReport),
             OutputMode.CSV);
     String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         periodSummaryCsv.startsWith(
-            "effectiveDateFrom,effectiveDateTo,postingCount,postingLineCount,accountsTouched,accountCode,accountName,normalBalance,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+            "effectiveDateFrom,effectiveDateTo,postingCount,postingLineCount,accountsTouched,accountCode,accountName,accountType,accountRole,normalBalance,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
     assertTrue(
         periodSummaryCsv.contains(
-            "2026-04-01,2026-04-30,1,2,2,1000,Cash,DEBIT,EUR,10.00,4.00,6.00,DEBIT"));
+            "2026-04-01,2026-04-30,1,2,2,1000,Cash,ASSET,ORDINARY,DEBIT,EUR,10.00,4.00,6.00,DEBIT"));
+  }
+
+  @Test
+  void writePrimaryStatementResults_supportJsonHumanAndCsvOutputModes() throws IOException {
+    ByteArrayOutputStream financialPositionJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(financialPositionJsonOutput))
+        .writeFinancialPositionResult(
+            new FinancialPositionResult.Reported(CliFixtureSupport.sampleFinancialPositionReport()),
+            OutputMode.JSON);
+    JsonNode financialPositionJson = readJson(financialPositionJsonOutput);
+    assertEquals("ok", financialPositionJson.path("status").stringValue());
+    assertEquals(
+        "2026-04-30", financialPositionJson.path("payload").path("effectiveDateTo").stringValue());
+    assertEquals(
+        "1000",
+        financialPositionJson
+            .path("payload")
+            .path("sections")
+            .get(0)
+            .path("rows")
+            .get(0)
+            .path("lineCode")
+            .stringValue());
+
+    ByteArrayOutputStream financialPositionHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(financialPositionHumanOutput))
+        .writeFinancialPositionResult(
+            new FinancialPositionResult.Reported(CliFixtureSupport.sampleFinancialPositionReport()),
+            OutputMode.HUMAN);
+    assertTrue(
+        financialPositionHumanOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("Financial Position"));
+
+    ByteArrayOutputStream financialPositionCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(financialPositionCsvOutput))
+        .writeFinancialPositionResult(
+            new FinancialPositionResult.Reported(CliFixtureSupport.sampleFinancialPositionReport()),
+            OutputMode.CSV);
+    assertTrue(
+        financialPositionCsvOutput
+            .toString(StandardCharsets.UTF_8)
+            .startsWith(
+                "effectiveDateTo,sectionAccountType,lineCode,lineName,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+
+    ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
+        .writeIncomeStatementResult(
+            new IncomeStatementResult.Reported(CliFixtureSupport.sampleIncomeStatementReport()),
+            OutputMode.JSON);
+    JsonNode incomeStatementJson = readJson(incomeStatementJsonOutput);
+    assertEquals("ok", incomeStatementJson.path("status").stringValue());
+    assertEquals(
+        "2026-04-01", incomeStatementJson.path("payload").path("effectiveDateFrom").stringValue());
+    assertEquals(
+        "2000",
+        incomeStatementJson
+            .path("payload")
+            .path("sections")
+            .get(0)
+            .path("rows")
+            .get(0)
+            .path("lineCode")
+            .stringValue());
+
+    ByteArrayOutputStream incomeStatementHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(incomeStatementHumanOutput))
+        .writeIncomeStatementResult(
+            new IncomeStatementResult.Reported(CliFixtureSupport.sampleIncomeStatementReport()),
+            OutputMode.HUMAN);
+    assertTrue(
+        incomeStatementHumanOutput.toString(StandardCharsets.UTF_8).contains("Income Statement"));
+
+    ByteArrayOutputStream incomeStatementCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(incomeStatementCsvOutput))
+        .writeIncomeStatementResult(
+            new IncomeStatementResult.Reported(CliFixtureSupport.sampleIncomeStatementReport()),
+            OutputMode.CSV);
+    assertTrue(
+        incomeStatementCsvOutput
+            .toString(StandardCharsets.UTF_8)
+            .startsWith(
+                "effectiveDateFrom,effectiveDateTo,sectionAccountType,lineCode,lineName,lineType,synthetic,currencyCode,debitTotal,creditTotal,netAmount,balanceSide"));
+
+    ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
+        .writeChangesInEquityResult(
+            new ChangesInEquityResult.Reported(CliFixtureSupport.sampleChangesInEquityReport()),
+            OutputMode.JSON);
+    JsonNode changesInEquityJson = readJson(changesInEquityJsonOutput);
+    assertEquals("ok", changesInEquityJson.path("status").stringValue());
+    assertEquals(
+        "2026-04-30", changesInEquityJson.path("payload").path("effectiveDateTo").stringValue());
+    assertEquals(
+        "3200",
+        changesInEquityJson.path("payload").path("rows").get(0).path("lineCode").stringValue());
+
+    ByteArrayOutputStream changesInEquityHumanOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(changesInEquityHumanOutput))
+        .writeChangesInEquityResult(
+            new ChangesInEquityResult.Reported(CliFixtureSupport.sampleChangesInEquityReport()),
+            OutputMode.HUMAN);
+    assertTrue(
+        changesInEquityHumanOutput.toString(StandardCharsets.UTF_8).contains("Changes In Equity"));
+
+    ByteArrayOutputStream changesInEquityCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(changesInEquityCsvOutput))
+        .writeChangesInEquityResult(
+            new ChangesInEquityResult.Reported(CliFixtureSupport.sampleChangesInEquityReport()),
+            OutputMode.CSV);
+    assertTrue(
+        changesInEquityCsvOutput
+            .toString(StandardCharsets.UTF_8)
+            .startsWith(
+                "effectiveDateFrom,effectiveDateTo,lineCode,lineName,synthetic,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide"));
+  }
+
+  @Test
+  void writeIncomeStatementHuman_rendersNoneWhenNetIncomeTotalsAreAbsent() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(outputStream))
+        .writeIncomeStatementResult(
+            new IncomeStatementResult.Reported(
+                new dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport(
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"),
+                    CliFixtureSupport.sampleIncomeStatementReport().sections(),
+                    List.of())),
+            OutputMode.HUMAN);
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("Net income totals"));
+    assertTrue(output.contains("(none)"));
+  }
+
+  @Test
+  void writePrimaryStatementRejections_supportJsonAndHumanOutput() throws IOException {
+    ByteArrayOutputStream financialPositionOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(financialPositionOutput))
+        .writeFinancialPositionResult(
+            new FinancialPositionResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            OutputMode.JSON);
+    assertEquals("rejected", readJson(financialPositionOutput).path("status").stringValue());
+
+    ByteArrayOutputStream incomeStatementOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(incomeStatementOutput))
+        .writeIncomeStatementResult(
+            new IncomeStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            OutputMode.HUMAN);
+    assertTrue(incomeStatementOutput.toString(StandardCharsets.UTF_8).contains("Rejected"));
+
+    ByteArrayOutputStream changesInEquityOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(changesInEquityOutput))
+        .writeChangesInEquityResult(
+            new ChangesInEquityResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            OutputMode.JSON);
+    assertEquals(
+        "query-book-not-initialized", readJson(changesInEquityOutput).path("code").stringValue());
   }
 
   @Test

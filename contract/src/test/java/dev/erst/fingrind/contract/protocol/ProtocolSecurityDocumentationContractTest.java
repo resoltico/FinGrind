@@ -2,14 +2,14 @@ package dev.erst.fingrind.contract.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.ApplicationIdentity;
-import dev.erst.fingrind.contract.CapabilitiesDescriptor;
-import dev.erst.fingrind.contract.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.EnvironmentDistributionDescriptor;
-import dev.erst.fingrind.contract.EnvironmentSqliteDescriptor;
-import dev.erst.fingrind.contract.EnvironmentStorageDescriptor;
-import dev.erst.fingrind.contract.MachineContract;
-import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
@@ -218,7 +218,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractLintSupp
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
     return MachineContract.capabilities(
-        new ApplicationIdentity("FinGrind", "0.34.0", "desc"),
+        new ApplicationIdentity("FinGrind", "0.35.0", "desc"),
         readyEnvironmentDescriptor(),
         Instant.parse("2026-05-06T00:00:00Z"));
   }

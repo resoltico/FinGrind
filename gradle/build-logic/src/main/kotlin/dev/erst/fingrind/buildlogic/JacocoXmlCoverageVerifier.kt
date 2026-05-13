@@ -65,14 +65,21 @@ internal object JacocoXmlCoverageVerifier {
             setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
         }
 
-    private fun requireCounter(root: Element, type: String, attributeName: String): Int {
-        val counters = root.getElementsByTagName(counterElementName)
-        for (index in 0 until counters.length) {
-            val counter = counters.item(index) as? Element ?: continue
-            if (counter.getAttribute("type") == type) {
-                return counter.getAttribute(attributeName).toInt()
+    private fun requireCounter(root: Element, type: String, attributeName: String): Int =
+        directCounterElements(root)
+            .firstOrNull { it.getAttribute("type") == type }
+            ?.getAttribute(attributeName)
+            ?.toInt()
+            ?: throw IllegalStateException("JaCoCo XML report is missing the $type counter.")
+
+    private fun directCounterElements(root: Element): Sequence<Element> =
+        sequence {
+            val children = root.childNodes
+            for (index in 0 until children.length) {
+                val child = children.item(index) as? Element ?: continue
+                if (child.tagName == counterElementName) {
+                    yield(child)
+                }
             }
         }
-        throw IllegalStateException("JaCoCo XML report is missing the $type counter.")
-    }
 }

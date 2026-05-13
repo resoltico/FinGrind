@@ -82,7 +82,8 @@ class ProtocolCatalogTest {
         List.of("help", "version", "capabilities", "print-request-template", "print-plan-template"),
         ProtocolCatalog.operationNames(OperationCategory.DISCOVERY));
     assertEquals(
-        List.of("generate-book-key-file", "open-book", "rekey-book", "declare-account"),
+        List.of(
+            "generate-book-key-file", "open-book", "rekey-book", "declare-account", "close-period"),
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
     assertEquals(
         List.of(
@@ -93,7 +94,10 @@ class ProtocolCatalogTest {
             "account-balance",
             "trial-balance",
             "account-ledger",
-            "period-summary"),
+            "period-summary",
+            "financial-position",
+            "income-statement",
+            "changes-in-equity"),
         ProtocolCatalog.operationNames(OperationCategory.QUERY));
     assertEquals(
         List.of("execute-plan", "preflight-entry", "post-entry"),

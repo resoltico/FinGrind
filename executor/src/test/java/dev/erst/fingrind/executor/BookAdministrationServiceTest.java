@@ -1,16 +1,22 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
@@ -43,16 +49,117 @@ class BookAdministrationServiceTest {
       AccountDeclarationOutcome result =
           service.declareAccount(
               new AccountDeclaration(
-                  new AccountCode("1000"), new AccountName("Cash"), NormalBalance.DEBIT));
-      org.junit.jupiter.api.Assertions.assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  AccountType.ASSET,
+                  accountRole(AccountType.ASSET, NormalBalance.DEBIT)));
+      org.junit.jupiter.api.Assertions.assertEquals(
+          new AccountDeclarationOutcome.Declared(
+              registeredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   FIXED_CLOCK.instant())),
           result);
+    }
+  }
+
+  @Test
+  void closePeriod_delegatesToBookSession() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service = new BookAdministrationService(bookSession, FIXED_CLOCK);
+      service.openBook();
+      service.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.ASSET,
+              AccountRole.ORDINARY));
+      service.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("3000"),
+              new AccountName("Capital"),
+              AccountType.EQUITY,
+              AccountRole.ORDINARY));
+      service.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              AccountRole.RETAINED_EARNINGS));
+      service.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("4000"),
+              new AccountName("Revenue"),
+              AccountType.REVENUE,
+              AccountRole.ORDINARY));
+
+      bookSession.commit(
+          new dev.erst.fingrind.executor.bookkeeping.CommittedPosting(
+              new dev.erst.fingrind.core.PostingId("posting-1"),
+              new dev.erst.fingrind.core.JournalEntry(
+                  LocalDate.parse("2026-04-01"),
+                  java.util.List.of(
+                      new dev.erst.fingrind.core.JournalLine(
+                          new AccountCode("1000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                          dev.erst.fingrind.core.Money.parse("EUR", "10.00")),
+                      new dev.erst.fingrind.core.JournalLine(
+                          new AccountCode("3000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                          dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
+              dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
+              dev.erst.fingrind.core.PostingKind.STANDARD,
+              new dev.erst.fingrind.core.CommittedProvenance(
+                  new dev.erst.fingrind.core.RequestProvenance(
+                      new dev.erst.fingrind.core.ActorId("actor-1"),
+                      dev.erst.fingrind.core.ActorType.AGENT,
+                      new dev.erst.fingrind.core.CommandId("command-1"),
+                      new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
+                      new dev.erst.fingrind.core.CausationId("cause-1"),
+                      java.util.Optional.empty()),
+                  FIXED_CLOCK.instant(),
+                  dev.erst.fingrind.core.SourceChannel.CLI)));
+      bookSession.commit(
+          new dev.erst.fingrind.executor.bookkeeping.CommittedPosting(
+              new dev.erst.fingrind.core.PostingId("posting-2"),
+              new dev.erst.fingrind.core.JournalEntry(
+                  LocalDate.parse("2026-04-07"),
+                  java.util.List.of(
+                      new dev.erst.fingrind.core.JournalLine(
+                          new AccountCode("1000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                          dev.erst.fingrind.core.Money.parse("EUR", "12.00")),
+                      new dev.erst.fingrind.core.JournalLine(
+                          new AccountCode("4000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                          dev.erst.fingrind.core.Money.parse("EUR", "12.00")))),
+              dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
+              dev.erst.fingrind.core.PostingKind.STANDARD,
+              new dev.erst.fingrind.core.CommittedProvenance(
+                  new dev.erst.fingrind.core.RequestProvenance(
+                      new dev.erst.fingrind.core.ActorId("actor-2"),
+                      dev.erst.fingrind.core.ActorType.AGENT,
+                      new dev.erst.fingrind.core.CommandId("command-2"),
+                      new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
+                      new dev.erst.fingrind.core.CausationId("cause-2"),
+                      java.util.Optional.empty()),
+                  FIXED_CLOCK.instant(),
+                  dev.erst.fingrind.core.SourceChannel.CLI)));
+
+      PeriodCloseOutcome outcome =
+          service.closePeriod(
+              new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")));
+
+      org.junit.jupiter.api.Assertions.assertEquals(
+          1,
+          org.junit.jupiter.api.Assertions.assertInstanceOf(
+                  PeriodCloseOutcome.Closed.class, outcome)
+              .closedPeriod()
+              .closingPostingIds()
+              .size());
     }
   }
 }

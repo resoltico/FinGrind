@@ -1,5 +1,6 @@
 {
   "accountCode": "1000",
   "accountName": "Cash",
-  "normalBalance": "DEBIT"
+  "accountType": "ASSET",
+  "accountRole": "ORDINARY"
 }

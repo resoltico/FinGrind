@@ -1,14 +1,17 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.OpenBookResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodCommand;
+import dev.erst.fingrind.contract.bookkeeping.ClosePeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.ClosedPeriod;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import java.util.Objects;
 
 /** Translates between the public published language and the local bookkeeping model. */
@@ -19,7 +22,13 @@ public final class BookkeepingPublishedLanguageTranslator {
   public static AccountDeclaration fromPublished(DeclareAccountCommand command) {
     Objects.requireNonNull(command, "command");
     return new AccountDeclaration(
-        command.accountCode(), command.accountName(), command.normalBalance());
+        command.accountCode(), command.accountName(), command.accountType(), command.accountRole());
+  }
+
+  /** Translates one public close-period request into the local bookkeeping model. */
+  public static dev.erst.fingrind.core.ReportingPeriod fromPublished(ClosePeriodCommand command) {
+    Objects.requireNonNull(command, "command");
+    return command.reportingPeriod();
   }
 
   /** Translates one public post-entry request into the local bookkeeping model. */
@@ -39,6 +48,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         postingFact.postingId(),
         postingFact.journalEntry(),
         fromPublished(postingFact.postingLineage()),
+        postingFact.postingKind(),
         postingFact.provenance());
   }
 
@@ -58,7 +68,8 @@ public final class BookkeepingPublishedLanguageTranslator {
     return new DeclaredAccount(
         account.accountCode(),
         account.accountName(),
-        account.normalBalance(),
+        account.accountType(),
+        account.accountRole(),
         account.active(),
         account.declaredAt());
   }
@@ -70,6 +81,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         posting.postingId(),
         posting.journalEntry(),
         toPublished(posting.postingLineage()),
+        posting.postingKind(),
         posting.provenance());
   }
 
@@ -94,6 +106,17 @@ public final class BookkeepingPublishedLanguageTranslator {
     };
   }
 
+  /** Translates one bookkeeping period-close outcome into the public response model. */
+  public static ClosePeriodResult toPublished(PeriodCloseOutcome outcome) {
+    Objects.requireNonNull(outcome, "outcome");
+    return switch (outcome) {
+      case PeriodCloseOutcome.Closed closed ->
+          new ClosePeriodResult.Closed(toPublished(closed.closedPeriod()));
+      case PeriodCloseOutcome.Rejected rejected ->
+          new ClosePeriodResult.Rejected(toPublished(rejected.rejection()));
+    };
+  }
+
   /** Translates one bookkeeping administration rejection into the public rejection contract. */
   public static BookAdministrationRejection toPublished(
       BookkeepingAdministrationRejection rejection) {
@@ -105,11 +128,23 @@ public final class BookkeepingPublishedLanguageTranslator {
           new BookAdministrationRejection.BookNotInitialized();
       case BookkeepingAdministrationRejection.BookContainsSchema _ ->
           new BookAdministrationRejection.BookContainsSchema();
-      case BookkeepingAdministrationRejection.NormalBalanceConflict conflict ->
-          new BookAdministrationRejection.NormalBalanceConflict(
+      case BookkeepingAdministrationRejection.AccountTypeConflict conflict ->
+          new BookAdministrationRejection.AccountTypeConflict(
               conflict.accountCode(),
-              conflict.existingNormalBalance(),
-              conflict.requestedNormalBalance());
+              conflict.existingAccountType(),
+              conflict.requestedAccountType());
+      case BookkeepingAdministrationRejection.AccountRoleConflict conflict ->
+          new BookAdministrationRejection.AccountRoleConflict(
+              conflict.accountCode(),
+              conflict.existingAccountRole(),
+              conflict.requestedAccountRole());
+      case BookkeepingAdministrationRejection.RetainedEarningsAccountMissing _ ->
+          new BookAdministrationRejection.RetainedEarningsAccountMissing();
+      case BookkeepingAdministrationRejection.RetainedEarningsAccountInactive conflict ->
+          new BookAdministrationRejection.RetainedEarningsAccountInactive(conflict.accountCode());
+      case BookkeepingAdministrationRejection.PeriodCloseMustStartAt conflict ->
+          new BookAdministrationRejection.PeriodCloseMustStartAt(
+              conflict.requiredEffectiveDateFrom());
     };
   }
 
@@ -126,6 +161,12 @@ public final class BookkeepingPublishedLanguageTranslator {
                   .toList());
       case BookkeepingPostingRejection.DuplicateIdempotencyKey _ ->
           new PostingRejection.DuplicateIdempotencyKey();
+      case BookkeepingPostingRejection.ClosedPeriodViolation rejectionClosedPeriod ->
+          new PostingRejection.ClosedPeriodViolation(
+              rejectionClosedPeriod.closedThroughEffectiveDate(),
+              rejectionClosedPeriod.attemptedEffectiveDate());
+      case BookkeepingPostingRejection.RetainedEarningsAccountReserved rejectionReserved ->
+          new PostingRejection.RetainedEarningsAccountReserved(rejectionReserved.accountCode());
       case BookkeepingPostingRejection.ReversalTargetNotFound rejectionTarget ->
           new PostingRejection.ReversalTargetNotFound(rejectionTarget.priorPostingId());
       case BookkeepingPostingRejection.ReversalAlreadyExists rejectionExists ->
@@ -154,5 +195,18 @@ public final class BookkeepingPublishedLanguageTranslator {
       case PostingLineageModel.Reversal reversal ->
           PostingLineage.reversal(reversal.reference(), reversal.reason());
     };
+  }
+
+  /** Translates one durably recorded closed period into the public contract. */
+  public static ClosedPeriod toPublished(
+      dev.erst.fingrind.executor.bookkeeping.ClosedPeriod closedPeriod) {
+    Objects.requireNonNull(closedPeriod, "closedPeriod");
+    return new ClosedPeriod(
+        closedPeriod.closeOrder(),
+        closedPeriod.reportingPeriod(),
+        closedPeriod.retainedEarningsAccountCode(),
+        closedPeriod.closedTotals(),
+        closedPeriod.closedAt(),
+        closedPeriod.closingPostingIds());
   }
 }

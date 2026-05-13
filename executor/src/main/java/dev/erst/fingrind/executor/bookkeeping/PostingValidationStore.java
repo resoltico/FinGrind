@@ -1,9 +1,12 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -34,4 +37,16 @@ public interface PostingValidationStore {
 
   /** Looks up an existing full reversal for one prior posting, if such a reversal exists. */
   Optional<CommittedPosting> findReversalFor(PostingId priorPostingId);
+
+  /** Returns the declared accounts in one stable in-memory order for bookkeeping semantics. */
+  List<RegisteredAccount> allAccounts();
+
+  /** Returns the committed postings that fall inside the selected effective-date range. */
+  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange);
+
+  /** Returns the earliest committed effective date when one posting already exists. */
+  Optional<LocalDate> earliestPostingEffectiveDate();
+
+  /** Returns the inclusive closed-through effective date when one period has been closed. */
+  Optional<LocalDate> closedThroughEffectiveDate();
 }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: USER_CLI
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -33,7 +33,10 @@ Every book-bound command also requires exactly one passphrase source:
 `help`, `version`, and `capabilities` default to human-readable discovery output and also accept
 `--output json` for machine parsing.
 `help <command>` and `<command> --help` both return command-scoped usage, options, executable
-examples, operator notes, and exit-code guidance for one selected command.
+examples, operator notes, and exit-code guidance for one selected command. Request-file commands
+such as `declare-account`, `post-entry`, `preflight-entry`, and `execute-plan` also inline the
+accepted request shape, one canonical template, and the relevant enum vocabulary so an operator or
+agent can form a valid payload from the CLI alone.
 `print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
 or piped into another process.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
@@ -49,12 +52,18 @@ pre-rekey file automatically if replacement-passphrase verification fails.
 The supported backup path today is one closed-book encrypted file copy: stop using the book,
 copy the `.sqlite` file to protected storage, keep the key file protected separately, and restore
 by replacing the closed `.sqlite` file from that copy before reopening it.
-`declare-account` inserts or reactivates one account in the selected book.
+`declare-account` inserts or reactivates one account in the selected book, with immutable
+`accountType` plus immutable `accountRole` and derived `normalBalance`.
+`close-period` closes one contiguous reporting period into exactly one active declared
+retained-earnings account, and successful results surface the retained-earnings account code plus
+the per-currency closed totals that were moved into equity. The first close may begin before the
+earliest posting date; after one close is recorded, later closes must start on the day after the
+closed-through horizon.
 `inspect-book` reports lifecycle state, format metadata, and compatibility for one selected book.
 `list-accounts` returns one stable page of the current account registry.
 `get-posting`, `list-postings`, and `account-balance` expose read/query access to committed history.
-`trial-balance`, `account-ledger`, and `period-summary` answer standard office-worker reporting
-questions in one command.
+`trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, and
+`changes-in-equity` answer standard office-worker reporting questions in one command.
 `execute-plan` runs one ordered ledger plan atomically and returns one fixed JSON execution-journal
 envelope on stdout; it does not negotiate `--output`.
 `preflight-entry` and `post-entry` both require an already initialized book and declared active
@@ -76,13 +85,14 @@ results. Discovery, administration, write, and query/report commands can render 
 `--output human`, and the tabular read/report commands also accept `--output csv`. Invalid
 invocation failures default to human repair guidance unless one recognized machine output mode is
 selected explicitly, such as `--output json`. The report commands
-`account-balance`, `trial-balance`, `account-ledger`, and `period-summary` can additionally write
-one PDF artifact through `--pdf-out <path>`. Successful exports keep the main stdout result
-unchanged and emit the normalized artifact path on the diagnostics stream. If the report itself
-succeeds but the PDF write later fails, FinGrind still returns the primary report on stdout and
-emits a repair warning on the diagnostics stream instead of changing the command exit to
-`runtime-failure`. Commands that do not advertise `--output` still publish one fixed stdout
-contract, either one raw JSON document or one fixed JSON envelope.
+`account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
+`income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
+`--pdf-out <path>`. Successful exports keep the main stdout result unchanged and emit the
+normalized artifact path on the diagnostics stream. If the report itself succeeds but the PDF
+write later fails, FinGrind still returns the primary report on stdout and emits a repair warning
+on the diagnostics stream instead of changing the command exit to `runtime-failure`. Commands that
+do not advertise `--output` still publish one fixed stdout contract, either one raw JSON document
+or one fixed JSON envelope.
 
 ## Commands
 
@@ -103,6 +113,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
+    <tr><td><code>close-period</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Close one contiguous reporting period into the declared retained-earnings account.</td></tr>
     <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
     <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
     <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
@@ -111,6 +122,9 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one book-wide trial balance as of the selected effective date or the current durable posting horizon when no date filter is supplied.</td></tr>
     <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.</td></tr>
     <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded office-work period summary with posting totals, currency totals, and per-account activity.</td></tr>
+    <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one statement of financial position as of the selected effective date or the current durable posting horizon when no date filter is supplied.</td></tr>
+    <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded income statement for the selected reporting period.</td></tr>
+    <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|human|csv&gt;]</code></td><td>Compute one bounded statement of changes in equity for the selected reporting period.</td></tr>
     <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction.</td></tr>
     <tr><td><code>preflight-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Validate one posting request without committing it.</td></tr>
     <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|human&gt;]</code></td><td>Commit one posting request into the selected SQLite book.</td></tr>
@@ -295,7 +309,8 @@ Use the extracted bundle launcher or `java -jar` for real process exit codes;
 ## Notes
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or human repair the
-  call without consulting docs.
+  call without consulting docs, and human `Rejected` renders now surface the same repair hint plus
+  any structured rejection details that the machine envelope carries.
 - If you want one machine envelope while probing malformed input, add `--output json` on
   commands that advertise it; otherwise invalid invocations default to human repair text.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject

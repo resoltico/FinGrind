@@ -5,7 +5,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireNonNegati
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
-import dev.erst.fingrind.contract.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -24,6 +24,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   record TrialBalanceRowPayload(
       String accountCode,
       String accountName,
+      String accountType,
+      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -34,6 +36,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
     public TrialBalanceRowPayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
+      accountType = requireText(accountType, "accountType");
+      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       Objects.requireNonNull(debitTotal, "debitTotal");
@@ -46,6 +50,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   record AccountLedgerPayload(
       String accountCode,
       String accountName,
+      String accountType,
+      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -58,6 +64,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
     public AccountLedgerPayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
+      accountType = requireText(accountType, "accountType");
+      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
@@ -112,6 +120,8 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
   record PeriodAccountActivityPayload(
       String accountCode,
       String accountName,
+      String accountType,
+      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -122,12 +132,119 @@ public interface CliReportJsonModels extends CliBookQueryJsonModels {
     public PeriodAccountActivityPayload {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
+      accountType = requireText(accountType, "accountType");
+      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       Objects.requireNonNull(debitTotal, "debitTotal");
       Objects.requireNonNull(creditTotal, "creditTotal");
       Objects.requireNonNull(netAmount, "netAmount");
       balanceSide = requireText(balanceSide, "balanceSide");
+    }
+  }
+
+  record FinancialPositionPayload(
+      @Nullable String effectiveDateTo, List<FinancialPositionSectionPayload> sections)
+      implements CliSuccessPayload {
+    public FinancialPositionPayload {
+      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      sections = copyList(sections, "sections");
+    }
+  }
+
+  record FinancialPositionSectionPayload(
+      String accountType,
+      List<FinancialPositionRowPayload> rows,
+      List<BalanceBucketPayload> totals) {
+    public FinancialPositionSectionPayload {
+      accountType = requireText(accountType, "accountType");
+      rows = copyList(rows, "rows");
+      totals = copyList(totals, "totals");
+    }
+  }
+
+  record FinancialPositionRowPayload(
+      String lineCode,
+      String lineName,
+      String lineType,
+      boolean synthetic,
+      BalanceBucketPayload balance) {
+    public FinancialPositionRowPayload {
+      lineCode = requireText(lineCode, "lineCode");
+      lineName = requireText(lineName, "lineName");
+      lineType = requireText(lineType, "lineType");
+      Objects.requireNonNull(balance, "balance");
+    }
+  }
+
+  record IncomeStatementPayload(
+      String effectiveDateFrom,
+      String effectiveDateTo,
+      List<IncomeStatementSectionPayload> sections,
+      List<BalanceBucketPayload> netIncomeTotals)
+      implements CliSuccessPayload {
+    public IncomeStatementPayload {
+      effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
+      effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
+      sections = copyList(sections, "sections");
+      netIncomeTotals = copyList(netIncomeTotals, "netIncomeTotals");
+    }
+  }
+
+  record IncomeStatementSectionPayload(
+      String accountType, List<IncomeStatementRowPayload> rows, List<BalanceBucketPayload> totals) {
+    public IncomeStatementSectionPayload {
+      accountType = requireText(accountType, "accountType");
+      rows = copyList(rows, "rows");
+      totals = copyList(totals, "totals");
+    }
+  }
+
+  record IncomeStatementRowPayload(
+      String lineCode,
+      String lineName,
+      String lineType,
+      boolean synthetic,
+      BalanceBucketPayload movement) {
+    public IncomeStatementRowPayload {
+      lineCode = requireText(lineCode, "lineCode");
+      lineName = requireText(lineName, "lineName");
+      lineType = requireText(lineType, "lineType");
+      Objects.requireNonNull(movement, "movement");
+    }
+  }
+
+  record ChangesInEquityPayload(
+      String effectiveDateFrom,
+      String effectiveDateTo,
+      List<ChangesInEquityRowPayload> rows,
+      List<BalanceBucketPayload> openingTotals,
+      List<BalanceBucketPayload> movementTotals,
+      List<BalanceBucketPayload> closingTotals)
+      implements CliSuccessPayload {
+    public ChangesInEquityPayload {
+      effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
+      effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
+      rows = copyList(rows, "rows");
+      openingTotals = copyList(openingTotals, "openingTotals");
+      movementTotals = copyList(movementTotals, "movementTotals");
+      closingTotals = copyList(closingTotals, "closingTotals");
+    }
+  }
+
+  record ChangesInEquityRowPayload(
+      String lineCode,
+      String lineName,
+      boolean synthetic,
+      BalanceBucketPayload openingBalance,
+      BalanceBucketPayload movement,
+      BalanceBucketPayload closingBalance) {
+    public ChangesInEquityRowPayload {
+      lineCode = requireText(lineCode, "lineCode");
+      lineName = requireText(lineName, "lineName");
+      Objects.requireNonNull(openingBalance, "openingBalance");
+      Objects.requireNonNull(movement, "movement");
+      Objects.requireNonNull(closingBalance, "closingBalance");
     }
   }
 }

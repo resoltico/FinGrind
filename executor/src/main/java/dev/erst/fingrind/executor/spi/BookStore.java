@@ -2,7 +2,8 @@ package dev.erst.fingrind.executor.spi;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -11,6 +12,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -31,7 +34,8 @@ public interface BookStore extends PostingValidationStore {
   AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
-      NormalBalance normalBalance,
+      AccountType accountType,
+      AccountRole accountRole,
       Instant declaredAt);
 
   /** Returns one paginated slice of the declared account registry for one initialized book. */
@@ -54,4 +58,8 @@ public interface BookStore extends PostingValidationStore {
 
   /** Attempts one durable commit and returns the ordinary application outcome explicitly. */
   PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator);
+
+  /** Attempts one durable close-period commit and returns the administration outcome. */
+  PeriodCloseOutcome closePeriod(
+      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator);
 }

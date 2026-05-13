@@ -1,7 +1,7 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.contract.LedgerPlanStatus;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.util.Objects;
 
 /** Stable replay details for committed ledger-plan request seeds. */

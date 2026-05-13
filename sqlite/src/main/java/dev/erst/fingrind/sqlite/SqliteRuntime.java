@@ -1,11 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
-import dev.erst.fingrind.contract.SqliteRuntimeStateValidator;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.runtime.SqliteRuntimeStateValidator;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;

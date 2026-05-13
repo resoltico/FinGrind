@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.LedgerAssertion;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerStep;
+import dev.erst.fingrind.contract.workflow.LedgerAssertion;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -134,7 +134,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "declare-account",
                       "accountCode": "1000",
                       "accountName": "Cash",
-                      "normalBalance": "DEBIT"
+                      "accountType": "ASSET",
+                      "accountRole": "ORDINARY"
                     }
                   ]
                 }
@@ -145,7 +146,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
     assertEquals(
-        "Fields accountCode, accountName, normalBalance must be nested under declareAccount for declare-account ledger plan steps.",
+        "Fields accountCode, accountName, accountType, accountRole must be nested under declareAccount for declare-account ledger plan steps.",
         exception.getMessage());
   }
 
@@ -271,7 +272,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "declareAccount": {
                         "accountCode": "1000",
                         "accountName": "Cash",
-                        "normalBalance": "DEBIT"
+                        "accountType": "ASSET",
+                        "accountRole": "ORDINARY"
                       },
                       "accountCode": "2000"
                     }
@@ -437,6 +439,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         CliJsonFieldAccess.requireRootObject(
             CliJsonObjectMappers.configuredObjectMapper().readTree("{\"limit\": 25}"));
 
+    assertEquals(25, CliJsonFieldAccess.requiredInt(rootNode, "limit"));
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,

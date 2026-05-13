@@ -5,6 +5,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-05-13
+
+### Changed
+
+- Promoted account doctrine into the current public and durable bookkeeping model:
+  `declare-account` and declared-account/report payloads now carry first-class `accountType` plus
+  immutable `accountRole`, period close and retained-earnings handling are now explicit public
+  operations rather than implicit future theory, FinGrind now publishes an explicit flat-chart and
+  opaque account-code policy instead of leaving chart semantics implicit, and the public contract
+  package is now split into semantic bookkeeping, workflow, discovery, and runtime subpackages
+  rather than one flat DTO namespace.
+- Promoted the protected SQLite book format to version `2` and hardened the current alpha storage
+  line around the intended model directly: the account registry now persists `account_type`, the
+  durable book now carries an append-only `audit_event` stream plus immutable-row triggers for
+  committed posting, journal, and audit rows, and current FinGrind rejects older book formats
+  instead of carrying migration code or compatibility shims.
+- Added explicit aggregate and storage decision references for the current model: the docs now
+  publish named consistency boundaries for lifecycle, account registry, posting ledger, reversal,
+  idempotency, workflow transaction, and audit stream ownership, and they now publish the durable
+  rationale for pinning SQLite `journal_mode=DELETE` on the current storage line.
+- Added first-class financial-statement surfaces to the current bookkeeping model: the query/report
+  contract now includes financial position, income statement, and changes in equity outputs, with
+  the CLI, report rendering, discovery contract, and documentation aligned to the same named
+  accounting surfaces.
+
+### Fixed
+
+- Moved exact balance arithmetic out of the SQLite adapter and into the shared accounting kernel,
+  added direct fault-injection and bypass-corruption coverage for SQLite commit atomicity and
+  book-open integrity, and tightened the public/user/developer references so request scaffolds,
+  report shapes, format-version guidance, and schema references all match the implemented model.
+- Tightened the accounting proof floor around the new statement and close-period surfaces:
+  multi-currency statement ordering, loss-side current-earnings projection, undeclared
+  profit-and-loss bypass resilience, period-close currency bucketing, and audit-event payload
+  validation are now covered directly, while the shared JaCoCo XML verifier now reads only
+  report-root coverage counters and the remaining dead close-policy/audit-validation branch
+  artifacts were removed from the implementation.
+- Fixed the operation-id discovery contract drift for `close-period`, `financial-position`,
+  `income-statement`, and `changes-in-equity` so bundle verification, release-surface scripts,
+  and other machine readers now load the same canonical semantic mapping that the published
+  protocol enum and CLI discovery catalog expose.
+- Updated the shared release-smoke and bundle/container acceptance expectations for the
+  first-class `accountRole` column now emitted by `account-ledger --output csv`, so the public
+  acceptance floor matches the current exported report surface instead of the retired
+  pre-doctrine header shape.
+- Tightened the packaged CLI operator surface around request repair, close-period guidance, and
+  statement presentation: invalid account doctrine now rejects as `invalid-request` instead of
+  `runtime-failure`, command-scoped help for request-file commands now inlines canonical templates
+  plus accepted fields and enums, human rejections now surface repair hints and typed details,
+  successful `close-period` output now reports the retained-earnings account and closed totals,
+  the first `close-period` now accepts leading empty days before the earliest posting while later
+  closes remain strictly contiguous,
+  human financial statements now render named sections and totals instead of raw transport tokens,
+  `print-request-template` now rejects stray flags precisely, and successful `rekey-book`
+  verification no longer warns about its own transient rollback copy.
+- Cleaned up the PDF statement surfaces so the packaged financial-position, income-statement, and
+  changes-in-equity exports now use readable black text plus corrected vertical spacing that keeps
+  section rules and table borders from cutting through headings or row text.
+
 ## [0.34.0] - 2026-05-10
 
 ### Changed
@@ -1558,7 +1617,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.34.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.35.0...HEAD
+[0.35.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.35.0
 [0.34.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.34.0
 [0.33.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.33.0
 [0.32.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.32.0

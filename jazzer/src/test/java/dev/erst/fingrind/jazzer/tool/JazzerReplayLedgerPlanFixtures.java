@@ -18,7 +18,8 @@ final class JazzerReplayLedgerPlanFixtures {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -27,7 +28,8 @@ final class JazzerReplayLedgerPlanFixtures {
               "declareAccount": {
                 "accountCode": "2000",
                 "accountName": "Revenue",
-                "normalBalance": "CREDIT"
+                "accountType": "REVENUE",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -95,7 +97,8 @@ final class JazzerReplayLedgerPlanFixtures {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -104,7 +107,8 @@ final class JazzerReplayLedgerPlanFixtures {
               "declareAccount": {
                 "accountCode": "2000",
                 "accountName": "Revenue",
-                "normalBalance": "CREDIT"
+                "accountType": "REVENUE",
+                "accountRole": "ORDINARY"
               }
             },
             {

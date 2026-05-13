@@ -1,24 +1,35 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.AccountPage;
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.BookQueryRejection;
-import dev.erst.fingrind.contract.ListAccountsQuery;
-import dev.erst.fingrind.contract.ListPostingsQuery;
-import dev.erst.fingrind.contract.PeriodAccountActivityRow;
-import dev.erst.fingrind.contract.PeriodCurrencySummary;
-import dev.erst.fingrind.contract.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.PeriodSummaryReport;
-import dev.erst.fingrind.contract.PostingPage;
-import dev.erst.fingrind.contract.PostingPageCursor;
-import dev.erst.fingrind.contract.TrialBalanceQuery;
-import dev.erst.fingrind.contract.TrialBalanceReport;
-import dev.erst.fingrind.contract.TrialBalanceRow;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import java.util.Objects;
 
 /** Translates public read/report DTOs at the bookkeeping boundary. */
@@ -65,6 +76,24 @@ public final class BookkeepingReadPublishedLanguageTranslator {
   public static PeriodSummaryCriteria fromPublished(PeriodSummaryQuery query) {
     Objects.requireNonNull(query, "query");
     return new PeriodSummaryCriteria(query.effectiveDateFrom(), query.effectiveDateTo());
+  }
+
+  /** Translates one public financial-position query into the local bookkeeping read model. */
+  public static FinancialPositionCriteria fromPublished(FinancialPositionQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new FinancialPositionCriteria(query.effectiveDateTo());
+  }
+
+  /** Translates one public income-statement query into the local bookkeeping read model. */
+  public static IncomeStatementCriteria fromPublished(IncomeStatementQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new IncomeStatementCriteria(query.effectiveDateFrom(), query.effectiveDateTo());
+  }
+
+  /** Translates one public changes-in-equity query into the local bookkeeping read model. */
+  public static ChangesInEquityCriteria fromPublished(ChangesInEquityQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new ChangesInEquityCriteria(query.effectiveDateFrom(), query.effectiveDateTo());
   }
 
   /** Projects one local account-registry page back into the public published language. */
@@ -133,6 +162,40 @@ public final class BookkeepingReadPublishedLanguageTranslator {
             .toList());
   }
 
+  /** Projects one local statement of financial position back into the public published language. */
+  public static FinancialPositionReport toPublished(FinancialPositionView view) {
+    Objects.requireNonNull(view, "view");
+    return new FinancialPositionReport(
+        view.effectiveDateTo(),
+        view.sections().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList());
+  }
+
+  /** Projects one local income statement back into the public published language. */
+  public static IncomeStatementReport toPublished(IncomeStatementView view) {
+    Objects.requireNonNull(view, "view");
+    return new IncomeStatementReport(
+        view.effectiveDateFrom(),
+        view.effectiveDateTo(),
+        view.sections().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList(),
+        view.netIncomeTotals());
+  }
+
+  /** Projects one local statement of changes in equity back into the public language. */
+  public static ChangesInEquityReport toPublished(ChangesInEquityView view) {
+    Objects.requireNonNull(view, "view");
+    return new ChangesInEquityReport(
+        view.effectiveDateFrom(),
+        view.effectiveDateTo(),
+        view.rows().stream().map(BookkeepingReadPublishedLanguageTranslator::toPublished).toList(),
+        view.openingTotals(),
+        view.movementTotals(),
+        view.closingTotals());
+  }
+
   /** Projects one local bookkeeping query rejection into the public contract. */
   public static BookQueryRejection toPublished(BookkeepingQueryRejection rejection) {
     Objects.requireNonNull(rejection, "rejection");
@@ -186,5 +249,48 @@ public final class BookkeepingReadPublishedLanguageTranslator {
     Objects.requireNonNull(row, "row");
     return new PeriodAccountActivityRow(
         BookkeepingPublishedLanguageTranslator.toPublished(row.account()), row.movement());
+  }
+
+  private static FinancialPositionSection toPublished(FinancialPositionSectionView section) {
+    Objects.requireNonNull(section, "section");
+    return new FinancialPositionSection(
+        section.accountType(),
+        section.rows().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList(),
+        section.totals());
+  }
+
+  private static FinancialPositionRow toPublished(FinancialPositionRowView row) {
+    Objects.requireNonNull(row, "row");
+    return new FinancialPositionRow(
+        row.lineCode(), row.lineName(), row.lineType(), row.synthetic(), row.balance());
+  }
+
+  private static IncomeStatementSection toPublished(IncomeStatementSectionView section) {
+    Objects.requireNonNull(section, "section");
+    return new IncomeStatementSection(
+        section.accountType(),
+        section.rows().stream()
+            .map(BookkeepingReadPublishedLanguageTranslator::toPublished)
+            .toList(),
+        section.totals());
+  }
+
+  private static IncomeStatementRow toPublished(IncomeStatementRowView row) {
+    Objects.requireNonNull(row, "row");
+    return new IncomeStatementRow(
+        row.lineCode(), row.lineName(), row.lineType(), row.synthetic(), row.movement());
+  }
+
+  private static ChangesInEquityRow toPublished(ChangesInEquityRowView row) {
+    Objects.requireNonNull(row, "row");
+    return new ChangesInEquityRow(
+        row.lineCode(),
+        row.lineName(),
+        row.synthetic(),
+        row.openingBalance(),
+        row.movement(),
+        row.closingBalance());
   }
 }

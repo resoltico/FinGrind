@@ -7,10 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.AccountLedgerEntry;
-import dev.erst.fingrind.contract.AccountLedgerReport;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.BalanceSide;
@@ -196,9 +196,10 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           ((BookStore) postingFactStore).openBook(Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
+              registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
@@ -206,7 +207,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               .declareAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
-                  NormalBalance.DEBIT,
+                  dev.erst.fingrind.core.AccountType.ASSET,
+                  accountRole(dev.erst.fingrind.core.AccountType.ASSET, NormalBalance.DEBIT),
                   Instant.parse("2026-04-07T10:15:30Z")));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
@@ -365,9 +367,10 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void reportMethods_throwBookNotInitializedWhenBookIsMissing() {
     Path databasePath = tempDirectory.resolve("missing-report-book.sqlite");
     RegisteredAccount cashAccount =
-        new RegisteredAccount(
+        registeredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
+            dev.erst.fingrind.core.AccountType.ASSET,
             NormalBalance.DEBIT,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));

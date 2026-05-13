@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountBalanceQuery;
-import dev.erst.fingrind.contract.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.AccountCode;
@@ -29,11 +29,8 @@ final class CliAccountReportArguments {
   static CliCommand parseAccountBalanceCommand(List<String> arguments) {
     ParsedAccountReportArguments parsedArguments = parseAccountScopedReportArguments(arguments);
     EffectiveDateRange resolvedEffectiveDateRange =
-        CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.EFFECTIVE_DATE_FROM,
-            () ->
-                EffectiveDateRange.of(
-                    parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo()));
+        validatedEffectiveDateRange(
+            parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo());
     return new AccountBalance(
         parsedArguments.bookAccess(),
         new AccountBalanceQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
@@ -43,11 +40,8 @@ final class CliAccountReportArguments {
   static CliCommand parseAccountLedgerCommand(List<String> arguments) {
     ParsedAccountReportArguments parsedArguments = parseAccountScopedReportArguments(arguments);
     EffectiveDateRange resolvedEffectiveDateRange =
-        CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.EFFECTIVE_DATE_FROM,
-            () ->
-                EffectiveDateRange.of(
-                    parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo()));
+        validatedEffectiveDateRange(
+            parsedArguments.effectiveDateFrom(), parsedArguments.effectiveDateTo());
     return new AccountLedger(
         parsedArguments.bookAccess(),
         new AccountLedgerQuery(parsedArguments.accountCode(), resolvedEffectiveDateRange),
@@ -111,9 +105,21 @@ final class CliAccountReportArguments {
   }
 
   private record ParsedAccountReportArguments(
-      dev.erst.fingrind.contract.BookAccess bookAccess,
+      dev.erst.fingrind.contract.runtime.BookAccess bookAccess,
       AccountCode accountCode,
       @Nullable LocalDate effectiveDateFrom,
       @Nullable LocalDate effectiveDateTo,
       CliCommand.ReportOutput output) {}
+
+  private static EffectiveDateRange validatedEffectiveDateRange(
+      @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {
+    if (effectiveDateFrom != null && effectiveDateTo != null) {
+      CliArgumentValueParser.requireOrderedDateRange(
+          effectiveDateFrom,
+          effectiveDateTo,
+          ProtocolOptions.EFFECTIVE_DATE_FROM,
+          ProtocolOptions.EFFECTIVE_DATE_TO);
+    }
+    return EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo);
+  }
 }

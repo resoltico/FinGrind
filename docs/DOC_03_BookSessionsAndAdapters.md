@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.34.0"
+version: "0.35.0"
 domain: ADAPTERS
-updated: "2026-05-10"
+updated: "2026-05-13"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -66,7 +66,11 @@ These local bookkeeping administration types carry one translated account declar
 book-opening results, and one registry snapshot across session and store seams.
 
 ```java
-public record AccountDeclaration(AccountCode accountCode, AccountName accountName, NormalBalance normalBalance)
+public record AccountDeclaration(
+    AccountCode accountCode,
+    AccountName accountName,
+    AccountType accountType,
+    AccountRole accountRole)
 public sealed interface AccountDeclarationOutcome
 public sealed interface BookOpeningOutcome
 public record RegisteredAccount(...)
@@ -77,7 +81,26 @@ public record RegisteredAccount(...)
 - `AccountDeclarationOutcome`: closed family of accepted-versus-rejected declaration outcomes
 - `BookOpeningOutcome`: closed family of accepted-versus-rejected initialization outcomes
 - `RegisteredAccount`: local registry snapshot that owns redeclare/reactivate semantics and
-  preserves declared-at time
+  preserves declared-at time while keeping `accountType` and `accountRole` immutable after the
+  first declaration while deriving `normalBalance()` from `AccountSemantics`
+
+## `BookAuditEvent` And `BookAuditEventKind`
+
+These local bookkeeping types own the durable append-only audit stream written beside account and
+posting facts.
+
+```java
+public record BookAuditEvent(...)
+public enum BookAuditEventKind implements WireValue
+```
+
+- `BookAuditEvent`: one validated durable audit fact carrying event time plus the local account or
+  posting identity when the event kind requires it
+- `BookAuditEventKind`: the closed durable audit vocabulary
+- Current kinds: `BOOK_OPENED`, `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`,
+  `POSTING_COMMITTED`, `POSTING_REVERSED`, and `BOOK_REKEYED`
+- Storage boundary: SQLite persists these rows in `audit_event` and rejects direct update/delete
+  mutation through append-only triggers
 
 ## `BookStore`
 

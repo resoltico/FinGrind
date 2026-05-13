@@ -5,13 +5,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.workflow.LedgerAssertion;
+import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
+import dev.erst.fingrind.contract.workflow.LedgerFact;
+import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
+import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -59,7 +78,8 @@ class LedgerPlanContractTest {
                 new DeclareAccountCommand(
                     new AccountCode("1000"),
                     new dev.erst.fingrind.core.AccountName("Cash"),
-                    NormalBalance.DEBIT))
+                    AccountType.ASSET,
+                    AccountRole.ORDINARY))
             .kind());
     assertEquals(LedgerStepKind.PREFLIGHT_ENTRY, postingStep(true).kind());
     assertEquals(LedgerStepKind.POST_ENTRY, postingStep(false).kind());

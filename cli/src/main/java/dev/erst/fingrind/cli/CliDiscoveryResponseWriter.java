@@ -1,11 +1,11 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.CapabilitiesDescriptor;
-import dev.erst.fingrind.contract.ContractTemplates;
-import dev.erst.fingrind.contract.HelpDescriptor;
-import dev.erst.fingrind.contract.VersionDescriptor;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import java.util.Objects;
 
 /** Renders discovery and template responses through the shared CLI output channel. */

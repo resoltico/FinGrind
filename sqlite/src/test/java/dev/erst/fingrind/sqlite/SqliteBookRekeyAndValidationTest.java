@@ -8,14 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.BookAdministrationRejection;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.DeclaredAccount;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import java.lang.foreign.MemorySegment;
@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport {
+  private static final Instant REKEYED_AT = Instant.parse("2026-04-08T10:15:30Z");
+
   @Test
   void rekeyBook_contractLevelResolverUsesNewSecretIntentAndSurfacesRejections() throws Exception {
     Path acceptedBookPath = tempDirectory.resolve("rekey-contract-level.sqlite");
@@ -49,7 +51,8 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                 return ContractDecision.accepted(
                     SqliteBookPassphrase.fromCharacters(
                         "contract-level replacement", "rotated-contract-key".toCharArray()));
-              });
+              },
+              REKEYED_AT);
       assertEquals(
           new RekeyBookResult.Rekeyed(acceptedBookPath.toAbsolutePath().normalize()),
           acceptedDecision.requireAccepted());
@@ -64,7 +67,8 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
               (resolvedBookPath, passphraseSource, intent) ->
                   ContractDecision.rejected(
                       ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
-                          "Rejected replacement secret", null, null)));
+                          "Rejected replacement secret", null, null)),
+              REKEYED_AT);
       switch (rejectedDecision) {
         case ContractDecision.Accepted<RekeyBookResult>(RekeyBookResult result) ->
             throw new AssertionError("Expected rejected replacement secret but was " + result);
@@ -85,9 +89,9 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
           SqliteBookPassphrase.fromCharacters(
               "replacement store passphrase", "rotated-store-key".toCharArray())) {
         assertEquals(
-            new dev.erst.fingrind.contract.RekeyBookResult.Rekeyed(
+            new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rekeyed(
                 bookPath.toAbsolutePath().normalize()),
-            postingFactStore.rekeyBook(replacementPassphrase));
+            postingFactStore.rekeyBook(replacementPassphrase, REKEYED_AT));
       }
     }
     try (SqlitePostingFactStore oldKeyStore = new SqlitePostingFactStore(bookAccess(bookPath))) {
@@ -104,15 +108,17 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
                 bookPath, replacementPassphrase, SqliteStoreAccessMode.READ_ONLY)) {
       assertEquals(
           List.of(
-              new DeclaredAccount(
+              declaredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z")),
-              new DeclaredAccount(
+              declaredAccount(
                   new AccountCode("2000"),
                   new AccountName("Revenue"),
+                  dev.erst.fingrind.core.AccountType.REVENUE,
                   NormalBalance.CREDIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
@@ -133,9 +139,9 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
               "replacement missing book", "rotated-store-key".toCharArray());
       try (replacementPassphrase) {
         assertEquals(
-            new dev.erst.fingrind.contract.RekeyBookResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected(
                 new BookAdministrationRejection.BookNotInitialized()),
-            postingFactStore.rekeyBook(replacementPassphrase));
+            postingFactStore.rekeyBook(replacementPassphrase, REKEYED_AT));
       }
       assertArrayEquals(
           new byte["rotated-store-key".getBytes(StandardCharsets.UTF_8).length],
@@ -150,9 +156,9 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
               "replacement blank book", "rotated-store-key".toCharArray());
       try (replacementPassphrase) {
         assertEquals(
-            new dev.erst.fingrind.contract.RekeyBookResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected(
                 new BookAdministrationRejection.BookNotInitialized()),
-            postingFactStore.rekeyBook(replacementPassphrase));
+            postingFactStore.rekeyBook(replacementPassphrase, REKEYED_AT));
       }
       assertArrayEquals(
           new byte["rotated-store-key".getBytes(StandardCharsets.UTF_8).length],
@@ -172,7 +178,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> postingFactStore.rekeyBook(replacementPassphrase));
+                () -> postingFactStore.rekeyBook(replacementPassphrase, REKEYED_AT));
         assertEquals(
             "This FinGrind SQLite session is read-only and cannot mutate the book.",
             exception.getMessage());
@@ -237,6 +243,24 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
               () -> validationBook.findExistingPosting(new IdempotencyKey("idem-1")));
       assertTrue(
           NullTestSupport.messageOf(postingFailure).contains("Failed to query SQLite book."));
+      IllegalStateException accountsFailure =
+          assertThrows(IllegalStateException.class, validationBook::allAccounts);
+      assertTrue(
+          NullTestSupport.messageOf(accountsFailure).contains("Failed to query SQLite book."));
+      IllegalStateException postingsFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> validationBook.postings(EffectiveDateRange.unbounded()));
+      assertTrue(
+          NullTestSupport.messageOf(postingsFailure).contains("Failed to query SQLite book."));
+      IllegalStateException earliestFailure =
+          assertThrows(IllegalStateException.class, validationBook::earliestPostingEffectiveDate);
+      assertTrue(
+          NullTestSupport.messageOf(earliestFailure).contains("Failed to query SQLite book."));
+      IllegalStateException closedThroughFailure =
+          assertThrows(IllegalStateException.class, validationBook::closedThroughEffectiveDate);
+      assertTrue(
+          NullTestSupport.messageOf(closedThroughFailure).contains("Failed to query SQLite book."));
     }
   }
 
@@ -274,7 +298,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> postingFactStore.rekeyBook(replacementPassphrase));
+                () -> postingFactStore.rekeyBook(replacementPassphrase, REKEYED_AT));
         assertTrue(
             NullTestSupport.messageOf(exception)
                 .contains("FinGrind restored the pre-rekey book on disk"));
@@ -284,15 +308,17 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
     try (SqlitePostingFactStore restoredStore = new SqlitePostingFactStore(bookAccess(bookPath))) {
       assertEquals(
           List.of(
-              new DeclaredAccount(
+              declaredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash"),
+                  dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z")),
-              new DeclaredAccount(
+              declaredAccount(
                   new AccountCode("2000"),
                   new AccountName("Revenue"),
+                  dev.erst.fingrind.core.AccountType.REVENUE,
                   NormalBalance.CREDIT,
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
@@ -331,7 +357,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> postingFactStore.rekeyBook(replacementPassphrase));
+                () -> postingFactStore.rekeyBook(replacementPassphrase, REKEYED_AT));
         assertTrue(NullTestSupport.messageOf(exception).contains("Failed to rekey SQLite book."));
         assertNotNull(storeDatabase(postingFactStore));
       }

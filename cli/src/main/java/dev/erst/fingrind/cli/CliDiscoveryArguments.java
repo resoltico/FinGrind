@@ -70,8 +70,11 @@ final class CliDiscoveryArguments {
 
   private static CliCommand parseSingleToken(List<String> arguments, CliCommand command) {
     if (arguments.size() != 1) {
+      String unsupportedArgument = arguments.get(1);
       throw CliArgumentValueParser.invalid(
-          arguments.get(1), "This command does not accept additional arguments.");
+          unsupportedArgument,
+          "%s emits fixed raw JSON and does not accept %s. Use shell redirection if you need to save the template."
+              .formatted(arguments.getFirst(), unsupportedArgument));
     }
     return command;
   }

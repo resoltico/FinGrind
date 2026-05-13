@@ -287,7 +287,8 @@ final class CliFuzzHarnessTestSupport {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             }
           ]
@@ -311,7 +312,8 @@ final class CliFuzzHarnessTestSupport {
               "declareAccount": {
                 "accountCode": "1100",
                 "accountName": "Cash JPY",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -320,7 +322,8 @@ final class CliFuzzHarnessTestSupport {
               "declareAccount": {
                 "accountCode": "2100",
                 "accountName": "Sales JPY",
-                "normalBalance": "CREDIT"
+                "accountType": "REVENUE",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -389,7 +392,8 @@ final class CliFuzzHarnessTestSupport {
               "declareAccount": {
                 "accountCode": "1200",
                 "accountName": "Cash BHD",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {
@@ -398,7 +402,8 @@ final class CliFuzzHarnessTestSupport {
               "declareAccount": {
                 "accountCode": "2200",
                 "accountName": "Sales BHD",
-                "normalBalance": "CREDIT"
+                "accountType": "REVENUE",
+                "accountRole": "ORDINARY"
               }
             },
             {

@@ -133,7 +133,11 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
     assertEquals("invalid-request", exception.failure().code());
     assertEquals("--unexpected", exception.failure().argument());
-    assertTrue(exception.failure().message().contains("does not accept additional arguments"));
+    assertTrue(
+        exception
+            .failure()
+            .message()
+            .contains("emits fixed raw JSON and does not accept --unexpected"));
     assertEquals(
         CliInvocationText.helpSyntaxHint(OperationId.PRINT_REQUEST_TEMPLATE), exception.hint());
   }

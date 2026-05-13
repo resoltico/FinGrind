@@ -1,10 +1,10 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.AccountPageCursor;
-import dev.erst.fingrind.contract.LedgerAssertion;
-import dev.erst.fingrind.contract.LedgerPlan;
-import dev.erst.fingrind.contract.LedgerStep;
-import dev.erst.fingrind.contract.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.workflow.LedgerAssertion;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.PostingId;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -117,7 +117,8 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "declareAccount": {
                 "accountCode": "1000",
                 "accountName": "Cash",
-                "normalBalance": "DEBIT"
+                "accountType": "ASSET",
+                "accountRole": "ORDINARY"
               }
             },
             {

@@ -1,13 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.BookAccess;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.ContractFailureException;
-import dev.erst.fingrind.contract.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -18,6 +20,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseDraft;
+import dev.erst.fingrind.executor.bookkeeping.PeriodCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -31,6 +35,8 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -90,6 +96,15 @@ class SqlitePostingFactStore implements SqliteBookSession {
       SqliteBookPassphrase bookPassphrase,
       SqliteStoreAccessMode accessMode,
       Supplier<SqliteNativeApi> sqliteApiSupplier) {
+    this(bookPath, bookPassphrase, accessMode, sqliteApiSupplier, SqliteCommitFaultHook.NONE);
+  }
+
+  SqlitePostingFactStore(
+      Path bookPath,
+      SqliteBookPassphrase bookPassphrase,
+      SqliteStoreAccessMode accessMode,
+      Supplier<SqliteNativeApi> sqliteApiSupplier,
+      SqliteCommitFaultHook commitFaultHook) {
     this.context =
         new SqliteStoreContext(
             Objects.requireNonNull(bookPath, "bookPath"),
@@ -99,7 +114,9 @@ class SqlitePostingFactStore implements SqliteBookSession {
         new SqliteSessionSecret(Objects.requireNonNull(bookPassphrase, "bookPassphrase"));
     this.lifecycle = new SqliteStoreLifecycle(this.context, sessionSecret);
     this.readOperations = new SqliteStoreReadOperations(context, lifecycle);
-    this.mutationOperations = new SqliteStoreMutationOperations(context, lifecycle);
+    this.mutationOperations =
+        new SqliteStoreMutationOperations(
+            context, lifecycle, Objects.requireNonNull(commitFaultHook, "commitFaultHook"));
   }
 
   /** Opens and primes one SQLite-backed book session for explicit CLI/workflow result handling. */
@@ -134,6 +151,12 @@ class SqlitePostingFactStore implements SqliteBookSession {
   }
 
   @Override
+  public List<RegisteredAccount> allAccounts() {
+    threadOwner.requireOwnerThread();
+    return readOperations.allAccounts();
+  }
+
+  @Override
   public AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     threadOwner.requireOwnerThread();
     return readOperations.listAccounts(query);
@@ -161,6 +184,24 @@ class SqlitePostingFactStore implements SqliteBookSession {
   public PostingHistoryPage listPostings(PostingHistoryQuery query) {
     threadOwner.requireOwnerThread();
     return readOperations.listPostings(query);
+  }
+
+  @Override
+  public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+    threadOwner.requireOwnerThread();
+    return readOperations.postings(effectiveDateRange);
+  }
+
+  @Override
+  public Optional<LocalDate> earliestPostingEffectiveDate() {
+    threadOwner.requireOwnerThread();
+    return readOperations.earliestPostingEffectiveDate();
+  }
+
+  @Override
+  public Optional<LocalDate> closedThroughEffectiveDate() {
+    threadOwner.requireOwnerThread();
+    return readOperations.closedThroughEffectiveDate();
   }
 
   @Override
@@ -197,10 +238,12 @@ class SqlitePostingFactStore implements SqliteBookSession {
   public AccountDeclarationOutcome declareAccount(
       AccountCode accountCode,
       AccountName accountName,
-      NormalBalance normalBalance,
+      AccountType accountType,
+      AccountRole accountRole,
       Instant declaredAt) {
     threadOwner.requireOwnerThread();
-    return mutationOperations.declareAccount(accountCode, accountName, normalBalance, declaredAt);
+    return mutationOperations.declareAccount(
+        accountCode, accountName, accountType, accountRole, declaredAt);
   }
 
   @Override
@@ -210,22 +253,32 @@ class SqlitePostingFactStore implements SqliteBookSession {
     return mutationOperations.commit(postingDraft, postingIdGenerator);
   }
 
-  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase) {
+  @Override
+  public PeriodCloseOutcome closePeriod(
+      PeriodCloseDraft periodCloseDraft, PostingIdGenerator postingIdGenerator) {
     threadOwner.requireOwnerThread();
-    return mutationOperations.rekeyBook(replacementPassphrase);
+    return mutationOperations.closePeriod(periodCloseDraft, postingIdGenerator);
+  }
+
+  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
+    threadOwner.requireOwnerThread();
+    return mutationOperations.rekeyBook(replacementPassphrase, rekeyedAt);
   }
 
   @Override
   public ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess.PassphraseSource replacementPassphraseSource,
-      SqlitePassphraseResolver passphraseResolver) {
+      SqlitePassphraseResolver passphraseResolver,
+      Instant rekeyedAt) {
     threadOwner.requireOwnerThread();
     Objects.requireNonNull(replacementPassphraseSource, "replacementPassphraseSource");
     Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    Objects.requireNonNull(rekeyedAt, "rekeyedAt");
     return passphraseResolver
         .resolve(bookPath(), replacementPassphraseSource, SqlitePassphraseIntent.NEW_SECRET)
         .fold(
-            replacementPassphrase -> ContractDecision.accepted(rekeyBook(replacementPassphrase)),
+            replacementPassphrase ->
+                ContractDecision.accepted(rekeyBook(replacementPassphrase, rekeyedAt)),
             ContractDecision::rejected);
   }
 

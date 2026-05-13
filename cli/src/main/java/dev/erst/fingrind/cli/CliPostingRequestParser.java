@@ -10,14 +10,16 @@ import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredObject;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
 import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 
-import dev.erst.fingrind.contract.DeclareAccountCommand;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostingLineage;
-import dev.erst.fingrind.contract.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
@@ -26,7 +28,6 @@ import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -110,10 +111,15 @@ final class CliPostingRequestParser {
         new AccountCode(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_CODE)),
         new AccountName(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_NAME)),
         parseWireValue(
-            requiredText(rootNode, ProtocolDeclareAccountFields.NORMAL_BALANCE),
-            ProtocolDeclareAccountFields.NORMAL_BALANCE,
-            NormalBalance.wireValues(),
-            NormalBalance::fromWireValue));
+            requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_TYPE),
+            ProtocolDeclareAccountFields.ACCOUNT_TYPE,
+            AccountType.wireValues(),
+            AccountType::fromWireValue),
+        parseWireValue(
+            requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_ROLE),
+            ProtocolDeclareAccountFields.ACCOUNT_ROLE,
+            AccountRole.wireValues(),
+            AccountRole::fromWireValue));
   }
 
   private static List<JournalLine> readLines(JsonNode linesNode) {

@@ -28,9 +28,7 @@ class CliPostingQueryArgumentValidationTest extends CliArgumentParsingTestSuppor
 
     assertEquals("invalid-request", exception.code());
     assertEquals("--limit", exception.argument());
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("Posting list limit must be between"));
+    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("--limit must be between"));
   }
 
   @Test

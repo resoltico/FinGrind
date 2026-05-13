@@ -2,6 +2,8 @@ package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.List;
@@ -16,6 +18,8 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
+            "closed-period-violation",
+            "retained-earnings-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
@@ -25,6 +29,12 @@ class PostingRejectionTest {
                 new PostingRejection.AccountStateViolations(
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.DuplicateIdempotencyKey()),
+            PostingRejection.wireCode(
+                new PostingRejection.ClosedPeriodViolation(
+                    java.time.LocalDate.parse("2026-04-30"),
+                    java.time.LocalDate.parse("2026-05-01"))),
+            PostingRejection.wireCode(
+                new PostingRejection.RetainedEarningsAccountReserved(new AccountCode("3000"))),
             PostingRejection.wireCode(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
             PostingRejection.wireCode(
@@ -50,6 +60,8 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "account-state-violations",
             "duplicate-idempotency-key",
+            "closed-period-violation",
+            "retained-earnings-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),

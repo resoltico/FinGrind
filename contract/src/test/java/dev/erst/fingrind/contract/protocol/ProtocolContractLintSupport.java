@@ -1,12 +1,15 @@
 package dev.erst.fingrind.contract.protocol;
 
-import dev.erst.fingrind.contract.BookInspection;
-import dev.erst.fingrind.contract.ContractErrors;
-import dev.erst.fingrind.contract.LedgerBoundaryPhase;
-import dev.erst.fingrind.contract.LedgerJournalKind;
-import dev.erst.fingrind.contract.RequestFieldPresence;
-import dev.erst.fingrind.contract.SqliteCompileOptionsVerificationStatus;
-import dev.erst.fingrind.contract.WorkflowSurface;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
+import dev.erst.fingrind.contract.discovery.WorkflowSurface;
+import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -359,6 +362,7 @@ class ProtocolContractLintSupport {
                 "erst",
                 "fingrind",
                 "contract",
+                "workflow",
                 "LedgerJournalKind.java"));
   }
 
@@ -380,7 +384,7 @@ class ProtocolContractLintSupport {
     Set<String> ids =
         new HashSet<>(
             Set.of(
-                "account-normal-balance-conflict",
+                "account-role-conflict",
                 "account-state-violations",
                 "administration-book-not-initialized",
                 "assertion-failed",
@@ -441,7 +445,19 @@ class ProtocolContractLintSupport {
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(
         ContractErrors.descriptors().stream()
-            .map(dev.erst.fingrind.contract.ContractResponse.ErrorDescriptor::code)
+            .map(dev.erst.fingrind.contract.runtime.ContractResponse.ErrorDescriptor::code)
+            .toList());
+    ids.addAll(
+        BookAdministrationRejection.descriptors().stream()
+            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
+            .toList());
+    ids.addAll(
+        BookQueryRejection.descriptors().stream()
+            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
+            .toList());
+    ids.addAll(
+        PostingRejection.descriptors().stream()
+            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
             .toList());
     ids.addAll(LedgerAssertionKind.wireValues());
     ids.addAll(LedgerBoundaryPhase.wireValues());

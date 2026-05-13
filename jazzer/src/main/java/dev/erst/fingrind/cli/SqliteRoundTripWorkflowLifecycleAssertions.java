@@ -1,16 +1,16 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.CommitEntryResult;
-import dev.erst.fingrind.contract.ContractDecision;
-import dev.erst.fingrind.contract.DeclareAccountResult;
-import dev.erst.fingrind.contract.PostEntryCommand;
-import dev.erst.fingrind.contract.PostEntryResult.CommitRejected;
-import dev.erst.fingrind.contract.PostEntryResult.Committed;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.PostEntryResult.PreflightRejected;
-import dev.erst.fingrind.contract.PostingFact;
-import dev.erst.fingrind.contract.PostingRejection;
-import dev.erst.fingrind.contract.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected;
+import dev.erst.fingrind.contract.bookkeeping.PostingFact;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
 import dev.erst.fingrind.sqlite.SqliteBookSession;
@@ -160,6 +160,10 @@ final class SqliteRoundTripWorkflowLifecycleAssertions {
           accountStateViolationStatus(violations);
       case PostingRejection.DuplicateIdempotencyKey _ ->
           PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
+      case PostingRejection.ClosedPeriodViolation _ ->
+          PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.RetainedEarningsAccountReserved _ ->
+          PostingLifecycleStatus.RETAINED_EARNINGS_ACCOUNT_RESERVED;
       case PostingRejection.ReversalTargetNotFound _ ->
           PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ ->

@@ -64,6 +64,14 @@ class SqliteStoreContext {
         accessMode());
   }
 
+  SqliteNativeDatabase openConfiguredDatabaseWithoutRollbackArtifactWarning(
+      SqliteBookPassphrase bookPassphrase) {
+    return SqliteConnectionConfigurer.configureOpenedDatabase(
+        SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+            bookPath(), bookPassphrase, accessMode().nativeOpenMode(), sqliteApi()),
+        accessMode());
+  }
+
   static void closeOwnedDatabase(SqliteNativeDatabase database) {
     database.close();
   }

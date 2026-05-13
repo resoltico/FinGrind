@@ -6,8 +6,8 @@
     "compatibleWithCurrentBinary": true,
     "canInitializeWithOpenBook": false,
     "applicationId": 1179079236,
-    "detectedBookFormatVersion": 1,
-    "supportedBookFormatVersion": 1,
+    "detectedBookFormatVersion": 2,
+    "supportedBookFormatVersion": 2,
     "initializedAt": "2026-04-13T11:58:35.532739Z"
   }
 }

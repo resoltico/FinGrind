@@ -307,17 +307,17 @@ def assert_operator_queries_and_reports(
     )
     require_match(
         account_ledger_csv_output,
-        r"^accountCode,accountName,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts$",
+        r"^accountCode,accountName,accountType,accountRole,effectiveDateFrom,effectiveDateTo,postingId,effectiveDate,recordedAt,currencyCode,debitAmount,creditAmount,runningBalance,runningBalanceSide,counterpartAccounts$",
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
     require_match(
         account_ledger_csv_output,
-        r"^1000,Cash,2026-04-07,2026-04-08,[^,]+,2026-04-07,[^,]+,EUR,10\.00,0\.00,10\.00,DEBIT,2000$",
+        r"^1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,[^,]+,2026-04-07,[^,]+,EUR,10\.00,0\.00,10\.00,DEBIT,2000$",
         f"{config.label} account-ledger CSV output did not render the opening ledger movement row",
     )
     require_match(
         account_ledger_csv_output,
-        r"^1000,Cash,2026-04-07,2026-04-08,[^,]+,2026-04-08,[^,]+,EUR,0\.00,4\.00,6\.00,DEBIT,2000$",
+        r"^1000,Cash,ASSET,ORDINARY,2026-04-07,2026-04-08,[^,]+,2026-04-08,[^,]+,EUR,0\.00,4\.00,6\.00,DEBIT,2000$",
         f"{config.label} account-ledger CSV output did not render the running-balance adjustment row",
     )
     require_match(

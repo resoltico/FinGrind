@@ -4,6 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepKind;
+import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -11,9 +27,16 @@ import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
+import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
+import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -74,9 +97,9 @@ class MachineContractTest {
         enumValues(ActorType.values()),
         vocabularyValues(capabilities.requestShapes().postEntry().enumVocabularies(), "actorType"));
     assertEquals(
-        enumValues(NormalBalance.values()),
+        enumValues(AccountRole.values()),
         vocabularyValues(
-            capabilities.requestShapes().declareAccount().enumVocabularies(), "normalBalance"));
+            capabilities.requestShapes().declareAccount().enumVocabularies(), "accountRole"));
     assertEquals(
         "https://json-schema.org/draft/2020-12/schema",
         capabilities.requestShapes().schemaDialect());
@@ -108,7 +131,7 @@ class MachineContractTest {
     assertTrue(rejectionCodes.contains("administration-book-not-initialized"));
     assertTrue(rejectionCodes.contains("query-book-not-initialized"));
     assertTrue(rejectionCodes.contains("posting-book-not-initialized"));
-    assertTrue(rejectionCodes.contains("account-normal-balance-conflict"));
+    assertTrue(rejectionCodes.contains("account-role-conflict"));
     assertTrue(rejectionCodes.contains("posting-not-found"));
     assertTrue(rejectionCodes.contains("reversal-does-not-negate-target"));
     assertEquals(rejectionCodes.size(), rejectionCodes.stream().distinct().count());
@@ -152,7 +175,7 @@ class MachineContractTest {
 
     assertEquals("FinGrind", help.application());
     assertEquals("single-currency-per-entry", help.bookModel().currencyScope());
-    assertEquals(20, help.commands().size());
+    assertEquals(ProtocolCatalog.operations().size(), help.commands().size());
     assertEquals(
         OperationId.GENERATE_BOOK_KEY_FILE,
         command(help.commands(), OperationId.GENERATE_BOOK_KEY_FILE).name());
